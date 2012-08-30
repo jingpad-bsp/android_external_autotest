@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import compiler, datetime, hashlib, logging, os, random, re, time, traceback
-import signal
 
 import common
 
@@ -239,48 +238,6 @@ Step by step:
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
-class SignalsAsExceptions(object):
-    """Context manager to set the signal handler to a function that will
-    raise the wanted exception, and will properly reset the signal handler to
-    the previous handler when the scope ends.
-
-    Currently only modifies SIGTERM."""
-
-
-    def _make_handler(self):
-        def _raising_signal_handler(signal_number, frame):
-            self.signal_number = signal_number
-            self.frame = frame
-            raise self.exception_type()
-        return _raising_signal_handler
-
-
-    def __init__(self, exception_type):
-        """
-        @param exception_type A class that inherits from Exception that an
-                              instance of should be thrown as the exception.
-        """
-        self.old_handler = None
-        self.exception_type = exception_type
-
-
-    def __enter__(self):
-        self.old_handler = signal.signal(signal.SIGTERM, self._make_handler())
-
-
-    def __exit__(self, exntype, exnvalue, backtrace):
-        # If we receive another sigterm while calling the old handler below,
-        # we'll throw an exception in the context of the old handler. Thus we
-        # should vacate our spot as the signal handler first.
-        signal.signal(signal.SIGTERM, self.old_handler)
-        # We've caught the signal that we're looking for, and the scope within
-        # this context manager has been cleaned up successfully, so we can now
-        # trigger the previous signal handler.
-        if (exntype == self.exception_type and
-            not isinstance(self.old_handler, int)):
-            self.old_handler(self.signal_number, self.frame)
-
-
 class SuiteSpec(object):
     """
     This class contains the info that defines a suite run.
@@ -415,31 +372,27 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
                     reimaging/test scheduling.
     """
 
-    with SignalsAsExceptions(error.SignalException):
-        try:
-            if spec.skip_reimage or reimager.attempt(spec.build, spec.board,
-                                                     spec.pool,
-                                                     spec.job.record_entry,
-                                                     spec.check_hosts,
-                                                     manager, num=spec.num):
-                # Ensure that the image's artifacts have completed downloading.
-                try:
-                    ds = dev_server.DevServer.create()
-                    ds.finish_download(spec.build)
-                except dev_server.DevServerException as e:
-                    raise error.AsynchronousBuildFailure(e)
+    with host_lock_manager.HostsLockedBy(manager):
+        if spec.skip_reimage or reimager.attempt(spec.build, spec.board,
+                                                 spec.pool,
+                                                 spec.job.record_entry,
+                                                 spec.check_hosts,
+                                                 manager, num=spec.num):
+            # Ensure that the image's artifacts have completed downloading.
+            try:
+                ds = dev_server.DevServer.create()
+                ds.finish_download(spec.build)
+            except dev_server.DevServerException as e:
+                raise error.AsynchronousBuildFailure(e)
 
-                now = datetime.datetime.now()
-                timestamp = now.strftime(job_status.TIME_FMT)
-                utils.write_keyval(
-                    spec.job.resultdir,
-                    {constants.ARTIFACT_FINISHED_TIME: timestamp})
+            timestamp = datetime.datetime.now().strftime(job_status.TIME_FMT)
+            utils.write_keyval(
+                spec.job.resultdir,
+                {constants.ARTIFACT_FINISHED_TIME: timestamp})
 
-                suite = Suite.create_from_name(spec.name, spec.build,
-                                               afe=afe, tko=tko,
-                                               pool=spec.pool,
-                                               results_dir=spec.job.resultdir)
-                suite.run_and_wait(spec.job.record_entry, manager,
-                                   spec.add_experimental)
-        finally:
-            manager.unlock()
+            suite = Suite.create_from_name(spec.name, spec.build,
+                                           afe=afe, tko=tko,
+                                           pool=spec.pool,
+                                           results_dir=spec.job.resultdir)
+            suite.run_and_wait(spec.job.record_entry, manager,
+                               spec.add_experimental)

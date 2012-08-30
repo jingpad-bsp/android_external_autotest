@@ -111,27 +111,32 @@ class DynamicSuiteTest(mox.MoxTestBase):
         def suicide():
             os.kill(os.getpid(), signal.SIGTERM)
 
-        # mox does not play nicely with receiving a bare SIGTERM, but it does
-        # play nicely with unhandled exceptions...
+        # Mox doesn't play well with SIGTERM, but it does play well with
+        # with exceptions, so here we're using an exception to simulate
+        # execution being interrupted by a signal.
         class UnhandledSIGTERM(Exception):
             pass
+
+        def handler(signal_number, frame):
+            raise UnhandledSIGTERM()
+
+        signal.signal(signal.SIGTERM, handler)
 
         self.mox.StubOutWithMock(dev_server.DevServer, 'create')
         dev_server.DevServer.create().WithSideEffects(suicide)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
+        # This unlock occurrs in the signal handler, autoserv would be
+        # terminated at this point
+        manager.unlock()
+        # However, since we're throwing an exception, we "gracefully" exit the
+        # context manager, so this unlock comes from the |__exit__| call.
         manager.unlock()
         spec = self.mox.CreateMock(dynamic_suite.SuiteSpec)
         spec.skip_reimage = True
+        spec.build = ''
 
         self.mox.ReplayAll()
 
-        def test_code():
-            with dynamic_suite.SignalsAsExceptions(UnhandledSIGTERM):
-                self.assertRaises(error.SignalException,
-                                  dynamic_suite._perform_reimage_and_run,
-                                  spec, None, None, None, manager)
-                # rethrow the exception to simulate never catching it
-                raise error.SignalException()
-
-        # make sure that the original signal handler is still called
-        self.assertRaises(UnhandledSIGTERM, test_code)
+        self.assertRaises(UnhandledSIGTERM,
+                          dynamic_suite._perform_reimage_and_run,
+                          spec, None, None, None, manager)

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import signal
 
 import common
 from autotest_lib.client.common_lib import error
@@ -82,3 +83,33 @@ class HostLockManager(object):
         self._afe.run('modify_hosts',
                       host_filter_data={'hostname__in': list(self._hosts)},
                       update_data=kwargs)
+
+
+class HostsLockedBy(object):
+    """Context manager to make sure that a HostLockManager will always unlock
+    its machines. This protects against both exceptions and SIGTERM."""
+
+    def _make_handler(self):
+        def _chaining_signal_handler(signal_number, frame):
+            self._manager.unlock()
+            # self._old_handler can also be signal.SIG_{IGN,DFL} which are ints.
+            if callable(self._old_handler):
+                self._old_handler(signal_number, frame)
+        return _chaining_signal_handler
+
+
+    def __init__(self, manager):
+        """
+        @param manager: The HostLockManager used to lock the hosts.
+        """
+        self._manager = manager
+        self._old_handler = signal.SIG_DFL
+
+
+    def __enter__(self):
+        self._old_handler = signal.signal(signal.SIGTERM, self._make_handler())
+
+
+    def __exit__(self, exntype, exnvalue, backtrace):
+        signal.signal(signal.SIGTERM, self._old_handler)
+        self._manager.unlock()
