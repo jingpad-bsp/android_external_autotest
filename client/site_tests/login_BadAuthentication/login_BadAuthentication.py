@@ -29,6 +29,9 @@ class login_BadAuthentication(cros_ui_test.UITest):
 
 
     def run_once(self):
+        # Wrong password leads to automation timeout (45 secs). Fail sooner.
+        timeout_reducer = self.pyauto.ActionTimeoutChanger(
+            self.pyauto, 5000)  # 5 secs
         try:
             self.login(self.username, self.password)
         # TODO(craigdh): Find better way to determine login has failed (WebUI).
