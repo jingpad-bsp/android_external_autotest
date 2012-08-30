@@ -37,6 +37,20 @@ class StatusTest(mox.MoxTestBase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
 
+    def testThresholdingIntervalCalculator(self):
+        """Up to threshold, interval is constant; after, interval grows."""
+        threshold = 4
+        interval = 1
+        c = job_status.ThresholdingIntervalCalculator(threshold)
+        for i in xrange(4):
+            self.assertEquals(interval, c.calculate(interval))
+        last_interval = interval
+        for i in xrange(4):
+            new_interval = c.calculate(interval)
+            self.assertTrue(last_interval < new_interval)
+            last_interval = new_interval
+
+
     def testGatherJobHostnamesAllRan(self):
         """All entries for the job were assigned hosts."""
         job = FakeJob(0, [])
@@ -351,6 +365,7 @@ class StatusTest(mox.MoxTestBase):
 
 
     def testRecordAndReportGoodResults(self):
+        """Record and report success across the board."""
         (statuses, record_entity) = self._prepareForReporting([True, True])
         self.mox.ReplayAll()
         success = job_status.record_and_report_results(statuses, record_entity)
@@ -358,6 +373,7 @@ class StatusTest(mox.MoxTestBase):
 
 
     def testRecordAndReportOkayResults(self):
+        """Record and report success of at least one host."""
         (statuses, record_entity) = self._prepareForReporting([False, True])
         self.mox.ReplayAll()
         success = job_status.record_and_report_results(statuses, record_entity)
@@ -365,6 +381,7 @@ class StatusTest(mox.MoxTestBase):
 
 
     def testRecordAndReportBadResults(self):
+        """Record and report failure across the board."""
         (statuses, record_entity) = self._prepareForReporting([False, False])
         self.mox.ReplayAll()
         success = job_status.record_and_report_results(statuses, record_entity)
