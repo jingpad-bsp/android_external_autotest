@@ -80,7 +80,7 @@ function run_cmd() {
 function get_mysql_pid() {
   local pid=""
 
-  if [ $# -gt 0 ]; then
+  if [ $# -gt 0 ] && [ ! -z "$1" ]; then
     # Use user-provided PID.
     pid=$1
   elif [ ! -z ${MYSQL_PID_PATH} -a -f ${MYSQL_PID_PATH} ]; then
