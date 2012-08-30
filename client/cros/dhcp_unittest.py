@@ -45,62 +45,97 @@ def test_packet_serialization():
     print "test_packet_serialization PASSED"
     return True
 
-def test_simple_server_exchange(server):
-    intended_ip = "127.0.0.42"
-    intended_subnet_mask = "255.255.255.0"
-    server_ip = "127.0.0.1"
-    lease_time_seconds = 60
-    test_timeout = 3.0
-    handling_rule = dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
-            intended_ip,
-            intended_subnet_mask,
-            server_ip,
-            lease_time_seconds)
-    handling_rule.is_final_handler = True
-    server.start_test([handling_rule], test_timeout)
-    discovery_message = dhcp_packet.DhcpPacket.create_discovery_packet(
-            "\x01\x02\x03\x04\x05\x06")
-    # Put these ports at 8067/8068 to avoid requiring root permissions.
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    client_socket.bind(("127.0.0.1", 8068))
-    client_socket.settimeout(0.1)
-    client_socket.sendto(discovery_message.to_binary_string(),
-                         ("127.0.0.1", 8067))
+def receive_packet(a_socket, timeout_seconds=1.0):
     data = None
     start_time = time.time()
-    while data is None and start_time + test_timeout > time.time():
+    while data is None and start_time + timeout_seconds > time.time():
         try:
-            data, _ = client_socket.recvfrom(1024)
+            data, _ = a_socket.recvfrom(1024)
         except socket.timeout:
             pass # We expect many timeouts.
     if data is None:
         print "Timed out before we received a response from the server."
-        return False
+        return None
 
     print "Client received a packet of length %d from the server." % len(data)
-    response_packet = dhcp_packet.DhcpPacket(byte_str=data)
-    if not response_packet.is_valid:
+    packet = dhcp_packet.DhcpPacket(byte_str=data)
+    if not packet.is_valid:
         print "Received an invalid response from DHCP server."
+        return None
+
+    return packet
+
+def test_simple_server_exchange(server):
+    intended_ip = "127.0.0.42"
+    server_ip = "127.0.0.1"
+    lease_time_seconds = 60
+    test_timeout = 3.0
+    mac_addr = "\x01\x02\x03\x04\x05\x06"
+    # Build up our packets.
+    discovery_message = dhcp_packet.DhcpPacket.create_discovery_packet(mac_addr)
+    request_message = dhcp_packet.DhcpPacket.create_request_packet(
+            discovery_message.transaction_id,
+            mac_addr,
+            intended_ip,
+            server_ip)
+    # Build up the handling rules for the server and start the test.
+    rules = []
+    rules.append(dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
+            intended_ip,
+            server_ip,
+            lease_time_seconds))
+    rules.append(dhcp_handling_rule.DhcpHandlingRule_RespondToRequest(
+            intended_ip,
+            server_ip,
+            lease_time_seconds))
+    rules[-1].is_final_handler = True
+    server.start_test(rules, test_timeout)
+    # Because we don't want to require root permissions to run these tests,
+    # listen on the loopback device, don't broadcast, and don't use reserved
+    # ports (like the actual DHCP ports).  Use 8068/8067 instead.
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client_socket.bind(("127.0.0.1", 8068))
+    client_socket.settimeout(0.1)
+    client_socket.sendto(discovery_message.to_binary_string(),
+                         (server_ip, 8067))
+
+    offer_packet = receive_packet(client_socket)
+    if offer_packet is None:
         return False
 
-    if (response_packet.message_type !=
-            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER):
+    if (offer_packet.message_type !=
+        dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER):
         print "Type of DHCP response is not offer."
         return False
 
-    if (response_packet.get_field("yiaddr") !=
-            socket.inet_aton(intended_ip)):
+    if offer_packet.get_field("yiaddr") != socket.inet_aton(intended_ip):
         print "Server didn't offer the IP we expected."
         return False
 
-    print "Packet looks good to the client, waiting for server to finish."
+    print "Offer looks good to the client, sending request."
+    client_socket.sendto(request_message.to_binary_string(),
+                         (server_ip, 8067))
+    ack_packet = receive_packet(client_socket)
+    if ack_packet is None:
+        return False
+
+    if (ack_packet.message_type !=
+        dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK):
+        print "Type of DHCP response is not acknowledgement."
+        return False
+
+    if offer_packet.get_field("yiaddr") != socket.inet_aton(intended_ip):
+        print "Server didn't give us the IP we expected."
+        return False
+
+    print "Waiting for the server to finish."
     server.wait_for_test_to_finish()
     print "Server agrees that the test is over."
     if not server.last_test_passed:
         print "Server is unhappy with the test result."
         return False
 
-    print "test_simple_server_exchange PASSED"
+    print "test_simple_server_exchange PASSED."
     return True
 
 def test_server_dialogue():

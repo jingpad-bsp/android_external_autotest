@@ -122,6 +122,8 @@ class Field(object):
 # be this big, but that has been the historic assumption in implementations.
 DHCP_MIN_PACKET_SIZE = 300
 
+IPV4_NULL_ADDRESS = "\x00\x00\x00\x00"
+
 # These are required in every DHCP packet.  Without these fields, the
 # packet will not even pass DhcpPacket.is_valid
 FIELD_OP = Field("op", "!B", 0, 1)
@@ -218,6 +220,12 @@ OPTION_VALUE_DHCP_MESSAGE_TYPE_NAK       = "\x06"
 OPTION_VALUE_DHCP_MESSAGE_TYPE_RELEASE   = "\x07"
 OPTION_VALUE_DHCP_MESSAGE_TYPE_INFORM    = "\x08"
 
+OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT = \
+        chr(OPTION_SUBNET_MASK.number) + \
+        chr(OPTION_ROUTERS.number) + \
+        chr(OPTION_DNS_SERVERS.number) + \
+        chr(OPTION_HOST_NAME.number)
+
 # These are possible options that may not be in every packet.
 # Frequently, the client can include a bunch of options that indicate
 # that it would like to receive information about time servers, routers,
@@ -304,19 +312,17 @@ class DhcpPacket(object):
         packet.set_field(FIELD_TRANSACTION_ID.name, random.getrandbits(32))
         packet.set_field(FIELD_TIME_SINCE_START.name, 0)
         packet.set_field(FIELD_FLAGS.name, 0)
-        packet.set_field(FIELD_CLIENT_IP.name, "\x00\x00\x00\x00")
-        packet.set_field(FIELD_YOUR_IP.name, "\x00\x00\x00\x00")
-        packet.set_field(FIELD_SERVER_IP.name, "\x00\x00\x00\x00")
-        packet.set_field(FIELD_GATEWAY_IP.name, "\x00\x00\x00\x00")
+        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_SERVER_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
         packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY)
-        # We're requesting (in order) the subnet mask, broadcast addr, router
-        # addr, dns addr, domain search list, client host name, and ntp server
-        # addr.
         packet.set_option(OPTION_PARAMETER_REQUEST_LIST.name,
-                          "\x01\x1c\x03\x06w\x0c*")
+                          OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
+
         return packet
 
     @staticmethod
@@ -339,16 +345,77 @@ class DhcpPacket(object):
         packet.set_field(FIELD_TRANSACTION_ID.name, transaction_id)
         packet.set_field(FIELD_TIME_SINCE_START.name, 0)
         packet.set_field(FIELD_FLAGS.name, 0)
-        packet.set_field(FIELD_CLIENT_IP.name, "\x00\x00\x00\x00")
+        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
         packet.set_field(FIELD_YOUR_IP.name, socket.inet_aton(offer_ip))
         packet.set_field(FIELD_SERVER_IP.name, socket.inet_aton(server_ip))
-        packet.set_field(FIELD_GATEWAY_IP.name, "\x00\x00\x00\x00")
+        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
         packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER)
         packet.set_option(OPTION_SUBNET_MASK.name,
                           socket.inet_aton(offer_subnet_mask))
+        packet.set_option(OPTION_SERVER_ID.name, socket.inet_aton(server_ip))
+        packet.set_option(OPTION_IP_LEASE_TIME.name,
+                          struct.pack("!I", int(lease_time_seconds)))
+        return packet
+
+    @staticmethod
+    def create_request_packet(transaction_id,
+                              hwmac_addr,
+                              requested_ip,
+                              server_ip):
+        packet = DhcpPacket()
+        packet.set_field(FIELD_OP.name, FIELD_VALUE_OP_CLIENT_REQUEST)
+        packet.set_field(FIELD_HWTYPE.name, FIELD_VALUE_HWTYPE_10MB_ETH)
+        packet.set_field(FIELD_HWADDR_LEN.name, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
+        # This has something to do with relay agents
+        packet.set_field(FIELD_RELAY_HOPS.name, 0)
+        packet.set_field(FIELD_TRANSACTION_ID.name, transaction_id)
+        packet.set_field(FIELD_TIME_SINCE_START.name, 0)
+        packet.set_field(FIELD_FLAGS.name, 0)
+        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_SERVER_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
+        packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
+        packet.set_option(OPTION_REQUESTED_IP.name,
+                          socket.inet_aton(requested_ip))
+        packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
+                          OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST)
+        packet.set_option(OPTION_SERVER_ID.name, socket.inet_aton(server_ip))
+        packet.set_option(OPTION_PARAMETER_REQUEST_LIST.name,
+                          OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
+        return packet
+
+    @staticmethod
+    def create_acknowledgement_packet(transaction_id,
+                                      hwmac_addr,
+                                      granted_ip,
+                                      granted_ip_subnet_mask,
+                                      server_ip,
+                                      lease_time_seconds):
+        packet = DhcpPacket()
+        packet.set_field(FIELD_OP.name, FIELD_VALUE_OP_SERVER_RESPONSE)
+        packet.set_field(FIELD_HWTYPE.name, FIELD_VALUE_HWTYPE_10MB_ETH)
+        packet.set_field(FIELD_HWADDR_LEN.name, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
+        # This has something to do with relay agents
+        packet.set_field(FIELD_RELAY_HOPS.name, 0)
+        packet.set_field(FIELD_TRANSACTION_ID.name, transaction_id)
+        packet.set_field(FIELD_TIME_SINCE_START.name, 0)
+        packet.set_field(FIELD_FLAGS.name, 0)
+        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP.name, socket.inet_aton(granted_ip))
+        packet.set_field(FIELD_SERVER_IP.name, socket.inet_aton(server_ip))
+        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
+        packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
+        packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
+                          OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK)
+        packet.set_option(OPTION_SUBNET_MASK.name,
+                          socket.inet_aton(granted_ip_subnet_mask))
+        packet.set_option(OPTION_SERVER_ID.name, socket.inet_aton(server_ip))
         packet.set_option(OPTION_IP_LEASE_TIME.name,
                           struct.pack("!I", int(lease_time_seconds)))
         return packet
@@ -453,6 +520,8 @@ class DhcpPacket(object):
             field_data = struct.pack(field.wire_format,
                                      self._fields[field.name])
             while offset < field.offset:
+                # This should only happen when we're padding the fields because
+                # we're not filling in legacy BOOTP stuff.
                 data.append("\x00")
                 offset += 1
             data.append(field_data)
