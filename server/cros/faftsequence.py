@@ -107,8 +107,10 @@ class FAFTSequence(ServoTest):
     POWER_BTN_DELAY = 0.5
     # Delay of EC software sync hash calculating time
     SOFTWARE_SYNC_DELAY = 6
-    # Delay between EC boot and EC console functional
-    EC_BOOT_DELAY = 2
+    # Delay between EC boot and ChromeEC console functional
+    EC_BOOT_DELAY = 0.5
+    # Duration of holding cold_reset to reset device
+    COLD_RESET_DELAY = 0.1
 
     # The developer screen timeouts fit our spec.
     DEV_SCREEN_TIMEOUT = 30
@@ -882,7 +884,10 @@ class FAFTSequence(ServoTest):
             os.system(self._customized_rec_reboot_command)
         elif self.client_attr.chrome_ec:
             # Cold reset to clear EC_IN_RW signal
-            self.servo.cold_reset()
+            self.servo.set('cold_reset', 'on')
+            time.sleep(self.COLD_RESET_DELAY)
+            self.servo.set('cold_reset', 'off')
+            time.sleep(self.EC_BOOT_DELAY)
             self.send_uart_command("reboot ap-off")
             time.sleep(self.EC_BOOT_DELAY)
             self.send_uart_command("hostevent set 0x4000")
