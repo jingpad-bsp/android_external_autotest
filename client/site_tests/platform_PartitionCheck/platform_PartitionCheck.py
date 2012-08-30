@@ -27,22 +27,11 @@ class platform_PartitionCheck(test.test):
             int, size of block in bytes.
         """
 
-        # Construct a pathname to the various files we care about.
-        sysfs_path = os.path.join('/sys', 'block', device, 'queue')
-        sector_file = os.path.join(sysfs_path, 'hw_sector_size')
-        logical_file = os.path.join(sysfs_path, 'logical_block_size')
-        physical_file = os.path.join(sysfs_path, 'physical_block_size')
+        # Construct a pathname to find the logic block size for this device
+        sysfs_path = os.path.join('/sys', 'block', device,
+                                  'queue', 'logical_block_size')
 
-        sector_size = int(utils.read_one_line(sector_file))
-        logical_size = int(utils.read_one_line(logical_file))
-        physical_size = int(utils.read_one_line(physical_file))
-
-        self.assert_(logical_size == physical_size, (
-            'Warning %s and %s are not equal' % (logical_file, physical_file)))
-        self.assert_(sector_size == physical_size, (
-            'Warning %s and %s are not equal' % (sector_file, physical_file)))
-
-        return sector_size
+        return int(utils.read_one_line(sysfs_path))
 
     def get_partition_size(self, device, partition):
         """
@@ -59,7 +48,7 @@ class platform_PartitionCheck(test.test):
         return part_blocks
 
     def run_once(self):
-        errors = 0
+        errors = []
         cpu_type = utils.get_cpu_arch()
 
         if cpu_type == 'arm':
@@ -75,9 +64,12 @@ class platform_PartitionCheck(test.test):
             pblocks = self.get_partition_size(device, p)
             psize = pblocks * block_size
             if psize != ROOTFS_SIZE:
-                logging.warn('%s is %d bytes' % (p, psize))
-                errors += 1
+                errmsg = ('%s is %d bytes, expected %d' %
+                          (p, psize, ROOTFS_SIZE))
+                logging.warn(errmsg)
+                errors.append(errmsg)
 
         # If self.error is not zero, there were errors.
-        if errors > 0:
-            raise error.TestFail('There were %d partition errors' % errors)
+        if errors:
+            raise error.TestFail('There were %d partition errors: %s' %
+                                 (len(errors), ': '.join(errors)))
