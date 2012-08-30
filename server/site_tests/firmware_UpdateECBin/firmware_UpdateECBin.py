@@ -56,20 +56,31 @@ class firmware_UpdateECBin(FAFTSequence):
 
         temp_path = self.faft_client.get_temp_path()
         self.faft_client.setup_firmwareupdate_temp_dir()
-        self.old_ec_path = os.path.join(temp_path, 'old_ec.bin')
+
+        self.old_bios_path = os.path.join(temp_path, 'old_bios.bin')
+        self.faft_client.dump_firmware(self.old_bios_path)
+
         self.new_ec_path = os.path.join(temp_path, 'new_ec.bin')
-
-        self.faft_client.dump_EC_firmware(self.old_ec_path)
-        self.old_ec_sha = self.faft_client.get_EC_firmware_sha()
-
         host.send_file(self.arg_new_ec, self.new_ec_path)
-        self.faft_client.setup_EC_image(self.new_ec_path)
-        self.new_ec_sha = self.faft_client.get_EC_image_sha()
 
 
     def cleanup(self):
         self.ensure_fw_a_boot()
         super(firmware_UpdateECBin, self).cleanup()
+
+
+    def do_ronormal_update(self):
+        self.faft_client.setup_EC_image(self.new_ec_path)
+        self.new_ec_sha = self.faft_client.get_EC_image_sha()
+        self.faft_client.update_EC_from_image('a', 0)
+
+
+    def do_twostop_update(self):
+        # We update the original BIOS image back. This BIOS image contains
+        # the original EC binary. But set RW boot. So it is a TWOSTOP ->
+        # TWOSTOP update.
+        self.faft_client.write_firmware(self.old_bios_path)
+        self.faft_client.set_firmware_flags('a', 0)
 
 
     def run_once(self, host=None):
@@ -85,11 +96,10 @@ class firmware_UpdateECBin(FAFTSequence):
                     'tried_fwb': '0',
                     'ecfw_act': 'RO',
                 }),
-                'userspace_action': (self.faft_client.update_EC_from_image,
-                                     'a', flags ^ self.PREAMBLE_USE_RO_NORMAL),
+                'userspace_action': self.do_ronormal_update,
                 'reboot_action': self.sync_and_cold_reboot,
             },
-            {   # Step 2, expected new EC and RW boot, restore the original EC
+            {   # Step 2, expected new EC and RW boot, restore the original BIOS
                 'state_checker': (
                     lambda: self.crossystem_checker({
                                 'mainfw_act': 'A',
@@ -98,27 +108,24 @@ class firmware_UpdateECBin(FAFTSequence):
                             }) and (
                                self.faft_client.get_EC_firmware_sha() ==
                                self.new_ec_sha)),
-                'userspace_action': (
-                    lambda: (self.faft_client.setup_EC_image(self.old_ec_path),
-                             self.faft_client.update_EC_from_image(
-                                 'a', flags ^ self.PREAMBLE_USE_RO_NORMAL))),
+                'userspace_action': self.do_twostop_update,
                 'reboot_action': self.sync_and_cold_reboot,
             },
-            {   # Step 3, expected original EC and RW boot, enable RO flag
+            {   # Step 3, expected different EC and RW boot, enable RO flag
                 'state_checker': (
                     lambda: self.crossystem_checker({
                                 'mainfw_act': 'A',
                                 'tried_fwb': '0',
                                 'ecfw_act': 'RW',
                             }) and (
-                               self.faft_client.get_EC_firmware_sha() ==
-                               self.old_ec_sha)),
-                'userspace_action': (self.faft_client.update_ecbin_from_image,
+                               self.faft_client.get_EC_firmware_sha() !=
+                               self.new_ec_sha)),
+                'userspace_action': (self.faft_client.set_firmware_flags,
                                      'a', flags),
                 'reboot_action': self.sync_and_cold_reboot,
             },
             {   # Step 4, expected EC RO boot, done
-                'state_checker': ({
+                'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                     'ecfw_act': 'RO',

@@ -541,6 +541,25 @@ class FAFTClient(object):
         self.set_firmware_flags(section, flags)
 
 
+    def dump_firmware(self, bios_path):
+        """Dump the current BIOS firmware to a file, specified by bios_path.
+
+        Args:
+            bios_path: The path of the BIOS image to be written.
+        """
+        self._bios_handler.dump_whole(bios_path)
+
+
+    def write_firmware(self, bios_path):
+        """Write the firmware from bios_path to the current system.
+
+        Args:
+            bios_path: The path of the source BIOS image.
+        """
+        self._bios_handler.new_image(bios_path)
+        self._bios_handler.write_whole()
+
+
     def dump_EC_firmware(self, ec_path):
         """Dump the current EC firmware to a file, specified by ec_path.
 
