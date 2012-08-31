@@ -30,7 +30,7 @@ class DevServerGetterTest(mox.MoxTestBase):
 
     def setUp(self):
         super(DevServerGetterTest, self).setUp()
-        self.dev_server = self.mox.CreateMock(dev_server.DevServer)
+        self.dev_server = self.mox.CreateMock(dev_server.ImageServer)
         self.getter = control_file_getter.DevServerGetter(self._BUILD,
                                                           self.dev_server)
 

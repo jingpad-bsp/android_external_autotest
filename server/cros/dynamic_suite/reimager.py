@@ -55,7 +55,7 @@ class Reimager(object):
             [os.path.join(autotest_dir, 'server/site_tests')])
 
 
-    def attempt(self, build, board, pool, record, check_hosts,
+    def attempt(self, build, board, pool, devserver, record, check_hosts,
                 manager, num=None):
         """
         Synchronously attempt to reimage some machines.
@@ -69,6 +69,8 @@ class Reimager(object):
         @param board: which kind of devices to reimage.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
+        @param devserver: an instance of a devserver to use to complete this
+                  call.
         @param record: callable that records job status.
                prototype:
                  record(base_job.status_log_entry)
@@ -91,7 +93,8 @@ class Reimager(object):
 
             # Schedule job and record job metadata.
             # TODO make DEPENDENCIES-aware
-            canary_job = self._schedule_reimage_job(build, board, pool, num)
+            canary_job = self._schedule_reimage_job(build, board, pool,
+                                                    num, devserver)
             self._record_job_if_possible(Reimager.JOB_NAME, canary_job)
             logging.info('Created re-imaging job: %d', canary_job.id)
 
@@ -261,7 +264,8 @@ class Reimager(object):
                 raise ve
 
 
-    def _schedule_reimage_job(self, build, board, pool, num_machines):
+    def _schedule_reimage_job(self, build, board, pool, num_machines,
+                              devserver):
         """
         Schedules the reimaging of |num_machines| |board| devices with |image|.
 
@@ -272,12 +276,14 @@ class Reimager(object):
         @param board: which kind of devices to reimage.
         @param pool: the pool of machines to use for scheduling purposes.
         @param num_machines: the maximum number of devices to reimage.
+        @param devserver: an instance of devserver that DUTs should use to get
+                          build artifacts from.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
-        image_url = tools.image_url_pattern() % (
-            dev_server.DevServer.devserver_url_for_build(build), build)
+        image_url = tools.image_url_pattern() % (devserver.url(), build)
         control_file = tools.inject_vars(
-            dict(image_url=image_url, image_name=build),
+            dict(image_url=image_url, image_name=build,
+                 devserver_url=devserver.url()),
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
         job_deps = []
         if pool:

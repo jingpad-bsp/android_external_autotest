@@ -21,6 +21,7 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 
 import optparse, os, sys, time
 import common
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 
@@ -53,13 +54,13 @@ def main():
         return
 
     fs_getter = Suite.create_fs_getter(options.autotest_dir)
-
+    devserver = dev_server.ImageServer('')
     if options.listall:
-        for suite in Suite.list_all_suites('', fs_getter):
+        for suite in Suite.list_all_suites('', devserver, fs_getter):
             print suite
         return
 
-    suite = Suite.create_from_name(args[0], '', fs_getter)
+    suite = Suite.create_from_name(args[0], '', devserver, fs_getter)
     for test in suite.stable_tests():
         print test.path
     if options.add_experimental:

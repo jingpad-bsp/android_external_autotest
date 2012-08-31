@@ -43,7 +43,7 @@ def run(machine):
         attributes = host_attributes.host_attributes(machine)
         if hasattr(attributes, 'board'):
             board = attributes.board
-            server = dev_server.DevServer.devserver_url_for_servo(board)
+            server = dev_server.ImageServer.devserver_url_for_servo(board)
             image = server + (DEFAULT_URL_FORMAT % board)
             logging.info("image URL is %s", image)
     job.run_test("platform_InstallTestImage", host=host,

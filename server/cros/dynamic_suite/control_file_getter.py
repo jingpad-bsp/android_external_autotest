@@ -176,13 +176,13 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
 
 
 class DevServerGetter(CacheingAndFilteringControlFileGetter):
-    def __init__(self, build, ds=None):
+    def __init__(self, build, ds):
         """
         @param build: The build from which to get control files.
         @param ds: An existing dev_server.DevServer object to use.
         """
         super(DevServerGetter, self).__init__()
-        self._dev_server = ds if ds else dev_server.DevServer()
+        self._dev_server = ds
         self._build = build
 
 

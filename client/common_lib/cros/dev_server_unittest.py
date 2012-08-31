@@ -31,8 +31,61 @@ class DevServerTest(mox.MoxTestBase):
 
     def setUp(self):
         super(DevServerTest, self).setUp()
-        self.dev_server = dev_server.DevServer(self._HOST, self._CRASH_HOST)
+        self.crash_server = dev_server.CrashServer(DevServerTest._CRASH_HOST)
+        self.dev_server = dev_server.ImageServer(DevServerTest._HOST)
         self.mox.StubOutWithMock(urllib2, 'urlopen')
+
+
+    def testSimpleResolve(self):
+        """One devserver, verify we resolve to it."""
+        self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
+        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+        dev_server._get_dev_server_list().AndReturn([DevServerTest._HOST])
+        dev_server.DevServer._devserver_up(DevServerTest._HOST).AndReturn(True)
+        self.mox.ReplayAll()
+        devserver = dev_server.ImageServer.resolve('my_build')
+        self.assertEquals(devserver.url(), DevServerTest._HOST)
+
+
+    def testResolveWithFailure(self):
+        """Ensure we rehash on a failed ping on a bad_host."""
+        self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
+        bad_host, good_host = 'http://bad_host:99', 'http://good_host:8080'
+        dev_server._get_dev_server_list().AndReturn([bad_host, good_host])
+
+        # Mock out bad ping failure to bad_host by raising devserver exception.
+        urllib2.urlopen(mox.StrContains(bad_host)).AndRaise(
+                dev_server.DevServerException())
+        # Good host is good.
+        to_return = StringIO.StringIO('Success')
+        urllib2.urlopen(mox.StrContains(good_host)).AndReturn(to_return)
+
+        self.mox.ReplayAll()
+        host = dev_server.ImageServer.resolve(0) # Using 0 as it'll hash to 0.
+        self.assertEquals(host.url(), good_host)
+        self.mox.VerifyAll()
+
+
+    def testResolveWithManyDevservers(self):
+        """Should be able to return different urls with multiple devservers."""
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
+        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+
+        host0_expected = 'http://host0:8080'
+        host1_expected = 'http://host1:8082'
+
+        dev_server.ImageServer.servers().MultipleTimes().AndReturn(
+                [host0_expected, host1_expected])
+        dev_server.DevServer._devserver_up(host0_expected).AndReturn(True)
+        dev_server.DevServer._devserver_up(host1_expected).AndReturn(True)
+
+        self.mox.ReplayAll()
+        host0 = dev_server.ImageServer.resolve(0)
+        host1 = dev_server.ImageServer.resolve(1)
+        self.mox.VerifyAll()
+
+        self.assertEqual(host0.url(), host0_expected)
+        self.assertEqual(host1.url(), host1_expected)
 
 
     def _returnHttpServerError(self):
@@ -56,7 +109,7 @@ class DevServerTest(mox.MoxTestBase):
     def testSuccessfulTriggerDownloadSync(self):
         """Call the dev server's download method with synchronous=True."""
         name = 'fake/image'
-        self.mox.StubOutWithMock(dev_server.DevServer, 'finish_download')
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'finish_download')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name))).AndReturn(to_return)
@@ -201,79 +254,54 @@ class DevServerTest(mox.MoxTestBase):
 
     def testGetLatestBuild(self):
         """Should successfully return a build for a given target."""
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
+        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+
+        dev_server.ImageServer.servers().AndReturn([self._HOST])
+        dev_server.DevServer._devserver_up(self._HOST).AndReturn(True)
+
         target = 'x86-generic-release'
         build_string = 'R18-1586.0.0-a1-b1514'
         to_return = StringIO.StringIO(build_string)
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(target))).AndReturn(to_return)
         self.mox.ReplayAll()
-        build = self.dev_server.get_latest_build(target)
+        build = dev_server.ImageServer.get_latest_build(target)
         self.assertEquals(build_string, build)
-
-
-    def testThatWeCorrectlyReHashToTheSameDevserver(self):
-        """Ensure calls with same hashing_value go to the same devserver."""
-        for index in range(10):
-          self.dev_server._dev_servers.append('http://nothing_%d' % index)
-
-        method_name = 'my_method'
-        hv1 = 'iliketacos'
-        hv2 = 'iliketacos'
-        hv3 = 'idontliketacos :('
-        hv4 = 'idontliketacos :('
-
-        call1 = self.dev_server._build_call(method_name, hashing_value=hv1)
-        call2 = self.dev_server._build_call(method_name, hashing_value=hv2,
-                                            some_arg='value')
-        call3 = self.dev_server._build_call(method_name, hashing_value=hv3)
-        call4 = self.dev_server._build_call(method_name, hashing_value=hv4,
-                                            some_arg='value')
-
-        self.assertTrue(call2.startswith(call1))
-        self.assertTrue(call4.startswith(call3))
 
 
     def testGetLatestBuildWithManyDevservers(self):
         """Should successfully return newest build with multiple devservers."""
-        self.dev_server._dev_servers.append('http://nothing_2')
-        self.dev_server._dev_servers.append('http://nothing_3')
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
+        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+
+        host0_expected = 'http://host0:8080'
+        host1_expected = 'http://host1:8082'
+
+        dev_server.ImageServer.servers().MultipleTimes().AndReturn(
+                [host0_expected, host1_expected])
+
+        dev_server.DevServer._devserver_up(host0_expected).AndReturn(True)
+        dev_server.DevServer._devserver_up(host1_expected).AndReturn(True)
+
         target = 'x86-generic-release'
         build_string1 = 'R9-1586.0.0-a1-b1514'
         build_string2 = 'R19-1586.0.0-a1-b3514'
-        build_string3 = 'R18-1486.0.0-a1-b2514'
         to_return1 = StringIO.StringIO(build_string1)
         to_return2 = StringIO.StringIO(build_string2)
-        to_return3 = StringIO.StringIO(build_string3)
-        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+        urllib2.urlopen(mox.And(mox.StrContains(host0_expected),
                                 mox.StrContains(target))).AndReturn(to_return1)
-        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+        urllib2.urlopen(mox.And(mox.StrContains(host1_expected),
                                 mox.StrContains(target))).AndReturn(to_return2)
-        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
-                                mox.StrContains(target))).AndReturn(to_return3)
 
         self.mox.ReplayAll()
-        build = self.dev_server.get_latest_build(target)
+        build = dev_server.ImageServer.get_latest_build(target)
         self.assertEquals(build_string2, build)
-
-
-    def testDevserverUrlWithManyDevservers(self):
-        """Should be able to return different urls with multiple devservers."""
-        host0_expected = 'http://host0:8082'
-        host1_expected = 'http://host1:8099'
-        self._CONFIG.override_config_value(
-                'CROS',
-                'dev_server',
-                '%s,%s' % (host0_expected, host1_expected))
-        host0 = dev_server.DevServer.devserver_url_for_build(0)
-        host1 = dev_server.DevServer.devserver_url_for_build(1)
-
-        self.assertEqual(host0, host0_expected)
-        self.assertEqual(host1, host1_expected)
 
 
     def testCrashesAreSetToTheCrashServer(self):
         """Should send symbolicate dump rpc calls to crash_server."""
         hv = 'iliketacos'
         self.mox.ReplayAll()
-        call = self.dev_server._build_call('symbolicate_dump', hashing_value=hv)
+        call = self.crash_server.build_call('symbolicate_dump')
         self.assertTrue(call.startswith(self._CRASH_HOST))

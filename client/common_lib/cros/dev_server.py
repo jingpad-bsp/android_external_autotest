@@ -79,106 +79,66 @@ class DevServerException(Exception):
 
 
 
-# TODO(sosa): Make this class use sub-classes of a common Server class rather
-# than if/else cases with crash server/devserver.
 class DevServer(object):
-    """Helper class for interacting with the Dev Server via http."""
+    """Base class for all DevServer-like server stubs.
+
+    This is the base class for interacting with all Dev Server-like servers.
+    A caller should instantiate a sub-class of DevServer with:
+
+    host = SubClassServer.resolve(build)
+    server = SubClassServer(host)
+    """
+    def __init__(self, devserver):
+        self._devserver = devserver
 
 
-    _CRASH_SERVER_RPC_CALLS = set(['stage_debug', 'symbolicate_dump'])
-
-
-    def __init__(self, dev_host=None, crash_host=None):
-        """Constructor.
-
-        Args:
-        @param dev_host: Address of the Dev Server.
-                         Defaults to None.  If not set, CROS.dev_server is used.
-        """
-        if dev_host:
-            self._dev_servers = [dev_host]
-        else:
-            self._dev_servers = _get_dev_server_list()
-
-        if crash_host:
-            self._crash_servers = [crash_host]
-        else:
-            self._crash_servers = _get_crash_server_list()
+    def url(self):
+        """Returns the url for this devserver."""
+        return self._devserver
 
 
     @staticmethod
-    def create(dev_host=None, crash_host=None):
-        """Wraps the constructor.  Purely for mocking purposes."""
-        return DevServer(dev_host, crash_host)
+    def _devserver_up(devserver):
+        """Returns True if the |devserver| is responding to calls."""
+        call = DevServer._build_call(devserver, 'index')
+
+        @remote_devserver_call
+        def make_call():
+            urllib2.urlopen(call)
+
+        try:
+            make_call()
+            return True
+        except DevServerException:
+            return False
 
 
     @staticmethod
-    def _server_for_hashing_value(servers, hashing_value):
-        """Returns the server in servers to use for the given hashing_value.
-        Args:
-        @param servers: List of servers
-        @param hashing_value: The value that determines which server to use.
-        """
-        return servers[hash(hashing_value) % len(servers)]
+    def _build_call(host, method, **kwargs):
+        """Build a URL to |host| that calls |method|, passing |kwargs|.
 
+        Builds a URL that calls |method| on the dev server defined by |host|,
+        passing a set of key/value pairs built from the dict |kwargs|.
 
-    @classmethod
-    def devserver_url_for_build(cls, build):
-        """Returns the devserver url which contains the build.
-
-        Args:
-        @param build:  The build name i.e. builder/version that is being tested.
-        """
-        return cls._server_for_hashing_value(_get_dev_server_list(), build)
-
-
-    @classmethod
-    def devserver_url_for_servo(cls, build):
-        """Returns the devserver url for use with servo recovery.
-
-        Args:
-        @param board:  The board type to be recovered.
-        """
-        # To simplify manual steps on the server side, we ignore the
-        # board type and hard-code the server as first in the list.
-        #
-        # TODO(jrbarnette) Once we have automated selection of the
-        # build for recovery, we should revisit this.
-        return _get_dev_server_list()[0]
-
-
-    def _servers_for(self, method):
-        """Return the list of servers to use for the given method."""
-        if method in DevServer._CRASH_SERVER_RPC_CALLS:
-            return self._crash_servers
-        else:
-            return self._dev_servers
-
-
-    def _build_call(self, method, hashing_value, **kwargs):
-        """Build a URL that calls |method|, passing |kwargs|.
-
-        Build a URL that calls |method| on the dev server, passing a set
-        of key/value pairs built from the dict |kwargs|.
-
+        @param host: a string that is the host basename e.g. http://server:90.
         @param method: the dev server method to call.
-        @param hashing_value: a value to hash against when determining which
-          devserver to use.
-        @param kwargs: a dict mapping arg names to arg values
-        @return the URL string
+        @param kwargs: a dict mapping arg names to arg values.
+        @return the URL string.
         """
-        # If we have multiple devservers set up, we hash against the hashing
-        # value to give us an index of the devserver to use.  The hashing value
-        # must be the same for RPC's that should go to the same devserver.
-        server_pool = self._servers_for(method)
-        server = self._server_for_hashing_value(server_pool, hashing_value)
         argstr = '&'.join(map(lambda x: "%s=%s" % x, kwargs.iteritems()))
-        return "%(host)s/%(method)s?%(args)s" % {'host': server,
-                                                 'method': method,
-                                                 'args': argstr}
+        return "%(host)s/%(method)s?%(argstr)s" % dict(
+                host=host, method=method, argstr=argstr)
 
 
-    def _build_all_calls(self, method, **kwargs):
+    def build_call(self, method, **kwargs):
+        """
+        Builds a devserver RPC string that can be invoked using urllib.open.
+        """
+        return self._build_call(self._devserver, method, **kwargs)
+
+
+    @classmethod
+    def build_all_calls(cls, method, **kwargs):
         """Builds a list of URLs that makes RPC calls on all devservers.
 
         Build a URL that calls |method| on the dev server, passing a set
@@ -189,112 +149,49 @@ class DevServer(object):
         @return the URL string
         """
         calls = []
-        for hashing_index in range(len(self._servers_for(method))):
-            calls.append(self._build_call(method, hashing_value=hashing_index,
-                                          **kwargs))
+        # Note we use cls.servers as servers is class specific.
+        for server in cls.servers():
+            if cls._devserver_up(server):
+                calls.append(cls._build_call(server, method, **kwargs))
 
         return calls
 
 
-    @remote_devserver_call
-    def trigger_download(self, image, synchronous=True):
-        """Tell the dev server to download and stage |image|.
-
-        Tells the corresponding dev server to fetch |image|
-        from the image storage server named by _get_image_storage_server().
-
-        If |synchronous| is True, waits for the entire download to finish
-        staging before returning. Otherwise only the artifacts necessary
-        to start installing images onto DUT's will be staged before returning.
-        A caller can then call finish_download to guarantee the rest of the
-        artifacts have finished staging.
-
-        @param image: the image to fetch and stage.
-        @param synchronous: if True, waits until all components of the image are
-                staged before returning.
-        @raise DevServerException upon any return code that's not HTTP OK.
-        """
-        call = self._build_call(
-            'download', hashing_value=image,
-            archive_url=_get_image_storage_server() + image)
-        response = urllib2.urlopen(call)
-        was_successful = response.read() == 'Success'
-        if was_successful and synchronous:
-            self.finish_download(image)
-        elif not was_successful:
-            raise DevServerException("trigger_download for %s failed;"
-                                     "HTTP OK not accompanied by 'Success'." %
-                                     image)
+    @staticmethod
+    def servers():
+        """Returns a list of servers that can serve as this type of server."""
+        raise NotImplementedError()
 
 
-    @remote_devserver_call
-    def finish_download(self, image):
-        """Tell the dev server to finish staging |image|.
-
-        If trigger_download is called with synchronous=False, it will return
-        before all artifacts have been staged. This method contacts the
-        devserver and blocks until all staging is completed and should be
-        called after a call to trigger_download.
-
-        @param image: the image to fetch and stage.
-        @raise DevServerException upon any return code that's not HTTP OK.
-        """
-        call = self._build_call(
-            'wait_for_status',
-            hashing_value=image,
-            archive_url=_get_image_storage_server() + image)
-        if urllib2.urlopen(call).read() != 'Success':
-            raise DevServerException("finish_download for %s failed;"
-                                     "HTTP OK not accompanied by 'Success'." %
-                                     image)
+    @classmethod
+    def resolve(cls, build):
+        """"Resolves a build to a devserver instance."""
+        devservers = cls.servers()
+        while devservers:
+            hash_index = hash(build) % len(devservers)
+            devserver = devservers[hash_index]
+            if cls._devserver_up(devserver):
+                return cls(devserver)
+            else:
+                devservers.pop(hash_index)
+        else:
+            logging.error('All devservers are currently down!!!')
+            raise DevServerException('All devservers are currently down!!!')
 
 
-    @remote_devserver_call
-    def list_control_files(self, build):
-        """Ask the dev server to list all control files for |build|.
-
-        Ask the corresponding dev server to list all control files
-        for |build|.
-
-        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
-                      whose control files the caller wants listed.
-        @return None on failure, or a list of control file paths
-                (e.g. server/site_tests/autoupdate/control)
-        @raise DevServerException upon any return code that's not HTTP OK.
-        """
-        call = self._build_call('controlfiles', hashing_value=build,
-                                build=build)
-        response = urllib2.urlopen(call)
-        return [line.rstrip() for line in response]
-
-
-    @remote_devserver_call
-    def get_control_file(self, build, control_path):
-        """Ask the dev server for the contents of a control file.
-
-        Ask the corresponding dev server for the contents of the
-        control file at |control_path| for |build|.
-
-        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
-                      whose control files the caller wants listed.
-        @param control_path: The file to list
-                             (e.g. server/site_tests/autoupdate/control)
-        @return The contents of the desired file.
-        @raise DevServerException upon any return code that's not HTTP OK.
-        """
-        call = self._build_call('controlfiles',
-                                hashing_value=build,
-                                build=build, control_path=control_path)
-        return urllib2.urlopen(call).read()
+class CrashServer(DevServer):
+    """Class of DevServer that symbolicates crash dumps."""
+    @staticmethod
+    def servers():
+        return _get_crash_server_list()
 
 
     @remote_devserver_call
     def symbolicate_dump(self, minidump_path, build):
-        """Ask the dev server to symbolicate the dump at minidump_path.
+        """Ask the devserver to symbolicate the dump at minidump_path.
 
         Stage the debug symbols for |build| and, if that works, ask the
-        corresponding dev server to symbolicate the dump at
-        minidump_path.
+        devserver to symbolicate the dump at |minidump_path|.
 
         @param minidump_path: the on-disk path of the minidump.
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
@@ -308,39 +205,135 @@ class DevServer(object):
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
         # Stage debug symbols.
-        call = self._build_call(
-            'stage_debug',
-            hashing_value=build,
-            archive_url=_get_image_storage_server() + build)
+        call = self.build_call('stage_debug',
+                               archive_url=_get_image_storage_server() + build)
         request = requests.get(call)
         if (request.status_code != requests.codes.ok or
             request.text != 'Success'):
             error_fd = cStringIO.StringIO(request.text)
-            raise urllib2.HTTPError(call,
-                                    request.status_code,
-                                    request.text,
-                                    request.headers,
-                                    error_fd)
+            raise urllib2.HTTPError(
+                    call, request.status_code, request.text, request.headers,
+                    error_fd)
+
         # Symbolicate minidump.
-        call = self._build_call('symbolicate_dump', hashing_value=build)
-        request = requests.post(call,
-                                files={'minidump': open(minidump_path, 'rb')})
+        call = self.build_call('symbolicate_dump')
+        request = requests.post(
+                call, files={'minidump': open(minidump_path, 'rb')})
         if request.status_code == requests.codes.OK:
             return request.text
+
         error_fd = cStringIO.StringIO(request.text)
-        raise urllib2.HTTPError(call,
-                                request.status_code,
-                                request.text,
-                                request.headers,
-                                error_fd)
+        raise urllib2.HTTPError(
+                call, request.status_code, request.text, request.headers,
+                error_fd)
+
+
+class ImageServer(DevServer):
+    """Class for DevServer that handles image-related RPCs."""
+    @staticmethod
+    def servers():
+        return _get_dev_server_list()
+
+
+    @classmethod
+    def devserver_url_for_servo(cls, build):
+        """Returns the devserver url for use with servo recovery.
+
+        @param board:  The board type to be recovered.
+        """
+        # To simplify manual steps on the server side, we ignore the
+        # board type and hard-code the server as first in the list.
+        #
+        # TODO(jrbarnette) Once we have automated selection of the
+        # build for recovery, we should revisit this.
+        return cls.servers()[0]
 
 
     @remote_devserver_call
-    def get_latest_build(self, target, milestone=''):
-        """Ask the dev server for the latest build for a given target.
+    def trigger_download(self, image, synchronous=True):
+        """Tell the devserver to download and stage |image|.
 
-        Ask the corresponding dev server for the latest build for
-        |target|.
+        Tells the devserver to fetch |image| from the image storage server
+        named by _get_image_storage_server().
+
+        If |synchronous| is True, waits for the entire download to finish
+        staging before returning. Otherwise only the artifacts necessary
+        to start installing images onto DUT's will be staged before returning.
+        A caller can then call finish_download to guarantee the rest of the
+        artifacts have finished staging.
+
+        @param image: the image to fetch and stage.
+        @param synchronous: if True, waits until all components of the image are
+                staged before returning.
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        call = self.build_call(
+                'download', archive_url=_get_image_storage_server() + image)
+        response = urllib2.urlopen(call)
+        was_successful = response.read() == 'Success'
+        if was_successful and synchronous:
+            self.finish_download(image)
+        elif not was_successful:
+            raise DevServerException("trigger_download for %s failed;"
+                                     "HTTP OK not accompanied by 'Success'." %
+                                     image)
+
+
+    @remote_devserver_call
+    def finish_download(self, image):
+        """Tell the devserver to finish staging |image|.
+
+        If trigger_download is called with synchronous=False, it will return
+        before all artifacts have been staged. This method contacts the
+        devserver and blocks until all staging is completed and should be
+        called after a call to trigger_download.
+
+        @param image: the image to fetch and stage.
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        call = self.build_call('wait_for_status',
+                               archive_url=_get_image_storage_server() + image)
+        if urllib2.urlopen(call).read() != 'Success':
+            raise DevServerException("finish_download for %s failed;"
+                                     "HTTP OK not accompanied by 'Success'." %
+                                     image)
+
+
+    @remote_devserver_call
+    def list_control_files(self, build):
+        """Ask the devserver to list all control files for |build|.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose control files the caller wants listed.
+        @return None on failure, or a list of control file paths
+                (e.g. server/site_tests/autoupdate/control)
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        call = self.build_call('controlfiles', build=build)
+        response = urllib2.urlopen(call)
+        return [line.rstrip() for line in response]
+
+
+    @remote_devserver_call
+    def get_control_file(self, build, control_path):
+        """Ask the devserver for the contents of a control file.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose control files the caller wants listed.
+        @param control_path: The file to list
+                             (e.g. server/site_tests/autoupdate/control)
+        @return The contents of the desired file.
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        call = self.build_call('controlfiles', build=build,
+                               control_path=control_path)
+        return urllib2.urlopen(call).read()
+
+
+    @classmethod
+    @remote_devserver_call
+    def get_latest_build(cls, target, milestone=''):
+        """Ask all the devservers for the latest build for a given target.
 
         @param target: The build target, typically a combination of the board
                        and the type of build e.g. x86-mario-release.
@@ -353,8 +346,8 @@ class DevServer(object):
         @return A string of the returned build e.g. R20-2226.0.0.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        calls = self._build_all_calls('latestbuild', target=target,
-                                      milestone=milestone)
+        calls = cls.build_all_calls('latestbuild', target=target,
+                                    milestone=milestone)
         latest_builds = []
         for call in calls:
             latest_builds.append(urllib2.urlopen(call).read())

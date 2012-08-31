@@ -38,13 +38,13 @@ class Suite(object):
 
 
     @staticmethod
-    def create_ds_getter(build):
+    def create_ds_getter(build, devserver):
         """
         @param build: the build on which we're running this suite.
+        @param devserver: the devserver which contains the build.
         @return a FileSystemGetter instance that looks under |autotest_dir|.
         """
-        return control_file_getter.DevServerGetter(
-            build, dev_server.DevServer.create())
+        return control_file_getter.DevServerGetter(build, devserver)
 
 
     @staticmethod
@@ -82,18 +82,20 @@ class Suite(object):
 
 
     @staticmethod
-    def list_all_suites(build, cf_getter=None):
+    def list_all_suites(build, devserver, cf_getter=None):
         """
         Parses all ControlData objects with a SUITE tag and extracts all
         defined suite names.
 
+        @param build: the build on which we're running this suite.
+        @param devserver: the devserver which contains the build.
         @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
                           using DevServerGetter.
 
         @return list of suites
         """
         if cf_getter is None:
-            cf_getter = Suite.create_ds_getter(build)
+            cf_getter = Suite.create_ds_getter(build, devserver)
 
         suites = set()
         predicate = lambda t: hasattr(t, 'suite')
@@ -104,8 +106,8 @@ class Suite(object):
 
 
     @staticmethod
-    def create_from_name(name, build, cf_getter=None, afe=None, tko=None,
-                         pool=None, results_dir=None):
+    def create_from_name(name, build, devserver, cf_getter=None, afe=None,
+                         tko=None, pool=None, results_dir=None):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -116,6 +118,7 @@ class Suite(object):
 
         @param name: a value of the SUITE control file variable to search for.
         @param build: the build on which we're running this suite.
+        @param devserver: the devserver which contains the build.
         @param cf_getter: a control_file_getter.ControlFileGetter.
                           If None, default to using a DevServerGetter.
         @param afe: an instance of AFE as defined in server/frontend.py.
@@ -128,7 +131,8 @@ class Suite(object):
         @return a Suite instance.
         """
         if cf_getter is None:
-            cf_getter = Suite.create_ds_getter(build)
+            cf_getter = Suite.create_ds_getter(build, devserver)
+
         return Suite(Suite.name_in_tag_predicate(name),
                      name, build, cf_getter, afe, tko, pool, results_dir)
 
@@ -314,7 +318,7 @@ class Suite(object):
         if job.id and job.owner and job.test_name:
             job_id_owner = '%s-%s' % (job.id, job.owner)
             logging.debug('Adding job keyval for %s=%s',
-                          job.test_name,job_id_owner)
+                          job.test_name, job_id_owner)
             utils.write_keyval(
                 self._results_dir,
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})

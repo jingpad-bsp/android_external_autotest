@@ -40,12 +40,16 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         super(SiteRpcInterfaceTest, self).setUp()
         self._SUITE_NAME = site_rpc_interface.canonicalize_suite_name(
             self._NAME)
-        self.dev_server = self.mox.CreateMock(dev_server.DevServer)
-        self.mox.StubOutWithMock(dev_server.DevServer, 'create')
-        dev_server.DevServer.create().MultipleTimes().AndReturn(self.dev_server)
+        self.dev_server = self.mox.CreateMock(dev_server.ImageServer)
+
+
+    def _setupDevserver(self):
+        self.mox.StubOutClassWithMocks(dev_server, 'ImageServer')
+        dev_server.ImageServer.resolve(self._BUILD).AndReturn(self.dev_server)
 
 
     def _mockDevServerGetter(self):
+        self._setupDevserver()
         self.getter = self.mox.CreateMock(control_file_getter.DevServerGetter)
         self.mox.StubOutWithMock(control_file_getter.DevServerGetter, 'create')
         control_file_getter.DevServerGetter.create(
@@ -77,6 +81,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
 
     def testStageBuildFail(self):
         """Ensure that a failure to stage the desired build fails the RPC."""
+        self._setupDevserver()
         self.dev_server.trigger_download(
             self._BUILD, synchronous=False).AndRaise(
                 dev_server.DevServerException())
@@ -123,7 +128,6 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
 
     def testBadNumArgument(self):
         """Ensure we handle bad values for the |num| argument."""
-        self.mox.ResetAll()
         self.assertRaises(error.SuiteArgumentException,
                           site_rpc_interface.create_suite_job,
                           self._NAME,
@@ -183,12 +187,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         job_id = 5
         self._mockRpcUtils(job_id)
         self.mox.ReplayAll()
-        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
-                                                              self._BOARD,
-                                                              self._BUILD,
-                                                              None,
-                                                              False),
-                          job_id)
+        self.assertEquals(
+                site_rpc_interface.create_suite_job(
+                        self._NAME, self._BOARD, self._BUILD, None, False),
+                job_id)
 
 
 if __name__ == '__main__':

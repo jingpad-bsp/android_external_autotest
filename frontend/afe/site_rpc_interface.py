@@ -115,7 +115,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     # Ensure components of |build| necessary for installing images are staged
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
-    ds = dev_server.DevServer.create()
+    ds = dev_server.ImageServer.resolve(build)
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     try:
         ds.trigger_download(build, synchronous=False)

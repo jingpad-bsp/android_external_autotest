@@ -27,9 +27,14 @@ def package_url_pattern():
     return _CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
 
 
-def get_package_url(build):
-    """Returns the package url for the given build."""
-    devserver_url = dev_server.DevServer.devserver_url_for_build(build)
+def get_package_url(devserver_url, build):
+    """Returns the package url from the |devserver_url| and |build|.
+
+    @param devserver_url: a string specifying the host to contact e.g.
+        http://my_host:9090.
+    @param build: the build/image string to use e.g. mario-release/R19-123.0.1.
+    @return the url where you can find the packages for the build.
+    """
     return package_url_pattern() % (devserver_url, build)
 
 

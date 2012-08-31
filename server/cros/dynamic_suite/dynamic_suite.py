@@ -247,6 +247,7 @@ class SuiteSpec(object):
     @var build: the build to install e.g.
                   x86-alex-release/R18-1655.0.0-a1-b1584.
     @var board: which kind of devices to reimage.
+    @var devserver: An instance of the devserver to use with this suite.
     @var name: a value of the SUITE control file variable to search for.
     @var job: an instance of client.common_lib.base_job representing the
                 currently running suite job.
@@ -303,6 +304,7 @@ class SuiteSpec(object):
                     "reimage_and_run() needs %s=<%r>" % (key, expected))
         self.build = build
         self.board = 'board:%s' % board
+        self.devserver = dev_server.ImageServer.resolve(self.build)
         self.name = name
         self.job = job
         if pool:
@@ -372,17 +374,15 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
     @param manager: the HostLockManager to use to lock/unlock DUTs during
                     reimaging/test scheduling.
     """
-
     with host_lock_manager.HostsLockedBy(manager):
         if spec.skip_reimage or reimager.attempt(spec.build, spec.board,
-                                                 spec.pool,
+                                                 spec.pool, spec.devserver,
                                                  spec.job.record_entry,
                                                  spec.check_hosts,
                                                  manager, num=spec.num):
             # Ensure that the image's artifacts have completed downloading.
             try:
-                ds = dev_server.DevServer.create()
-                ds.finish_download(spec.build)
+                spec.devserver.finish_download(spec.build)
             except dev_server.DevServerException as e:
                 raise error.AsynchronousBuildFailure(e)
 
@@ -392,6 +392,7 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
                 {constants.ARTIFACT_FINISHED_TIME: timestamp})
 
             suite = Suite.create_from_name(spec.name, spec.build,
+                                           spec.devserver,
                                            afe=afe, tko=tko,
                                            pool=spec.pool,
                                            results_dir=spec.job.resultdir)

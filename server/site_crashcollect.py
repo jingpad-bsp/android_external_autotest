@@ -11,6 +11,7 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server.cros.dynamic_suite.constants import JOB_BUILD_KEY
 from autotest_lib.server import utils
 
+
 def generate_minidump_stacktrace(minidump_path):
     """
     Generates a stacktrace for the specified minidump.
@@ -44,7 +45,7 @@ def symbolicate_minidump_with_devserver(minidump_path, resultdir):
         raise dev_server.DevServerException(
             'Cannot determine build being tested.')
 
-    devserver = dev_server.DevServer.create()
+    devserver = dev_server.CrashServer.resolve(keyvals[JOB_BUILD_KEY])
     trace_text = devserver.symbolicate_dump(
         minidump_path, keyvals[JOB_BUILD_KEY])
     if not trace_text:

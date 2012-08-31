@@ -14,6 +14,7 @@ import tempfile
 import unittest
 
 from autotest_lib.client.common_lib import base_job, control_data
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
@@ -35,6 +36,7 @@ class SuiteTest(mox.MoxTestBase):
 
     _BUILD = 'build'
     _TAG = 'suite_tag'
+    _DEVSERVER_HOST = 'http://dontcare:8080'
 
 
     def setUp(self):
@@ -46,6 +48,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         self.getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
+        self.devserver = dev_server.ImageServer(self._DEVSERVER_HOST)
 
         self.files = {'one': FakeControlData(self._TAG, 'data_one', expr=True),
                       'two': FakeControlData(self._TAG, 'data_two'),
@@ -149,6 +152,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mock_control_file_parsing()
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self.tmpdir,
+                                       self.devserver,
                                        afe=self.afe, tko=self.tko)
 
         self.assertTrue(self.files['one'] in suite.tests)
@@ -185,7 +189,8 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILD,
-                                                     afe=self.afe, tko=self.tko)
+                                       self.devserver,
+                                       afe=self.afe, tko=self.tko)
         suite.schedule()
 
 
@@ -194,6 +199,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mock_control_file_parsing()
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILD,
+                                       self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        results_dir=self.tmpdir)
         self.mox.ResetAll()
@@ -213,6 +219,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILD,
+                                       self.devserver,
                                        afe=self.afe, tko=self.tko)
         suite.schedule(add_experimental=False)
 
@@ -224,7 +231,9 @@ class SuiteTest(mox.MoxTestBase):
         """
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self.getter,
+        suite = Suite.create_from_name(self._TAG, self._BUILD,
+                                       self.devserver,
+                                       self.getter,
                                        self.afe, self.tko)
         self.mox.ResetAll()
         return suite
