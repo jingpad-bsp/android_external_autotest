@@ -135,6 +135,10 @@ class db_sql(object):
         self.con.commit()
 
 
+    def rollback(self):
+        self.con.rollback()
+
+
     def get_last_autonumber_value(self):
         self.cur.execute('SELECT LAST_INSERT_ID()', [])
         return self.cur.fetchall()[0][0]
