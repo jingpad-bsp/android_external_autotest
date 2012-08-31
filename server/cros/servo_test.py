@@ -5,6 +5,7 @@
 import logging
 import os
 import re
+import socket
 import subprocess
 import time
 import xmlrpclib
@@ -162,6 +163,21 @@ class ServoTest(test.test):
                     stdout=fnull, stderr=fnull) == 0
 
 
+    def _sshd_test(self, hostname, timeout=5):
+        """Verify whether sshd is running in host.
+
+        Args:
+          hostname: Hostname to verify.
+          timeout: Time in seconds to wait for a response.
+        """
+        try:
+            sock = socket.create_connection((hostname, 22), timeout=timeout)
+            sock.close()
+            return True
+        except socket.error:
+            return False
+
+
     def launch_client(self, info):
         """Launch a remote process on client and set up an xmlrpc connection.
 
@@ -230,7 +246,7 @@ class ServoTest(test.test):
         # Ensure old ssh connections are terminated.
         self._terminate_all_ssh()
         # Wait for the client to come up.
-        while timeout > 0 and not self._ping_test(self._client.ip):
+        while timeout > 0 and not self._sshd_test(self._client.ip):
             time.sleep(5)
             timeout -= 1
         assert timeout, 'Timed out waiting for client to reboot.'
@@ -238,10 +254,6 @@ class ServoTest(test.test):
         # Relaunch remote clients.
         for name, info in self._remote_infos.iteritems():
             if info['used']:
-                # This 5s delay to ensure sshd launched after network is up.
-                # TODO(waihong) Investigate pinging port via netcat or nmap
-                # to interrogate client for when sshd has launched.
-                time.sleep(5)
                 if install_deps:
                     if not self._autotest_client:
                         self._autotest_client = autotest.Autotest(self._client)
