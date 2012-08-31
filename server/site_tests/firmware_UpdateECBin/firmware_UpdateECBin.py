@@ -97,7 +97,7 @@ class firmware_UpdateECBin(FAFTSequence):
                     'ecfw_act': 'RO',
                 }),
                 'userspace_action': self.do_ronormal_update,
-                'reboot_action': self.sync_and_cold_reboot,
+                'reboot_action': self.sync_and_warm_reboot,
             },
             {   # Step 2, expected new EC and RW boot, restore the original BIOS
                 'state_checker': (
@@ -109,7 +109,12 @@ class firmware_UpdateECBin(FAFTSequence):
                                self.faft_client.get_EC_firmware_sha() ==
                                self.new_ec_sha)),
                 'userspace_action': self.do_twostop_update,
-                'reboot_action': self.sync_and_cold_reboot,
+                # We use warm reboot here to test the following EC behavior:
+                #   If EC is already into RW before powering on the AP, the AP
+                #   will need to get the EC into RO first. It does this by
+                #   telling the EC to wait for the AP to shut down, reboot
+                #   into RO, then power on the AP automatically.
+                'reboot_action': self.sync_and_warm_reboot,
             },
             {   # Step 3, expected different EC and RW boot, enable RO flag
                 'state_checker': (
@@ -122,7 +127,7 @@ class firmware_UpdateECBin(FAFTSequence):
                                self.new_ec_sha)),
                 'userspace_action': (self.faft_client.set_firmware_flags,
                                      'a', flags),
-                'reboot_action': self.sync_and_cold_reboot,
+                'reboot_action': self.sync_and_warm_reboot,
             },
             {   # Step 4, expected EC RO boot, done
                 'state_checker': (self.crossystem_checker, {
