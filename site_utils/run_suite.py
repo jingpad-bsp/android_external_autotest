@@ -142,16 +142,16 @@ class LogLink(object):
 
         @return A link formatted for the buildbot log annotator.
         """
-        return "@@@STEP_LINK@%s@%s@@@" % (self.anchor, self.url)
+        return "@@@STEP_LINK@%s@%s@@@" % (self.anchor.strip(), self.url)
 
 
-    def GenerateWebLink(self):
+    def GenerateTextLink(self):
         """
-        Generate a link to the job's logs, for consumption by a web browser.
+        Generate a link to the job's logs, for consumption by a human.
 
-        @return A link formatted in HTML for a web browser.
+        @return A link formatted for human readability.
         """
-        return "<a href=\"%s\">%s</a>" % (self.url, self.anchor)
+        return "%s%s" % (self.anchor, self.url)
 
 
 class Timings(object):
@@ -249,6 +249,18 @@ class Timings(object):
                                            self.tests_end_time))
 
 
+def _full_test_name(job_id, view):
+    """Generates the full test name for printing to logs.
+
+    @param job_id: the job id.
+    @param view: the view for which we are generating the name.
+    @return The test name, possibly with a descriptive prefix appended.
+    """
+    job_name, experimental = get_view_info(job_id, view)
+    prefix = constants.EXPERIMENTAL_PREFIX if experimental else ''
+    return prefix + view['test_name']
+
+
 def main():
     parser, options, args = parse_options()
     log_name = 'run_suite-default.log'
@@ -303,7 +315,7 @@ def main():
             time.sleep(1)
             continue
         views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
-        width = len(max(map(lambda x: x['test_name'], views), key=len)) + 3
+        width = max((len(_full_test_name(job_id, view)) for view in views)) + 3
 
         relevant_views = filter(job_status.view_is_relevant, views)
         if not relevant_views:
@@ -319,13 +331,9 @@ def main():
                 view['test_name'] = 'Suite prep'
 
             job_name, experimental = get_view_info(job_id, view)
-            if experimental:
-                test_view = (constants.EXPERIMENTAL_PREFIX +
-                              view['test_name']).ljust(width)
-            else:
-                test_view = view['test_name'].ljust(width)
+            test_view = _full_test_name(job_id, view).ljust(width)
             logging.info("%s%s", test_view, get_pretty_status(view['status']))
-            link = LogLink(view['test_name'], job_name)
+            link = LogLink(test_view, job_name)
             web_links.append(link)
 
             if view['status'] != 'GOOD':
@@ -348,7 +356,7 @@ def main():
         logging.info('\n'
                      'Links to test logs:')
         for link in web_links:
-            logging.info(link.GenerateWebLink())
+            logging.info(link.GenerateTextLink())
         logging.info('\n'
                      'Output below this line is for buildbot consumption:')
         for link in buildbot_links:
