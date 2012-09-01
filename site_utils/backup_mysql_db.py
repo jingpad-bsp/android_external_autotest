@@ -32,8 +32,30 @@ from autotest_lib.utils import test_importer
 _ATTEMPTS = 3
 _GSUTIL_BIN = 'gsutil'
 _GS_BUCKET = 'gs://chromeos-lab/backup/database'
-
-
+# TODO(scottz): Should we need to ignore more than one database a general
+# function should be designed that lists tables in the database and properly
+# creates the --ignore-table= args to be passed to mysqldump.
+# Tables to ignore when dumping all databases.
+# performance_schema is an internal database that cannot be dumped
+IGNORE_TABLES = ['performance_schema.cond_instances',
+                 'performance_schema.events_waits_current',
+                 'performance_schema.cond_instances',
+                 'performance_schema.events_waits_history',
+                 'performance_schema.events_waits_history_long',
+                 'performance_schema.events_waits_summary_by_instance',
+                 ('performance_schema.'
+                  'events_waits_summary_by_thread_by_event_name'),
+                 'performance_schema.events_waits_summary_global_by_event_name',
+                 'performance_schema.file_instances',
+                 'performance_schema.file_summary_by_event_name',
+                 'performance_schema.file_summary_by_instance',
+                 'performance_schema.mutex_instances',
+                 'performance_schema.performance_timers',
+                 'performance_schema.rwlock_instances',
+                 'performance_schema.setup_consumers',
+                 'performance_schema.setup_instruments',
+                 'performance_schema.setup_timers',
+                 'performance_schema.threads']
 _DAILY = 'daily'
 _WEEKLY = 'weekly'
 _MONTHLY = 'monthly'
@@ -70,8 +92,14 @@ class MySqlArchiver(object):
         user, password = self._get_user_pass()
         _, filename = tempfile.mkstemp('autotest_db_dump')
         logging.debug('Dumping mysql database to file %s', filename)
+        extra_dump_args = ''
+        for entry in IGNORE_TABLES:
+            extra_dump_args += '--ignore-table=%s ' % entry
+
         utils.system('set -o pipefail; mysqldump --all-databases --user=%s '
-                     '--password=%s | gzip - > %s' % (user, password, filename))
+                     '--password=%s %s | gzip - > %s' % (user, password,
+                                                         extra_dump_args,
+                                                         filename))
         return filename
 
 
