@@ -354,6 +354,7 @@ class factory_CameraPerformanceAls(test.test):
     def reset_data(self):
         self.target = None
         self.target_colorful = None
+        self.analyzed = None
         if self.type == _TEST_TYPE_FULL:
             self.log = factory.console.info
         else:
@@ -412,12 +413,16 @@ class factory_CameraPerformanceAls(test.test):
         self.update_pbar(pid='end_test')
 
     def write_to_usb(self, filename, content, content_type=_CONTENT_TXT):
-        with MountedMedia(self.dev_path, 1) as mount_dir:
-            if content_type == _CONTENT_TXT:
-                with open(os.path.join(mount_dir, filename), 'a') as f:
-                    f.write(content)
-            elif content_type == _CONTENT_IMG:
-                cv2.imwrite(os.path.join(mount_dir, filename), content)
+        try:
+            with MountedMedia(self.dev_path, 1) as mount_dir:
+                if content_type == _CONTENT_TXT:
+                    with open(os.path.join(mount_dir, filename), 'a') as f:
+                        f.write(content)
+                elif content_type == _CONTENT_IMG:
+                    cv2.imwrite(os.path.join(mount_dir, filename), content)
+        except:
+            self.log("Error when writing data to USB!\n")
+            return False
         return True
 
     def save_log_to_usb(self):
@@ -428,6 +433,10 @@ class factory_CameraPerformanceAls(test.test):
             if not self.write_to_usb(self.serial_number + ".bmp",
                                      self.target, _CONTENT_IMG):
                 return False
+            if self.analyzed is not None:
+                if not self.write_to_usb(self.serial_number + ".result.jpg",
+                                     self.analyzed, _CONTENT_IMG):
+                    return False
         return self.write_to_usb(
             self.serial_number + ".txt", self.log_to_file.getvalue())
 
@@ -572,9 +581,9 @@ class factory_CameraPerformanceAls(test.test):
         self.update_status(mid='check_vc')
         success, tar_data = camperf.CheckVisualCorrectness(
             self.target, self.ref_data, **self.config['cam_vc'])
-        analyzed = self.target_colorful.copy()
-        renderer.DrawVC(analyzed, success, tar_data)
-        self.update_preview(analyzed, "analyzed_image",
+        self.analyzed = self.target_colorful.copy()
+        renderer.DrawVC(self.analyzed, success, tar_data)
+        self.update_preview(self.analyzed, "analyzed_image",
                             scale=self.config['preview']['scale'])
 
         self.update_result('cam_vc', success)
@@ -610,10 +619,11 @@ class factory_CameraPerformanceAls(test.test):
         self.update_status(mid='check_mtf')
         success, tar_mtf = camperf.CheckSharpness(
             self.target, tar_data.edges, **self.config['cam_mtf'])
-        renderer.DrawMTF(analyzed, tar_data.edges, tar_mtf.perm, tar_mtf.mtfs,
+        renderer.DrawMTF(self.analyzed, tar_data.edges, tar_mtf.perm,
+                         tar_mtf.mtfs,
                          self.config['cam_mtf']['mtf_crop_ratio'],
                          self.config['preview']['mtf_color_map_range'])
-        self.update_preview(analyzed, "analyzed_image",
+        self.update_preview(self.analyzed, "analyzed_image",
                             scale=self.config['preview']['scale'])
 
         self.update_result('cam_mtf', success)
