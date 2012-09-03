@@ -31,6 +31,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.test import factory
 from cros.factory.test import leds
+from cros.factory.test import test_ui
 from cros.factory.test.media_util import MountedMedia
 from autotest_lib.client.cros.rf.config import PluggableConfig
 from autotest_lib.client.cros import tty
@@ -243,25 +244,20 @@ class factory_CameraPerformanceAls(test.test):
     _STYLE_PASS = "color_good"
     _STYLE_FAIL = "color_bad"
 
-    def stylize(self, msg, style_type):
-        return '<span class="' + style_type + '">' + msg + '</span>'
-
-    def t_info(self, msg):
-        return self.stylize(msg, self._STYLE_INFO)
-
     def t_pass(self, msg):
-        return self.stylize(msg, self._STYLE_PASS)
+        return test_ui.MakeLabel(msg, css_class=self._STYLE_PASS)
 
     def t_fail(self, msg):
-        return self.stylize(msg, self._STYLE_FAIL)
+        return test_ui.MakeLabel(msg, css_class=self._STYLE_FAIL)
 
     def update_status(self, mid=None, msg=None):
         message = ''
         if msg:
             message = msg
         elif mid:
-            message = self.stylize(self.config['message'][mid],
-                                   self.config['msg_style'][mid])
+            message = test_ui.MakeLabel(self.config['message'][mid + '_en'],
+                                        self.config['message'][mid + '_zh'],
+                                        self.config['msg_style'][mid])
         self.ui.CallJSFunction("UpdateTestStatus", message)
 
     def update_pbar(self, pid=None, value=None, add=True):
