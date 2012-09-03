@@ -84,6 +84,9 @@ class firmware_UpdateECBin(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability():
+            return
+
         flags = self.faft_client.get_firmware_flags('a')
         if flags & self.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
