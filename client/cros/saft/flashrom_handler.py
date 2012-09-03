@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -27,6 +28,7 @@ class FvSection(object):
         self._version = -1  # Is not set on construction.
         self._flags = 0  # Is not set on construction.
         self._sha = None  # Is not set on construction.
+        self._sig_sha = None # Is not set on construction.
         self._datakey_version = -1 # Is not set on construction.
         self._kernel_subkey_version = -1 # Is not set on construction.
 
@@ -48,6 +50,9 @@ class FvSection(object):
     def get_sha(self):
         return self._sha
 
+    def get_sig_sha(self):
+        return self._sig_sha
+
     def get_datakey_version(self):
         return self._datakey_version
 
@@ -62,6 +67,9 @@ class FvSection(object):
 
     def set_sha(self, sha):
         self._sha = sha
+
+    def set_sig_sha(self, sha):
+        self._sig_sha = sha
 
     def set_datakey_version(self, version):
         self._datakey_version = version
@@ -167,6 +175,10 @@ class FlashromHandler(object):
                 self.chros_if.retrieve_datakey_version(vb_section))
             section.set_kernel_subkey_version(
                 self.chros_if.retrieve_kernel_subkey_version(vb_section))
+
+            s = hashlib.sha1()
+            s.update(self.fum.get_section(self.image, section.get_sig_name()))
+            section.set_sig_sha(s.hexdigest())
 
         if not self.pub_key_file:
             self._retrieve_pub_key()
@@ -382,6 +394,10 @@ class FlashromHandler(object):
             raise FlashromHandlerError(e)
         return gbb_flags
 
+    def get_section_sig_sha(self, section):
+        """Retrieve SHA1 hash of a firmware vblock section"""
+        return self.fv_sections[section].get_sig_sha()
+
     def get_section_sha(self, section):
         """Retrieve SHA1 hash of a firmware body section"""
         return self.fv_sections[section].get_sha()
@@ -405,6 +421,12 @@ class FlashromHandler(object):
     def get_section_body(self, section):
         """Retrieve body of a firmware section"""
         subsection_name = self.fv_sections[section].get_body_name()
+        blob = self.fum.get_section(self.image, subsection_name)
+        return blob
+
+    def get_section_sig(self, section):
+        """Retrieve vblock of a firmware section"""
+        subsection_name = self.fv_sections[section].get_sig_name()
         blob = self.fum.get_section(self.image, subsection_name)
         return blob
 
@@ -438,10 +460,25 @@ class FlashromHandler(object):
         ecbin = blob[ecbin_offset :].rstrip(pad)
         return ecbin
 
-    def set_section_body(self, section, blob):
+    def set_section_body(self, section, blob, write_through=False):
         """Put the supplied blob to the body of the firmware section"""
         subsection_name = self.fv_sections[section].get_body_name()
         self.image = self.fum.put_section(self.image, subsection_name, blob)
+
+        if write_through:
+            self.dump_partial(subsection_name,
+                              self.chros_if.state_dir_file(subsection_name))
+            self.fum.write_partial(self.image, (subsection_name, ))
+
+    def set_section_sig(self, section, blob, write_through=False):
+        """Put the supplied blob to the vblock of the firmware section"""
+        subsection_name = self.fv_sections[section].get_sig_name()
+        self.image = self.fum.put_section(self.image, subsection_name, blob)
+
+        if write_through:
+            self.dump_partial(subsection_name,
+                              self.chros_if.state_dir_file(subsection_name))
+            self.fum.write_partial(self.image, (subsection_name, ))
 
     def set_section_ecbin(self, section, ecbin, write_through=False):
         """Put the supplied EC binary to the firwmare section.

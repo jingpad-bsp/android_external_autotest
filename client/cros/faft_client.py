@@ -9,7 +9,7 @@ The FAFTClient object aggreates some useful functions of exisintg SAFT
 libraries.
 """
 
-import functools, os, shutil, sys
+import functools, os, shutil, sys, tempfile
 from optparse import OptionParser
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
@@ -287,6 +287,11 @@ class FAFTClient(object):
         return self._bios_handler.get_section_sha(section)
 
 
+    def get_firmware_sig_sha(self, section):
+        """Get SHA1 hash of firmware vblock in section."""
+        return self._bios_handler.get_section_sig_sha(section)
+
+
     def get_EC_firmware_sha(self):
         """Get SHA1 hash of EC RW firmware section."""
         return self._ec_handler.get_section_sha('rw')
@@ -454,7 +459,6 @@ class FAFTClient(object):
         Args:
             section: A kernel section, either 'a' or 'b'.
         """
-        self._chromeos_interface.log('restoring kernel %s' % section)
         self._kernel_handler.restore_kernel(section)
 
 
@@ -560,6 +564,28 @@ class FAFTClient(object):
         self._bios_handler.dump_whole(bios_path)
 
 
+    def dump_firmware_rw(self, dir_path):
+        """Dump the current BIOS firmware RW to dir_path.
+
+        VBOOTA, VBOOTB, FVMAIN, FVMAINB need to be dumped.
+
+        Args:
+            dir_path: The path of directory which contains files to be written.
+        """
+        if not os.path.isdir(dir_path):
+            raise Exception("%s doesn't exist" % dir_path)
+
+        VBOOTA_blob = self._bios_handler.get_section_sig('a')
+        VBOOTB_blob = self._bios_handler.get_section_sig('b')
+        FVMAIN_blob = self._bios_handler.get_section_body('a')
+        FVMAINB_blob = self._bios_handler.get_section_body('b')
+
+        open(os.path.join(dir_path, 'VBOOTA'), 'w').write(VBOOTA_blob)
+        open(os.path.join(dir_path, 'VBOOTB'), 'w').write(VBOOTB_blob)
+        open(os.path.join(dir_path, 'FVMAIN'), 'w').write(FVMAIN_blob)
+        open(os.path.join(dir_path, 'FVMAINB'), 'w').write(FVMAINB_blob)
+
+
     def write_firmware(self, bios_path):
         """Write the firmware from bios_path to the current system.
 
@@ -568,6 +594,35 @@ class FAFTClient(object):
         """
         self._bios_handler.new_image(bios_path)
         self._bios_handler.write_whole()
+
+
+    def write_firmware_rw(self, dir_path):
+        """Write the firmware RW from dir_path to the current system.
+
+        VBOOTA, VBOOTB, FVMAIN, FVMAINB need to be written.
+
+        Args:
+            dir_path: The path of directory which contains the source files.
+        """
+        if not os.path.exists(os.path.join(dir_path, 'VBOOTA')) or \
+           not os.path.exists(os.path.join(dir_path, 'VBOOTB')) or \
+           not os.path.exists(os.path.join(dir_path, 'FVMAIN')) or \
+           not os.path.exists(os.path.join(dir_path, 'FVMAINB')):
+            raise Exception("Source firmware file(s) doesn't exist.")
+
+        VBOOTA_blob = open(os.path.join(dir_path, 'VBOOTA'), 'rb').read()
+        VBOOTB_blob = open(os.path.join(dir_path, 'VBOOTB'), 'rb').read()
+        FVMAIN_blob = open(os.path.join(dir_path, 'FVMAIN'), 'rb').read()
+        FVMAINB_blob = open(os.path.join(dir_path, 'FVMAINB'), 'rb').read()
+
+        self._bios_handler.set_section_sig('a', VBOOTA_blob,
+                                           write_through=True)
+        self._bios_handler.set_section_sig('b', VBOOTB_blob,
+                                           write_through=True)
+        self._bios_handler.set_section_body('a', FVMAIN_blob,
+                                            write_through=True)
+        self._bios_handler.set_section_body('b', FVMAINB_blob,
+                                            write_through=True)
 
 
     def dump_EC_firmware(self, ec_path):
@@ -753,6 +808,11 @@ class FAFTClient(object):
     def resign_kernel_with_keys(self, section, key_path=None):
         """Resign kernel with temporary key."""
         self._kernel_handler.resign_kernel(section, key_path)
+
+
+    def create_temp_dir(self, prefix='backup_'):
+        """Create a temporary directory and return the path."""
+        return tempfile.mkdtemp(prefix=prefix)
 
 
     def cleanup(self):

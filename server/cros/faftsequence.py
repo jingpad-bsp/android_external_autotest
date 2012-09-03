@@ -235,6 +235,9 @@ class FAFTSequence(ServoTest):
     _install_image_path = None
     _firmware_update = False
 
+    _backup_firmware_name = ('VBOOTA', 'VBOOTB', 'FVMAIN', 'FVMAINB')
+    _backup_firmware_sha = ()
+
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
         # Parse arguments from command line
@@ -1430,3 +1433,136 @@ class FAFTSequence(ServoTest):
             # Don't reboot in the last step.
             self.run_faft_step(step, no_reboot=(step is sequence[-1]))
             index += 1
+
+
+    def get_file_from_dut(self, file_list):
+        """Get multiple files from client.
+
+        Args:
+            file_list: a list with format [(remote_path, host_path), ...]
+        """
+        for remote_path, host_path in file_list:
+            self._client.get_file(remote_path, host_path)
+
+
+    def send_file_to_dut(self, file_list):
+        """Send multiple files from client.
+
+        Args:
+            file_list: a list with format [(host_path, remote_path), ...]
+        """
+        for host_path, remote_path in file_list:
+            self._client.send_file(host_path, remote_path)
+
+
+    def get_current_firmware_sha(self):
+        """Get current firmware sha of body and vblock.
+
+        Returns:
+            Current firmware sha follows the order (
+                vblock_a_sha, body_a_sha, vblock_b_sha, body_b_sha)
+        """
+        current_firmware_sha = (self.faft_client.get_firmware_sig_sha('a'),
+                                self.faft_client.get_firmware_sha('a'),
+                                self.faft_client.get_firmware_sig_sha('b'),
+                                self.faft_client.get_firmware_sha('b'))
+        return current_firmware_sha
+
+
+    def create_backup_file_list(self, files,
+                                src_dir, src_suffix,
+                                dst_dir, dst_suffix):
+        """Create a file list to transfer.
+
+        [('src_dir/file.src_suffix', 'dst_dir/file.dst_suffix'), ...]
+
+        Args:
+            files: a tuple of file's name
+            src_dir: source directory
+            src_suffix: files in src_dir with suffix
+            dst_dir: destination directory
+            dst_suffix: files in dst_dir with suffix
+
+        Returns:
+            A file list.
+        """
+
+        file_list = []
+        for file_name in self._backup_firmware_name:
+            file_list.append((os.path.join(src_dir, file_name + src_suffix),
+                              os.path.join(dst_dir, file_name + dst_suffix)))
+        return file_list
+
+
+    def check_current_firmware_sha(self):
+        """Check current firmware sha is identical to original firmware sha.
+
+        Returns:
+            True if they are same, otherwise Flase.
+        """
+
+        current_sha = self.get_current_firmware_sha()
+
+        if current_sha == self._backup_firmware_sha:
+            logging.info("Firmware isn't corrupted.")
+            return True
+        else:
+            logging.info("Firmware corrupted.")
+            corrupt_VBOOTA = (current_sha[0] != self._backup_firmware_sha[0])
+            corrupt_FVMAIN = (current_sha[1] != self._backup_firmware_sha[1])
+            corrupt_VBOOTB = (current_sha[2] != self._backup_firmware_sha[2])
+            corrupt_FVMAINB = (current_sha[3] != self._backup_firmware_sha[3])
+            logging.info('VBOOTA is corrupted: %s' % corrupt_VBOOTA)
+            logging.info('VBOOTB is coruupted: %s' % corrupt_VBOOTB)
+            logging.info('FVMAIN is coruupted: %s' % corrupt_FVMAIN)
+            logging.info('FVMAINB is corrupted: %s' % corrupt_FVMAINB)
+            return False
+
+
+    def backup_firmware(self, suffix='.original'):
+        """Backup firmware to file, and then send it to host.
+
+        Args:
+            suffix: a string appended to backup file name
+        """
+        remote_temp_dir = self.faft_client.create_temp_dir()
+        self.faft_client.dump_firmware_rw(remote_temp_dir)
+
+        file_list = self.create_backup_file_list(self._backup_firmware_name,
+                                            remote_temp_dir, '',
+                                            self.resultsdir, suffix)
+        self.get_file_from_dut(file_list)
+
+        self._backup_firmware_sha = self.get_current_firmware_sha()
+        logging.info('Backup firmware stored in %s with suffix %s' % (
+            self.resultsdir, suffix))
+
+
+    def restore_firmware(self, suffix='.original'):
+        """Restore firmware from host in resultsdir.
+
+        Args:
+            suffix: a string appended to backup file name
+        """
+        # Device may not be rebooted after test.
+        self.faft_client.reload_firmware()
+        current_sha = self.get_current_firmware_sha()
+
+        if self.check_current_firmware_sha():
+            return
+
+        # Backup current corrupted firmware.
+        self.backup_firmware(suffix='.corrupt')
+
+        # Restore firmware.
+        remote_temp_dir = self.faft_client.create_temp_dir()
+        file_list = self.create_backup_file_list(self._backup_firmware_name,
+                                                 self.resultsdir, suffix,
+                                                 remote_temp_dir, '')
+        self.send_file_to_dut(file_list)
+
+        self.run_faft_step({
+            'userspace_action': (self.faft_client.write_firmware_rw,
+                                 remote_temp_dir)
+        })
+        logging.info('Successfully restore firmware.')
