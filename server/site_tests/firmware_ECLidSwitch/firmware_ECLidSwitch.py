@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from threading import Timer
+import logging
 import re
 import time
 
@@ -173,14 +174,18 @@ class firmware_ECLidSwitch(FAFTSequence):
         if lid switch event controls keycode and backlight as we expected.
         """
         ok = True
+        logging.info("Stopping power management daemons")
         self.faft_client.run_shell_command('stop powerd')
+        self.faft_client.run_shell_command('stop powerm')
         if not self.check_keycode():
             logging.error("check_keycode failed.")
             ok = False
         if not self.check_backlight():
             logging.error("check_backlight failed.")
             ok = False
+        logging.info("Restarting power management daemons")
         self.faft_client.run_shell_command('start powerd')
+        self.faft_client.run_shell_command('start powerm')
         return ok
 
 
