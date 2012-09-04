@@ -205,6 +205,21 @@ class FAFTSequence(ServoTest):
     GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK = 0x00000020
     GBB_FLAG_ENTER_TRIGGERS_TONORM     = 0x00000040
 
+    # VbSharedData flags
+    # Copied from vboot_reference/firmware/include/vboot_struct.h
+    VDAT_FLAG_FWB_TRIED                = 0x00000001
+    VDAT_FLAG_KERNEL_KEY_VERIFIED      = 0x00000002
+    VDAT_FLAG_LF_DEV_SWITCH_ON         = 0x00000004
+    VDAT_FLAG_LF_USE_RO_NORMAL         = 0x00000008
+    VDAT_FLAG_BOOT_DEV_SWITCH_ON       = 0x00000010
+    VDAT_FLAG_BOOT_REC_SWITCH_ON       = 0x00000020
+    VDAT_FLAG_BOOT_FIRMWARE_WP_ENABLED = 0x00000040
+    VDAT_FLAG_BOOT_S3_RESUME           = 0x00000100
+    VDAT_FLAG_BOOT_RO_NORMAL_SUPPORT   = 0x00000200
+    VDAT_FLAG_HONOR_VIRT_DEV_SWITCH    = 0x00000400
+    VDAT_FLAG_EC_SOFTWARE_SYNC         = 0x00000800
+    VDAT_FLAG_EC_SLOW_UPDATE           = 0x00001000
+
     _faft_template = {}
     _faft_sequence = ()
 
@@ -608,6 +623,29 @@ class FAFTSequence(ServoTest):
             else:
                 logging.info("The expected_dict is neither a str nor a dict.")
                 return False
+        return True
+
+
+    def vdat_flags_checker(self, mask, value):
+        """Check the flags from VbSharedData matched.
+
+        This function checks the masked flags from VbSharedData using crossystem
+        are matched the given value.
+
+        Args:
+          mask: A bitmask of flags to be matched.
+          value: An expected value.
+
+        Returns:
+          True if the flags matched; otherwise, False.
+        """
+        lines = self.faft_client.run_shell_command_get_output(
+                    'crossystem vdat_flags')
+        vdat_flags = int(lines[0], 16)
+        if vdat_flags & mask != value:
+            logging.info("Expected vdat_flags 0x%x mask 0x%x but got 0x%x" %
+                         (value, mask, vdat_flags))
+            return False
         return True
 
 
