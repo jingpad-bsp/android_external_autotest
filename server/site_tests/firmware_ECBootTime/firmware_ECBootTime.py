@@ -36,7 +36,7 @@ class firmware_ECBootTime(FAFTSequence):
         if not self.check_ec_capability():
             return
         self._x86 = ('x86' in self.client_attr.ec_capability)
-        dev_mode = self.crossystem_checker({'dev_sw_boot': '1'})
+        dev_mode = self.crossystem_checker({'devsw_boot': '1'})
         self.register_faft_sequence((
             {   # Step 1, Reboot and check EC cold boot time and host boot time
                 'reboot_action': self.check_boot_time,
