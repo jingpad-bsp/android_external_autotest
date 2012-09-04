@@ -1,0 +1,123 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""Touchpad device module provides some touchpad related attributes."""
+
+import glob
+import os
+import re
+
+import common_util
+
+
+class TouchpadDevice:
+    """A class about touchpad device properties."""
+
+    def __init__(self, device_node=None):
+        self.device_info_file = '/proc/bus/input/devices'
+        self.device_node = (device_node if device_node
+                                        else self.get_device_node())
+
+    def _re_str(self):
+        """Get the regular expression search string for a touchpad device."""
+        pattern_str = ('touchpad', 'trackpad', 'cyapa')
+        return '(?:%s)' % '|'.join(pattern_str)
+
+    def get_device_node(self):
+        """Get the touchpad device node through tpcontrol.
+
+        tpcontrol returns a string like
+                  Device Node (244):      "/dev/input/event8"
+        """
+        cmd = '/opt/google/touchpad/tpcontrol status | grep -i "device node"'
+        device_node_str = common_util.simple_system_output(cmd)
+        device_node = device_node_str.split(':')[-1].strip().strip('"')
+        return device_node
+
+    def get_edges(self):
+        """Get the left, right, top, and bottom edges of a device."""
+        pattern_x = 'A:\s*00\s+(\d+)\s+(\d+)'
+        pattern_y = 'A:\s*01\s+(\d+)\s+(\d+)'
+        cmd = 'evemu-describe %s' % self.device_node
+        device_description = common_util.simple_system_output(cmd)
+        found_x = found_y = False
+        left = right = top = bottom = None
+        if device_description:
+            for line in device_description.splitlines():
+                if not found_x:
+                    result = re.search(pattern_x, line, re.I)
+                    if result:
+                        left = int(result.group(1))
+                        right = int(result.group(2))
+                if not found_y:
+                    result = re.search(pattern_y, line, re.I)
+                    if result:
+                        top = int(result.group(1))
+                        bottom = int(result.group(2))
+        return (left, right, top, bottom)
+
+    def get_dimensions(self):
+        """Get the dimensions of the touchpad reported size."""
+        left, right, top, bottom = self.get_edges()
+        return (right - left, bottom - top)
+
+    def get_display_geometry(self, screen_size, display_ratio):
+        """Get a preferred display geometry when running the test."""
+        display_ratio = 0.8
+        dev_width, dev_height = self.get_dimensions()
+        screen_width, screen_height = screen_size
+
+        if 1.0 * screen_width / screen_height <= 1.0 * dev_width / dev_height:
+            disp_width = int(screen_width * display_ratio)
+            disp_height = int(disp_width * dev_height / dev_width)
+            disp_offset_x = 0
+            disp_offset_y = screen_height - disp_height
+        else:
+            disp_height = int(screen_height * display_ratio)
+            disp_width = int(disp_height * dev_width / dev_height)
+            disp_offset_x = 0
+            disp_offset_y = screen_height - disp_height
+
+        return (disp_width, disp_height, disp_offset_x, disp_offset_y)
+
+    def _touchpad_input_name_re_str(self):
+        pattern_str = ('touchpad', 'trackpad')
+        return '(?:%s)' % '|'.join(pattern_str)
+
+    def get_touchpad_input_dir(self):
+        """Get touchpad input directory."""
+        input_root_dir = '/sys/class/input'
+        input_dirs = glob.glob(os.path.join(input_root_dir, 'input*'))
+        re_pattern = re.compile(self._touchpad_input_name_re_str(), re.I)
+        for input_dir in input_dirs:
+            filename = os.path.join(input_dir, 'name')
+            if os.path.isfile(filename):
+                with open(filename) as f:
+                    for line in f:
+                        if re_pattern.search(line) is not None:
+                            return input_dir
+        return None
+
+    def get_firmware_version(self):
+        """Probe the firmware version."""
+        input_dir = self.get_touchpad_input_dir()
+        device_dir = 'device'
+
+        # Get the re search pattern for firmware_version file name
+        fw_list = ('firmware', 'fw')
+        ver_list = ('version', 'id')
+        sep_list = ('_', '-')
+        re_str = '%s%s%s' % ('(?:%s)' % '|'.join(fw_list),
+                             '(?:%s)' % '|'.join(sep_list),
+                             '(?:%s)' % '|'.join(ver_list))
+        re_pattern = re.compile(re_str, re.I)
+
+        if input_dir is not None:
+            device_dir = os.path.join(input_dir, 'device', '*')
+            for f in glob.glob(device_dir):
+                if os.path.isfile(f) and re_pattern.search(f):
+                    with open (f) as f:
+                        for line in f:
+                            return line.strip('\n')
+        return 'unknown'
