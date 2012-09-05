@@ -504,6 +504,15 @@ class UITest(pyauto_test.PyAutoTest):
                                     line[match.start():])
 
 
+    def execute(self, *args, **kwargs):
+        """Wrapper around execute to take a screenshot for any exception."""
+        try:
+            super(UITest, self).execute(*args, **kwargs)
+        except:
+            self.take_screenshot(fname_prefix='test-fail-screenshot')
+            raise
+
+
     def cleanup(self):
         """Overridden from pyauto_test.cleanup() to log out and restart
            session_manager when the test is complete.
