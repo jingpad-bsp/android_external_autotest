@@ -1,0 +1,26 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_ECSharedMem"
+PURPOSE = "Servo based EC shared memory test"
+CRITERIA = "This test will fail if EC shared memory misbehaved."
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "server"
+
+DOC = """
+This test checks EC has enough shared memory under following conditions:
+  - Normal operation
+  - Reboot after a crash
+  - Jumped between image
+"""
+
+def run_ecsharedmem(machine):
+    host = hosts.create_host(machine)
+    job.run_test("firmware_ECSharedMem", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True)
+
+parallel_simple(run_ecsharedmem, machines)
