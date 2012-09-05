@@ -1109,7 +1109,8 @@ class FAFTSequence(ServoTest):
         """
         # Use cold reset if the warm reset is broken.
         if self.client_attr.broken_warm_reset:
-            self.servo.cold_reset()
+            logging.info('broken_warm_reset is True. Cold rebooting instead.')
+            self.cold_reboot()
         else:
             self.servo.warm_reset()
 
