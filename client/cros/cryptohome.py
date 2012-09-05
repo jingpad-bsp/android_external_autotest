@@ -71,6 +71,15 @@ def take_tpm_ownership():
     __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
 
 
+def verify_ek():
+    """Verify the TPM endorsement key.
+
+    Returns true if EK is valid.
+    """
+    cmd = CRYPTOHOME_CMD + ' --action=tpm_verify_ek'
+    return (utils.system(cmd, ignore_status=True) == 0)
+
+
 def remove_vault(user):
     """Remove the given user's vault from the shadow directory."""
     logging.debug('user is %s', user)

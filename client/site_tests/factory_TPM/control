@@ -1,0 +1,23 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "factory_TPM"
+SUITE = ""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "factory"
+TEST_TYPE = "client"
+
+DOC = """
+Verifies that the TPM is correctly endorsed and attestation by this TPM will be
+possible.
+
+For this test to succeed the TPM must be enabled but not owned.  This test will
+take ownership of the TPM and will clear the TPM.  When this test has finished
+the TPM will be in a disabled state.  The system must be restarted before using
+the TPM (including running this test again).
+"""
+
+job.run_test('factory_TPM')
