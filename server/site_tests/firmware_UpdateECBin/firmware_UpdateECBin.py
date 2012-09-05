@@ -94,23 +94,15 @@ class firmware_UpdateECBin(FAFTSequence):
 
         self.register_faft_sequence((
             {   # Step 1, expected EC RO boot, update EC and disable RO flag
-                'state_checker': (self.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0',
-                    'ecfw_act': 'RO',
-                }),
+                'state_checker': (self.ro_normal_checker, 'A'),
                 'userspace_action': self.do_ronormal_update,
                 'reboot_action': self.sync_and_warm_reboot,
             },
             {   # Step 2, expected new EC and RW boot, restore the original BIOS
                 'state_checker': (
-                    lambda: self.crossystem_checker({
-                                'mainfw_act': 'A',
-                                'tried_fwb': '0',
-                                'ecfw_act': 'RW',
-                            }) and (
-                               self.faft_client.get_EC_firmware_sha() ==
-                               self.new_ec_sha)),
+                    lambda: self.ro_normal_checker('A', twostop=True) and
+                            (self.faft_client.get_EC_firmware_sha() ==
+                                 self.new_ec_sha)),
                 'userspace_action': self.do_twostop_update,
                 # We use warm reboot here to test the following EC behavior:
                 #   If EC is already into RW before powering on the AP, the AP
@@ -121,23 +113,15 @@ class firmware_UpdateECBin(FAFTSequence):
             },
             {   # Step 3, expected different EC and RW boot, enable RO flag
                 'state_checker': (
-                    lambda: self.crossystem_checker({
-                                'mainfw_act': 'A',
-                                'tried_fwb': '0',
-                                'ecfw_act': 'RW',
-                            }) and (
-                               self.faft_client.get_EC_firmware_sha() !=
-                               self.new_ec_sha)),
+                    lambda: self.ro_normal_checker('A', twostop=True) and
+                            (self.faft_client.get_EC_firmware_sha() !=
+                                 self.new_ec_sha)),
                 'userspace_action': (self.faft_client.set_firmware_flags,
                                      'a', flags),
                 'reboot_action': self.sync_and_warm_reboot,
             },
             {   # Step 4, expected EC RO boot, done
-                'state_checker': (self.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0',
-                    'ecfw_act': 'RO',
-                }),
+                'state_checker': (self.ro_normal_checker, 'A'),
             },
         ))
         self.run_faft_sequence()

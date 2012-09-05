@@ -46,33 +46,26 @@ class firmware_RONormalBoot(FAFTSequence):
 
     def run_once(self, host=None):
         flags = self.faft_client.get_firmware_flags('a')
-        if flags & self.PREAMBLE_USE_RO_NORMAL:
-            self.register_faft_sequence((
-                {   # Step 1, disable the RO normal boot flag
-                    'state_checker': (self.crossystem_checker, {
-                        'mainfw_act': 'A',
-                        'tried_fwb': '0',
-                    }),
-                    'userspace_action': (self.faft_client.set_firmware_flags,
-                                         'a',
-                                         flags ^ self.PREAMBLE_USE_RO_NORMAL),
-                },
-                {   # Step 2, expected boot ok, restore the original flags
-                    'state_checker': (self.crossystem_checker, {
-                        'mainfw_act': 'A',
-                        'tried_fwb': '0',
-                    }),
-                    'userspace_action': (self.faft_client.set_firmware_flags,
-                                         'a',
-                                         flags),
-                },
-                {   # Step 3, done
-                    'state_checker': (self.crossystem_checker, {
-                        'mainfw_act': 'A',
-                        'tried_fwb': '0',
-                    }),
-                },
-            ))
-            self.run_faft_sequence()
-        else:
+        if flags & self.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
+            return
+
+        self.register_faft_sequence((
+            {   # Step 1, disable the RO normal boot flag
+                'state_checker': (self.ro_normal_checker, 'A'),
+                'userspace_action': (self.faft_client.set_firmware_flags,
+                                     'a',
+                                     flags ^ self.PREAMBLE_USE_RO_NORMAL),
+            },
+            {   # Step 2, expected TwoStop boot, restore the original flags
+                'state_checker': (lambda: self.ro_normal_checker('A',
+                                              twostop=True)),
+                'userspace_action': (self.faft_client.set_firmware_flags,
+                                     'a',
+                                     flags),
+            },
+            {   # Step 3, done
+                'state_checker': (self.ro_normal_checker, 'A'),
+            },
+        ))
+        self.run_faft_sequence()

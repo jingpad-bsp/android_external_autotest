@@ -649,6 +649,30 @@ class FAFTSequence(ServoTest):
         return True
 
 
+    def ro_normal_checker(self, expected_fw=None, twostop=False):
+        """Check the current boot uses RO boot.
+
+        Args:
+          expected_fw: A string of expected firmware, 'A', 'B', or
+                       None if don't care.
+          twostop: True to expect a TwoStop boot; False to expect a RO boot.
+
+        Returns:
+          True if the currect boot firmware matched and used RO boot;
+          otherwise, False.
+        """
+        crossystem_dict = {'tried_fwb': '0'}
+        if expected_fw:
+            crossystem_dict['mainfw_act'] = expected_fw.upper()
+        if self.check_ec_capability():
+            crossystem_dict['ecfw_act'] = ('RW' if twostop else 'RO')
+
+        return (self.vdat_flags_checker(
+                    self.VDAT_FLAG_LF_USE_RO_NORMAL,
+                    0 if twostop else self.VDAT_FLAG_LF_USE_RO_NORMAL) and
+                self.crossystem_checker(crossystem_dict))
+
+
     def root_part_checker(self, expected_part):
         """Check the partition number of the root device matched.
 
