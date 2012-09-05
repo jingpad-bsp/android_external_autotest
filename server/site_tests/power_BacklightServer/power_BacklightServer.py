@@ -36,11 +36,11 @@ class power_BacklightServer(test.test):
         for daemon in ['powerd', 'powerm']:
             cmd_result = self._client_cmd('status ' + daemon)
             if 'running' not in cmd_result.stdout:
-                raise error.TestFail(daemon + ' must be running.')
+                raise error.TestError(daemon + ' must be running.')
 
         result = self._client_cmd('power-supply-info | grep online')
         if 'yes' not in result.stdout:
-            raise error.TestFail('power must be plugged in.')
+            raise error.TestError('power must be plugged in.')
 
     def _do_reboot(self):
         self._client_cmd_and_wait_for_restart('reboot')
@@ -65,6 +65,8 @@ class power_BacklightServer(test.test):
                      # 'power_off': _do_power_off,
                      }
 
+    _als_disabled = False
+
     def _set_als_disable(self):
         """Turns off ALS in power manager.  Saves the old disable_als flag if
            it exists.
@@ -74,11 +76,14 @@ class power_BacklightServer(test.test):
                          (als_path, als_path, als_path))
         self._client_cmd('echo 1 > %s' % als_path)
         self._client_cmd('restart powerd')
+        self._als_disabled = True
 
     def _restore_als_disable(self):
         """Restore the disable_als flag setting that was overwritten in
            _set_als_disable.
         """
+        if not self._als_disabled:
+            return
         als_path = '/var/lib/power_manager/disable_als'
         self._client_cmd('rm %s' % als_path)
         self._client_cmd('if [ -e %s_backup ]; then mv %s_backup %s; fi' %
