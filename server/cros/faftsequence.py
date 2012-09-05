@@ -220,6 +220,9 @@ class FAFTSequence(ServoTest):
     VDAT_FLAG_EC_SOFTWARE_SYNC         = 0x00000800
     VDAT_FLAG_EC_SLOW_UPDATE           = 0x00001000
 
+    # Firmware preamble flags
+    PREAMBLE_USE_RO_NORMAL             = 0x00000001
+
     _faft_template = {}
     _faft_sequence = ()
 

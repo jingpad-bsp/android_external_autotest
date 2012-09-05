@@ -14,8 +14,6 @@ class firmware_ECWriteProtect(FAFTSequence):
     """
     version = 1
 
-    PREAMBLE_USE_RO_NORMAL = 1
-
 
     def ensure_fw_a_boot(self):
         """Ensure firmware A boot this time."""

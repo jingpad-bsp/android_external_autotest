@@ -21,8 +21,6 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
     """
     version = 1
 
-    PREAMBLE_USE_RO_NORMAL = 1
-
     use_ro = False
 
 
