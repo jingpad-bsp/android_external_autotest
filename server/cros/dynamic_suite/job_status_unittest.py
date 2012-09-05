@@ -279,8 +279,8 @@ class StatusTest(mox.MoxTestBase):
         self.afe.run('get_host_queue_entries',
                      job=job.id).AndReturn(entries)
         if True not in map(lambda e: 'aborted' in e and e['aborted'], entries):
-            self.tko.get_status_counts(job=job.id).AndReturn(job.statuses)
-
+            self.tko.get_job_test_statuses_from_db(job.id).AndReturn(
+                    job.statuses)
 
     def testWaitForResults(self):
         """Should gather status and return records for job summaries."""
@@ -336,7 +336,8 @@ class StatusTest(mox.MoxTestBase):
             entries = map(lambda s: s.entry, job.statuses)
             self.afe.run('get_host_queue_entries',
                          job=job.id).AndReturn(entries)
-            self.tko.get_status_counts(job=job.id).AndReturn(job.statuses)
+            self.tko.get_job_test_statuses_from_db(job.id).AndReturn(
+                    job.statuses)
         self.mox.ReplayAll()
 
         results = job_status.gather_per_host_results(self.afe,

@@ -240,7 +240,7 @@ def wait_for_results(afe, tko, jobs):
             if reduce(_collate_aborted, entries, False):
                 yield Status('ABORT', job.name)
             else:
-                statuses = tko.get_status_counts(job=job.id)
+                statuses = tko.get_job_test_statuses_from_db(job.id)
                 for s in statuses:
                     if _status_for_test(s):
                         yield Status(s.status, s.test_name, s.reason,
@@ -275,7 +275,7 @@ def gather_per_host_results(afe, tko, jobs, name_prefix=''):
     """
     to_return = {}
     for job in jobs:
-        for s in tko.get_status_counts(job=job.id):
+        for s in tko.get_job_test_statuses_from_db(job.id):
             candidate = Status(s.status,
                                name_prefix+s.hostname,
                                s.reason,

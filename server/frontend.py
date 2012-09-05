@@ -19,6 +19,9 @@ import common
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
+from autotest_lib.tko import db
+
+
 try:
     from autotest_lib.server.site_common import site_utils as server_utils
 except:
@@ -121,6 +124,42 @@ class TKO(RpcClient):
                                   print_log=print_log,
                                   debug=debug,
                                   reply_debug=reply_debug)
+        self._db = None
+
+
+    def get_job_test_statuses_from_db(self, job_id):
+        """Get job test statuses from the database.
+
+        Retrieve a set of fields from a job that reflect the status of each test
+        run within a job.
+        fields retrieved: status, test_name, reason, test_started_time,
+                          test_finished_time, afe_job_id, job_owner, hostname.
+
+        @param job_id: The afe job id to look up.
+        @returns a TestStatus object of the resulting information.
+        """
+        if self._db is None:
+          self._db = db.db()
+        fields = ['status', 'test_name', 'reason', 'test_started_time',
+                  'test_finished_time', 'afe_job_id', 'job_owner', 'hostname']
+        table = 'tko_test_view_2'
+        where = 'job_tag like "%s-%%"' % job_id
+        test_status = []
+        # Run commit before we query to ensure that we are pulling the latest
+        # results.
+        self._db.commit()
+        for entry in self._db.select(','.join(fields), table, (where, None)):
+            status_dict = {}
+            for key,value in zip(fields, entry):
+                # All callers expect values to be a str object.
+                status_dict[key] = str(value)
+            # id is used by TestStatus to uniquely identify each Test Status
+            # obj.
+            status_dict['id'] = [status_dict['reason'], status_dict['hostname'],
+                                 status_dict['test_name']]
+            test_status.append(status_dict)
+
+        return [TestStatus(self, e) for e in test_status]
 
 
     def get_status_counts(self, job, **data):
