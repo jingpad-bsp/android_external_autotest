@@ -11,6 +11,20 @@ from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 
+# TODO(cychiang/jsalz): Use cros.factory.goofy.time_sanitizer.CheckHwclock.
+def CheckHwclock():
+  '''Check hwclock is working by a write(retry once if fail) and a read.'''
+  for _ in xrange(2):
+    logging.info('Setting hwclock')
+    if utils.system('hwclock -w --utc --noadjfile', ignore_status=True) == 0:
+      break
+    else:
+      logging.error('Unable to set hwclock time')
+
+  logging.info('Current hwclock time: %s' %
+      utils.system_output('hwclock -r'))
+
+
 class power_Resume(test.test):
     version = 1
     preserve_srcdir = True
@@ -250,6 +264,9 @@ class power_Resume(test.test):
 
 
     def run_once(self, max_devs_returned=10):
+        # Check hwclock is working
+        CheckHwclock()
+
         # Disconnect from 3G network to take out the variability of
         # disconnection time from suspend_time
         disconnect_3G_time = 0
