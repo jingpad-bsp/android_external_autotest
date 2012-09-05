@@ -42,8 +42,8 @@ class FAFTClientAttribute(object):
             setting['has_lid'] = False
 
         # Set 'keyboard_dev'
-        if platform in ['Aebl', 'Alex', 'Kaen', 'Lumpy', 'Mario', 'Seaboard',
-                        'Stumpy', 'ZGB']:
+        if platform in ['Aebl', 'Alex', 'Kaen', 'Kiev', 'Lumpy', 'Mario',
+                        'Seaboard', 'Stumpy', 'ZGB']:
             setting['keyboard_dev'] = False
 
         # Set 'ec_capability'
