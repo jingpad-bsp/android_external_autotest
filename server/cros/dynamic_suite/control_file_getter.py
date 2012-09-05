@@ -52,10 +52,14 @@ class ControlFileGetter(object):
         pass
 
 
-class CacheingControlFileGetter(ControlFileGetter):
-    """Wraps ControlFileGetter to cache the retrieved control file list."""
+class CacheingAndFilteringControlFileGetter(ControlFileGetter):
+    """Wraps ControlFileGetter to cache the retrieved control file list and
+    filter out unwanted control files."""
+
+    CONTROL_FILE_FILTERS = ['src/debian/control']
+
     def __init__(self):
-        super(CacheingControlFileGetter, self).__init__()
+        super(CacheingAndFilteringControlFileGetter, self).__init__()
         self._files = []
 
 
@@ -64,12 +68,15 @@ class CacheingControlFileGetter(ControlFileGetter):
         Gather a list of paths to control files.
 
         Gets a list of control files; populates |self._files| with that list
-        and then returns the paths to all useful files in the list.
+        and then returns the paths to all useful and wanted files in the list.
 
         @return A list of file paths.
         @throws NoControlFileList if there is an error while listing.
         """
-        self._files = self._get_control_file_list()
+        files = self._get_control_file_list()
+        for cf_filter in self.CONTROL_FILE_FILTERS:
+          files = filter(lambda path: not path.endswith(cf_filter), files)
+        self._files = files
         return self._files
 
 
@@ -100,7 +107,7 @@ class CacheingControlFileGetter(ControlFileGetter):
         return self.get_control_file_contents(candidates[0])
 
 
-class FileSystemGetter(CacheingControlFileGetter):
+class FileSystemGetter(CacheingAndFilteringControlFileGetter):
     """
     Class that can list and fetch known control files from disk.
 
@@ -168,7 +175,7 @@ class FileSystemGetter(CacheingControlFileGetter):
             raise error.ControlFileNotFound(msg)
 
 
-class DevServerGetter(CacheingControlFileGetter):
+class DevServerGetter(CacheingAndFilteringControlFileGetter):
     def __init__(self, build, ds=None):
         """
         @param build: The build from which to get control files.
