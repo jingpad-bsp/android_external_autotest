@@ -17,8 +17,14 @@ class firmware_UpdateECBin(FAFTSequence):
     updating EC is simple and we just need to change the EC binary on
     the BIOS image.
 
-    A new EC image should be specified by the new_ec argument, like:
-      -a "new_ec=ec_autest_image.bin"
+    This test requires a new EC image for update. The new EC image should
+    be different with the existing EC image on the current BIOS. In normal
+    cases, we use the ec_autest_image.bin from firmware_from_source.tar.bz2.
+    The ec_autest_image.bin is the same binary as ec.bin but shift'ed and its
+    version string has the "_shift" suffix.
+
+    The new EC image should be specified by the new_ec argument, like:
+      run_remote_tests.sh --args "new_ec=ec_autest_image.bin" ...
 
     The test covers RONORMAL->TWOSTOP, TWOSTOP->TWOSTOP, and
     TWOSTOP->RONORMAL updates.
@@ -39,8 +45,11 @@ class firmware_UpdateECBin(FAFTSequence):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         if 'new_ec' not in dict_args:
-            raise error.TestError('Should specify a new_ec image for update, '
-                                  'e.g. -a "new_ec=ec_autest_image.bin".')
+            raise error.TestError(
+                    'Should specify a new_ec image for update, like: '
+                    'run_remote_tests.sh --args "new_ec=ec_autest_image.bin". '
+                    'The ec_autest_image.bin file is included in the '
+                    'firmware_from_source.tar.bz2.')
         self.arg_new_ec = dict_args['new_ec']
         logging.info('The EC image to-be-updated is: %s' % self.arg_new_ec)
         super(firmware_UpdateECBin, self).initialize(host, cmdline_args,

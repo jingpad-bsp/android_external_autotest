@@ -35,6 +35,15 @@ The test steps are:
     reboot;
  4. check EC is RO boot and AP is RW A boot.
 
+This test requires a new EC image for update. The new EC image should
+be different with the existing EC image on the current BIOS. In normal
+cases, we use the ec_autest_image.bin from firmware_from_source.tar.bz2.
+The ec_autest_image.bin is the same binary as ec.bin but shift'ed and its
+version string has the "_shift" suffix.
+
+The new EC image should be specified by the new_ec argument, like:
+  run_remote_tests.sh --args "new_ec=ec_autest_image.bin" ...
+
 So RONORMAL->TWOSTOP, TWOSTOP->TWOSTOP, and TWOSTOP->RONORMAL are covered.
 """
 
