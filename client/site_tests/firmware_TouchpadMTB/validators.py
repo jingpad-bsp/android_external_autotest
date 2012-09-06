@@ -260,3 +260,24 @@ class StationaryFingerValidator(BaseValidator):
         self.print_msg('Largest distance in slot[%d]: %d' % (self.slot,
                                                              distance))
         return (self.fc.mf.grade(distance), self.msg_list)
+
+class NoGapValidator(BaseValidator):
+    """Validator to make sure that there are no significant gaps in a line.
+
+    Example:
+        To verify if there is exactly one finger observed:
+          NoGapValidator('<= 5, ~ +5', slot=1)
+    """
+
+    def __init__(self, criteria_str, mf=None, slot=0):
+        super(NoGapValidator, self).__init__(criteria_str, mf)
+        self.slot = slot
+
+    def check(self, packets, variation=None):
+        """There should be no significant gaps in a line."""
+        self.init_check(packets)
+        # Get the largest gap ratio
+        gap_ratio = self.packets.get_largest_gap_ratio(self.slot)
+        msg = 'Largest gap ratio in slot[%d]: %f'
+        self.print_msg(msg % (self.slot, gap_ratio))
+        return (self.fc.mf.grade(gap_ratio), self.msg_list)

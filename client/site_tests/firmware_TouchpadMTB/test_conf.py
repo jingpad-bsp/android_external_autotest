@@ -9,6 +9,7 @@
 from firmware_utils import Gesture
 from validators import (CountTrackingIDValidator,
                         LinearityValidator,
+                        NoGapValidator,
                         RangeValidator,
                         StationaryFingerValidator,
 )
@@ -37,6 +38,8 @@ gesture_list = [
         },
         validators=(
             StationaryFingerValidator('<= 20, ~ +20', slot=0),
+            NoGapValidator('<= 5, ~ +5', slot=1),
+            CountTrackingIDValidator('== 2'),
         ),
     ),
 

@@ -114,6 +114,27 @@ class MTB:
                 list_y.append(prev_y)
         return (list_x, list_y)
 
+    def get_points(self, target_slot):
+        """Get the points in the target slot."""
+        list_x, list_y = self.get_x_y(target_slot)
+        return zip(list_x, list_y)
+
+    def get_distances(self, target_slot):
+        """Get the distances of neighbor points in the target slot."""
+        points = self.get_points(target_slot)
+        distances = []
+        for index in range(len(points) - 1):
+            distance = self._calc_distance(points[index], points[index + 1])
+            distances.append(distance)
+        return distances
+
+    def get_distances_with_first_point(self, target_slot):
+        """Get distances of the points in the target_slot with first point."""
+        points = self.get_points(target_slot)
+        point0 = points[0]
+        distances = [self._calc_distance(point, point0) for point in points]
+        return distances
+
     def get_range(self):
         """Get the min and max values of (x, y) positions."""
         min_x = min_y = float('infinity')
@@ -151,15 +172,20 @@ class MTB:
 
     def get_largest_distance(self, target_slot):
         """Get the largest distance of point to the first point."""
-        list_x, list_y = self.get_x_y(target_slot)
-        points = zip(list_x, list_y)
-        point_0 = points[0]
-        largest_distance = 0
-        for point in points[1:]:
-            distance = self._calc_distance(point_0, point)
-            if distance > largest_distance:
-                largest_distance = distance
-        return largest_distance
+        distances = self.get_distances_with_first_point(target_slot)
+        return max(distances)
+
+    def get_largest_gap_ratio(self, target_slot):
+        """Get the largest gap ratio in the target slot."""
+        gaps = self.get_distances(target_slot)
+        gap_ratios = []
+        for index in range(1, len(gaps) - 1):
+            prev_gap = max(gaps[index - 1], 1)
+            curr_gap = gaps[index]
+            next_gap = max(gaps[index + 1], 1)
+            gap_ratios.append(2.0 * curr_gap / (prev_gap + next_gap))
+        largest_gap_ratio = max(gap_ratios) if gap_ratios else 0
+        return largest_gap_ratio
 
 
 class MTBParser:
