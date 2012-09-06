@@ -10,9 +10,6 @@ from autotest_lib.client.cros import rtc, sys_power, cros_logging
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
-from autotest_lib.client.cros import factory_setup_modules
-from cros.factory.goofy import time_sanitizer
-
 
 class power_Resume(test.test):
     version = 1
@@ -253,9 +250,6 @@ class power_Resume(test.test):
 
 
     def run_once(self, max_devs_returned=10):
-        # Check hwclock is working
-        time_sanitizer.CheckHwclock()
-
         # Disconnect from 3G network to take out the variability of
         # disconnection time from suspend_time
         disconnect_3G_time = 0
