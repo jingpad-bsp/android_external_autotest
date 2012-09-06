@@ -205,8 +205,8 @@ class platform_BootPerf(test.test):
             except:
                 pass
 
-        self.__parse_syslog(results, last_boot_was_reboot)
         self.__parse_firmware_boot_time(results)
+        self.__parse_syslog(results, last_boot_was_reboot)
         self.__parse_vboot_times(results)
 
         if ('seconds_firmware_boot' in results and
