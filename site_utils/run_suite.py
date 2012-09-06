@@ -14,9 +14,11 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
-import datetime, getpass, hashlib, optparse, os, time, sys
+import getpass, hashlib, logging, optparse, os, time, sys
+from datetime import datetime
+
 import common
-import logging
+
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -181,12 +183,19 @@ class Timings(object):
         any one of these entries and look up timestamp info we might want
         and record it.
 
+        If timestamps are unavailable, datetime.datetime.min/max will be used.
+
         @param view: a view dict, as returned by get_detailed_test_views().
         """
-        start_candidate = datetime.datetime.strptime(view['test_started_time'],
-                                                     job_status.TIME_FMT)
-        end_candidate = datetime.datetime.strptime(view['test_finished_time'],
-                                                   job_status.TIME_FMT)
+        start_candidate = datetime.min
+        end_candidate = datetime.max
+        if view['test_started_time']:
+            start_candidate = datetime.strptime(view['test_started_time'],
+                                                job_status.TIME_FMT)
+        if view['test_finished_time']:
+            end_candidate = datetime.strptime(view['test_finished_time'],
+                                              job_status.TIME_FMT)
+
         if job_status.view_is_for_suite_prep(view):
             self.suite_start_time = start_candidate
         elif view['test_name'].startswith(Reimager.JOB_NAME):
