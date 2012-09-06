@@ -32,15 +32,6 @@ class firmware_UpdateECBin(FAFTSequence):
     version = 1
 
 
-    def ensure_fw_a_boot(self):
-        """Ensure firmware A boot this time."""
-        if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode recovery')
-            })
-
-
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
@@ -59,20 +50,23 @@ class firmware_UpdateECBin(FAFTSequence):
     def setup(self, host, dev_mode=False):
         super(firmware_UpdateECBin, self).setup()
         self.setup_dev_mode(dev_mode)
-        self.ensure_fw_a_boot()
 
         temp_path = self.faft_client.get_temp_path()
         self.faft_client.setup_firmwareupdate_temp_dir()
 
         self.old_bios_path = os.path.join(temp_path, 'old_bios.bin')
         self.faft_client.dump_firmware(self.old_bios_path)
+        self.old_bios_sha = self.faft_client.get_firmware_sha('a')
 
         self.new_ec_path = os.path.join(temp_path, 'new_ec.bin')
         host.send_file(self.arg_new_ec, self.new_ec_path)
 
 
     def cleanup(self):
-        self.ensure_fw_a_boot()
+        cur_bios_sha = self.faft_client.get_firmware_sha('a')
+        if cur_bios_sha != self.old_bios_sha:
+            logging.info('BIOS changed. Restore the original BIOS...')
+            self.faft_client.write_firmware(self.old_bios_path)
         super(firmware_UpdateECBin, self).cleanup()
 
 

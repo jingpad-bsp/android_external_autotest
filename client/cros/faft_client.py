@@ -277,8 +277,18 @@ class FAFTClient(object):
                                                write_through=True)
 
 
+    def get_firmware_sha(self, section):
+        """Get SHA1 hash of BIOS RW firmware section.
+
+        Args:
+            section: A firmware section, either 'a' or 'b'.
+            flags: An integer of preamble flags.
+        """
+        return self._bios_handler.get_section_sha(section)
+
+
     def get_EC_firmware_sha(self):
-        """Get SHA1 hash of EC RW firmware section.  """
+        """Get SHA1 hash of EC RW firmware section."""
         return self._ec_handler.get_section_sha('rw')
 
 
