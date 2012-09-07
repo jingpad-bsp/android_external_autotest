@@ -411,14 +411,17 @@ class StatusTest(mox.MoxTestBase):
         group = self.mox.CreateMock(host_spec.HostGroup)
 
         statuses = {}
+        all_bad = True not in results.itervalues()
         for hostname, result in results.iteritems():
-            status = self.mox.CreateMock(FakeStatus)
-            status.record_all(record_entity)
-            status.is_good().AndReturn(result)
+            status = self.mox.CreateMock(job_status.Status)
+            status.record_all(record_entity).InAnyOrder('recording')
+            status.is_good().InAnyOrder('recording').AndReturn(result)
             if not result:
                 status.test_name = 'test'
+                if not all_bad:
+                    status.override_status('WARN').InAnyOrder('recording')
             else:
-                group.mark_host_success(hostname)
+                group.mark_host_success(hostname).InAnyOrder('recording')
             statuses[hostname] = status
 
         return (statuses, group, record_entity)
@@ -431,9 +434,9 @@ class StatusTest(mox.MoxTestBase):
         group.enough_hosts_succeeded().AndReturn(True)
         self.mox.ReplayAll()
 
-        success = job_status.record_and_report_results(statuses,
-                                                       group,
-                                                       record_entity)
+        success = job_status.check_and_record_reimage_results(statuses,
+                                                              group,
+                                                              record_entity)
         self.assertTrue(success)
 
 
@@ -444,9 +447,9 @@ class StatusTest(mox.MoxTestBase):
         group.enough_hosts_succeeded().AndReturn(True)
         self.mox.ReplayAll()
 
-        success = job_status.record_and_report_results(statuses,
-                                                       group,
-                                                       record_entity)
+        success = job_status.check_and_record_reimage_results(statuses,
+                                                              group,
+                                                              record_entity)
         self.assertTrue(success)
 
 
@@ -457,7 +460,7 @@ class StatusTest(mox.MoxTestBase):
         group.enough_hosts_succeeded().AndReturn(False)
         self.mox.ReplayAll()
 
-        success = job_status.record_and_report_results(statuses,
-                                                       group,
-                                                       record_entity)
+        success = job_status.check_and_record_reimage_results(statuses,
+                                                              group,
+                                                              record_entity)
         self.assertFalse(success)

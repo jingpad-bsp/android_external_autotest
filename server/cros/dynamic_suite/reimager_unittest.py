@@ -496,7 +496,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
         self.mox.StubOutWithMock(job_status, 'wait_for_jobs_to_finish')
         self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
-        self.mox.StubOutWithMock(job_status, 'record_and_report_results')
+        self.mox.StubOutWithMock(job_status, 'check_and_record_reimage_results')
 
         self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
@@ -526,7 +526,7 @@ class ReimagerTest(mox.MoxTestBase):
         if statuses:
             ret_val = reduce(lambda v, s: v or s.is_good(),
                              statuses.values(), False)
-            job_status.record_and_report_results(
+            job_status.check_and_record_reimage_results(
                 statuses, host_group, mox.IgnoreArg()).AndReturn(ret_val)
 
 

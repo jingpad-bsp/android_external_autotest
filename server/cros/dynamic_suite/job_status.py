@@ -322,7 +322,7 @@ def gather_per_host_results(afe, tko, jobs, name_prefix=''):
     return to_return
 
 
-def record_and_report_results(per_host_statuses, group, record_entry):
+def check_and_record_reimage_results(per_host_statuses, group, record_entry):
     """
     Record all Statuses in results and return True if at least one was GOOD.
 
@@ -336,15 +336,24 @@ def record_and_report_results(per_host_statuses, group, record_entry):
     """
     failures = []
     for hostname, status in per_host_statuses.iteritems():
-        status.record_all(record_entry)
         if status.is_good():
             group.mark_host_success(hostname)
+            status.record_all(record_entry)
         else:
-            failures.append(status.test_name)
-    if failures:
-        logging.warn("Some machines failed to reimage: %s.",
-                     ', '.join(failures))
-    return group.enough_hosts_succeeded()
+            failures.append(status)
+
+    success = group.enough_hosts_succeeded()
+    if success:
+        for failure in failures:
+            logging.warn("%s failed to reimage.", failure.test_name)
+            failure.override_status('WARN')
+            failure.record_all(record_entry)
+    else:
+        for failure in failures:
+            # No need to log warnings; the job is failing.
+            failure.record_all(record_entry)
+
+    return success
 
 
 class Status(object):
@@ -399,7 +408,6 @@ class Status(object):
         @param job_id: the ID of the job that generated this Status.
         @param owner: the owner of the job that generated this Status.
         """
-
         self._status = status
         self._test_name = test_name
         self._reason = reason
@@ -491,6 +499,15 @@ class Status(object):
         self.record_start(record_entry)
         self.record_result(record_entry)
         self.record_end(record_entry)
+
+
+    def override_status(self, override):
+        """
+        Override the _status field of this Status.
+
+        @param override: value with which to override _status.
+        """
+        self._status = override
 
 
     @property

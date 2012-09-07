@@ -176,9 +176,9 @@ class Reimager(object):
                    begin_time_str=begin_time_str).record_all(record)
             return False
 
-        should_continue = job_status.record_and_report_results(results,
-                                                               to_reimage,
-                                                               record)
+        should_continue = job_status.check_and_record_reimage_results(
+            results, to_reimage, record)
+
         # Currently, this leads to us skipping even tests with no DEPENDENCIES
         # in certain cases: http://crosbug.com/34635
         doomed_tests = self._discover_unrunnable_tests(per_test_specs,
