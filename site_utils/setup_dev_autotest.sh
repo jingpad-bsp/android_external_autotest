@@ -98,7 +98,8 @@ echo "Installing needed Ubuntu packages..."
 PKG_LIST="mysql-server mysql-common libapache2-mod-python python-mysqldb \
 gnuplot apache2-mpm-prefork unzip python-imaging libpng12-dev libfreetype6-dev \
 sqlite3 python-pysqlite2 git-core pbzip2 openjdk-6-jre openjdk-6-jdk \
-python-crypto  python-dev subversion build-essential python-setuptools"
+python-crypto  python-dev subversion build-essential python-setuptools \
+python-numpy python-scipy"
 
 if ! sudo apt-get install -y ${PKG_LIST}; then
   echo "Could not install packages: $?"
@@ -134,7 +135,7 @@ fi
 SQL_COMMAND="drop database if exists chromeos_autotest_db; \
 create database chromeos_autotest_db; \
 grant all privileges on chromeos_autotest_db.* TO \
-'chromeosqa-admin'@'%' identified by '${PASSWD}'; \
+'chromeosqa-admin'@'localhost' identified by '${PASSWD}'; \
 FLUSH PRIVILEGES;"
 
 set -e
