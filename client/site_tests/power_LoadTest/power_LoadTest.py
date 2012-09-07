@@ -164,8 +164,6 @@ class power_LoadTest(cros_ui_test.UITest):
             latch = self._testServer.add_wait_url('/status')
 
             # the act of logging in will launch chrome with external extension.
-            # NOTE: self.login() will log out the current session if it's
-            # currently logged in.
             self.login()
 
             # stop powerd
@@ -187,6 +185,11 @@ class power_LoadTest(cros_ui_test.UITest):
             if low_battery:
                 logging.info('Exiting due to low battery')
                 break
+
+            self.logout()
+            # Work around until crosbug.com/139166 is fixed
+            self.pyauto.ExecuteJavascriptInOOBEWebUI('Oobe.showSigninUI();'
+                'window.domAutomationController.send("ok");')
 
         t1 = time.time()
         self._tmp_keyvals['minutes_battery_life'] = (t1 - t0) / 60
