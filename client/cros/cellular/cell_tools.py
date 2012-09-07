@@ -34,7 +34,7 @@ def ConnectToCellular(flim, timeout=TIMEOUT):
     Raises:
         Error if connection fails or times out
     """
-    service = flim.FindCellularService()
+    service = flim.FindCellularService(timeout=timeout)
     if not service:
         raise Error('Could not find cell service')
     properties = service.GetProperties(utf8_strings=True)

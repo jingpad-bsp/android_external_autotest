@@ -8,6 +8,7 @@ from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.cellular import mm1
 import dbus
 
+MODEM_TIMEOUT=60
 
 class Modem(object):
     """An object which talks to a ModemManager1 modem."""
@@ -152,13 +153,13 @@ class Modem(object):
         return props['State'] == mm1.MM_MODEM_STATE_DISABLED
 
     def Enable(self, enable, **kwargs):
-        self.Modem().Enable(enable, **kwargs)
+        self.Modem().Enable(enable, timeout=MODEM_TIMEOUT, **kwargs)
 
     def Connect(self, props):
-        self.SimpleModem().Connect(props)
+        self.SimpleModem().Connect(props, timeout=MODEM_TIMEOUT)
 
     def Disconnect(self):
-        self.SimpleModem().Disconnect('/')
+        self.SimpleModem().Disconnect('/', timeout=MODEM_TIMEOUT)
 
 
 class ModemManager(object):

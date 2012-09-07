@@ -16,7 +16,7 @@ from autotest_lib.client.cros.cellular import emulator_config
 import flimflam
 
 
-TIMEOUT=30
+TIMEOUT=60
 
 class Error(Exception):
     pass
