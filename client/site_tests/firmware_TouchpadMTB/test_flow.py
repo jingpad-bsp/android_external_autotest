@@ -6,6 +6,7 @@
 
 """Guide the user to perform gestures. Record and validate the gestures."""
 
+import fcntl
 import os
 import subprocess
 import sys
@@ -43,17 +44,33 @@ class TestFlow:
         self.gesture_list = conf.gesture_list
         self._get_all_gesture_variations()
         self.init_flag = False
-        self.system_device = open(self.device_node)
+        self.system_device = self._non_blocking_open(self.device_node)
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
 
     def __del__(self):
         self.system_device.close()
 
+    def _non_blocking_open(self, filename):
+        """Open the file in non-blocing mode."""
+        fd = open(filename)
+        fcntl.fcntl(fd, fcntl.F_SETFL, os.O_NONBLOCK)
+        return fd
+
+    def _non_blocking_read(self, dev, fd):
+        """Non-blocking read on fd."""
+        try:
+            dev.read(fd)
+            event = (dev.tv_sec, dev.tv_usec, dev.type, dev.code, dev.value)
+        except Exception, e:
+            event = None
+        return event
+
     def _reopen_system_device(self):
         """Close the device and open a new one."""
         self.system_device.close()
         self.system_device = open(self.device_node)
+        self.system_device = self._non_blocking_open(self.device_node)
 
     def _get_prompt_next(self):
         """Prompt for next gesture."""
@@ -327,8 +344,12 @@ class TestFlow:
             return False
 
     def gesture_file_watch_callback(self, fd, condition, evdev_device):
-        """A callback to watch if a gesture has been timeout."""
-        evdev_device.read(fd)
+        """A callback to watch the device input."""
+        # Read the device node continuously until end
+        event = True
+        while event:
+            event = self._non_blocking_read(evdev_device, fd)
+
         self.gesture_continues_flag = True
         if (not self.gesture_begins_flag):
             self.gesture_begins_flag = True
