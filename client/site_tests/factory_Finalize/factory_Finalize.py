@@ -16,6 +16,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory import event_log
+from cros.factory.system.power import Power
 from cros.factory.test import factory
 from cros.factory.test import gooftools
 from cros.factory.test import shopfloor
@@ -51,7 +52,18 @@ class PreflightTask(task.FactoryTask):
                          "系统已準备就绪。 开始最终程序!")
 
     def __init__(self, test_list, write_protection, polling_seconds,
-                 allow_force_finalize):
+                 allow_force_finalize, min_charge_pct):
+        """Constructor
+
+        Args:
+            test_list: Test list object.
+            write_protection: True if checking write protection.
+            polling_seconds: Interval between updating results. Set to None
+              to disable polling.
+            allow_force_finalize: True if allowing force finalize by user.
+            min_charge_pct: Minimum battery charge percentage allowed. Set to
+              None to disable checking battery charge level.
+        """
         def create_label(message):
             return ui.make_label(message, fg=self.COLOR_DISABLED,
                                  alignment=(0, 0.5))
@@ -61,20 +73,26 @@ class PreflightTask(task.FactoryTask):
         self.polling_mode = (self.polling_seconds is not None)
         self.test_list = test_list
         self.allow_force_finalize = allow_force_finalize
+        self.min_charge_pct = min_charge_pct
         self.items = [(self.check_required_tests,
                        create_label("Verify no tests failed\n"
                                     "确认无测试项目失败")),
                       (self.check_developer_switch,
                        create_label("Turn off Developer Switch\n"
                                     "停用开发者开关(DevSwitch)"))]
-        if not write_protection:
-            return
 
-        # Items only enforced in write_protection mode.
-        self.items += [
-                       (self.check_write_protect,
-                        create_label("Enable write protection pin\n"
-                                     "确认硬体写入保护已开启"))]
+        if min_charge_pct:
+            min_charge_pct_text = ("Charge battery to %d%%\n"
+                                   "充电到%d%%" %
+                                   (min_charge_pct, min_charge_pct))
+            self.items += [(self.check_battery_level,
+                            create_label(min_charge_pct_text))]
+
+        if write_protection:
+            self.items += [
+                           (self.check_write_protect,
+                            create_label("Enable write protection pin\n"
+                                         "确认硬体写入保护已开启"))]
 
     def check_developer_switch(self):
         """ Checks if developer switch button is disabled """
@@ -97,6 +115,14 @@ class PreflightTask(task.FactoryTask):
         state_map = self.test_list.get_state_map()
         return not any(x.status == factory.TestState.FAILED
                        for x in state_map.values())
+
+    def check_battery_level(self):
+        """ Checks if battery level is higher than 50% """
+        power = Power()
+        if not power.CheckBatteryPresent():
+            return False
+        charge = power.GetChargePct()
+        return charge and charge >= self.min_charge_pct
 
     def update_results(self):
         self.updating = True
@@ -248,7 +274,8 @@ class factory_Finalize(test.test):
                  secure_wipe=False,
                  upload_method='none',
                  test_list_path=None,
-                 allow_force_finalize=True):
+                 allow_force_finalize=True,
+                 min_charge_pct=None):
         factory.log('%s run_once' % self.__class__)
 
         if developer_mode is not None:
@@ -266,7 +293,7 @@ class factory_Finalize(test.test):
 
         self.tasks = [
                 PreflightTask(test_list, write_protection, polling_seconds,
-                              allow_force_finalize),
+                              allow_force_finalize, min_charge_pct),
                 FinalizeTask(write_protection, secure_wipe, upload_method,
                              test_states_path)]
 
