@@ -13,6 +13,7 @@
 import gtk
 import pango
 import os
+import re
 import sys
 
 from gtk import gdk
@@ -129,7 +130,7 @@ _PATTERN_LIST = [
 
 
 class factory_Display(test.test):
-    version = 1
+    version = 2
 
     def display_full_screen(self, pattern_callback):
         window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -208,9 +209,17 @@ class factory_Display(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gdk.KEY_RELEASE_MASK)
 
-    def run_once(self):
+    def run_once(self, regex_filter=None):
+        global _PATTERN_LIST
+        '''
+        Args:
+            regex_filter: optional regular expression to select patterns.
+        '''
 
         factory.log('%s run_once' % self.__class__)
+        if regex_filter is not None:
+            _PATTERN_LIST = [x for x in _PATTERN_LIST
+                             if re.search(regex_filter, x[0])]
 
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, f in _PATTERN_LIST)
