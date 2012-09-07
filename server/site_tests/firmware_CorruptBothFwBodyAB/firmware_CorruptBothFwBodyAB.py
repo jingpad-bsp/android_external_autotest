@@ -24,22 +24,9 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
     use_ro = False
 
 
-    def ensure_normal_boot(self):
-        """Ensure normal boot this time.
-
-        If not, it may be a test failure during step 2, try to recover to
-        normal mode by recovering the firmware and rebooting.
-        """
-        if not self.crossystem_checker(
-                {'mainfw_type': ('normal', 'developer')}):
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode recovery')
-            })
-
-
     def setup(self, dev_mode=False):
         super(firmware_CorruptBothFwBodyAB, self).setup()
+        self.backup_firmware()
         if (self.faft_client.get_firmware_flags('a') &
                 self.PREAMBLE_USE_RO_NORMAL):
             self.use_ro = True
@@ -51,7 +38,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
 
 
     def cleanup(self):
-        self.ensure_normal_boot()
+        self.restore_firmware()
         super(firmware_CorruptBothFwBodyAB, self).cleanup()
 
 

@@ -38,6 +38,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
 
     def setup(self):
         super(firmware_UpdateFirmwareVersion, self).setup()
+        self.backup_firmware()
 
         self.faft_client.setup_firmwareupdate_temp_dir()
         self._fwid = self.faft_client.retrieve_shellball_fwid()
@@ -53,6 +54,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
 
     def cleanup(self):
         self.faft_client.cleanup_firmwareupdate_temp_dir()
+        self.restore_firmware()
         super(firmware_UpdateFirmwareVersion, self).cleanup()
 
 

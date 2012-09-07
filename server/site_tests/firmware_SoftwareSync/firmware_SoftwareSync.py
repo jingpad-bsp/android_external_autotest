@@ -14,15 +14,6 @@ class firmware_SoftwareSync(FAFTSequence):
     version = 1
 
 
-    def ensure_fw_a_boot(self):
-        """Ensure firmware A boot this time."""
-        if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode recovery')
-            })
-
-
     def ensure_rw(self):
         """Ensure firmware A is not in RO-normal mode."""
         flags = self.faft_client.get_firmware_flags('a')
@@ -36,13 +27,13 @@ class firmware_SoftwareSync(FAFTSequence):
 
     def setup(self, dev_mode=False):
         super(firmware_SoftwareSync, self).setup()
+        self.backup_firmware()
         self.setup_dev_mode(dev_mode)
-        self.ensure_fw_a_boot()
         self.ensure_rw()
 
 
     def cleanup(self):
-        self.ensure_fw_a_boot()
+        self.restore_firmware()
         super(firmware_SoftwareSync, self).cleanup()
 
 

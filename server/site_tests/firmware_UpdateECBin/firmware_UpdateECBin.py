@@ -49,24 +49,18 @@ class firmware_UpdateECBin(FAFTSequence):
 
     def setup(self, host, dev_mode=False):
         super(firmware_UpdateECBin, self).setup()
+        self.backup_firmware()
         self.setup_dev_mode(dev_mode)
 
         temp_path = self.faft_client.get_temp_path()
         self.faft_client.setup_firmwareupdate_temp_dir()
-
-        self.old_bios_path = os.path.join(temp_path, 'old_bios.bin')
-        self.faft_client.dump_firmware(self.old_bios_path)
-        self.old_bios_sha = self.faft_client.get_firmware_sha('a')
 
         self.new_ec_path = os.path.join(temp_path, 'new_ec.bin')
         host.send_file(self.arg_new_ec, self.new_ec_path)
 
 
     def cleanup(self):
-        cur_bios_sha = self.faft_client.get_firmware_sha('a')
-        if cur_bios_sha != self.old_bios_sha:
-            logging.info('BIOS changed. Restore the original BIOS...')
-            self.faft_client.write_firmware(self.old_bios_path)
+        self.restore_firmware()
         super(firmware_UpdateECBin, self).cleanup()
 
 

@@ -56,6 +56,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
 
     def setup(self, host=None):
         super(firmware_UpdateFirmwareDataKeyVersion, self).setup()
+        self.backup_firmware()
 
         self.faft_client.setup_firmwareupdate_temp_dir()
 
@@ -77,6 +78,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
         # TODO(ctchang) Delete this after adding dumpRSAPublicKey to image
         self.faft_client.run_shell_command(
             'rm -f /usr/local/sbin/firmware/saft/dumpRSAPublicKey')
+        self.restore_firmware()
         super(firmware_UpdateFirmwareDataKeyVersion, self).cleanup()
 
 

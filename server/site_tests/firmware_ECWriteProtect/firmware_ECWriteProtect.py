@@ -43,12 +43,12 @@ class firmware_ECWriteProtect(FAFTSequence):
 
     def setup(self, dev_mode=False):
         super(firmware_ECWriteProtect, self).setup()
+        self.backup_firmware()
         self.setup_dev_mode(dev_mode)
-        self.ensure_fw_a_boot()
 
 
     def cleanup(self):
-        self.ensure_fw_a_boot()
+        self.restore_firmware()
         super(firmware_ECWriteProtect, self).cleanup()
 
 

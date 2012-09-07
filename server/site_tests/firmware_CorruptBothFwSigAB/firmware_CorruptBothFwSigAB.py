@@ -18,29 +18,16 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
     version = 1
 
 
-    def ensure_normal_boot(self):
-        """Ensure normal boot this time.
-
-        If not, it may be a test failure during step 2 or 3, try to recover to
-        normal mode by recovering the firmware and rebooting.
-        """
-        if not self.crossystem_checker(
-                {'mainfw_type': ('normal', 'developer')}):
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode recovery')
-            })
-
-
     def setup(self, dev_mode=False):
         super(firmware_CorruptBothFwSigAB, self).setup()
+        self.backup_firmware()
         self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
 
     def cleanup(self):
-        self.ensure_normal_boot()
+        self.restore_firmware()
         super(firmware_CorruptBothFwSigAB, self).cleanup()
 
 

@@ -12,27 +12,14 @@ class firmware_CorruptFwSigB(FAFTSequence):
     version = 1
 
 
-    def ensure_fw_a_boot(self):
-        """Ensure firmware A boot this time.
-
-        If not, it may be a test failure during step 2, try to recover to
-        firmware A boot by recovering the firmware and rebooting.
-        """
-        if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode recovery')
-            })
-
-
     def setup(self, dev_mode=False):
         super(firmware_CorruptFwSigB, self).setup()
+        self.backup_firmware()
         self.setup_dev_mode(dev_mode)
-        self.ensure_fw_a_boot()
 
 
     def cleanup(self):
-        self.ensure_fw_a_boot()
+        self.restore_firmware()
         super(firmware_CorruptFwSigB, self).cleanup()
 
 

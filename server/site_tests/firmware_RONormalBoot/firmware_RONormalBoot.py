@@ -22,23 +22,14 @@ class firmware_RONormalBoot(FAFTSequence):
     version = 1
 
 
-    def ensure_fw_a_boot(self):
-        """Ensure firmware A boot this time."""
-        if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode recovery')
-            })
-
-
     def setup(self, dev_mode=False):
         super(firmware_RONormalBoot, self).setup()
+        self.backup_firmware()
         self.setup_dev_mode(dev_mode)
-        self.ensure_fw_a_boot()
 
 
     def cleanup(self):
-        self.ensure_fw_a_boot()
+        self.restore_firmware()
         super(firmware_RONormalBoot, self).cleanup()
 
 
