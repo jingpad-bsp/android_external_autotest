@@ -50,6 +50,10 @@ class logging_CrashSender(crash_test.CrashTest):
         if log_path and not ('log: @%s' % log_path) in result['output']:
             raise error.TestFail('Minidump send missing log')
         self._check_hardware_info(result)
+        # Also test "Image type" field.  Note that it will not be "dev" even
+        # on a dev build because /tmp/crash-test-in-progress will exist.
+        if result['image_type']:
+            raise error.TestFail('Image type should not exist')
 
 
     def _test_sender_simple_minidump(self):
@@ -191,6 +195,15 @@ class logging_CrashSender(crash_test.CrashTest):
             raise error.TestFail('Expected minidump to be saved for later '
                                  'sending')
 
+        # Also test "Image type" field.  For testing purposes, we set it upon
+        # mock failure.  Note that it will not be "dev" even on a dev build
+        # because /tmp/crash-test-in-progress will exist.
+        if not result['image_type']:
+            raise error.TestFail('Missing image type')
+        if result['image_type'] != 'mock-fail':
+            raise error.TestFail('Incorrect image type ("%s" != '
+                                 '"mock-fail")' % result['image_type'])
+
 
     def _test_sender_orphaned_files(self):
         """Test that payload and unknown files that are old are removed."""
@@ -245,6 +258,30 @@ class logging_CrashSender(crash_test.CrashTest):
             raise error.TestFail('Missing payload case handled wrong')
 
 
+    def _test_sender_error_type(self):
+        dmp_file = self.write_crash_dir_entry('error_type.dmp', '')
+        meta_file = self.write_fake_meta('error_type.meta', 'fake', dmp_file,
+                                         complete=False)
+        utils.write_keyval(meta_file, {"error_type": "system-issue"})
+        utils.write_keyval(meta_file, {"done": "1"})
+        self._set_force_official(True)  # also test this
+        result = self._call_sender_one_crash(report=meta_file)
+        if not result['error_type']:
+            raise error.TestFail('Missing error type')
+        if result['error_type'] != 'system-issue':
+            raise error.TestFail('Incorrect error type "%s"' %
+                                 result['error_type'])
+
+        # Also test force-official override by checking the image type.  Note
+        # that it will not be "dev" even on a dev build because
+        # /tmp/crash-test-in-progress will exist.
+        if not result['image_type']:
+            raise error.TestFail('Missing image type when forcing official')
+        if result['image_type'] != 'force-official':
+            raise error.TestFail('Incorrect image type ("%s" != '
+                                 '"force-official")' % result['image_type'])
+
+
     def run_once(self):
         self.run_crash_tests([
             'sender_simple_minidump',
@@ -258,4 +295,5 @@ class logging_CrashSender(crash_test.CrashTest):
             'sender_send_fails',
             'sender_orphaned_files',
             'sender_incomplete_metadata',
-            'sender_missing_payload']);
+            'sender_missing_payload',
+            'sender_error_type']);

@@ -115,6 +115,22 @@ class CrashTest(test.test):
             del os.environ['OVERRIDE_PAUSE_SENDING']
 
 
+    def _set_force_official(self, is_enabled):
+        """Sets whether or not reports will upload for unofficial versions.
+
+        Normally, crash reports are only uploaded for official build
+        versions.  If the override is set, however, they will also be
+        uploaded for unofficial versions.
+
+        Args:
+            is_enabled: True to enable uploading for unofficial versions.
+        """
+        if is_enabled:
+            os.environ['FORCE_OFFICIAL'] = "1"
+        elif os.environ.get('FORCE_OFFICIAL'):
+            del os.environ['FORCE_OFFICIAL']
+
+
     def _reset_rate_limiting(self):
         """Reset the count of crash reports sent today.
 
@@ -366,7 +382,9 @@ class CrashTest(test.test):
 
         Returns:
           A dictionary with these values:
+            error_type: an error type, if given
             exec_name: name of executable which crashed
+            image_type: type of image ("dev","force-official",...), if given
             meta_path: path to the report metadata file
             output: the output from the script, copied
             report_kind: kind of report sent (minidump vs kernel)
@@ -382,6 +400,7 @@ class CrashTest(test.test):
             sleep_time = int(sleep_match.group(1))
         else:
             sleep_time = None
+
         meta_match = re.search('Metadata: (\S+) \((\S+)\)', output)
         if meta_match:
             meta_path = meta_match.group(1)
@@ -389,21 +408,37 @@ class CrashTest(test.test):
         else:
             meta_path = None
             report_kind = None
+
         payload_match = re.search('Payload: (\S+)', output)
         if payload_match:
             report_payload = payload_match.group(1)
         else:
             report_payload = None
+
         exec_name_match = re.search('Exec name: (\S+)', output)
         if exec_name_match:
             exec_name = exec_name_match.group(1)
         else:
             exec_name = None
+
         sig_match = re.search('sig: (\S+)', output)
         if sig_match:
             sig = sig_match.group(1)
         else:
             sig = None
+
+        error_type_match = re.search('Error type: (\S+)', output)
+        if error_type_match:
+            error_type = error_type_match.group(1)
+        else:
+            error_type = None
+
+        image_type_match = re.search('Image type: (\S+)', output)
+        if image_type_match:
+            image_type = image_type_match.group(1)
+        else:
+            image_type = None
+
         send_success = 'Mocking successful send' in output
         return {'exec_name': exec_name,
                 'report_kind': report_kind,
@@ -412,6 +447,8 @@ class CrashTest(test.test):
                 'send_attempt': send_attempt,
                 'send_success': send_success,
                 'sig': sig,
+                'error_type': error_type,
+                'image_type': image_type,
                 'sleep_time': sleep_time,
                 'output': output}
 
@@ -605,6 +642,8 @@ class CrashTest(test.test):
             self._set_child_sending(True)
             self._kill_running_sender()
             self._reset_rate_limiting()
+            # Default to not overriding for unofficial versions.
+            self._set_force_official(False)
             if clear_spool_first:
                 self._clear_spooled_crashes()
 
