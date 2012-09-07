@@ -38,9 +38,18 @@ function submitAndGo() {
                                       document.getElementById("continue"));
   return true;
 }
+function onAuthError() {
+  if (window.domAutomationController) {
+    window.domAutomationController.sendWithId(4444, 'loginfail');
+  }
+}
+function onLoad() {
+  gaia.chromeOSLogin.clearOldAttempts();
+  %(onload)s
+}
 </SCRIPT>
 </HEAD>
-<BODY onload='gaia.chromeOSLogin.clearOldAttempts();'>
+<BODY onload='onLoad();'>
   Local Auth Server:<BR>
   <FORM action=%(form_url)s method=POST onsubmit='submitAndGo()'>
     <INPUT TYPE=text id="Email" name="Email">
@@ -229,13 +238,15 @@ function submitAndGo() {
                     '%s did not receive a %s param.' % (handler.path, param))
 
 
-    def _return_login_form(self, handler, error_message, continue_url):
+    def _return_login_form(self, handler, error_message, continue_url,
+                           onload=''):
         handler.send_response(httplib.OK)
         handler.end_headers()
         handler.wfile.write(self.__service_login_html % {
             'form_url': self._service_login_auth,
             'error_message': error_message,
-            'continue': continue_url})
+            'continue': continue_url,
+            'onload': onload})
 
 
     def _log(self, handler, url_args):
@@ -261,7 +272,8 @@ function submitAndGo() {
         else:
             self._return_login_form(handler,
                                     constants.SERVICE_LOGIN_AUTH_ERROR,
-                                    _value(['continue']))
+                                    _value(['continue']),
+                                    'onAuthError();')
 
 
     def _oauth1_get_request_token_responder(self, handler, url_args):
