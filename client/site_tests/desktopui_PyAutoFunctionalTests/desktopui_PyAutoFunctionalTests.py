@@ -10,7 +10,7 @@ class desktopui_PyAutoFunctionalTests(chrome_test.PyAutoFunctionalTest):
     version = 1
 
 
-    def run_once(self, suite=None, tests=[]):
+    def run_once(self, suite='', tests=[]):
         """Run pyauto functional tests.
 
         Args:

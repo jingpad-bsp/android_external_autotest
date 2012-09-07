@@ -49,7 +49,7 @@ GTESTS = [
         'tag': 'CHROMEOS_FLASH',
     }),
     ('desktopui_PyAutoFunctionalTests', {
-        'tests': 'netflix',
+        'tests': ['netflix'],
         'auto_login': False,
         'tag': 'netflix',
     }),
