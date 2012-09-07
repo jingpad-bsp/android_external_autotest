@@ -75,3 +75,24 @@ class SiteDispatcher(object):
                     task=models.SpecialTask.Task.CLEANUP,
                     host=models.Host.objects.get(id=host.id),
                     requested_by=user)
+
+
+    def _check_for_unrecovered_verifying_entries(self):
+        queue_entries = scheduler_models.HostQueueEntry.fetch(
+                where='status = "%s"' % models.HostQueueEntry.Status.VERIFYING)
+        for queue_entry in queue_entries:
+            special_tasks = models.SpecialTask.objects.filter(
+                    task__in=(models.SpecialTask.Task.CLEANUP,
+                              models.SpecialTask.Task.VERIFY),
+                    queue_entry__id=queue_entry.id,
+                    is_complete=False)
+            if special_tasks.count() == 0:
+                logging.error('Unrecovered Verifying host queue entry: %s. '
+                              'Setting status to Queued.', str(queue_entry))
+                # Essentially this host queue entry was set to be Verifying
+                # however no special task exists for entry. This occurs if the
+                # scheduler dies between changing the status and creating the
+                # special task. By setting it to queued, the job can restart
+                # from the beginning and proceed correctly. This is much more
+                # preferable than having monitor_db not launching.
+                queue_entry.set_status('Queued')
