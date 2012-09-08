@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+ * Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -7,7 +7,6 @@
 #define _GNU_SOURCE /* for RTLD_NEXT in dlfcn.h */
 
 #include <glib.h>
-#include <glib/gtypes.h>
 #include <glib-object.h>
 
 #include <dlfcn.h>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+ * Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -159,7 +159,7 @@ parse_pattern_files(char **pattern_files, GError **error)
       }
       g_free (line);
     }
-    g_io_channel_close (pf);
+    g_io_channel_shutdown (pf, TRUE, NULL);
   }
 
   g_regex_unref (skip);
