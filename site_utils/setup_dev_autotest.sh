@@ -91,6 +91,9 @@ readonly_password: ${PASSWD}
 
 [SERVER]
 hostname: localhost
+
+[SCHEDULER]
+drones: localhost
 EOF
 echo -e "Done!\n"
 
