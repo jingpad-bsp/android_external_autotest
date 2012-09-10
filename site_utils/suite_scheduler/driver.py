@@ -11,6 +11,7 @@ import forgiving_config_parser, manifest_versions, task, timed_event
 class Driver(object):
     """Implements the main loop of the suite_scheduler.
 
+    @var EVENT_CLASSES: list of the event classes Driver supports.
     @var _LOOP_INTERVAL_SECONDS: seconds to wait between loop iterations.
 
     @var _scheduler: a DedupingScheduler, used to schedule jobs with the AFE.
@@ -19,6 +20,8 @@ class Driver(object):
     @var _events: dict of BaseEvents to be handled each time through main loop.
     """
 
+    EVENT_CLASSES = [timed_event.Nightly, timed_event.Weekly,
+                     build_event.NewBuild]
     _LOOP_INTERVAL_SECONDS = 5 * 60
 
 
@@ -61,10 +64,8 @@ class Driver(object):
         @param config: an instance of ForgivingConfigParser.
         @param mv: an instance of ManifestVersions.
         """
-        event_classes = [timed_event.Nightly, timed_event.Weekly,
-                         build_event.NewBuild]
         events = {}
-        for klass in event_classes:
+        for klass in self.EVENT_CLASSES:
             events[klass.KEYWORD] = klass.CreateFromConfig(config, mv)
 
         tasks = self.TasksFromConfig(config)

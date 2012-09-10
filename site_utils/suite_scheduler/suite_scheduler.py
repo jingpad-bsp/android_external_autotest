@@ -173,6 +173,12 @@ def main():
     config = forgiving_config_parser.ForgivingConfigParser()
     config.read(options.config_file)
 
+    if options.list:
+        print 'Supported events:'
+        for event_class in driver.Driver.EVENT_CLASSES:
+            print '  ', event_class.KEYWORD
+        return 0
+
     # If we're just sanity checking, we can stop after we've parsed the
     # config file.
     if options.sanity:
