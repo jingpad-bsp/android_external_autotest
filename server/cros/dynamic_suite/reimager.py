@@ -75,7 +75,7 @@ class Reimager(object):
         @param check_hosts: require appropriate hosts to be available now.
         @param manager: an as-yet-unused HostLockManager instance to handle
                         locking DUTs that we decide to reimage.
-        @param num: how many devices to reimage.
+        @param num: the maximum number of devices to reimage.
         @return True if all reimaging jobs succeed, false otherwise.
         """
         if not num:
@@ -149,7 +149,7 @@ class Reimager(object):
 
         @param board: which kind of devices to reimage.
         @param pool: the pool of machines to use for scheduling purposes.
-        @param num: how many devices to reimage.
+        @param num: the maximum number of devices to reimage.
         @raises NoHostsException: if no working hosts.
         @raises InadequateHostsException: if too few working hosts.
         """
@@ -271,7 +271,7 @@ class Reimager(object):
         @param build: the build to install (must be unique).
         @param board: which kind of devices to reimage.
         @param pool: the pool of machines to use for scheduling purposes.
-        @param num_machines: how many devices to reimage.
+        @param num_machines: the maximum number of devices to reimage.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
         image_url = tools.image_url_pattern() % (

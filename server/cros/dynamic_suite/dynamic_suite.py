@@ -46,11 +46,11 @@ dynamic_suite.reimage_and_run(
     check_hosts=check_hosts, add_experimental=True, num=num,
     skip_reimage=dynamic_suite.skip_reimage(globals()))
 
-This will -- at runtime -- find all control files that contain "bvt"
-in their "SUITE=" clause, schedule jobs to reimage |num| devices in the
-specified pool of the specified board with the specified build and,
-upon completion of those jobs, schedule and wait for jobs that run all
-the tests it discovered across those |num| machines.
+This will -- at runtime -- find all control files that contain "bvt" in their
+"SUITE=" clause, schedule jobs to reimage |num| or less devices in the
+specified pool of the specified board with the specified build and, upon
+completion of those jobs, schedule and wait for jobs that run all the tests it
+discovered across those |num| or less machines.
 
 Suites can be run by using the atest command-line tool:
   atest suite create -b <board> -i <build/name> <suite>
@@ -144,7 +144,8 @@ Step by step:
   - This information is consumed in server/site_autotest.py
   - job_repo_url points to some location on the dev server, where build
     artifacts are staged -- including autotest packages.
-7) Return success or failure.
+7) Return success if at least one device successfully reimaged, or failure
+   otherwise.
 
           +------------+                       +--------------------------+
           |            |                       |                          |
@@ -161,7 +162,7 @@ Step by step:
                                           host-attribute
 
 To sum up, after re-imaging, we have the following assumptions:
-- |num| devices of type |board| have |build| installed.
+- At most |num| devices of type |board| have |build| installed.
 - These devices are labeled appropriately
 - They have a host attribute called 'job_repo_url' dictating where autotest
   packages can be downloaded for test runs.
@@ -253,7 +254,7 @@ class SuiteSpec(object):
     Currently supported optional fields:
     @var pool: specify the pool of machines to use for scheduling purposes.
                Default: None
-    @var num: how many devices to reimage.
+    @var num: the maximum number of devices to reimage.
               Default in global_config
     @var check_hosts: require appropriate hosts to be available now.
     @var skip_reimage: skip reimaging, used for testing purposes.
@@ -280,7 +281,7 @@ class SuiteSpec(object):
         Currently supported optional args:
         @param pool: specify the pool of machines to use for scheduling purposes
                      Default: None
-        @param num: how many devices to reimage.
+        @param num: the maximum number of devices to reimage.
                     Default in global_config
         @param check_hosts: require appropriate hosts to be available now.
         @param skip_reimage: skip reimaging, used for testing purposes.
@@ -337,7 +338,7 @@ def reimage_and_run(**dargs):
     Currently supported optional args:
     @param pool: specify the pool of machines to use for scheduling purposes.
                  Default: None
-    @param num: how many devices to reimage.
+    @param num: the maximum number of devices to reimage.
                 Default in global_config
     @param check_hosts: require appropriate hosts to be available now.
     @param skip_reimage: skip reimaging, used for testing purposes.

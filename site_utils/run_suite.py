@@ -59,7 +59,8 @@ def parse_options():
     parser.add_option("-d", "--delay_sec", dest="delay_sec", default=10)
     parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
                       help="Skips running suite; creates report for given ID.")
-    parser.add_option("-u", "--num", dest="num", type="int", default=None)
+    parser.add_option("-u", "--num", dest="num", type="int", default=None,
+                      help="Run on at most NUM machiens.")
     options, args = parser.parse_args()
     return parser, options, args
 
