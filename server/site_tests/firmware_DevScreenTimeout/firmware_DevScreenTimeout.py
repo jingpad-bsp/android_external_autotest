@@ -28,8 +28,10 @@ class firmware_DevScreenTimeout(FAFTSequence):
     CTRL_D_REPEAT_COUNT = 10
     CTRL_D_REPEAT_DELAY = 0.5
 
-    # We accept 3s timeout margin.
-    TIMEOUT_MARGIN = 3
+    # We accept 5s timeout margin as we need 5s to ensure client is offline.
+    # If the margin is too small and firmware initialization is too fast,
+    # the test will fail incorrectly.
+    TIMEOUT_MARGIN = 5
 
     fw_time_record = {}
 
