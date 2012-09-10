@@ -39,9 +39,13 @@ _AUDIOFUNTEST_SUCCESS_RATE_RE = re.compile('.*rate\s=\s(.*)$')
 
 _MUTE_LEFT_MIXER_SETTINGS = [{'name': '"Headphone Playback Switch"',
                               'value': 'off,on'},
+                             {'name': '"Master Playback Switch"',
+                              'value': 'off,on'},
                              {'name': '"Speaker Playback Switch"',
                               'value': 'off,on'}]
 _MUTE_RIGHT_MIXER_SETTINGS = [{'name': '"Headphone Playback Switch"',
+                               'value': 'on,off'},
+                              {'name': '"Master Playback Switch"',
                                'value': 'on,off'},
                               {'name': '"Speaker Playback Switch"',
                                'value': 'on,off'}]
