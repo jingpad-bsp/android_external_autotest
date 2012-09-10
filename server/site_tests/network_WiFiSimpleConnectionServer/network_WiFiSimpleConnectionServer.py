@@ -13,7 +13,6 @@ from autotest_lib.server import test, autotest
 from autotest_lib.client.cros.wifi_compat import ap_configurator_factory
 from autotest_lib.client.cros.wifi_compat import download_chromium_prebuilt
 
-
 class network_WiFiSimpleConnectionServer(test.test):
     version = 1
 
@@ -33,7 +32,6 @@ class network_WiFiSimpleConnectionServer(test.test):
 
     def run_once(self, host=None):
         self.client = host
-
         if download_chromium_prebuilt.download_chromium_prebuilt_binaries():
             raise error.TestError('The binaries were just downloaded.  Please '
                                   'run: (outside-chroot) <path to chroot tmp '
@@ -50,14 +48,24 @@ class network_WiFiSimpleConnectionServer(test.test):
             ap_name = ap.get_router_short_name()
             logging.debug('Turning on ap: %s' % ap_name)
             ap.power_up_router()
-            ap.set_radio(enabled=True)
-            ap.set_ssid(ap_name)
-            ap.set_visibility(visible=True)
-            ap.set_security_disabled()
-            logging.debug('Setting up ap with no security and visible ssid:%s' %
-                          ap_name)
-            ap.apply_settings()
-            logging.debug('Running client test.')
-            self._run_client_test(ap_name)
+            bands_info = ap.get_supported_bands()
+            bands = []
+            for band in bands_info:
+                bands.append(band['band'])
+            for band in bands:
+                ap.set_band(band)
+                ap.apply_settings()
+                ssid = ap_name
+                if len(bands) > 1:
+                    ssid = ap_name + '_%s' % band
+                ap.set_radio(enabled=True)
+                ap.set_ssid(ssid)
+                ap.set_visibility(visible=True)
+                ap.set_security_disabled()
+                logging.debug('Setting up ap with no security and visible '
+                              'ssid:%s' % ssid)
+                ap.apply_settings()
+                logging.debug('Running client test.')
+                self._run_client_test(ssid)
             logging.debug('Client test complete, powering down router')
             ap.power_down_router()
