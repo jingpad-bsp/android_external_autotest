@@ -60,13 +60,21 @@ class Servo(object):
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
 
-    KEY_MATRIX = {
+    KEY_MATRIX_ALT_0 = {
         'm1': {'ctrl_r': ['0', '0'], 'd': ['0', '1'],
                'enter': ['1', '0'], 'none': ['1', '1']},
         'm2': {'ctrl': ['0', '0'], 'refresh': ['0', '1'],
                'unused': ['1', '0'], 'none': ['1', '1']}
         }
 
+    KEY_MATRIX_ALT_1 = {
+        'm1': {'d': ['0', '0'], 'enter': ['0', '1'],
+               'ctrl_r': ['1', '0'], 'none': ['1', '1']},
+        'm2': {'unused': ['0', '0'], 'refresh': ['0', '1'],
+               'ctrl': ['1', '0'], 'none': ['1', '1']}
+        }
+
+    KEY_MATRIX = [KEY_MATRIX_ALT_0, KEY_MATRIX_ALT_1]
 
     @staticmethod
     def _make_servo_hostname(hostname):
@@ -106,6 +114,7 @@ class Servo(object):
                           is running.
         @param servo_port Port the servod process is listening on.
         """
+        self._key_matrix = 0
         self._server = None
         self._connect_servod(servo_host, servo_port)
 
@@ -196,15 +205,15 @@ class Servo(object):
                                 press_secs=SERVO_KEY_PRESS_DELAY):
         """Simulate button presses."""
         # set keys to none
-        (m2_a1, m2_a0) = self.KEY_MATRIX['m2']['none']
-        (m1_a1, m1_a0) = self.KEY_MATRIX['m1']['none']
+        (m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix]['m2']['none']
+        (m1_a1, m1_a0) = self.KEY_MATRIX[self._key_matrix]['m1']['none']
         self.set_nocheck('kbd_m2_a0', m2_a0)
         self.set_nocheck('kbd_m2_a1', m2_a1)
         self.set_nocheck('kbd_m1_a0', m1_a0)
         self.set_nocheck('kbd_m1_a1', m1_a1)
 
-        (m2_a1, m2_a0) = self.KEY_MATRIX['m2'][m2]
-        (m1_a1, m1_a0) = self.KEY_MATRIX['m1'][m1]
+        (m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix]['m2'][m2]
+        (m1_a1, m1_a0) = self.KEY_MATRIX[self._key_matrix]['m1'][m1]
         self.set_nocheck('kbd_en', 'on')
         self.set_nocheck('kbd_m2_a0', m2_a0)
         self.set_nocheck('kbd_m2_a1', m2_a1)
@@ -212,6 +221,11 @@ class Servo(object):
         self.set_nocheck('kbd_m1_a1', m1_a1)
         time.sleep(press_secs)
         self.set_nocheck('kbd_en', 'off')
+
+
+    def set_key_matrix(self, matrix=0):
+        """Set keyboard mapping"""
+        self._key_matrix = matrix
 
 
     def ctrl_d(self):

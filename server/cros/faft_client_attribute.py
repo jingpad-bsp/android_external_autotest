@@ -11,7 +11,8 @@ class FAFTClientAttribute(object):
                        'has_lid': True,
                        'keyboard_dev': True,
                        'ec_capability': list(),
-                       'wp_voltage': 'pp1800'}
+                       'wp_voltage': 'pp1800',
+                       'key_matrix_layout': 0}
 
     def __init__(self, platform):
         """Initialized.
@@ -58,5 +59,9 @@ class FAFTClientAttribute(object):
         # Set 'wp_voltage'
         if platform == 'Link':
             setting['wp_voltage'] = 'pp3300'
+
+        # Set 'key_matrix_layout'
+        if platform == 'Parrot':
+            setting['key_matrix_layout'] = 1
 
         return setting

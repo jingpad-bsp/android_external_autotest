@@ -280,6 +280,9 @@ class FAFTSequence(ServoTest):
             self.client_attr = FAFTClientAttribute(
                     self.faft_client.get_platform_name())
 
+            # Setting up key matrix mapping
+            self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
+
 
     def setup(self):
         """Autotest setup function."""
