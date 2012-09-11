@@ -6,7 +6,9 @@
 # service and connect to it.  Test that after destroying
 # the service via DeleteEntry, the GUID property of the
 # service is no longer set.  Test that performing another
-# ConfigureService with a different passphrase succeeds.
+# ConfigureService with a different passphrase succeeds,
+# once by removing the previous configuration first, and
+# a second time by simply modifying the current config.
 
 { "name":"ProfileGuid",
   "steps":[
@@ -68,6 +70,25 @@
     # Verify that we can connect using configured credentials.
     [ "connect",        { "ssid":"ProfileGUID" } ],
 
+    # Disconnect from the AP.
+    [ "disconnect" ],
+
+    # Change the passphrase again on the AP.
+    [ "config",         { "ssid":"ProfileGUID",
+                          "channel":"2412", "mode":"11g",
+                          "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
+                          "wpa_pairwise":"CCMP",
+                          "wpa_passphrase":"chromeos2" } ],
+
+    # Change the configuration using a another ConfigureService call,
+    # but this time we are modifying an existing entry instead of
+    # removing it first.
+    [ "client_configure_service",
+                        { "GUID": "01234",
+                          "Passphrase": "chromeos2" } ],
+
+    # Verify that we can connect using configured credentials.
+    [ "connect",        { "ssid":"ProfileGUID" } ],
     [ "deconfig" ],
     [ "destroy" ],
   ],
