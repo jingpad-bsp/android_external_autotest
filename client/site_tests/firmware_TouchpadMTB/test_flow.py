@@ -138,7 +138,12 @@ class TestFlow:
 
     def span_variations(self, seq):
         """Span the variations of a gesture."""
-        return reduce(self._span_seq, seq) if isinstance(seq[0], tuple) else seq
+        if seq is None:
+            return (None,)
+        elif isinstance(seq[0], tuple):
+            return reduce(self._span_seq, seq)
+        else:
+            return seq
 
     def _stop(self):
         """Terminate the recording process."""
@@ -175,13 +180,14 @@ class TestFlow:
 
         if subprompt is None:
             color_prompt = prompt
+            monochrome_prompt = prompt
         else:
             color_prompt = mini_color.color_string(prompt, '{', '}', 'green')
             color_prompt = color_prompt.format(*subprompt)
             monochrome_prompt = prompt.format(*subprompt)
 
         color_msg_format = mini_color.color_string('\n<%s>:\n%s%s', '<', '>',
-                                                    'blue')
+                                                   'blue')
         color_msg = color_msg_format % (test.name, self.prefix_space,
                                         color_prompt)
         msg = '%s: %s' % (test.name, monochrome_prompt)
