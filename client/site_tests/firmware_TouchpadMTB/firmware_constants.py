@@ -12,8 +12,8 @@ EV_VALUE = 'EV_VALUE'
 SYN_REPORT = 'SYN_REPORT'
 
 # Constants about two axes
-X = 0
-Y = 1
+X = 'X'
+Y = 'Y'
 
 # Constants about gesture variations
 # Directions

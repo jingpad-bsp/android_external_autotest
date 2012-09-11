@@ -10,6 +10,7 @@ from firmware_utils import Gesture
 from validators import (CountTrackingIDValidator,
                         LinearityValidator,
                         NoGapValidator,
+                        NoReversedMotionValidator,
                         RangeValidator,
                         StationaryFingerValidator,
 )
@@ -45,6 +46,7 @@ gesture_list = [
         validators=(
             CountTrackingIDValidator('== 1'),
             LinearityValidator('<= 0.03, ~ +0.07'),
+            NoReversedMotionValidator('== 0, ~ +20', slots=0),
             RangeValidator('<= 0.05, ~ +0.05'),
         ),
     ),
@@ -68,6 +70,7 @@ gesture_list = [
         validators=(
             CountTrackingIDValidator('== 2'),
             LinearityValidator('<= 0.03, ~ +0.07', fingers=2),
+            NoReversedMotionValidator('== 0, ~ +20', slots=(0, 1)),
         ),
     ),
 
@@ -90,9 +93,10 @@ gesture_list = [
             NORMAL: ('1 second',),
         },
         validators=(
-            StationaryFingerValidator('<= 20, ~ +20', slot=0),
-            NoGapValidator('<= 5, ~ +5', slot=1),
             CountTrackingIDValidator('== 2'),
+            NoGapValidator('<= 5, ~ +5', slot=1),
+            NoReversedMotionValidator('== 0, ~ +20', slots=1),
+            StationaryFingerValidator('<= 20, ~ +20', slot=0),
         ),
     ),
 

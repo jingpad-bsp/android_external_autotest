@@ -111,6 +111,16 @@ class BaseValidator(object):
         """Is the direction diagonal?"""
         return self._is_direction_in_variation(variation, DIAGONAL_DIRECTIONS)
 
+    def get_direction(self, variation):
+        """Get the direction."""
+        # TODO(josephsih): raise an exception if a proper direction is not found
+        if self.is_horizontal(variation):
+            return HORIZONTAL
+        elif self.is_vertical(variation):
+            return VERTICAL
+        elif self.is_diagonal(variation):
+            return DIAGONAL
+
     def print_msg(self, msg):
         """Collect the messages to be printed within this module."""
         prefix_space = ' ' * 8
@@ -292,6 +302,7 @@ class StationaryFingerValidator(BaseValidator):
                                                              distance))
         return (self.fc.mf.grade(distance), self.msg_list)
 
+
 class NoGapValidator(BaseValidator):
     """Validator to make sure that there are no significant gaps in a line.
 
@@ -312,3 +323,30 @@ class NoGapValidator(BaseValidator):
         msg = 'Largest gap ratio in slot[%d]: %f'
         self.print_msg(msg % (self.slot, gap_ratio))
         return (self.fc.mf.grade(gap_ratio), self.msg_list)
+
+
+class NoReversedMotionValidator(BaseValidator):
+    """Validator to measure the reversed motions in specified slots.
+
+    Example:
+        To measure the reversed motions in slot 0:
+          NoReversedMotionValidator('== 0, ~ +20', slots=0)
+    """
+
+    def __init__(self, criteria_str, mf=None, slots=(0,)):
+        super(NoReversedMotionValidator, self).__init__(criteria_str, mf)
+        self.slots = (slots,) if isinstance(slots, int) else slots
+
+    def check(self, packets, variation=None):
+        """There should be no reversed motions in a slot."""
+        self.init_check(packets)
+        sum_reversed_motions = 0
+        direction = self.get_direction(variation)
+        for slot in self.slots:
+            # Get the reversed motions if any
+            reversed_motions = self.packets.get_reversed_motions(slot,
+                                                                 direction)
+            msg = 'Reversed motions in slot[%d]: %s'
+            self.print_msg(msg % (slot, reversed_motions))
+            sum_reversed_motions += sum(map(abs, reversed_motions.values()))
+        return (self.fc.mf.grade(sum_reversed_motions), self.msg_list)

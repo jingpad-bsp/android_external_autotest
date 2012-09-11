@@ -187,6 +187,60 @@ class MTB:
         largest_gap_ratio = max(gap_ratios) if gap_ratios else 0
         return largest_gap_ratio
 
+    def get_displacement(self, target_slot):
+        """Get the displacement in the target slot."""
+        displace = [map(lambda p0, p1: p1 - p0, axis[:len(axis) - 1], axis[1:])
+                    for axis in self.get_x_y(target_slot)]
+        displacement_dict = dict(zip((X, Y), displace))
+        return displacement_dict
+
+    def get_reversed_motions(self, target_slot, direction):
+        """Get the total reversed motions in the specified direction
+           in the target slot.
+
+        If direction is HORIZONTAL, consider only x axis.
+        If direction is VERTICAL, consider only y axis.
+        If direction is DIAGONAL, consider both x and y axes.
+
+        Assume that a list of displacement in some axis looks like
+            [10, 12, 8, -9, -2, 6, 8, 11, 12, 5, 2]
+
+        The number of positive displacements, which is 9, is greater than
+        the number of negative displacements, which is 2. In this case
+        (-9) + (-2) = -11 is the total reversed motion in this list.
+
+        Should the number of positive items be equal to the number of negative
+        items, we assume that the one with smaller sum is the reversed motion.
+        Take this list [10, 22, -9, -2, -3, 10] for example. The numbers of
+        items for both positive/negative displacements are the same. However,
+        the sum of negative values is smaller. Hence, the reversed motion is
+        the sum of negative values.
+        """
+        check_axes = {HORIZONTAL: (X,), VERTICAL: (Y,), DIAGONAL: (X, Y)}
+        displacement_dict = self.get_displacement(target_slot)
+
+        reversed_motions = {}
+        func_positive = lambda n: n > 0
+        func_negative = lambda n: n < 0
+        for axis in check_axes[direction]:
+            displacement = displacement_dict[axis]
+            list_positive = filter(func_positive, displacement)
+            list_negative = filter(func_negative, displacement)
+            num_positive = len(list_positive)
+            num_negative = len(list_negative)
+            sum_positive = sum(list_positive)
+            sum_negative = sum(list_negative)
+            if num_positive > num_negative:
+                reversed_motions[axis] = sum_negative
+            elif num_positive < num_negative:
+                reversed_motions[axis] = sum_positive
+            # Handle the very rare case below when num_positive == num_negative
+            elif sum_positive >= sum_negative:
+                reversed_motions[axis] = sum_negative
+            elif sum_positive < sum_negative:
+                reversed_motions[axis] = sum_positive
+        return reversed_motions
+
 
 class MTBParser:
     """Touchpad MTB event Parser."""
