@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -27,40 +27,46 @@ class network_3GSafetyDance(test.test):
         return v
 
     def enable(self):
-        print 'Enable'
+        logging.info('Enable')
         self.filterexns(lambda:
             self.flim.EnableTechnology('cellular'))
 
     def disable(self):
-        print 'Disable'
+        logging.info('Disable')
         self.filterexns(lambda:
             self.flim.DisableTechnology('cellular'))
 
     def ignoring(self, status):
-        if 'AlreadyConnected' in status['reason']:
+        if ('AlreadyConnected' in status['reason'] or
+            'Bearer already being connected' in status['reason'] or
+            'Bearer already being disconnected' in status['reason'] or
+            'InProgress' in status['reason']):
             return True
-        if 'InProgress' in status['reason']:
-            return True
+        if 'NotSupported' in status['reason']:
+            # We should only ignore this error if we've previously disabled
+            # cellular technology and the service subsequently disappeared
+            # when we tried to connect again.
+            return not self.flim.FindCellularService(timeout=0)
         return False
 
     def connect(self):
-        print 'Connect'
+        logging.info('Connect')
         self.service = self.flim.FindCellularService(timeout=5)
         if self.service:
             (success, status) = self.filterexns(lambda:
-                self.flim.ConnectService(service = self.service,
-                                         assoc_timeout = 120,
-                                         config_timeout = 120))
+                self.flim.ConnectService(service=self.service,
+                                         assoc_timeout=120,
+                                         config_timeout=120))
             if not success and not self.ignoring(status):
                 raise error.TestFail('Could not connect: %s' % status)
 
     def disconnect(self):
-        print 'Disconnect'
+        logging.info('Disconnect')
         self.service = self.flim.FindCellularService(timeout=5)
         if self.service:
             (success, status) = self.filterexns(lambda:
-                self.flim.DisconnectService(service = self.service,
-                                            wait_timeout = 60))
+                self.flim.DisconnectService(service=self.service,
+                                            wait_timeout=60))
             if not success:
                 raise error.TestFail('Could not disconnect: %s' % status)
 
@@ -100,28 +106,31 @@ class network_3GSafetyDance(test.test):
         props = service.GetProperties()
         favorite = props['Favorite']
         autoconnect = props['AutoConnect']
-        print 'Favorite = %s, AutoConnect = %s' % (favorite, autoconnect)
+        logging.info('Favorite = %s, AutoConnect = %s' %
+                     (favorite, autoconnect))
 
         if not favorite:
-            print 'Enabling Favorite by connecting to service.'
+            logging.info('Enabling Favorite by connecting to service.')
             self.enable()
             self.connect()
 
             props = service.GetProperties()
             favorite = props['Favorite']
             autoconnect = props['AutoConnect']
-            print 'Favorite = %s, AutoConnect = %s' % (favorite, autoconnect)
+            logging.info('Favorite = %s, AutoConnect = %s' %
+                         (favorite, autoconnect))
 
         had_autoconnect = autoconnect
 
         if autoconnect:
-            print 'Disabling AutoConnect.'
+            logging.info('Disabling AutoConnect.')
             service.SetProperty('AutoConnect', dbus.Boolean(0))
 
             props = service.GetProperties()
             favorite = props['Favorite']
             autoconnect = props['AutoConnect']
-            print 'Favorite = %s, AutoConnect = %s' % (favorite, autoconnect)
+            logging.info('Favorite = %s, AutoConnect = %s' %
+                         (favorite, autoconnect))
 
         if not favorite:
             raise error.TestFail('Favorite=False, but we want it to be True')
@@ -140,5 +149,5 @@ class network_3GSafetyDance(test.test):
             if had_autoconnect:
                 service = self.flim.FindCellularService(timeout=5)
                 if service:
-                    print 'Re-enabling AutoConnect.'
+                    logging.info('Re-enabling AutoConnect.')
                     service.SetProperty("AutoConnect", dbus.Boolean(1))
