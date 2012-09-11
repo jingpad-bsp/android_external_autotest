@@ -64,7 +64,9 @@ def gather_job_hostnames(afe, job):
     """
     hosts = []
     for e in afe.run('get_host_queue_entries', job=job.id):
-        if not e['host']:
+        if e['status'] != 'Running':
+            continue
+        elif not e['host']:
             logging.warn('Job %s (%s) has an entry with no host!',
                          job.name, job.id)
             hosts.append(None)

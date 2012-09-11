@@ -55,7 +55,8 @@ class StatusTest(mox.MoxTestBase):
         """All entries for the job were assigned hosts."""
         job = FakeJob(0, [])
         expected_hosts = ['host2', 'host1']
-        entries = [{'host': {'hostname': h}} for h in expected_hosts]
+        entries = [{'status': 'Running',
+                    'host': {'hostname': h}} for h in expected_hosts]
         self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
         self.mox.ReplayAll()
 
@@ -68,14 +69,29 @@ class StatusTest(mox.MoxTestBase):
         """Not all entries for the job were assigned hosts."""
         job = FakeJob(0, [])
         expected_hosts = ['host2', 'host1']
-        entries = [{'host': {'hostname': h}} for h in expected_hosts]
-        entries.append({'host': None})
+        entries = [{'status': 'Running',
+                    'host': {'hostname': h}} for h in expected_hosts]
+        entries.append({'status': 'Running', 'host': None})
         self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
         self.mox.ReplayAll()
 
         self.assertEquals(sorted(expected_hosts + [None]),
                           sorted(job_status.gather_job_hostnames(self.afe,
                                                                  job)))
+
+
+    def testGatherJobHostnamesSomeStillQueued(self):
+        """Not all entries for the job were Running, though all had hosts."""
+        job = FakeJob(0, [])
+        expected_hosts = ['host2', 'host1']
+        entries = [{'status': 'Running',
+                    'host': {'hostname': h}} for h in expected_hosts]
+        entries[-1]['status'] = 'Queued'
+        self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
+        self.mox.ReplayAll()
+
+        self.assertTrue(expected_hosts[-1] not in
+                        job_status.gather_job_hostnames(self.afe, job))
 
 
     def testWaitForJobToStart(self):
