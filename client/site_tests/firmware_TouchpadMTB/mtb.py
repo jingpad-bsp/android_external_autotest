@@ -241,6 +241,11 @@ class MTB:
                 reversed_motions[axis] = sum_positive
         return reversed_motions
 
+    def get_num_packets(self, target_slot):
+        """Get the number of packets in the target slot."""
+        list_x, list_y = self.get_x_y(target_slot)
+        return len(list_x)
+
 
 class MTBParser:
     """Touchpad MTB event Parser."""

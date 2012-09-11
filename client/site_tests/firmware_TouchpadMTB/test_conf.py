@@ -7,7 +7,8 @@
 """This configuration file defines the gestures to perform."""
 
 from firmware_utils import Gesture
-from validators import (CountTrackingIDValidator,
+from validators import (CountPacketsValidator,
+                        CountTrackingIDValidator,
                         LinearityValidator,
                         NoGapValidator,
                         NoReversedMotionValidator,
@@ -109,6 +110,7 @@ gesture_list = [
             TRBL: ('from top right to bottom left',),
         },
         validators=(
+            CountPacketsValidator('>= 3, ~ -3', slot=0),
             CountTrackingIDValidator('== 1'),
         ),
     ),
@@ -122,6 +124,8 @@ gesture_list = [
             BT: ('from bottom to top',),
         },
         validators=(
+            CountPacketsValidator('>= 3, ~ -3', slot=0),
+            CountPacketsValidator('>= 3, ~ -3', slot=1),
             CountTrackingIDValidator('== 2'),
         ),
     ),

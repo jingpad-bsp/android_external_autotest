@@ -350,3 +350,25 @@ class NoReversedMotionValidator(BaseValidator):
             self.print_msg(msg % (slot, reversed_motions))
             sum_reversed_motions += sum(map(abs, reversed_motions.values()))
         return (self.fc.mf.grade(sum_reversed_motions), self.msg_list)
+
+
+class CountPacketsValidator(BaseValidator):
+    """Validator to check the number of packets.
+
+    Example:
+        To verify if there are enough packets received about the first finger:
+          CountPacketsValidator('>= 3, ~ -3', slot=0)
+    """
+
+    def __init__(self, criteria_str, mf=None, slot=0):
+        super(CountPacketsValidator, self).__init__(criteria_str, mf)
+        self.slot = slot
+
+    def check(self, packets, variation=None):
+        """Check the number of packets in the specified slot."""
+        self.init_check(packets)
+        # Get the number of packets in that slot
+        num_packets = self.packets.get_num_packets(self.slot)
+        msg = 'Number of packets in slot[%d]: %s'
+        self.print_msg(msg % (self.slot, num_packets))
+        return (self.fc.mf.grade(num_packets), self.msg_list)
