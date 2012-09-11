@@ -76,10 +76,10 @@ class FuzzySingletonMemberFunction(FuzzyMemberFunctions):
 
     def grade(self, x):
         """The grading method of the fuzzy membership function."""
-        if x < self.left or x > self.right:
-            return 0
-        elif x == self.middle:
+        if x == self.middle:
             return 1
+        elif x <= self.left or x >= self.right:
+            return 0
         elif x > self.middle:
             return (0.5 + 0.5 * math.cos((x - self.middle) / self.width_right *
                     math.pi))
@@ -93,8 +93,8 @@ class FuzzySMemberFunction(FuzzyMemberFunctions):
 
     S Membership Function:
         parameters: (left, right)
-        grade(x) = 0  for x <= left
-                   1  for x >= right
+        grade(x) = 1  for x >= right
+                   0  for x <= left
         E.g., FuzzySMemberFunction((0.1, 0.3))
               Usage: when we want the x >= 0.3 in the ideal condition.
                      grade = 1.0,                 when x >= 0.3
@@ -115,10 +115,10 @@ class FuzzySMemberFunction(FuzzyMemberFunctions):
 
     def grade(self, x):
         """The grading method of the fuzzy membership function."""
-        if x < self.left:
-            return 0
-        elif x > self.right:
+        if x >= self.right:
             return 1
+        elif x <= self.left:
+            return 0
         else:
             return 0.5 + 0.5 * math.cos((x - self.right) / self.width * math.pi)
 
@@ -150,9 +150,9 @@ class FuzzyZMemberFunction(FuzzyMemberFunctions):
 
     def grade(self, x):
         """The grading method of the fuzzy membership function."""
-        if x < self.left:
+        if x <= self.left:
             return 1
-        elif x > self.right:
+        elif x >= self.right:
             return 0
         else:
             return 0.5 + 0.5 * math.cos((x - self.left) / self.width * math.pi)

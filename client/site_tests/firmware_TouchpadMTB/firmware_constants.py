@@ -16,9 +16,38 @@ X = 0
 Y = 1
 
 # Constants about gesture variations
+# Directions
 HORIZONTAL = 'horizontal'
 VERTICAL = 'vertical'
 DIAGONAL = 'diagonal'
+LR = 'left_to_right'
+RL = 'right_to_left'
+TB = 'top_to_bottom'
+BT = 'bottom_to_top'
+BLTR = 'bottom_left_to_top_right'
+BRTL = 'bottom_right_to_top_left'
+TRBL = 'top_right_to_bottom_left'
+TLBR = 'top_left_to_bottom_right'
+HORIZONTAL_DIRECTIONS = [HORIZONTAL, LR, RL]
+VERTICAL_DIRECTIONS = [VERTICAL, TB, BT]
+DIAGONAL_DIRECTIONS = [DIAGONAL, BLTR, BRTL, TRBL, TLBR]
+# location
+TL = 'top_left'
+TR = 'top_right'
+BL = 'bottom_left'
+BR = 'bottom_right'
+TS = 'top_side'
+BS = 'bottom_side'
+LS = 'left_side'
+RS = 'right_side'
+CENTER = 'center'
+# pinch to zoom
+ZOOM_IN = 'zoom_in'
+ZOOM_OUT = 'zoom_out'
+# Speed
+SLOW = 'slow'
+NORMAL = 'normal'
+FAST = 'fast'
 
 # Constants about fuzzy membership functions
 # In fuzzy logic, a membership function indicates the degree of truth

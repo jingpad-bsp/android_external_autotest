@@ -92,11 +92,34 @@ class BaseValidator(object):
         self.packets = mtb.MTB(packets)
         self.msg_list = []
 
+    def _is_direction_in_variation(self, variation, directions):
+        """Is any element of directions list found in variation?"""
+        for direction in directions:
+            if direction in variation:
+                return True
+        return False
+
+    def is_horizontal(self, variation):
+        """Is the direction horizontal?"""
+        return self._is_direction_in_variation(variation, HORIZONTAL_DIRECTIONS)
+
+    def is_vertical(self, variation):
+        """Is the direction vertical?"""
+        return self._is_direction_in_variation(variation, VERTICAL_DIRECTIONS)
+
+    def is_diagonal(self, variation):
+        """Is the direction diagonal?"""
+        return self._is_direction_in_variation(variation, DIAGONAL_DIRECTIONS)
+
     def print_msg(self, msg):
         """Collect the messages to be printed within this module."""
         prefix_space = ' ' * 8
         formatted_msg = '%s%s' % (prefix_space, msg)
         self.msg_list.append(formatted_msg)
+
+    def print_error(self, msg):
+        """Print error message."""
+        self.print_msg('Error: %s.' %msg)
 
 
 class LinearityValidator(BaseValidator):
@@ -168,14 +191,14 @@ class LinearityValidator(BaseValidator):
         results = []
         for slot in range(self.fingers):
             (list_x, list_y) = self.packets.get_x_y(slot)
-            if variation == VERTICAL:
+            if self.is_vertical(variation):
                 results.append(self._simple_linear_regression(list_y, list_x))
+                length = self.device_width
             else:
                 results.append(self._simple_linear_regression(list_x, list_y))
+                length = self.device_height
 
         ave_distance = eval(self.aggregator)(results)
-        length = (self.device_width if variation == VERTICAL
-                                    else self.device_height)
         ave_deviation = ave_distance / length
         self.print_msg('average distance: %f' % ave_distance)
         self.print_msg('ave_deviation: %f' % ave_deviation)
@@ -200,17 +223,25 @@ class RangeValidator(BaseValidator):
         spec_height = spec[3] - spec[2]
         diff = map(lambda a, b: abs(a - b), actual_range, spec)
 
-        if variation == HORIZONTAL:
+        if self.is_horizontal(variation):
             diff_x = diff[0:2]
             ave_deviation = 1.0 * sum(diff_x) / len(diff_x) / spec_width
             actual_range_axis = actual_range[0:2]
             spec_range_axis = spec[0:2]
-        elif variation == VERTICAL:
+        elif self.is_vertical(variation):
             diff_y = diff[2:4]
             ave_deviation = 1.0 * sum(diff_y) / len(diff_y) / spec_height
             actual_range_axis = actual_range[2:4]
             spec_range_axis = spec[2:4]
+        elif self.is_diagonal(variation):
+            # No need to check range on diagonal lines since we have
+            # checked range on horizontal/vertical lines.
+            # It is also difficult to make two-finger tracking precisely from
+            # the very corner to the other corner.
+            return (None, self.msg_list)
         else:
+            error_msg = 'A direction variation is missing in this gesture.'
+            self.print_error(error_msg)
             return (None, self.msg_list)
 
         self.print_msg('actual: %s' % str(actual_range_axis))
