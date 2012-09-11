@@ -2165,6 +2165,13 @@ class WiFiTest(object):
         interface = params.get('interface', self.client_wlanif)
         self.__get_ipaddr(self.client, interface)
 
+    def client_configure_service(self, params):
+        guid = params.pop('GUID', '')
+        args = ''
+        for var, val in params.iteritems():
+            args += ' %s %s' % (var, val)
+        self.client.run('%s/test/configure-service %s %s' %
+                        (self.client_cmd_flimflam_lib, guid, args))
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
