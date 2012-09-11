@@ -200,14 +200,17 @@ class factory_AudioQuality(test.test):
 
     def play_wav(self):
         '''Plays the multi-tone wav file'''
+        self.restore_configuration()
         wav_path = os.path.join(self.srcdir, '10SEC.wav')
         cmdargs = ['aplay', wav_path]
         self._wav_job = utils.BgJob(' '.join(cmdargs))
 
     def handle_loop_jack(self, *args):
-        self.restore_configuration()
+        if self._use_multitone:
+            self.play_wav()
+        else:
+            self.handle_loop()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP)
-        self.play_wav()
 
     def handle_loop_from_dmic(self, *args):
         self.handle_loop()
@@ -216,11 +219,13 @@ class factory_AudioQuality(test.test):
         self._ah.set_mixer_controls(self._dmic_switch_mixer_settings)
 
     def handle_loop_speaker_unmute(self, *args):
-        self.restore_configuration()
+        if self._use_multitone:
+            self.play_wav()
+        else:
+            self.handle_loop()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_SPEAKER_MUTE_OFF)
         self.unmute_speaker()
-        self.play_wav()
 
     def handle_xtalk_left(self, *args):
         self.restore_configuration()
@@ -325,7 +330,7 @@ class factory_AudioQuality(test.test):
             dmic_switch_mixer_settings=_DMIC_SWITCH_MIXER_SETTINGS,
             init_mixer_settings=_INIT_MIXER_SETTINGS,
             unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS,
-            use_sox_loop=False):
+            use_sox_loop=False, use_multitone=False):
         factory.console.info('%s run_once' % self.__class__)
 
         self._ah = audio_helper.AudioHelper(self, input_device=input_dev)
@@ -336,6 +341,7 @@ class factory_AudioQuality(test.test):
         self._eth = None
         self._test_passed = False
         self._use_sox_loop = use_sox_loop
+        self._use_multitone = use_multitone
 
         # Mixer settings for different configurations.
         self._init_mixer_settings = init_mixer_settings
