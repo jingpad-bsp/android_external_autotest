@@ -43,12 +43,19 @@ class MTB:
     def __init__(self, packets):
         self.packets = packets
 
-    def _is_new_contact(self, event):
-        """is this packet generating new contact (Tracking ID)?"""
+    def _is_ABS_MT_TRACKING_ID(self, event):
+        """Is this event ABS_MT_TRACKING_ID?"""
         return (not event.get(SYN_REPORT) and
                 event[EV_TYPE] == EV_ABS and
-                event[EV_CODE] == ABS_MT_TRACKING_ID and
-                event[EV_VALUE] != -1)
+                event[EV_CODE] == ABS_MT_TRACKING_ID)
+
+    def _is_new_contact(self, event):
+        """Is this packet generating new contact (Tracking ID)?"""
+        return self._is_ABS_MT_TRACKING_ID(event) and event[EV_VALUE] != -1
+
+    def _is_finger_leaving(self, event):
+        """Is the finger is leaving in this packet?"""
+        return self._is_ABS_MT_TRACKING_ID(event) and event[EV_VALUE] == -1
 
     def _is_ABS_MT_SLOT(self, event):
         """Is this packet ABS_MT_SLOT?"""
@@ -77,6 +84,19 @@ class MTB:
         dist_x = x1 - x0
         dist_y = y1 - y0
         return math.sqrt(dist_x * dist_x + dist_y * dist_y)
+
+    def _init_dict(self, keys, value):
+        """Initialize a dictionary over the keys with the same given value.
+
+        Note: The following command does not always work:
+                    dict.fromkeys(keys, value)
+              It works when value is a simple type, e.g., an integer.
+              However, if value is [] or {}, it does not work correctly.
+              The reason is that if the value is [] or {}, all the keys would
+              point to the same list or dictionary, which is not expected
+              in most cases.
+        """
+        return dict([(key, value) for key in keys])
 
     def get_number_contacts(self):
         """Get the number of contacts (Tracking IDs)."""
@@ -113,6 +133,85 @@ class MTB:
                 list_x.append(prev_x)
                 list_y.append(prev_y)
         return (list_x, list_y)
+
+    def get_x_y_multiple_slots(self, target_slots):
+        """Extract points in multiple slots.
+
+        Only the packets with all specified slots are extracted.
+        This is useful to collect packets for pinch to zoom.
+        """
+        # Initialize slot_exists dictionary to False
+        slot_exists = dict.fromkeys(target_slots, False)
+
+        # Set the initial slot number to 0 because evdev is a state machine,
+        # and may not present slot 0.
+        slot = 0
+        # Initialze the following dict to []
+        # Don't use "dict.fromkeys(target_slots, [])"
+        list_x = self._init_dict(target_slots, [])
+        list_y = self._init_dict(target_slots, [])
+        x = self._init_dict(target_slots, None)
+        y = self._init_dict(target_slots, None)
+        for packet in self.packets:
+            for event in packet:
+                if self._is_ABS_MT_SLOT(event):
+                    slot = event[EV_VALUE]
+                if slot not in target_slots:
+                    continue
+
+                if self._is_ABS_MT_TRACKING_ID(event):
+                    if self._is_new_contact(event):
+                        slot_exists[slot] = True
+                    elif self._is_finger_leaving(event):
+                        slot_exists[slot] = False
+                elif self._is_ABS_MT_POSITION_X(event):
+                    x[slot] = event[EV_VALUE]
+                elif self._is_ABS_MT_POSITION_Y(event):
+                    y[slot] = event[EV_VALUE]
+
+            # Note:
+            # - All slot_exists must be True to append x, y positions for the
+            #   slots.
+            # - All x and y values for all slots must have been reported once.
+            #   (This handles the initial condition that no previous x or y
+            #    is reported yet.)
+            # - If either x or y positions are reported in the current packet,
+            #   append x and y to the list of that slot.
+            #   (This handles the condition that only x or y is reported.)
+            # - Even in the case that neither x nor y is reported in current
+            #   packet, cmt driver constructs and passes hwstate to gestures.
+            if (all(slot_exists.values()) and all(x.values()) and
+                all(y.values())):
+                for slot in target_slots:
+                    list_x[slot].append(x[slot])
+                    list_y[slot].append(y[slot])
+
+        return (list_x, list_y)
+
+    def get_points_multiple_slots(self, target_slots):
+        """Get the points in multiple slots."""
+        list_x, list_y = self.get_x_y_multiple_slots(target_slots)
+        points_list = [zip(list_x[slot], list_y[slot]) for slot in target_slots]
+        points_dict = dict(zip(target_slots, points_list))
+        return points_dict
+
+    def get_relative_motion(self, target_slots):
+        """Get the relative motion of the two target slots."""
+        # The slots in target_slots could be (0, 1), (1, 2) or other
+        # possibilities.
+        slot_a, slot_b = target_slots
+        points_dict = self.get_points_multiple_slots(target_slots)
+        points_slot_a = points_dict[slot_a]
+        points_slot_b = points_dict[slot_b]
+
+        # if only 0 or 1 point observed, the relative motion is 0.
+        if len(points_slot_a) <= 1 or len(points_slot_b) <= 1:
+            return 0
+
+        distance_begin = self._calc_distance(points_slot_a[0], points_slot_b[0])
+        distance_end = self._calc_distance(points_slot_a[-1], points_slot_b[-1])
+        relative_motion = distance_end - distance_begin
+        return relative_motion
 
     def get_points(self, target_slot):
         """Get the points in the target slot."""

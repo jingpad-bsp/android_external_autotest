@@ -12,7 +12,7 @@ How to add a new validator/gesture:
 (3) add the new validator in test_conf, and
         'from validators import the_new_validator'
     in alphabetical order, and
-(4) add a new gesture if necessary.
+(4) add the validator in relevant gestures; add a new gesture if necessary.
 
 The validator template is as follows:
 
@@ -372,3 +372,27 @@ class CountPacketsValidator(BaseValidator):
         msg = 'Number of packets in slot[%d]: %s'
         self.print_msg(msg % (self.slot, num_packets))
         return (self.fc.mf.grade(num_packets), self.msg_list)
+
+
+class PinchValidator(BaseValidator):
+    """Validator to check the pinch to zoom in/out.
+
+    Example:
+        To verify that the two fingers are drawing closer:
+          PinchValidator('>= 200, ~ -100')
+    """
+
+    def __init__(self, criteria_str, mf=None):
+        super(PinchValidator, self).__init__(criteria_str, mf)
+
+    def check(self, packets, variation):
+        """Check the number of packets in the specified slot."""
+        self.init_check(packets)
+        # Get the relative motion of the two fingers
+        slots = (0, 1)
+        relative_motion = self.packets.get_relative_motion(slots)
+        if variation == ZOOM_OUT:
+            relative_motion = -relative_motion
+        msg = 'Relative motions of the two fingers: %.2f'
+        self.print_msg(msg % relative_motion)
+        return (self.fc.mf.grade(relative_motion), self.msg_list)

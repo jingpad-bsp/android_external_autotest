@@ -12,6 +12,7 @@ from validators import (CountPacketsValidator,
                         LinearityValidator,
                         NoGapValidator,
                         NoReversedMotionValidator,
+                        PinchValidator,
                         RangeValidator,
                         StationaryFingerValidator,
 )
@@ -133,13 +134,14 @@ gesture_list = [
     Gesture(
         name='pinch_to_zoom',
         variations=(ZOOM_IN, ZOOM_OUT),
-        prompt='Use two fingers to {0}.',
+        prompt='Use two fingers to pinch to {0} by drawing {1}.',
         subprompt={
-            ZOOM_IN: ('zoom in',),
-            ZOOM_OUT: ('zoom out',),
+            ZOOM_IN: ('zoom in', 'farther'),
+            ZOOM_OUT: ('zoom out', 'closer'),
         },
         validators=(
             CountTrackingIDValidator('== 2'),
+            PinchValidator('>= 200, ~ -100')
         ),
     ),
 
