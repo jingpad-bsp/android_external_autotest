@@ -131,6 +131,18 @@ class CrashTest(test.test):
             del os.environ['FORCE_OFFICIAL']
 
 
+    def _set_mock_developer_mode(self, is_enabled):
+        """Sets whether or not we should pretend we booted in developer mode.
+
+        Args:
+            is_enabled: True to pretend we are in developer mode.
+        """
+        if is_enabled:
+            os.environ['MOCK_DEVELOPER_MODE'] = "1"
+        elif os.environ.get('MOCK_DEVELOPER_MODE'):
+            del os.environ['MOCK_DEVELOPER_MODE']
+
+
     def _reset_rate_limiting(self):
         """Reset the count of crash reports sent today.
 
@@ -385,6 +397,7 @@ class CrashTest(test.test):
             error_type: an error type, if given
             exec_name: name of executable which crashed
             image_type: type of image ("dev","force-official",...), if given
+            boot_mode: current boot mode ("dev",...), if given
             meta_path: path to the report metadata file
             output: the output from the script, copied
             report_kind: kind of report sent (minidump vs kernel)
@@ -439,6 +452,12 @@ class CrashTest(test.test):
         else:
             image_type = None
 
+        boot_mode_match = re.search('Boot mode: (\S+)', output)
+        if boot_mode_match:
+            boot_mode = boot_mode_match.group(1)
+        else:
+            boot_mode = None
+
         send_success = 'Mocking successful send' in output
         return {'exec_name': exec_name,
                 'report_kind': report_kind,
@@ -449,6 +468,7 @@ class CrashTest(test.test):
                 'sig': sig,
                 'error_type': error_type,
                 'image_type': image_type,
+                'boot_mode': boot_mode,
                 'sleep_time': sleep_time,
                 'output': output}
 
@@ -644,6 +664,8 @@ class CrashTest(test.test):
             self._reset_rate_limiting()
             # Default to not overriding for unofficial versions.
             self._set_force_official(False)
+            # Default to not pretending we're in developer mode.
+            self._set_mock_developer_mode(False)
             if clear_spool_first:
                 self._clear_spooled_crashes()
 

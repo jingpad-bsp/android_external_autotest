@@ -53,7 +53,14 @@ class logging_CrashSender(crash_test.CrashTest):
         # Also test "Image type" field.  Note that it will not be "dev" even
         # on a dev build because /tmp/crash-test-in-progress will exist.
         if result['image_type']:
-            raise error.TestFail('Image type should not exist')
+            raise error.TestFail('Image type "%s" should not exist' %
+                                 result['image_type'])
+        # Also test "Boot mode" field.  Note that it will not be "dev" even
+        # when booting in dev mode because /tmp/crash-test-in-progress will
+        # exist.
+        if result['boot_mode']:
+            raise error.TestFail('Boot mode "%s" should not exist' %
+                                 result['boot_mode'])
 
 
     def _test_sender_simple_minidump(self):
@@ -199,10 +206,11 @@ class logging_CrashSender(crash_test.CrashTest):
         # mock failure.  Note that it will not be "dev" even on a dev build
         # because /tmp/crash-test-in-progress will exist.
         if not result['image_type']:
-            raise error.TestFail('Missing image type')
+            raise error.TestFail('Missing image type on mock failure')
         if result['image_type'] != 'mock-fail':
-            raise error.TestFail('Incorrect image type ("%s" != '
-                                 '"mock-fail")' % result['image_type'])
+            raise error.TestFail('Incorrect image type on mock failure '
+                                 '("%s" != "mock-fail")' %
+                                 result['image_type'])
 
 
     def _test_sender_orphaned_files(self):
@@ -265,6 +273,7 @@ class logging_CrashSender(crash_test.CrashTest):
         utils.write_keyval(meta_file, {"error_type": "system-issue"})
         utils.write_keyval(meta_file, {"done": "1"})
         self._set_force_official(True)  # also test this
+        self._set_mock_developer_mode(True)  # also test "boot_mode" field
         result = self._call_sender_one_crash(report=meta_file)
         if not result['error_type']:
             raise error.TestFail('Missing error type')
@@ -280,6 +289,14 @@ class logging_CrashSender(crash_test.CrashTest):
         if result['image_type'] != 'force-official':
             raise error.TestFail('Incorrect image type ("%s" != '
                                  '"force-official")' % result['image_type'])
+
+        # Also test "Boot mode" field.  For testing purposes, it should
+        # have been set to "dev" mode.
+        if not result['boot_mode']:
+            raise error.TestFail('Missing boot mode when mocking dev mode')
+        if result['boot_mode'] != 'dev':
+            raise error.TestFail('Incorrect boot mode when mocking dev mode '
+                                 '("%s" != "dev")' % result['boot_mode'])
 
 
     def run_once(self):
