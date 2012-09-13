@@ -556,7 +556,6 @@ class logging_UserCrash(crash_test.CrashTest):
                                      (failure_string, log_contents))
             # Verify we are generating appropriate diagnostic output.
             if ((not '===ps output===' in log_contents) or
-                (not '===dmesg output===' in log_contents) or
                 (not '===meminfo===' in log_contents)):
                 raise error.TestFail('Expected full logs, got: ' + log_contents)
             self._check_generated_report_sending(result['meta'],
