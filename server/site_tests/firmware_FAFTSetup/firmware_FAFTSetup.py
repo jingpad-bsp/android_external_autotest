@@ -20,14 +20,36 @@ class firmware_FAFTSetup(FAFTSequence):
     version = 1
 
 
+    def console_checker(self):
+        """Verify EC console is available if using Chrome EC."""
+        if not self.check_ec_capability():
+            # Not Chrome EC. Nothing to check.
+            return True
+        try:
+            expected_output = ["Chip:\s+[^\r\n]*\r\n",
+                               "RO:\s+[^\r\n]*\r\n",
+                               "RW:\s+[^\r\n]*\r\n",
+                               "Build:\s+[^\r\n]*\r\n"]
+            self.send_uart_command_get_output("version",
+                                              expected_output,
+                                              timeout=0.2)
+            return True
+        except:
+            logging.error("Cannot talk to EC console.")
+            return False
+
     def keyboard_checker(self):
         """Press 'd', Ctrl, ENTER, Refresh by servo and check from DUT."""
+        # Stop UI so that key presses don't go to X.
+        self.faft_client.run_shell_command("stop ui")
         # Press the four keys with one-second delay in between.
         Timer(2, self.servo.d_key).start()
         Timer(3, self.servo.ctrl_key).start()
         Timer(4, self.servo.enter_key).start()
         Timer(5, self.servo.refresh_key).start()
         lines = self.faft_client.run_shell_command_get_output("showkey")
+        # Turn UI back on
+        self.faft_client.run_shell_command("start ui")
 
         # We may be getting multiple key-press or key-release.
         # Let's remove duplicated items.
@@ -49,7 +71,8 @@ class firmware_FAFTSetup(FAFTSequence):
 
     def run_once(self, host=None):
         self.register_faft_sequence((
-            {   # Step 1, Test warm reboot
+            {   # Step 1, Check EC console is available and test warm reboot
+                'state_checker': self.console_checker,
                 'reboot_action': self.sync_and_warm_reboot,
             },
             {   # Step 2, Check test image in USB stick and recovery boot
