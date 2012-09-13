@@ -323,6 +323,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
 
 
     def schedule_entry(self, queue_entry):
+        logging.debug('Host_scheduler is scheduling entry: %s', queue_entry)
         if queue_entry.host_id is not None:
             return self._schedule_non_metahost(queue_entry)
 

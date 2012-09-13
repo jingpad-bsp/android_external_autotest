@@ -297,34 +297,34 @@ class BaseDispatcher(object):
         major step begins so we can try to figure out where we are using most
         of the tick time.
         """
-        self._log_tick_msg('Starting new tick, starting garbage collection().')
+        self._log_tick_msg('Calling new tick, starting garbage collection().')
         self._garbage_collection()
-        self._log_tick_msg('Starting _drone_manager.refresh().')
+        self._log_tick_msg('Calling _drone_manager.refresh().')
         _drone_manager.refresh()
-        self._log_tick_msg('Starting _run_cleanup().')
+        self._log_tick_msg('Calling _run_cleanup().')
         self._run_cleanup()
-        self._log_tick_msg('Starting _find_aborting().')
+        self._log_tick_msg('Calling _find_aborting().')
         self._find_aborting()
-        self._log_tick_msg('Starting _process_recurring_runs().')
+        self._log_tick_msg('Calling _process_recurring_runs().')
         self._process_recurring_runs()
-        self._log_tick_msg('Starting _schedule_delay_tasks().')
+        self._log_tick_msg('Calling _schedule_delay_tasks().')
         self._schedule_delay_tasks()
-        self._log_tick_msg('Starting _schedule_running_host_queue_entries().')
+        self._log_tick_msg('Calling _schedule_running_host_queue_entries().')
         self._schedule_running_host_queue_entries()
-        self._log_tick_msg('Starting _schedule_special_tasks().')
+        self._log_tick_msg('Calling _schedule_special_tasks().')
         self._schedule_special_tasks()
-        self._log_tick_msg('Starting _schedule_new_jobs().')
+        self._log_tick_msg('Calling _schedule_new_jobs().')
         self._schedule_new_jobs()
-        self._log_tick_msg('Starting _handle_agents().')
+        self._log_tick_msg('Calling _handle_agents().')
         self._handle_agents()
-        self._log_tick_msg('Starting _host_scheduler.tick().')
+        self._log_tick_msg('Calling _host_scheduler.tick().')
         self._host_scheduler.tick()
-        self._log_tick_msg('Starting _drone_manager.execute_actions().')
+        self._log_tick_msg('Calling _drone_manager.execute_actions().')
         _drone_manager.execute_actions()
-        self._log_tick_msg('Starting '
+        self._log_tick_msg('Calling '
                            'email_manager.manager.send_queued_emails().')
         email_manager.manager.send_queued_emails()
-        self._log_tick_msg('Starting django.db.reset_queries().')
+        self._log_tick_msg('Calling django.db.reset_queries().')
         django.db.reset_queries()
         self._tick_count += 1
 
@@ -722,12 +722,15 @@ class BaseDispatcher(object):
         if not queue_entries:
             return
 
+        logging.debug('Processing %d queue_entries', len(queue_entries))
         for queue_entry in queue_entries:
+            logging.debug('Processing queue_entry: %s', queue_entry)
             is_unassigned_atomic_group = (
                     queue_entry.atomic_group_id is not None
                     and queue_entry.host_id is None)
 
             if queue_entry.is_hostless():
+                logging.debug('Scheduling hostless job.')
                 self._schedule_hostless_job(queue_entry)
             elif is_unassigned_atomic_group:
                 self._schedule_atomic_group(queue_entry)
@@ -752,6 +755,8 @@ class BaseDispatcher(object):
 
 
     def _run_queue_entry(self, queue_entry):
+        logging.debug('Scheduling pre job tasks for queue_entry: %s',
+                      queue_entry)
         queue_entry.schedule_pre_job_tasks()
 
 
@@ -764,6 +769,7 @@ class BaseDispatcher(object):
                 agent.abort()
             entry.abort(self)
             jobs_to_stop.add(entry.job)
+        logging.debug('Aborting %d jobs this tick.', len(jobs_to_stop))
         for job in jobs_to_stop:
             job.stop_if_necessary()
 
@@ -798,19 +804,26 @@ class BaseDispatcher(object):
         num_started_this_cycle = 0
         have_reached_limit = False
         # iterate over copy, so we can remove agents during iteration
+        logging.debug('Handling %d Agents', len(self._agents))
         for agent in list(self._agents):
+            logging.debug('Processing Agent with Host Ids: %s and queue_entry '
+                          'ids:%s', agent.host_ids, agent.queue_entry_ids)
             if not agent.started:
                 if not self._can_start_agent(agent, num_started_this_cycle,
                                              have_reached_limit):
                     have_reached_limit = True
+                    logging.debug('Reached Limit of allowed running Agents.')
                     continue
                 num_started_this_cycle += agent.task.num_processes
+                logging.debug('Starting Agent')
             agent.tick()
+            logging.debug('Agent tick completed.')
             if agent.is_done():
-                logging.info("agent finished")
+                logging.info("Agent finished")
                 self.remove_agent(agent)
-        logging.info('%d running processes',
-                     _drone_manager.total_running_processes())
+        logging.info('%d running processes. %d added this cycle.',
+                     _drone_manager.total_running_processes(),
+                     num_started_this_cycle)
 
 
     def _process_recurring_runs(self):

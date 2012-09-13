@@ -364,6 +364,8 @@ class Host(DBObject):
     def set_status(self,status):
         logging.info('%s -> %s', self.hostname, status)
         self.update_field('status',status)
+        # Noticed some time jumps after the last log message.
+        logging.debug('Host Set Status Complete')
 
 
     def platform_and_labels(self):
@@ -561,6 +563,8 @@ class HostQueueEntry(DBObject):
         logging.info("%s -> %s", self, status)
 
         self.update_field('status', status)
+        # Noticed some time jumps after last logging message.
+        logging.debug('Update Field Complete')
 
         active = (status in models.HostQueueEntry.ACTIVE_STATUSES)
         complete = (status in models.HostQueueEntry.COMPLETE_STATUSES)
@@ -577,6 +581,7 @@ class HostQueueEntry(DBObject):
                                'all' in _notify_email_statuses)
         if should_email_status:
             self._email_on_status(status)
+        logging.debug('HQE Set Status Complete')
 
 
     def _on_complete(self, status):
