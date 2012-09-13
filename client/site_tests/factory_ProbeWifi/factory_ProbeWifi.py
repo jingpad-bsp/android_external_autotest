@@ -40,13 +40,14 @@ class factory_ProbeWifi(test.test):
         for mac_type, device_path, label_en, label_zh in probe_list:
              if os.path.exists(device_path):
                  mac = open(device_path).read().strip()
-                 display_strings.append(u'Mac address of %s(%s): %s' % (
-                     label_en, label_zh, mac))
+                 display_string = u'Mac address of %s(%s): %s' % (
+                     label_en, label_zh, mac)
+                 display_strings.append(display_string)
              else:
                  raise error.TestFail(
                      '%s device %s does not exist' % (mac_type, device_path))
 
-             factory.console.info(display_str)
+             factory.console.info(display_string)
              self.event_log.Log('mac', mac_type=mac_type, mac=mac)
         return display_strings
 
