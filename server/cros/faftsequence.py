@@ -305,6 +305,15 @@ class FAFTSequence(ServoTest):
         super(FAFTSequence, self).cleanup()
 
 
+    def reset_client(self):
+        """Reset client if necessary."""
+        # TODO(crosbug/23309): Implement complete reset.
+        if not self._ping_test(self._client.ip, timeout=1):
+            # Client is offline. Cold reset it.
+            self.cold_reboot()
+            self.wait_for_client()
+
+
     def assert_test_image_in_usb_disk(self, usb_dev=None):
         """Assert an USB disk plugged-in on servo and a test image inside.
 
@@ -1372,11 +1381,15 @@ class FAFTSequence(ServoTest):
             self.wait_for_client_offline()
             self._call_action(test['firmware_action'])
 
-            if 'install_deps_after_boot' in test:
-                self.wait_for_client(
-                        install_deps=test['install_deps_after_boot'])
-            else:
-                self.wait_for_client()
+            try:
+                if 'install_deps_after_boot' in test:
+                    self.wait_for_client(
+                            install_deps=test['install_deps_after_boot'])
+                else:
+                    self.wait_for_client()
+            except AssertionError:
+                self.reset_client()
+                raise
 
 
     def run_faft_sequence(self):
