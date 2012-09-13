@@ -195,10 +195,7 @@ class DhcpTestServer(threading.Thread):
         if packet is None:
             self._logger.error("Handling rule failed to return a packet.")
             return False
-        self._logger.debug("Sending response with options: %s" %
-                           str(packet._options))
-        self._logger.debug("Sending response with fields: %s" %
-                           str(packet._fields))
+        self._logger.debug("Sending response: %s" % packet)
         binary_string = packet.to_binary_string()
         if binary_string is None or len(binary_string) < 1:
             self._logger.error("Packet failed to serialize to binary string.")

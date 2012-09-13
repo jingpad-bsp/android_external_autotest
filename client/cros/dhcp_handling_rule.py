@@ -130,8 +130,8 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
             return (RESPONSE_IGNORE, ACTION_KEEP_HANDLER)
 
         self.logger.info("Received REQUEST packet, checking fields...")
-        server_ip = packet.get_option(dhcp_packet.OPTION_SERVER_ID.name)
-        requested_ip = packet.get_option(dhcp_packet.OPTION_REQUESTED_IP.name)
+        server_ip = packet.get_option(dhcp_packet.OPTION_SERVER_ID)
+        requested_ip = packet.get_option(dhcp_packet.OPTION_REQUESTED_IP)
         if (server_ip is None) or (requested_ip is None):
             self.logger.info("REQUEST packet did not have the expected "
                              "options, discarding.")

@@ -108,7 +108,8 @@ def test_simple_server_exchange(server):
         print "Type of DHCP response is not offer."
         return False
 
-    if offer_packet.get_field("yiaddr") != socket.inet_aton(intended_ip):
+    if (offer_packet.get_field(dhcp_packet.FIELD_YOUR_IP) !=
+        socket.inet_aton(intended_ip)):
         print "Server didn't offer the IP we expected."
         return False
 
@@ -124,7 +125,8 @@ def test_simple_server_exchange(server):
         print "Type of DHCP response is not acknowledgement."
         return False
 
-    if offer_packet.get_field("yiaddr") != socket.inet_aton(intended_ip):
+    if (offer_packet.get_field(dhcp_packet.FIELD_YOUR_IP) !=
+        socket.inet_aton(intended_ip)):
         print "Server didn't give us the IP we expected."
         return False
 

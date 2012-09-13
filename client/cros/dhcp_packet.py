@@ -29,94 +29,66 @@ Note that if you make changes, make sure that the tests in the bottom of this
 file still pass.
 """
 
+import collections
 import logging
 import random
 import socket
 import struct
 
-class Option(object):
-    """
-    Represents an option in a DHCP packet.  Options may or may not be present
-    and are not parsed into any particular format.  This means that the value of
-    options is always in the form of a byte string.
-    """
-    def __init__(self, name, number, size):
-        super(Option, self).__init__()
-        self._name = name
-        self._number = number
-        self._size = size
+"""
+Represents an option in a DHCP packet.  Options may or may not be present
+and are not parsed into any particular format.  This means that the value of
+options is always in the form of a byte string.
 
-    @property
-    def name(self):
-        return self._name
+|name|
+A human readable name for this option.
 
-    @property
-    def number(self):
-        """
-        Every DHCP option has a number that goes into the packet to indicate
-        which particular option is being encoded in the next few bytes.  This
-        property returns that number for each option.
-        """
-        return self._number
+|number|
+Every DHCP option has a number that goes into the packet to indicate
+which particular option is being encoded in the next few bytes.  This
+property returns that number for each option.
 
-    @property
-    def size(self):
-        """
-        The size property is a hint for what kind of size we might expect the
-        option to be.  For instance, options with a size of 1 are expected to
-        always be 1 byte long.  Negative sizes are variable length fields that
-        are expected to be at least abs(size) bytes long.
+|size|
+The size property is a hint for what kind of size we might expect the
+option to be.  For instance, options with a size of 1 are expected to
+always be 1 byte long.  Negative sizes are variable length fields that
+are expected to be at least abs(size) bytes long.
 
-        However, the size property is just a hint, and is not enforced or
-        checked in any way.
-        """
-        return self._size
+However, the size property is just a hint, and is not enforced or
+checked in any way.
+"""
+Option = collections.namedtuple("Option", ["name", "number", "size"])
 
+"""
+Represents a required field in a DHCP packet.  Unlike options, we sometimes
+parse fields into more meaningful data types.  For instance, the hardware
+type field in an IPv4 packet is parsed into an int rather than being left as
+a raw byte string of length 1.
 
-class Field(object):
-    """
-    Represents a required field in a DHCP packet.  Unlike options, we sometimes
-    parse fields into more meaningful data types.  For instance, the hardware
-    type field in an IPv4 packet is parsed into an int rather than being left as
-    a raw byte string of length 1.
-    """
-    def __init__(self, name, wire_format, offset, size):
-        super(Field, self).__init__()
-        self._name = name
-        self._wire_format = wire_format
-        self._offset = offset
-        self._size = size
+|name|
+A human readable name for this option.
 
-    @property
-    def name(self):
-        return self._name
+|wire_format|
+The wire format for a field defines how it will be parsed out of a DHCP
+packet.  For instance, the value for |FIELD_OP| is an integer in Python land,
+but goes on the wire as "!B", a single (network order) byte.  Fields that
+contain IP addresses like FIELD_SERVER_IP are strings of octets (like
+"\x0A\x0A\x01\x01" as returned by socket.inet_aton("10.10.1.1")) in Python land,
+and "!4s" on the wire, which is just a network order byte string, exactly like
+the Python format.
 
-    @property
-    def wire_format(self):
-        """
-        The wire format for a field defines how it will be parsed out of a DHCP
-        packet.
-        """
-        return self._wire_format
+|offset|
+The |offset| for a field defines the starting byte of the field in the
+binary packet string.  |offset| is used during parsing, along with
+|size| to extract the byte string of a field.
 
-    @property
-    def offset(self):
-        """
-        The |offset| for a field defines the starting byte of the field in the
-        binary packet string.  |offset| is using during parsing, along with
-        |size| to extract the byte string of a field.
-        """
-        return self._offset
-
-    @property
-    def size(self):
-        """
-        Fields in DHCP packets have a fixed size that must be respected.  This
-        size property is used in parsing to indicate that |self._size| number of
-        bytes make up this field.
-        """
-        return self._size
-
+|size|
+Fields in DHCP packets have a fixed size that must be respected.  This
+size property is used in parsing to indicate that |self._size| number of
+bytes make up this field.
+"""
+Field = collections.namedtuple("Field",
+                               ["name", "wire_format", "offset", "size"])
 
 # This is per RFC 2131.  The wording doesn't seem to say that the packets must
 # be this big, but that has been the historic assumption in implementations.
@@ -219,6 +191,7 @@ OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK       = "\x05"
 OPTION_VALUE_DHCP_MESSAGE_TYPE_NAK       = "\x06"
 OPTION_VALUE_DHCP_MESSAGE_TYPE_RELEASE   = "\x07"
 OPTION_VALUE_DHCP_MESSAGE_TYPE_INFORM    = "\x08"
+OPTION_VALUE_DHCP_MESSAGE_TYPE_UNKNOWN   = "\xFF"
 
 OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT = \
         chr(OPTION_SUBNET_MASK.number) + \
@@ -305,22 +278,22 @@ class DhcpPacket(object):
             hwmac_addr += chr(OPTION_PAD)
 
         packet = DhcpPacket()
-        packet.set_field(FIELD_OP.name, FIELD_VALUE_OP_CLIENT_REQUEST)
-        packet.set_field(FIELD_HWTYPE.name, FIELD_VALUE_HWTYPE_10MB_ETH)
-        packet.set_field(FIELD_HWADDR_LEN.name, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
-        packet.set_field(FIELD_RELAY_HOPS.name, 0)
-        packet.set_field(FIELD_TRANSACTION_ID.name, random.getrandbits(32))
-        packet.set_field(FIELD_TIME_SINCE_START.name, 0)
-        packet.set_field(FIELD_FLAGS.name, 0)
-        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_YOUR_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_SERVER_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
-        packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
-        packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
+        packet.set_field(FIELD_OP, FIELD_VALUE_OP_CLIENT_REQUEST)
+        packet.set_field(FIELD_HWTYPE, FIELD_VALUE_HWTYPE_10MB_ETH)
+        packet.set_field(FIELD_HWADDR_LEN, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
+        packet.set_field(FIELD_RELAY_HOPS, 0)
+        packet.set_field(FIELD_TRANSACTION_ID, random.getrandbits(32))
+        packet.set_field(FIELD_TIME_SINCE_START, 0)
+        packet.set_field(FIELD_FLAGS, 0)
+        packet.set_field(FIELD_CLIENT_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_SERVER_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
+        packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
+        packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY)
-        packet.set_option(OPTION_PARAMETER_REQUEST_LIST.name,
+        packet.set_option(OPTION_PARAMETER_REQUEST_LIST,
                           OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
 
         return packet
@@ -337,26 +310,26 @@ class DhcpPacket(object):
         particular offer.
         """
         packet = DhcpPacket()
-        packet.set_field(FIELD_OP.name, FIELD_VALUE_OP_SERVER_RESPONSE)
-        packet.set_field(FIELD_HWTYPE.name, FIELD_VALUE_HWTYPE_10MB_ETH)
-        packet.set_field(FIELD_HWADDR_LEN.name, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
+        packet.set_field(FIELD_OP, FIELD_VALUE_OP_SERVER_RESPONSE)
+        packet.set_field(FIELD_HWTYPE, FIELD_VALUE_HWTYPE_10MB_ETH)
+        packet.set_field(FIELD_HWADDR_LEN, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
         # This has something to do with relay agents
-        packet.set_field(FIELD_RELAY_HOPS.name, 0)
-        packet.set_field(FIELD_TRANSACTION_ID.name, transaction_id)
-        packet.set_field(FIELD_TIME_SINCE_START.name, 0)
-        packet.set_field(FIELD_FLAGS.name, 0)
-        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_YOUR_IP.name, socket.inet_aton(offer_ip))
-        packet.set_field(FIELD_SERVER_IP.name, socket.inet_aton(server_ip))
-        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
-        packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
-        packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
+        packet.set_field(FIELD_RELAY_HOPS, 0)
+        packet.set_field(FIELD_TRANSACTION_ID, transaction_id)
+        packet.set_field(FIELD_TIME_SINCE_START, 0)
+        packet.set_field(FIELD_FLAGS, 0)
+        packet.set_field(FIELD_CLIENT_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP, socket.inet_aton(offer_ip))
+        packet.set_field(FIELD_SERVER_IP, socket.inet_aton(server_ip))
+        packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
+        packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
+        packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER)
-        packet.set_option(OPTION_SUBNET_MASK.name,
+        packet.set_option(OPTION_SUBNET_MASK,
                           socket.inet_aton(offer_subnet_mask))
-        packet.set_option(OPTION_SERVER_ID.name, socket.inet_aton(server_ip))
-        packet.set_option(OPTION_IP_LEASE_TIME.name,
+        packet.set_option(OPTION_SERVER_ID, socket.inet_aton(server_ip))
+        packet.set_option(OPTION_IP_LEASE_TIME,
                           struct.pack("!I", int(lease_time_seconds)))
         return packet
 
@@ -366,26 +339,26 @@ class DhcpPacket(object):
                               requested_ip,
                               server_ip):
         packet = DhcpPacket()
-        packet.set_field(FIELD_OP.name, FIELD_VALUE_OP_CLIENT_REQUEST)
-        packet.set_field(FIELD_HWTYPE.name, FIELD_VALUE_HWTYPE_10MB_ETH)
-        packet.set_field(FIELD_HWADDR_LEN.name, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
+        packet.set_field(FIELD_OP, FIELD_VALUE_OP_CLIENT_REQUEST)
+        packet.set_field(FIELD_HWTYPE, FIELD_VALUE_HWTYPE_10MB_ETH)
+        packet.set_field(FIELD_HWADDR_LEN, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
         # This has something to do with relay agents
-        packet.set_field(FIELD_RELAY_HOPS.name, 0)
-        packet.set_field(FIELD_TRANSACTION_ID.name, transaction_id)
-        packet.set_field(FIELD_TIME_SINCE_START.name, 0)
-        packet.set_field(FIELD_FLAGS.name, 0)
-        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_YOUR_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_SERVER_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
-        packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
-        packet.set_option(OPTION_REQUESTED_IP.name,
+        packet.set_field(FIELD_RELAY_HOPS, 0)
+        packet.set_field(FIELD_TRANSACTION_ID, transaction_id)
+        packet.set_field(FIELD_TIME_SINCE_START, 0)
+        packet.set_field(FIELD_FLAGS, 0)
+        packet.set_field(FIELD_CLIENT_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_SERVER_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
+        packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
+        packet.set_option(OPTION_REQUESTED_IP,
                           socket.inet_aton(requested_ip))
-        packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
+        packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST)
-        packet.set_option(OPTION_SERVER_ID.name, socket.inet_aton(server_ip))
-        packet.set_option(OPTION_PARAMETER_REQUEST_LIST.name,
+        packet.set_option(OPTION_SERVER_ID, socket.inet_aton(server_ip))
+        packet.set_option(OPTION_PARAMETER_REQUEST_LIST,
                           OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
         return packet
 
@@ -397,26 +370,26 @@ class DhcpPacket(object):
                                       server_ip,
                                       lease_time_seconds):
         packet = DhcpPacket()
-        packet.set_field(FIELD_OP.name, FIELD_VALUE_OP_SERVER_RESPONSE)
-        packet.set_field(FIELD_HWTYPE.name, FIELD_VALUE_HWTYPE_10MB_ETH)
-        packet.set_field(FIELD_HWADDR_LEN.name, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
+        packet.set_field(FIELD_OP, FIELD_VALUE_OP_SERVER_RESPONSE)
+        packet.set_field(FIELD_HWTYPE, FIELD_VALUE_HWTYPE_10MB_ETH)
+        packet.set_field(FIELD_HWADDR_LEN, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
         # This has something to do with relay agents
-        packet.set_field(FIELD_RELAY_HOPS.name, 0)
-        packet.set_field(FIELD_TRANSACTION_ID.name, transaction_id)
-        packet.set_field(FIELD_TIME_SINCE_START.name, 0)
-        packet.set_field(FIELD_FLAGS.name, 0)
-        packet.set_field(FIELD_CLIENT_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_YOUR_IP.name, socket.inet_aton(granted_ip))
-        packet.set_field(FIELD_SERVER_IP.name, socket.inet_aton(server_ip))
-        packet.set_field(FIELD_GATEWAY_IP.name, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_CLIENT_HWADDR.name, hwmac_addr)
-        packet.set_field(FIELD_MAGIC_COOKIE.name, FIELD_VALUE_MAGIC_COOKIE)
-        packet.set_option(OPTION_DHCP_MESSAGE_TYPE.name,
+        packet.set_field(FIELD_RELAY_HOPS, 0)
+        packet.set_field(FIELD_TRANSACTION_ID, transaction_id)
+        packet.set_field(FIELD_TIME_SINCE_START, 0)
+        packet.set_field(FIELD_FLAGS, 0)
+        packet.set_field(FIELD_CLIENT_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP, socket.inet_aton(granted_ip))
+        packet.set_field(FIELD_SERVER_IP, socket.inet_aton(server_ip))
+        packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
+        packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
+        packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK)
-        packet.set_option(OPTION_SUBNET_MASK.name,
+        packet.set_option(OPTION_SUBNET_MASK,
                           socket.inet_aton(granted_ip_subnet_mask))
-        packet.set_option(OPTION_SERVER_ID.name, socket.inet_aton(server_ip))
-        packet.set_option(OPTION_IP_LEASE_TIME.name,
+        packet.set_option(OPTION_SERVER_ID, socket.inet_aton(server_ip))
+        packet.set_option(OPTION_IP_LEASE_TIME,
                           struct.pack("!I", int(lease_time_seconds)))
         return packet
 
@@ -448,10 +421,10 @@ class DhcpPacket(object):
             self._logger.error("Invalid byte string for packet.")
             return
         for field in DHCP_PACKET_FIELDS:
-            self._fields[field.name] = struct.unpack(field.wire_format,
-                                                     byte_str[field.offset :
-                                                              field.offset +
-                                                              field.size])[0]
+            self._fields[field] = struct.unpack(field.wire_format,
+                                                byte_str[field.offset :
+                                                         field.offset +
+                                                         field.size])[0]
         offset = OPTIONS_START_OFFSET
         while offset < len(byte_str) and ord(byte_str[offset]) != OPTION_END:
             data_type = ord(byte_str[offset])
@@ -466,49 +439,49 @@ class DhcpPacket(object):
             if option_bunch is None:
                 # Unsupported data type, of which we have many.
                 continue
-            self._options[option_bunch.name] = data
+            if option_bunch == OPTION_PARAMETER_REQUEST_LIST:
+                options = [ord(c) for c in data]
+                logging.info("Requested options: %s" % str(options))
+            self._options[option_bunch] = data
 
     @property
     def client_hw_address(self):
-        return self._fields["chaddr"]
+        return self._fields.get(FIELD_CLIENT_HWADDR)
 
     @property
     def is_valid(self):
+        """
+        Checks that we have (at a minimum) values for all the fields, and that
+        the magic cookie is set correctly.
+        """
         for field in DHCP_PACKET_FIELDS:
-            if (not field.name in self._fields or
-                self._fields[field.name] is None):
-                self._logger.info("Missing field %s in packet." % field.name)
+            if self._fields.get(field) is None:
+                self._logger.info("Missing field %s in packet." % field)
                 return False
-        if (self._fields[FIELD_MAGIC_COOKIE.name] !=
-            FIELD_VALUE_MAGIC_COOKIE):
+        if self._fields[FIELD_MAGIC_COOKIE] != FIELD_VALUE_MAGIC_COOKIE:
             return False
         return True
 
     @property
     def message_type(self):
-        if not "dhcp_message_type" in self._options:
-            return -1
-        return self._options["dhcp_message_type"]
+        return self._options.get(OPTION_DHCP_MESSAGE_TYPE,
+                                 OPTION_VALUE_DHCP_MESSAGE_TYPE_UNKNOWN)
 
     @property
     def transaction_id(self):
-        return self._fields["xid"]
+        return self._fields.get(FIELD_TRANSACTION_ID)
 
-    def get_field(self, field_name):
-        if field_name in self._fields:
-            return self._fields[field_name]
-        return None
+    def get_field(self, field):
+        return self._fields.get(field)
 
-    def get_option(self, option_name):
-        if option_name in self._options:
-            return self._options[option_name]
-        return None
+    def get_option(self, option):
+        return self._options.get(option)
 
-    def set_field(self, field_name, field_value):
-        self._fields[field_name] = field_value
+    def set_field(self, field, field_value):
+        self._fields[field] = field_value
 
-    def set_option(self, option_name, option_value):
-        self._options[option_name] = option_value
+    def set_option(self, option, option_value):
+        self._options[option] = option_value
 
     def to_binary_string(self):
         if not self.is_valid:
@@ -518,7 +491,7 @@ class DhcpPacket(object):
         offset = 0
         for field in DHCP_PACKET_FIELDS:
             field_data = struct.pack(field.wire_format,
-                                     self._fields[field.name])
+                                     self._fields[field])
             while offset < field.offset:
                 # This should only happen when we're padding the fields because
                 # we're not filling in legacy BOOTP stuff.
@@ -529,17 +502,23 @@ class DhcpPacket(object):
         # Last field processed is the magic cookie, so we're ready for options.
         # Have to process options
         for option in DHCP_PACKET_OPTIONS:
-            if not option.name in self._options:
+            option_value = self._options.get(option)
+            if option_value is None:
                 continue
             data.append(struct.pack("BB",
                                     option.number,
-                                    len(self._options[option.name])))
+                                    len(option_value)))
             offset += 2
-            data.append(self._options[option.name])
-            offset += len(self._options[option.name])
+            data.append(option_value)
+            offset += len(option_value)
         data.append(chr(OPTION_END))
         offset += 1
         while offset < DHCP_MIN_PACKET_SIZE:
             data.append(chr(OPTION_PAD))
             offset += 1
         return "".join(data)
+
+    def __str__(self):
+        options = [k.name + "=" + str(v) for k, v in self._options.items()]
+        fields = [k.name + "=" + str(v) for k, v in self._fields.items()]
+        return "<DhcpPacket fields=%s, options=%s>" % (fields, options)
