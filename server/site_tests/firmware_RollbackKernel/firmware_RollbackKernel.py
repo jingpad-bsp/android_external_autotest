@@ -95,7 +95,7 @@ class firmware_RollbackKernel(FAFTSequence):
                         'recovery_reason' : recovery_reason,
                     }),
                     'userspace_action': (self.faft_client.move_kernel_forward,
-                                         ('a', 'b')),
+                                         (('a', 'b'),)),
                 },
                 {   # Step 4, expected kernel A boot and done.
                     'state_checker':

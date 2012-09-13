@@ -66,14 +66,14 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
                     'userspace_action': (self.faft_client.corrupt_firmware_body,
-                                         ('a', 'b')),
+                                         (('a', 'b'),)),
                 },
                 {   # Step 2, still expected normal/developer boot and restore
                     'state_checker': (self.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
                     'userspace_action': (self.faft_client.restore_firmware_body,
-                                         ('a', 'b')),
+                                         (('a', 'b'),)),
                 },
             ))
         else:
@@ -83,7 +83,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
                     'userspace_action': (self.faft_client.corrupt_firmware_body,
-                                         ('a', 'b')),
+                                         (('a', 'b'),)),
                     'firmware_action': None if dev_mode else
                                        self.wait_fw_screen_and_plug_usb,
                     'install_deps_after_boot': True,
@@ -95,7 +95,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                             self.RECOVERY_REASON['RO_INVALID_RW'],
                     }),
                     'userspace_action': (self.faft_client.restore_firmware_body,
-                                         ('a', 'b')),
+                                         (('a', 'b'),)),
                 },
                 {   # Step 3, expected normal boot, done
                     'state_checker': (self.crossystem_checker, {

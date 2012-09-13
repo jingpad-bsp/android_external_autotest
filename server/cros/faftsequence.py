@@ -1273,35 +1273,51 @@ class FAFTSequence(ServoTest):
                                 self.CHROMEOS_MAGIC)
 
 
-    def _call_action(self, action_tuple):
+    def _call_action(self, action_tuple, check_status=False):
         """Call the action function with/without arguments.
 
         Args:
-          action_tuple: A function, or a tuple which consisted of a function
-              and its arguments (if any).
+          action_tuple: A function, or a tuple (function, args, error_msg),
+                        in which, args and error_msg are optional. args is
+                        either a value or a tuple if multiple arguments.
+          check_status: Check the return value of action function. If not
+                        succeed, raises a TestFail exception.
 
         Returns:
           The result value of the action function.
+
+        Raises:
+          error.TestError: An error when the action function is not callable.
+          error.TestFail: When check_status=True, action function not succeed.
         """
+        action = action_tuple
+        args = ()
+        error_msg = 'Not succeed'
         if isinstance(action_tuple, tuple):
             action = action_tuple[0]
-            args = action_tuple[1:]
-            if callable(action):
-                logging.info('calling %s with parameter %s' % (
-                        str(action), str(args)))
-                return action(*args)
-            else:
-                logging.info('action is not callable!')
-        else:
-            action = action_tuple
-            if action is not None:
-                if callable(action):
-                    logging.info('calling %s' % str(action))
-                    return action()
-                else:
-                    logging.info('action is not callable!')
+            if len(action_tuple) >= 2:
+                args = action_tuple[1]
+                if not isinstance(args, tuple):
+                    args = (args,)
+            if len(action_tuple) >= 3:
+                error_msg = action
 
-        return None
+        if action is None:
+            return
+
+        if not callable(action):
+            raise error.TestError('action is not callable!')
+
+        info_msg = 'calling %s' % str(action)
+        if args:
+            info_msg += ' with args %s' % str(args)
+        logging.info(info_msg)
+        ret = action(*args)
+
+        if check_status and not ret:
+            raise error.TestFail('%s: %s returning %s' %
+                                 (error_msg, info_msg, str(ret)))
+        return ret
 
 
     def run_shutdown_process(self, shutdown_action, pre_power_action=None,
@@ -1366,7 +1382,6 @@ class FAFTSequence(ServoTest):
           no_reboot: True to prevent running reboot_action and firmware_action.
 
         Raises:
-          error.TestFail: An error when the test failed.
           error.TestError: An error when the given step is not valid.
         """
         FAFT_STEP_KEYS = ('state_checker', 'userspace_action', 'reboot_action',
@@ -1381,8 +1396,7 @@ class FAFTSequence(ServoTest):
                 raise error.TestError('Invalid key in FAFT step: %s', key)
 
         if test['state_checker']:
-            if not self._call_action(test['state_checker']):
-                raise error.TestFail('State checker failed!')
+            self._call_action(test['state_checker'], check_status=True)
 
         self._call_action(test['userspace_action'])
 

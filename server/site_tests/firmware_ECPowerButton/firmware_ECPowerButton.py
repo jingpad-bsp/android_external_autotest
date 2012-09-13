@@ -74,32 +74,32 @@ class firmware_ECPowerButton(FAFTSequence):
                 #         with short power button press.
                 'state_checker': self.debounce_power_button,
                 'reboot_action': (self.shutdown_and_wake,
-                                  self.POWER_BUTTON_POWERD_DURATION,
-                                  self.SHORT_WAKE_DELAY,
-                                  self.POWER_BUTTON_SHORT_POWER_ON_DURATION),
+                                  (self.POWER_BUTTON_POWERD_DURATION,
+                                   self.SHORT_WAKE_DELAY,
+                                   self.POWER_BUTTON_SHORT_POWER_ON_DURATION)),
             },
             {   # Step 2, Shutdown when powerd is stopped and wake from G3
                 #         with short power button press.
                 'userspace_action': self.kill_powerd,
                 'reboot_action': (self.shutdown_and_wake,
-                                  self.POWER_BUTTON_NO_POWERD_DURATION,
-                                  self.LONG_WAKE_DELAY,
-                                  self.POWER_BUTTON_SHORT_POWER_ON_DURATION),
+                                  (self.POWER_BUTTON_NO_POWERD_DURATION,
+                                   self.LONG_WAKE_DELAY,
+                                   self.POWER_BUTTON_SHORT_POWER_ON_DURATION)),
             },
             {   # Step 3, Shutdown when powerd is still running and wake from G3
                 #         with long power button press.
                 'reboot_action': (self.shutdown_and_wake,
-                                  self.POWER_BUTTON_POWERD_DURATION,
-                                  self.LONG_WAKE_DELAY,
-                                  self.POWER_BUTTON_LONG_POWER_ON_DURATION),
+                                  (self.POWER_BUTTON_POWERD_DURATION,
+                                   self.LONG_WAKE_DELAY,
+                                   self.POWER_BUTTON_LONG_POWER_ON_DURATION)),
             },
             {   # Step 4, Shutdown when powerd is stopped and wake from S5
                 #         with long power button press.
                 'userspace_action': self.kill_powerd,
                 'reboot_action': (self.shutdown_and_wake,
-                                  self.POWER_BUTTON_NO_POWERD_DURATION,
-                                  self.SHORT_WAKE_DELAY,
-                                  self.POWER_BUTTON_LONG_POWER_ON_DURATION),
+                                  (self.POWER_BUTTON_NO_POWERD_DURATION,
+                                   self.SHORT_WAKE_DELAY,
+                                   self.POWER_BUTTON_LONG_POWER_ON_DURATION)),
             },
             {   # Step 5, dummy step to ensure reboot in step 4
             }

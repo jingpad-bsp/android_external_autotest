@@ -52,15 +52,13 @@ class firmware_RONormalBoot(FAFTSequence):
             {   # Step 1, disable the RO normal boot flag
                 'state_checker': (self.ro_normal_checker, 'A'),
                 'userspace_action': (self.faft_client.set_firmware_flags,
-                                     'a',
-                                     flags ^ self.PREAMBLE_USE_RO_NORMAL),
+                                    ('a', flags ^ self.PREAMBLE_USE_RO_NORMAL)),
             },
             {   # Step 2, expected TwoStop boot, restore the original flags
                 'state_checker': (lambda: self.ro_normal_checker('A',
                                               twostop=True)),
                 'userspace_action': (self.faft_client.set_firmware_flags,
-                                     'a',
-                                     flags),
+                                     ('a', flags)),
             },
             {   # Step 3, done
                 'state_checker': (self.ro_normal_checker, 'A'),

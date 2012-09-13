@@ -79,7 +79,7 @@ class firmware_RollbackFirmware(FAFTSequence):
                     'recovery_reason' : recovery_reason,
                 }),
                 'userspace_action': (self.faft_client.move_firmware_forward,
-                                     ('a', 'b')),
+                                     (('a', 'b'),)),
             },
             {   # Step 4, expected firmware A boot and done.
                 'state_checker': (self.crossystem_checker, {

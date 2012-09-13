@@ -118,7 +118,7 @@ class firmware_UpdateECBin(FAFTSequence):
                             (self.faft_client.get_EC_firmware_sha() !=
                                  self.new_ec_sha)),
                 'userspace_action': (self.faft_client.set_firmware_flags,
-                                     'a', flags),
+                                     ('a', flags)),
                 'reboot_action': self.sync_and_warm_reboot,
             },
             {   # Step 4, expected EC RO boot, done

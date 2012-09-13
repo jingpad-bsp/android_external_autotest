@@ -51,7 +51,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
                 'userspace_action': (self.faft_client.corrupt_firmware,
-                                     ('a', 'b')),
+                                     (('a', 'b'),)),
                 'firmware_action': None if dev_mode else
                                    self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
@@ -73,7 +73,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                             self.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
                 }),
                 'userspace_action': (self.faft_client.restore_firmware,
-                                     ('a', 'b')),
+                                     (('a', 'b'),)),
             },
             {   # Step 4, expected normal boot, done
                 'state_checker': (self.crossystem_checker, {

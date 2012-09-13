@@ -61,7 +61,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
             {   # Step 1, corrupt kernel A and B
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),
                 'userspace_action': (self.faft_client.corrupt_kernel,
-                                     ('a', 'b')),
+                                     (('a', 'b'),)),
                 # Kernel is verified after firmware screen.
                 # Should press Ctrl-D to skip the screen on dev_mode.
                 'firmware_action': self.wait_fw_screen_and_ctrl_d if dev_mode
@@ -74,7 +74,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
                     'recovery_reason': recovery_reason,
                 }),
                 'userspace_action': (self.faft_client.restore_kernel,
-                                     ('a', 'b')),
+                                     (('a', 'b'),)),
             },
             {   # Step 3, expected kernel A normal/dev boot
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),

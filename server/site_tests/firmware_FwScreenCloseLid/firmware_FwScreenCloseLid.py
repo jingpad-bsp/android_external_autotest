@@ -72,9 +72,9 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                     'mainfw_type': 'developer',
                 }),
                 'firmware_action': (self.run_shutdown_process,
-                                    self.wait_fw_screen_and_close_lid,
-                                    self.servo.lid_open,
-                                    self.wait_fw_screen_and_ctrl_d),
+                                    (self.wait_fw_screen_and_close_lid,
+                                     self.servo.lid_open,
+                                     self.wait_fw_screen_and_ctrl_d)),
             },
             {   # Step 2, reboot. When the developer screen shown, press
                 # enter key to trigger either TO_NORM screen (new) or
@@ -85,9 +85,9 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                     'mainfw_type': 'developer',
                 }),
                 'firmware_action': (self.run_shutdown_process,
-                                    self.wait_second_screen_and_close_lid,
-                                    self.servo.lid_open,
-                                    self.wait_fw_screen_and_ctrl_d),
+                                    (self.wait_second_screen_and_close_lid,
+                                     self.servo.lid_open,
+                                     self.wait_fw_screen_and_ctrl_d)),
             },
             {   # Step 3, request recovery boot. When the RECOVERY INSERT
                 # screen shows, close lid to make DUT shutdown.
@@ -97,9 +97,9 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': (self.run_shutdown_process,
-                                    self.wait_longer_fw_screen_and_close_lid,
-                                    self.servo.lid_open,
-                                    self.wait_fw_screen_and_ctrl_d),
+                                    (self.wait_longer_fw_screen_and_close_lid,
+                                     self.servo.lid_open,
+                                     self.wait_fw_screen_and_ctrl_d)),
             },
             {   # Step 4, request recovery boot again. When the recovery
                 # insert screen shows, insert a corrupted USB and trigger
@@ -110,9 +110,9 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': (self.run_shutdown_process,
-                                    self.wait_yuck_screen_and_close_lid,
-                                    self.servo.lid_open,
-                                    self.wait_fw_screen_and_ctrl_d),
+                                    (self.wait_yuck_screen_and_close_lid,
+                                     self.servo.lid_open,
+                                     self.wait_fw_screen_and_ctrl_d)),
             },
             {   # Step 5, switch back to normal mode.
                 'state_checker': (self.crossystem_checker, {
@@ -131,9 +131,9 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': (self.run_shutdown_process,
-                                    self.wait_longer_fw_screen_and_close_lid,
-                                    self.servo.lid_open,
-                                    None),
+                                    (self.wait_longer_fw_screen_and_close_lid,
+                                     self.servo.lid_open,
+                                     None)),
             },
             {   # Step 7, done.
                 'state_checker': (self.crossystem_checker, {

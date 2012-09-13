@@ -68,7 +68,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                 'state_checker': (lambda: self.ro_normal_checker('A') and
                                           self.write_protect_checker()),
                 'userspace_action': (self.faft_client.set_firmware_flags,
-                                     'a', 0),
+                                     ('a', 0)),
                 'reboot_action': self.sync_and_cold_reboot,
             },
             {   # Step 3, expected EC RW boot, write protected. Reboot EC by
@@ -84,7 +84,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                                               twostop=True) and
                                           self.write_protect_checker()),
                 'userspace_action': (self.faft_client.set_firmware_flags,
-                                     'a', self.PREAMBLE_USE_RO_NORMAL),
+                                     ('a', self.PREAMBLE_USE_RO_NORMAL)),
                 'reboot_action': (self.set_EC_write_protect_and_reboot, False),
             },
             {   # Step 5, expected EC RO boot.
