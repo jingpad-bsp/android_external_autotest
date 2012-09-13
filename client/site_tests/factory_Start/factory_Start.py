@@ -46,6 +46,12 @@ _MSG_TASK_SERIAL = (
 _MSG_TASK_SPACE = (
         'Hit SPACE to start testing...\n'
         '按 "空白键" 开始测试...')
+_MSG_TASK_SHOP_FLOOR = (
+        'Preparing to connect to shop floor server.\n'
+        'Please plug in network cable and hit SPACE\n'
+        'to start testing...\n'
+        '准备连线 shop floor 伺服器。 \n'
+        '请插上网路线后，按下"空白键"开始测试...')
 
 _MSG_NO_SHOP_FLOOR_SERVER_URL = (
         'No shop floor server URL. Auto-testing stopped.\n\n'
@@ -62,10 +68,12 @@ _LABEL_FONT = pango.FontDescription('courier new condensed 24')
 
 
 class PressSpaceTask(task.FactoryTask):
+    def __init__(self, pop_up_message):
+        self.pop_up_message = pop_up_message
 
     def start(self):
         self.add_widget(
-                ui.make_label(_MSG_TASK_SPACE, font=ui.LABEL_LARGE_FONT))
+                ui.make_label(self.pop_up_message, font=ui.LABEL_LARGE_FONT))
         self.connect_window('key-press-event', self.window_key_press)
 
     def window_key_press(self, window, event):
@@ -74,7 +82,6 @@ class PressSpaceTask(task.FactoryTask):
         else:
             factory.log('PressSpaceTask: non-space hit: %d' % event.keyval)
         return True
-
 
 class ExternalPowerTask(task.FactoryTask):
 
@@ -120,8 +127,9 @@ class ExternalPowerTask(task.FactoryTask):
 
 
 class ShopFloorTask(task.FactoryTask):
-    def __init__(self, server_url):
+    def __init__(self, server_url, serial_number):
         self.server_url = server_url or shopfloor.detect_default_server_url()
+        self.serial_number = serial_number
 
     def start(self):
         # Many developers will try to run factory test image directly without
@@ -133,10 +141,17 @@ class ShopFloorTask(task.FactoryTask):
             return
 
         shopfloor.set_server_url(self.server_url)
-        self.add_widget(ui.make_input_window(
-                prompt=_MSG_TASK_SERIAL,
-                on_validate=self.validate_serial_number,
-                on_complete=self.complete_serial_task))
+
+        # If no partner-specific serial number, pop-up a make_input window.
+        if self.serial_number is None:
+            self.add_widget(ui.make_input_window(
+                    prompt=_MSG_TASK_SERIAL,
+                    on_validate=self.validate_serial_number,
+                    on_complete=self.complete_serial_task))
+        else:
+            # Use partner-specific serial number.
+            if self.validate_serial_number(self.serial_number):
+                self.complete_serial_task(self.serial_number)
 
     def validate_serial_number(self, serial):
         # This is a callback function for widgets created by make_input_window.
@@ -180,7 +195,9 @@ class factory_Start(test.test):
                  press_to_continue=True,
                  require_external_power=False,
                  require_shop_floor=None,
-                 shop_floor_server_url=None):
+                 shop_floor_server_url=None,
+                 serial_number=None,
+                 press_to_start_shop_floor=False):
         factory.log('%s run_once' % self.__class__)
 
         self._task_list = []
@@ -188,16 +205,20 @@ class factory_Start(test.test):
         # Reset shop floor data only if require_shop_floor is explicitly
         # defined, for test lists using factory_Start multiple times between
         # groups (ex, to prompt for space or check power adapter).
+
         if require_shop_floor is not None:
             shopfloor.reset()
             shopfloor.set_enabled(require_shop_floor)
+            if press_to_start_shop_floor:
+                self._task_list.append(PressSpaceTask(_MSG_TASK_SHOP_FLOOR))
 
         if require_shop_floor:
-            self._task_list.append(ShopFloorTask(shop_floor_server_url))
+            self._task_list.append(
+                ShopFloorTask(shop_floor_server_url, serial_number))
         if require_external_power:
             self._task_list.append(ExternalPowerTask())
         if press_to_continue:
-            self._task_list.append(PressSpaceTask())
+            self._task_list.append(PressSpaceTask(_MSG_TASK_SPACE))
 
         if self._task_list:
             task.run_factory_tasks(self.job, self._task_list)
