@@ -42,6 +42,41 @@ class MTB:
 
     def __init__(self, packets):
         self.packets = packets
+        self._define_check_event_func_list()
+
+    def _define_check_event_func_list(self):
+        """Define event function lists for various event cycles below."""
+        self.check_event_func_list = {}
+        self.MAX_FINGERS = 5
+        # One-finger touching the pad should generate the following events:
+        #     BTN_TOUCH, and BTN_TOOL_FINGER: 0 -> 1 -> 0
+        self.check_event_func_list[1] = [self._is_BTN_TOUCH,
+                                         self._is_BTN_TOOL_FINGER]
+
+        # Two-finger touching the pad should generate the following events:
+        #     BTN_TOUCH, and BTN_TOOL_DOUBLETAP: 0 -> 1 -> 0
+        self.check_event_func_list[2] = [self._is_BTN_TOUCH,
+                                         self._is_BTN_TOOL_DOUBLETAP]
+
+        # Three-finger touching the pad should generate the following events:
+        #     BTN_TOUCH, and BTN_TOOL_TRIPLETAP: 0 -> 1 -> 0
+        self.check_event_func_list[3] = [self._is_BTN_TOUCH,
+                                         self._is_BTN_TOOL_TRIPLETAP]
+
+        # Four-finger touching the pad should generate the following events:
+        #     BTN_TOUCH, and BTN_TOOL_QUADTAP: 0 -> 1 -> 0
+        self.check_event_func_list[4] = [self._is_BTN_TOUCH,
+                                         self._is_BTN_TOOL_QUADTAP]
+
+        # Five-finger touching the pad should generate the following events:
+        #     BTN_TOUCH, and BTN_TOOL_QUINTTAP: 0 -> 1 -> 0
+        self.check_event_func_list[5] = [self._is_BTN_TOUCH,
+                                         self._is_BTN_TOOL_QUINTTAP]
+
+        # Physical click should generate the following events:
+        #     BTN_LEFT: 0 -> 1 -> 0
+        self.check_event_func_click = [self._is_BTN_LEFT,]
+
 
     def _is_ABS_MT_TRACKING_ID(self, event):
         """Is this event ABS_MT_TRACKING_ID?"""
@@ -74,6 +109,38 @@ class MTB:
         return (not event.get(SYN_REPORT) and
                 event[EV_TYPE] == EV_ABS and
                 event[EV_CODE] == ABS_MT_POSITION_Y)
+
+    def _is_EV_KEY(self, event):
+        """Is this an EV_KEY event?"""
+        return (not event.get(SYN_REPORT) and event[EV_TYPE] == EV_KEY)
+
+    def _is_BTN_LEFT(self, event):
+        """Is this event BTN_LEFT?"""
+        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_LEFT)
+
+    def _is_BTN_TOOL_FINGER(self, event):
+        """Is this event BTN_TOOL_FINGER?"""
+        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_FINGER)
+
+    def _is_BTN_TOOL_DOUBLETAP(self, event):
+        """Is this event BTN_TOOL_DOUBLETAP?"""
+        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_DOUBLETAP)
+
+    def _is_BTN_TOOL_TRIPLETAP(self, event):
+        """Is this event BTN_TOOL_TRIPLETAP?"""
+        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_TRIPLETAP)
+
+    def _is_BTN_TOOL_QUADTAP(self, event):
+        """Is this event BTN_TOOL_QUADTAP?"""
+        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_QUADTAP)
+
+    def _is_BTN_TOOL_QUINTTAP(self, event):
+        """Is this event BTN_TOOL_QUINTTAP?"""
+        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_QUINTTAP)
+
+    def _is_BTN_TOUCH(self, event):
+        """Is this event BTN_TOUCH?"""
+        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOUCH)
 
     def _calc_movement_for_axis(self, x, prev_x):
         """Calculate the distance moved in an axis."""
@@ -344,6 +411,100 @@ class MTB:
         """Get the number of packets in the target slot."""
         list_x, list_y = self.get_x_y(target_slot)
         return len(list_x)
+
+    def _call_check_event_func(self, event, expected_value, check_event_result,
+                               check_event_func):
+        """Call all functions in check_event_func and return the results.
+
+        Note that since check_event_result is a dictionary, it is passed
+        by reference.
+        """
+        for func in check_event_func:
+            if func(event):
+                check_event_result[func] = (event[EV_VALUE] == expected_value)
+                break
+
+    def _get_event_cycles(self, check_event_func):
+        """A generic method to get the number of event cycles.
+
+        For a tap, its event cycle looks like:
+            (1) finger touching the pad:
+                BTN_TOOL_FINGER: 0-> 1
+                BTN_TOUCH: 0 -> 1
+            (2) finger leaving the pad:
+                BTN_TOOL_FINGER: 1-> 0
+                BTN_TOUCH: 1 -> 0
+
+        For a one-finger physical click, its event cycle looks like:
+            (1) finger clicking and pressing:
+                BTN_LEFT : 0-> 1
+                BTN_TOOL_FINGER: 0-> 1
+                BTN_TOUCH: 0 -> 1
+            (2) finger leaving:
+                BTN_LEFT : 1-> 0
+                BTN_TOOL_FINGER: 1-> 0
+                BTN_TOUCH: 1 -> 0
+
+        This method counts how many such cycles there are in the packets.
+        """
+        # Initialize all check_event_result to False
+        # when all_events_observed is False and all check_event_result are True
+        #      => all_events_observed is set to True
+        # when all_events_observed is True and all check_event_result are True
+        #      => all_events_observed is set to False, and
+        #         count is increased by 1
+        check_event_result = self._init_dict(check_event_func, False)
+        all_events_observed = False
+        count = 0
+        for packet in self.packets:
+            for event in packet:
+                if all_events_observed:
+                    expected_value = 0
+                    self._call_check_event_func(event, expected_value,
+                                                check_event_result,
+                                                check_event_func)
+                    if all(check_event_result.values()):
+                        all_events_observed = False
+                        check_event_result = self._init_dict(check_event_func,
+                                                             False)
+                        count += 1
+                else:
+                    expected_value = 1
+                    self._call_check_event_func(event, expected_value,
+                                                check_event_result,
+                                                check_event_func)
+                    if all(check_event_result.values()):
+                        all_events_observed = True
+                        check_event_result = self._init_dict(check_event_func,
+                                                             False)
+        return count
+
+    def _get_event_cycles_for_num_fingers(self, num_fingers):
+        return self._get_event_cycles(self.check_event_func_list[num_fingers])
+
+    def verify_exact_number_fingers_touch(self, num_fingers):
+        """Verify the exact number of fingers touching the pad.
+
+        Example: for a two-finger touch
+            2-finger touch cycles should be equal to 1
+            3/4/5-finger touch cycles should be equal to 0
+            Don't care about 1-finger touch cycles which is not deterministic.
+        """
+        range_fingers = range(1, self.MAX_FINGERS)
+        flag_check = self._init_dict(range_fingers, True)
+        for f in range_fingers:
+            cycles = self._get_event_cycles_for_num_fingers(f)
+            if f == num_fingers:
+                flag_check[f] = cycles == 1
+            elif f > num_fingers:
+                flag_check[f] = cycles == 0
+        return all(flag_check)
+
+    def get_physical_clicks(self, num_fingers):
+        """Get the count of physical clicks for the given number of fingers."""
+        flag_fingers_touch = self.verify_exact_number_fingers_touch(num_fingers)
+        click_cycles = self._get_event_cycles(self.check_event_func_click)
+        return click_cycles if flag_fingers_touch else 0
 
 
 class MTBParser:

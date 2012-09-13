@@ -12,6 +12,7 @@ from validators import (CountPacketsValidator,
                         LinearityValidator,
                         NoGapValidator,
                         NoReversedMotionValidator,
+                        PhysicalClickValidator,
                         PinchValidator,
                         RangeValidator,
                         StationaryFingerValidator,
@@ -148,7 +149,7 @@ gesture_list = [
     Gesture(
         name='one_finger_tap',
         variations=(TL, TR, BL, BR, TS, BS, LS, RS, CENTER),
-        prompt='Use a finger to tap on the {0} of the pad.',
+        prompt='Use one finger to make a tap on the {0} of the pad.',
         subprompt={
             TL: ('top left corner',),
             TR: ('top right corner',),
@@ -162,6 +163,8 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 1'),
+            PhysicalClickValidator('== 0', fingers=1),
+            PhysicalClickValidator('== 0', fingers=2),
         ),
     ),
 
@@ -176,26 +179,63 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 6'),
+            PhysicalClickValidator('== 0', fingers=1),
+            PhysicalClickValidator('== 0', fingers=2),
         ),
     ),
 
     Gesture(
         name='one_finger_physical_click',
         variations=None,
-        prompt='Use one finger to make 3 physical clicks.',
+        prompt='Use one finger to make 1 physical click.',
         subprompt=None,
         validators=(
-            CountTrackingIDValidator('== 3'),
+            CountTrackingIDValidator('== 1'),
+            PhysicalClickValidator('== 1', fingers=1),
         ),
     ),
 
     Gesture(
         name='two_fingers_physical_click',
         variations=None,
-        prompt='Use two fingers to make 3 physical clicks.',
+        prompt='Use two fingers to make 1 physical click.',
         subprompt=None,
         validators=(
-            CountTrackingIDValidator('== 6'),
+            CountTrackingIDValidator('== 2'),
+            PhysicalClickValidator('== 1', fingers=2),
+        ),
+    ),
+
+    Gesture(
+        name='three_fingers_physical_click',
+        variations=None,
+        prompt='Use three fingers to make 1 physical click.',
+        subprompt=None,
+        validators=(
+            CountTrackingIDValidator('== 3'),
+            PhysicalClickValidator('== 1', fingers=3),
+        ),
+    ),
+
+    Gesture(
+        name='four_fingers_physical_click',
+        variations=None,
+        prompt='Use four fingers to make 1 physical click.',
+        subprompt=None,
+        validators=(
+            CountTrackingIDValidator('== 4'),
+            PhysicalClickValidator('== 1', fingers=4),
+        ),
+    ),
+
+    Gesture(
+        name='five_fingers_physical_click',
+        variations=None,
+        prompt='Use five fingers to make 1 physical click.',
+        subprompt=None,
+        validators=(
+            CountTrackingIDValidator('== 5'),
+            PhysicalClickValidator('== 1', fingers=5),
         ),
     ),
 
