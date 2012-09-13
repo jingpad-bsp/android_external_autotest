@@ -212,10 +212,10 @@ class ServoTest(test.test):
         logging.info('Server proxy: %s' % remote_url)
 
         # Poll for client RPC server to come online.
-        timeout = 10
+        timeout = 20
         succeed = False
         while timeout > 0 and not succeed:
-            time.sleep(2)
+            time.sleep(1)
             try:
                 remote_object = getattr(self, info['ref_name'])
                 polling_rpc = getattr(remote_object, info['polling_rpc'])
@@ -247,8 +247,8 @@ class ServoTest(test.test):
         # Ensure old ssh connections are terminated.
         self._terminate_all_ssh()
         # Wait for the client to come up.
-        while timeout > 0 and not self._sshd_test(self._client.ip, timeout=5):
-            timeout -= 5
+        while timeout > 0 and not self._sshd_test(self._client.ip, timeout=2):
+            timeout -= 2
         assert timeout, 'Timed out waiting for client to reboot.'
         logging.info('Server: Client machine is up.')
         # Relaunch remote clients.
