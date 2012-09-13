@@ -29,9 +29,6 @@ class login_OwnershipTaken(cros_ui_test.UITest):
 
 
     def run_once(self):
-        # Work around until crosbug.com/139166 is fixed
-        self.pyauto.ExecuteJavascriptInOOBEWebUI('Oobe.showSigninUI();'
-            'window.domAutomationController.send("ok");')
         self.login(self.username, self.password)
         login.wait_for_ownership()
 
