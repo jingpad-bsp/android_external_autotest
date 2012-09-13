@@ -13,14 +13,14 @@ from cros.factory.event_log import EventLog
 from cros.factory.test.test_ui import UI
 
 _HTML_PREFIX = '''
-<h1>LAN & Bluetooth MAC address probing</h1><br>
+<h1>WLAN & Bluetooth MAC address probing</h1><br>
 '''
 _HTML_POSTFIX = '''
 <input type="button" value="Finished"
   onClick="test.pass()">
 '''
 
-LAN_MAC_PATH = "/sys/class/net/%s/address"
+WLAN_MAC_PATH = "/sys/class/net/%s/address"
 BT_MAC_PATH = "/sys/class/bluetooth/%s/address"
 
 class factory_ProbeWifi(test.test):
@@ -51,14 +51,14 @@ class factory_ProbeWifi(test.test):
              self.event_log.Log('mac', mac_type=mac_type, mac=mac)
         return display_strings
 
-    def run_once(self, lan_device='wlan0', bt_device='hci0', display=False):
+    def run_once(self, wlan_device='wlan0', bt_device='hci0', display=False):
         self.event_log = EventLog.ForAutoTest()
         self.ui = UI()
         probe_list = []
-        if lan_device:
-            probe_list.append(('lan',
-                               LAN_MAC_PATH % lan_device,
-                               u'LAN', u'網路'))
+        if wlan_device:
+            probe_list.append(('wlan',
+                               WLAN_MAC_PATH % wlan_device,
+                               u'WLAN', u'无线網路'))
 
         if bt_device:
             probe_list.append(('bt',
