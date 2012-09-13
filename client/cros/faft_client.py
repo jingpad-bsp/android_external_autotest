@@ -13,10 +13,8 @@ import functools, os, shutil, sys
 from optparse import OptionParser
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
-# Import libraries from SAFT.
-sys.path.append('/usr/local/sbin/firmware/saft')
-import cgpt_state, chromeos_interface, flashrom_handler, kernel_handler
-import saft_flashrom_util, tpm_handler
+from saft import cgpt_state, chromeos_interface, flashrom_handler
+from saft import kernel_handler, saft_flashrom_util, tpm_handler
 
 
 def allow_multiple_section_input(image_operator):
