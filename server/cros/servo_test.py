@@ -234,21 +234,21 @@ class ServoTest(test.test):
         assert succeed, 'Timed out connecting to client RPC server.'
 
 
-    def wait_for_client(self, install_deps=False):
+    def wait_for_client(self, install_deps=False, timeout=100):
         """Wait for the client to come back online.
 
         New remote processes will be launched if their used flags are enabled.
 
         Args:
             install_deps: If True, install the Autotest dependency when ready.
+            timeout: Time in seconds to wait for the client SSH daemon to
+              come up.
         """
-        timeout = 10
         # Ensure old ssh connections are terminated.
         self._terminate_all_ssh()
         # Wait for the client to come up.
-        while timeout > 0 and not self._sshd_test(self._client.ip):
-            time.sleep(5)
-            timeout -= 1
+        while timeout > 0 and not self._sshd_test(self._client.ip, timeout=5):
+            timeout -= 5
         assert timeout, 'Timed out waiting for client to reboot.'
         logging.info('Server: Client machine is up.')
         # Relaunch remote clients.
@@ -262,7 +262,7 @@ class ServoTest(test.test):
                 logging.info('Server: Relaunched remote %s.' % name)
 
 
-    def wait_for_client_offline(self, timeout=30):
+    def wait_for_client_offline(self, timeout=60):
         """Wait for the client to come offline.
 
         Args:
@@ -270,7 +270,6 @@ class ServoTest(test.test):
         """
         # Wait for the client to come offline.
         while timeout > 0 and self._ping_test(self._client.ip, timeout=1):
-            time.sleep(1)
             timeout -= 1
         assert timeout, 'Timed out waiting for client offline.'
         logging.info('Server: Client machine is offline.')
