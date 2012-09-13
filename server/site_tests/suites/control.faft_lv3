@@ -1,38 +1,35 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "FAFT"
+NAME = "FAFT LV3"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-This test suite runs FAFT (Fully Automated Firmware Test) that should
-all pass and that verifies the firmware fit Chrome OS verified-boot
-requirements.
+This test suite runs FAFT (Fully Automated Firmware Test) for BIOS that should
+all pass and that verifies the BIOS fit Chrome OS verified-boot requirements.
+
+All BIOS tests are categorized into 4 test levels:
+  Level-1: Basic BIOS tests which verify basic vboot functions.
+  Level-2: Recovery BIOS tests which need external USB disk.
+  Level-3: Corruption BIOS tests which modify firmware/kernel image.
+           These tests may corrupt the system if any failure happens.
+  Level-4: Advanced BIOS tests which verify not-so-critical features.
+
+This suite runs all Level-3 tests.
 """
 
 TESTS_ON_NORMAL_MODE = [
-    ('firmware_DevMode', {}),
-    ('firmware_DevTriggerRecovery', {}),
-    ('firmware_InvalidUSB', {}),
-    ('firmware_CgptState', {}),
 ]
 
 TESTS_ON_DEV_MODE = [
-    ('firmware_DevFwNormalBoot', {}),
-    ('firmware_DevScreenTimeout', {}),
-    ('firmware_FwScreenPressPower', {}),
-    ('firmware_FwScreenCloseLid', {}),
 ]
 
 TESTS_ON_BOTH_MODES = [
-    ('firmware_TryFwB', {}),
-    ('firmware_UserRequestRecovery', {}),
-    ('firmware_RecoveryButton', {}),
     ('firmware_CorruptFwSigA', {}),
     ('firmware_CorruptFwSigB', {}),
     ('firmware_CorruptBothFwSigAB', {}),
@@ -45,6 +42,7 @@ TESTS_ON_BOTH_MODES = [
     ('firmware_RollbackFirmware', {}),
     ('firmware_RollbackKernel', {}),
     ('firmware_RONormalBoot', {}),
+    ('firmware_UpdateECBin', {}),
 ]
 
 
