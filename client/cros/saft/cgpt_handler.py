@@ -1,22 +1,21 @@
-#!/usr/bin/python
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-'''A module to provide interface to gpt information.
+"""A module to provide interface to gpt information.
 
 gpt stands for GUID partition table, it is a data structure describing
 partitions present of a storage device. cgpt is a utility which allows to read
 and modify gpt. This module parses cgpt output to create a dictionary
 including information about all defined partitions including their properties.
 It also allows to modify partition properties as required.
-'''
+"""
 
 class CgptError(Exception):
     pass
 
 class CgptHandler(object):
-    '''Object representing one or more gpts present in the system.
+    """Object representing one or more gpts present in the system.
 
     Attributes:
       chros_if: an instance of chromeos_interface, initialized by the caller.
@@ -34,7 +33,7 @@ class CgptHandler(object):
         }
      }
 
-    '''
+    """
 
     # This dictionary maps gpt attributes the user can modify into the cgpt
     # utility command line options.
@@ -49,11 +48,11 @@ class CgptHandler(object):
         self.devices = {}
 
     def read_device_info(self, dev_name):
-        '''Get device information from cgpt and parse it into a dictionary.
+        """Get device information from cgpt and parse it into a dictionary.
 
         Inputs:
           dev_name: a string the Linux storage device name, (i.e. '/dev/sda')
-        '''
+        """
 
         device_dump = self.chros_if.run_shell_command_get_output(
             'cgpt show %s' % dev_name)
@@ -85,7 +84,7 @@ class CgptHandler(object):
         self.devices[dev_name] = device_data
 
     def get_partition(self, device, partition_name):
-        '''Retrieve a dictionary representing a partition on a device.
+        """Retrieve a dictionary representing a partition on a device.
 
         Inputs:
           device: a string, the Linux device name
@@ -94,7 +93,7 @@ class CgptHandler(object):
         Raises:
           CgptError in case the device or partiton on that device are not
           known.
-        '''
+        """
 
         try:
             result = self.devices[device][partition_name]
@@ -104,7 +103,7 @@ class CgptHandler(object):
         return result
 
     def dump_partition(self, device, partition_name):
-        '''Return text describing a partition on a device.
+        """Return text describing a partition on a device.
 
         Inputs:
           device: a string, the Linux device name
@@ -113,14 +112,14 @@ class CgptHandler(object):
         Returns:
           A string, bunch of lines in the form <property>: <value> each,
           listing all partition properties as reported by cgpt.
-        '''
+        """
 
         partition = self.get_partition(device, partition_name)
         lines = ['%s: %s' % (x, str(partition[x])) for x in partition]
         return '\n'.join(lines)
 
     def set_partition(self, device, partition_name, partition_value):
-        '''Set partition properties.
+        """Set partition properties.
 
         Inputs:
           device: a string, the Linux device name
@@ -133,7 +132,7 @@ class CgptHandler(object):
         Raises:
           CgptError in case a property name is not known or not supposed to
               be modified.
-        '''
+        """
 
         current = self.get_partition(device, partition_name)
         options = []

@@ -1,9 +1,8 @@
-#!/usr/bin/python
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-'''A module containing kernel handler class used by SAFT.'''
+"""A module containing kernel handler class used by SAFT."""
 
 import os
 import re
@@ -21,11 +20,11 @@ class KernelHandlerError(Exception):
 
 
 class KernelHandler(object):
-    '''An object to provide ChromeOS kernel related actions.
+    """An object to provide ChromeOS kernel related actions.
 
     Mostly it allows to corrupt and restore a particular kernel partition
     (designated by the partition name, A or B.
-    '''
+    """
 
     # This value is used to alter contents of a byte in the appropriate kernel
     # image. First added to corrupt the image, then subtracted to restore the
@@ -39,23 +38,23 @@ class KernelHandler(object):
         self.root_dev = None
 
     def _get_version(self, device):
-        '''Get version of the kernel hosted on the passed in partition.'''
+        """Get version of the kernel hosted on the passed in partition."""
         # 16 K should be enough to include headers and keys
         data = self.chros_if.read_partition(device, 0x4000)
         return self.chros_if.retrieve_body_version(data)
 
     def _get_datakey_version(self,device):
-        '''Get datakey version of kernel hosted on the passed in partition.'''
+        """Get datakey version of kernel hosted on the passed in partition."""
         # 16 K should be enought to include headers and keys
         data = self.chros_if.read_partition(device, 0x4000)
         return self.chros_if.retrieve_datakey_version(data)
 
     def _get_partition_map(self, internal_disk=True):
-        '''Scan `cgpt show <device> output to find kernel devices.
+        """Scan `cgpt show <device> output to find kernel devices.
 
         Args:
           internal_disk - decide whether to use internal kernel disk.
-        '''
+        """
         if internal_disk:
             target_device = self.chros_if.get_internal_disk(
                     self.chros_if.get_root_part())
@@ -82,7 +81,7 @@ class KernelHandler(object):
                        delta,
                        modification_type=KERNEL_BODY_MOD,
                        key_path=None):
-        '''Modify kernel image on a disk partition.
+        """Modify kernel image on a disk partition.
 
         This method supports three types of kernel modification. KERNEL_BODY_MOD
         just adds the value of delta to the first byte of the kernel blob.
@@ -95,7 +94,7 @@ class KernelHandler(object):
         The third type. KERNEL_RESIGN_MOD - will resign the kernel with keys in
         argument key_path. If key_path is None, choose dev_key_path as resign
         key directory.
-        '''
+        """
         dev = self.partition_map[section]['device']
         cmd_template = 'dd if=%s of=%s bs=4M count=1'
         self.chros_if.run_shell_command(cmd_template % (
@@ -137,23 +136,23 @@ class KernelHandler(object):
         self.chros_if.run_shell_command(cmd_template % (kernel_to_write, dev))
 
     def corrupt_kernel(self, section):
-        '''Corrupt a kernel section (add DELTA to the first byte).'''
+        """Corrupt a kernel section (add DELTA to the first byte)."""
         self._modify_kernel(section.upper(), self.DELTA)
 
     def restore_kernel(self, section):
-        '''Restore the previously corrupted kernel.'''
+        """Restore the previously corrupted kernel."""
         self._modify_kernel(section.upper(), -self.DELTA)
 
     def get_version(self, section):
-        '''Return version read from this section blob's header.'''
+        """Return version read from this section blob's header."""
         return self.partition_map[section.upper()]['version']
 
     def get_datakey_version(self, section):
-        '''Return datakey version read from this section blob's header.'''
+        """Return datakey version read from this section blob's header."""
         return self.partition_map[section.upper()]['datakey_version']
 
     def set_version(self, section, version):
-        '''Set version of this kernel blob and re-sign it.'''
+        """Set version of this kernel blob and re-sign it."""
         if version < 0:
             raise KernelHandlerError('Bad version value %d' % version)
         self._modify_kernel(section.upper(), version, KERNEL_VERSION_MOD)
@@ -166,10 +165,10 @@ class KernelHandler(object):
                             key_path)
 
     def init(self, chros_if, dev_key_path='.', internal_disk=True):
-        '''Initialize the kernel handler object.
+        """Initialize the kernel handler object.
 
         Input argument is a ChromeOS interface object reference.
-        '''
+        """
         self.chros_if = chros_if
         self.dev_key_path = dev_key_path
         self.root_dev = chros_if.get_root_dev()

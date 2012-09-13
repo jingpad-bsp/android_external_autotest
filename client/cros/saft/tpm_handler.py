@@ -1,9 +1,8 @@
-#!/usr/bin/python
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-'''A module containing TPM handler class used by SAFT.'''
+"""A module containing TPM handler class used by SAFT."""
 import os
 import re
 import shutil
@@ -16,7 +15,7 @@ class TpmError(Exception):
     pass
 
 class TpmNvRam(object):
-    '''An object representing TPM NvRam.
+    """An object representing TPM NvRam.
 
     Attributes:
     addr: a number, NvRAm address in TPM.
@@ -31,7 +30,7 @@ class TpmNvRam(object):
        offset of the pattern expected to be present in the NvRam, and the
        second element is an array of bytes the pattern must match.
     contents: an array of bytes, the contents of the NvRam.
-    '''
+    """
 
     def __init__(self, addr, size, version_offset, data_pattern=None):
         self.addr = addr
@@ -76,7 +75,7 @@ class TpmNvRam(object):
             self.os_if.log('no version change for 0x%x' % self.addr)
 
 class TpmHandler(object):
-    '''An object to control TPM device's NVRAM.
+    """An object to control TPM device's NVRAM.
 
     Attributes:
       cros_if: an instance of the OS interface (chromeos_interface or a mock
@@ -84,7 +83,7 @@ class TpmHandler(object):
       nvrams: A dictionary where the keys are the nvram names, and the values
           are instances of TpmNvRam objects, providing access to the
           appropriate TPM NvRam sections.
-    '''
+    """
 
     def __init__(self):
         self.cros_if = None
@@ -127,7 +126,7 @@ class TpmHandler(object):
         return self._version_good('bios', version_a, version_b)
 
     def enable_write_access(self, config_file_name='/etc/init/tcsd.conf'):
-        '''Enable TPM write access on the next recovery mode restart.
+        """Enable TPM write access on the next recovery mode restart.
 
         Comment out from the TPM upstart script the following lines locking
         the TPM (and thus preventing write access):
@@ -136,7 +135,7 @@ class TpmHandler(object):
             tpmc pplock || logger "tpmc pplock: status $?"
 
         Save the original file in the state directory for future recovery.
-        '''
+        """
 
         pattern = re.compile('^\s+tpmc\s+(b|pp)lock\s+\|\|')
         new_file_name = self.cros_if.state_dir_file(
@@ -154,11 +153,11 @@ class TpmHandler(object):
         shutil.move(new_file_name, config_file_name)
 
     def disable_write_access(self, config_file_name='/etc/init/tcsd.conf'):
-        '''Disable TPM write access.
+        """Disable TPM write access.
 
         Restore previously edited startup file to lock the TPM on the next
         restart.
-        '''
+        """
         backup_file_name = self.cros_if.state_dir_file(
             os.path.basename(config_file_name) + '.bak')
         shutil.move(backup_file_name, config_file_name)

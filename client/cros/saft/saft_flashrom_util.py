@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -37,7 +36,7 @@ class TestError(Exception):
 
 
 class LayoutScraper(object):
-    '''Object of this class is used to retrieve layout from a BIOS file.'''
+    """Object of this class is used to retrieve layout from a BIOS file."""
 
     # The default conversion table for mosys.
     DEFAULT_CHROMEOS_FMAP_CONVERSION = {
@@ -68,27 +67,27 @@ class LayoutScraper(object):
         self.os_if = os_if
 
     def _get_text_layout(self, file_name):
-        '''Retrieve text layout from a firmware image file.
+        """Retrieve text layout from a firmware image file.
 
         This function uses the 'mosys' utility to scan the firmware image and
         retrieve the section layout information.
 
         The layout is reported as a set of lines with multiple
         "<name>"="value" pairs, all this output is passed to the caller.
-        '''
+        """
 
         mosys_cmd = 'mosys -f -k eeprom map %s' % file_name
         return self.os_if.run_shell_command_get_output(mosys_cmd)
 
     def _line_to_dictionary(self, line):
-        '''Convert a text layout line into a dictionary.
+        """Convert a text layout line into a dictionary.
 
         Get a string consisting of single space separated "<name>"="value>"
         pairs and convert it into a dictionary where keys are the <name>
         fields, and values are the corresponding <value> fields.
 
         Return the dictionary to the caller.
-        '''
+        """
 
         rv = {}
 
@@ -101,7 +100,7 @@ class LayoutScraper(object):
         return rv
 
     def check_layout(self, layout, file_size):
-        '''Verify the layout to be consistent.
+        """Verify the layout to be consistent.
 
         The layout is consistent if there is no overlapping sections and the
         section boundaries do not exceed the file size.
@@ -115,7 +114,7 @@ class LayoutScraper(object):
 
         Raises:
           TestError in case the layout is not consistent.
-        '''
+        """
 
         # Generate a list of section range tuples.
         ost = sorted([layout[section] for section in layout])
@@ -130,7 +129,7 @@ class LayoutScraper(object):
                     base, file_size))
 
     def get_layout(self, file_name):
-        '''Generate layout for a firmware file.
+        """Generate layout for a firmware file.
 
         First retrieve the text layout as reported by 'mosys' and then convert
         it into a dictionary, replacing section names reported by mosys into
@@ -141,7 +140,7 @@ class LayoutScraper(object):
 
         Then verify the generated layout's consistency and return it to the
         caller.
-        '''
+        """
 
         layout_data = {} # keyed by the section name, elements - tuples of
                          # (<section start addr>, <section end addr>)
@@ -212,7 +211,8 @@ class flashrom_util(object):
         keep_temp_files: boolean flag to control cleaning of temporary files
     """
 
-    def __init__(self, verbose=False, keep_temp_files=False, target_is_ec=False):
+    def __init__(self, verbose=False, keep_temp_files=False,
+                 target_is_ec=False):
         """ constructor of flashrom_util. help(flashrom_util) for more info """
         self.verbose = verbose
         self.keep_temp_files = keep_temp_files
@@ -236,7 +236,7 @@ class flashrom_util(object):
         self._target_command = '-p internal:bus=lpc'
 
     def get_temp_filename(self, prefix):
-        ''' (internal) Returns name of a temporary file in self.tmp_root '''
+        """ (internal) Returns name of a temporary file in self.tmp_root """
         (fd, name) = tempfile.mkstemp(prefix=prefix)
         os.close(fd)
         return name
@@ -249,10 +249,10 @@ class flashrom_util(object):
             os.remove(filename)
 
     def create_layout_file(self, layout_map):
-        '''
+        """
         (internal) Creates a layout file based on layout_map.
         Returns the file name containing layout information.
-        '''
+        """
         layout_text = ['0x%08lX:0x%08lX %s' % (v[0], v[1], k)
             for k, v in layout_map.items()]
         layout_text.sort()  # XXX unstable if range exceeds 2^32
@@ -261,10 +261,10 @@ class flashrom_util(object):
         return tmpfn
 
     def get_section(self, base_image, section_name):
-        '''
+        """
         Retrieves a section of data based on section_name in layout_map.
         Raises error if unknown section or invalid layout_map.
-        '''
+        """
         pos = self.firmware_layout[section_name]
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
             raise TestError('INTERNAL ERROR: invalid layout map: %s.' %
@@ -272,11 +272,11 @@ class flashrom_util(object):
         return base_image[pos[0] : pos[1] + 1]
 
     def put_section(self, base_image, section_name, data):
-        '''
+        """
         Updates a section of data based on section_name in firmware_layout.
         Raises error if unknown section.
         Returns the full updated image data.
-        '''
+        """
         pos = self.firmware_layout[section_name]
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
             raise TestError('INTERNAL ERROR: invalid layout map.')
@@ -299,10 +299,10 @@ class flashrom_util(object):
         self.firmware_layout = scraper.get_layout(file_name)
 
     def read_whole(self):
-        '''
+        """
         Reads whole flash ROM data.
         Returns the data read from flash ROM, or empty string for other error.
-        '''
+        """
         tmpfn = self.get_temp_filename('rd_')
         cmd = 'flashrom %s -r "%s"' % (self._target_command, tmpfn)
         if self.verbose:
@@ -317,10 +317,10 @@ class flashrom_util(object):
         return result
 
     def write_partial(self, base_image, write_list, write_layout_map=None):
-        '''
+        """
         Writes data in sections of write_list to flash ROM.
         An exception is raised if write operation fails.
-        '''
+        """
 
         if write_layout_map:
             layout_map = write_layout_map
@@ -343,6 +343,6 @@ class flashrom_util(object):
         self.remove_temp_file(layout_fn)
 
     def write_whole(self, base_image):
-        '''Write the whole base image. '''
+        """Write the whole base image. """
         layout_map = { 'all': (0, len(base_image) - 1) }
         self.write_partial(base_image, ('all',), layout_map)

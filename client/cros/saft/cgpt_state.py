@@ -1,9 +1,8 @@
-#!/usr/bin/python
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-'''CGPT state machine for cgpt tests'''
+"""CGPT state machine for cgpt tests"""
 
 import os
 import sys
@@ -108,7 +107,7 @@ class CgptStateError(Exception):
 
 
 class CgptState:
-    '''A class to encapsulate cgpt test operations and its test state tuples'''
+    """A class to encapsulate cgpt test operations and its test state tuples"""
 
     DELIMIT = ':'
     KERN_NAME = ['KERN-A', 'KERN-B']
@@ -116,7 +115,7 @@ class CgptState:
     PARA_POS = {'ACTION':0, 'EXPECTED':1, 'BOOT_VEC':2}
 
     def __init__(self, choice, chros_if, base_storage_dev):
-        '''Initializer: read CGPT_STATE_SEQ
+        """Initializer: read CGPT_STATE_SEQ
 
         cgpt_state_seq - a sequence of tuples by which to carry on cgpt tests
 
@@ -129,7 +128,7 @@ class CgptState:
         cgpth: an object providing services manipulating gpt information
 
         step_file: a file recording current step number
-        '''
+        """
         self.cgpt_state_seq = CGPT_STATE_SEQ_BODY[choice] + CGPT_STATE_SEQ_END
         self.num_steps = len(self.cgpt_state_seq)
         self.base_storage_dev = base_storage_dev
@@ -138,26 +137,26 @@ class CgptState:
         self.step_file = None
 
     def get_step(self):
-        '''Get the step number of cgpt test'''
+        """Get the step number of cgpt test"""
         self.step_file = self.chros_if.state_dir_file(STEP_FILE)
         step = int(open(self.step_file, 'r').read().strip())
         self._assert_step(step)
         return step
 
     def set_step(self, step):
-        '''Set the step number of cgpt test in a file'''
+        """Set the step number of cgpt test in a file"""
         self.step_file = self.chros_if.state_dir_file(STEP_FILE)
         open(self.step_file, 'w').write('%d' % step)
 
     def _is_matched_kern_prop_dict(self, part_prop_dict,
                                    expected_kern_prop_dict):
-        ''' Compare if kernel properties are the same in both dictionaries
+        """ Compare if kernel properties are the same in both dictionaries
 
         part_prop_dict - a partition property dictionary retrieved from device
         expected_kern_prop_dict - expected kernel property specified in cgpt
                          state tuple
 
-        '''
+        """
         if (expected_kern_prop_dict is None):
             return True
         for name in CgptState.PROP_NAME:
@@ -166,33 +165,33 @@ class CgptState:
         return True
 
     def _assert_step(self, step):
-        '''assert that the step number is legal'''
+        """assert that the step number is legal"""
         if step >= self.num_steps or step < 0:
             raise CgptStateError('Error: Wrong step number %d in cgpt_state' %
                                   step)
 
     def _get_boot_vector(self, step):
-        '''Read boot vector for a specified step, e.g., '1:1:1:0:3' '''
+        """Read boot vector for a specified step, e.g., '1:1:1:0:3' """
         return self.cgpt_state_seq[step][CgptState.PARA_POS['BOOT_VEC']]
 
     def _get_kern_props(self, step, para_flag):
-        '''Read action or expected kernel property tuples based on para_flag
+        """Read action or expected kernel property tuples based on para_flag
 
         para_flag - parameter flag determining action or expected property
         Example of returned value: ('8:15:0', '9:15:0')
 
-        '''
+        """
         para_pos = CgptState.PARA_POS[para_flag]
         return self.cgpt_state_seq[step][para_pos]
 
     def _str_to_kern_prop_dict(self, kern_prop):
-        '''Convert a string to kernel property dictionary
+        """Convert a string to kernel property dictionary
 
         kern_prop - a string of kernel property
         Example: kern_prop = '8:15:0'
                  return {'priority':8, 'tries':15, 'successful':0}
 
-        '''
+        """
         kern_prop_list = kern_prop.split(CgptState.DELIMIT)
         kern_prop_dict = {}
         for idx, name in enumerate(CgptState.PROP_NAME):
@@ -200,14 +199,14 @@ class CgptState:
         return kern_prop_dict
 
     def _get_kern_prop_dict(self, step, para_flag, part):
-        '''Read single kernel property and build a dictionary for it
+        """Read single kernel property and build a dictionary for it
 
         para_flag: parameter flag, can be 'ACTION' or 'EXPECTED'
         part: partition, can be 'KERN-A' or 'KERN-B'
         Example: read '8:15:0', and
                  return {'priority':8, 'tries':15, 'successful':0}.
 
-        '''
+        """
         kern_props = self._get_kern_props(step, para_flag)
         if kern_props == None:
             return None
@@ -216,7 +215,7 @@ class CgptState:
         return self._str_to_kern_prop_dict(kern_prop)
 
     def _cgpt_test(self, action_kern_props):
-        '''Set up the cgpt kernel properties'''
+        """Set up the cgpt kernel properties"""
         self.cgpth.read_device_info(self.base_storage_dev)
         if action_kern_props is None:
             raise CgptStateError("Error: The action parameter for \
@@ -228,12 +227,12 @@ class CgptState:
                                      self.KERN_NAME[index], kern_prop_dict)
 
     def _check_kern_props(self, step):
-        '''Check machine kernel properties against cgpt_state_seq
+        """Check machine kernel properties against cgpt_state_seq
 
         Check if the machine kernel properties comply with the expected
         kernel properties specified in cgpt_state_seq
 
-        '''
+        """
         # Read device information from machine
         self.cgpth.read_device_info(self.base_storage_dev)
         # Compare two kernel partitions: KERN-A and KERN-B
@@ -257,12 +256,12 @@ class CgptState:
         return cgpt_kern_prop_flag
 
     def _check_boot_vector(self, step):
-        '''Check machine boot vecotr against cgpt_state_seq
+        """Check machine boot vecotr against cgpt_state_seq
 
         Check if machine boot vector complies with the expected boot vecotr
         specified in cgpt_state_seq
 
-        '''
+        """
         # Get machine boot vector
         boot_vector = self.chros_if.boot_state_vector()
         # Get expected boot vector
@@ -275,14 +274,14 @@ class CgptState:
         return matched
 
     def test_loop(self):
-        '''Loop through every cgpt test state tuple.
+        """Loop through every cgpt test state tuple.
 
         This is the entry function invoked from FirmwareTest of saft_utility.py
         Return 0 - there are more cgpt tests to execute
                1 - no more cgpt test. Firmware Test can proceed to its own
                    next step
 
-        '''
+        """
         step = self.get_step()
         self.chros_if.log('Calling cgpt_state.test_loop: step = %d/%d' %
                           (step, self.num_steps))

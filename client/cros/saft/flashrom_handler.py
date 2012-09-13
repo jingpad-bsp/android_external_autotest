@@ -1,26 +1,25 @@
-#!/usr/bin/python
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-'''A module to support automated testing of ChromeOS firmware.
+"""A module to support automated testing of ChromeOS firmware.
 
 Utilizes services provided by saft_flashrom_util.py read/write the
 flashrom chip and to parse the flash rom image.
 
 See docstring for FlashromHandler class below.
-'''
+"""
 
 import hashlib
 import os
 import struct
 
 class FvSection(object):
-    '''An object to hold information about a firmware section.
+    """An object to hold information about a firmware section.
 
     This includes file names for the signature header and the body, and the
     version number.
-    '''
+    """
 
     def __init__(self, sig_name, body_name):
         self._sig_name = sig_name
@@ -75,7 +74,7 @@ class FlashromHandlerError(Exception):
 
 
 class FlashromHandler(object):
-    '''An object to provide logical services for automated flashrom testing.'''
+    """An object to provide logical services for automated flashrom testing."""
 
     DELTA = 1  # value to add to a byte to corrupt a section contents
 
@@ -97,14 +96,14 @@ class FlashromHandler(object):
              pub_key_file=None,
              dev_key_path='./',
              target='bios'):
-        '''Flashrom handler initializer.
+        """Flashrom handler initializer.
 
         Args:
           flashrom_util_module - a module providing flashrom access utilities.
           chros_if - a module providing interface to Chromium OS services
           pub_key_file - a string, name of the file contaning a public key to
                          use for verifying both existing and new firmware.
-        '''
+        """
         if target == 'bios':
             self.fum = flashrom_util_module.flashrom_util(target_is_ec=False)
             self.fv_sections = {
@@ -123,7 +122,7 @@ class FlashromHandler(object):
         self.dev_key_path = dev_key_path
 
     def new_image(self, image_file=None):
-        '''Parse the full flashrom image and store sections into files.
+        """Parse the full flashrom image and store sections into files.
 
         Args:
           image_file - a string, the name of the file contaning full ChromeOS
@@ -134,7 +133,7 @@ class FlashromHandler(object):
         The input file is parsed and the sections of importance (as defined in
         self.fv_sections) are saved in separate files in the state directory
         as defined in the chros_if object.
-        '''
+        """
 
         if image_file:
             self.image = open(image_file, 'rb').read()
@@ -173,7 +172,7 @@ class FlashromHandler(object):
             self._retrieve_pub_key()
 
     def _retrieve_pub_key(self):
-        '''Retrieve root public key from the firmware GBB section.'''
+        """Retrieve root public key from the firmware GBB section."""
 
         gbb_header_format = '<4s20s2I'
         pubk_header_format = '<2Q'
@@ -212,7 +211,7 @@ class FlashromHandler(object):
         keyf.close()
 
     def verify_image(self):
-        '''Confirm the image's validity.
+        """Confirm the image's validity.
 
         Using the file supplied to init() as the public key container verify
         the two sections' (FirmwareA and FirmwareB) integrity. The contents of
@@ -220,7 +219,7 @@ class FlashromHandler(object):
 
         In case there is an integrity error raises FlashromHandlerError
         exception with the appropriate error message text.
-        '''
+        """
 
         for section in self.fv_sections.itervalues():
             cmd = 'vbutil_firmware --verify %s --signpubkey %s  --fv %s' % (
@@ -229,8 +228,9 @@ class FlashromHandler(object):
                 self.chros_if.state_dir_file(section.get_body_name()))
             self.chros_if.run_shell_command(cmd)
 
-    def _modify_section(self, section, delta, body_or_sig=False, corrupt_all=False):
-        '''Modify a firmware section inside the image, either body or signature.
+    def _modify_section(self, section, delta, body_or_sig=False,
+                        corrupt_all=False):
+        """Modify a firmware section inside the image, either body or signature.
 
         If corrupt_all is set, the passed in delta is added to all bytes in the
         section. Otherwise, the delta is added to the value located at 2% offset
@@ -238,7 +238,7 @@ class FlashromHandler(object):
 
         Calling this function again for the same section the complimentary
         delta value would restore the section contents.
-        '''
+        """
 
         if not self.image:
             raise FlashromHandlerError(
@@ -268,62 +268,62 @@ class FlashromHandler(object):
         return subsection_name
 
     def corrupt_section(self, section, corrupt_all=False):
-        '''Corrupt a section signature of the image'''
+        """Corrupt a section signature of the image"""
 
         return self._modify_section(section, self.DELTA, body_or_sig=False,
                                     corrupt_all=corrupt_all)
 
     def corrupt_section_body(self, section, corrupt_all=False):
-        '''Corrupt a section body of the image'''
+        """Corrupt a section body of the image"""
 
         return self._modify_section(section, self.DELTA, body_or_sig=True,
                                     corrupt_all=corrupt_all)
 
     def restore_section(self, section, restore_all=False):
-        '''Restore a previously corrupted section signature of the image.'''
+        """Restore a previously corrupted section signature of the image."""
 
         return self._modify_section(section, -self.DELTA, body_or_sig=False,
                                     corrupt_all=restore_all)
 
     def restore_section_body(self, section, restore_all=False):
-        '''Restore a previously corrupted section body of the image.'''
+        """Restore a previously corrupted section body of the image."""
 
         return self._modify_section(section, -self.DELTA, body_or_sig=True,
                                     corrupt_all=restore_all)
 
     def corrupt_firmware(self, section, corrupt_all=False):
-        '''Corrupt a section signature in the FLASHROM!!!'''
+        """Corrupt a section signature in the FLASHROM!!!"""
 
         subsection_name = self.corrupt_section(section, corrupt_all=corrupt_all)
         self.fum.write_partial(self.image, (subsection_name, ))
 
     def corrupt_firmware_body(self, section, corrupt_all=False):
-        '''Corrupt a section body in the FLASHROM!!!'''
+        """Corrupt a section body in the FLASHROM!!!"""
 
         subsection_name = self.corrupt_section_body(section,
                                                     corrupt_all=corrupt_all)
         self.fum.write_partial(self.image, (subsection_name, ))
 
     def restore_firmware(self, section, restore_all=False):
-        '''Restore the previously corrupted section sig in the FLASHROM!!!'''
+        """Restore the previously corrupted section sig in the FLASHROM!!!"""
 
         subsection_name = self.restore_section(section, restore_all=restore_all)
         self.fum.write_partial(self.image, (subsection_name, ))
 
     def restore_firmware_body(self, section, restore_all=False):
-        '''Restore the previously corrupted section body in the FLASHROM!!!'''
+        """Restore the previously corrupted section body in the FLASHROM!!!"""
 
         subsection_name = self.restore_section_body(section,
                                                     restore_all=False)
         self.fum.write_partial(self.image, (subsection_name, ))
 
     def firmware_sections_equal(self):
-        '''Check if firmware sections A and B are equal.
+        """Check if firmware sections A and B are equal.
 
         This function presumes that the entire BIOS image integrity has been
         verified, so different signature sections mean different images and
         vice versa.
-        '''
+        """
         sig_a = self.fum.get_section(self.image,
                                       self.fv_sections['a'].get_sig_name())
         sig_b = self.fum.get_section(self.image,
@@ -331,11 +331,11 @@ class FlashromHandler(object):
         return sig_a == sig_b
 
     def copy_from_to(self, src, dst):
-        '''Copy one firmware image section to another.
+        """Copy one firmware image section to another.
 
         This function copies both signature and body of one firmware section
         into another. After this function runs both sections are identical.
-        '''
+        """
         src_sect = self.fv_sections[src]
         dst_sect = self.fv_sections[dst]
         self.image = self.fum.put_section(
@@ -348,7 +348,7 @@ class FlashromHandler(object):
             self.fum.get_section(self.image, src_sect.get_sig_name()))
 
     def write_whole(self):
-        '''Write the whole image into the flashrom.'''
+        """Write the whole image into the flashrom."""
 
         if not self.image:
             raise FlashromHandlerError(
@@ -356,7 +356,7 @@ class FlashromHandler(object):
         self.fum.write_whole(self.image)
 
     def dump_whole(self, filename):
-        '''Write the whole image into a file.'''
+        """Write the whole image into a file."""
 
         if not self.image:
             raise FlashromHandlerError(
@@ -364,7 +364,7 @@ class FlashromHandler(object):
         open(filename, 'w').write(self.image)
 
     def dump_partial(self, subsection_name, filename):
-        '''Write the subsection part into a file.'''
+        """Write the subsection part into a file."""
 
         if not self.image:
             raise FlashromHandlerError(
@@ -373,7 +373,7 @@ class FlashromHandler(object):
         open(filename, 'w').write(blob)
 
     def get_gbb_flags(self):
-        '''Retrieve the GBB flags'''
+        """Retrieve the GBB flags"""
         gbb_header_format = '<12sL'
         gbb_section = self.fum.get_section(self.image, 'FV_GBB')
         try:
@@ -383,33 +383,33 @@ class FlashromHandler(object):
         return gbb_flags
 
     def get_section_sha(self, section):
-        '''Retrieve SHA1 hash of a firmware body section'''
+        """Retrieve SHA1 hash of a firmware body section"""
         return self.fv_sections[section].get_sha()
 
     def get_section_version(self, section):
-        '''Retrieve version number of a firmware section'''
+        """Retrieve version number of a firmware section"""
         return self.fv_sections[section].get_version()
 
     def get_section_flags(self, section):
-        '''Retrieve preamble flags of a firmware section'''
+        """Retrieve preamble flags of a firmware section"""
         return self.fv_sections[section].get_flags()
 
     def get_section_datakey_version(self, section):
-        '''Retrieve data key version number of a firmware section'''
+        """Retrieve data key version number of a firmware section"""
         return self.fv_sections[section].get_datakey_version()
 
     def get_section_kernel_subkey_version(self, section):
-        '''Retrieve kernel subkey version number of a firmware section'''
+        """Retrieve kernel subkey version number of a firmware section"""
         return self.fv_sections[section].get_kernel_subkey_version()
 
     def get_section_body(self, section):
-        '''Retrieve body of a firmware section'''
+        """Retrieve body of a firmware section"""
         subsection_name = self.fv_sections[section].get_body_name()
         blob = self.fum.get_section(self.image, subsection_name)
         return blob
 
     def _find_ecbin_offset(self, blob):
-        '''Return the offset of EC binary from the given firmware blob'''
+        """Return the offset of EC binary from the given firmware blob"""
         # The RW firmware is concatenated from u-boot, dtb, and ecbin.
         # Search the magic of dtb to locate the dtb bloc.
         dtb_offset = blob.index("\xD0\x0D\xFE\xED\x00")
@@ -420,7 +420,7 @@ class FlashromHandler(object):
         return ecbin_offset
 
     def _find_ecbin_size_offset_on_dtb(self, blob):
-        '''Return the offset of EC binary size on the DTB blob'''
+        """Return the offset of EC binary size on the DTB blob"""
         # We now temporarily use this hack to find the offset.
         # TODO(waihong@chromium.org): Should use fdtget to get the field and
         # fdtput to change it.
@@ -430,7 +430,7 @@ class FlashromHandler(object):
         return ecbin_size_offset
 
     def get_section_ecbin(self, section):
-        '''Retrieve EC binary of a firmware section'''
+        """Retrieve EC binary of a firmware section"""
         blob = self.get_section_body(section)
         ecbin_offset = self._find_ecbin_offset(blob)
         # Remove the pads of ecbin.
@@ -439,16 +439,16 @@ class FlashromHandler(object):
         return ecbin
 
     def set_section_body(self, section, blob):
-        '''Put the supplied blob to the body of the firmware section'''
+        """Put the supplied blob to the body of the firmware section"""
         subsection_name = self.fv_sections[section].get_body_name()
         self.image = self.fum.put_section(self.image, subsection_name, blob)
 
     def set_section_ecbin(self, section, ecbin, write_through=False):
-        '''Put the supplied EC binary to the firwmare section.
+        """Put the supplied EC binary to the firwmare section.
 
         Note that the updated firmware image is not signed yet. Should call
         set_section_version() afterward.
-        '''
+        """
         # Remove unncessary padding bytes.
         pad = '\xff'
         ecbin_align = 4
@@ -477,10 +477,10 @@ class FlashromHandler(object):
 
     def set_section_version(self, section, version, flags,
                             write_through=False):
-        '''
+        """
         Re-sign the firmware section using the supplied version number and
         flag.
-        '''
+        """
         if (self.get_section_version(section) == version and
             self.get_section_flags(section) == flags):
             return  # No version or flag change, nothing to do.
