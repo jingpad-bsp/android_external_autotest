@@ -26,8 +26,11 @@ class security_OpenSSLBlacklist(test.test):
         return r == 0
 
     def run_once(self, opts=None):
-        self.hash_blacklist = '%s/hash_blacklist' % self.srcdir
-        self.serial_blacklist = '%s/serial_blacklist' % self.srcdir
+        self.blacklists = [
+            '%s/sha256_blacklist' % self.srcdir,
+            '%s/sha1_blacklist' % self.srcdir,
+            '%s/serial_blacklist' % self.srcdir,
+        ]
         self.bogus_blacklist = '%s/bogus_blacklist' % self.srcdir
         self.ca = '%s/ca.pem' % self.srcdir
         self.cert = '%s/cert.pem' % self.srcdir
@@ -35,10 +38,9 @@ class security_OpenSSLBlacklist(test.test):
 
         if not self.verify():
             raise error.TestFail('Certificate does not verify normally.')
-        if self.verify(self.hash_blacklist):
-            raise error.TestFail('Certificate verified when blacklisted by hash.')
-        if self.verify(self.serial_blacklist):
-            raise error.TestFail('Certificate verified when blacklisted by serial.')
+        for b in self.blacklists:
+            if self.verify(b):
+                raise error.TestFail('Certificate verified with %s' % b)
         if not self.verify(self.bogus_blacklist):
             raise error.TestFail('Certificate does not verify with nonempty blacklist.')
 
@@ -50,11 +52,8 @@ class security_OpenSSLBlacklist(test.test):
             # Need to wait for openssl to be ready to talk to us
             if not utils.poll_for_condition(self.fetch):
                 raise error.TestFail('Fetch without blacklist fails.')
-            if self.fetch(self.hash_blacklist):
-                raise error.TestFail('Fetch with hash blacklisted succeeds.')
-            if self.fetch(self.serial_blacklist):
-                raise error.TestFail('Fetch with serial blacklisted succeeds.')
-            if not self.fetch(self.bogus_blacklist):
-                raise error.TestFail('Fetch with nonempty blacklist fails.')
+            for b in self.blacklists:
+                if self.fetch(b):
+                    raise error.TestFail('Fetched with %s' % b)
         finally:
             server.terminate()
