@@ -55,6 +55,14 @@ class firmware_FwScreenCloseLid(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.client_attr.has_lid:
+            logging.info('This test does nothing on devices without lid.')
+            return
+
+        if self.client_attr.chrome_ec and not self.check_ec_capability(['lid']):
+            logging.info('Requires EC capability "lid" to run this test.')
+            return
+
         self.register_faft_sequence((
             {   # Step 1, expected dev mode and reboot.
                 # When the next DEVELOPER SCREEN shown, close lid
@@ -134,7 +142,4 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 }),
             },
         ))
-        if self.client_attr.has_lid:
-            self.run_faft_sequence()
-        else:
-            logging.info('This test does nothing on devices without lid.')
+        self.run_faft_sequence()
