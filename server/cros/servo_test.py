@@ -270,6 +270,7 @@ class ServoTest(test.test):
         """
         # Wait for the client to come offline.
         while timeout > 0 and self._ping_test(self._client.ip, timeout=1):
+            time.sleep(1)
             timeout -= 1
         assert timeout, 'Timed out waiting for client offline.'
         logging.info('Server: Client machine is offline.')
