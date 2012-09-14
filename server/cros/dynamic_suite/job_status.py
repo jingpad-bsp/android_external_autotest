@@ -65,6 +65,7 @@ def gather_job_hostnames(afe, job):
     hosts = []
     for e in afe.run('get_host_queue_entries', job=job.id):
         if e['status'] != 'Running':
+            hosts.append(None)
             continue
         elif not e['host']:
             logging.warn('Job %s (%s) has an entry with no host!',
@@ -164,12 +165,8 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
     """
     def get_all_hosts(my_jobs):
         all_hosts = []
-        logging.debug("Gathering hosts for %r:", my_jobs)
         for job in my_jobs:
-            hosts = gather_job_hostnames(afe, job)
-            logging.debug("\t%r -> %r", job, hosts)
-            all_hosts.extend(hosts)
-        logging.debug("Found %r for %r", all_hosts, my_jobs)
+            all_hosts.extend(gather_job_hostnames(afe, job))
         return all_hosts
 
     locked_hosts = set()
