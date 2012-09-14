@@ -164,8 +164,12 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
     """
     def get_all_hosts(my_jobs):
         all_hosts = []
+        logging.debug("Gathering hosts for %r:", my_jobs)
         for job in my_jobs:
-            all_hosts.extend(gather_job_hostnames(afe, job))
+            hosts = gather_job_hostnames(afe, job)
+            logging.debug("\t%r -> %r", job, hosts)
+            all_hosts.extend(hosts)
+        logging.debug("Found %r for %r", all_hosts, my_jobs)
         return all_hosts
 
     locked_hosts = set()
@@ -320,7 +324,7 @@ def record_and_report_results(statuses, record_entry):
         if not success:
             failures.append(status.test_name)
     if failures:
-        logging.warn("Some machines failed to reimage: %s." %
+        logging.warn("Some machines failed to reimage: %s.",
                      ', '.join(failures))
     return some_good
 
