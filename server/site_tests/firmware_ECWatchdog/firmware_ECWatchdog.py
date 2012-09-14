@@ -20,6 +20,10 @@ class firmware_ECWatchdog(FAFTSequence):
     EC_BOOT_DELAY = 1000
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def reboot_by_watchdog(self):
         """
         Trigger a watchdog reset.

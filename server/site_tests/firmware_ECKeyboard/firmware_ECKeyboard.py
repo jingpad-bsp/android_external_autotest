@@ -40,6 +40,10 @@ class firmware_ECKeyboard(FAFTSequence):
     CMD_DELAY = 1
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def key_down(self, keyname):
         """Simulate pressing a key."""
         self.send_uart_command('kbpress %d %d 1' %

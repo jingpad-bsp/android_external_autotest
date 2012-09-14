@@ -36,6 +36,10 @@ class firmware_ECWakeSource(FAFTSequence):
     SHUTDOWN_DELAY = 10
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     @delayed(WAKE_DELAY)
     def wake_by_power_button(self):
         """Delay by WAKE_DELAY seconds and then wake DUT with power button."""

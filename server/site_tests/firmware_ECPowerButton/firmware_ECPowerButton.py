@@ -32,6 +32,10 @@ class firmware_ECPowerButton(FAFTSequence):
     POWER_BUTTON_NO_POWERD_DURATION = 10
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def kill_powerd(self):
         """Stop powerd on client."""
         self.faft_client.run_shell_command("stop powerd")

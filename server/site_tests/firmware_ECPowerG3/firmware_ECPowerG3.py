@@ -23,6 +23,10 @@ class firmware_ECPowerG3(FAFTSequence):
     # Record failure event
     _failed = False
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def wait_power(self, reg_ex, timeout):
         """
         Wait for certain power state.

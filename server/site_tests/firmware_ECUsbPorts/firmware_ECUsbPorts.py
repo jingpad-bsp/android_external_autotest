@@ -25,6 +25,10 @@ class firmware_ECUsbPorts(FAFTSequence):
     SHUTDOWN_TIMEOUT = 10
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def fake_reboot_by_usb_mode_change(self):
         """
         Turn off USB ports and also kill FAFT client so that this acts like a

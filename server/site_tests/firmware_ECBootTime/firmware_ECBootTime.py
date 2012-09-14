@@ -13,6 +13,10 @@ class firmware_ECBootTime(FAFTSequence):
     """
     version = 1
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def check_boot_time(self):
         boot_msg = ("([0-9\.]+) Port 80"
                 if self._x86 else "([0-9\.]+) AP running")

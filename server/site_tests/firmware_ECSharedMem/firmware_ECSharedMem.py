@@ -18,6 +18,10 @@ class firmware_ECSharedMem(FAFTSequence):
     EC_BOOT_DELAY = 0.5
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def shared_mem_checker(self):
         match = self.send_uart_command_get_output("shmem",
                                                   ["Size:\s+([0-9-]+)\r"])[0]

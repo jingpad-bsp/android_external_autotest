@@ -36,6 +36,10 @@ class firmware_ECBattery(FAFTSequence):
     BATTERY_TEMP_LOWER_BOUND = 0
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def _get_battery_path(self):
         """Get battery path in sysfs."""
         match = self.faft_client.run_shell_command_get_output(

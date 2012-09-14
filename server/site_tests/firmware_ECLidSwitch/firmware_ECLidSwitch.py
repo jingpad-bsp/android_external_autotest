@@ -38,6 +38,10 @@ class firmware_ECLidSwitch(FAFTSequence):
     SHORT_WAKE_DELAY = 15
 
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def _open_lid(self):
         """Open lid by servo."""
         self.servo.set('lid_open', 'yes')

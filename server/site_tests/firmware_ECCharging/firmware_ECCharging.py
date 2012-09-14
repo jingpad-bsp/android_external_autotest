@@ -16,6 +16,10 @@ class firmware_ECCharging(FAFTSequence):
     # Threshold of trickle charging current in mA
     TRICKLE_CHARGE_THRESHOLD = 100
 
+    def setup(self):
+        # Only run in normal mode
+        self.setup_dev_mode(False)
+
     def _get_battery_desired_voltage(self):
         """Get battery desired voltage value."""
         voltage = int(self.send_uart_command_get_output("battery",
