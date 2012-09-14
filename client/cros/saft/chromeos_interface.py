@@ -371,8 +371,8 @@ class ChromeOSInterface(object):
         Return internal kernel disk.
         """
         if self.is_removable_device(device):
-            if os.path.exists('/dev/mmcblk1'):
-                return '/dev/mmcblk1'
+            if os.path.exists('/dev/mmcblk0'):
+                return '/dev/mmcblk0'
             else:
                 return '/dev/sda'
         else:
