@@ -62,13 +62,6 @@
     "group": "root",
     "mode": "0755"
   },
-  "/opt/google/chrome/extensions/external_extensions.json": {
-    "can_dangle": true,
-    "destination": "/usr/local/autotest/tests/external_extensions.json",
-    "owner": "root",
-    "group": "root",
-    "mode": "0755"
-  },
   "/usr/lib/debug": {
     "can_dangle": true,
     "destination": "/usr/local/usr/lib/debug",
