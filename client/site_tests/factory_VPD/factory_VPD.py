@@ -54,6 +54,8 @@ class WriteVpdTask(task.FactoryTask):
         if self.registration_code_map is not None:
             # Check registration codes (fail test if invalid).
             for k in ['user', 'group']:
+                if k not in self.registration_code_map:
+                    raise error.TestError('Missing %s registration code' % k)
                 registration_codes.CheckRegistrationCode(
                     self.registration_code_map[k])
 
