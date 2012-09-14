@@ -17,9 +17,7 @@ For example:
 packet = dhcp_packet.create_offer_packet(transaction_id,
                                          hwmac_addr,
                                          offer_ip,
-                                         offer_mask,
-                                         server_ip,
-                                         lease_time_seconds)
+                                         server_ip)
 socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # Sending to the broadcast address needs special permissions.
 socket.sendto(response_packet.to_binary_string(),
@@ -251,6 +249,9 @@ OPTION_VALUE_DHCP_MESSAGE_TYPE_INFORM    = 8
 OPTION_VALUE_DHCP_MESSAGE_TYPE_UNKNOWN   = -1
 
 OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT = [
+        OPTION_REQUESTED_IP.number,
+        OPTION_IP_LEASE_TIME.number,
+        OPTION_SERVER_ID.number,
         OPTION_SUBNET_MASK.number,
         OPTION_ROUTERS.number,
         OPTION_DNS_SERVERS.number,
@@ -348,18 +349,13 @@ class DhcpPacket(object):
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY)
-        packet.set_option(OPTION_PARAMETER_REQUEST_LIST,
-                          OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
-
         return packet
 
     @staticmethod
     def create_offer_packet(transaction_id,
                             hwmac_addr,
                             offer_ip,
-                            offer_subnet_mask,
-                            server_ip,
-                            lease_time_seconds):
+                            server_ip):
         """
         Create an offer packet, given some fields that tie the packet to a
         particular offer.
@@ -381,16 +377,11 @@ class DhcpPacket(object):
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER)
-        packet.set_option(OPTION_SUBNET_MASK, offer_subnet_mask)
-        packet.set_option(OPTION_SERVER_ID, server_ip)
-        packet.set_option(OPTION_IP_LEASE_TIME, lease_time_seconds)
         return packet
 
     @staticmethod
     def create_request_packet(transaction_id,
-                              hwmac_addr,
-                              requested_ip,
-                              server_ip):
+                              hwmac_addr):
         packet = DhcpPacket()
         packet.set_field(FIELD_OP, FIELD_VALUE_OP_CLIENT_REQUEST)
         packet.set_field(FIELD_HWTYPE, FIELD_VALUE_HWTYPE_10MB_ETH)
@@ -408,19 +399,13 @@ class DhcpPacket(object):
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST)
-        packet.set_option(OPTION_REQUESTED_IP, requested_ip)
-        packet.set_option(OPTION_SERVER_ID, server_ip)
-        packet.set_option(OPTION_PARAMETER_REQUEST_LIST,
-                          OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
         return packet
 
     @staticmethod
     def create_acknowledgement_packet(transaction_id,
                                       hwmac_addr,
                                       granted_ip,
-                                      granted_ip_subnet_mask,
-                                      server_ip,
-                                      lease_time_seconds):
+                                      server_ip):
         packet = DhcpPacket()
         packet.set_field(FIELD_OP, FIELD_VALUE_OP_SERVER_RESPONSE)
         packet.set_field(FIELD_HWTYPE, FIELD_VALUE_HWTYPE_10MB_ETH)
@@ -438,9 +423,6 @@ class DhcpPacket(object):
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK)
-        packet.set_option(OPTION_SUBNET_MASK, granted_ip_subnet_mask)
-        packet.set_option(OPTION_SERVER_ID, server_ip)
-        packet.set_option(OPTION_IP_LEASE_TIME, lease_time_seconds)
         return packet
 
     def __init__(self, byte_str=None):

@@ -67,27 +67,43 @@ def receive_packet(a_socket, timeout_seconds=1.0):
 
 def test_simple_server_exchange(server):
     intended_ip = "127.0.0.42"
+    subnet_mask = "255.255.255.0"
     server_ip = "127.0.0.1"
     lease_time_seconds = 60
     test_timeout = 3.0
     mac_addr = "\x01\x02\x03\x04\x05\x06"
-    # Build up our packets.
+    # Build up our packets and have them request some default option values,
+    # like the IP we're being assigned and the address of the server assigning
+    # it.
     discovery_message = dhcp_packet.DhcpPacket.create_discovery_packet(mac_addr)
+    discovery_message.set_option(
+            dhcp_packet.OPTION_PARAMETER_REQUEST_LIST,
+            dhcp_packet.OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
     request_message = dhcp_packet.DhcpPacket.create_request_packet(
             discovery_message.transaction_id,
-            mac_addr,
-            intended_ip,
-            server_ip)
+            mac_addr)
+    request_message.set_option(
+            dhcp_packet.OPTION_PARAMETER_REQUEST_LIST,
+            dhcp_packet.OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
+    # This is the pool of settings the DHCP server will seem to draw from to
+    # answer queries from the client.  This information is written into packets
+    # through the handling rules.
+    dhcp_server_config = {
+            dhcp_packet.OPTION_SERVER_ID : server_ip,
+            dhcp_packet.OPTION_SUBNET_MASK : subnet_mask,
+            dhcp_packet.OPTION_IP_LEASE_TIME : lease_time_seconds,
+            dhcp_packet.OPTION_REQUESTED_IP : intended_ip,
+            }
     # Build up the handling rules for the server and start the test.
     rules = []
     rules.append(dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
             intended_ip,
             server_ip,
-            lease_time_seconds))
+            dhcp_server_config))
     rules.append(dhcp_handling_rule.DhcpHandlingRule_RespondToRequest(
             intended_ip,
             server_ip,
-            lease_time_seconds))
+            dhcp_server_config))
     rules[-1].is_final_handler = True
     server.start_test(rules, test_timeout)
     # Because we don't want to require root permissions to run these tests,
@@ -113,6 +129,21 @@ def test_simple_server_exchange(server):
         return False
 
     print "Offer looks good to the client, sending request."
+    # In real tests, dhcpcd formats all the DISCOVERY and REQUEST messages.  In
+    # our unit test, we have to do this ourselves.
+    request_message.set_option(
+            dhcp_packet.OPTION_SERVER_ID,
+            offer_packet.get_option(dhcp_packet.OPTION_SERVER_ID))
+    request_message.set_option(
+            dhcp_packet.OPTION_SUBNET_MASK,
+            offer_packet.get_option(dhcp_packet.OPTION_SUBNET_MASK))
+    request_message.set_option(
+            dhcp_packet.OPTION_IP_LEASE_TIME,
+            offer_packet.get_option(dhcp_packet.OPTION_IP_LEASE_TIME))
+    request_message.set_option(
+            dhcp_packet.OPTION_REQUESTED_IP,
+            offer_packet.get_option(dhcp_packet.OPTION_REQUESTED_IP))
+    # Send the REQUEST message.
     client_socket.sendto(request_message.to_binary_string(),
                          (server_ip, 8067))
     ack_packet = receive_packet(client_socket)
