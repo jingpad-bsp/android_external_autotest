@@ -222,6 +222,74 @@ class MTB:
                 list_y.append(prev_y)
         return (list_x, list_y)
 
+    def get_points_for_every_tracking_id(self):
+        """Extract points in every tracking id.
+
+        This method is applicable when fingers are contacting and leaving
+        the touchpad continuously. The same slot number, e.g., slot 0 or
+        slot 1, may be used for multiple times.
+        """
+        # The default slot is slot 0 if no slot number is assigned.
+        slot = 0
+
+        # points is a dictionary of lists, where each list holds all of
+        # the points in a tracking id.
+        points = {}
+        tracking_ids_all = []
+        tracking_ids_live = []
+        slot_to_tracking_id = {}
+        tracking_id_to_slot = {}
+        x = {}
+        y = {}
+        for packet in self.packets:
+            for event in packet:
+                if self._is_ABS_MT_SLOT(event):
+                    slot = event[EV_VALUE]
+
+                # Find a new tracking ID
+                if self._is_new_contact(event):
+                    tracking_id = event[EV_VALUE]
+                    tracking_ids_all.append(tracking_id)
+                    tracking_ids_live.append(tracking_id)
+                    points[tracking_id] = []
+                    tracking_id_to_slot[tracking_id] = slot
+                    slot_to_tracking_id[slot] = tracking_id
+                    x[tracking_id] = None
+                    y[tracking_id] = None
+
+                # A tracking ID is leaving.
+                elif self._is_finger_leaving(event):
+                    leaving_tracking_id = slot_to_tracking_id[slot]
+                    tracking_ids_live.remove(leaving_tracking_id)
+                    del slot_to_tracking_id[slot]
+
+                # Update x value if available.
+                elif self._is_ABS_MT_POSITION_X(event):
+                    x[slot_to_tracking_id[slot]] = event[EV_VALUE]
+
+                # Update y value if available.
+                elif self._is_ABS_MT_POSITION_Y(event):
+                    y[slot_to_tracking_id[slot]] = event[EV_VALUE]
+
+            for tracking_id in tracking_ids_live:
+                if x[tracking_id] and y[tracking_id]:
+                    points[tracking_id].append((x[tracking_id], y[tracking_id]))
+
+        return points
+
+    def _calc_farthest_distance(self, points):
+        """Calculate the farthest distance of points."""
+        return max([self._calc_distance(point, points[0]) for point in points])
+
+    def get_max_distance_of_all_tracking_ids(self):
+        """Get the max moving distance of all tracking IDs."""
+        points = self.get_points_for_every_tracking_id()
+        max_distance = float('-infinity')
+        for tracking_id in sorted(points.keys()):
+            distance = self._calc_farthest_distance(points[tracking_id])
+            max_distance = max(max_distance, distance)
+        return max_distance
+
     def get_x_y_multiple_slots(self, target_slots):
         """Extract points in multiple slots.
 

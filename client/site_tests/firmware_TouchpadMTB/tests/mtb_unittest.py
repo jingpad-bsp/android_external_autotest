@@ -74,6 +74,63 @@ class MTBTest(unittest.TestCase):
         self._test_get_x_y('two_finger_without_slot_0.dat', 0, 104)
         self._test_get_x_y('two_finger_without_slot_0.dat', 1, 10)
 
+    def _test_get_points_for_every_tracking_id(self, filename, expected_values):
+        gesture_filename = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(gesture_filename)
+        points = mtb_packets.get_points_for_every_tracking_id()
+        for tracking_id in expected_values:
+            self.assertEqual(len(points[tracking_id]),
+                             expected_values[tracking_id])
+
+    def test_get_points_for_every_tracking_id(self):
+        self._test_get_points_for_every_tracking_id(
+                'two_finger_with_slot_0.dat', {2101: 121, 2102: 59})
+        self._test_get_points_for_every_tracking_id(
+                'two_finger_without_slot_0.dat', {2097: 104, 2098: 10})
+
+    def _test_drumroll(self, filename, check_func):
+        gesture_filename = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(gesture_filename)
+        max_distance = mtb_packets.get_max_distance_of_all_tracking_ids()
+        self.assertTrue(check_func(max_distance))
+
+    def test_drumroll(self):
+        check_func = lambda x: x >= 50
+        self._test_drumroll('drumroll_lumpy.dat', check_func)
+
+    def test_drumroll1(self):
+        check_func = lambda x: x >= 50
+        self._test_drumroll('drumroll_lumpy_1.dat', check_func)
+
+    def test_drumroll_link(self):
+        check_func = lambda x: x >= 50
+        self._test_drumroll('drumroll_link.dat', check_func)
+
+    def test_no_drumroll_link(self):
+        check_func = lambda x: x <= 20
+        self._test_drumroll('no_drumroll_link.dat', check_func)
+
+    def test_no_drumroll_link(self):
+        check_func = lambda x: x >= 50
+        self._test_drumroll('drumroll_link_2.dat', check_func)
+
+    def test_get_points_for_every_tracking_id2(self):
+        gesture_filename = self._get_filepath('drumroll_link_2.dat')
+        mtb_packets = get_mtb_packets(gesture_filename)
+        points = mtb_packets.get_points_for_every_tracking_id()
+        list_95 = [(789, 358), (789, 358), (789, 358), (789, 358), (789, 358),
+                   (789, 359), (789, 359), (789, 359), (788, 359), (788, 360),
+                   (788, 360), (787, 360), (787, 361), (490, 903), (486, 892),
+                   (484, 895), (493, 890), (488, 893), (488, 893), (489, 893),
+                   (490, 893), (490, 893), (491, 893), (492, 893)]
+        list_104 = [(780, 373), (780, 372), (780, 372), (780, 372), (780, 373),
+                    (780, 373), (781, 373)]
+        for pa, pb in zip(list_95, points[95]):
+            self.assertEqual(pa, pb)
+        for pa, pb in zip(list_104, points[104]):
+            self.assertEqual(pa, pb)
+        self.assertTrue(True)
+
 
 if __name__ == '__main__':
   unittest.main()

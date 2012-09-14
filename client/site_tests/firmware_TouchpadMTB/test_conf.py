@@ -9,6 +9,7 @@
 from firmware_utils import Gesture
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
+                        DrumrollValidator,
                         LinearityValidator,
                         NoGapValidator,
                         NoReversedMotionValidator,
@@ -342,11 +343,17 @@ gesture_list = [
 
     Gesture(
         name='drumroll',
-        variations=None,
-        prompt='Use two fingers to do drum roll quickly in 5 seconds.',
-        subprompt=None,
+        variations=(SLOW, NORMAL, FAST),
+        prompt='Use two fingers to make drum roll {0} for a total of '
+               '5 seconds.',
+        subprompt={
+            SLOW: ('at about 1 tap per second',),
+            NORMAL: ('at about 2 taps per second',),
+            FAST: ('as fast as possible',),
+        },
         validators=(
-            CountTrackingIDValidator('>= 10'),
+            CountTrackingIDValidator('>= 5'),
+            DrumrollValidator('<= 20, ~ +30'),
         ),
     ),
 
