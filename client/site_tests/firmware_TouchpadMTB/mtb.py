@@ -176,27 +176,48 @@ class MTB:
 
     def get_x_y(self, target_slot):
         """Extract x and y positions in the target slot."""
+        # The default slot is slot 0 if no slot number is assigned.
+        # The rationale is that evdev is a state machine. It only reports
+        # the change. Slot 0 would not be reported by evdev if last time
+        # the last finger left the pad was at slot 0.
         slot = 0
+
+        # Should not write "list_x = list_y = []" below.
+        # They would end up with pointing to the same list.
         list_x = []
         list_y = []
         prev_x = prev_y = None
+        target_slot_live = False
+        initial_default_slot_0 = True
         for packet in self.packets:
-            found_flag = False
+            if (slot == target_slot and slot == 0 and not target_slot_live and
+                initial_default_slot_0):
+                target_slot_live = True
+                initial_default_slot_0 = False
             for event in packet:
                 if self._is_ABS_MT_SLOT(event):
                     slot = event[EV_VALUE]
-                elif self._is_ABS_MT_POSITION_X(event) and slot == target_slot:
+                    if slot == target_slot and not target_slot_live:
+                        target_slot_live = True
+                if slot != target_slot:
+                    continue
+
+                # Update x value if available.
+                if self._is_ABS_MT_POSITION_X(event):
                     prev_x = event[EV_VALUE]
-                    found_flag = True
-                elif self._is_ABS_MT_POSITION_Y(event) and slot == target_slot:
+                # Update y value if available.
+                elif self._is_ABS_MT_POSITION_Y(event):
                     prev_y = event[EV_VALUE]
-                    found_flag = True
-            # If either x or y positions are reported in the current packet,
-            # append the x and y to the list.
-            # This handles the condition that only x or y is reported.
+                # Check if the finger at the target_slot is leaving.
+                elif self._is_finger_leaving(event):
+                    target_slot_live = False
+
+            # If target_slot is alive, and both x and y have
+            # been assigned values, append the x and y to the list no matter
+            # whether x or y position is reported in the current packet.
             # This also handles the initial condition that no previous x or y
             # is reported yet.
-            if found_flag and prev_x and prev_y:
+            if target_slot_live and prev_x and prev_y:
                 list_x.append(prev_x)
                 list_y.append(prev_y)
         return (list_x, list_y)
