@@ -11,10 +11,13 @@ class enterprise_DevicePolicy(chrome_test.PyAutoFunctionalTest):
 
     def run_once(self):
         tests = [
-            'testGuestModeEnabled',
-            'testShowUserNamesOnSignin',
-            # TODO(nirnimesh): Re-enable when crrev.com/152368 reaches chromeos.
+            # TODO(nirnimesh): Stuck at 'pick user iamge' screen after login.
+            # crbug.com/149126
+            # 'testGuestModeEnabled',
             # 'testUserWhitelistInAccountPicker',
+            'testShowUserNamesOnSignin',
+            'testTimezoneSettingWithoutPolicy',
+            'testTimezoneSettingWithPolicy',
 
             # testUserWhitelistAndAllowNewUsers is broken
             # crosbug.com/33435
