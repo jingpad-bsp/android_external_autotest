@@ -92,7 +92,8 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                     'state_checker': (self.crossystem_checker, {
                         'mainfw_type': 'recovery',
                         'recovery_reason':
-                            self.RECOVERY_REASON['RO_INVALID_RW'],
+                            (self.RECOVERY_REASON['RO_INVALID_RW'],
+                             self.RECOVERY_REASON['RW_VERIFY_BODY']),
                     }),
                     'userspace_action': (self.faft_client.restore_firmware_body,
                                          (('a', 'b'),)),
