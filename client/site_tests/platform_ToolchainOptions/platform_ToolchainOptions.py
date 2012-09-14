@@ -4,6 +4,7 @@
 
 import os
 
+import glob
 import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -111,22 +112,6 @@ class platform_ToolchainOptions(test.test):
         return cmd
 
 
-    # http://build.chromium.org/mirror/chromiumos/mirror/distfiles/
-    # binutils-2.19.1.tar.bz2
-    def setup(self, tarball="binutils-2.19.1.tar.bz2"):
-        # clean
-        if os.path.exists(self.srcdir):
-            utils.system("rm -rf %s" % self.srcdir)
-
-        tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
-        utils.extract_tarball_to_dir(tarball, self.srcdir)
-
-        os.chdir(self.srcdir)
-        utils.system("patch -p1 < ../binutils-2.19-arm.patch");
-        utils.configure()
-        utils.make(extra="CFLAGS+=\"-w\"")
-
-
     def create_and_filter(self, description, cmd, whitelist_file,
                           find_options=""):
         full_cmd = self.get_cmd(cmd, find_options)
@@ -156,22 +141,23 @@ class platform_ToolchainOptions(test.test):
         option_sets = []
 
         libc_glob = "/lib/libc-[0-9]*"
-        os.chdir(self.srcdir)
+
+        readelf_cmd = glob.glob("/usr/local/*/binutils-bin/*/readelf")[0]
 
         # We do not test binaries if they are built with Address Sanitizer
         # because it is a separate testing tool.
-        no_asan_used = utils.system_output("binutils/readelf -s "
+        no_asan_used = utils.system_output("%s -s "
                                            "/opt/google/chrome/chrome | "
                                            "egrep -q \"__asan_init\" || "
-                                           "echo no ASAN")
+                                           "echo no ASAN" % readelf_cmd)
         if not no_asan_used:
           logging.debug("ASAN detected on /opt/google/chrome/chrome. "
                         "Will skip all checks.")
           return
 
         # Check that gold was used to build binaries.
-        gold_cmd = ("binutils/readelf -S {} 2>&1 | "
-                    "egrep -q \".note.gnu.gold-ve\"")
+        gold_cmd = ("%s -S {} 2>&1 | "
+                    "egrep -q \".note.gnu.gold-ve\"" % readelf_cmd)
         gold_find_options = ""
         if utils.get_cpu_arch() == "arm":
           # gold is only enabled for Chrome on arm.
@@ -186,8 +172,8 @@ class platform_ToolchainOptions(test.test):
         if utils.get_cpu_arch() != "arm":
             # Verify non-static binaries have BIND_NOW in dynamic section.
             now_cmd = ("(%s {} | grep -q statically) ||"
-                       "binutils/readelf -d {} 2>&1 | "
-                       "egrep -q \"BIND_NOW\"" % FILE_CMD)
+                       "%s -d {} 2>&1 | "
+                       "egrep -q \"BIND_NOW\"" % (FILE_CMD, readelf_cmd))
             now_whitelist = os.path.join(self.bindir, "now_whitelist")
             option_sets.append(self.create_and_filter("-Wl,-z,now",
                                                       now_cmd,
@@ -195,8 +181,8 @@ class platform_ToolchainOptions(test.test):
 
             # Verify non-static binaries have RELRO program header.
             relro_cmd = ("(%s {} | grep -q statically) ||"
-                         "binutils/readelf -l {} 2>&1 | "
-                         "egrep -q \"GNU_RELRO\"" % FILE_CMD)
+                         "%s -l {} 2>&1 | "
+                         "egrep -q \"GNU_RELRO\"" % (FILE_CMD, readelf_cmd))
             relro_whitelist = os.path.join(self.bindir, "relro_whitelist")
             option_sets.append(self.create_and_filter("-Wl,-z,relro",
                                                       relro_cmd,
@@ -204,24 +190,26 @@ class platform_ToolchainOptions(test.test):
 
             # Verify non-static binaries are dynamic (built PIE).
             pie_cmd = ("(%s {} | grep -q statically) ||"
-                       "binutils/readelf -l {} 2>&1 | "
-                       "egrep -q \"Elf file type is DYN\"" % FILE_CMD)
+                       "%s -l {} 2>&1 | "
+                       "egrep -q \"Elf file type is DYN\"" % (FILE_CMD,
+                                                              readelf_cmd))
             pie_whitelist = os.path.join(self.bindir, "pie_whitelist")
             option_sets.append(self.create_and_filter("-fPIE",
                                                       pie_cmd,
                                                       pie_whitelist))
 
             # Verify all binaries have non-exec STACK program header.
-            stack_cmd = ("binutils/readelf -lW {} 2>&1 | "
-                         "egrep -q \"GNU_STACK.*RW \"")
+            stack_cmd = ("%s -lW {} 2>&1 | "
+                         "egrep -q \"GNU_STACK.*RW \"" % readelf_cmd)
             stack_whitelist = os.path.join(self.bindir, "stack_whitelist")
             option_sets.append(self.create_and_filter("Executable Stack",
                                                       stack_cmd,
                                                       stack_whitelist))
 
         if (options.enable_hardfp and utils.get_cpu_arch() == 'arm'):
-            hardfp_cmd = ("binutils/readelf -A {} 2>&1 | "
-                          "egrep -q \"Tag_ABI_VFP_args: VFP registers\"")
+            hardfp_cmd = ("%s -A {} 2>&1 | "
+                          "egrep -q \"Tag_ABI_VFP_args: VFP registers\"" %
+                          readelf_cmd)
             hardfp_whitelist = os.path.join(self.bindir, "hardfp_whitelist")
             option_sets.append(self.create_and_filter("hardfp", hardfp_cmd,
                                                       hardfp_whitelist))
