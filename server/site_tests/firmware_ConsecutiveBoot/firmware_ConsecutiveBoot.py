@@ -20,8 +20,6 @@ class firmware_ConsecutiveBoot(FAFTSequence):
     """
     version = 1
 
-    FULL_POWER_OFF_DELAY = 30
-
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
         # Parse arguments from command line
@@ -34,14 +32,6 @@ class firmware_ConsecutiveBoot(FAFTSequence):
     def setup(self, dev_mode=False):
         super(firmware_ConsecutiveBoot, self).setup()
         self.setup_dev_mode(dev_mode)
-
-
-    def full_power_off_and_on(self):
-        # Press power button to trigger Chrome OS normal shutdown process.
-        self.servo.power_normal_press()
-        time.sleep(self.FULL_POWER_OFF_DELAY)
-        # Short press power button to boot DUT again.
-        self.servo.power_short_press()
 
 
     def run_once(self, dev_mode=False, host=None):

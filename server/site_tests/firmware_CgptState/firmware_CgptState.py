@@ -60,4 +60,5 @@ class firmware_CgptState(FAFTSequence):
                          (self.faft_client.get_cgpt_test_step() + 1))
             self.run_faft_step({
                 'userspace_action': self.run_test_step,
+                'reboot_action': self.full_power_off_and_on,
             })

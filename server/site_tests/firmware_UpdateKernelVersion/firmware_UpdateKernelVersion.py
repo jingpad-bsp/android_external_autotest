@@ -66,20 +66,22 @@ class firmware_UpdateKernelVersion(FAFTSequence):
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),
                 'userspace_action': (
                      self.modify_kernel_b_and_set_cgpt_priority,
-                     1, 'b'
-                )
+                     1, 'b'),
+                'reboot_action': self.full_power_off_and_on,
             },
             {   # Step 2, Check kernel version and rollback.
                 'state_checker': (self.check_root_part_on_non_recovery, 'b'),
                 'userspace_action': (
                     self.modify_kernel_b_and_set_cgpt_priority,
-                    -1, 'b')
+                    -1, 'b'),
+                'reboot_action': self.full_power_off_and_on,
             },
             {   # Step 3, Boot with rollback kernel and change boot priority.
                 'state_checker': (self.check_root_part_on_non_recovery, 'b'),
                 'userspace_action':(
                     self.modify_kernel_b_and_set_cgpt_priority,
-                    0, 'a')
+                    0, 'a'),
+                'reboot_action': self.full_power_off_and_on,
             },
             {   # Step 4, Check rollback version.
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),

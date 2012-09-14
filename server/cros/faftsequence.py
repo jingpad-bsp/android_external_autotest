@@ -103,6 +103,8 @@ class FAFTSequence(ServoTest):
     SYNC_DELAY = 5
     # Delay for waiting client to return before EC reboot
     EC_REBOOT_DELAY = 1
+    # Delay for waiting client to full power off
+    FULL_POWER_OFF_DELAY = 30
     # Delay between EC reboot and pressing power button
     POWER_BTN_DELAY = 0.5
     # Delay of EC software sync hash calculating time
@@ -1192,6 +1194,15 @@ class FAFTSequence(ServoTest):
                                            (self.EC_REBOOT_DELAY, args))
         time.sleep(self.EC_REBOOT_DELAY)
         self.check_lid_and_power_on()
+
+
+    def full_power_off_and_on(self):
+        """Shutdown the device by pressing power button and power on again."""
+        # Press power button to trigger Chrome OS normal shutdown process.
+        self.servo.power_normal_press()
+        time.sleep(self.FULL_POWER_OFF_DELAY)
+        # Short press power button to boot DUT again.
+        self.servo.power_short_press()
 
 
     def check_lid_and_power_on(self):
