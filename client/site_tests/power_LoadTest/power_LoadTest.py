@@ -22,7 +22,6 @@ params_dict = {
 
 
 class power_LoadTest(cros_ui_test.UITest):
-    auto_login = False
     version = 2
 
 
@@ -75,7 +74,6 @@ class power_LoadTest(cros_ui_test.UITest):
         self._scroll_by_pixels = scroll_by_pixels
         self._tmp_keyvals = {}
         self._power_status = power_status.get_status()
-        self._json_path = None
         self._force_wifi = force_wifi
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
@@ -128,11 +126,6 @@ class power_LoadTest(cros_ui_test.UITest):
         # extension.
         self._write_ext_params()
 
-        # copy external_extensions.json to known location
-        self._json_path = os.path.join(self.bindir, '..')
-        shutil.copy(os.path.join(self.bindir, 'external_extensions.json'),
-                                 self._json_path)
-
         # setup a HTTP Server to listen for status updates from the power
         # test extension
         self._testServer = httpd.HTTPListener(8001, docroot=self.bindir)
@@ -158,13 +151,14 @@ class power_LoadTest(cros_ui_test.UITest):
     def run_once(self):
 
         t0 = time.time()
+        ext_path = os.path.join(os.path.dirname(__file__), 'extension.crx')
 
         for i in range(self._loop_count):
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
 
-            # the act of logging in will launch chrome with external extension.
-            self.login()
+            # Installing the extension will also fire it up.
+            ext_id = self.pyauto.InstallExtension(ext_path)
 
             # stop powerd
             os.system('stop powerd')
@@ -186,10 +180,9 @@ class power_LoadTest(cros_ui_test.UITest):
                 logging.info('Exiting due to low battery')
                 break
 
-            self.logout()
-            # Work around until crosbug.com/139166 is fixed
-            self.pyauto.ExecuteJavascriptInOOBEWebUI('Oobe.showSigninUI();'
-                'window.domAutomationController.send("ok");')
+            if not self.pyauto.GetBrowserWindowCount():
+                self.pyauto.OpenNewBrowserWindow(True)
+            self.pyauto.UninstallExtensionById(ext_id)
 
         t1 = time.time()
         self._tmp_keyvals['minutes_battery_life'] = (t1 - t0) / 60
@@ -244,11 +237,6 @@ class power_LoadTest(cros_ui_test.UITest):
 
 
     def cleanup(self):
-        # remove json file after test to stop external extension launch.
-        if self._json_path:
-            jsonfile = os.path.join(self._json_path, 'external_extensions.json')
-            if os.path.exists(jsonfile):
-                os.system('rm -f %s' % jsonfile)
         # re-enable powerd
         os.system('start powerd')
         # cleanup backchannel interface
