@@ -355,6 +355,7 @@ gesture_list = [
             CountTrackingIDValidator('>= 5'),
             DrumrollValidator('<= 20, ~ +30'),
         ),
+        timeout = 500,
     ),
 
 ]

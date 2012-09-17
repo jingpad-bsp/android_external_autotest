@@ -81,7 +81,7 @@ class Gesture:
     """A class defines the structure of Gesture."""
     # define the default timeout (in milli-seconds) when performing a gesture.
     # A gesture is considered done when finger is lifted for this time interval.
-    TIMEOUT = 500
+    TIMEOUT = int(1000/80*10)
 
     def __init__(self, name=None, variations=None, prompt=None, subprompt=None,
                  validators=None, timeout=TIMEOUT):

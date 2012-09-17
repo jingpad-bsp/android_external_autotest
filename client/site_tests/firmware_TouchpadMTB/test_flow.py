@@ -360,7 +360,7 @@ class TestFlow:
         if (not self.gesture_begins_flag):
             self.gesture_begins_flag = True
             self.win.register_timeout_add(self.gesture_timeout_callback,
-                                          firmware_utils.Gesture.TIMEOUT)
+                                          self.gesture.timeout)
         return True
 
     def init_gesture_setup_callback(self, widget, event):
