@@ -38,6 +38,14 @@ from cros.factory.test import ui as ful
 # from the real one, hence the constant here
 _GTK_KB_KEYCODE_OFFSET = 8
 
+# GTK keycode for left Ctrl, Alt and Shift.
+_LCTRL = 37
+_LALT = 64
+_LSHIFT = 50
+
+# GTK state mask for key combination.
+_MOD_MASK = gtk.gdk.CONTROL_MASK | gtk.gdk.MOD1_MASK | gtk.gdk.SHIFT_MASK
+
 def GenerateKeycodeBinding(old_bindings):
     '''Offsets the bindings keycodes for GTK.'''
     key_to_geom = {}
@@ -46,14 +54,23 @@ def GenerateKeycodeBinding(old_bindings):
     return key_to_geom
 
 class KeyboardTest:
+    '''Keyboard test.
 
-    def __init__(self, kbd_image, bindings, scale):
+    Args:
+      kbd_image: Keyboard image file
+      binding: Keyboard binding file
+      scale: image scaling factor
+      accept_combi_key: (bool) True to accept combination key.
+    '''
+
+    def __init__(self, kbd_image, bindings, scale, accept_combi_key):
         self._kbd_image = kbd_image
         self._bindings = bindings
         self._scale = scale
         self._pressed_keys = set()
         self._deadline = None
         self.successful_keys = set()
+        self._accept_combi_key = accept_combi_key
 
     def calc_missing_string(self):
         missing_keys = sorted((gdk.keyval_name(k) or '<0x%x>' % k)for k in
@@ -96,16 +113,82 @@ class KeyboardTest:
 
         return True
 
+    def get_combined_keycode(self, event):
+        '''Gets combined keycode.
+
+        If Ctrl/Alt/Shift is also presented in key event, returns
+        hardware_keycode + offset:
+          Shift: 256
+          Ctrl: 1024
+          Alt: 2048
+
+        Args:
+          event: GTK event.
+
+        Returns:
+          Combined keycode explained above.
+        '''
+        return event.hardware_keycode + ((event.state & _MOD_MASK) << 8)
+
+    def process_combi_key_press_event(self, event):
+        '''Processes key-press event with combination key.
+
+        Args:
+          event: GTK event.
+
+        Returns:
+          (accept, keycode):
+            accept == True if the key is in _bindings.
+            keycode: combined keycode. Refer get_combined_keycode().
+        '''
+        keycode = self.get_combined_keycode(event)
+        if keycode in self._bindings:
+            # Known issue: if you press left Ctrl then "New Tab (Ctrl-T)", and
+            # then release them, the left Ctrl will be discarded unexpectedly.
+            # However, as it only hapeends when an operator sweeps keyboard
+            # and presses left Ctrl first then "New Tab", which is rare. And
+            # if it happends, operator can hit left Ctrl again to fix the
+            # issue. So I will leave the issue open until we found a nice fix.
+            if event.state & gtk.gdk.CONTROL_MASK:
+                self._pressed_keys.discard(_LCTRL)
+            if event.state & gtk.gdk.MOD1_MASK:
+                self._pressed_keys.discard(_LALT)
+            if event.state & gtk.gdk.SHIFT_MASK:
+                self._pressed_keys.discard(_LSHIFT)
+        elif event.hardware_keycode in self._bindings:
+            # For those unbinded key combinations, treat them as only
+            # base keys are pressed.
+            keycode = event.hardware_keycode
+        else:
+            return False, 0
+        return True, keycode
+
+    def process_simple_key_press_event(self, event):
+        '''Processes key-press event regardless key combination.
+
+        Args:
+          event: GTK event.
+
+        Returns:
+          (accept, keycode):
+            accept == True if the key is in _bindings.
+            keycode: hardware_keycode.
+        '''
+        keycode = event.hardware_keycode
+        return keycode in self._bindings, keycode
+
     def key_press_event(self, widget, event):
-        if event.hardware_keycode in self.successful_keys:
-            # Ignore keys already found to work successfully.
-            return True
-        if event.hardware_keycode not in self._bindings:
+        accept = False
+        if self._accept_combi_key:
+            accept, keycode = self.process_combi_key_press_event(event)
+        else:
+            accept, keycode = self.process_simple_key_press_event(event)
+        if not accept:
             factory.log('key (0x%x) ignored because not in bindings'
                         % event.keyval)
             return True
 
-        self._pressed_keys.add(event.hardware_keycode)
+        self._pressed_keys.add(keycode)
         widget.queue_draw()
 
         # The first keypress starts test countdown.
@@ -115,11 +198,19 @@ class KeyboardTest:
         return True
 
     def key_release_event(self, widget, event):
-        if event.hardware_keycode not in self._pressed_keys:
-            # Ignore releases for keys not previously accepted as pressed.
-            return False
-        self._pressed_keys.remove(event.hardware_keycode)
-        self.successful_keys.add(event.hardware_keycode)
+        hardware_keycode_check = True
+        if self._accept_combi_key:
+            keycode = self.get_combined_keycode(event)
+            # If combined keycode is not pressed before, fall back to check
+            # hardware_keycode instead.
+            hardware_keycode_check = keycode not in self._pressed_keys
+        if hardware_keycode_check:
+            keycode = event.hardware_keycode
+            if keycode not in self._pressed_keys:
+                # Ignore releases for keys not previously accepted as pressed.
+                return False
+        self._pressed_keys.remove(keycode)
+        self.successful_keys.add(keycode)
         widget.queue_draw()
         if not self.calc_missing_string():
             factory.log('completed successfully')
@@ -147,7 +238,7 @@ class factory_Keyboard(test.test):
            return layout
        return None
 
-    def run_once(self, layout=None):
+    def run_once(self, layout=None, combi_key=False):
 
         factory.log('%s run_once' % self.__class__)
 
@@ -178,7 +269,7 @@ class factory_Keyboard(test.test):
 
         scale = ful.calc_scale(*image_size)
 
-        test = KeyboardTest(kbd_image, bindings, scale)
+        test = KeyboardTest(kbd_image, bindings, scale, combi_key)
 
         scaled_image_size = (image_size[0] * scale, image_size[1] * scale)
 
