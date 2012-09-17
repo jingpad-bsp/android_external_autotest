@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import time
+import logging, os
+from autotest_lib.server import utils
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 from autotest_lib.client.common_lib import error
 
@@ -31,16 +31,33 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
                 'Update success, now version is %s'
                 % actual_ver)
 
+
     def run_bootok_and_recovery(self):
         self.faft_client.run_firmware_bootok('test')
         self.check_firmware_version(self._update_version)
         self.faft_client.run_firmware_recovery()
 
-    def setup(self):
-        super(firmware_UpdateFirmwareVersion, self).setup()
-        self.backup_firmware()
 
-        self.faft_client.setup_firmwareupdate_temp_dir()
+    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+        dict_args = utils.args_to_dict(cmdline_args)
+        self.use_shellball = dict_args.get('shellball', None)
+        super(firmware_UpdateFirmwareVersion, self).initialize(
+            host, cmdline_args, use_pyauto, use_faft)
+
+    def setup(self, host=None):
+        self.backup_firmware()
+        updater_path = self.setup_firmwareupdate_shellball(self.use_shellball)
+        self.faft_client.setup_firmwareupdate_temp_dir(updater_path)
+
+        # Update firmware if needed
+        if updater_path:
+            self.faft_client.run_firmware_factory_install()
+            self.sync_and_warm_reboot()
+            self.wait_for_client_offline()
+            self.wait_for_client()
+
+        super(firmware_UpdateFirmwareVersion, self).setup()
+
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 
         actual_ver = self.faft_client.retrieve_firmware_version('a')

@@ -662,11 +662,14 @@ class FAFTClient(object):
         return self._cgpt_state.get_step()
 
 
-    def setup_firmwareupdate_temp_dir(self):
+    def setup_firmwareupdate_temp_dir(self, shellball=None):
         """Setup temporary directory.
 
-        Devkeys are copied to _key_path. Then, shellball,
-        /usr/sbin/chromeos-firmwareupdate, is extracted to _work_path.
+        Devkeys are copied to _key_path. Then, shellball (default:
+        /usr/sbin/chromeos-firmwareupdate) is extracted to _work_path.
+
+        Args:
+            shellball: Path of shellball.
         """
 
         self.cleanup_firmwareupdate_temp_dir()
@@ -676,9 +679,17 @@ class FAFTClient(object):
 
         os.mkdir(self._work_path)
         shutil.copytree('/usr/share/vboot/devkeys/', self._keys_path)
+
+        shellball_path = os.path.join(self._temp_path,
+                                      'chromeos-firmwareupdate')
+
+        if shellball:
+            shutil.copyfile(shellball, shellball_path)
+        else:
+            shutil.copyfile('/usr/sbin/chromeos-firmwareupdate',
+                            shellball_path)
         self.run_shell_command(
-                'sh /usr/sbin/chromeos-firmwareupdate  --sb_extract %s'
-                % self._work_path)
+            'sh %s --sb_extract %s' % (shellball_path, self._work_path))
 
 
     def retrieve_shellball_fwid(self):
@@ -776,6 +787,13 @@ class FAFTClient(object):
                            'chromeos-firmwareupdate-%s' % append))
 
 
+    def run_firmware_factory_install(self):
+        """ Do firmwareupdate with factory_install mode using new shellball."""
+        self.run_shell_command(
+            '/bin/sh %s --mode factory_install --noupdate_ec'
+            % os.path.join(self._temp_path, 'chromeos-firmwareupdate'))
+
+
     def run_firmware_bootok(self, append):
         """Do bootok mode using new shellball.
 
@@ -788,11 +806,9 @@ class FAFTClient(object):
 
     def run_firmware_recovery(self):
         """Recovery to original shellball."""
-        args = ['/usr/sbin/chromeos-firmwareupdate']
-        args.append('--mode recovery')
-        args.append('--noupdate_ec')
-        cmd = '/bin/sh %s' % ' '.join(args)
-        self.run_shell_command(cmd)
+        self.run_shell_command(
+            '/bin/sh %s --mode recovery --noupdate_ec' % os.path.join(
+                self._temp_path, 'chromeos-firmwareupdate'))
 
 
     def get_temp_path(self):

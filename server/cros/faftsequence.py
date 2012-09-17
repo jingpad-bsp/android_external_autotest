@@ -1442,3 +1442,35 @@ class FAFTSequence(ServoTest):
         self.wait_for_client()
 
         logging.info('Successfully restore firmware.')
+
+
+    def setup_firmwareupdate_shellball(self, shellball=None):
+        """Deside a shellball to use in firmware update test.
+
+        Check if there is a given shellball, and it is a shell script. Then,
+        send it to the remote host. Otherwise, use
+        /usr/sbin/chromeos-firmwareupdate.
+
+        Args:
+            shellball: path of a shellball or default to None.
+
+        Returns:
+            Path of shellball in remote host.
+            If use default shellball, reutrn None.
+        """
+        updater_path = None
+        if shellball:
+            # Determine the firmware file is a shellball or a raw binary.
+            is_shellball = (utils.system_output("file %s" % shellball).find(
+                    "shell script") != -1)
+            if is_shellball:
+                logging.info('Device will update firmware with shellball %s'
+                             % shellball)
+                temp_dir = self.faft_client.create_temp_dir('shellball_')
+                temp_shellball = os.path.join(temp_dir, 'updater.sh')
+                self._client.send_file(shellball, temp_shellball)
+                updater_path = temp_shellball
+            else:
+                raise error.TestFail(
+                    'The given shellball is not a shell script.')
+            return updater_path

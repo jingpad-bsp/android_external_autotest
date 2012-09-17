@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os
+from autotest_lib.server import utils
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 from autotest_lib.client.common_lib import error
 
@@ -28,9 +29,6 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
                            'files/make_keys.sh'),
                        os.path.join(self.faft_client.get_temp_path(),
                                     'make_keys.sh'))
-        # TODO(ctchang) Delete this after adding dumpRSAPublicKey to image
-        host.send_file('/usr/bin/dumpRSAPublicKey',
-                       '/usr/local/sbin/firmware/saft/dumpRSAPublicKey')
 
         self.faft_client.run_shell_command('/bin/bash %s %s' % (
             os.path.join(self.faft_client.get_temp_path(), 'make_keys.sh'),
@@ -55,11 +53,27 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
         self.faft_client.run_firmware_recovery()
 
 
-    def setup(self, host=None):
-        super(firmware_UpdateKernelSubkeyVersion, self).setup()
-        self.backup_firmware()
+    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+        dict_args = utils.args_to_dict(cmdline_args)
+        self.use_shellball = dict_args.get('shellball', None)
+        super(firmware_UpdateKernelSubkeyVersion, self).initialize(
+            host, cmdline_args, use_pyauto, use_faft)
 
-        self.faft_client.setup_firmwareupdate_temp_dir()
+
+    def setup(self, host=None):
+        self.backup_firmware()
+        updater_path = self.setup_firmwareupdate_shellball(self.use_shellball)
+        self.faft_client.setup_firmwareupdate_temp_dir(updater_path)
+
+        # Update firmware if needed
+        if updater_path:
+            self.faft_client.run_firmware_factory_install()
+            self.sync_and_warm_reboot()
+            self.wait_for_client_offline()
+            self.wait_for_client()
+
+        super(firmware_UpdateKernelSubkeyVersion, self).setup()
+
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 
         ver = self.faft_client.retrieve_kernel_subkey_version('a')
@@ -75,9 +89,6 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
 
     def cleanup(self):
         self.faft_client.cleanup_firmwareupdate_temp_dir()
-        # TODO(ctchang) Delete this after adding dumpRSAPublicKey to image
-        self.faft_client.run_shell_command(
-            'rm -f /usr/local/sbin/firmware/saft/dumpRSAPublicKey')
         self.restore_firmware()
         super(firmware_UpdateKernelSubkeyVersion, self).cleanup()
 
