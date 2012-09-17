@@ -238,6 +238,45 @@ class StatusTest(mox.MoxTestBase):
                                                           manager)))
 
 
+    def testWaitForSingleJobHostsToRunAndGetLockedSerially(self):
+        """Lock running hosts as discovered, serially."""
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+
+        manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
+        expected_hostnames=['host1', 'host0']
+        expected_hosts = [FakeHost(h) for h in expected_hostnames]
+        job = FakeJob(7, hostnames=[None, None])
+
+        time.sleep(mox.IgnoreArg()).MultipleTimes()
+        self.expect_hosts_query_and_lock([job], manager, [], False)
+        # First, only one test in the job has had a host assigned at all.
+        # Since no hosts are running, expect no locking.
+        job.hostnames = [None] + expected_hostnames[1:]
+        self.expect_hosts_query_and_lock([job], manager, [], False)
+
+        # Then, that host starts running, but no other tests have hosts.
+        self.expect_hosts_query_and_lock([job], manager, expected_hosts[1:])
+
+        # The second test gets a host assigned, but it's not yet running.
+        # Since no new running hosts are found, no locking should happen.
+        job.hostnames = expected_hostnames
+        self.expect_hosts_query_and_lock([job], manager, expected_hosts[1:],
+                                         False)
+        # The second test's host starts running as well, and the first stops.
+        self.expect_hosts_query_and_lock([job], manager, expected_hosts[:1])
+
+        # The last loop update; doesn't impact behavior.
+        job_status.gather_job_hostnames(mox.IgnoreArg(),
+                                        job).AndReturn(expected_hostnames)
+        self.mox.ReplayAll()
+        self.assertEquals(
+            sorted(expected_hostnames),
+            sorted(job_status.wait_for_and_lock_job_hosts(self.afe,
+                                                          [job],
+                                                          manager)))
+
+
     def testWaitForMultiJobHostsToRunAndGetLocked(self):
         """Ensure we lock all running hosts for all jobs as discovered."""
         self.mox.StubOutWithMock(time, 'sleep')

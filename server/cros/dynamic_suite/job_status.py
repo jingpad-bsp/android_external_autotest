@@ -170,9 +170,9 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
         return all_hosts
 
     locked_hosts = set()
-    expected_hosts = get_all_hosts(jobs)
+    expected_hosts = set(get_all_hosts(jobs))
 
-    while sorted(list(locked_hosts)) != sorted(expected_hosts):
+    while locked_hosts != expected_hosts:
         hosts_to_check = [e for e in expected_hosts if e]
         if hosts_to_check:
             running_hosts = afe.get_hosts(hosts_to_check, status='Running')
@@ -183,7 +183,21 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
                 manager.lock()
             locked_hosts = locked_hosts.union(hostnames)
         time.sleep(interval)
-        expected_hosts = get_all_hosts(jobs)
+        # 'None' in expected_hosts means we had entries in the job with no
+        # host yet assigned, or which weren't Running yet.  We need to forget
+        # that across loops, though, and remember only hosts we really used.
+        expected_hosts = expected_hosts.difference([None])
+
+        # get_all_hosts() returns only hosts that are currently Running a
+        # job we care about.  By unioning with other hosts that we already
+        # saw, we get the set of all the hosts that have run a job we care
+        # about.  A HostQueueEntry that goes right from Queued -> Aborted,
+        # though, will always be represented as 'None' in the output from
+        # get_all_hosts().  As such, we will spin forever waiting for it to
+        # go to the 'Running' state.  We can't get into this position
+        # naturally, so we don't worry about it now.
+        # TODO(cmasone): Worry about it: http://crosbug.com/34535
+        expected_hosts = expected_hosts.union(get_all_hosts(jobs))
 
     return locked_hosts
 
