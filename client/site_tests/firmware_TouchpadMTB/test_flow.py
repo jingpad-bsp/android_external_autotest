@@ -162,7 +162,7 @@ class TestFlow:
 
     def _stop_record_and_post_image(self):
         """Terminate the recording process."""
-        self.screen_shot.dump(self._get_gesture_image_name())
+        self.screen_shot.dump_root(self._get_gesture_image_name())
         self.record_proc.terminate()
         self.record_proc.wait()
         self.win.set_image(self.gesture_image_name)

@@ -194,25 +194,34 @@ class SimpleX:
 class ScreenShot:
     """Handle screen shot."""
 
-    def __init__(self, chacteristic_str):
-        self.chacteristic_str = chacteristic_str
-        self.dump_format = ('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
-                            '/usr/local/bin/import -window %s %s.png')
+    def __init__(self, geometry_str):
+        self.geometry_str = geometry_str
+        environment_str = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
+        dump_util = '/usr/local/bin/import -quality 20'
+        self.dump_window_format = ' '.join([environment_str, dump_util,
+                                           '-window %s %s.png'])
+        self.dump_root_format = ' '.join([environment_str, dump_util,
+                                         '-window root -crop %s %s.png'])
         self.get_id_cmd = 'DISPLAY=:0 xwininfo -root -tree'
 
-    def dump(self, filename):
-        """Dump the screenshot to the specified file name."""
+    def dump_window(self, filename):
+        """Dump the screenshot of a window to the specified file name."""
         win_id = self._get_win_id()
         if win_id:
-            dump_cmd = self.dump_format % (win_id, filename)
+            dump_cmd = self.dump_window_format % (win_id, filename)
             common_util.simple_system(dump_cmd)
         else:
             print 'Warning: cannot get the window id.'
+
+    def dump_root(self, filename):
+        """Dump the screenshot of root to the specified file name."""
+        dump_cmd = self.dump_root_format % (self.geometry_str, filename)
+        common_util.simple_system(dump_cmd)
 
     def _get_win_id(self):
         """Get the window ID based on the characteristic string."""
         result = common_util.simple_system_output(self.get_id_cmd)
         for line in result.splitlines():
-            if self.chacteristic_str in line:
+            if self.geometry_str in line:
                 return line.split()[0].strip()
         return None
