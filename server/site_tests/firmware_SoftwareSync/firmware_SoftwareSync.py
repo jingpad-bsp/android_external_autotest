@@ -30,7 +30,7 @@ class firmware_SoftwareSync(FAFTSequence):
             flags = flags ^ self.PREAMBLE_USE_RO_NORMAL
             self.run_faft_step({
                 'userspace_action': (self.faft_client.set_firmware_flags,
-                    'a', flags)
+                    ('a', flags))
             })
 
 
