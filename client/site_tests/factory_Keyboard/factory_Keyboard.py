@@ -238,7 +238,15 @@ class factory_Keyboard(test.test):
            return layout
        return None
 
-    def run_once(self, layout=None, combi_key=False):
+    def run_once(self, layout=None, combi_key=False, config_dir=''):
+        '''
+
+        Args:
+          layout: use specified layout other than derived from VPD.
+          combi_key: True to handle key combination.
+          config_dir: specify directory to read keyboard image and binding
+             from. If unspeified, read from default directory.
+        '''
 
         factory.log('%s run_once' % self.__class__)
 
@@ -252,15 +260,17 @@ class factory_Keyboard(test.test):
             layout = 'en-US'
 
         factory.log("Using keyboard layout %s" % layout)
+        layout_filename = os.path.join(config_dir, '%s.png' % layout)
         try:
-            kbd_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
+            kbd_image = cairo.ImageSurface.create_from_png(layout_filename)
             image_size = (kbd_image.get_width(), kbd_image.get_height())
         except cairo.Error as e:
-            raise error.TestNAError('Error while opening %s.png: %s' %
-                                    (layout, e.message))
+            raise error.TestNAError('Error while opening %s: %s' %
+                                    (layout_filename, e.message))
 
+        bindings_filename = os.path.join(config_dir, '%s.bindings' % layout)
         try:
-            with open('%s.bindings' % layout, 'r') as file:
+            with open(bindings_filename, 'r') as file:
                 bindings = eval(file.read())
                 bindings = GenerateKeycodeBinding(bindings)
         except IOError as e:
