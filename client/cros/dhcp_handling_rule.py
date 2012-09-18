@@ -245,19 +245,21 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
 
 class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
     """
-    This handler accepts any REQUEST packet that contains options for
-    SERVER_ID and REQUESTED_IP that match |expected_server_ip| and
-    |expected_requested_ip| respectively.  It responds with an ACKNOWLEDGEMENT
-    packet from a DHCP server at |server_ip| granting |granted_ip| to a client
-    at the address given in the REQUEST packet.
+    This handler accepts any REQUEST packet that contains options for SERVER_ID
+    and REQUESTED_IP that match |expected_server_ip| and |expected_requested_ip|
+    respectively.  It responds with an ACKNOWLEDGEMENT packet from a DHCP server
+    at |response_server_ip| granting |response_granted_ip| to a client at the
+    address given in the REQUEST packet.  If |response_server_ip| or
+    |response_granted_ip| are not given, then they default to
+    |expected_server_ip| and |expected_requested_ip| respectively.
     """
     def __init__(self,
                  expected_requested_ip,
                  expected_server_ip,
                  additional_options,
                  should_respond=True,
-                 server_ip=None,
-                 granted_ip=None):
+                 response_server_ip=None,
+                 response_granted_ip=None):
         """
         All *_ip arguments are IPv4 address strings like "192.168.1.101".
 
@@ -268,12 +270,10 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         self._expected_requested_ip = expected_requested_ip
         self._expected_server_ip = expected_server_ip
         self._should_respond = should_respond
-        # Default the granted IP and server IP to the expected values from the
-        # client, unless explicitly specified otherwise
-        self._granted_ip = granted_ip
-        if granted_ip is None:
+        self._granted_ip = response_granted_ip
+        self._server_ip = response_server_ip
+        if self._granted_ip is None:
             self._granted_ip = self._expected_requested_ip
-        self._server_ip = server_ip
         if self._server_ip is None:
             self._server_ip = self._expected_server_ip
 
@@ -329,3 +329,63 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         if requested_parameters is not None:
             self.inject_options(response_packet, requested_parameters)
         return response_packet
+
+
+class DhcpHandlingRule_RespondToPostT2Request(
+        DhcpHandlingRule_RespondToRequest):
+    """
+    This handler is a lot like DhcpHandlingRule_RespondToRequest except that it
+    expects request packets like those sent after the T2 deadline (see RFC
+    2131).  This is the only time that you can find a request packet without the
+    SERVER_ID option.  It responds to packets in exactly the same way.
+    """
+    def __init__(self,
+                 expected_requested_ip,
+                 response_server_ip,
+                 additional_options,
+                 should_respond=True,
+                 response_granted_ip=None):
+        """
+        All *_ip arguments are IPv4 address strings like "192.168.1.101".
+
+        |additional_options| is handled as explained by DhcpHandlingRule.
+        """
+        super(DhcpHandlingRule_RespondToPostT2Request, self).__init__(
+                expected_requested_ip,
+                None,
+                additional_options,
+                should_respond=should_respond,
+                response_server_ip=response_server_ip,
+                response_granted_ip=response_granted_ip)
+
+    def handle_impl(self, query_packet):
+        if (query_packet.message_type !=
+            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST):
+            self.logger.info("Packet type was not REQUEST, ignoring.")
+            return RESPONSE_NO_ACTION
+
+        self.logger.info("Received REQUEST packet, checking fields...")
+        if query_packet.get_option(dhcp_packet.OPTION_SERVER_ID) is not None:
+            self.logger.info("REQUEST packet had a SERVER_ID option, which it "
+                             "is not expected to have, discarding.")
+            return RESPONSE_NO_ACTION
+
+        requested_ip = query_packet.get_option(dhcp_packet.OPTION_REQUESTED_IP)
+        if requested_ip is None:
+            self.logger.info("REQUEST packet did not have the expected "
+                             "request ip option at all, discarding.")
+            return RESPONSE_NO_ACTION
+
+        if requested_ip != self._expected_requested_ip:
+            self.logger.warning("REQUEST packet's requested IP did not match "
+                                "our expectations; expected %s but got %s" %
+                                (self._expected_requested_ip, requested_ip))
+            return RESPONSE_NO_ACTION
+
+        self.logger.info("Received valid post T2 REQUEST packet, processing")
+        ret = RESPONSE_POP_HANDLER
+        if self.is_final_handler:
+            ret |= RESPONSE_TEST_SUCCEEDED
+        if self._should_respond:
+            ret |= RESPONSE_HAVE_RESPONSE
+        return ret
