@@ -80,17 +80,13 @@ class firmware_ECBattery(FAFTSequence):
           error.TestFail: Raised when the two reading mismatch by more than
             CURRENT_MA_ERROR_MARGIN mA.
         """
-        servo_reading = int(self.servo.get('ppvar_vbat_ma'))
+        # The signs of the current values from servo and kernel are not
+        # consistent across different devices. So we pick the absolute values.
+        # TODO(victoryang@chromium.org): Investigate the sign issue.
+        servo_reading = abs(int(self.servo.get('ppvar_vbat_ma')))
         # Kernel gives current value in uA. Convert to mA here.
-        kernel_reading = int(self.faft_client.run_shell_command_get_output(
-                'cat %s' % self._battery_current)[0]) / 1000
-        status = self.faft_client.run_shell_command_get_output(
-                'cat %s' % self._battery_status)[0]
-
-        # If battery is not discharging, servo gives negative value.
-        if status != "Discharging":
-            servo_reading = -servo_reading
-
+        kernel_reading = abs(int(self.faft_client.run_shell_command_get_output(
+                'cat %s' % self._battery_current)[0])) / 1000
         logging.info("Current reading from servo: %dmA" % servo_reading)
         logging.info("Current reading from kernel: %dmA" % kernel_reading)
         if abs(servo_reading - kernel_reading) > self.CURRENT_MA_ERROR_MARGIN:
