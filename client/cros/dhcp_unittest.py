@@ -15,6 +15,16 @@ from autotest_lib.client.cros import dhcp_test_server
 
 TEST_DATA_PATH_PREFIX = "client/cros/dhcp_test_data/"
 
+TEST_DOMAIN_SEARCH_LIST_COMPRESSED = \
+        "\x03eng\x06google\x03com\x00\x09marketing\xC0\x04"
+
+TEST_DOMAIN_SEARCH_LIST_PARSED = ("eng.google.com", "marketing.google.com")
+
+# At this time, we don't support the compression allowed in the RFC.
+# This is correct and sufficient for our purposes.
+TEST_DOMAIN_SEARCH_LIST_EXPECTED = \
+        "\x03eng\x06google\x03com\x00\x09marketing\x06google\x03com\x00"
+
 def bin2hex(byte_str, justification=20):
     """
     Turn big hex strings into prettier strings of hex bytes.  Group those hex
@@ -43,6 +53,31 @@ def test_packet_serialization():
         print "Expected: \n%s" % bin2hex(binary_discovery_packet)
         return False
     print "test_packet_serialization PASSED"
+    return True
+
+def test_domain_search_list_parsing():
+    parsed_domains = dhcp_packet.DomainListOption.unpack(
+            TEST_DOMAIN_SEARCH_LIST_COMPRESSED)
+    # Order matters too.
+    parsed_domains = tuple(parsed_domains)
+    if parsed_domains != TEST_DOMAIN_SEARCH_LIST_PARSED:
+        print ("Parsed binary domain list and got %s but expected %s" %
+               (parsed_domains, TEST_DOMAIN_SEARCH_LIST_EXPECTED))
+        return False
+    print "test_domain_search_list_parsing PASSED"
+    return True
+
+def test_domain_search_list_serialization():
+    byte_string = dhcp_packet.DomainListOption.pack(
+            TEST_DOMAIN_SEARCH_LIST_PARSED)
+    if byte_string != TEST_DOMAIN_SEARCH_LIST_EXPECTED:
+        # Turn the strings into printable hex strings on a single line.
+        pretty_actual = bin2hex(byte_string, 100)
+        pretty_expected = bin2hex(TEST_DOMAIN_SEARCH_LIST_EXPECTED, 100)
+        print ("Expected to serialize %s to %s but instead got %s." %
+               (TEST_DOMAIN_SEARCH_LIST_PARSED, pretty_expected, pretty_actual))
+        return False
+    print "test_domain_search_list_serialization PASSED"
     return True
 
 def receive_packet(a_socket, timeout_seconds=1.0):
@@ -192,6 +227,8 @@ def run_tests():
     stream_handler.setLevel(logging.DEBUG)
     logger.addHandler(stream_handler)
     retval = test_packet_serialization()
+    retval &= test_domain_search_list_parsing()
+    retval &= test_domain_search_list_serialization()
     retval &= test_server_dialogue()
     if retval:
         print "All tests PASSED."

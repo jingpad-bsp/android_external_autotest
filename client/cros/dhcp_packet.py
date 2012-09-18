@@ -50,7 +50,7 @@ Represents an option in a DHCP packet.  Options may or may not be present in any
 given packet, depending on the configurations of the client and the server.
 Using namedtuples as super classes gets us the comparison operators we want to
 use these Options in dictionaries as keys.  Below, we'll subclass Option to
-reflect that different kinds of options seriallize to on the wire formats in
+reflect that different kinds of options serialize to on the wire formats in
 different ways.
 
 |name|
@@ -108,6 +108,92 @@ class ByteListOption(Option):
     @staticmethod
     def unpack(byte_string):
         return [ord(c) for c in byte_string]
+
+
+class DomainListOption(Option):
+    """
+    This is a RFC 1035 compliant domain list option parser and serializer.
+    There are some clever compression optimizations that it does not implement
+    for serialization, but correctly parses.  This should be sufficient for
+    testing.
+    """
+    # Various RFC's let you finish a domain name by pointing to an existing
+    # domain name rather than repeating the same suffix.  All such pointers are
+    # two bytes long, specify the offset in the byte string, and begin with
+    # |POINTER_PREFIX| to distinguish them from normal characters.
+    POINTER_PREFIX = ord("\xC0")
+
+    @staticmethod
+    def pack(value):
+        domain_list = value
+        byte_string = ""
+        for domain in domain_list:
+            for part in domain.split("."):
+                byte_string += chr(len(part))
+                byte_string += part
+            byte_string += "\x00"
+        return byte_string
+
+    @staticmethod
+    def unpack(byte_string):
+        domain_list = []
+        offset = 0
+        try:
+            while offset < len(byte_string):
+                (new_offset, domain_parts) = DomainListOption._read_domain_name(
+                        byte_string,
+                        offset)
+                domain_name = ".".join(domain_parts)
+                domain_list.append(domain_name)
+                if new_offset <= offset:
+                    raise Exception("Parsing logic error is letting domain "
+                                    "list parsing go on forever.")
+                offset = new_offset
+        except ValueError:
+            # Badly formatted packets are not necessarily test errors.
+            logging.warning("Found badly formatted DHCP domain search list")
+            return None
+        return domain_list
+
+    @staticmethod
+    def _read_domain_name(byte_string, offset):
+        """
+        Recursively parse a domain name from a domain name list.
+        """
+        parts = []
+        while True:
+            if offset >= len(byte_string):
+                raise ValueError("Domain list ended without a NULL byte.")
+            maybe_part_len = ord(byte_string[offset])
+            offset += 1
+            if maybe_part_len == 0:
+                # Domains are terminated with either a 0 or a pointer to a
+                # domain suffix within |byte_string|.
+                return (offset, parts)
+            elif ((maybe_part_len & DomainListOption.POINTER_PREFIX) ==
+                  DomainListOption.POINTER_PREFIX):
+                if offset >= len(byte_string):
+                    raise ValueError("Missing second byte of domain suffix "
+                                     "pointer.")
+                maybe_part_len &= ~DomainListOption.POINTER_PREFIX
+                pointer_offset = ((maybe_part_len << 8) +
+                                  ord(byte_string[offset]))
+                offset += 1
+                (_, more_parts) = DomainListOption._read_domain_name(
+                        byte_string,
+                        pointer_offset)
+                parts.extend(more_parts)
+                return (offset, parts)
+            else:
+                # That byte was actually the length of the next part, not a
+                # pointer back into the data.
+                part_len = maybe_part_len
+                if offset + part_len >= len(byte_string):
+                    raise ValueError("Part of a domain goes beyond data "
+                                     "length.")
+                parts.append(byte_string[offset : offset + part_len])
+                offset += part_len
+
 
 """
 Represents a required field in a DHCP packet.  Similar to Option, we'll
@@ -203,6 +289,8 @@ OPTION_VENDOR_ID = RawOption("vendor_id", 60)
 OPTION_CLIENT_ID = RawOption("client_id", 61)
 OPTION_TFTP_SERVER_NAME = RawOption("tftp_server_name", 66)
 OPTION_BOOTFILE_NAME = RawOption("bootfile_name", 67)
+OPTION_DNS_DOMAIN_SEARCH_LIST = DomainListOption("domain_search_list", 119)
+
 # Unlike every other option, which are tuples like:
 # <number, length in bytes, data>, the pad and end options are just
 # single bytes "\x00" and "\xff" (without length or data fields).
@@ -307,6 +395,7 @@ DHCP_PACKET_OPTIONS = [
         OPTION_CLIENT_ID,
         OPTION_TFTP_SERVER_NAME,
         OPTION_BOOTFILE_NAME,
+        OPTION_DNS_DOMAIN_SEARCH_LIST,
         ]
 
 def get_dhcp_option_by_number(number):
@@ -456,6 +545,7 @@ class DhcpPacket(object):
                                                         field.offset +
                                                         field.size])
         offset = OPTIONS_START_OFFSET
+        domain_search_list_byte_string = ""
         while offset < len(byte_str) and ord(byte_str[offset]) != OPTION_END:
             data_type = ord(byte_str[offset])
             offset += 1
@@ -470,10 +560,20 @@ class DhcpPacket(object):
                 logging.warning("Unsupported DHCP option found.  "
                                 "Option number: %d" % data_type)
                 continue
+            if option == OPTION_DNS_DOMAIN_SEARCH_LIST:
+                # In a cruel twist of fate, the server is allowed to give
+                # multiple options with this number.  The client is expected to
+                # concatenate the byte strings together and use it as a single
+                # value.
+                domain_search_list_byte_string += data
+                continue
             option_value = option.unpack(data)
             if option == OPTION_PARAMETER_REQUEST_LIST:
                 logging.info("Requested options: %s" % str(option_value))
             self._options[option] = option_value
+        if domain_search_list_byte_string:
+            self._options[OPTION_DNS_DOMAIN_SEARCH_LIST] = option_value
+
 
     @property
     def client_hw_address(self):
@@ -535,13 +635,13 @@ class DhcpPacket(object):
             option_value = self._options.get(option)
             if option_value is None:
                 continue
-            seriallized_value = option.pack(option_value)
+            serialized_value = option.pack(option_value)
             data.append(struct.pack("BB",
                                     option.number,
-                                    len(seriallized_value)))
+                                    len(serialized_value)))
             offset += 2
-            data.append(seriallized_value)
-            offset += len(seriallized_value)
+            data.append(serialized_value)
+            offset += len(serialized_value)
         data.append(chr(OPTION_END))
         offset += 1
         while offset < DHCP_MIN_PACKET_SIZE:
