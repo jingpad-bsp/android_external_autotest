@@ -33,8 +33,10 @@ class firmware_ECPowerButton(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECPowerButton, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def kill_powerd(self):
         """Stop powerd on client."""

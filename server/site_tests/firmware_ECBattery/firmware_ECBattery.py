@@ -37,8 +37,10 @@ class firmware_ECBattery(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECBattery, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def _get_battery_path(self):
         """Get battery path in sysfs."""

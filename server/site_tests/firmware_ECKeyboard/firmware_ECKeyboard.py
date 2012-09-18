@@ -41,8 +41,10 @@ class firmware_ECKeyboard(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECKeyboard, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def key_down(self, keyname):
         """Simulate pressing a key."""

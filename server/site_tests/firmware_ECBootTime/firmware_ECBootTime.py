@@ -14,8 +14,10 @@ class firmware_ECBootTime(FAFTSequence):
     version = 1
 
     def setup(self):
+        super(firmware_ECBootTime, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def check_boot_time(self):
         boot_msg = ("([0-9\.]+) Port 80"
@@ -35,6 +37,7 @@ class firmware_ECBootTime(FAFTSequence):
         logging.info("EC boot time: %f s" % boot_time)
         if boot_time > 1.0:
             raise error.TestFail("Boot time longer than 1 second.")
+
 
     def run_once(self, host=None):
         if not self.check_ec_capability():

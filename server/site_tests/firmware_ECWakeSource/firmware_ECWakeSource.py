@@ -37,8 +37,10 @@ class firmware_ECWakeSource(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECWakeSource, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     @delayed(WAKE_DELAY)
     def wake_by_power_button(self):

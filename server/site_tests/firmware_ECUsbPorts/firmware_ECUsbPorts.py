@@ -26,8 +26,10 @@ class firmware_ECUsbPorts(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECUsbPorts, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def fake_reboot_by_usb_mode_change(self):
         """

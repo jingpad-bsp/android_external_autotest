@@ -21,8 +21,10 @@ class firmware_ECWatchdog(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECWatchdog, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def reboot_by_watchdog(self):
         """

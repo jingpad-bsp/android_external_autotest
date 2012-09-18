@@ -39,8 +39,10 @@ class firmware_ECLidSwitch(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECLidSwitch, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def _open_lid(self):
         """Open lid by servo."""

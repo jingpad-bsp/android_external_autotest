@@ -19,8 +19,10 @@ class firmware_ECSharedMem(FAFTSequence):
 
 
     def setup(self):
+        super(firmware_ECSharedMem, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def shared_mem_checker(self):
         match = self.send_uart_command_get_output("shmem",

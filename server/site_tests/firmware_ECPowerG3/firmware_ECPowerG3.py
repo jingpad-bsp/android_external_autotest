@@ -23,9 +23,12 @@ class firmware_ECPowerG3(FAFTSequence):
     # Record failure event
     _failed = False
 
+
     def setup(self):
+        super(firmware_ECPowerG3, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+
 
     def wait_power(self, reg_ex, timeout):
         """
@@ -46,6 +49,7 @@ class firmware_ECPowerG3(FAFTSequence):
             except:
                 pass
         return False
+
 
     def check_G3(self):
         """Shutdown the system and check if X86 drop into G3 correctly."""
