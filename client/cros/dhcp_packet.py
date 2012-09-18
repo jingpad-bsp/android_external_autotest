@@ -21,7 +21,7 @@ packet = dhcp_packet.create_offer_packet(transaction_id,
                                          server_ip,
                                          lease_time_seconds)
 socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-# I believe that sending to the broadcast address needs special permissions.
+# Sending to the broadcast address needs special permissions.
 socket.sendto(response_packet.to_binary_string(),
               ("255.255.255.255", 68))
 
@@ -35,10 +35,25 @@ import random
 import socket
 import struct
 
+
+def CreatePacketPieceClass(super_class, field_format):
+    class PacketPiece(super_class):
+        @staticmethod
+        def pack(value):
+            return struct.pack(field_format, value)
+
+        @staticmethod
+        def unpack(byte_string):
+            return struct.unpack(field_format, byte_string)[0]
+    return PacketPiece
+
 """
-Represents an option in a DHCP packet.  Options may or may not be present
-and are not parsed into any particular format.  This means that the value of
-options is always in the form of a byte string.
+Represents an option in a DHCP packet.  Options may or may not be present in any
+given packet, depending on the configurations of the client and the server.
+Using namedtuples as super classes gets us the comparison operators we want to
+use these Options in dictionaries as keys.  Below, we'll subclass Option to
+reflect that different kinds of options seriallize to on the wire formats in
+different ways.
 
 |name|
 A human readable name for this option.
@@ -47,35 +62,62 @@ A human readable name for this option.
 Every DHCP option has a number that goes into the packet to indicate
 which particular option is being encoded in the next few bytes.  This
 property returns that number for each option.
-
-|size|
-The size property is a hint for what kind of size we might expect the
-option to be.  For instance, options with a size of 1 are expected to
-always be 1 byte long.  Negative sizes are variable length fields that
-are expected to be at least abs(size) bytes long.
-
-However, the size property is just a hint, and is not enforced or
-checked in any way.
 """
-Option = collections.namedtuple("Option", ["name", "number", "size"])
+Option = collections.namedtuple("Option", ["name", "number"])
+
+ByteOption = CreatePacketPieceClass(Option, "!B")
+
+ShortOption = CreatePacketPieceClass(Option, "!H")
+
+IntOption = CreatePacketPieceClass(Option, "!I")
+
+class IpAddressOption(Option):
+    @staticmethod
+    def pack(value):
+        return socket.inet_aton(value)
+
+    @staticmethod
+    def unpack(byte_string):
+        return socket.inet_ntoa(byte_string)
+
+
+class IpListOption(Option):
+    @staticmethod
+    def pack(value):
+        return "".join([socket.inet_aton(addr) for addr in value])
+
+    @staticmethod
+    def unpack(byte_string):
+        return [socket.inet_ntoa(byte_string[idx:idx+4])
+                for idx in range(0, len(byte_string), 4)]
+
+
+class RawOption(Option):
+    @staticmethod
+    def pack(value):
+        return value
+
+    @staticmethod
+    def unpack(byte_string):
+        return byte_string
+
+
+class ByteListOption(Option):
+    @staticmethod
+    def pack(value):
+        return "".join(chr(v) for v in value)
+
+    @staticmethod
+    def unpack(byte_string):
+        return [ord(c) for c in byte_string]
 
 """
-Represents a required field in a DHCP packet.  Unlike options, we sometimes
-parse fields into more meaningful data types.  For instance, the hardware
-type field in an IPv4 packet is parsed into an int rather than being left as
-a raw byte string of length 1.
+Represents a required field in a DHCP packet.  Similar to Option, we'll
+subclass Field to reflect that different fields serialize to on the wire formats
+in different ways.
 
 |name|
-A human readable name for this option.
-
-|wire_format|
-The wire format for a field defines how it will be parsed out of a DHCP
-packet.  For instance, the value for |FIELD_OP| is an integer in Python land,
-but goes on the wire as "!B", a single (network order) byte.  Fields that
-contain IP addresses like FIELD_SERVER_IP are strings of octets (like
-"\x0A\x0A\x01\x01" as returned by socket.inet_aton("10.10.1.1")) in Python land,
-and "!4s" on the wire, which is just a network order byte string, exactly like
-the Python format.
+A human readable name for this field.
 
 |offset|
 The |offset| for a field defines the starting byte of the field in the
@@ -87,68 +129,82 @@ Fields in DHCP packets have a fixed size that must be respected.  This
 size property is used in parsing to indicate that |self._size| number of
 bytes make up this field.
 """
-Field = collections.namedtuple("Field",
-                               ["name", "wire_format", "offset", "size"])
+Field = collections.namedtuple("Field", ["name", "offset", "size"])
+
+ByteField = CreatePacketPieceClass(Field, "!B")
+
+ShortField = CreatePacketPieceClass(Field, "!H")
+
+IntField = CreatePacketPieceClass(Field, "!I")
+
+HwAddrField = CreatePacketPieceClass(Field, "!16s")
+
+class IpAddressField(Field):
+    @staticmethod
+    def pack(value):
+        return socket.inet_aton(value)
+
+    @staticmethod
+    def unpack(byte_string):
+        return socket.inet_ntoa(byte_string)
+
 
 # This is per RFC 2131.  The wording doesn't seem to say that the packets must
 # be this big, but that has been the historic assumption in implementations.
 DHCP_MIN_PACKET_SIZE = 300
 
-IPV4_NULL_ADDRESS = "\x00\x00\x00\x00"
+IPV4_NULL_ADDRESS = "0.0.0.0"
 
 # These are required in every DHCP packet.  Without these fields, the
 # packet will not even pass DhcpPacket.is_valid
-FIELD_OP = Field("op", "!B", 0, 1)
-FIELD_HWTYPE = Field("htype", "!B", 1, 1)
-FIELD_HWADDR_LEN = Field("hlen", "!B", 2, 1)
-FIELD_RELAY_HOPS = Field("hops", "!B", 3, 1)
-FIELD_TRANSACTION_ID = Field("xid", "!I", 4, 4)
-FIELD_TIME_SINCE_START = Field("secs", "!H", 8, 2)
-FIELD_FLAGS = Field("flags", "!H", 10, 2)
-FIELD_CLIENT_IP = Field("ciaddr", "!4s", 12, 4)
-FIELD_YOUR_IP = Field("yiaddr", "!4s", 16, 4)
-FIELD_SERVER_IP = Field("siaddr", "!4s", 20, 4)
-FIELD_GATEWAY_IP = Field("giaddr", "!4s", 24, 4)
-FIELD_CLIENT_HWADDR = Field("chaddr", "!16s", 28, 16)
+FIELD_OP = ByteField("op", 0, 1)
+FIELD_HWTYPE = ByteField("htype", 1, 1)
+FIELD_HWADDR_LEN = ByteField("hlen", 2, 1)
+FIELD_RELAY_HOPS = ByteField("hops", 3, 1)
+FIELD_TRANSACTION_ID = IntField("xid", 4, 4)
+FIELD_TIME_SINCE_START = ShortField("secs", 8, 2)
+FIELD_FLAGS = ShortField("flags", 10, 2)
+FIELD_CLIENT_IP = IpAddressField("ciaddr", 12, 4)
+FIELD_YOUR_IP = IpAddressField("yiaddr", 16, 4)
+FIELD_SERVER_IP = IpAddressField("siaddr", 20, 4)
+FIELD_GATEWAY_IP = IpAddressField("giaddr", 24, 4)
+FIELD_CLIENT_HWADDR = HwAddrField("chaddr", 28, 16)
 # For legacy BOOTP reasons, there are 192 octets of 0's that
 # come after the chaddr.
-FIELD_MAGIC_COOKIE = Field("magic_cookie", "!I", 236, 4)
+FIELD_MAGIC_COOKIE = IntField("magic_cookie", 236, 4)
 
-OPTION_TIME_OFFSET = Option("time_offset", 2, 4)
-OPTION_ROUTERS = Option("routers", 3, -4)
-OPTION_SUBNET_MASK = Option("subnet_mask", 1, 4)
-# These *_servers (and router) options are actually lists of IPv4
-# addressesexpected to be multiples of 4 octets.
-OPTION_TIME_SERVERS = Option("time_servers", 4, -4)
-OPTION_NAME_SERVERS = Option("name_servers", 5, -4)
-OPTION_DNS_SERVERS = Option("dns_servers", 6, -4)
-OPTION_LOG_SERVERS = Option("log_servers", 7, -4)
-OPTION_COOKIE_SERVERS = Option("cookie_servers", 8, -4)
-OPTION_LPR_SERVERS = Option("lpr_servers", 9, -4)
-OPTION_IMPRESS_SERVERS = Option("impress_servers", 10, -4)
-OPTION_RESOURCE_LOC_SERVERS = Option("resource_loc_servers", 11, -4)
-OPTION_HOST_NAME = Option("host_name", 12, -1)
-OPTION_BOOT_FILE_SIZE = Option("boot_file_size", 13, 2)
-OPTION_MERIT_DUMP_FILE = Option("merit_dump_file", 14, -1)
-OPTION_SWAP_SERVER = Option("domain_name", 15, -1)
-OPTION_DOMAIN_NAME = Option("swap_server", 16, 4)
-OPTION_ROOT_PATH = Option("root_path", 17, -1)
-OPTION_EXTENSIONS = Option("extensions", 18, -1)
-# DHCP options.
-OPTION_REQUESTED_IP = Option("requested_ip", 50, 4)
-OPTION_IP_LEASE_TIME = Option("ip_lease_time", 51, 4)
-OPTION_OPTION_OVERLOAD = Option("option_overload", 52, 1)
-OPTION_DHCP_MESSAGE_TYPE = Option("dhcp_message_type", 53, 1)
-OPTION_SERVER_ID = Option("server_id", 54, 4)
-OPTION_PARAMETER_REQUEST_LIST = Option("parameter_request_list", 55, -1)
-OPTION_MESSAGE = Option("message", 56, -1)
-OPTION_MAX_DHCP_MESSAGE_SIZE = Option("max_dhcp_message_size", 57, 2)
-OPTION_RENEWAL_T1_TIME_VALUE = Option("renewal_t1_time_value", 58, 4)
-OPTION_REBINDING_T2_TIME_VALUE = Option("rebinding_t2_time_value", 59, 4)
-OPTION_VENDOR_ID = Option("vendor_id", 60, -1)
-OPTION_CLIENT_ID = Option("client_id", 61, -2)
-OPTION_TFTP_SERVER_NAME = Option("tftp_server_name", 66, -1)
-OPTION_BOOTFILE_NAME = Option("bootfile_name", 67, -1)
+OPTION_TIME_OFFSET = IntOption("time_offset", 2)
+OPTION_ROUTERS = IpListOption("routers", 3)
+OPTION_SUBNET_MASK = IpAddressOption("subnet_mask", 1)
+OPTION_TIME_SERVERS = IpListOption("time_servers", 4)
+OPTION_NAME_SERVERS = IpListOption("name_servers", 5)
+OPTION_DNS_SERVERS = IpListOption("dns_servers", 6)
+OPTION_LOG_SERVERS = IpListOption("log_servers", 7)
+OPTION_COOKIE_SERVERS = IpListOption("cookie_servers", 8)
+OPTION_LPR_SERVERS = IpListOption("lpr_servers", 9)
+OPTION_IMPRESS_SERVERS = IpListOption("impress_servers", 10)
+OPTION_RESOURCE_LOC_SERVERS = IpListOption("resource_loc_servers", 11)
+OPTION_HOST_NAME = RawOption("host_name", 12)
+OPTION_BOOT_FILE_SIZE = ShortOption("boot_file_size", 13)
+OPTION_MERIT_DUMP_FILE = RawOption("merit_dump_file", 14)
+OPTION_DOMAIN_NAME = RawOption("domain_name", 15)
+OPTION_SWAP_SERVER = IpAddressOption("swap_server", 16)
+OPTION_ROOT_PATH = RawOption("root_path", 17)
+OPTION_EXTENSIONS = RawOption("extensions", 18)
+OPTION_REQUESTED_IP = IpAddressOption("requested_ip", 50)
+OPTION_IP_LEASE_TIME = IntOption("ip_lease_time", 51)
+OPTION_OPTION_OVERLOAD = ByteOption("option_overload", 52)
+OPTION_DHCP_MESSAGE_TYPE = ByteOption("dhcp_message_type", 53)
+OPTION_SERVER_ID = IpAddressOption("server_id", 54)
+OPTION_PARAMETER_REQUEST_LIST = ByteListOption("parameter_request_list", 55)
+OPTION_MESSAGE = RawOption("message", 56)
+OPTION_MAX_DHCP_MESSAGE_SIZE = ShortOption("max_dhcp_message_size", 57)
+OPTION_RENEWAL_T1_TIME_VALUE = IntOption("renewal_t1_time_value", 58)
+OPTION_REBINDING_T2_TIME_VALUE = IntOption("rebinding_t2_time_value", 59)
+OPTION_VENDOR_ID = RawOption("vendor_id", 60)
+OPTION_CLIENT_ID = RawOption("client_id", 61)
+OPTION_TFTP_SERVER_NAME = RawOption("tftp_server_name", 66)
+OPTION_BOOTFILE_NAME = RawOption("bootfile_name", 67)
 # Unlike every other option, which are tuples like:
 # <number, length in bytes, data>, the pad and end options are just
 # single bytes "\x00" and "\xff" (without length or data fields).
@@ -171,6 +227,7 @@ DHCP_PACKET_FIELDS = [
         FIELD_CLIENT_HWADDR,
         FIELD_MAGIC_COOKIE,
         ]
+
 # The op field in an ipv4 packet is either 1 or 2 depending on
 # whether the packet is from a server or from a client.
 FIELD_VALUE_OP_CLIENT_REQUEST = 1
@@ -183,21 +240,22 @@ FIELD_VALUE_MAGIC_COOKIE = 0x63825363
 
 OPTIONS_START_OFFSET = 240
 # From RFC2132, the valid DHCP message types are:
-OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY = "\x01"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER     = "\x02"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST   = "\x03"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_DECLINE   = "\x04"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK       = "\x05"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_NAK       = "\x06"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_RELEASE   = "\x07"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_INFORM    = "\x08"
-OPTION_VALUE_DHCP_MESSAGE_TYPE_UNKNOWN   = "\xFF"
+OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY = 1
+OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER     = 2
+OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST   = 3
+OPTION_VALUE_DHCP_MESSAGE_TYPE_DECLINE   = 4
+OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK       = 5
+OPTION_VALUE_DHCP_MESSAGE_TYPE_NAK       = 6
+OPTION_VALUE_DHCP_MESSAGE_TYPE_RELEASE   = 7
+OPTION_VALUE_DHCP_MESSAGE_TYPE_INFORM    = 8
+OPTION_VALUE_DHCP_MESSAGE_TYPE_UNKNOWN   = -1
 
-OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT = \
-        chr(OPTION_SUBNET_MASK.number) + \
-        chr(OPTION_ROUTERS.number) + \
-        chr(OPTION_DNS_SERVERS.number) + \
-        chr(OPTION_HOST_NAME.number)
+OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT = [
+        OPTION_SUBNET_MASK.number,
+        OPTION_ROUTERS.number,
+        OPTION_DNS_SERVERS.number,
+        OPTION_HOST_NAME.number,
+        ]
 
 # These are possible options that may not be in every packet.
 # Frequently, the client can include a bunch of options that indicate
@@ -219,8 +277,6 @@ DHCP_PACKET_OPTIONS = [
         OPTION_TIME_OFFSET,
         OPTION_ROUTERS,
         OPTION_SUBNET_MASK,
-        # These *_servers (and router) options are actually lists of
-        # IPv4 addresses expected to be multiples of 4 octets.
         OPTION_TIME_SERVERS,
         OPTION_NAME_SERVERS,
         OPTION_DNS_SERVERS,
@@ -236,7 +292,6 @@ DHCP_PACKET_OPTIONS = [
         OPTION_DOMAIN_NAME,
         OPTION_ROOT_PATH,
         OPTION_EXTENSIONS,
-        # DHCP options.
         OPTION_REQUESTED_IP,
         OPTION_IP_LEASE_TIME,
         OPTION_OPTION_OVERLOAD,
@@ -319,18 +374,16 @@ class DhcpPacket(object):
         packet.set_field(FIELD_TIME_SINCE_START, 0)
         packet.set_field(FIELD_FLAGS, 0)
         packet.set_field(FIELD_CLIENT_IP, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_YOUR_IP, socket.inet_aton(offer_ip))
-        packet.set_field(FIELD_SERVER_IP, socket.inet_aton(server_ip))
+        packet.set_field(FIELD_YOUR_IP, offer_ip)
+        packet.set_field(FIELD_SERVER_IP, server_ip)
         packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
         packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER)
-        packet.set_option(OPTION_SUBNET_MASK,
-                          socket.inet_aton(offer_subnet_mask))
-        packet.set_option(OPTION_SERVER_ID, socket.inet_aton(server_ip))
-        packet.set_option(OPTION_IP_LEASE_TIME,
-                          struct.pack("!I", int(lease_time_seconds)))
+        packet.set_option(OPTION_SUBNET_MASK, offer_subnet_mask)
+        packet.set_option(OPTION_SERVER_ID, server_ip)
+        packet.set_option(OPTION_IP_LEASE_TIME, lease_time_seconds)
         return packet
 
     @staticmethod
@@ -353,11 +406,10 @@ class DhcpPacket(object):
         packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
         packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
-        packet.set_option(OPTION_REQUESTED_IP,
-                          socket.inet_aton(requested_ip))
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST)
-        packet.set_option(OPTION_SERVER_ID, socket.inet_aton(server_ip))
+        packet.set_option(OPTION_REQUESTED_IP, requested_ip)
+        packet.set_option(OPTION_SERVER_ID, server_ip)
         packet.set_option(OPTION_PARAMETER_REQUEST_LIST,
                           OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT)
         return packet
@@ -379,18 +431,16 @@ class DhcpPacket(object):
         packet.set_field(FIELD_TIME_SINCE_START, 0)
         packet.set_field(FIELD_FLAGS, 0)
         packet.set_field(FIELD_CLIENT_IP, IPV4_NULL_ADDRESS)
-        packet.set_field(FIELD_YOUR_IP, socket.inet_aton(granted_ip))
-        packet.set_field(FIELD_SERVER_IP, socket.inet_aton(server_ip))
+        packet.set_field(FIELD_YOUR_IP, granted_ip)
+        packet.set_field(FIELD_SERVER_IP, server_ip)
         packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
         packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
                           OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK)
-        packet.set_option(OPTION_SUBNET_MASK,
-                          socket.inet_aton(granted_ip_subnet_mask))
-        packet.set_option(OPTION_SERVER_ID, socket.inet_aton(server_ip))
-        packet.set_option(OPTION_IP_LEASE_TIME,
-                          struct.pack("!I", int(lease_time_seconds)))
+        packet.set_option(OPTION_SUBNET_MASK, granted_ip_subnet_mask)
+        packet.set_option(OPTION_SERVER_ID, server_ip)
+        packet.set_option(OPTION_IP_LEASE_TIME, lease_time_seconds)
         return packet
 
     def __init__(self, byte_str=None):
@@ -414,17 +464,15 @@ class DhcpPacket(object):
         super(DhcpPacket, self).__init__()
         self._options = {}
         self._fields = {}
-        self._logger = logging.getLogger("dhcp.packet")
         if byte_str is None:
             return
         if len(byte_str) < OPTIONS_START_OFFSET + 1:
-            self._logger.error("Invalid byte string for packet.")
+            logging.error("Invalid byte string for packet.")
             return
         for field in DHCP_PACKET_FIELDS:
-            self._fields[field] = struct.unpack(field.wire_format,
-                                                byte_str[field.offset :
-                                                         field.offset +
-                                                         field.size])[0]
+            self._fields[field] = field.unpack(byte_str[field.offset :
+                                                        field.offset +
+                                                        field.size])
         offset = OPTIONS_START_OFFSET
         while offset < len(byte_str) and ord(byte_str[offset]) != OPTION_END:
             data_type = ord(byte_str[offset])
@@ -435,14 +483,15 @@ class DhcpPacket(object):
             offset += 1
             data = byte_str[offset: offset + data_length]
             offset += data_length
-            option_bunch = get_dhcp_option_by_number(data_type)
-            if option_bunch is None:
-                # Unsupported data type, of which we have many.
+            option = get_dhcp_option_by_number(data_type)
+            if option is None:
+                logging.warning("Unsupported DHCP option found.  "
+                                "Option number: %d" % data_type)
                 continue
-            if option_bunch == OPTION_PARAMETER_REQUEST_LIST:
-                options = [ord(c) for c in data]
-                logging.info("Requested options: %s" % str(options))
-            self._options[option_bunch] = data
+            option_value = option.unpack(data)
+            if option == OPTION_PARAMETER_REQUEST_LIST:
+                logging.info("Requested options: %s" % str(option_value))
+            self._options[option] = option_value
 
     @property
     def client_hw_address(self):
@@ -456,7 +505,7 @@ class DhcpPacket(object):
         """
         for field in DHCP_PACKET_FIELDS:
             if self._fields.get(field) is None:
-                self._logger.info("Missing field %s in packet." % field)
+                logging.warning("Missing field %s in packet." % field)
                 return False
         if self._fields[FIELD_MAGIC_COOKIE] != FIELD_VALUE_MAGIC_COOKIE:
             return False
@@ -490,8 +539,7 @@ class DhcpPacket(object):
         data = []
         offset = 0
         for field in DHCP_PACKET_FIELDS:
-            field_data = struct.pack(field.wire_format,
-                                     self._fields[field])
+            field_data = field.pack(self._fields[field])
             while offset < field.offset:
                 # This should only happen when we're padding the fields because
                 # we're not filling in legacy BOOTP stuff.
@@ -505,12 +553,13 @@ class DhcpPacket(object):
             option_value = self._options.get(option)
             if option_value is None:
                 continue
+            seriallized_value = option.pack(option_value)
             data.append(struct.pack("BB",
                                     option.number,
-                                    len(option_value)))
+                                    len(seriallized_value)))
             offset += 2
-            data.append(option_value)
-            offset += len(option_value)
+            data.append(seriallized_value)
+            offset += len(seriallized_value)
         data.append(chr(OPTION_END))
         offset += 1
         while offset < DHCP_MIN_PACKET_SIZE:

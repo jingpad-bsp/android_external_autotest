@@ -15,7 +15,6 @@ should be be removed from the test server's handling rule queue.
 """
 
 import logging
-import socket
 
 from autotest_lib.client.cros import dhcp_packet
 
@@ -137,19 +136,16 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
                              "options, discarding.")
             return (RESPONSE_IGNORE, ACTION_KEEP_HANDLER)
 
-        server_ip_ascii = socket.inet_ntoa(server_ip)
-        requested_ip_ascii = socket.inet_ntoa(requested_ip)
-        if server_ip_ascii != self._expected_server_ip:
+        if server_ip != self._expected_server_ip:
             self.logger.warning("REQUEST packet's server ip did not match our "
                                 "expectations; expected %s but got %s" %
-                                (self._expected_server_ip, server_ip_ascii))
+                                (self._expected_server_ip, server_ip))
             return (RESPONSE_IGNORE, ACTION_KEEP_HANDLER)
 
-        if requested_ip_ascii != self._expected_requested_ip:
+        if requested_ip != self._expected_requested_ip:
             self.logger.warning("REQUEST packet's requested IP did not match "
                                 "our expectations; expected %s but got %s" %
-                                (self._expected_requested_ip,
-                                 requested_ip_ascii))
+                                (self._expected_requested_ip, requested_ip))
             return (RESPONSE_IGNORE, ACTION_KEEP_HANDLER)
 
         self.logger.info("Received valid REQUEST packet, processing")
