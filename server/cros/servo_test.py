@@ -174,7 +174,10 @@ class ServoTest(test.test):
             sock = socket.create_connection((hostname, 22), timeout=timeout)
             sock.close()
             return True
+        except socket.timeout:
+            return False
         except socket.error:
+            time.sleep(timeout)
             return False
 
 
