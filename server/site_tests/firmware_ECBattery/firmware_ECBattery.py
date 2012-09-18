@@ -65,9 +65,12 @@ class firmware_ECBattery(FAFTSequence):
         # Kernel gives voltage value in uV. Convert to mV here.
         kernel_reading = int(self.faft_client.run_shell_command_get_output(
                 'cat %s' % self._battery_voltage)[0]) / 1000
+        logging.info("Voltage reading from servo: %dmV" % servo_reading)
+        logging.info("Voltage reading from kernel: %dmV" % kernel_reading)
         if abs(servo_reading - kernel_reading) > self.VOLTAGE_MV_ERROR_MARGIN:
             raise error.TestFail(
-                    "Voltage reading from servo and kernel mismatch.")
+                    "Voltage reading from servo (%dmV) and kernel (%dmV) "
+                    "mismatch." % (servo_reading, kernel_reading))
 
 
     def _check_current_match(self):
@@ -87,9 +90,13 @@ class firmware_ECBattery(FAFTSequence):
         # If battery is not discharging, servo gives negative value.
         if status != "Discharging":
             servo_reading = -servo_reading
+
+        logging.info("Current reading from servo: %dmA" % servo_reading)
+        logging.info("Current reading from kernel: %dmA" % kernel_reading)
         if abs(servo_reading - kernel_reading) > self.CURRENT_MA_ERROR_MARGIN:
             raise error.TestFail(
-                    "Current reading from servo and kernel mismatch.")
+                    "Current reading from servo (%dmA) and kernel (%dmA) "
+                    "mismatch." % (servo_reading, kernel_reading))
 
 
     def _check_temperature(self):
@@ -104,7 +111,8 @@ class firmware_ECBattery(FAFTSequence):
         logging.info("Battery temperature is %f C" % battery_temp)
         if (battery_temp > self.BATTERY_TEMP_UPPER_BOUND or
             battery_temp < self.BATTERY_TEMP_LOWER_BOUND):
-            raise error.TestFail("Abnormal battery temperature.")
+            raise error.TestFail("Abnormal battery temperature, %.2f C." %
+                                 battery_temp)
 
 
     def run_once(self, host=None):
