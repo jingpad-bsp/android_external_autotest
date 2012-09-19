@@ -136,13 +136,13 @@ class LinearityValidator(BaseValidator):
     """Validator to verify linearity.
 
     Example:
-        To check the linearity of two finger horizontal scrolling:
-          LinearityValidator('<= 0.03, ~ +0.07', fingers=2)
+        To check the linearity of the line drawn in slot 1:
+          LinearityValidator('<= 0.03, ~ +0.07', slot=1)
     """
 
-    def __init__(self, criteria_str, mf=None, fingers=1):
+    def __init__(self, criteria_str, mf=None, slot=0):
         super(LinearityValidator, self).__init__(criteria_str, mf)
-        self.fingers = fingers
+        self.slot = slot
 
     def _simple_linear_regression(self, ax, ay):
         """Calculate the simple linear regression and returns the
@@ -198,20 +198,17 @@ class LinearityValidator(BaseValidator):
     def check(self, packets, variation=None):
         """Check if the packets conforms to specified criteria."""
         self.init_check(packets)
-        results = []
-        for slot in range(self.fingers):
-            (list_x, list_y) = self.packets.get_x_y(slot)
-            if self.is_vertical(variation):
-                results.append(self._simple_linear_regression(list_y, list_x))
-                length = self.device_width
-            else:
-                results.append(self._simple_linear_regression(list_x, list_y))
-                length = self.device_height
-
-        ave_distance = eval(self.aggregator)(results)
+        (list_x, list_y) = self.packets.get_x_y(self.slot)
+        if self.is_vertical(variation):
+            ave_distance = self._simple_linear_regression(list_y, list_x)
+            length = self.device_width
+        else:
+            ave_distance = self._simple_linear_regression(list_x, list_y)
+            length = self.device_height
         ave_deviation = ave_distance / length
         self.print_msg('average distance: %f' % ave_distance)
-        self.print_msg('ave_deviation: %f' % ave_deviation)
+        self.print_msg('ave_deviation slot[%d]: %f' % (self.slot,
+                                                       ave_deviation))
         return (self.fc.mf.grade(ave_deviation), self.msg_list)
 
 

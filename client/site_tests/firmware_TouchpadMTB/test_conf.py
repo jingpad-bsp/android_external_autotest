@@ -49,7 +49,7 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 1'),
-            LinearityValidator('<= 0.03, ~ +0.07'),
+            LinearityValidator('<= 0.03, ~ +0.07', slot=0),
             NoReversedMotionValidator('== 0, ~ +20', slots=0),
             RangeValidator('<= 0.05, ~ +0.05'),
         ),
@@ -73,7 +73,8 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
-            LinearityValidator('<= 0.03, ~ +0.07', fingers=2),
+            LinearityValidator('<= 0.03, ~ +0.07', slot=0),
+            LinearityValidator('<= 0.03, ~ +0.07', slot=1),
             NoReversedMotionValidator('== 0, ~ +20', slots=(0, 1)),
         ),
     ),
