@@ -126,7 +126,9 @@ def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
             job_ids.remove(job_id)
             logging.debug('Re-imaging job %d running.', job_id)
         if job_ids:
-            time.sleep(calculator.calculate(interval))
+            next_interval = calculator.calculate(interval)
+            time.sleep(next_interval)
+            logging.debug('Waiting %ds before polling again.', next_interval)
 
 
 def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
@@ -171,14 +173,17 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
 
     locked_hosts = set()
     expected_hosts = set(get_all_hosts(jobs))
+    logging.debug('Initial expected hosts: %r', expected_hosts)
 
     while locked_hosts != expected_hosts:
         hosts_to_check = [e for e in expected_hosts if e]
         if hosts_to_check:
+            logging.debug('Checking to see if %r are Running.', hosts_to_check)
             running_hosts = afe.get_hosts(hosts_to_check, status='Running')
             hostnames = [h.hostname for h in running_hosts]
             if set(hostnames) - locked_hosts != set():
                 # New hosts to lock!
+                logging.debug('Locking %r.', hostnames)
                 manager.add(hostnames)
                 manager.lock()
             locked_hosts = locked_hosts.union(hostnames)
@@ -198,6 +203,9 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
         # naturally, so we don't worry about it now.
         # TODO(cmasone): Worry about it: http://crosbug.com/34535
         expected_hosts = expected_hosts.union(get_all_hosts(jobs))
+        logging.debug('Locked hosts: %r', locked_hosts)
+        logging.debug('Expected hosts: %r', expected_hosts)
+
 
     return locked_hosts
 
