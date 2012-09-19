@@ -11,6 +11,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 SUITE = "bvt, smoke"
+EXPERIMENTAL = "True"
 
 DOC = """
 Sanity test for Native Client (NaCl).
