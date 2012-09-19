@@ -139,6 +139,8 @@ class LinearityValidator(BaseValidator):
         To check the linearity of the line drawn in slot 1:
           LinearityValidator('<= 0.03, ~ +0.07', slot=1)
     """
+    # Define the partial group size for calculating Mean Squared Error
+    MSE_PARTIAL_GROUP_SIZE = 1
 
     def __init__(self, criteria_str, mf=None, slot=0):
         super(LinearityValidator, self).__init__(criteria_str, mf)
@@ -186,8 +188,7 @@ class LinearityValidator(BaseValidator):
         alpha = My - beta * Mx
 
         # spmse: squared root of partial mean squared error
-        partial = max(1, int(0.1 * asize))
-        partial = min(asize, 10)
+        partial = min(asize, max(1, self.MSE_PARTIAL_GROUP_SIZE))
         spmse = n.square(ay - alpha - beta * ax)
         spmse.sort()
         spmse = spmse[asize - partial : asize]
