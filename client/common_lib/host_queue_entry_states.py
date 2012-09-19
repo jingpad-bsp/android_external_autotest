@@ -7,11 +7,14 @@ that frontend.afe.models depends on such as RPC clients.
 
 from autotest_lib.client.common_lib import enum
 
-Status = enum.Enum('Queued', 'Starting', 'Verifying', 'Pending', 'Waiting',
-                   'Running', 'Gathering', 'Parsing', 'Archiving', 'Aborted',
-                   'Completed', 'Failed', 'Stopped', 'Template',
-                   string_values=True)
+Status_list = ['Queued', 'Starting', 'Verifying', 'Pending', 'Waiting',
+               'Running', 'Gathering', 'Parsing', 'Archiving', 'Aborted',
+               'Completed', 'Failed', 'Stopped', 'Template']
+
+Status = enum.Enum(*Status_list, string_values=True)
 ACTIVE_STATUSES = (Status.STARTING, Status.VERIFYING, Status.PENDING,
                    Status.RUNNING, Status.GATHERING)
 COMPLETE_STATUSES = (Status.ABORTED, Status.COMPLETED, Status.FAILED,
                      Status.STOPPED, Status.TEMPLATE)
+
+IntStatus = enum.Enum(*Status_list)

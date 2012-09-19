@@ -4,7 +4,8 @@
 
 import datetime, logging, time
 from autotest_lib.client.common_lib import base_job, log
-
+from autotest_lib.client.common_lib.host_queue_entry_states \
+    import IntStatus as HqeIntStatus
 
 TIME_FMT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_POLL_INTERVAL_SECONDS = 10
@@ -64,9 +65,11 @@ def gather_job_hostnames(afe, job):
     """
     hosts = []
     for e in afe.run('get_host_queue_entries', job=job.id):
-        if e['status'] != 'Running':
+        # If the host queue entry has not yet made it into or past the running
+        # stage, we should skip it for now.
+        if (HqeIntStatus.get_value(e['status']) <
+            HqeIntStatus.get_value(HqeIntStatus.RUNNING)):
             hosts.append(None)
-            continue
         elif not e['host']:
             logging.warn('Job %s (%s) has an entry with no host!',
                          job.name, job.id)
@@ -196,12 +199,7 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
         # get_all_hosts() returns only hosts that are currently Running a
         # job we care about.  By unioning with other hosts that we already
         # saw, we get the set of all the hosts that have run a job we care
-        # about.  A HostQueueEntry that goes right from Queued -> Aborted,
-        # though, will always be represented as 'None' in the output from
-        # get_all_hosts().  As such, we will spin forever waiting for it to
-        # go to the 'Running' state.  We can't get into this position
-        # naturally, so we don't worry about it now.
-        # TODO(cmasone): Worry about it: http://crosbug.com/34535
+        # about.
         expected_hosts = expected_hosts.union(get_all_hosts(jobs))
         logging.debug('Locked hosts: %r', locked_hosts)
         logging.debug('Expected hosts: %r', expected_hosts)
