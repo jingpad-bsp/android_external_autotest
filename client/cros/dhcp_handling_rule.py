@@ -15,6 +15,7 @@ should be be removed from the test server's handling rule queue.
 """
 
 import logging
+import time
 
 from autotest_lib.client.cros import dhcp_packet
 
@@ -57,6 +58,8 @@ class DhcpHandlingRule(object):
         self._is_final_handler = False
         self._logger = logging.getLogger("dhcp.handling_rule")
         self._options = additional_options
+        self._target_time_seconds = None
+        self._allowable_time_delta_seconds = 0.5
 
     @property
     def logger(self):
@@ -77,7 +80,65 @@ class DhcpHandlingRule(object):
         """
         return self._options
 
-    def handle(self, packet):
+    @property
+    def target_time_seconds(self):
+        """
+        If this is not None, packets will be rejected if they don't fall within
+        |self.allowable_time_delta_seconds| seconds of
+        |self.target_time_seconds|.  A value of None will cause this handler to
+        ignore the target packet time.
+
+        Defaults to None.
+        """
+        return self._target_time_seconds
+
+    @target_time_seconds.setter
+    def target_time_seconds(self, value):
+        self._target_time_seconds = value
+
+    @property
+    def allowable_time_delta_seconds(self):
+        """
+        A configurable fudge factor for |self.target_time_seconds|.  If a packet
+        comes in at time T and:
+
+        delta = abs(T - |self.target_time_seconds|)
+
+        Then if delta < |self.allowable_time_delta_seconds|, we accept the
+        packet.  Otherwise we either fail the test or ignore the packet,
+        depending on whether this packet is before or after the window.
+
+        Defaults to 0.5 seconds.
+        """
+        return self._allowable_time_delta_seconds
+
+    @allowable_time_delta_seconds.setter
+    def allowable_time_delta_seconds(self, value):
+        self._allowable_time_delta_seconds = value
+
+    @property
+    def packet_is_too_late(self):
+        if self.target_time_seconds is None:
+            return False
+        now = time.time()
+        if now - self.target_time_seconds > self._allowable_time_delta_seconds:
+            logging.info("Packet was too late for handling.")
+            return True
+        logging.info("Packet was not too late for handling.")
+        return False
+
+    @property
+    def packet_is_too_soon(self):
+        if self.target_time_seconds is None:
+            return False
+        now = time.time()
+        if self.target_time_seconds - now > self._allowable_time_delta_seconds:
+            logging.info("Packet arrived too soon for handling.")
+            return True
+        logging.info("Packet was not too soon for handling.")
+        return False
+
+    def handle(self, query_packet):
         """
         The DhcpTestServer will call this method to ask a handling rule whether
         it wants to take some action in response to a packet.  The handler
@@ -86,6 +147,14 @@ class DhcpHandlingRule(object):
         |packet| is a valid DHCP packet, but the values of fields and presence
         of options is not guaranteed.
         """
+        if self.packet_is_too_late:
+            return RESPONSE_TEST_FAILED
+        if self.packet_is_too_soon:
+            return RESPONSE_NO_ACTION
+        return self.handle_impl(query_packet)
+
+    def handle_impl(self, query_packet):
+        logging.error("DhcpHandlingRule.handle_impl() called."
         return RESPONSE_TEST_FAILED
 
     def respond(self, query_packet):
@@ -141,7 +210,7 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
         self._server_ip = server_ip
         self._should_respond = should_respond
 
-    def handle(self, query_packet):
+    def handle_impl(self, query_packet):
         if (query_packet.message_type !=
             dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY):
             self.logger.info("Packet type was not DISCOVERY.  Ignoring.")
@@ -208,7 +277,7 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         if self._server_ip is None:
             self._server_ip = self._expected_server_ip
 
-    def handle(self, query_packet):
+    def handle_impl(self, query_packet):
         if (query_packet.message_type !=
             dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST):
             self.logger.info("Packet type was not REQUEST, ignoring.")
