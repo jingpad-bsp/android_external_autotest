@@ -7,6 +7,7 @@
 import os
 import unittest
 
+import common_unittest_utils
 import mtb
 
 # Include some constants
