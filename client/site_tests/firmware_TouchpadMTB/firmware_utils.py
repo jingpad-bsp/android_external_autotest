@@ -20,16 +20,6 @@ def get_display_name():
     return ':0'
 
 
-def get_tests_path():
-    """Get the path for unit tests."""
-    return os.path.join(os.getcwd(), 'tests')
-
-
-def get_tests_data_path():
-    """Get the data path for unit tests."""
-    return os.path.join(get_tests_path(), 'data')
-
-
 def get_current_time_str():
     """Get the string of current time."""
     time_format = '%Y%m%d_%H%M%S'

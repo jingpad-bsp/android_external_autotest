@@ -43,17 +43,19 @@ class TouchpadDevice:
         height = float((bottom - top)) / resolution_y
         return (width, height)
 
-    def get_resolutions(self):
+    def get_resolutions(self, device_description=None):
         """Get the resolutions in x and y axis of the device."""
-        _, _, _, _, resolution_x, resolution_y = self.get_abs_axes()
+        _, _, _, _, resolution_x, resolution_y = self.get_abs_axes(
+                device_description)
         return (resolution_x, resolution_y)
 
-    def get_edges(self):
+    def get_edges(self, device_description=None):
         """Get the left, right, top, and bottom edges of the device."""
-        left, right, top, bottom, _, _ = self.get_abs_axes()
+        left, right, top, bottom, _, _ = self.get_abs_axes(
+                device_description)
         return (left, right, top, bottom)
 
-    def get_abs_axes(self):
+    def get_abs_axes(self, device_description=None):
         """Get information about min, max, and resolution from ABS_X and ABS_Y
 
         Example of ABS_X:
@@ -65,7 +67,8 @@ class TouchpadDevice:
         pattern_x = pattern % '00'
         pattern_y = pattern % '01'
         cmd = 'evemu-describe %s' % self.device_node
-        device_description = common_util.simple_system_output(cmd)
+        if device_description is None:
+            device_description = common_util.simple_system_output(cmd)
         found_x = found_y = False
         left = right = top = bottom = None
         resolution_x = resolution_y = None
@@ -87,9 +90,9 @@ class TouchpadDevice:
                         found_y = True
         return (left, right, top, bottom, resolution_x, resolution_y)
 
-    def get_dimensions(self):
+    def get_dimensions(self, device_description=None):
         """Get the dimensions of the touchpad reported size."""
-        left, right, top, bottom = self.get_edges()
+        left, right, top, bottom = self.get_edges(device_description)
         return (right - left, bottom - top)
 
     def get_display_geometry(self, screen_size, display_ratio):

@@ -57,9 +57,9 @@ import sys
 
 import firmware_utils
 import fuzzy
-import firmware_utils
 import mtb
-import touch_device
+
+from touch_device import TouchpadDevice
 
 # Include some constants
 execfile('firmware_constants.py', globals())
@@ -95,16 +95,13 @@ class BaseValidator(object):
     """Base class of validators."""
     aggregator = 'fuzzy.average'
 
-    def __init__(self, criteria_str, mf=None):
+    def __init__(self, criteria_str, mf=None, device=None):
         self.criteria_str = criteria_str
         self.fc = fuzzy.FuzzyCriteria(criteria_str, mf=mf)
-        self.device = touch_device.TouchpadDevice()
+        self.device = TouchpadDevice() if device is None else device
         self.device_width, self.device_height = self.device.get_dimensions()
         self.packets = None
         self.msg_list = []
-        self.simple_x = firmware_utils.SimpleX()
-        self.dpmm = self.simple_x.get_DPMM()
-        self.screen_size = self.simple_x.get_screen_size()
 
     def init_check(self, packets):
         """Initialization before check() is called."""
@@ -161,8 +158,8 @@ class LinearityValidator(BaseValidator):
     # Define the partial group size for calculating Mean Squared Error
     MSE_PARTIAL_GROUP_SIZE = 1
 
-    def __init__(self, criteria_str, mf=None, slot=0):
-        super(LinearityValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None, slot=0):
+        super(LinearityValidator, self).__init__(criteria_str, mf, device)
         self.slot = slot
 
     def _simple_linear_regression(self, ax, ay):
@@ -288,8 +285,8 @@ class CountTrackingIDValidator(BaseValidator):
           CountTrackingIDValidator('== 1')
     """
 
-    def __init__(self, criteria_str, mf=None):
-        super(CountTrackingIDValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None):
+        super(CountTrackingIDValidator, self).__init__(criteria_str, mf, device)
 
     def check(self, packets, variation=None):
         """Check the number of tracking IDs observed."""
@@ -309,8 +306,9 @@ class StationaryFingerValidator(BaseValidator):
           StationaryFingerValidator('<= 15 ~ +10')
     """
 
-    def __init__(self, criteria_str, mf=None, slot=0):
-        super(StationaryFingerValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None, slot=0):
+        super(StationaryFingerValidator, self).__init__(criteria_str, mf,
+                                                        device)
         self.slot = slot
 
     def check(self, packets, variation=None):
@@ -331,8 +329,8 @@ class NoGapValidator(BaseValidator):
           NoGapValidator('<= 5, ~ +5', slot=1)
     """
 
-    def __init__(self, criteria_str, mf=None, slot=0):
-        super(NoGapValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None, slot=0):
+        super(NoGapValidator, self).__init__(criteria_str, mf, device)
         self.slot = slot
 
     def check(self, packets, variation=None):
@@ -353,8 +351,9 @@ class NoReversedMotionValidator(BaseValidator):
           NoReversedMotionValidator('== 0, ~ +20', slots=0)
     """
 
-    def __init__(self, criteria_str, mf=None, slots=(0,)):
-        super(NoReversedMotionValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None, slots=(0,)):
+        super(NoReversedMotionValidator, self).__init__(criteria_str, mf,
+                                                        device)
         self.slots = (slots,) if isinstance(slots, int) else slots
 
     def check(self, packets, variation=None):
@@ -380,8 +379,8 @@ class CountPacketsValidator(BaseValidator):
           CountPacketsValidator('>= 3, ~ -3', slot=0)
     """
 
-    def __init__(self, criteria_str, mf=None, slot=0):
-        super(CountPacketsValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None, slot=0):
+        super(CountPacketsValidator, self).__init__(criteria_str, mf, device)
         self.slot = slot
 
     def check(self, packets, variation=None):
@@ -402,8 +401,8 @@ class PinchValidator(BaseValidator):
           PinchValidator('>= 200, ~ -100')
     """
 
-    def __init__(self, criteria_str, mf=None):
-        super(PinchValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None):
+        super(PinchValidator, self).__init__(criteria_str, mf, device)
 
     def check(self, packets, variation):
         """Check the number of packets in the specified slot."""
@@ -426,8 +425,8 @@ class PhysicalClickValidator(BaseValidator):
           PhysicalClickValidator('== 1', fingers=1)
     """
 
-    def __init__(self, criteria_str, fingers, mf=None):
-        super(PhysicalClickValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, fingers, mf=None, device=None):
+        super(PhysicalClickValidator, self).__init__(criteria_str, mf, device)
         self.fingers = fingers
 
     def check(self, packets, variation=None):
@@ -448,8 +447,8 @@ class DrumrollValidator(BaseValidator):
           DrumrollValidator('<= 20 ~ +30')
     """
 
-    def __init__(self, criteria_str, mf=None):
-        super(DrumrollValidator, self).__init__(criteria_str, mf)
+    def __init__(self, criteria_str, mf=None, device=None):
+        super(DrumrollValidator, self).__init__(criteria_str, mf, device)
 
     def check(self, packets, variation=None):
         """The moving distance of the points in any tracking ID should be
