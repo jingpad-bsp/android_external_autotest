@@ -34,6 +34,10 @@ _LABEL_RESPONSE_STR = ful.USER_PASS_FAIL_SELECT_STR + '\n'
 _SAMPLE_LIST = ['Headset Audio Test', 'Built-in Audio Test']
 _VERBOSE = False
 
+# Add -D hw:0,0 since default argument does not work properly.
+# See crosbug.com/p/12330
+_CMD_PLAY_AUDIO = 'aplay -D hw:0,0 %s'
+
 
 class factory_Audio(test.test):
     version = 1
@@ -52,11 +56,21 @@ class factory_Audio(test.test):
             lab_str = 'Remove headset from device\n将耳机移开音源孔'
         vb.pack_start(ful.make_label(lab_str, fg=ful.WHITE))
         vb.pack_start(ful.make_vsep(3), False, False)
-        vb.pack_start(ful.make_label(\
-                'Press & hold \'r\' to record\n压住 \'r\' 键开始录音\n' + \
-                    '[Playback will follow]\n[之后会重播录到的声音]\n\n' + \
-                    'Press & hold \'p\' to play sample\n' + \
-                    '压住 \'p\' 键以播放范例'))
+        instruction = ['Press & hold \'r\' to record',
+                       '压住 \'r\' 键开始录音',
+                       '[Playback will follow]',
+                       '[之后会重播录到的声音]',
+                       '']
+        if self._test_left_right:
+            instruction.extend([
+                    'Press & hold left-Shift to play from left channel',
+                    '压住 左Shift 键，从左声道播放范例',
+                    'Press & hold right-Shift to play from right channel',
+                    '压住 右Shift 键，从右声道播放范例'])
+        else:
+            instruction.extend(['Press & hold \'p\' to play sample',
+                                '压住 \'p\' 键播放范例'])
+        vb.pack_start(ful.make_label('\n'.join(instruction)))
         vb.pack_start(ful.make_vsep(3), False, False)
         vb.pack_start(ful.make_label(ful.USER_PASS_FAIL_SELECT_STR,
                                      fg=ful.WHITE))
@@ -114,11 +128,16 @@ class factory_Audio(test.test):
                 if os.path.isfile('rec.wav'):
                     os.unlink('rec.wav')
                 cmd = 'arecord -f dat -t wav rec.wav'
-            elif event.keyval == ord('p'):
-                # Playback canned audio.
-                # Add -D hw:0,0 since default argument does not work properly.
-                # See crosbug.com/p/12330
-                cmd = 'aplay -D hw:0,0 %s' % self._audio_sample_path
+            else:
+                if self._test_left_right:
+                    if event.keyval == gtk.keysyms.Shift_L:
+                        cmd = _CMD_PLAY_AUDIO % self._left_audio_sample_path
+                    elif event.keyval== gtk.keysyms.Shift_R:
+                        cmd= _CMD_PLAY_AUDIO % self._right_audio_sample_path
+                else:
+                    if event.keyval == ord('p'):
+                        # Playback canned audio.
+                        cmd = _CMD_PLAY_AUDIO % self._audio_sample_path
             if cmd:
                 self._active = True
                 self._bg_job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
@@ -142,17 +161,21 @@ class factory_Audio(test.test):
             gtk.main_quit()
         elif event.keyval == ord('r'):
             self.close_bgjob(name)
-            # Add -D hw:0,0 since default argument does not work properly.
-            # See crosbug.com/p/12330
-            cmd = 'aplay -D hw:0,0 rec.wav'
+            cmd = _CMD_PLAY_AUDIO % 'rec.wav'
             self._bg_job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
             factory.log("cmd: " + cmd)
             # Clear active recording state.
             self._active = False
-        elif event.keyval == ord('p'):
-            self.close_bgjob(name)
-            # Clear active playing state.
-            self._active = False
+        else:
+            if self._test_left_right:
+                stop_playing = (event.keyval == gtk.keysyms.Shift_L or
+                                event.keyval == gtk.keysyms.Shift_R)
+            else:
+                stop_playing = event.keyval == ord('p')
+            if stop_playing:
+                self.close_bgjob(name)
+                # Clear active playing state.
+                self._active = False
         self._test_widget.queue_draw()
         return True
 
@@ -189,7 +212,7 @@ class factory_Audio(test.test):
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
     def run_once(self, audio_sample_path=None, audio_init_volume=None,
-                 amixer_init_cmd=None):
+                 amixer_init_cmd=None, left_right_audio_sample_pair=None):
 
         factory.log('%s run_once' % self.__class__)
 
@@ -204,10 +227,25 @@ class factory_Audio(test.test):
         os.chdir(self.tmpdir)
 
         self._bg_job = None
-        self._audio_sample_path = utils.locate_file(audio_sample_path,
-                                                    base_dir=self.job.autodir)
-        if self._audio_sample_path is None:
-          raise error.TestFail('ERROR: Must provide an audio sample.')
+
+        self._test_left_right = left_right_audio_sample_pair is not None
+        if self._test_left_right:
+            left, right = left_right_audio_sample_pair
+            self._left_audio_sample_path = utils.locate_file(
+                left, base_dir=self.job.autodir)
+            self._right_audio_sample_path = utils.locate_file(
+                right, base_dir=self.job.autodir)
+            if (self._left_audio_sample_path is None or
+                self._right_audio_sample_path is None):
+                raise error.TestFail(
+                    'ERROR: left_right_audio_sample_pair should be a pair of '
+                    'audio sample for left and right channel test.')
+        else:
+            self._audio_sample_path = utils.locate_file(
+                audio_sample_path, base_dir=self.job.autodir)
+            if self._audio_sample_path is None:
+                raise error.TestFail('ERROR: must provide an audio sample '
+                                     'via audio_sample_path.')
 
         self._sample_queue = [x for x in reversed(_SAMPLE_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n in _SAMPLE_LIST)
