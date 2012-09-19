@@ -146,6 +146,9 @@ class SiteHost(remote.RemoteHost):
                     ' partition is less than that of the active kernel'
                     ' partition.')
 
+            update_engine_log = '/var/log/update_engine.log'
+            logging.info('Dumping %s', update_engine_log)
+            self.run('cat %s' % update_engine_log)
             # Updater has returned, successfully, reboot the host.
             self.reboot(timeout=60, wait=True)
 
