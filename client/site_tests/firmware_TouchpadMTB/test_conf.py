@@ -29,6 +29,17 @@ execfile('firmware_constants.py', globals())
 score_aggregator = 'fuzzy.average'
 
 
+# Define some common criteria
+count_packets_criteria = '>= 3, ~ -3'
+drumroll_criteria = '<= 20, ~ +30'
+linearity_criteria = '<= 0.02, ~ +0.02'
+no_gap_criteria = '<= 2.5, ~ +2.5'
+no_reversed_motion_criteria = '== 0, ~ +20'
+pinch_criteria = '>= 200, ~ -100'
+range_criteria = '<= 0.05, ~ +0.05'
+stationary_finger_criteria = '<= 20, ~ +20'
+
+
 # Define the gesture list that the user needs to perform in the test suite.
 gesture_list = [
     Gesture(
@@ -49,9 +60,10 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 1'),
-            LinearityValidator('<= 0.03, ~ +0.07', slot=0),
-            NoReversedMotionValidator('== 0, ~ +20', slots=0),
-            RangeValidator('<= 0.05, ~ +0.05'),
+            LinearityValidator(linearity_criteria, slot=0),
+            NoGapValidator(no_gap_criteria, slot=0),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+            RangeValidator(range_criteria),
         ),
     ),
 
@@ -73,9 +85,12 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
-            LinearityValidator('<= 0.03, ~ +0.07', slot=0),
-            LinearityValidator('<= 0.03, ~ +0.07', slot=1),
-            NoReversedMotionValidator('== 0, ~ +20', slots=(0, 1)),
+            LinearityValidator(linearity_criteria, slot=0),
+            LinearityValidator(linearity_criteria, slot=1),
+            NoGapValidator(no_gap_criteria, slot=0),
+            NoGapValidator(no_gap_criteria, slot=1),
+            NoReversedMotionValidator(no_reversed_motion_criteria,
+                                      slots=(0, 1)),
         ),
     ),
 
@@ -99,9 +114,9 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
-            NoGapValidator('<= 5, ~ +5', slot=1),
-            NoReversedMotionValidator('== 0, ~ +20', slots=1),
-            StationaryFingerValidator('<= 20, ~ +20', slot=0),
+            NoGapValidator(no_gap_criteria, slot=1),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
         ),
     ),
 
@@ -114,8 +129,9 @@ gesture_list = [
             TRBL: ('from top right to bottom left',),
         },
         validators=(
-            CountPacketsValidator('>= 3, ~ -3', slot=0),
+            CountPacketsValidator(count_packets_criteria, slot=0),
             CountTrackingIDValidator('== 1'),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
         ),
     ),
 
@@ -128,9 +144,11 @@ gesture_list = [
             BT: ('from bottom to top',),
         },
         validators=(
-            CountPacketsValidator('>= 3, ~ -3', slot=0),
-            CountPacketsValidator('>= 3, ~ -3', slot=1),
+            CountPacketsValidator(count_packets_criteria, slot=0),
+            CountPacketsValidator(count_packets_criteria, slot=1),
             CountTrackingIDValidator('== 2'),
+            NoReversedMotionValidator(no_reversed_motion_criteria,
+                                      slots=(0, 1)),
         ),
     ),
 
@@ -144,7 +162,7 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
-            PinchValidator('>= 200, ~ -100')
+            PinchValidator(pinch_criteria)
         ),
     ),
 
@@ -167,6 +185,7 @@ gesture_list = [
             CountTrackingIDValidator('== 1'),
             PhysicalClickValidator('== 0', fingers=1),
             PhysicalClickValidator('== 0', fingers=2),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
         ),
     ),
 
@@ -183,6 +202,8 @@ gesture_list = [
             CountTrackingIDValidator('== 6'),
             PhysicalClickValidator('== 0', fingers=1),
             PhysicalClickValidator('== 0', fingers=2),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
+            StationaryFingerValidator(stationary_finger_criteria, slot=1),
         ),
     ),
 
@@ -194,6 +215,7 @@ gesture_list = [
         validators=(
             CountTrackingIDValidator('== 1'),
             PhysicalClickValidator('== 1', fingers=1),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
         ),
     ),
 
@@ -205,6 +227,8 @@ gesture_list = [
         validators=(
             CountTrackingIDValidator('== 2'),
             PhysicalClickValidator('== 1', fingers=2),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
+            StationaryFingerValidator(stationary_finger_criteria, slot=1),
         ),
     ),
 
@@ -216,6 +240,9 @@ gesture_list = [
         validators=(
             CountTrackingIDValidator('== 3'),
             PhysicalClickValidator('== 1', fingers=3),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
+            StationaryFingerValidator(stationary_finger_criteria, slot=1),
+            StationaryFingerValidator(stationary_finger_criteria, slot=2),
         ),
     ),
 
@@ -227,6 +254,10 @@ gesture_list = [
         validators=(
             CountTrackingIDValidator('== 4'),
             PhysicalClickValidator('== 1', fingers=4),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
+            StationaryFingerValidator(stationary_finger_criteria, slot=1),
+            StationaryFingerValidator(stationary_finger_criteria, slot=2),
+            StationaryFingerValidator(stationary_finger_criteria, slot=3),
         ),
     ),
 
@@ -238,6 +269,11 @@ gesture_list = [
         validators=(
             CountTrackingIDValidator('== 5'),
             PhysicalClickValidator('== 1', fingers=5),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
+            StationaryFingerValidator(stationary_finger_criteria, slot=1),
+            StationaryFingerValidator(stationary_finger_criteria, slot=2),
+            StationaryFingerValidator(stationary_finger_criteria, slot=3),
+            StationaryFingerValidator(stationary_finger_criteria, slot=4),
         ),
     ),
 
@@ -248,8 +284,8 @@ gesture_list = [
                'And use 2nd finger to tap around the first finger',
         subprompt=None,
         validators=(
-            StationaryFingerValidator('== 0, ~ +20', slot=0),
             CountTrackingIDValidator('>= 2'),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
         ),
     ),
 
@@ -266,6 +302,10 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
+            LinearityValidator(linearity_criteria, slot=1),
+            NoGapValidator(no_gap_criteria, slot=1),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
         ),
     ),
 
@@ -279,6 +319,9 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 1'),
+            LinearityValidator(linearity_criteria, slot=0),
+            NoGapValidator(no_gap_criteria, slot=0),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
         ),
     ),
 
@@ -297,6 +340,9 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
+            LinearityValidator(linearity_criteria, slot=0),
+            NoGapValidator(no_gap_criteria, slot=0),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
         ),
     ),
 
@@ -311,6 +357,10 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
+            LinearityValidator(linearity_criteria, slot=1),
+            NoGapValidator(no_gap_criteria, slot=1),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
         ),
     ),
 
@@ -325,6 +375,12 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 2'),
+            LinearityValidator(linearity_criteria, slot=0),
+            LinearityValidator(linearity_criteria, slot=1),
+            NoGapValidator(no_gap_criteria, slot=0),
+            NoGapValidator(no_gap_criteria, slot=1),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
         ),
     ),
 
@@ -339,6 +395,10 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('== 4'),
+            LinearityValidator(linearity_criteria, slot=0),
+            NoGapValidator(no_gap_criteria, slot=0),
+            NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+            StationaryFingerValidator(stationary_finger_criteria, slot=0),
         ),
     ),
 
@@ -354,7 +414,7 @@ gesture_list = [
         },
         validators=(
             CountTrackingIDValidator('>= 5'),
-            DrumrollValidator('<= 20, ~ +30'),
+            DrumrollValidator(drumroll_criteria),
         ),
         timeout = 500,
     ),
