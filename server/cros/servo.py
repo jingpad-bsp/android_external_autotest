@@ -61,18 +61,26 @@ class Servo(object):
     USB_DETECTION_DELAY = 10
 
     KEY_MATRIX_ALT_0 = {
-        'm1': {'ctrl_r': ['0', '0'], 'd': ['0', '1'],
-               'enter': ['1', '0'], 'none': ['1', '1']},
-        'm2': {'ctrl': ['0', '0'], 'refresh': ['0', '1'],
-               'unused': ['1', '0'], 'none': ['1', '1']}
-        }
+        'ctrl_refresh':  ['0', '0', '0', '1'],
+        'ctrl_d':        ['0', '1', '0', '0'],
+        'd':             ['0', '1', '1', '1'],
+        'ctrl_enter':    ['1', '0', '0', '0'],
+        'enter':         ['1', '0', '1', '1'],
+        'ctrl':          ['1', '1', '0', '0'],
+        'refresh':       ['1', '1', '0', '1'],
+        'unused':        ['1', '1', '1', '0'],
+        'none':          ['1', '1', '1', '1']}
 
     KEY_MATRIX_ALT_1 = {
-        'm1': {'d': ['0', '0'], 'enter': ['0', '1'],
-               'ctrl_r': ['1', '0'], 'none': ['1', '1']},
-        'm2': {'unused': ['0', '0'], 'refresh': ['0', '1'],
-               'ctrl': ['1', '0'], 'none': ['1', '1']}
-        }
+        'ctrl_d':        ['0', '0', '1', '0'],
+        'd':             ['0', '0', '1', '1'],
+        'ctrl_enter':    ['0', '1', '1', '0'],
+        'enter':         ['0', '1', '1', '1'],
+        'ctrl_refresh':  ['1', '0', '0', '1'],
+        'unused':        ['1', '1', '0', '0'],
+        'refresh':       ['1', '1', '0', '1'],
+        'ctrl':          ['1', '1', '1', '0'],
+        'none':          ['1', '1', '1', '1']}
 
     KEY_MATRIX = [KEY_MATRIX_ALT_0, KEY_MATRIX_ALT_1]
 
@@ -211,19 +219,17 @@ class Servo(object):
         time.sleep(Servo.SLEEP_DELAY)
 
 
-    def _press_and_release_keys(self, m1, m2,
+    def _press_and_release_keys(self, key,
                                 press_secs=SERVO_KEY_PRESS_DELAY):
         """Simulate button presses."""
         # set keys to none
-        (m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix]['m2']['none']
-        (m1_a1, m1_a0) = self.KEY_MATRIX[self._key_matrix]['m1']['none']
+        (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix]['none']
         self.set_nocheck('kbd_m2_a0', m2_a0)
         self.set_nocheck('kbd_m2_a1', m2_a1)
         self.set_nocheck('kbd_m1_a0', m1_a0)
         self.set_nocheck('kbd_m1_a1', m1_a1)
 
-        (m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix]['m2'][m2]
-        (m1_a1, m1_a0) = self.KEY_MATRIX[self._key_matrix]['m1'][m1]
+        (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix][key]
         self.set_nocheck('kbd_en', 'on')
         self.set_nocheck('kbd_m2_a0', m2_a0)
         self.set_nocheck('kbd_m2_a1', m2_a1)
@@ -240,32 +246,32 @@ class Servo(object):
 
     def ctrl_d(self):
         """Simulate Ctrl-d simultaneous button presses."""
-        self._press_and_release_keys('d', 'ctrl')
+        self._press_and_release_keys('ctrl_d')
 
 
     def ctrl_enter(self):
         """Simulate Ctrl-enter simultaneous button presses."""
-        self._press_and_release_keys('enter', 'ctrl')
+        self._press_and_release_keys('ctrl_enter')
 
 
     def d_key(self):
         """Simulate Enter key button press."""
-        self._press_and_release_keys('d', 'none')
+        self._press_and_release_keys('d')
 
 
     def ctrl_key(self):
         """Simulate Enter key button press."""
-        self._press_and_release_keys('none', 'ctrl')
+        self._press_and_release_keys('ctrl')
 
 
     def enter_key(self):
         """Simulate Enter key button press."""
-        self._press_and_release_keys('enter', 'none')
+        self._press_and_release_keys('enter')
 
 
     def refresh_key(self):
         """Simulate Refresh key (F3) button press."""
-        self._press_and_release_keys('none', 'refresh')
+        self._press_and_release_keys('refresh')
 
 
     def ctrl_refresh_key(self):
@@ -273,7 +279,7 @@ class Servo(object):
 
         This key combination is an alternative of Space key.
         """
-        self._press_and_release_keys('ctrl_r', 'refresh')
+        self._press_and_release_keys('ctrl_refresh')
 
 
     def imaginary_key(self):
@@ -281,7 +287,7 @@ class Servo(object):
 
         Maps to a key that doesn't physically exist.
         """
-        self._press_and_release_keys('none', 'unused')
+        self._press_and_release_keys('unused')
 
 
     def enable_recovery_mode(self):
