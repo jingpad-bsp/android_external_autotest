@@ -210,6 +210,7 @@ class DhcpTestServer(threading.Thread):
             if self._test_in_progress and self._test_timeout < time.time():
                 # The test has timed out, so we abort it.  However, we should
                 # continue to accept packets, so we fall through.
+                self._logger.error("Test in progress has timed out.")
                 self._end_test_unsafe(False)
             try:
                 data, _ = self._socket.recvfrom(1024)
@@ -231,6 +232,7 @@ class DhcpTestServer(threading.Thread):
                                      "DHCP port?")
                 return
 
+            logging.debug("Server received a DHCP packet: %s." % packet)
             if len(self._handling_rules) < 1:
                 self._logger.info("No handling rule for packet: %s." %
                                   str(packet))
@@ -238,29 +240,27 @@ class DhcpTestServer(threading.Thread):
                 return
 
             handling_rule = self._handling_rules[0]
-            (handling_code, action) = handling_rule.handle(packet)
-            if action == dhcp_handling_rule.ACTION_POP_HANDLER:
+            response_code = handling_rule.handle(packet)
+            logging.info("Handler gave response: %d" % response_code)
+            if response_code & dhcp_handling_rule.RESPONSE_POP_HANDLER:
                 self._handling_rules.pop(0)
-            if handling_code == dhcp_handling_rule.RESPONSE_IGNORE:
-                pass
-            elif handling_code == dhcp_handling_rule.RESPONSE_IGNORE_SUCCESS:
-                self._end_test_unsafe(True)
-            elif handling_code == dhcp_handling_rule.RESPONSE_RESPOND:
-                if not self._send_response_unsafe(
-                        handling_rule.respond(packet)):
-                    self._end_test_unsafe(False)
-            elif handling_code == dhcp_handling_rule.RESPONSE_RESPOND_SUCCESS:
+
+            if response_code & dhcp_handling_rule.RESPONSE_HAVE_RESPONSE:
                 response = handling_rule.respond(packet)
-                self._end_test_unsafe(self._send_response_unsafe(response))
-            elif handling_code == dhcp_handling_rule.RESPONSE_FAIL:
+                if not self._send_response_unsafe(response):
+                    self._logger.error("Failed to send packet, ending test.")
+                    self._end_test_unsafe(False)
+                    return
+
+            if response_code & dhcp_handling_rule.RESPONSE_TEST_FAILED:
                 self._logger.info("Handling rule %s rejected packet %s." %
                                   (handling_rule, packet))
                 self._end_test_unsafe(False)
-            else:
-                self._logger.info("Unknown code %d "
-                                  "returned from handling rule %s." %
-                                  (handling_code, handling_rule))
-                self._end_test_unsafe(False)
+                return
+
+            if response_code & dhcp_handling_rule.RESPONSE_TEST_SUCCEEDED:
+                self._end_test_unsafe(True)
+                return
 
     def run(self):
         """
