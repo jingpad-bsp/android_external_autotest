@@ -271,6 +271,9 @@ class BaseDispatcher(object):
         self._tick_debug = global_config.global_config.get_config_value(
                 scheduler_config.CONFIG_SECTION, 'tick_debug', type=bool,
                 default=False)
+        self._extra_debugging = global_config.global_config.get_config_value(
+                scheduler_config.CONFIG_SECTION, 'extra_debugging', type=bool,
+                default=False)
 
 
     def initialize(self, recover_hosts=True):
@@ -288,6 +291,11 @@ class BaseDispatcher(object):
 
     def _log_tick_msg(self, msg):
         if self._tick_debug:
+            logging.debug(msg)
+
+
+    def _log_extra_msg(self, msg):
+        if self._extra_debugging:
             logging.debug(msg)
 
 
@@ -724,13 +732,13 @@ class BaseDispatcher(object):
 
         logging.debug('Processing %d queue_entries', len(queue_entries))
         for queue_entry in queue_entries:
-            logging.debug('Processing queue_entry: %s', queue_entry)
+            self._log_extra_msg('Processing queue_entry: %s' % queue_entry)
             is_unassigned_atomic_group = (
                     queue_entry.atomic_group_id is not None
                     and queue_entry.host_id is None)
 
             if queue_entry.is_hostless():
-                logging.debug('Scheduling hostless job.')
+                self._log_extra_msg('Scheduling hostless job.')
                 self._schedule_hostless_job(queue_entry)
             elif is_unassigned_atomic_group:
                 self._schedule_atomic_group(queue_entry)
@@ -755,8 +763,8 @@ class BaseDispatcher(object):
 
 
     def _run_queue_entry(self, queue_entry):
-        logging.debug('Scheduling pre job tasks for queue_entry: %s',
-                      queue_entry)
+        self._log_extra_msg('Scheduling pre job tasks for queue_entry: %s' %
+                            queue_entry)
         queue_entry.schedule_pre_job_tasks()
 
 
@@ -806,8 +814,9 @@ class BaseDispatcher(object):
         # iterate over copy, so we can remove agents during iteration
         logging.debug('Handling %d Agents', len(self._agents))
         for agent in list(self._agents):
-            logging.debug('Processing Agent with Host Ids: %s and queue_entry '
-                          'ids:%s', agent.host_ids, agent.queue_entry_ids)
+            self._log_extra_msg('Processing Agent with Host Ids: %s and '
+                                'queue_entry ids:%s' % (agent.host_ids,
+                                agent.queue_entry_ids))
             if not agent.started:
                 if not self._can_start_agent(agent, num_started_this_cycle,
                                              have_reached_limit):
@@ -815,11 +824,11 @@ class BaseDispatcher(object):
                     logging.debug('Reached Limit of allowed running Agents.')
                     continue
                 num_started_this_cycle += agent.task.num_processes
-                logging.debug('Starting Agent')
+                self._log_extra_msg('Starting Agent')
             agent.tick()
-            logging.debug('Agent tick completed.')
+            self._log_extra_msg('Agent tick completed.')
             if agent.is_done():
-                logging.info("Agent finished")
+                self._log_extra_msg("Agent finished")
                 self.remove_agent(agent)
         logging.info('%d running processes. %d added this cycle.',
                      _drone_manager.total_running_processes(),
