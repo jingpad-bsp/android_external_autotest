@@ -44,6 +44,8 @@ class power_Consumption(cros_ui_test.UITest):
         # self.pyauto object
         import pyauto
         self._pyauto_module = pyauto
+        # Default brightness is set to be the same as for power_LoadTest
+        # see http://www.chromium.org/chromium-os/testing/power-testing
         self._default_brightness = 0.4
 
         # Time to exclude from calculation after firing a task [seconds]
@@ -62,6 +64,11 @@ class power_Consumption(cros_ui_test.UITest):
         # Verify that we are running on battery and the battery is
         # sufficiently charged
         self._power_status.assert_battery_state(30)
+
+        # Find the battery capacity to report expected battery life in hours
+        batinfo = self._power_status.battery[0]
+        self.energy_full_design = batinfo.energy_full_design
+        logging.info("energy_full_design = %0.3f Wh" % self.energy_full_design)
 
         # Record the max backlight level
         cmd = 'backlight-tool --get_max_brightness'
@@ -116,14 +123,15 @@ class power_Consumption(cros_ui_test.UITest):
         """
 
         repo = 'http://commondatastorage.googleapis.com/chromeos-test-public/'
-        file_list = [
-            repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.ogg',
-            repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.mp4',
-            repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.webm',
-            repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.ogg',
-            repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.mp4',
-            repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.webm',
-            repo + 'wikimedia/Greensleeves.ogg',]
+        file_list = [repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.mp4',]
+        if not self.short:
+            file_list += [
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.ogg',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.mp4',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.webm',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.ogg',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.webm',
+                repo + 'wikimedia/Greensleeves.ogg',]
 
         for url in file_list:
             logging.info('Downloading %s', url)
@@ -154,12 +162,13 @@ class power_Consumption(cros_ui_test.UITest):
     # Below are a series of generic sub-test runners. They run a given task
     # and record the task name and start-end timestamps for future computation
     # of power consumption during the task.
-    def _run_func(self, name, func, repeat=1):
+    def _run_func(self, name, func, repeat=1, save_checkpoint=True):
         """Run a given python function as a sub-test."""
         start_time = time.time() + self._stabilization_seconds
         for _ in xrange(repeat):
             ret = func()
-        self._plog.checkpoint(name, start_time)
+        if save_checkpoint:
+            self._plog.checkpoint(name, start_time)
         return ret
 
 
@@ -222,9 +231,12 @@ class power_Consumption(cros_ui_test.UITest):
 
     def _run_group_download(self):
         """Download over ethernet. Using video test data as payload."""
+
+        # For short run, the payload is too small to take measurement
         self._run_func('download_eth',
                        self._download_test_data ,
-                       repeat=self._repeats)
+                       repeat=self._repeats,
+                       save_checkpoint=not(self.short))
 
 
     def _run_group_webpages(self):
@@ -232,21 +244,24 @@ class power_Consumption(cros_ui_test.UITest):
         data_url = self._url_base + self._static_sub_dir + '/'
 
         # URLs to be only tested in foreground tab
-        urls = [('AboutBlank', 'about:blank'),
-                ('GoogleHome', 'http://www.google.com/'),
-                ]
-
+        urls = [('AboutBlank', 'about:blank')]
         # URLs to be tested in both, background and foreground modes.
-        bg_urls = [('PosterCircle',
-                    'http://www.webkit.org'
-                    '/blog-files/3d-transforms/poster-circle.html'),
-                   ('BallsDHTML',
-                    data_url + 'balls/DHTMLBalls/dhtml.htm'),
-                   ('BallsFlex',
-                    data_url + 'balls/FlexBalls/flexballs.html'),
-                   ('Parapluesch',
-                    'http://www.parapluesch.de/whiskystore/test.htm'),
-            ]
+        bg_urls = []
+
+        more_urls = [('BallsDHTML',
+                      data_url + 'balls/DHTMLBalls/dhtml.htm'),
+                     ('BallsFlex',
+                      data_url + 'balls/FlexBalls/flexballs.html'),]
+
+        if self.short:
+            urls += more_urls
+        else:
+            bg_urls += more_urls
+            bg_urls += [('Parapluesch',
+                         'http://www.parapluesch.de/whiskystore/test.htm'),
+                         ('PosterCircle',
+                          'http://www.webkit.org'
+                          '/blog-files/3d-transforms/poster-circle.html'),]
 
         for name, url in urls + bg_urls:
             self._run_url(name, url, duration=self._duration_secs)
@@ -286,26 +301,30 @@ class power_Consumption(cros_ui_test.UITest):
 
         # Note: for perf keyvals, key names are defined as VARCHAR(30) in the
         # results DB. Chars above 30 are truncated when saved to DB.
-        urls = [
-            ('vid400p_ogg', 'big_buck_bunny_trailer_400p.ogg'),
-            ('vid400p_h264', 'big_buck_bunny_trailer_400p.mp4'),
-            ('vid400p_vp8', 'big_buck_bunny_trailer_400p.webm'),
-            ('vid1080_ogg','big_buck_bunny_trailer_1080p.ogg'),
-            ('vid1080_h264','big_buck_bunny_trailer_1080p.mp4'),
-            ('vid1080_vp8','big_buck_bunny_trailer_1080p.webm'),
-            ('audio', 'Greensleeves.ogg'),
-            ]
+        urls = [('vid400p_h264', 'big_buck_bunny_trailer_400p.mp4'),]
+        fullscreen_urls = []
+        bg_urls = []
 
-        fullscreen_urls = [
-            ('vid1080_h264_fs',
-             'big_buck_bunny_trailer_1080p.mp4'),
-            ('vid1080_vp8_fs',
-             'big_buck_bunny_trailer_1080p.webm'),
-            ]
+        if not self.short:
+            urls += [
+                ('vid400p_ogg', 'big_buck_bunny_trailer_400p.ogg'),
+                ('vid1080_h264','big_buck_bunny_trailer_1080p.mp4'),
+                ('vid400p_vp8', 'big_buck_bunny_trailer_400p.webm'),
+                ('vid1080_ogg','big_buck_bunny_trailer_1080p.ogg'),
+                ('vid1080_vp8','big_buck_bunny_trailer_1080p.webm'),
+                ('audio', 'Greensleeves.ogg'),
+                ]
 
-        bg_urls = [
-            ('bg_vid400p', 'big_buck_bunny_trailer_400p.webm'),
-            ]
+            fullscreen_urls += [
+                ('vid1080_h264_fs',
+                 'big_buck_bunny_trailer_1080p.mp4'),
+                ('vid1080_vp8_fs',
+                 'big_buck_bunny_trailer_1080p.webm'),
+                ]
+
+            bg_urls += [
+                ('bg_vid400p', 'big_buck_bunny_trailer_400p.webm'),
+                ]
 
         # The video files are run from a file:// url. In order to work properly
         # from an http:// url, some careful web server configuration is needed
@@ -429,12 +448,7 @@ class power_Consumption(cros_ui_test.UITest):
             test_func()
 
 
-    # Lists of default tests to run
-    UI_TESTS = ['backlight', 'download', 'webpages', 'video', 'v8']
-    NONUI_TESTS = ['backchannel', 'sound', 'lowlevel']
-    DEFAULT_TESTS = UI_TESTS + NONUI_TESTS
-
-    def run_once(self, test_groups=DEFAULT_TESTS, reps=1):
+    def run_once(self, short=False, test_groups=None, reps=1):
         # Some sub-tests have duration specified directly, _base_secs * reps
         # is used in this case. Others complete whenever the underlying task
         # completes, those are manually tuned to be roughly around
@@ -443,6 +457,19 @@ class power_Consumption(cros_ui_test.UITest):
         self._base_secs = 30
         self._repeats = reps
         self._duration_secs = self._base_secs * reps
+
+        # Lists of default tests to run
+        UI_TESTS = ['backlight', 'download', 'webpages', 'video', 'v8']
+        NONUI_TESTS = ['backchannel', 'sound', 'lowlevel']
+        DEFAULT_TESTS = UI_TESTS + NONUI_TESTS
+        DEFAULT_SHORT_TESTS = ['download', 'webpages', 'video']
+
+        self.short = short
+        if test_groups is None:
+            if self.short:
+                test_groups = DEFAULT_SHORT_TESTS
+            else:
+                test_groups = DEFAULT_TESTS
 
         # Let the login complete
         time.sleep(5)
@@ -461,7 +488,7 @@ class power_Consumption(cros_ui_test.UITest):
         self._set_backlight_level(self._default_brightness)
 
         measurements = \
-        [power_status.SystemPower(self._power_status.battery_path)]
+            [power_status.SystemPower(self._power_status.battery_path)]
         if power_utils.has_rapl_support():
             measurements += power_rapl.create_rapl()
         self._plog = power_status.PowerLogger(measurements)
@@ -484,6 +511,27 @@ class power_Consumption(cros_ui_test.UITest):
 
         # Wrap up
         keyvals = self._plog.calc()
+
+        # Calculate expected battery life time with AboutBlank power draw
+        idle_name = 'AboutBlank_system_pwr'
+        if idle_name in keyvals:
+            hours_life = self.energy_full_design / keyvals[idle_name]
+            keyvals['hours_battery_AboutBlank'] = hours_life
+
+        # Calculate a weighted power draw and battery life time. The weights
+        # are intended to represent "typical" usage. Some video, some Flash ...
+        # and most of the time idle.
+        # see http://www.chromium.org/chromium-os/testing/power-testing
+        weights = {'vid400p_h264_system_pwr':0.1,
+                   'BallsFlex_system_pwr':0.1,
+                   'BallsDHTML_system_pwr':0.2,}
+        weights[idle_name] = 1 - sum(weights.values())
+
+        if set(weights).issubset(set(keyvals)):
+            p = sum(w * keyvals[k] for (k,w) in weights.items())
+            keyvals['w_Weighted_system_pwr'] = p
+            keyvals['hours_battery_Weighted'] = self.energy_full_design / p
+
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
 
