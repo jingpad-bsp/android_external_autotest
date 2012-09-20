@@ -37,6 +37,54 @@ def make_pretty_packet(packet):
     return '\n'.join(pretty_packet)
 
 
+def convert_to_evemu_format(packets):
+    """Convert the text event format to the evemu format."""
+    evemu_output = []
+    evemu_format = 'E: %.6f %04x %04x %d'
+    evemu_format_syn_report = 'E: %.6f 0000 0000 0'
+    for packet in packets:
+        for event in packet:
+            if event.get(SYN_REPORT):
+                evemu_event = evemu_format_syn_report % event[EV_TIME]
+            else:
+                evemu_event = evemu_format % (event[EV_TIME],
+                                              event[EV_TYPE],
+                                              event[EV_CODE],
+                                              event[EV_VALUE])
+            evemu_output.append(evemu_event)
+    return evemu_output
+
+
+def convert_mtplot_file_to_evemu_file(mtplot_filename, evemu_ext='.evemu',
+                                      force=False):
+    """Convert a mtplot event file to an evemu event file.
+
+    Example:
+       'one_finger_swipe.dat' is converted to 'one_finger_swipe.evemu.dat'
+    """
+    if not os.path.isfile(mtplot_filename):
+        print 'Error: there is no such file: "%s".' % mtplot_filename
+        return
+
+    # Convert mtplot event format to evemu event format.
+    mtplot_packets = MTBParser().parse_file(mtplot_filename)
+    evemu_packets = convert_to_evemu_format(mtplot_packets)
+
+    # Create the evemu filename from the mtplot filename.
+    mtplot_root, mtplot_ext = os.path.splitext(mtplot_filename)
+    evemu_filename = mtplot_root + evemu_ext + mtplot_ext
+
+    # Make sure that the file to be created does not exist yet unless force flag
+    # is set to be True.
+    if os.path.isfile(evemu_filename) and not force:
+        print 'Warning: the "%s" already exists.' % evemu_filename
+        return
+
+    # Write the converted evemu events to the evemu file.
+    with open(evemu_filename, 'w') as evemu_f:
+        evemu_f.write('\n'.join(evemu_packets))
+
+
 class MTB:
     """An MTB class providing MTB format related utility methods."""
 

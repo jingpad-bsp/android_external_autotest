@@ -132,6 +132,26 @@ class MTBTest(unittest.TestCase):
             self.assertEqual(pa, pb)
         self.assertTrue(True)
 
+    def test_convert_to_evemu_format(self):
+        evemu_filename = self._get_filepath('one_finger_swipe.evemu.dat')
+        mtplot_filename = self._get_filepath('one_finger_swipe.dat')
+        packets = mtb.MTBParser().parse_file(mtplot_filename)
+        evemu_converted_iter = iter(mtb.convert_to_evemu_format(packets))
+        with open(evemu_filename) as evemuf:
+            for line_evemu_original in evemuf:
+                evemu_original = line_evemu_original.split()
+                evemu_converted_str = next(evemu_converted_iter, None)
+                self.assertNotEqual(evemu_converted_str, None)
+                if evemu_converted_str:
+                    evemu_converted = evemu_converted_str.split()
+                self.assertEqual(len(evemu_original), 5)
+                self.assertEqual(len(evemu_converted), 5)
+                # Skip the timestamps for they are different in both formats.
+                # Prefix, type, code, and value should be the same.
+                for i in [0, 2, 3, 4]:
+                    self.assertEqual(evemu_original[i], evemu_converted[i])
+
+
 
 if __name__ == '__main__':
   unittest.main()
