@@ -86,6 +86,7 @@ class SiteHost(remote.RemoteHost):
     USB_BOOT_TIMEOUT = 150
     SHUTDOWN_TIMEOUT = 5
     REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
+    LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
 
 
     def _initialize(self, hostname, servo_host=None, servo_port=None,
@@ -151,6 +152,9 @@ class SiteHost(remote.RemoteHost):
             self.run('cat %s' % update_engine_log)
             # Updater has returned, successfully, reboot the host.
             self.reboot(timeout=60, wait=True)
+            # Touch the lab machine file to leave a marker that distinguishes
+            # this image from other test images.
+            self.run('touch %s' % self.LAB_MACHINE_FILE)
 
             # Following the reboot, verify the correct version.
             updater.check_version()
