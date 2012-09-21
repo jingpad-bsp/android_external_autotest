@@ -194,9 +194,14 @@ class BatteryStat(DevStat):
         self.read_all_vals()
 
         if self.charge_full == 0 and self.energy_full != 0:
-            battery_type = BatteryDataReportType.ENERGY;
+            battery_type = BatteryDataReportType.ENERGY
         else:
-            battery_type = BatteryDataReportType.CHARGE;
+            battery_type = BatteryDataReportType.CHARGE
+
+        if self.voltage_min_design != 0:
+            voltage_nominal = self.voltage_min_design
+        else:
+            voltage_nominal = self.voltage_now
 
         # Since charge data is present, calculate parameters based upon
         # reported charge data.
@@ -209,27 +214,28 @@ class BatteryStat(DevStat):
             self.current_now = math.fabs(self.current_now) / \
                                BATTERY_DATA_SCALE
 
-            self.energy =  self.voltage_now * \
+            self.energy =  voltage_nominal * \
                            self.charge_now / \
                            BATTERY_DATA_SCALE
-            self.energy_full = self.voltage_now * \
+            self.energy_full = voltage_nominal * \
                                self.charge_full / \
                                BATTERY_DATA_SCALE
-            self.energy_full_design = self.voltage_now * \
+            self.energy_full_design = voltage_nominal * \
                                       self.charge_full_design / \
                                       BATTERY_DATA_SCALE
 
         # Charge data not present, so calculate parameters based upon
         # reported energy data.
         elif battery_type == BatteryDataReportType.ENERGY:
-            self.charge_full = self.energy_full / self.voltage_now
+            self.charge_full = self.energy_full / voltage_nominal
             self.charge_full_design = self.energy_full_design / \
-                                      self.voltage_now
-            self.charge_now = self.energy / self.voltage_now
+                                      voltage_nominal
+            self.charge_now = self.energy / voltage_nominal
 
             # TODO(shawnn): check if power_now can really be reported
             # as negative, in the same way current_now can
-            self.current_now = math.fabs(self.power_now) / self.voltage_now
+            self.current_now = math.fabs(self.power_now) / \
+                               voltage_nominal
 
             self.energy = self.energy / BATTERY_DATA_SCALE
             self.energy_full = self.energy_full / BATTERY_DATA_SCALE
@@ -240,13 +246,15 @@ class BatteryStat(DevStat):
                                   BATTERY_DATA_SCALE
         self.voltage_now = self.voltage_now / \
                            BATTERY_DATA_SCALE
+        voltage_nominal = voltage_nominal / \
+                          BATTERY_DATA_SCALE
 
         if self.charge_full > (self.charge_full_design * 1.5):
             raise error.TestError('Unreasonable charge_full value')
         if self.charge_now > (self.charge_full_design * 1.5):
             raise error.TestError('Unreasonable charge_now value')
 
-        self.energy_rate =  self.voltage_now * self.current_now
+        self.energy_rate =  voltage_nominal * self.current_now
 
         self.remaining_time = 0
         if self.current_now:
