@@ -9,9 +9,6 @@ import re
 import sys
 import time
 
-import Xlib
-import Xlib.display
-
 import common_util
 
 # Include some constants
@@ -21,11 +18,6 @@ execfile('firmware_constants.py', globals())
 def get_display_name():
     """Return the display name."""
     return ':0'
-
-
-def get_display():
-    """Get the display object."""
-    return Xlib.display.Display(get_display_name())
 
 
 def get_tests_path():
@@ -146,9 +138,18 @@ class SimpleX:
     """A simple class provides some simple X methods and properties."""
 
     def __init__(self, win_name='aura'):
-        self.disp = get_display()
+        import Xlib
+        import Xlib.display
+        self.Xlib = Xlib
+        self.Xlib.display = Xlib.display
+
+        self.disp = self._get_display()
         self._get_screen()
         self._get_window(win_name)
+
+    def _get_display(self):
+        """Get the display object."""
+        return self.Xlib.display.Display(get_display_name())
 
     def _get_screen(self):
         """Get the screen instance."""
@@ -173,8 +174,9 @@ class SimpleX:
     def set_input_focus(self):
         """Set the input focus to the window id."""
         if self.win:
-            self.disp.set_input_focus(self.win.id, Xlib.X.RevertToParent,
-                                      Xlib.X.CurrentTime)
+            self.disp.set_input_focus(self.win.id,
+                                      self.Xlib.X.RevertToParent,
+                                      self.Xlib.X.CurrentTime)
             self._get_focus_info()
 
     def get_screen_size(self):
@@ -183,8 +185,9 @@ class SimpleX:
 
     def _recover_input_focus(self):
         """Set the input focus back to the original settings."""
-        self.disp.set_input_focus(Xlib.X.PointerRoot, Xlib.X.RevertToParent,
-                                  Xlib.X.CurrentTime)
+        self.disp.set_input_focus(self.Xlib.X.PointerRoot,
+                                  self.Xlib.X.RevertToParent,
+                                  self.Xlib.X.CurrentTime)
         self._get_focus_info()
 
     def __del__(self):

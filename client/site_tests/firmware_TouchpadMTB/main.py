@@ -30,9 +30,6 @@ class firmware_TouchpadMTB:
             logging.error('Cannot find touchpad device_node.')
             exit(-1)
 
-        # Get the gesture list.
-        self.gesture_list = conf.gesture_list
-
         # Get the MTB parser.
         self.parser = mtb.MTBParser()
 

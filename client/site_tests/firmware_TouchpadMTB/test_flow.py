@@ -41,7 +41,7 @@ class TestFlow:
         self.gesture_file_name = None
         self.prefix_space = self.output.get_prefix_space()
         self.scores = []
-        self.gesture_list = conf.gesture_list
+        self.gesture_list = conf.get_gesture_list()
         self._get_all_gesture_variations()
         self.init_flag = False
         self.system_device = self._non_blocking_open(self.device_node)
