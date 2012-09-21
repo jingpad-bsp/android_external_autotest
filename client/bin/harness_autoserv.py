@@ -35,9 +35,11 @@ class harness_autoserv(harness.harness):
 
 
     def run_start(self):
-        # set up the package fetcher for direct-from-autoserv fetches
-        fetcher = AutoservFetcher(self.job.pkgmgr, self)
-        self.job.pkgmgr.add_repository(fetcher)
+        if global_config.global_config.get_config_value(
+                'CLIENT', 'fetch_from_autoserv', type=bool, default=True):
+            # set up the package fetcher for direct-from-autoserv fetches
+            fetcher = AutoservFetcher(self.job.pkgmgr, self)
+            self.job.pkgmgr.add_repository(fetcher)
 
 
     def _send_and_wait(self, title, *args):
