@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -6,6 +7,7 @@ import atexit
 import errno
 import logging
 import re
+import sys
 import socket
 import threading
 import time
@@ -223,6 +225,9 @@ if __name__ == '__main__':
     Main function used to launch the dispatch server. Creates an instance of
     RPMDispatcher and registers it to a MultiThreadedXMLRPCServer instance.
     """
+    if len(sys.argv) > 1:
+      print 'Usage: ./%s, no arguments available.' % sys.argv[0]
+      sys.exit(1)
     rpm_logging_config.set_up_logging(LOG_FILENAME_FORMAT)
     # Get the local ip _address and set the server to utilize it.
     address = socket.gethostbyname(socket.gethostname())

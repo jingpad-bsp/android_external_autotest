@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 import logging
 import logging.handlers
+import os
 import socket
 import time
 
@@ -17,7 +18,10 @@ def set_up_logging(log_filename_format):
     Correctly set up logging to have the correct format/level, log to a file,
     and send out email notifications in case of error level messages.
     """
-    log_filename = time.strftime(log_filename_format)
+    log_filename = os.path.abspath(time.strftime(log_filename_format))
+    log_dir = os.path.dirname(log_filename)
+    if not os.path.isdir(log_dir):
+      os.makedirs(log_dir)
     logging.basicConfig(filename=log_filename, level=logging.INFO,
                         format=LOGGING_FORMAT)
     if rpm_config.getboolean('GENERAL', 'debug'):
