@@ -71,25 +71,6 @@ class SuiteTest(mox.MoxTestBase):
                                                     self.files.iteritems())
 
 
-    def expect_control_file_reparsing(self):
-        """Expect re-parsing the 'control files' in |self.files|."""
-        all_files = self.files.keys() + self.files_to_filter.keys()
-        self._set_control_file_parsing_expectations(True, all_files,
-                                                    self.files.iteritems())
-
-
-    def expect_racy_control_file_reparsing(self, new_files):
-        """Expect re-fetching and parsing of control files to return extra.
-
-        @param new_files: extra control files that showed up during scheduling.
-        """
-        all_files = (self.files.keys() + self.files_to_filter.keys() +
-                     new_files.keys())
-        new_files.update(self.files)
-        self._set_control_file_parsing_expectations(True, all_files,
-                                                    new_files.iteritems())
-
-
     def _set_control_file_parsing_expectations(self, already_stubbed,
                                                file_list, files_to_parse):
         """Expect an attempt to parse the 'control files' in |files|.
@@ -267,7 +248,6 @@ class SuiteTest(mox.MoxTestBase):
 
         results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
         self.schedule_and_expect_these_results(suite, results, recorder)
-        self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, self.manager, True)
@@ -291,7 +271,6 @@ class SuiteTest(mox.MoxTestBase):
                                     mox.IgnoreArg(),
                                     mox.IgnoreArg()).AndRaise(
                                             Exception('Expected during test.'))
-        self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, self.manager, True)
@@ -309,28 +288,6 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True).AndRaise(Exception('Expected during test.'))
-        self.expect_control_file_reparsing()
-        self.mox.ReplayAll()
-
-        suite.run_and_wait(recorder.record_entry, self.manager, True)
-
-
-    def testRunAndWaitDevServerRacyFailure(self):
-        """Should record discovery of dev server races in listing files."""
-        suite = self._createSuiteWithMockedTestsAndControlFiles()
-
-        recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record_entry(
-            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
-
-        results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
-        self.schedule_and_expect_these_results(suite, results, recorder)
-
-        self.expect_racy_control_file_reparsing(
-            {'new': FakeControlData(self._TAG, '!')})
-
-        recorder.record_entry(
-            StatusContains.CreateFromStrings('FAIL', self._TAG, 'Dev Server'))
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, self.manager, True)

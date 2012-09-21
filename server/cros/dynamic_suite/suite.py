@@ -268,14 +268,6 @@ class Suite(object):
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
-        # Sanity check
-        tests_at_end = self.find_and_parse_tests(self._cf_getter,
-                                                 self._predicate,
-                                                 add_experimental=True)
-        if len(self.tests) != len(tests_at_end):
-            msg = 'Dev Server enumerated %d tests at start, %d at end.' % (
-                len(self.tests), len(tests_at_end))
-            Status('FAIL', self._tag, msg).record_result(record)
 
 
     def schedule(self, add_experimental=True):
