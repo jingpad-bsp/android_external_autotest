@@ -9,6 +9,7 @@ CRITERIA = """
 This test will fail if the tab fails to load in the default PyAuto timeout.
 """
 SUITE = "bvt"
+EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
