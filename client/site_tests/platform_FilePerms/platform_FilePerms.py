@@ -64,6 +64,9 @@ class platform_FilePerms(test.test):
             'type': 'tmpfs',
             'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
                         'mode=755']},
+        '/usr/share/oem': { # crosbug.com/34688
+            'type': 'ext4',
+            'options': ['ro', 'nosuid', 'nodev', 'noexec', 'relatime']},
     }
     testmode_modded_fses = set(['/home', '/tmp', '/usr/local'])
 
