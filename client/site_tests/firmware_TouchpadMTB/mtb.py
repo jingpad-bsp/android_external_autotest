@@ -482,15 +482,32 @@ class MTB:
         return max(distances)
 
     def get_largest_gap_ratio(self, target_slot):
-        """Get the largest gap ratio in the target slot."""
+        """Get the largest gap ratio in the target slot.
+
+        gap_ratio_with_prev = curr_gap / prev_gap
+        gap_ratio_with_next = curr_gap / next_gap
+
+        This function tries to find the largest gap_ratio_with_prev
+        with the restriction that gap_ratio_with_next is larger than
+        RATIO_THRESHOLD_CURR_GAP_TO_NEXT_GAP.
+
+        The ratio threshold is used to prevent the gaps detected in a swipe.
+        Note that in a swipe, the gaps tends to become larger and larger.
+        """
+        RATIO_THRESHOLD_CURR_GAP_TO_NEXT_GAP = 1.2
         gaps = self.get_distances(target_slot)
         gap_ratios = []
+        largest_gap_ratio = float('-infinity')
         for index in range(1, len(gaps) - 1):
             prev_gap = max(gaps[index - 1], 1)
             curr_gap = gaps[index]
             next_gap = max(gaps[index + 1], 1)
-            gap_ratios.append(2.0 * curr_gap / (prev_gap + next_gap))
-        largest_gap_ratio = max(gap_ratios) if gap_ratios else 0
+            gap_ratio_with_prev = curr_gap / prev_gap
+            gap_ratio_with_next = curr_gap / next_gap
+            if (largest_gap_ratio < 0 or
+                (gap_ratio_with_prev > largest_gap_ratio and
+                 gap_ratio_with_next > RATIO_THRESHOLD_CURR_GAP_TO_NEXT_GAP)):
+                largest_gap_ratio = gap_ratio_with_prev
         return largest_gap_ratio
 
     def get_displacement(self, target_slot):
