@@ -180,8 +180,17 @@ class SimpleX:
             self._get_focus_info()
 
     def get_screen_size(self):
-        """Get the screen size."""
+        """Get the screen size in pixels."""
         return (self.screen.width_in_pixels, self.screen.height_in_pixels)
+
+    def get_screen_size_in_mms(self):
+        """Get the screen size in milli-meters."""
+        return (self.screen.width_in_mms, self.screen.height_in_mss)
+
+    def get_DPMM(self):
+        """Get Dots per Milli-meter."""
+        return (1.0 * self.screen.width_in_pixels / self.screen.width_in_mms,
+                1.0 * self.screen.height_in_pixels / self.screen.height_in_mms)
 
     def _recover_input_focus(self):
         """Set the input focus back to the original settings."""

@@ -35,14 +35,40 @@ class TouchpadDevice:
         device_node = device_node_str.split(':')[-1].strip().strip('"')
         return device_node
 
+    def get_dimensions_in_mm(self):
+        """Get the width and height in mm of the device."""
+        (left, right, top, bottom,
+                resolution_x, resolution_y) = self.get_resolutions()
+        width = float((right - left)) / resolution_x
+        height = float((bottom - top)) / resolution_y
+        return (width, height)
+
+    def get_resolutions(self):
+        """Get the resolutions in x and y axis of the device."""
+        _, _, _, _, resolution_x, resolution_y = self.get_abs_axes()
+        return (resolution_x, resolution_y)
+
     def get_edges(self):
-        """Get the left, right, top, and bottom edges of a device."""
-        pattern_x = 'A:\s*00\s+(\d+)\s+(\d+)'
-        pattern_y = 'A:\s*01\s+(\d+)\s+(\d+)'
+        """Get the left, right, top, and bottom edges of the device."""
+        left, right, top, bottom, _, _ = self.get_abs_axes()
+        return (left, right, top, bottom)
+
+    def get_abs_axes(self):
+        """Get information about min, max, and resolution from ABS_X and ABS_Y
+
+        Example of ABS_X:
+                A: 00 0 1280 0 0 12
+        Example of ABS_y:
+                A: 01 0 1280 0 0 12
+        """
+        pattern = 'A:\s*%s\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)'
+        pattern_x = pattern % '00'
+        pattern_y = pattern % '01'
         cmd = 'evemu-describe %s' % self.device_node
         device_description = common_util.simple_system_output(cmd)
         found_x = found_y = False
         left = right = top = bottom = None
+        resolution_x = resolution_y = None
         if device_description:
             for line in device_description.splitlines():
                 if not found_x:
@@ -50,12 +76,16 @@ class TouchpadDevice:
                     if result:
                         left = int(result.group(1))
                         right = int(result.group(2))
+                        resolution_x = int(result.group(5))
+                        found_x = True
                 if not found_y:
                     result = re.search(pattern_y, line, re.I)
                     if result:
                         top = int(result.group(1))
                         bottom = int(result.group(2))
-        return (left, right, top, bottom)
+                        resolution_y = int(result.group(5))
+                        found_y = True
+        return (left, right, top, bottom, resolution_x, resolution_y)
 
     def get_dimensions(self):
         """Get the dimensions of the touchpad reported size."""

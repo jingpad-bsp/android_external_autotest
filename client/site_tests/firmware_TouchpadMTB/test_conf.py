@@ -32,7 +32,7 @@ score_aggregator = 'fuzzy.average'
 # Define some common criteria
 count_packets_criteria = '>= 3, ~ -3'
 drumroll_criteria = '<= 20, ~ +30'
-linearity_criteria = '<= 0.02, ~ +0.02'
+linearity_criteria = '<= 0.8, ~ +2.4'
 no_gap_criteria = '<= 2.5, ~ +2.5'
 no_reversed_motion_criteria = '== 0, ~ +20'
 pinch_criteria = '>= 200, ~ -100'

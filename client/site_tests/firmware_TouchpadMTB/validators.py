@@ -55,6 +55,7 @@ Note that it is also possible to instantiate a validator as
 import numpy as n
 import sys
 
+import firmware_utils
 import fuzzy
 import firmware_utils
 import mtb
@@ -101,6 +102,9 @@ class BaseValidator(object):
         self.device_width, self.device_height = self.device.get_dimensions()
         self.packets = None
         self.msg_list = []
+        self.simple_x = firmware_utils.SimpleX()
+        self.dpmm = self.simple_x.get_DPMM()
+        self.screen_size = self.simple_x.get_screen_size()
 
     def init_check(self, packets):
         """Initialization before check() is called."""
@@ -214,18 +218,21 @@ class LinearityValidator(BaseValidator):
     def check(self, packets, variation=None):
         """Check if the packets conforms to specified criteria."""
         self.init_check(packets)
+        resolution_x, resolution_y = self.device.get_resolutions()
         (list_x, list_y) = self.packets.get_x_y(self.slot)
+        # Compuate average distance (fitting error) in pixels, and
+        # average deviation on touchpad in mm.
         if self.is_vertical(variation):
             ave_distance = self._simple_linear_regression(list_y, list_x)
-            length = self.device_width
+            deviation_touch = ave_distance / resolution_x
         else:
             ave_distance = self._simple_linear_regression(list_x, list_y)
-            length = self.device_height
-        ave_deviation = ave_distance / length
-        self.print_msg('average distance: %f' % ave_distance)
-        self.print_msg('ave_deviation slot[%d]: %f' % (self.slot,
-                                                       ave_deviation))
-        return (self.fc.mf.grade(ave_deviation), self.msg_list)
+            deviation_touch = ave_distance / resolution_y
+
+        self.print_msg('ave fitting error: %.2f' % ave_distance)
+        msg_device = 'deviation (pad) slot[%d]: %.2f mm'
+        self.print_msg(msg_device % (self.slot, deviation_touch))
+        return (self.fc.mf.grade(deviation_touch), self.msg_list)
 
 
 class RangeValidator(BaseValidator):
