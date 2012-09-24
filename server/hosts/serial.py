@@ -1,8 +1,12 @@
 import os, sys, subprocess, logging
 
-from autotest_lib.client.common_lib import utils, error
+from autotest_lib.client.common_lib import global_config, utils, error
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.hosts import remote
+
+
+RPM_FRONTEND_URI = global_config.global_config.get_config_value('CROS',
+        'rpm_frontend_uri', type=str, default='')
 
 
 SiteHost = utils.import_site_class(
@@ -12,6 +16,8 @@ SiteHost = utils.import_site_class(
 
 class SerialHost(SiteHost):
     DEFAULT_REBOOT_TIMEOUT = SiteHost.DEFAULT_REBOOT_TIMEOUT
+    HARD_RESET_CMD = 'hardreset'
+
 
     def _initialize(self, conmux_server=None, conmux_attach=None,
                     console_log="console.log", *args, **dargs):
@@ -53,16 +59,18 @@ class SerialHost(SiteHost):
                           conmux_attach=None):
         """ Returns a boolean indicating if the remote host with "hostname"
         supports use as a SerialHost """
+        return_value = False
         conmux_attach = cls._get_conmux_attach(conmux_attach)
         conmux_hostname = cls._get_conmux_hostname(hostname, conmux_server)
         cmd = "%s %s echo 2> /dev/null" % (conmux_attach, conmux_hostname)
         try:
             result = utils.run(cmd, ignore_status=True, timeout=10)
-            return result.exit_status == 0
+            return_value = result.exit_status == 0
         except error.CmdError:
             logging.warning("Timed out while trying to attach to conmux")
+            return_value = False
 
-        return False
+        return return_value or SiteHost.check_for_rpm_support(hostname)
 
 
     def start_loggers(self):
@@ -114,7 +122,7 @@ class SerialHost(SiteHost):
 
 
     def hardreset(self, timeout=DEFAULT_REBOOT_TIMEOUT, wait=True,
-                  conmux_command='hardreset', num_attempts=1, halt=False,
+                  conmux_command=HARD_RESET_CMD, num_attempts=1, halt=False,
                   **wait_for_restart_kwargs):
         """
         Reach out and slap the box in the power switch.
@@ -141,7 +149,9 @@ class SerialHost(SiteHost):
         def reboot():
             if halt:
                 self.halt()
-            if not self.run_conmux(conmux_command):
+            if self.HARD_RESET_CMD in conmux_command and RPM_FRONTEND_URI:
+                self.power_cycle()
+            elif not self.run_conmux(conmux_command):
                 self.record("ABORT", None, "reboot.start",
                             "hard reset unavailable")
                 raise error.AutoservUnsupportedError(
@@ -158,7 +168,11 @@ class SerialHost(SiteHost):
                     except error.AutoservShutdownError:
                         logging.warning(warning_msg, attempt+1, num_attempts)
                         # re-send the hard reset command
-                        self.run_conmux(conmux_command)
+                        if (self.HARD_RESET_CMD in conmux_command and
+                                RPM_FRONTEND_URI):
+                            self.power_cycle()
+                        else:
+                            self.run_conmux(conmux_command)
                     else:
                         break
                 else:

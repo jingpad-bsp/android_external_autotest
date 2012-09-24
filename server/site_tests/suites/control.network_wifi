@@ -30,7 +30,7 @@ import os
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import site_host_attributes, site_remote_power
+from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_wifitest
 from autotest_lib.server.hosts import ssh_host
 
@@ -47,20 +47,19 @@ POWER_CYCLE_SLEEP_SECS = 30
 
 def run_server_tests(machine):
   client_attributes = site_host_attributes.HostAttributes(machine)
-  remote_power = site_remote_power.RemotePower(machine)
-
-  if remote_power:
-    remote_power.set_power_on()
+  client = hosts.create_host(machine)
+  if client.has_power():
+    client.power_on()
   else:
     raise error.TestNAError('No power switch configured.')
 
   # Power cycle the entire unit prior to testing. Not expecting any exceptions,
   # but shouldn't leave power off no matter what happens.
   try:
-    remote_power.set_power_off()
+    client.power_off()
     time.sleep(POWER_CYCLE_TIME_SECS)
   finally:
-    remote_power.set_power_on()
+    client.power_on()
 
   # Wait for devices to come back.
   router = ssh_host.SSHHost(client_attributes.router_addr)

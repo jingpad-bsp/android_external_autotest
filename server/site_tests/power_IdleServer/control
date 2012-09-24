@@ -14,22 +14,21 @@ This test first cuts off power to a machine and then measures the battery power
 draw at idle.
 """
 
-from autotest_lib.server import site_remote_power, utils
+from autotest_lib.server import utils
 
 
 def run_system_power_idle(machine):
-    remote_power = site_remote_power.RemotePower(machine)
-    if remote_power:
-        remote_power.set_power_off()
-
     host = hosts.create_host(machine)
+    if host.has_power():
+        host.power_off()
+
     host_at = autotest.Autotest(host)
     host_test = 'power_Idle'
 
     host_at.run_test(host_test)
 
-    if remote_power:
-        remote_power.set_power_on()
+    if host.has_power()):
+        host.power_on()
 
 
 (tuple, failures) = utils.form_ntuples_from_machines(machines, 1)

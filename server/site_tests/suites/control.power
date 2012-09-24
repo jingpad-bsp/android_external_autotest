@@ -11,11 +11,10 @@ TEST_TYPE = "server"
 
 DOC = """
 This test suite runs automated power tests that should all pass and that
-require the power to be connected with a remote power control.
+require the power to be connected with a remote power manager.
 """
 
 from autotest_lib.server import site_host_attributes
-from autotest_lib.server import site_remote_power
 from autotest_lib.client.common_lib import error
 
 # Run power tests that don't take a long time
@@ -37,9 +36,8 @@ def run_client_test(machine):
   client_attributes = site_host_attributes.HostAttributes(machine)
   client_at = autotest.Autotest(client)
 
-  remote_power = site_remote_power.RemotePower(machine)
-  if remote_power:
-    remote_power.set_power_on()
+  if client.has_power():
+    client.power_on()
   else:
     raise error.TestNAError("No power switch configured")
 
@@ -50,7 +48,7 @@ def run_client_test(machine):
   client_at.run_test('power_BatteryCharge', percent_target_charge=50,
                      max_run_time=60*60*4, tag='CHARGE_50')
 
-  remote_power.set_power_off()
+  client.power_off()
   try:
     for test in TESTS:
         client_at.run_test(test)
@@ -59,7 +57,7 @@ def run_client_test(machine):
         client_at.run_test('power_Resume')
 
   finally:
-    remote_power.set_power_on()
+    client.power_on()
 
   # Run the 60/20/10/10 load test
   # Charge the battery to at least 99% in preparation for the load
@@ -73,7 +71,7 @@ def run_client_test(machine):
   # 1. Make the test run over wifi instead of ethernet
   # 2. Make the test login automatically to facebook and gmail
   # 3. Add audiovideo_V4L2 webcam test
-  remote_power.set_power_off()
+  client.power_off()
 
   try:
     if hasattr(client_attributes, 'wifi'):
@@ -86,7 +84,7 @@ def run_client_test(machine):
       client_at.run_test('power_LoadTest', loop_count=9, loop_time=3600,
                          check_network=False, tag='WIRED')
   finally:
-    remote_power.set_power_on()
+    client.power_on()
 
 
 job.parallel_on_machines(run_client_test, machines)

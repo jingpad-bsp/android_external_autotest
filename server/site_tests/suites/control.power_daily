@@ -16,7 +16,6 @@ take a long time (several hours) to run and are run only once a day.
 """
 
 from autotest_lib.server import site_host_attributes
-from autotest_lib.server import site_remote_power
 from autotest_lib.client.common_lib import error
 
 def _run_client_test(machine):
@@ -24,9 +23,8 @@ def _run_client_test(machine):
     client_attributes = site_host_attributes.HostAttributes(machine)
     client_at = autotest.Autotest(client)
 
-    remote_power = site_remote_power.RemotePower(machine)
-    if remote_power:
-        remote_power.set_power_on()
+    if client.has_power():
+        client.power_on()
     else:
         raise error.TestNAError("No power switch configured")
 
@@ -36,12 +34,12 @@ def _run_client_test(machine):
                      max_run_time=60*60*4, tag='CHARGE_50')
 
     # Turn off power and run power_Consumption test.
-    remote_power.set_power_off()
+    client.power_off()
 
     try:
         client_at.run_test('power_Consumption')
     finally:
-        remote_power.set_power_on()
+        client.power_on()
 
     # Charge the battery to at least 99% in preparation for the load
     # test. Charging the battery from empty to full can take up to 4 hours.
@@ -53,7 +51,7 @@ def _run_client_test(machine):
     # TODO (snanda):
     # 1. Make the test login automatically to facebook and gmail
     # 2. Add audiovideo_V4L2 webcam test
-    remote_power.set_power_off()
+    client.power_off()
 
     try:
         if hasattr(client_attributes, 'wifi'):
@@ -65,7 +63,7 @@ def _run_client_test(machine):
             client_at.run_test('power_LoadTest', loop_count=9, loop_time=3600,
                                 check_network=False, tag='WIRED')
     finally:
-        remote_power.set_power_on()
+        client.power_on()
 
 
 job.parallel_on_machines(_run_client_test, machines)

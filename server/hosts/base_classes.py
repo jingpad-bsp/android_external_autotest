@@ -78,3 +78,9 @@ class Host(hosts.Host):
 
         if self.job:
             self.job.hosts.discard(self)
+
+
+    @staticmethod
+    def check_for_rpm_support(hostname):
+        """Stub method. RPM support is implemented in site_host."""
+        return False

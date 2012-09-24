@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import re
 import subprocess
 import time
 import xmlrpclib
@@ -12,9 +13,17 @@ from autotest_lib.client.common_lib import global_config, error
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import site_host_attributes
-from autotest_lib.server import site_remote_power
 from autotest_lib.server.cros import servo
 from autotest_lib.server.hosts import remote
+
+
+RPM_FRONTEND_URI = global_config.global_config.get_config_value('CROS',
+        'rpm_frontend_uri', type=str, default='')
+
+
+class RemotePowerException(Exception):
+    """This is raised when we fail to set the state of the device's outlet."""
+    pass
 
 
 def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
@@ -87,6 +96,8 @@ class SiteHost(remote.RemoteHost):
     SHUTDOWN_TIMEOUT = 5
     REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
     LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
+    RPM_HOSTNAME_REGEX = ('chromeos[0-9]+(-row[0-9]+)?-rack[0-9]+[a-z]*-'
+                          'host[0-9]+')
 
 
     def _initialize(self, hostname, servo_host=None, servo_port=None,
@@ -210,9 +221,8 @@ class SiteHost(remote.RemoteHost):
     def cleanup(self):
         """Special cleanup method to make sure hosts always get power back."""
         super(SiteHost, self).cleanup()
-        remote_power = site_remote_power.RemotePower(self.hostname)
-        if remote_power:
-            remote_power.set_power_on()
+        if self.has_power():
+            self.power_on()
 
 
     def reboot(self, **dargs):
@@ -330,7 +340,7 @@ class SiteHost(remote.RemoteHost):
             #
             # 'pkill' helpfully exits with status 1 if no target
             # process  is found, for which run() will throw an
-            # exception.  We don't want that, so we ignore the
+            # exception.  We don't want that, so we the ignore
             # status.
             self.run("pkill -f '%s'" % remote_name, ignore_status=True)
 
@@ -499,3 +509,43 @@ class SiteHost(remote.RemoteHost):
                 raise error.TestFail(
                     'client is back up, but did not reboot'
                     ' (boot %s)' % old_boot_id)
+
+
+    @staticmethod
+    def check_for_rpm_support(hostname):
+        """For a given hostname, return whether or not it is powered by an RPM.
+
+        @return None if this host does not follows the defined naming format
+                for RPM powered DUT's in the lab. If it does follow the format,
+                it returns a regular expression MatchObject instead.
+        """
+        return re.match(SiteHost.RPM_HOSTNAME_REGEX, hostname)
+
+
+    def has_power(self):
+        """For this host, return whether or not it is powered by an RPM.
+
+        @return True if this host is in the CROS lab and follows the defined
+                naming format.
+        """
+        return SiteHost.check_for_rpm_support(self.hostname)
+
+
+    def _set_power(self, new_state):
+        client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI, verbose=False)
+        if not client.queue_request(self.hostname, new_state):
+            raise RemotePowerException('Failed to change outlet status for'
+                                       'host: %s to state: %s', self.hostname,
+                                       new_state)
+
+
+    def power_off(self):
+        self._set_power('OFF')
+
+
+    def power_on(self):
+        self._set_power('ON')
+
+
+    def power_cycle(self):
+        self._set_power('CYCLE')
