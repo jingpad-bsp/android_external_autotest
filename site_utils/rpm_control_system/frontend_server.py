@@ -89,8 +89,11 @@ class RPMFrontendServer(object):
         @raise RPMInfrastructureException: No dispatchers are available or can
                                            be reached.
         """
-        # Put new_state in all uppercase letters
+        # Remove any DNS Zone information and simplify down to just the dut
+        # hostname.
+        dut_hostname = dut_hostname.split('.')[0]
         new_state = new_state.upper()
+        # Put new_state in all uppercase letters
         if new_state not in VALID_STATE_VALUES:
             logging.error('Received request to set DUT: %s to invalid state %s',
                           dut_hostname, new_state)
