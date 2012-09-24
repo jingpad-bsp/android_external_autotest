@@ -66,6 +66,7 @@ class RPMController(object):
     QUIT_CMD = 'quit'
     SESSION_KILL_CMD_FORMAT = 'administration sessions kill %s'
     HYDRA_CONN_HELD_MSG_FORMAT = 'is being used'
+    CYCLE_SLEEP_TIME = 5
 
     # Global Variables that will likely be changed by subclasses.
     DEVICE_PROMPT = '$'
@@ -397,8 +398,18 @@ class RPMController(object):
         ssh = self._login()
         if not ssh:
             return False
-        # Try to change the state of the DUT's power outlet.
-        result = self._change_state(dut_hostname, new_state, ssh)
+        if new_state == 'CYCLE':
+            logging.debug('Beginning Power Cycle for DUT: %s',
+                          dut_hostname)
+            result = self._change_state(dut_hostname, 'OFF', ssh)
+            if not result:
+                return result
+            time.sleep(RPMController.CYCLE_SLEEP_TIME)
+            result = self._change_state(dut_hostname, 'ON', ssh)
+        else:
+            # Try to change the state of the DUT's power outlet.
+            result = self._change_state(dut_hostname, new_state, ssh)
+
         # Terminate hydra connection if necessary.
         self._logout(ssh)
         return result
@@ -412,7 +423,7 @@ class RPMController(object):
         responsible for changing the state of the RPM outlet.
 
         @param dut_hostname: hostname of DUT whose outlet we want to change.
-        @param new_state: ON/OFF/CYCLE - state or action we want to perform on
+        @param new_state: ON/OFF - state or action we want to perform on
                           the outlet.
         @param ssh: The ssh connection used to execute the state change commands
                     on the RPM device.
@@ -485,9 +496,6 @@ class WebPoweredRPMController(RPMController):
     """
 
 
-    CYCLE_SLEEP_TIME = 5
-
-
     def __init__(self, hostname, powerswitch=None):
         username = CONFIG.get('WEBPOWERED', 'username')
         password = CONFIG.get('WEBPOWERED', 'password')
@@ -539,7 +547,7 @@ class WebPoweredRPMController(RPMController):
             self._rpm.off(outlet)
             logging.debug('Outlet for DUT: %s set to OFF', dut_hostname)
             # Pause for 5 seconds before restoring power.
-            time.sleep(WebPoweredRPMController.CYCLE_SLEEP_TIME)
+            time.sleep(RPMController.CYCLE_SLEEP_TIME)
             self._rpm.on(outlet)
             logging.debug('Outlet for DUT: %s set to ON', dut_hostname)
             expected_state = 'ON'
