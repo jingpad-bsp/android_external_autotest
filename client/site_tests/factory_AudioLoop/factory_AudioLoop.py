@@ -49,6 +49,10 @@ _MUTE_RIGHT_MIXER_SETTINGS = [{'name': '"Headphone Playback Switch"',
                                'value': 'on,off'},
                               {'name': '"Speaker Playback Switch"',
                                'value': 'on,off'}]
+_MUTE_HEADPHONE = [{'name': '"Headphone Playback Switch"',
+                    'value': 'off,off'}]
+_MUTE_SPEAKER = [{'name': '"Speaker Playback Switch"',
+                  'value': 'off,off'}]
 
 class factory_AudioLoop(test.test):
     version = 1
@@ -60,6 +64,10 @@ class factory_AudioLoop(test.test):
                         _MUTE_RIGHT_MIXER_SETTINGS]:
                     for idev in self._input_devices:
                         self._ah.set_mixer_controls(settings)
+                        if self._device_to_mute == 'speaker':
+                            self._ah.set_mixer_controls(_MUTE_SPEAKER)
+                        elif self._device_to_mute == 'headphone':
+                            self._ah.set_mixer_controls(_MUTE_HEADPHONE)
                         self.run_audiofuntest(idev, odev)
                         time.sleep(0.5)
 
@@ -149,7 +157,7 @@ class factory_AudioLoop(test.test):
 
     def run_once(self, audiofuntest=True, duration=_DEFAULT_DURATION_SEC,
             input_devices=['hw:0,0'], output_devices=['hw:0,0'],
-            mixer_controls=None):
+            mixer_controls=None, device_to_mute=None):
         factory.console.info('%s run_once' % self.__class__)
 
         self._audiofuntest = audiofuntest
@@ -157,6 +165,7 @@ class factory_AudioLoop(test.test):
         self._freq = _DEFAULT_FREQ_HZ
         self._input_devices = input_devices
         self._output_devices = output_devices
+        self._device_to_mute = device_to_mute
 
         # Create a default audio helper to do the setup jobs.
         self._ah = audio_helper.AudioHelper(self, record_duration=duration)
