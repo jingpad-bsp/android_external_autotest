@@ -314,12 +314,78 @@ class FAFTSequence(ServoTest):
 
 
     def reset_client(self):
-        """Reset client if necessary."""
-        # TODO(crosbug/23309): Implement complete reset.
-        if not self._ping_test(self._client.ip, timeout=1):
-            # Client is offline. Cold reset it.
-            self.cold_reboot()
+        """Reset client, if necessary.
+
+        This method is called when the client is not responsive. It may be
+        caused by the following cases:
+          - network flaky (can be recovered by replugging the Ethernet);
+          - halt on a firmware screen without timeout, e.g. REC_INSERT screen;
+          - corrupted firmware;
+          - corrutped OS image.
+        """
+        # DUT works fine, done.
+        if self._ping_test(self._client.ip, timeout=5):
+            return
+
+        # TODO(waihong@chromium.org): Implement replugging the Ethernet in the
+        # first reset item.
+
+        # DUT may halt on a firmware screen. Try cold reboot.
+        logging.info('Try cold reboot...')
+        self.cold_reboot()
+        try:
             self.wait_for_client()
+            return
+        except AssertionError:
+            pass
+
+        # DUT may be broken by a corrupted firmware. Restore firmware.
+        # We assume the recovery boot still works fine. Since the recovery
+        # code is in RO region and all FAFT tests don't change the RO region
+        # except GBB.
+        if self.is_firmware_saved():
+            self.ensure_client_in_recovery()
+            logging.info('Try restore the original firmware...')
+            if self.is_firmware_changed():
+                try:
+                    self.restore_firmware()
+                    return
+                except AssertionError:
+                    logging.info('Restoring firmware doesn\'t help.')
+
+        # DUT may be broken by a corrupted OS image. Restore OS image.
+        self.ensure_client_in_recovery()
+        logging.info('Try restore the OS image...')
+        self.faft_client.run_shell_command('chromeos-install --yes')
+        self.sync_and_warm_reboot()
+        self.wait_for_client_offline()
+        try:
+            self.wait_for_client(install_deps=True)
+            logging.info('Successfully restore OS image.')
+            return
+        except AssertionError:
+            logging.info('Restoring OS image doesn\'t help.')
+
+
+    def ensure_client_in_recovery(self):
+        """Ensure client in recovery boot; reboot into it if necessary.
+
+        Raises:
+            error.TestError: if failed to boot the USB image.
+        """
+        # DUT works fine and is already in recovery boot, done.
+        if self._ping_test(self._client.ip, timeout=5):
+            if self.crossystem_checker({'mainfw_type': 'recovery'}):
+                return
+
+        logging.info('Try boot into USB image...')
+        self.servo.enable_usb_hub(host=True)
+        self.enable_rec_mode_and_reboot()
+        self.wait_fw_screen_and_plug_usb()
+        try:
+            self.wait_for_client(install_deps=True)
+        except AssertionError:
+            raise error.TestError('Failed to boot the USB image.')
 
 
     def assert_test_image_in_usb_disk(self, usb_dev=None):
@@ -1419,6 +1485,7 @@ class FAFTSequence(ServoTest):
                 else:
                     self.wait_for_client()
             except AssertionError:
+                logging.info('wait_for_client() timed out.')
                 self.reset_client()
                 raise
 
@@ -1494,29 +1561,30 @@ class FAFTSequence(ServoTest):
         return file_list
 
 
-    def check_current_firmware_sha(self):
-        """Check current firmware sha is identical to original firmware sha.
+    def is_firmware_changed(self):
+        """Check if the current firmware changed, by comparing its SHA.
 
         Returns:
-            True if they are same, otherwise Flase.
+            True if it is changed, otherwise Flase.
         """
+        # Device may not be rebooted after test.
+        self.faft_client.reload_firmware()
 
         current_sha = self.get_current_firmware_sha()
 
         if current_sha == self._backup_firmware_sha:
-            logging.info("Firmware isn't corrupted.")
-            return True
+            return False
         else:
-            logging.info("Firmware corrupted.")
             corrupt_VBOOTA = (current_sha[0] != self._backup_firmware_sha[0])
             corrupt_FVMAIN = (current_sha[1] != self._backup_firmware_sha[1])
             corrupt_VBOOTB = (current_sha[2] != self._backup_firmware_sha[2])
             corrupt_FVMAINB = (current_sha[3] != self._backup_firmware_sha[3])
-            logging.info('VBOOTA is corrupted: %s' % corrupt_VBOOTA)
-            logging.info('VBOOTB is coruupted: %s' % corrupt_VBOOTB)
-            logging.info('FVMAIN is coruupted: %s' % corrupt_FVMAIN)
-            logging.info('FVMAINB is corrupted: %s' % corrupt_FVMAINB)
-            return False
+            logging.info("Firmware changed:")
+            logging.info('VBOOTA is changed: %s' % corrupt_VBOOTA)
+            logging.info('VBOOTB is changed: %s' % corrupt_VBOOTB)
+            logging.info('FVMAIN is changed: %s' % corrupt_FVMAIN)
+            logging.info('FVMAINB is changed: %s' % corrupt_FVMAINB)
+            return True
 
 
     def backup_firmware(self, suffix='.original'):
@@ -1538,17 +1606,22 @@ class FAFTSequence(ServoTest):
             self.resultsdir, suffix))
 
 
+    def is_firmware_saved(self):
+        """Check if a firmware saved (called backup_firmware before).
+
+        Returns:
+            True if the firmware is backuped; otherwise False.
+        """
+        return self._backup_firmware_sha != ()
+
+
     def restore_firmware(self, suffix='.original'):
         """Restore firmware from host in resultsdir.
 
         Args:
             suffix: a string appended to backup file name
         """
-        # Device may not be rebooted after test.
-        self.faft_client.reload_firmware()
-        current_sha = self.get_current_firmware_sha()
-
-        if self.check_current_firmware_sha():
+        if not self.is_firmware_changed():
             return
 
         # Backup current corrupted firmware.
@@ -1561,8 +1634,9 @@ class FAFTSequence(ServoTest):
                                                  remote_temp_dir, '')
         self.send_file_to_dut(file_list)
 
-        self.run_faft_step({
-            'userspace_action': (self.faft_client.write_firmware_rw,
-                                 remote_temp_dir)
-        })
+        self.faft_client.write_firmware_rw(remote_temp_dir)
+        self.sync_and_warm_reboot()
+        self.wait_for_client_offline()
+        self.wait_for_client()
+
         logging.info('Successfully restore firmware.')
