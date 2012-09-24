@@ -224,19 +224,34 @@ class RPMController(object):
                  logged into the device.
         """
         try:
-            ssh.expect(RPMController.PASSWORD_PROMPT, timeout=60)
-            ssh.sendline(CONFIG.get(self.hydra_name,'password'))
-            ssh.sendline('')
             response = ssh.expect_list(
-                    [re.compile(RPMController.USERNAME_PROMPT),
+                    [re.compile(RPMController.PASSWORD_PROMPT),
                      re.compile(RPMController.HYDRA_CONN_HELD_MSG_FORMAT)],
-                    timeout=60)
-        except pexpect.EOF:
-            # Did not receive any of the expect responses, retry.
-            return False
+                    timeout=15)
         except pexpect.TIMEOUT:
-            logging.debug('Timeout occurred logging in to hydra.')
-            return False
+            # If there was a timeout, this ssh tunnel could be set up to
+            # not require the hydra password.
+            ssh.sendline('')
+            try:
+                ssh.expect(re.compile(RPMController.USERNAME_PROMPT))
+                logging.debug('Connected to rpm through hydra. Logging in.')
+                return True
+            except pexpect.ExceptionPexpect:
+                return False
+        if response == 0:
+            try:
+                ssh.sendline(CONFIG.get(self.hydra_name,'password'))
+                ssh.sendline('')
+                response = ssh.expect_list(
+                        [re.compile(RPMController.USERNAME_PROMPT),
+                         re.compile(RPMController.HYDRA_CONN_HELD_MSG_FORMAT)],
+                        timeout=60)
+            except pexpect.EOF:
+                # Did not receive any of the expect responses, retry.
+                return False
+            except pexpect.TIMEOUT:
+                logging.debug('Timeout occurred logging in to hydra.')
+                return False
         # Send the username that the subclass will have set in its
         # construction.
         if response == 1:
@@ -580,6 +595,8 @@ def test_parrallel_sshrequests():
                      args=('chromeos2-row2-rack3-hostbs', 'ON')).start()
     threading.Thread(target=rpm2.queue_request,
                      args=('chromeos2-row2-rack3-hostbs2', 'ON')).start()
+    threading.Thread(target=rpm2.queue_request,
+                     args=('chromeos2-row1-rack7-hostbs1', 'ON')).start()
 
 
 if __name__ == '__main__':
