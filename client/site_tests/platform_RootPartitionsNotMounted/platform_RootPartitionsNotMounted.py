@@ -11,16 +11,15 @@ from autotest_lib.client.common_lib import error, utils
 class platform_RootPartitionsNotMounted(test.test):
     version = 1
 
+    _CGPT_PATH = '/usr/bin/cgpt'
     _ROOTDEV_PATH = '/usr/bin/rootdev'
-    _UDEVADM_PATH = '/sbin/udevadm'
     _UPDATE_ENGINE_PATH = '/usr/sbin/update_engine'
 
     def get_root_partitions(self, device):
         """Gets a list of root partitions of a device.
 
-        Gets a list of root partitions of a device by iterating through the
-        sysfs hierarchy /sys/block/<device>/<partition>. Root partitions
-        are expected to have a filesystem label 'C-ROOT'.
+        Gets a list of root partitions of a device by calling
+        `cgpt find -t rootfs <device>`.
 
         Args:
             device: The device, specified by its device file, to examine.
@@ -29,38 +28,8 @@ class platform_RootPartitionsNotMounted(test.test):
             A list of root partitions, specified by their device file,
             (e.g. /dev/sda1) of the given device.
         """
-        partitions = []
-        device_node = device.lstrip('/dev/')
-        sysfs_path = '/sys/block/%s' % device_node
-        for path in os.listdir(sysfs_path):
-            subpath = '%s/%s' % (sysfs_path, path)
-            partition_file = '%s/partition' % subpath
-            if os.path.isfile(partition_file) \
-                and self.get_filesystem_label(subpath) == 'C-ROOT':
-                    partitions.append('/dev/%s' % path)
-        return partitions
-
-    def get_filesystem_label(self, sysfs_path):
-        """Gets the filesystem label of a partition.
-
-        Gets the filesystem label of a partition specified by its sysfs path
-        by calling 'udevadm info'. 'udevadm' is expected to be installed at
-        /sbin on the test image.
-
-        Args:
-            sysfs_path: The sysfs path of the partition.
-
-        Returns:
-            The filesystem label of the given partition or None if partition
-            has no filesystem label or the label cannot be determined.
-        """
-        properties = utils.run('%s info -q property --path=%s'
-                % (self._UDEVADM_PATH, sysfs_path)).stdout
-        for property in properties.split('\n'):
-            tokens = property.split('=')
-            if tokens[0] == 'ID_FS_LABEL':
-                return tokens[1]
-        return None
+        cgpt_command = '%s find -t rootfs %s' % (self._CGPT_PATH, device)
+        return utils.run(cgpt_command).stdout.strip('\n').split('\n')
 
     def get_mounted_devices(self, mounts_file):
         """Gets a set of mounted devices from a given mounts file.
@@ -133,7 +102,7 @@ class platform_RootPartitionsNotMounted(test.test):
         if os.geteuid() != 0:
             raise error.TestNAError('This test needs to be run under root')
 
-        for path in [self._ROOTDEV_PATH, self._UDEVADM_PATH]:
+        for path in [self._CGPT_PATH, self._ROOTDEV_PATH]:
             if not os.path.isfile(path):
                 raise error.TestNAError('%s not found' % path)
 
