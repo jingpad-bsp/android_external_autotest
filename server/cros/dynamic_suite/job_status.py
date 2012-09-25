@@ -93,8 +93,8 @@ def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
             job_ids.remove(job_id)
             logging.debug('Re-imaging job %d running.', job_id)
         if job_ids:
-            time.sleep(interval)
             logging.debug('Waiting %ds before polling again.', interval)
+            time.sleep(interval)
 
 
 def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
