@@ -24,7 +24,7 @@ def generate_minidump_stacktrace(minidump_path):
     """
     symbol_dir = '%s/../../../lib/debug' % utils.get_server_dir()
     logging.info('symbol_dir: %s' % symbol_dir)
-    client_utils.run('minidump_stackwalk %s %s > %s.txt' %
+    client_utils.run('minidump_stackwalk "%s" "%s" > "%s.txt"' %
                      (minidump_path, symbol_dir, minidump_path))
 
 
