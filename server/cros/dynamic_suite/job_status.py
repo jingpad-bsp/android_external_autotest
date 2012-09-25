@@ -9,7 +9,6 @@ from autotest_lib.client.common_lib.host_queue_entry_states \
 
 TIME_FMT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_POLL_INTERVAL_SECONDS = 10
-DEFAULT_POLL_BLOWUP_THRESHOLD_SECONDS = 30 * 60  # 30 minutes.
 
 
 def view_is_relevant(view):
@@ -79,40 +78,6 @@ def gather_job_hostnames(afe, job):
     return hosts
 
 
-class ThresholdingIntervalCalculator(object):
-    """Calculates intervals that go exponential after a threshold.
-
-    Given a threshold at initialization, repeated calls to calculate()
-    will return the provided interval unchanged -- until the threshold is
-    reached.  After that, calculate() will start returning exponentially
-    increasing multiples of interval.
-    """
-    def __init__(self, threshold=DEFAULT_POLL_BLOWUP_THRESHOLD_SECONDS):
-        self._threshold = threshold
-        self._accumulated_wait = 0
-        self._post_threshold_count = 0
-
-
-    def calculate(self, interval):
-        """Until threshold is reached, return interval; after, blow up.
-
-        Repeated calls to calculate() will return the provided
-        interval unchanged -- until self._threshold is reached.  After that,
-        calculate() will start returning exponentially increasing
-        multiples of interval.
-
-        @param interval: return multiples of this interval.
-        @return 1 * interval until self._threshold.  2^n * interval afterwards,
-                where n is the number of post-threshold calls to calculate().
-        """
-        if self._accumulated_wait >= self._threshold:
-            self._post_threshold_count += 1
-            return interval * pow(2, self._post_threshold_count)
-        else:
-            self._accumulated_wait += interval
-            return interval
-
-
 def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
     """
     Wait for the job specified by |job.id| to start.
@@ -120,7 +85,6 @@ def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param jobs: the jobs to poll on.
     """
-    calculator = ThresholdingIntervalCalculator()
     job_ids = [j.id for j in jobs]
     while job_ids:
         for job_id in list(job_ids):
@@ -129,9 +93,8 @@ def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
             job_ids.remove(job_id)
             logging.debug('Re-imaging job %d running.', job_id)
         if job_ids:
-            next_interval = calculator.calculate(interval)
-            time.sleep(next_interval)
-            logging.debug('Waiting %ds before polling again.', next_interval)
+            time.sleep(interval)
+            logging.debug('Waiting %ds before polling again.', interval)
 
 
 def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):

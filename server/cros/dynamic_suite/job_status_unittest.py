@@ -38,20 +38,6 @@ class StatusTest(mox.MoxTestBase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
 
-    def testThresholdingIntervalCalculator(self):
-        """Up to threshold, interval is constant; after, interval grows."""
-        threshold = 4
-        interval = 1
-        c = job_status.ThresholdingIntervalCalculator(threshold)
-        for i in xrange(4):
-            self.assertEquals(interval, c.calculate(interval))
-        last_interval = interval
-        for i in xrange(4):
-            new_interval = c.calculate(interval)
-            self.assertTrue(last_interval < new_interval)
-            last_interval = new_interval
-
-
     def testGatherJobHostnamesAllRan(self):
         """All entries for the job were assigned hosts."""
         job = FakeJob(0, [])
