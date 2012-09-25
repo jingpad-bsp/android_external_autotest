@@ -4,7 +4,6 @@
 
 NAME = "Sound System Validation"
 AUTHOR = "Taylor Hutt"
-SUITE = "kernel_per-build_regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "General"

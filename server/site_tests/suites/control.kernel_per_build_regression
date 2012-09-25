@@ -37,7 +37,6 @@ CLIENT_TESTS = [
     ('scrashme', { 'args_list': '--mode rotate -SD5' }),
     # Use zero as all regparms.
     ('scrashme', { 'args_list': '--mode rotate -z' }),
-    ('sound_infrastructure', {}),
 ]
 
 
