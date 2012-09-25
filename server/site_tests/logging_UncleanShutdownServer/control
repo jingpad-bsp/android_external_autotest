@@ -3,15 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "KernelCrashServer"
+NAME = "UncleanShutdownServer"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "server"
 
 DOC = """
-Test that kernel space crashes (really just unclean shutdowns) are
-detected and handled appropriately.
+Test that unclean shutdowns are detected and handled appropriately.
 """
 
 # This must be a server side file because it expects the kernel
