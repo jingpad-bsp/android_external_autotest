@@ -109,6 +109,7 @@ class Output:
         if type(msg) is list:
             msg = os.linesep.join(msg)
         self.win.set_result(msg)
+        print msg
 
     def print_report(self, msg):
         """Print the message to the report."""

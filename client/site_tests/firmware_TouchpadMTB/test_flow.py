@@ -279,6 +279,7 @@ class TestFlow:
             self.output.print_all(msg_list)
             self.gesture_file.close()
             self.win.set_prompt(self._get_prompt_next())
+            print self._get_prompt_next()
             self._stop_record_and_post_image()
         else:
             self.win.set_prompt(self._get_prompt_no_data(), color='red')
@@ -382,6 +383,7 @@ class TestFlow:
                 self._create_gesture_file_name(self.gesture, self.variation))
         (msg, color_msg, _) = self._create_prompt(self.gesture, self.variation)
         self.win.set_gesture_name(msg)
+        print color_msg
         self.output.print_report(color_msg)
         self.saved_msg = '(saved: %s)\n' % self.gesture_file_name
         self.deleted_msg = '(deleted: %s)\n' % self.gesture_file_name
