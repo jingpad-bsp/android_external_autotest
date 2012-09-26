@@ -204,12 +204,15 @@ static int capture_some(snd_pcm_t *pcm, short *buf, unsigned len)
     return (int)frames;
 }
 
+/* Looks for the first sample in buffer whose absolute value exceeds
+ * noise_threshold. Returns the position of found sample in frames, -1
+ * if not found. */
 static int check_for_noise(short *buf, unsigned len, unsigned channels)
 {
     unsigned int i;
     for (i = 0; i < len * channels; i++)
         if (abs(buf[i]) > noise_threshold)
-            return i;
+            return i / channels;
     return -1;
 }
 
@@ -249,7 +252,6 @@ static int cras_capture_tone(struct cras_client *client,
         fprintf(stderr, "Got noise\n");
         cras_captured_noise = 1;
 
-        cap_frames /= channels;
         struct timespec shifted_time = *sample_time;
         shifted_time.tv_nsec += 1000000000L / rate * cap_frames;
         while (shifted_time.tv_nsec > 1000000000L) {
@@ -265,7 +267,7 @@ static int cras_capture_tone(struct cras_client *client,
 }
 
 /* Callback for tone playback.  Playback latency will be passed
- * as arg and updated when the first tone
+ * as arg and updated when the first tone.
  */
 static int cras_play_tone(struct cras_client *client,
                           cras_stream_id_t stream_id,
@@ -438,7 +440,7 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
 
     unsigned int num_buffers, chn;
     phase = 0;
-    snd_pcm_sframes_t delay_frames;
+    snd_pcm_sframes_t playback_delay_frames;
     snd_pcm_sframes_t cap_delay_frames;
     struct timeval sine_start_tv;
     snd_pcm_channel_area_t *areas;
@@ -490,13 +492,13 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
     }
 
     generate_sine(areas, 0, period_size, &phase);
-    snd_pcm_delay(playback_handle, &delay_frames);
+    snd_pcm_delay(playback_handle, &playback_delay_frames);
     gettimeofday(&sine_start_tv, NULL);
 
     /* Then play a sine wave and look for it on capture.
      * This will fail for latency > 500mS. */
     for (num_buffers = 0; num_buffers < 50; num_buffers++) {
-        int num_cap;
+        int num_cap, noise_delay_frames;
 
         if ((err = snd_pcm_writei(playback_handle, play_buf, period_size))
                 != period_size) {
@@ -506,28 +508,27 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
         }
         snd_pcm_delay(capture_handle, &cap_delay_frames);
         num_cap = capture_some(capture_handle, cap_buf, period_size);
-
-        if (num_cap > 0 && (num_cap = check_for_noise(cap_buf,
-                                  num_cap,
-                                  channels)) > 0) {
+        if (num_cap > 0 && (noise_delay_frames = check_for_noise(cap_buf,
+                num_cap, channels)) > 0) {
             struct timeval cap_time;
-            unsigned long latency;
+            unsigned long latency_us;
 
             gettimeofday(&cap_time, NULL);
 
             fprintf(stderr, "Found audio\n");
             fprintf(stderr, "Played at %ld %ld, %ld delay\n",
-                    sine_start_tv.tv_sec, sine_start_tv.tv_usec, delay_frames);
+                    sine_start_tv.tv_sec, sine_start_tv.tv_usec,
+                    playback_delay_frames);
             fprintf(stderr, "Capture at %ld %ld, %ld delay sample %d\n",
                     cap_time.tv_sec, cap_time.tv_usec,
-                    cap_delay_frames, num_cap);
+                    cap_delay_frames, noise_delay_frames);
 
-            latency = subtract_timevals(&cap_time, &sine_start_tv);
-            fprintf(stdout, "Measured Latency: %lu uS\n", latency);
+            latency_us = subtract_timevals(&cap_time, &sine_start_tv);
+            fprintf(stdout, "Measured Latency: %lu uS\n", latency_us);
 
-            latency = (delay_frames + cap_delay_frames - num_cap / channels) *
-                    1000000 / rate;
-            fprintf(stdout, "Reported Latency: %lu uS\n", latency);
+            latency_us = (playback_delay_frames + cap_delay_frames -
+                    noise_delay_frames) * 1000000 / rate;
+            fprintf(stdout, "Reported Latency: %lu uS\n", latency_us);
             return;
         }
         generate_sine(areas, 0, period_size, &phase);
