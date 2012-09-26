@@ -25,7 +25,8 @@ class XxxValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, fingers=1):
-        super(X..Validator, self).__init__(criteria_str, mf)
+        name = self.__class__.__name__
+        super(X..Validator, self).__init__(criteria_str, mf, name)
         self.fingers = fingers
 
     def check(self, packets, variation=None):
@@ -53,8 +54,10 @@ Note that it is also possible to instantiate a validator as
 
 
 import numpy as n
+import os
 import sys
 
+import firmware_log
 import firmware_utils
 import fuzzy
 import mtb
@@ -72,36 +75,43 @@ def validate(packets, gesture, variation):
 
     msg_list = []
     score_list = []
+    logs = []
     for validator in gesture.validators:
-        (score, check_msg) = validator.check(packets, variation)
+        log = validator.check(packets, variation)
+        if log is None:
+            continue
+        logs.append(log)
+        score = log.get_score()
+
         if score is not None:
             score_list.append(score)
-
             # save the validator messages
-            validator_name = validator.__class__.__name__
-            msg_validator_name = '    %s' % validator_name
-            msg_criteria = '        criteria_str: %s' % validator.criteria_str
-            msg_list.append(' ')
-            msg_list.append(msg_validator_name)
-            msg_list += check_msg
-            msg_list.append(msg_criteria)
+            msg_validator_name = '    %s' % log.get_name()
+            msg_criteria = '        criteria_str: %s' % log.get_criteria()
             msg_score = '    score: %f' % score
+            msg_list.append(os.linesep)
+            msg_list.append(msg_validator_name)
+            msg_list += log.get_details()
+            msg_list.append(msg_criteria)
             msg_list.append(msg_score)
 
-    return (score_list, msg_list)
+    return (score_list, msg_list, logs)
 
 
 class BaseValidator(object):
     """Base class of validators."""
     aggregator = 'fuzzy.average'
 
-    def __init__(self, criteria_str, mf=None, device=None):
+    def __init__(self, criteria_str, mf=None, device=None, name=None):
         self.criteria_str = criteria_str
         self.fc = fuzzy.FuzzyCriteria(criteria_str, mf=mf)
         self.device = TouchpadDevice() if device is None else device
         self.device_width, self.device_height = self.device.get_dimensions()
         self.packets = None
         self.msg_list = []
+        self.log = firmware_log.ValidatorLog()
+        self.log.insert_name(name)
+        self.log.insert_criteria(criteria_str)
 
     def init_check(self, packets):
         """Initialization before check() is called."""
@@ -137,15 +147,24 @@ class BaseValidator(object):
         elif self.is_diagonal(variation):
             return DIAGONAL
 
-    def print_msg(self, msg):
-        """Collect the messages to be printed within this module."""
+    def log_name(self, msg):
+        """Collect the validator name."""
+        self.log.insert_name(msg)
+
+    def log_details(self, msg):
+        """Collect the detailed messages to be printed within this module."""
         prefix_space = ' ' * 8
         formatted_msg = '%s%s' % (prefix_space, msg)
         self.msg_list.append(formatted_msg)
+        self.log.insert_details(formatted_msg)
 
-    def print_error(self, msg):
-        """Print error message."""
-        self.print_msg('Error: %s.' %msg)
+    def log_score(self, score):
+        """Collect the score."""
+        self.log.insert_score(score)
+
+    def log_error(self, msg):
+        """Collect the error message."""
+        self.log.insert_error(msg)
 
 
 class LinearityValidator(BaseValidator):
@@ -159,7 +178,8 @@ class LinearityValidator(BaseValidator):
     MSE_PARTIAL_GROUP_SIZE = 1
 
     def __init__(self, criteria_str, mf=None, device=None, slot=0):
-        super(LinearityValidator, self).__init__(criteria_str, mf, device)
+        name = self.__class__.__name__
+        super(LinearityValidator, self).__init__(criteria_str, mf, device, name)
         self.slot = slot
 
     def _simple_linear_regression(self, ax, ay):
@@ -226,10 +246,11 @@ class LinearityValidator(BaseValidator):
             ave_distance = self._simple_linear_regression(list_x, list_y)
             deviation_touch = ave_distance / resolution_y
 
-        self.print_msg('ave fitting error: %.2f' % ave_distance)
+        self.log_details('ave fitting error: %.2f' % ave_distance)
         msg_device = 'deviation (pad) slot[%d]: %.2f mm'
-        self.print_msg(msg_device % (self.slot, deviation_touch))
-        return (self.fc.mf.grade(deviation_touch), self.msg_list)
+        self.log_details(msg_device % (self.slot, deviation_touch))
+        self.log_score(self.fc.mf.grade(deviation_touch))
+        return self.log
 
 
 class RangeValidator(BaseValidator):
@@ -240,6 +261,10 @@ class RangeValidator(BaseValidator):
         To check the range of observed edge-to-edge positions:
           RangeValidator('<= 0.05, ~ +0.05')
     """
+
+    def __init__(self, criteria_str, mf=None, device=None):
+        name = self.__class__.__name__
+        super(RangeValidator, self).__init__(criteria_str, mf, device, name)
 
     def check(self, packets, variation=None):
         """Check the left/right or top/bottom range based on the direction."""
@@ -265,16 +290,17 @@ class RangeValidator(BaseValidator):
             # checked range on horizontal/vertical lines.
             # It is also difficult to make two-finger tracking precisely from
             # the very corner to the other corner.
-            return (None, self.msg_list)
+            return None
         else:
             error_msg = 'A direction variation is missing in this gesture.'
-            self.print_error(error_msg)
-            return (None, self.msg_list)
+            self.insert_error(error_msg)
+            return None
 
-        self.print_msg('actual: %s' % str(actual_range_axis))
-        self.print_msg('spec: %s' % str(spec_range_axis))
-        self.print_msg('ave_deviation: %f' % ave_deviation)
-        return (self.fc.mf.grade(ave_deviation), self.msg_list)
+        self.log_details('actual: %s' % str(actual_range_axis))
+        self.log_details('spec: %s' % str(spec_range_axis))
+        self.log_details('ave_deviation: %f' % ave_deviation)
+        self.log_score(self.fc.mf.grade(ave_deviation))
+        return self.log
 
 
 class CountTrackingIDValidator(BaseValidator):
@@ -286,15 +312,18 @@ class CountTrackingIDValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None):
-        super(CountTrackingIDValidator, self).__init__(criteria_str, mf, device)
+        name = self.__class__.__name__
+        super(CountTrackingIDValidator, self).__init__(criteria_str, mf,
+                                                       device, name)
 
     def check(self, packets, variation=None):
         """Check the number of tracking IDs observed."""
         self.init_check(packets)
         # Get the count of tracking id
         count_tid = self.packets.get_number_contacts()
-        self.print_msg('count of trackid IDs: %d' % count_tid)
-        return (self.fc.mf.grade(count_tid), self.msg_list)
+        self.log_details('count of trackid IDs: %d' % count_tid)
+        self.log_score(self.fc.mf.grade(count_tid))
+        return self.log
 
 
 class StationaryFingerValidator(BaseValidator):
@@ -307,8 +336,9 @@ class StationaryFingerValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None, slot=0):
+        name = self.__class__.__name__
         super(StationaryFingerValidator, self).__init__(criteria_str, mf,
-                                                        device)
+                                                        device, name)
         self.slot = slot
 
     def check(self, packets, variation=None):
@@ -316,9 +346,10 @@ class StationaryFingerValidator(BaseValidator):
         self.init_check(packets)
         # Get the count of tracking id
         distance = self.packets.get_largest_distance(self.slot)
-        self.print_msg('Largest distance in slot[%d]: %d' % (self.slot,
-                                                             distance))
-        return (self.fc.mf.grade(distance), self.msg_list)
+        self.log_details('Largest distance in slot[%d]: %d' % (self.slot,
+                                                               distance))
+        self.log_score(self.fc.mf.grade(distance))
+        return self.log
 
 
 class NoGapValidator(BaseValidator):
@@ -330,7 +361,8 @@ class NoGapValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None, slot=0):
-        super(NoGapValidator, self).__init__(criteria_str, mf, device)
+        name = self.__class__.__name__
+        super(NoGapValidator, self).__init__(criteria_str, mf, device, name)
         self.slot = slot
 
     def check(self, packets, variation=None):
@@ -339,8 +371,9 @@ class NoGapValidator(BaseValidator):
         # Get the largest gap ratio
         gap_ratio = self.packets.get_largest_gap_ratio(self.slot)
         msg = 'Largest gap ratio in slot[%d]: %f'
-        self.print_msg(msg % (self.slot, gap_ratio))
-        return (self.fc.mf.grade(gap_ratio), self.msg_list)
+        self.log_details(msg % (self.slot, gap_ratio))
+        self.log_score(self.fc.mf.grade(gap_ratio))
+        return self.log
 
 
 class NoReversedMotionValidator(BaseValidator):
@@ -352,8 +385,9 @@ class NoReversedMotionValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None, slots=(0,)):
+        name = self.__class__.__name__
         super(NoReversedMotionValidator, self).__init__(criteria_str, mf,
-                                                        device)
+                                                        device, name)
         self.slots = (slots,) if isinstance(slots, int) else slots
 
     def check(self, packets, variation=None):
@@ -366,9 +400,10 @@ class NoReversedMotionValidator(BaseValidator):
             reversed_motions = self.packets.get_reversed_motions(slot,
                                                                  direction)
             msg = 'Reversed motions in slot[%d]: %s'
-            self.print_msg(msg % (slot, reversed_motions))
+            self.log_details(msg % (slot, reversed_motions))
             sum_reversed_motions += sum(map(abs, reversed_motions.values()))
-        return (self.fc.mf.grade(sum_reversed_motions), self.msg_list)
+        self.log_score(self.fc.mf.grade(sum_reversed_motions))
+        return self.log
 
 
 class CountPacketsValidator(BaseValidator):
@@ -380,7 +415,9 @@ class CountPacketsValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None, slot=0):
-        super(CountPacketsValidator, self).__init__(criteria_str, mf, device)
+        name = self.__class__.__name__
+        super(CountPacketsValidator, self).__init__(criteria_str, mf, device,
+                                                    name)
         self.slot = slot
 
     def check(self, packets, variation=None):
@@ -389,8 +426,9 @@ class CountPacketsValidator(BaseValidator):
         # Get the number of packets in that slot
         num_packets = self.packets.get_num_packets(self.slot)
         msg = 'Number of packets in slot[%d]: %s'
-        self.print_msg(msg % (self.slot, num_packets))
-        return (self.fc.mf.grade(num_packets), self.msg_list)
+        self.log_details(msg % (self.slot, num_packets))
+        self.log_score(self.fc.mf.grade(num_packets))
+        return self.log
 
 
 class PinchValidator(BaseValidator):
@@ -402,7 +440,8 @@ class PinchValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None):
-        super(PinchValidator, self).__init__(criteria_str, mf, device)
+        name = self.__class__.__name__
+        super(PinchValidator, self).__init__(criteria_str, mf, device, name)
 
     def check(self, packets, variation):
         """Check the number of packets in the specified slot."""
@@ -413,8 +452,9 @@ class PinchValidator(BaseValidator):
         if variation == ZOOM_OUT:
             relative_motion = -relative_motion
         msg = 'Relative motions of the two fingers: %.2f'
-        self.print_msg(msg % relative_motion)
-        return (self.fc.mf.grade(relative_motion), self.msg_list)
+        self.log_details(msg % relative_motion)
+        self.log_score(self.fc.mf.grade(relative_motion))
+        return self.log
 
 
 class PhysicalClickValidator(BaseValidator):
@@ -426,7 +466,9 @@ class PhysicalClickValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, fingers, mf=None, device=None):
-        super(PhysicalClickValidator, self).__init__(criteria_str, mf, device)
+        name = self.__class__.__name__
+        super(PhysicalClickValidator, self).__init__(criteria_str, mf, device,
+                                                     name)
         self.fingers = fingers
 
     def check(self, packets, variation=None):
@@ -435,8 +477,9 @@ class PhysicalClickValidator(BaseValidator):
         # Get the number of packets in that slot
         count = self.packets.get_physical_clicks(self.fingers)
         msg = 'Count of %d-finger physical clicks: %s'
-        self.print_msg(msg % (self.fingers, count))
-        return (self.fc.mf.grade(count), self.msg_list)
+        self.log_details(msg % (self.fingers, count))
+        self.log_score(self.fc.mf.grade(count))
+        return self.log
 
 
 class DrumrollValidator(BaseValidator):
@@ -448,7 +491,8 @@ class DrumrollValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None):
-        super(DrumrollValidator, self).__init__(criteria_str, mf, device)
+        name = self.__class__.__name__
+        super(DrumrollValidator, self).__init__(criteria_str, mf, device, name)
 
     def check(self, packets, variation=None):
         """The moving distance of the points in any tracking ID should be
@@ -458,5 +502,6 @@ class DrumrollValidator(BaseValidator):
         # Get the max distance of all tracking IDs
         max_distance = self.packets.get_max_distance_of_all_tracking_ids()
         msg = 'Max distance: %.2f'
-        self.print_msg(msg % max_distance)
-        return (self.fc.mf.grade(max_distance), self.msg_list)
+        self.log_details(msg % max_distance)
+        self.log_score(self.fc.mf.grade(max_distance))
+        return self.log

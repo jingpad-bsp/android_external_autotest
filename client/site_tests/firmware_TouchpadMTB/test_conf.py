@@ -40,6 +40,10 @@ range_criteria = '<= 0.05, ~ +0.05'
 stationary_finger_criteria = '<= 20, ~ +20'
 
 
+# Define the score colors
+score_colors = ((0.9, 'blue'), (0.8, 'orange'), (0.0, 'red'))
+
+
 # Define the gesture list that the user needs to perform in the test suite.
 def get_gesture_list():
     gesture_list = [

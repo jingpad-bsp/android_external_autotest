@@ -16,6 +16,8 @@ import test_conf as conf
 import test_flow
 import touch_device
 
+from report_html import ReportHtml
+
 # Include some constants
 execfile('firmware_constants.py', globals())
 
@@ -47,13 +49,19 @@ class firmware_TouchpadMTB:
                 image_size=self.touchpad_window_size,
                 result_size=self.result_frame_size)
 
-        # Create the output object to print messages on the window and to
-        # print the results in the report.
+        # Create the HTML report object and the output object to print messages
+        # on the window and to print the results in the report.
         self.log_dir = firmware_utils.create_log_dir()
         self.report_name = os.path.join(self.log_dir,
                                         'touchpad_firmware_report')
-        self.output = firmware_utils.Output(self.log_dir, self.report_name,
-                                            self.win)
+        self.report_html_name = self.report_name + '.html'
+        self.report_html = ReportHtml(self.report_html_name,
+                                      self.screen_size,
+                                      self.touchpad_window_size,
+                                      conf.score_colors)
+        self.output = firmware_utils.Output(self.log_dir,
+                                            self.report_name,
+                                            self.win, self.report_html)
 
         # Get the test_flow object which will guide through the gesture list.
         self.test_flow = test_flow.TestFlow(self.touchpad_window_geometry,

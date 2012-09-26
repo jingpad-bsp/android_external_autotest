@@ -13,6 +13,7 @@ import sys
 import time
 
 import common_util
+import firmware_log
 import firmware_utils
 import fuzzy
 import mini_color
@@ -191,9 +192,13 @@ class TestFlow:
         color_msg = color_msg_format % (test.name, self.prefix_space,
                                         color_prompt)
         msg = '%s: %s' % (test.name, monochrome_prompt)
-        prompt_choice = 'Enter your choice: '
 
-        return (msg, color_msg, prompt_choice)
+        glog = firmware_log.GestureLog()
+        glog.insert_name(test.name)
+        glog.insert_variation(variation)
+        glog.insert_prompt(monochrome_prompt)
+
+        return (msg, color_msg, glog)
 
     def _choice_exit(self):
         """Procedure to exit."""
@@ -245,6 +250,8 @@ class TestFlow:
         self.output.print_report(self.saved_msg)
         self._add_scores(self.new_scores)
         self.win.set_prompt(self._get_prompt_result())
+        self.output.report_html.insert_image(self.gesture_image_name)
+        self.output.report_html.flush()
         if self._pre_setup_this_gesture_variation(next_gesture=next_gesture):
             # There are more gestures.
             self._setup_this_gesture_variation()
@@ -252,12 +259,14 @@ class TestFlow:
             # No more gesture.
             self._final_scores(self.scores)
             self.output.stop()
+            self.output.report_html.stop()
             self.win.stop()
         self.packets = None
 
     def _handle_user_choice_discard_after_parsing(self):
         """Handle user choice for discarding the parsed gesture file."""
         self.output.print_window('')
+        self.output.report_html.reset_logs()
         self.win.set_prompt(self._get_prompt_result())
         self._setup_this_gesture_variation()
         self.packets = None
@@ -265,6 +274,8 @@ class TestFlow:
     def _handle_user_choice_exit_after_parsing(self):
         """Handle user choice to exit after the gesture file is parsed."""
         self._stop_record_and_rm_file()
+        self.output.stop()
+        self.output.report_html.stop()
         self.win.stop()
 
     def _handle_user_choice_validate_before_parsing(self):
@@ -273,11 +284,11 @@ class TestFlow:
         self.packets = self.parser.parse_file(self.gesture_file_name)
         if self.packets:
             # Validate this gesture and get the results.
-            (self.new_scores, msg_list) = validators.validate(self.packets,
-                                                              self.gesture,
-                                                              self.variation)
+            (self.new_scores, msg_list, vlogs) = validators.validate(
+                    self.packets, self.gesture, self.variation)
             self.output.print_window(msg_list)
             self.output.buffer_report(msg_list)
+            self.output.report_html.insert_validator_logs(vlogs)
             self.gesture_file.close()
             self.win.set_prompt(self._get_prompt_next())
             print self._get_prompt_next()
@@ -288,8 +299,7 @@ class TestFlow:
     def _handle_user_choice_exit_before_parsing(self):
         """Handle user choice to exit before the gesture file is parsed."""
         self.gesture_file.close()
-        self._stop_record_and_rm_file()
-        self.win.stop()
+        self._handle_user_choice_exit_after_parsing()
 
     def _is_parsing_gesture_file_done(self):
         """Is parsing the gesture file done?"""
@@ -382,8 +392,10 @@ class TestFlow:
 
         self.gesture_file_name = os.path.join(self.output.log_dir,
                 self._create_gesture_file_name(self.gesture, self.variation))
-        (msg, color_msg, _) = self._create_prompt(self.gesture, self.variation)
+        (msg, color_msg, glog) = self._create_prompt(self.gesture,
+                                                     self.variation)
         self.win.set_gesture_name(msg)
+        self.output.report_html.insert_gesture_log(glog)
         print color_msg
         self.output.print_report(color_msg)
         self.saved_msg = '(saved: %s)\n' % self.gesture_file_name

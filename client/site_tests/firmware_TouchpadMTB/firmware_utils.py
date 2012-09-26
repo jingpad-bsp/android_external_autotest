@@ -89,13 +89,14 @@ class Gesture:
 
 class Output:
     """A class to handle outputs to the window and to the report."""
-    def __init__(self, log_dir, report_name, win):
+    def __init__(self, log_dir, report_name, win, report_html):
         self.log_dir = log_dir
         self.report_name = report_name
         self.report = open(report_name, 'w')
         self.win = win
         self.prefix_space = ' ' * 4
         self.msg = None
+        self.report_html = report_html
 
     def __del__(self):
         self.stop()
