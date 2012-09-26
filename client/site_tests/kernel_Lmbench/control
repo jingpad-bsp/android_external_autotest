@@ -1,6 +1,8 @@
 NAME = "kernel_Lmbench"
 AUTHOR = "Chrome OS Team"
-TIME = "MEDIUM"
+SUITE = "kernel_per-build_benchmarks"
+# Sept 2012: Full run takes 2m50s on Lumpy.
+TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "kernel"
 TEST_TYPE = "client"
