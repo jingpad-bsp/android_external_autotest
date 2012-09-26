@@ -83,6 +83,7 @@ class Output:
         self.report = open(report_name, 'w')
         self.win = win
         self.prefix_space = ' ' * 4
+        self.msg = None
 
     def __del__(self):
         self.stop()
@@ -111,7 +112,7 @@ class Output:
         self.win.set_result(msg)
         print msg
 
-    def print_report(self, msg):
+    def _print_report(self, msg):
         """Print the message to the report."""
         if type(msg) is list:
             for line in msg:
@@ -119,10 +120,32 @@ class Output:
         else:
             self.print_report_line(msg)
 
+    def buffer_report(self, msg):
+        """Buffer the message and print it later if not over-written.
+
+        Usage of the method: the validator test result of a gesture may
+        be discarded because the user chooses to re-perform the gesture
+        again. So it should be able to over-write the message.
+        """
+        self.msg = msg
+
+    def flush_report(self):
+        """Print the buffered message if any."""
+        if self.msg:
+            self._print_report(self.msg)
+            self.msg = None
+
+    def print_report(self, msg):
+        """Print the message to the report."""
+        # Print any buffered message first.
+        self.flush_report()
+        # Print this incoming message
+        self._print_report(msg)
+
     def print_all(self, msg):
         """Print the message to both report and to the window."""
         self.print_window(msg)
-        self.print_report(msg)
+        self.buffer_report(msg)
 
 
 class SimpleX:

@@ -276,7 +276,8 @@ class TestFlow:
             (self.new_scores, msg_list) = validators.validate(self.packets,
                                                               self.gesture,
                                                               self.variation)
-            self.output.print_all(msg_list)
+            self.output.print_window(msg_list)
+            self.output.buffer_report(msg_list)
             self.gesture_file.close()
             self.win.set_prompt(self._get_prompt_next())
             print self._get_prompt_next()
