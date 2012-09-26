@@ -30,7 +30,7 @@ class logging_UserCrash(crash_test.CrashTest):
         # Turn off crash filtering so we see the original setting.
         self.disable_crash_filtering()
         output = utils.read_file(self._CORE_PATTERN).rstrip()
-        expected_core_pattern = ('|%s --user=%%p:%%s:%%e' %
+        expected_core_pattern = ('|%s --user=%%p:%%s:%%u:%%e' %
                                  self._CRASH_REPORTER_PATH)
         if output != expected_core_pattern:
             raise error.TestFail('core pattern should have been %s, not %s' %
@@ -216,13 +216,14 @@ class logging_UserCrash(crash_test.CrashTest):
                                  output)
         pid = int(match.group(1))
 
+        expected_uid = pwd.getpwnam(username)[2]
         if consent:
             handled_string = 'handling'
         else:
             handled_string = 'ignoring - no consent'
         expected_message = (
-            'Received crash notification for %s[%d] sig 11 (%s)' %
-            (basename, pid, handled_string))
+            'Received crash notification for %s[%d] sig 11, user %d (%s)' %
+            (basename, pid, expected_uid, handled_string))
 
         # Wait until no crash_reporter is running.
         utils.poll_for_condition(
