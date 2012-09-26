@@ -1,9 +1,70 @@
+import time
+
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_protections
+from autotest_lib.frontend.afe import models as afe_models
+from autotest_lib.server.hosts import site_host
+
+
+WAIT_FOR_GOOD_BOOT_TIME = 45
+BOOT_ATTEMPTS_FOR_AUTO_FALLBACK = 6
+RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
+        'boards_with_recovery', type=str).split(',')
+
+
+def _get_board_from_afe(machine):
+    """Retrieve this host's board from it's labels in the afe.
+
+    @returns - board label as a string or None if it could not be found.
+    """
+    host_model = afe_models.Host.objects.get(hostname=machine)
+    labels = host_model.labels.all()
+    for label in labels:
+        if label.name.startswith('board:'):
+            return label.name
+    return None
+
+
+def _powercycle_to_repair(host, level):
+    """Utilize the RPM Infrastructure to bring the host back up.
+
+    If the host is not up/repaired after the first powercycle we utilize
+    auto fallback to the last good install by powercycling and rebooting the
+    host 6 times.
+
+    @param host: Host we are trying to repair.
+    @param level: Host protection level used in the repair process.
+
+    @returns - True if this process is successful or False if it fails.
+    """
+    logging.info('Repair Failed, will attempt to powercycle %d times to '
+                 'bring device back up.', BOOT_ATTEMPTS_FOR_AUTO_FALLBACK)
+    cycle_count = 0
+    while cycle_count < BOOT_ATTEMPTS_FOR_AUTO_FALLBACK:
+        try:
+            host.power_cycle()
+        except site_host.RemotePowerException:
+            # Failed to power cycle the dut, raise the Repair Failure.
+            return False
+        time.sleep(WAIT_FOR_GOOD_BOOT_TIME)
+        if host.is_up():
+            logging.info('Powercycling was successful - host is now '
+                         'reachable. Retrying repair.')
+            try:
+                # Retry repair and if successful return.
+                host.repair_with_protection(level)
+                return True
+            except Exception:
+                logging.info('Repair failed, continuing powercycles.')
+        cycle_count = cycle_count + 1
+    logging.info('Powercycled %d times, device did not come back online.',
+                 BOOT_ATTEMPTS_FOR_AUTO_FALLBACK)
+    return False
+
 
 
 def _call_repair(machine):
     protection = host_protections.Protection
-
     try:
         level = protection.get_value(protection_level)
     except ValueError:
@@ -11,7 +72,24 @@ def _call_repair(machine):
                                   protection_level)
 
     host = hosts.create_host(machine, initialize=False, auto_monitor=False)
-    host.repair_with_protection(level)
+    try:
+        host.repair_with_protection(level)
+        return
+    except Exception as e:
+        # Look up the host's board from the labels in the afe.
+        host_board = _get_board_from_afe(machine)
+        if not host_board:
+            raise
+        rpm_cycling = False
+        for board in RECOVERY_BOARDS:
+            # Check to see if this board supports recovery through the RPM
+            # Infrastructure.
+            if board in host_board:
+                rpm_cycling = True
+        if not host.has_power() or not rpm_cycling:
+            raise
+        if not _powercycle_to_repair(host, level):
+            raise
 
 
 def repair(machine):
