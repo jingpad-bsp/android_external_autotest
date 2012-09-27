@@ -9,6 +9,7 @@ class FAFTClientAttribute(object):
     DEFAULT_SETTING = {'broken_warm_reset': False,
                        'chrome_ec': False,
                        'has_lid': True,
+                       'has_keyboard': True,
                        'keyboard_dev': True,
                        'ec_capability': list(),
                        'wp_voltage': 'pp1800',
@@ -41,6 +42,10 @@ class FAFTClientAttribute(object):
         # Set 'has_lid'
         if platform in ['Stumpy', 'Kiev']:
             setting['has_lid'] = False
+
+        # Set 'has_keyboard'
+        if platform in ['Stumpy', 'Kiev']:
+            setting['has_keyboard'] = False
 
         # Set 'keyboard_dev'
         if platform in ['Aebl', 'Alex', 'Kaen', 'Kiev', 'Lumpy', 'Mario',
