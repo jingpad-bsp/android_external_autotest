@@ -608,24 +608,27 @@ class FAFTSequence(ServoTest):
         return result_list
 
 
-    def check_ec_capability(self, required_cap=[]):
+    def check_ec_capability(self, required_cap=[], suppress_warning=False):
         """Check if current platform has required EC capabilities.
 
         Args:
           required_cap: A list containing required EC capabilities. Pass in
             None to only check for presence of Chrome EC.
+          suppress_warning: True to suppress any warning messages.
 
         Returns:
           True if requirements are met. Otherwise, False.
         """
         if not self.client_attr.chrome_ec:
-            logging.warn('Requires Chrome EC to run this test.')
+            if not suppress_warning:
+                logging.warn('Requires Chrome EC to run this test.')
             return False
 
         for cap in required_cap:
             if cap not in self.client_attr.ec_capability:
-                logging.warn('Requires EC capability "%s" to run this test.' %
-                             cap)
+                if not suppress_warning:
+                    logging.warn('Requires EC capability "%s" to run this '
+                                 'test.' % cap)
                 return False
 
         return True
@@ -750,7 +753,7 @@ class FAFTSequence(ServoTest):
         crossystem_dict = {'tried_fwb': '0'}
         if expected_fw:
             crossystem_dict['mainfw_act'] = expected_fw.upper()
-        if self.check_ec_capability():
+        if self.check_ec_capability(suppress_warning=True):
             crossystem_dict['ecfw_act'] = ('RW' if twostop else 'RO')
 
         return (self.vdat_flags_checker(
@@ -1209,7 +1212,7 @@ class FAFTSequence(ServoTest):
             self.servo.set('cold_reset', 'off')
             time.sleep(self.POWER_BTN_DELAY)
             self.servo.set('pwr_button', 'release')
-        elif self.check_ec_capability():
+        elif self.check_ec_capability(suppress_warning=True):
             # We don't use servo.cold_reset() here because software sync is
             # not yet finished, and device may or may not come up after cold
             # reset. Pressing power button before firmware comes up solves this.

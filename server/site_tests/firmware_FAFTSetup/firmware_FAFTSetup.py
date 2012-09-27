@@ -22,7 +22,7 @@ class firmware_FAFTSetup(FAFTSequence):
 
     def console_checker(self):
         """Verify EC console is available if using Chrome EC."""
-        if not self.check_ec_capability():
+        if not self.check_ec_capability(suppress_warning=True):
             # Not Chrome EC. Nothing to check.
             return True
         try:
