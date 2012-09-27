@@ -1,6 +1,7 @@
 # Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import logging
 import re
 import socket
 
@@ -62,3 +63,55 @@ def get_current_board():
             if m:
                 return m.group(1)
     return None
+
+
+# TODO(petermayo): crosbug.com/31826 Share this with _GsUpload in
+# //chromite.git/buildbot/prebuilt.py somewhere/somehow
+def gs_upload(local_file, remote_file, acl, result_dir=None,
+              transfer_timeout=300, acl_timeout=300):
+    """Upload to GS bucket.
+
+    @param local_file: Local file to upload
+    @param remote_file: Remote location to upload the local_file to.
+    @param acl: name or file used for controlling access to the uploaded
+                file.
+    @param result_dir: Result directory if you want to add tracing to the
+                       upload.
+
+    @raise CmdError: the exit code of the gsutil call was not 0.
+
+    @returns True/False - depending on if the upload succeeded or failed.
+    """
+    # https://developers.google.com/storage/docs/accesscontrol#extension
+    CANNED_ACLS = ['project-private', 'private', 'public-read',
+                   'public-read-write', 'authenticated-read',
+                   'bucket-owner-read', 'bucket-owner-full-control']
+    _GSUTIL_BIN = 'gsutil'
+    acl_cmd = None
+    if acl in CANNED_ACLS:
+        cmd = '%s cp -a %s %s %s' % (_GSUTIL_BIN, acl, local_file, remote_file)
+    else:
+        # For private uploads we assume that the overlay board is set up
+        # properly and a googlestore_acl.xml is present, if not this script
+        # errors
+        cmd = '%s cp -a private %s %s' % (_GSUTIL_BIN, local_file, remote_file)
+        if not os.path.exists(acl):
+            logging.error('Unable to find ACL File %s.', acl)
+            return False
+        acl_cmd = '%s setacl %s %s' % (_GSUTIL_BIN, acl, remote_file)
+    if not result_dir:
+        base_utils.run(cmd, timeout=transfer_timeout, verbose=True)
+        if acl_cmd:
+            base_utils.run(acl_cmd, timeout=acl_timeout, verbose=True)
+        return True
+    with open(os.path.join(result_dir, 'tracing'), 'w') as ftrace:
+        ftrace.write('Preamble\n')
+        base_utils.run(cmd, timeout=transfer_timeout, verbose=True,
+                       stdout_tee=ftrace, stderr_tee=ftrace)
+        if acl_cmd:
+            ftrace.write('\nACL setting\n')
+            # Apply the passed in ACL xml file to the uploaded object.
+            base_utils.run(acl_cmd, timeout=acl_timeout, verbose=True,
+                           stdout_tee=ftrace, stderr_tee=ftrace)
+        ftrace.write('Postamble\n')
+        return True

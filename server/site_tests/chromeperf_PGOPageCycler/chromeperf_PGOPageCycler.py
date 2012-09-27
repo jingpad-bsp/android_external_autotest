@@ -50,53 +50,6 @@ class chromeperf_PGOPageCycler(test.test):
         self.extra_args = extras
 
 
-    # TODO(petermayo): crosbug.com/31826 Share this with _GsUpload in
-    # //chromite.git/buildbot/prebuilt.py somewhere/somehow.
-    def _gs_upload(self, local_file, remote_file, acl):
-        """Upload to GS bucket.
-
-        Args:
-            local_file
-            remote_file
-            acl name or file used for controlling access to the uploaded file.
-
-        Returns:
-            Return the arg tuple of two if the upload failed
-        """
-
-        # https://developers.google.com/storage/docs/accesscontrol#extension
-        CANNED_ACLS = ['project-private', 'private', 'public-read',
-                       'public-read-write', 'authenticated-read',
-                       'bucket-owner-read', 'bucket-owner-full-control']
-        _GSUTIL_BIN = 'gsutil'
-
-        acl_cmd = None
-        if acl in CANNED_ACLS:
-            cmd = [_GSUTIL_BIN, 'cp', '-a', acl, local_file, remote_file]
-        else:
-            # For private uploads we assume that the overlay board is set up
-            # properly and a googlestore_acl.xml is present, if not this script
-            # errors
-            cmd = [_GSUTIL_BIN, 'cp', '-a', 'private', local_file, remote_file]
-            if not os.path.exists(acl):
-                raise error.TestFail('Unresolved acl %s.' % acl)
-            acl_cmd = [_GSUTIL_BIN, 'setacl', acl, remote_file]
-
-        with open(os.path.join(self.job.resultdir, 'tracing'), 'w') as ftrace:
-            ftrace.write('Preamble\n')
-            utils.run(cmd[0], args=cmd[1:], timeout=self._PGO_TRANSFER_TIMEOUT,
-                      verbose=True, stdout_tee=ftrace, stderr_tee=ftrace)
-
-            if acl_cmd:
-                ftrace.write('\nACL setting\n')
-                # Apply the passed in ACL xml file to the uploaded object.
-                utils.run(acl_cmd[0], args=acl_cmd[1:],
-                          timeout=self._ACL_SET_TIMEOUT,
-                          verbose=True, stdout_tee=ftrace, stderr_tee=ftrace)
-
-            ftrace.write('Postamble\n')
-
-
     def run_once(self, host=None, args=[]):
         self.parse_args(args)
 
@@ -134,7 +87,7 @@ class chromeperf_PGOPageCycler(test.test):
                     with open(verfile, 'r') as f:
                         self.options.destination = f.read().strip()
             if self.options.destination:
-                if self._gs_upload(src, self.options.destination,
-                                   self.options.acl) is not None:
+                if not utils.gs_upload(src, self.options.destination,
+                        self.options.acl, result_dir=self.job.resultdir)
                     raise error.TestFail('Unable to copy from %s to %s' %
                                          (src, self.options.destination))
