@@ -299,7 +299,7 @@ class SuiteSpec(object):
     """
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
-                 skip_reimage=False, add_experimental=True,
+                 skip_reimage=False, add_experimental=True, file_bugs=False,
                  **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
@@ -349,6 +349,7 @@ class SuiteSpec(object):
         self.check_hosts = check_hosts
         self.skip_reimage = skip_reimage
         self.add_experimental = add_experimental
+        self.file_bugs = file_bugs
         self.dependencies = {'': []}
 
 
@@ -382,6 +383,8 @@ def reimage_and_run(**dargs):
                          Default: False
     @param add_experimental: schedule experimental tests as well, or not.
                              Default: True
+    @param file_bugs: automatically file bugs on test failures.
+                      Default: False
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for

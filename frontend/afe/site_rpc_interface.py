@@ -70,7 +70,7 @@ def get_control_file_contents_by_name(build, board, ds, suite_name):
 
 
 def create_suite_job(suite_name, board, build, pool, check_hosts=True,
-                     num=None):
+                     num=None, file_bugs=False):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -84,6 +84,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
             purposes.
     @param check_hosts: require appropriate live hosts to exist in the lab.
     @param num: Specify the number of machines to schedule across.
+    @param file_bugs: File a bug on each test failure in this suite.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
     @raises NoControlFileList: if we can't list the control files at all.
@@ -128,7 +129,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'build': build,
                    'check_hosts': check_hosts,
                    'pool': pool,
-                   'num': numeric_num}
+                   'num': numeric_num,
+                   'file_bugs': file_bugs}
     control_file = tools.inject_vars(inject_dict, control_file_in)
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),
