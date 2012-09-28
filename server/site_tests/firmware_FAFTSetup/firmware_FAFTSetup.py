@@ -16,6 +16,7 @@ class firmware_FAFTSetup(FAFTSequence):
       - Recovery boot with USB stick
       - USB stick is plugged into Servo board, not DUT
       - Keyboard simulation
+      - No terminal opened on EC console
     """
     version = 1
 
@@ -36,6 +37,8 @@ class firmware_FAFTSetup(FAFTSequence):
             return True
         except:
             logging.error("Cannot talk to EC console.")
+            logging.error(
+                    "Please check there is no terminal opened on EC console.")
             return False
 
     def keyboard_checker(self):
