@@ -386,6 +386,8 @@ class MTB:
     def get_distances_with_first_point(self, target_slot):
         """Get distances of the points in the target_slot with first point."""
         points = self.get_points(target_slot)
+        if not points:
+            return [0,]
         point0 = points[0]
         distances = [self._calc_distance(point, point0) for point in points]
         return distances
