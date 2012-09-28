@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
+import logging, os, re, sys
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -54,6 +54,10 @@ class hardware_SAT(test.test):
         cpus = max(utils.count_cpus(), 1)
         mbytes = max(int(utils.freememtotal() * free_memory_fraction / 1024),
                      512)
+        # Even though shared memory allows us to go past the 1.4G
+        # limit, ftruncate still limits us to 2G max on 32 bit systems.
+        if sys.maxsize < 2**32 and mbytes > 2047:
+          mbytes = 2047
         # SAT should use as much memory as possible, while still
         # avoiding OOMs and allowing the kernel to run, so that
         # the maximum amoun tof memory can be tested.
