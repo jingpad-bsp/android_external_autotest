@@ -32,6 +32,16 @@ class RemotePyAuto(pyauto.PyUITest):
         pyauto.PyUITest.__init__(self, methodName, clear_profile=False)
 
 
+    def ShouldAutoLogin(self):
+        """Override default login behavior.
+
+        Remote tests do not have the opportunity to override this, so it's
+        better to not log in by default. Tests that want to log in can
+        simply call LoginToDefaultAccount().
+        """
+        return False
+
+
     def testXMLRPCserve(self):
         """Launches the XMLRPC server to provide PyAuto commands."""
         rpc_port = 9988
