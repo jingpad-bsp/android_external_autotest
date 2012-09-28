@@ -54,6 +54,8 @@ def _iterate_tests(machine, on_ac=True):
     if not on_ac:
         for test in BATTERY_TESTS:
             client_at.run_test(test, tag=tag)
+        # Run the short version of power_Consumption
+        client_at.run_test('power_Consumption', short=True)
 
     if not client_attributes.has_resume_bug:
         client_at.run_test('power_Resume', tag=tag)
