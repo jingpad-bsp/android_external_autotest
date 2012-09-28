@@ -82,6 +82,8 @@ function onLoad() {
         self._service_login_auth = constants.SERVICE_LOGIN_AUTH_URL
 
         self._oauth1_get_request_token = constants.OAUTH1_GET_REQUEST_TOKEN_URL
+        self._oauth1_get_request_token_new = \
+            constants.OAUTH1_GET_REQUEST_TOKEN_NEW_URL
         self._oauth1_get_access_token = constants.OAUTH1_GET_ACCESS_TOKEN_URL
         self._oauth1_get_access_token_new = \
             constants.OAUTH1_GET_ACCESS_TOKEN_NEW_URL
@@ -122,6 +124,9 @@ function onLoad() {
 
         self._testServer.add_url_handler(
             self._oauth1_get_request_token,
+            self._oauth1_get_request_token_responder)
+        self._testServer.add_url_handler(
+            self._oauth1_get_request_token_new,
             self._oauth1_get_request_token_responder)
         self._testServer.add_url_handler(
             self._oauth1_get_access_token,

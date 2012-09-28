@@ -77,6 +77,7 @@ ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 ISSUE_AUTH_TOKEN_NEW_URL = '/IssueAuthToken'
 
 OAUTH1_GET_REQUEST_TOKEN_URL = '/accounts/o8/GetOAuthToken'
+OAUTH1_GET_REQUEST_TOKEN_NEW_URL = '/o/oauth/GetOAuthToken/'
 OAUTH1_GET_ACCESS_TOKEN_URL = '/accounts/OAuthGetAccessToken'
 OAUTH1_GET_ACCESS_TOKEN_NEW_URL = '/OAuthGetAccessToken'
 OAUTH1_LOGIN_URL = '/accounts/OAuthLogin'
