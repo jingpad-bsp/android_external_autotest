@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "FAFT LV4"
 TIME = "LONG"
@@ -38,8 +40,13 @@ TESTS_ON_BOTH_MODES = [
 ]
 
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run_server_test(machine):
-    client = hosts.create_host(machine)
+    client = hosts.create_host(machine, servo_host=servo_host,
+                               servo_port=servo_port)
     for test, argv in TESTS_ON_BOTH_MODES + TESTS_ON_NORMAL_MODE:
         job.run_test(test, host=client, cmdline_args=args,
                      use_faft=True, disable_sysinfo=True,

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "firmware_CorruptFwSigAB"
 PURPOSE = "Servo based both firmware signature A and B corruption test"
@@ -20,8 +22,13 @@ fails and enters recovery mode. This test then checks the success of the
 recovery boot.
 """
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run_corruptbothfwsigab(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("firmware_CorruptBothFwSigAB", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
                  dev_mode=True, tag="dev")

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "firmware_ShellBall"
 TIME = "LONG"
@@ -24,12 +26,17 @@ from autotest_lib.client.common_lib import error
 # Convert autoserv args to something usable.
 opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run_shellball(machine):
     # Verify bios path arg.
     if 'shellball_path' and 'shellball_name' not in opts:
         raise error.TestFail('Invalid shellball information.')
     # Setup the client machine.
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("firmware_ShellBall", host=host,
                  cmdline_args=args,
                  shellball_path=opts['shellball_path'],

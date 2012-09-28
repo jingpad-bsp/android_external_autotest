@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "firmware_InvalidUSB"
 PURPOSE = "Servo based booting an invalid USB image test"
@@ -19,8 +21,13 @@ USB image and tries to boot into it. A failure is expected. It then
 restores the USB image and boots into it again.
 """
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run_invalidusb(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("firmware_InvalidUSB", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
                  dev_mode=False, tag="normal")

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "firmware_RecoveryButton"
 PURPOSE = "Press recovery button and check for recovery boot"
@@ -19,8 +21,13 @@ recovery button pressed and reboots. It then triggers recovery mode by
 unplugging and plugging in the USB disk and checks success of it.
 """
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run_recoverybutton(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("firmware_RecoveryButton", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
                  dev_mode=True, tag="dev")

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "firmware_ECWriteProtect"
 PURPOSE = "Servo based EC write protect test"
@@ -27,8 +29,13 @@ At the end of the test, write protect is deactivated and firmware is restored to
 RO normal mode.
 """
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run_ecwriteprotect(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("firmware_ECWriteProtect", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
                  dev_mode=True, tag="dev")

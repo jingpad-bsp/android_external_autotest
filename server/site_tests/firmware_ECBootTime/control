@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "firmware_ECBootTime"
 PURPOSE = "Servo based EC boot time test"
@@ -16,8 +18,13 @@ DOC = """
 This test measures EC boot time.
 """
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run_ecboottime(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("firmware_ECBootTime", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True)
 
