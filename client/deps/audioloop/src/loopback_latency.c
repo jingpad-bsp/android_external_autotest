@@ -30,6 +30,7 @@ static double phase = M_PI / 2;
 static unsigned rate = 48000;
 static unsigned channels = 2;
 static snd_pcm_uframes_t buffer_frames = 480;
+static snd_pcm_uframes_t period_size = 240;
 static snd_pcm_format_t format = SND_PCM_FORMAT_S16_LE;
 
 static int cras_put_silent = 5;
@@ -163,7 +164,6 @@ static void config_pcm(snd_pcm_t *handle,
         exit(1);
     }
 
-    *period_size = *buffer_size / 2;
     if ((err = snd_pcm_hw_params_set_period_size_near(
             handle, hw_params, period_size, 0)) < 0) {
         fprintf(stderr, "cannot set channel count (%s)\n",
@@ -436,7 +436,6 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
     short *cap_buf;
     snd_pcm_t *playback_handle;
     snd_pcm_t *capture_handle;
-    snd_pcm_uframes_t period_size = buffer_frames / 2;
 
     unsigned int num_buffers, chn;
     phase = 0;
@@ -547,7 +546,7 @@ int main (int argc, char *argv[])
     char *cap_dev = "default";
 
     int arg;
-    while ((arg = getopt(argc, argv, "b:i:o:n:r:c")) != -1) {
+    while ((arg = getopt(argc, argv, "b:i:o:n:r:p:c")) != -1) {
     switch (arg) {
         case 'b':
             buffer_frames = atoi(optarg);
@@ -568,6 +567,9 @@ int main (int argc, char *argv[])
         case 'o':
             play_dev = optarg;
             fprintf(stderr, "Assign play_dev %s\n", play_dev);
+            break;
+        case 'p':
+            period_size = atoi(optarg);
             break;
         default:
             return 1;
