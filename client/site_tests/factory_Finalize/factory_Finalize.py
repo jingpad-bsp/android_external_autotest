@@ -75,8 +75,8 @@ class PreflightTask(task.FactoryTask):
         self.allow_force_finalize = allow_force_finalize
         self.min_charge_pct = min_charge_pct
         self.items = [(self.check_required_tests,
-                       create_label("Verify no tests failed\n"
-                                    "确认无测试项目失败")),
+                       create_label("Verify all tests passed\n"
+                                    "确认测试项目都已成功了")),
                       (self.check_developer_switch,
                        create_label("Turn off Developer Switch\n"
                                     "停用开发者开关(DevSwitch)"))]
@@ -113,7 +113,8 @@ class PreflightTask(task.FactoryTask):
     def check_required_tests(self):
         """ Checks if all previous tests are passed """
         state_map = self.test_list.get_state_map()
-        return not any(x.status == factory.TestState.FAILED
+        return not any(x.status in [factory.TestState.FAILED,
+                                    factory.TestState.UNTESTED]
                        for x in state_map.values())
 
     def check_battery_level(self):
