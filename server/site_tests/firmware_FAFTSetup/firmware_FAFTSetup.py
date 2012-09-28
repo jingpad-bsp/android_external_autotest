@@ -7,6 +7,7 @@ import logging
 from threading import Timer
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 class firmware_FAFTSetup(FAFTSequence):
@@ -17,9 +18,25 @@ class firmware_FAFTSetup(FAFTSequence):
       - USB stick is plugged into Servo board, not DUT
       - Keyboard simulation
       - No terminal opened on EC console
+
+      If this test is run with parameter -a "spec_check=True", then hardware
+      testability is checked according to spec and without any current
+      workaround.
     """
     version = 1
 
+
+    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+        dict_args = utils.args_to_dict(cmdline_args)
+        spec_check = dict_args.get("spec_check", "False")
+        if spec_check.lower() == "true":
+            self._spec_check = True
+        elif spec_check.lower() == "false":
+            self._spec_check = False
+        else:
+            raise error.TestFail("Invalid argument spec_check=%s." % spec_check)
+        super(firmware_FAFTSetup, self).initialize(host, cmdline_args,
+                                                   use_pyauto, use_faft)
 
     def console_checker(self):
         """Verify EC console is available if using Chrome EC."""
@@ -41,8 +58,13 @@ class firmware_FAFTSetup(FAFTSequence):
                     "Please check there is no terminal opened on EC console.")
             return False
 
-    def keyboard_checker(self):
-        """Press 'd', Ctrl, ENTER by servo and check from DUT."""
+    def base_keyboard_checker(self, press_action, expected_output):
+        """Press key and check from DUT.
+
+        Args:
+            press_action: A callable that would press the keys when called.
+            expected_output: Expected output from "showkey".
+        """
         if not self.client_attr.has_keyboard:
             # Check all customized key commands are provided
             if not all([self._customized_ctrl_d_key_command,
@@ -52,9 +74,8 @@ class firmware_FAFTSetup(FAFTSequence):
 
         # Stop UI so that key presses don't go to X.
         self.faft_client.run_shell_command("stop ui")
-        # Press the four keys with one-second delay in between.
-        Timer(2, self.send_ctrl_d_to_dut).start()
-        Timer(4, self.send_enter_to_dut).start()
+        # Press the keys
+        press_action()
         lines = self.faft_client.run_shell_command_get_output("showkey")
         # Turn UI back on
         self.faft_client.run_shell_command("start ui")
@@ -62,6 +83,20 @@ class firmware_FAFTSetup(FAFTSequence):
         # We may be getting multiple key-press or key-release.
         # Let's remove duplicated items.
         dup_removed = [x[0] for x in groupby(lines)]
+        dup_removed = dup_removed[-len(expected_output):]
+
+        if dup_removed != expected_output:
+            logging.error("Keyboard simulation not working correctly")
+            logging.error("Captured keycodes:\n" + "\n".join(dup_removed))
+            logging.error("Expected keycodes:\n" + "\n".join(expected_output))
+            return False
+        return True
+
+    def keyboard_checker(self):
+        """Press 'd', Ctrl, ENTER by servo and check from DUT."""
+        def keypress():
+            Timer(2, self.send_ctrl_d_to_dut).start()
+            Timer(4, self.send_enter_to_dut).start()
 
         expected_output = [
                 "keycode  29 press",
@@ -71,30 +106,52 @@ class firmware_FAFTSetup(FAFTSequence):
                 "keycode  28 press",
                 "keycode  28 release"]
 
-        if dup_removed[-6:] != expected_output:
-            logging.error("Keyboard simulation not working correctly")
-            logging.error("Captured keycodes:\n" + "\n".join(dup_removed[-8:]))
-            logging.error("Expected keycodes:\n" + "\n".join(expected_output))
-            return False
-        return True
+        return self.base_keyboard_checker(keypress, expected_output)
+
+    def strict_keyboard_checker(self):
+        """Press 'd', Ctrl, ENTER, Refresh by servo and check from DUT.
+
+        This method directly controls keyboard by servo and thus cannot be used
+        to test devices without internal keyboard.
+        """
+        def keypress():
+            Timer(2, self.servo.ctrl_key).start()
+            Timer(3, self.servo.d_key).start()
+            Timer(4, self.servo.enter_key).start()
+            Timer(5, self.servo.refresh_key).start()
+
+        expected_output = [
+                "keycode  29 press",
+                "keycode  29 release",
+                "keycode  32 press",
+                "keycode  32 release",
+                "keycode  28 press",
+                "keycode  28 release",
+                "keycode  61 press",
+                "keycode  61 release"]
+
+        return self.base_keyboard_checker(keypress, expected_output)
 
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, Check EC console is available and test warm reboot
-                'state_checker': self.console_checker,
-                'reboot_action': self.sync_and_warm_reboot,
+                "state_checker": self.console_checker,
+                "reboot_action": self.sync_and_warm_reboot,
             },
             {   # Step 2, Check test image in USB stick and recovery boot
-                'userspace_action': self.assert_test_image_in_usb_disk,
-                'reboot_action': self.enable_rec_mode_and_reboot,
-                'firmware_action': self.wait_fw_screen_and_plug_usb,
-                'install_deps_after_boot': True,
+                "userspace_action": self.assert_test_image_in_usb_disk,
+                "reboot_action": self.enable_rec_mode_and_reboot,
+                "firmware_action": self.wait_fw_screen_and_plug_usb,
+                "install_deps_after_boot": True,
             },
             {   # Step 3, Test cold reboot
-                'reboot_action': self.sync_and_cold_reboot,
+                "reboot_action": self.sync_and_cold_reboot,
             },
             {   # Step 4, Check keyboard simulation
-                'state_checker': self.keyboard_checker,
+                "state_checker": (self.strict_keyboard_checker if
+                                  self._spec_check and
+                                  self.client_attr.has_keyboard else
+                                  self.keyboard_checker),
             },
         ))
         self.run_faft_sequence()
