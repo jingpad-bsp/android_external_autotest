@@ -159,7 +159,31 @@ class ReimagerTest(mox.MoxTestBase):
 
 
     def testNoticeZeroHosts(self):
-        """Should notice zero hosts for some spec, but continue."""
+        """Should notice zero hosts for some unique spec, but continue."""
+        self.mox.StubOutWithMock(self.reimager, '_get_random_best_host')
+
+        host_lists = [[], [FakeHost('h1')], [FakeHost('h2')]]
+        for hosts in host_lists[1:]:
+            self.reimager._get_random_best_host(
+                AllInHostList(hosts),
+                True).InAnyOrder('random').AndReturn(hosts[-1])
+        # Expect call for the spec with no hosts.
+        self.reimager._get_random_best_host(
+            [], True).InAnyOrder('random').AndReturn(None)
+        # Now, expect an attempt to fill out the list with 'simplest' hosts.
+        self.reimager._get_random_best_host(
+            [], True).MultipleTimes().AndReturn(None)
+        self.mox.ReplayAll()
+
+        hosts_per_spec = dict(zip(self.specs, host_lists))
+        explicit_group = self.reimager._choose_hosts(hosts_per_spec,
+                                                     len(self.specs))
+        self.assertTrue(self.specs[0] in explicit_group.unsatisfied_specs,
+                        '%r seems to have been satisfied?' % self.specs[0])
+
+
+    def testTolerateZeroHostsForSpecThatIsASubset(self):
+        """Should tolerate zero hosts for some subsumed spec, but continue."""
         self.mox.StubOutWithMock(self.reimager, '_get_random_best_host')
 
         host_lists = [[FakeHost('h1')], [FakeHost('h2')], []]
@@ -178,8 +202,9 @@ class ReimagerTest(mox.MoxTestBase):
         hosts_per_spec = dict(zip(self.specs, host_lists))
         explicit_group = self.reimager._choose_hosts(hosts_per_spec,
                                                      len(self.specs))
-        self.assertTrue(self.specs[-1] in explicit_group.unsatisfied_specs,
-                        '%r seems to have been satisfied?')
+        self.assertFalse(
+            explicit_group.unsatisfied_specs,
+            '%r should be empty!' % explicit_group.unsatisfied_specs)
 
 
     def testFailZeroHostsTotal(self):
@@ -440,9 +465,9 @@ class ReimagerTest(mox.MoxTestBase):
                                            'image_url_pattern',
                                            self._URL)
 
-        hosts_per_spec = {HostSpec('l1'): [FakeHost('h1')],
-                          HostSpec('l2'): [FakeHost('h2')],
-                          HostSpec('l3'): [FakeHost('h4')]}
+        hosts_per_spec = {HostSpec(['l1']): [FakeHost('h1')],
+                          HostSpec(['l2']): [FakeHost('h2')],
+                          HostSpec(['l3']): [FakeHost('h4')]}
         hostnames = [h[0].hostname for h in hosts_per_spec.values()]
         self.afe.create_job(
             control_file=mox.And(

@@ -299,7 +299,7 @@ class SuiteTest(mox.MoxTestBase):
             StatusContains.CreateFromStrings('FAIL', self._TAG, 'scheduling'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(True, []).AndRaise(Exception('Expected during test.'))
+        suite.schedule(True).AndRaise(Exception('Expected during test.'))
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, self.manager, True)

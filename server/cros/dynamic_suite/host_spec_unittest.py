@@ -35,6 +35,19 @@ class HostSpecTest(mox.MoxTestBase):
         self.assertEquals(specs[0], reordered[-1])
 
 
+    def testSpecSubsets(self):
+        """Validate HostSpec subset checks."""
+        specs = [host_spec.HostSpec([self._BOARD]),
+                 host_spec.HostSpec([self._BOARD, 'pool:bvt']),
+                 host_spec.HostSpec([self._BOARD, 'label1'])]
+        self.assertTrue(specs[0].is_subset(specs[1]))
+        self.assertTrue(specs[0].is_subset(specs[2]))
+        self.assertFalse(specs[1].is_subset(specs[2]))
+        self.assertFalse(specs[2].is_subset(specs[1]))
+        self.assertFalse(specs[1].is_subset(specs[0]))
+        self.assertFalse(specs[2].is_subset(specs[0]))
+
+
 class HostGroupTest(mox.MoxTestBase):
     """Unit tests for dynamic_suite.host_spec.HostGroup derived classes.
     """
@@ -46,8 +59,8 @@ class HostGroupTest(mox.MoxTestBase):
         hosts_per_spec = {host_spec.HostSpec(['l1']): host_list[:1],
                           host_spec.HostSpec(['l2']): host_list[1:]}
         group = host_spec.ExplicitHostGroup(hosts_per_spec)
-        self.assertEquals(sorted([h.hostname for h in host_list]),
-                          sorted(group.as_args()['hosts']))
+        for host in host_list:
+            self.assertTrue(host.hostname in group.as_args()['hosts'])
 
 
     def testExplicitEnforcesHostUniqueness(self):
@@ -69,7 +82,7 @@ class HostGroupTest(mox.MoxTestBase):
         self.assertEquals(labels[1:], args['dependencies'])
 
 
-    def testCanTrackSuccessExplicit(self):
+    def testExplicitCanTrackSuccess(self):
         """Track success/failure in an ExplicitHostGroup."""
         host_list = [FakeHost('h1'), FakeHost('h2'), FakeHost('h3')]
         specs = [host_spec.HostSpec(['l1']), host_spec.HostSpec(['l2'])]
@@ -87,12 +100,34 @@ class HostGroupTest(mox.MoxTestBase):
         self.assertFalse(group.doomed_specs)
 
 
+    def testExplicitCanTrackSuccessWithSupersets(self):
+        """Track success/failure in an ExplicitHostGroup with supersets."""
+        host_list = [FakeHost('h1'), FakeHost('h2'), FakeHost('h3')]
+        specs = [host_spec.HostSpec(['l1']),
+                 host_spec.HostSpec(['l2']),
+                 host_spec.HostSpec(['l2', 'l1'])]
+        hosts_per_spec = {specs[0]: host_list[:1],
+                          specs[1]: host_list[1:2],
+                          specs[2]: host_list[2:]}
+        group = host_spec.ExplicitHostGroup(hosts_per_spec)
+
+        # Reimage just the one host that satisfies specs[2].
+        # Because satisfying specs[2] statisfies all the specs, we should have
+        # no doomed specs.
+        group.mark_host_success(host_list[2].hostname)
+        self.assertTrue(group.enough_hosts_succeeded())
+        self.assertFalse(group.doomed_specs)
+
+
     def testExplicitCanTrackUnsatisfiedSpecs(self):
         """Track unsatisfiable HostSpecs in ExplicitHostGroup."""
         group = host_spec.ExplicitHostGroup()
-        unsatisfiable_spec = host_spec.HostSpec(['l1'])
+        satisfiable_spec = host_spec.HostSpec(['l2'])
+        unsatisfiable_spec = host_spec.HostSpec(['l1', 'e1'])
         group.add_host_for_spec(unsatisfiable_spec, None)
+        group.add_host_for_spec(satisfiable_spec, FakeHost('h1'))
         self.assertTrue(unsatisfiable_spec in group.unsatisfied_specs)
+        self.assertTrue(satisfiable_spec not in group.unsatisfied_specs)
 
 
     def testExplicitOneHostEnoughToSatisfySpecs(self):
@@ -109,7 +144,25 @@ class HostGroupTest(mox.MoxTestBase):
         self.assertTrue(satisfiable_spec not in group.unsatisfied_specs)
 
 
-    def testCanTrackSuccessMeta(self):
+    def testExplicitSubsetSpecSatisfiedIfAnyAre(self):
+        """Ensures that any satisfied spec also satisfies a subset HostSpec."""
+        specs = [host_spec.HostSpec(['l1', 'l3']),
+                 host_spec.HostSpec(['l1', 'l3', 'l4']),
+                 host_spec.HostSpec(['l1', 'l5', 'l4']),
+                 host_spec.HostSpec(['l1', 'l2', 'l3', 'l4'])]
+        group = host_spec.ExplicitHostGroup()
+        group.add_host_for_spec(specs[0], None)
+        group.add_host_for_spec(specs[1], FakeHost('h1'))
+        group.add_host_for_spec(specs[2], FakeHost('h2'))
+        group.add_host_for_spec(specs[3], None)
+
+        self.assertTrue(specs[0] not in group.unsatisfied_specs)
+        self.assertTrue(specs[1] not in group.unsatisfied_specs)
+        self.assertTrue(specs[2] not in group.unsatisfied_specs)
+        self.assertTrue(specs[3] in group.unsatisfied_specs)
+
+
+    def testMetaCanTrackSuccess(self):
         """Track success/failure in a MetaHostGroup."""
         labels = ['meta_host', 'dep1', 'dep2']
         num = 3

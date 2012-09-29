@@ -20,7 +20,7 @@ def order_by_complexity(host_spec_list):
     return sorted(host_spec_list, key=extract_label_list_len, reverse=True)
 
 
-def is_trivial(host_spec_list):
+def is_trivial_list(host_spec_list):
     """
     Returns true if this is a 'trivial' list of HostSpec objects.
 
@@ -111,13 +111,13 @@ class ExplicitHostGroup(HostGroup):
                                Each host can appear only once.
         """
         self._hostname_data_dict = {}
-        self._unsatisfied_specs = []
+        self._potentially_unsatisfied_specs = []
         for spec, host_list in hosts_per_spec.iteritems():
             for host in host_list:
                 self.add_host_for_spec(spec, host)
 
 
-    def _host_datas(self):
+    def _get_host_datas(self):
         return self._hostname_data_dict.itervalues()
 
 
@@ -135,7 +135,7 @@ class ExplicitHostGroup(HostGroup):
 
     def enough_hosts_succeeded(self):
         """If _any_ hosts were reimaged, that's enough."""
-        return True in [d.image_success for d in self._host_datas()]
+        return True in [d.image_success for d in self._get_host_datas()]
 
 
     def add_host_for_spec(self, spec, host):
@@ -143,17 +143,19 @@ class ExplicitHostGroup(HostGroup):
 
         @param spec: HostSpec to associate host with.
         @param host: a Host object; each host can appear only once.
+                     If None, this spec will be relegated to the list of
+                     potentially unsatisfied specs.
         """
         if not host:
-            if spec not in [d.spec for d in self._host_datas()]:
-                self._unsatisfied_specs.append(spec)
+            if spec not in [d.spec for d in self._get_host_datas()]:
+                self._potentially_unsatisfied_specs.append(spec)
             return
 
         if self.contains_host(host):
             raise ValueError('A Host can appear in an '
                              'ExplicitHostGroup only once.')
-        if spec in self._unsatisfied_specs:
-            self._unsatisfied_specs.remove(spec)
+        if spec in self._potentially_unsatisfied_specs:
+            self._potentially_unsatisfied_specs.remove(spec)
         self._hostname_data_dict[host.hostname] = self.HostData(spec)
 
 
@@ -168,16 +170,29 @@ class ExplicitHostGroup(HostGroup):
 
     @property
     def unsatisfied_specs(self):
-        return self._unsatisfied_specs
+        unsatisfied = []
+        for spec in self._potentially_unsatisfied_specs:
+            # If a spec in _potentially_unsatisfied_specs is a subset of some
+            # satisfied spec, then it's not unsatisfied.
+            if filter(lambda d: spec.is_subset(d.spec), self._get_host_datas()):
+                continue
+            unsatisfied.append(spec)
+        return unsatisfied
 
 
     @property
     def doomed_specs(self):
-        specs = set([d.spec for d in self._host_datas()])
-        for data in self._hostname_data_dict.itervalues():
+        ok = set()
+        possibly_doomed = set()
+        for data in self._get_host_datas():
+            # If imaging succeeded for any host that satisfies a spec,
+            # it's definitely not doomed.
             if data.image_success:
-                specs.remove(data.spec)
-        return specs
+                ok.add(data.spec)
+            else:
+                possibly_doomed.add(data.spec)
+        # If a spec is not a subset of any ok spec, it's doomed.
+        return set([s for s in possibly_doomed if not filter(s.is_subset, ok)])
 
 
 class MetaHostGroup(HostGroup):
@@ -237,14 +252,19 @@ class HostSpec(object):
     """
 
     def __init__(self, labels):
-        self._labels = sorted(labels)
+        self._labels = frozenset(labels)
         # To amortize cost of __hash__()
-        self._str = 'HostSpec %r' % self._labels
+        self._str = 'HostSpec %r' % sorted(self._labels)
 
 
     @property
     def labels(self):
-        return self._labels
+        # Can I just do this as a set?  Inquiring minds want to know.
+        return sorted(self._labels)
+
+
+    def is_subset(self, other):
+        return self._labels <= other._labels
 
 
     def __str__(self):

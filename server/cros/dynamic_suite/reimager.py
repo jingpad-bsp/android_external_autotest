@@ -234,7 +234,7 @@ class Reimager(object):
                 '%d hosts cannot satisfy dependencies %r' % (num, host_specs))
 
         hosts_per_spec = self._gather_hosts_from_host_specs(host_specs)
-        if host_spec.is_trivial(host_specs):
+        if host_spec.is_trivial_list(host_specs):
             spec, hosts = host_spec.trivial_get_spec_and_hosts(
                 host_specs, hosts_per_spec)
             if require_usable_hosts and not filter(tools.is_usable, hosts):
