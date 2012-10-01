@@ -61,6 +61,11 @@ def parse_options():
                       help="Skips running suite; creates report for given ID.")
     parser.add_option("-u", "--num", dest="num", type="int", default=None,
                       help="Run on at most NUM machines.")
+    #  Same boolean flag issue applies here.
+    parser.add_option("-f", "--file_bugs", dest="file_bugs", default=None,
+                      help="File bugs on test failures.")
+
+
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -308,12 +313,14 @@ def main():
                                         delay_sec=options.delay_sec)
 
     wait = options.no_wait is None
+    file_bugs = options.file_bugs is not None
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
         job_id = afe.run('create_suite_job', suite_name=options.name,
                          board=options.board, build=options.build,
-                         check_hosts=wait, pool=options.pool, num=options.num)
+                         check_hosts=wait, pool=options.pool, num=options.num,
+                         file_bugs=file_bugs)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)

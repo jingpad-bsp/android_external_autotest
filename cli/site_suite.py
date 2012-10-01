@@ -55,6 +55,9 @@ class site_suite_create(action_common.atest_create, site_suite):
                                     'run this suite. Default False.',
                                action='store_true',
                                metavar='CHECK_HOSTS')
+        self.parser.add_option('-f', '--file_bugs', default=False,
+                               help='File bugs on test failures.',
+                               action='store_true', metavar='FILE_BUGS')
         self.parser.add_option('-n', '--num',
                                help='Number of machines to schedule across.',
                                metavar='NUM')
@@ -73,13 +76,15 @@ class site_suite_create(action_common.atest_create, site_suite):
                                                 inline_option='num')
         check_info = topic_common.item_parse_info(attribute_name='check_hosts',
                                                   inline_option='check_hosts')
+        bugs_info = topic_common.item_parse_info(attribute_name='file_bugs',
+                                                 inline_option='file_bugs')
         suite_info = topic_common.item_parse_info(attribute_name='name',
                                                   use_leftover=True)
 
         options, leftover = site_suite.parse(
             self,
             [suite_info, board_info, build_info, pool_info, num_info,
-             check_info],
+             check_info, bugs_info],
             req_items='name')
         self.data = {}
         name = getattr(self, 'name')
@@ -90,6 +95,7 @@ class site_suite_create(action_common.atest_create, site_suite):
         self.data['pool'] = options.pool  # None is OK.
         self.data['num'] = options.num  # None is OK.
         self.data['check_hosts'] = options.check_hosts
+        self.data['file_bugs'] = options.file_bugs
         if options.board:
             self.data['board'] = options.board
         else:
