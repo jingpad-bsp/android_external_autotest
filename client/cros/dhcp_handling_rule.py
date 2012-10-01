@@ -154,7 +154,7 @@ class DhcpHandlingRule(object):
         return self.handle_impl(query_packet)
 
     def handle_impl(self, query_packet):
-        logging.error("DhcpHandlingRule.handle_impl() called."
+        logging.error("DhcpHandlingRule.handle_impl() called.")
         return RESPONSE_TEST_FAILED
 
     def respond(self, query_packet):
