@@ -1,11 +1,12 @@
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging, random, re, sgmllib, threading, time, urllib
+import logging, random, re, sgmllib, time, urllib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 from autotest_lib.server.cros import pyauto_proxy
+from autotest_lib.server.cros import stress
 
 SLEEP_DEFAULT_SEED = 1
 SLEEP_DEFAULT_SECS = { 'on': {'min': 3, 'max': 6},
@@ -97,62 +98,46 @@ class AlexaSites(object):
         return self._parser.get_sites()[0:self._num_sites]
 
 
-class SurfThread(threading.Thread):
-    """Class to surf to a list of URL's."""
+def surf(pyauto, sites):
+    """Surf to a list of URLs."""
+    for cnt, url in enumerate(sites):
+        logging.info("site %d of %d is %s", cnt + 1, len(sites), url)
+        success = False
+        for retry in xrange(MAX_TAB_RETRIES):
+            try:
+                # avoid tab bloat
+                while pyauto.GetTabCount() > MAX_TABS:
+                    pyauto.CloseTab()
+                pyauto.AppendTab(url)
+                success = True
+            except:
+                logging.info("retry %d of site %s", retry + 1, url)
+            else:
+                break
+        if not success:
+            raise error.TestFail("Unable to browse %s" % url)
 
 
-    def __init__(self, pyauto, sites):
-        super(SurfThread, self).__init__()
-        self._sites = sites
-        self._pyauto = pyauto
-
-
-    def run(self):
-        for cnt, url in enumerate(self._sites):
-            logging.info("site %d of %d is %s", cnt + 1, len(self._sites), url)
-            retry = 0
-            while not self._pyauto.AppendTab(url) and retry < MAX_TAB_RETRIES:
-                retry += 1
-                logging.info("retry %d of site %d", retry, url)
-            if retry == MAX_TAB_RETRIES:
-                raise error.TestFail("Unable to browse %s" % url)
-            tab_count = self._pyauto.GetTabCount()
-            logging.info("tab count is %d", tab_count)
-            # avoid tab bloat
-            # TODO(tbroch) investigate different tab closure methods
-            if tab_count > MAX_TABS:
-                self._pyauto.CloseBrowserWindow(0)
-
-
-class LidThread(threading.Thread):
-    """Class to continually open and close lid."""
-
-
-    def __init__(self, servo, num_cycles, sleep_seed=None, sleep_secs=None):
-        super(LidThread, self).__init__()
-        self._num_cycles = num_cycles
+class CloseLidRandomly(object):
+    """Callable to open and close lid with random intervals."""
+    def __init__(self, servo, sleep_secs=None, sleep_seed=None):
         self._servo = servo
 
         if not sleep_secs:
             sleep_secs = SLEEP_DEFAULT_SECS
         self._sleep_secs = sleep_secs
 
-        if not sleep_seed:
-            sleep_seed = SLEEP_DEFAULT_SEED
-        self._sleep_seed = sleep_seed
+        self._robj = random.Random()
+        self._robj.seed(SLEEP_DEFAULT_SEED if not sleep_seed else sleep_seed)
 
 
-    def run(self):
-        robj = random.Random()
-        robj.seed(self._sleep_seed)
-        for i in xrange(1, self._num_cycles + 1):
-            logging.info("Lid cycle %d of %d", i, self._num_cycles)
-            self._servo.set_nocheck('lid_open', 'no')
-            time.sleep(robj.uniform(self._sleep_secs['on']['min'],
-                                    self._sleep_secs['on']['max']))
-            self._servo.set_nocheck('lid_open', 'yes')
-            time.sleep(robj.uniform(self._sleep_secs['off']['min'],
-                                    self._sleep_secs['off']['max']))
+    def __call__(self):
+        self._servo.set_nocheck('lid_open', 'no')
+        time.sleep(self._robj.uniform(self._sleep_secs['on']['min'],
+                                      self._sleep_secs['on']['max']))
+        self._servo.set_nocheck('lid_open', 'yes')
+        time.sleep(self._robj.uniform(self._sleep_secs['off']['min'],
+                                      self._sleep_secs['off']['max']))
 
 
 class platform_LidStress(test.test):
@@ -161,6 +146,7 @@ class platform_LidStress(test.test):
 
     def initialize(self, host):
         self._pyauto = pyauto_proxy.create_pyauto_proxy(host)
+        self._pyauto.LoginToDefaultAccount()
 
 
     def cleanup(self):
@@ -171,24 +157,16 @@ class platform_LidStress(test.test):
         if not num_cycles:
             num_cycles = 50
 
-        self._pyauto.LoginToDefaultAccount()
-
         # open & close lid frequently and quickly
-        lid_fast = LidThread(host.servo, num_cycles, None, SLEEP_FAST_SECS)
-        lid_fast.start()
-        tout = SLEEP_FAST_SECS['on']['max'] + SLEEP_FAST_SECS['off']['max']
-        lid_fast.join(timeout=num_cycles * tout)
+        lid_fast = stress.CountedStressor(CloseLidRandomly(host.servo,
+                                                           SLEEP_FAST_SECS))
+        lid_fast.start(num_cycles)
+        lid_fast.wait()
 
         # surf & open & close lid less frequently
         alexa = AlexaSites("http://www.alexa.com/topsites/countries;",
                            "/US", num_cycles)
-        surf = SurfThread(self._pyauto, alexa.get_sites())
-        lid = LidThread(host.servo, num_cycles)
-
-        surf.start()
+        lid = stress.ControlledStressor(CloseLidRandomly(host.servo))
         lid.start()
-
-        tout = SLEEP_DEFAULT_SECS['on']['max'] + \
-            SLEEP_DEFAULT_SECS['off']['max']
-        lid.join(timeout=num_cycles * tout)
-        surf.join(timeout=num_cycles * tout)
+        surf(self._pyauto, alexa.get_sites())
+        lid.stop()
