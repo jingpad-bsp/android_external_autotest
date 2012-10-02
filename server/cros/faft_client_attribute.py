@@ -58,8 +58,7 @@ class FAFTClientAttribute(object):
                                         'keyboard', 'lid', 'x86', 'thermal',
                                         'usb', 'peci']
         elif platform == 'Snow':
-            setting['ec_capability'] = ['battery', 'charging', 'keyboard',
-                                        'arm']
+            setting['ec_capability'] = ['battery', 'keyboard', 'arm']
 
         # Set 'wp_voltage'
         if platform == 'Link':
