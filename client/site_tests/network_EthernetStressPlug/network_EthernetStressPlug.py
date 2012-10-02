@@ -53,6 +53,12 @@ class network_EthernetStressPlug(test.test):
                     if net_path:
                         return net_path.groups()[0]
 
+                    # On some system such as Snow, usb is not on pci bus
+                    net_path = re.search('(/sys/devices/.*/usb[^/].*/.*/'
+                                         'net/[^/]*)', dev.sys_path)
+                    if net_path:
+                        return net_path.groups()[0]
+
                     # Support onboard Ethernet without usb dongle where the
                     # device path should match something of the form
                     # /sys/device/platform/.*/net/.*
