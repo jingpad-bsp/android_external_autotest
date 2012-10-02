@@ -75,6 +75,24 @@ class MTBTest(unittest.TestCase):
         self._test_get_x_y('two_finger_without_slot_0.dat', 0, 104)
         self._test_get_x_y('two_finger_without_slot_0.dat', 1, 10)
 
+    def test_get_x_y_multiple_slots(self):
+        filename = 'x_y_multiple_slots.dat'
+        filepath = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(filepath)
+        slots = (0, 1)
+        list_x, list_y = mtb_packets.get_x_y_multiple_slots(slots)
+        expected_list_x = {}
+        expected_list_y = {}
+        expected_list_x[0] = [1066, 1068, 1082, 1183, 1214, 1285, 1322, 1351,
+                              1377, 1391]
+        expected_list_y[0] = [561, 559, 542, 426, 405, 358, 328, 313, 304, 297]
+        expected_list_x[1] = [770, 769, 768, 758, 697, 620, 585, 565, 538, 538]
+        expected_list_y[1] = [894, 894, 895, 898, 927, 968, 996, 1003, 1013,
+                              1013]
+        for slot in slots:
+            self.assertEqual(list_x[slot], expected_list_x[slot])
+            self.assertEqual(list_y[slot], expected_list_y[slot])
+
     def _test_get_points_for_every_tracking_id(self, filename, expected_values):
         gesture_filename = self._get_filepath(filename)
         mtb_packets = get_mtb_packets(gesture_filename)

@@ -4,6 +4,7 @@
 
 """This module provides MTB parser and related packet methods."""
 
+import copy
 import logging
 import math
 import os
@@ -211,7 +212,7 @@ class MTB:
               point to the same list or dictionary, which is not expected
               in most cases.
         """
-        return dict([(key, value) for key in keys])
+        return dict([(key, copy.deepcopy(value)) for key in keys])
 
     def get_number_contacts(self):
         """Get the number of contacts (Tracking IDs)."""
