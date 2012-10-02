@@ -8,7 +8,8 @@ PURPOSE = "Opens a large text file in a tab."
 CRITERIA = """
 This test will fail if the tab fails to load in the default PyAuto timeout.
 """
-SUITE = "bvt"
+# This test should be converted to performance test (http://crosbug.com/34881).
+# SUITE = "bvt"
 EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
