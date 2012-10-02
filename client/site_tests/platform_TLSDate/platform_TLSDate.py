@@ -99,7 +99,6 @@ class platform_TLSDate(test.test):
         self.require_output(t, 'wait for child attempt 0')
         self.require_output(t, 'wait for child attempt 1')
         self.require_output(t, 'child exited with 0')
-        self.require_output(t, 'entering steady-state')
         self.require_ok(t)
 
     def test_hang_subproc(self):
@@ -112,7 +111,6 @@ class platform_TLSDate(test.test):
         self.require_output(t, 'wait for child attempt 0')
         self.require_output(t, 'wait for child attempt 1')
         self.require_output(t, 'child hung?')
-        self.require_output(t, 'entering steady-state')
         self.require_ok(t)
 
     def test_fail_routes(self):
@@ -123,10 +121,8 @@ class platform_TLSDate(test.test):
         t = TLSDate(self)
         t.start('fail_routes')
         t.route_up()
-        self.require_output(t, 'initial tlsdate failed')
-        self.require_output(t, 'got a route')
+        self.require_output(t, 'child exited with 256')
         self.require_output(t, 'tlsdate succeeded')
-        self.require_output(t, 'entering steady-state')
         self.require_ok(t)
 
     def run_once(self):
