@@ -62,6 +62,19 @@ def get_tpm_status():
     return status
 
 
+def get_tpm_attestation_status():
+    """Get the TPM attestation status.  Works similar to get_tpm_status().
+    """
+    out = __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_attestation_status')
+    status = {}
+    for field in ['Prepared', 'Enrolled']:
+        match = re.search('Attestation %s: (true|false)' % field, out)
+        if not match:
+            raise ChromiumOSError('Invalid attestation status: "%s".' % out)
+        status[field] = match.group(1) == 'true'
+    return status
+
+
 def take_tpm_ownership():
     """Take TPM owernship.
 
