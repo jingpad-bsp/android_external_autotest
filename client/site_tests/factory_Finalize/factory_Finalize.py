@@ -13,6 +13,7 @@ import gobject
 import gtk
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory import event_log
@@ -76,10 +77,12 @@ class PreflightTask(task.FactoryTask):
         self.min_charge_pct = min_charge_pct
         self.items = [(self.check_required_tests,
                        create_label("Verify all tests passed\n"
-                                    "确认测试项目都已成功了")),
-                      (self.check_developer_switch,
-                       create_label("Turn off Developer Switch\n"
-                                    "停用开发者开关(DevSwitch)"))]
+                                    "确认测试项目都已成功了"))]
+
+        if self.using_physical_developer_switch():
+            self.items += [(self.check_developer_switch,
+                            create_label("Turn off Developer Switch\n"
+                                         "停用开发者开关(DevSwitch)"))]
 
         if min_charge_pct:
             min_charge_pct_text = ("Charge battery to %d%%\n"
@@ -93,6 +96,18 @@ class PreflightTask(task.FactoryTask):
                            (self.check_write_protect,
                             create_label("Enable write protection pin\n"
                                          "确认硬体写入保护已开启"))]
+
+    def using_physical_developer_switch(self):
+        """ Checks if there is a physical developer switch """
+        ret = utils.system_output('crossystem vdat_flags')
+        flags = int(ret, 0)
+        VBSD_HONOR_VIRT_DEV_SWITCH = 0x400
+        if (flags & VBSD_HONOR_VIRT_DEV_SWITCH) != 0:
+            logging.warn('No physical switch.')
+            return False
+        else:
+            logging.info('Using physical switch.')
+            return True
 
     def check_developer_switch(self):
         """ Checks if developer switch button is disabled """
