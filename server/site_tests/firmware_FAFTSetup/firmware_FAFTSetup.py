@@ -19,9 +19,11 @@ class firmware_FAFTSetup(FAFTSequence):
       - Keyboard simulation
       - No terminal opened on EC console
 
-      If this test is run with parameter -a "spec_check=True", then hardware
-      testability is checked according to spec and without any current
-      workaround.
+    If this test is run with parameter -a "spec_check=True", then hardware
+    testability is checked according to spec and without any current
+    workaround. This includes:
+      - Strict keyboard simulation
+      - Recovery mode with dedicated recovery signal
     """
     version = 1
 
@@ -132,6 +134,14 @@ class firmware_FAFTSetup(FAFTSequence):
 
         return self.base_keyboard_checker(keypress, expected_output)
 
+    def reboot_to_rec_mode(self):
+        if self._spec_check:
+            self.servo.enable_recovery_mode()
+            self.servo.cold_reset()
+            self.servo.disable_recovery_mode()
+        else:
+            self.enable_rec_mode_and_reboot()
+
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, Check EC console is available and test warm reboot
@@ -140,11 +150,13 @@ class firmware_FAFTSetup(FAFTSequence):
             },
             {   # Step 2, Check test image in USB stick and recovery boot
                 "userspace_action": self.assert_test_image_in_usb_disk,
-                "reboot_action": self.enable_rec_mode_and_reboot,
+                "reboot_action": self.reboot_to_rec_mode,
                 "firmware_action": self.wait_fw_screen_and_plug_usb,
                 "install_deps_after_boot": True,
             },
             {   # Step 3, Test cold reboot
+                "state_checker": (self.crossystem_checker,
+                                  {'mainfw_type': 'recovery'}),
                 "reboot_action": self.sync_and_cold_reboot,
             },
             {   # Step 4, Check keyboard simulation

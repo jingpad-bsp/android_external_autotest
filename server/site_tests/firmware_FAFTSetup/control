@@ -22,9 +22,11 @@ This test checks the following FAFT hardware requirement:
   - USB stick is plugged into Servo board, not DUT
   - Keyboard simulation
 
-  If this test is run with parameter -a "spec_check=True", then hardware
-  testability is checked according to spec and without any current
-  workaround.
+If this test is run with parameter -a "spec_check=True", then hardware
+testability is checked according to spec and without any current
+workaround.
+  - Strict keyboard simulation
+  - Recovery mode with dedicated recovery signal
 """
 
 args_dict = utils.args_to_dict(args)
