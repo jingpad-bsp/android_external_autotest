@@ -137,18 +137,33 @@ class MTBTest(unittest.TestCase):
         gesture_filename = self._get_filepath('drumroll_link_2.dat')
         mtb_packets = get_mtb_packets(gesture_filename)
         points = mtb_packets.get_points_for_every_tracking_id()
+        # Check points in two tracking IDs: 95 and 104
+        # Tracking ID 95: slot 0 (no explicit slot 0 assigned). This is the
+        #                 only slot in the packet.
         list_95 = [(789, 358), (789, 358), (789, 358), (789, 358), (789, 358),
                    (789, 359), (789, 359), (789, 359), (788, 359), (788, 360),
                    (788, 360), (787, 360), (787, 361), (490, 903), (486, 892),
                    (484, 895), (493, 890), (488, 893), (488, 893), (489, 893),
                    (490, 893), (490, 893), (491, 893), (492, 893)]
+        # Tracking ID 104: slot 0 (explicit slot 0 assigned). This is the 2nd
+        #                  slot in the packet. A slot 1 has already existed.
         list_104 = [(780, 373), (780, 372), (780, 372), (780, 372), (780, 373),
                     (780, 373), (781, 373)]
-        for pa, pb in zip(list_95, points[95]):
-            self.assertEqual(pa, pb)
-        for pa, pb in zip(list_104, points[104]):
-            self.assertEqual(pa, pb)
-        self.assertTrue(True)
+        self.assertEqual(list_95, points[95])
+        self.assertEqual(list_104, points[104])
+
+    def test_get_points_for_every_tracking_id3(self):
+        filename = 'drumroll_3.dat'
+        gesture_filename = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(gesture_filename)
+        points = mtb_packets.get_points_for_every_tracking_id()
+        # Check points in one tracking ID: 582
+        # Tracking ID 582: slot 9. This is the 2nd slot in the packet.
+        #                  A slot 8 has already existed.
+        list_582 = [(682, 173), (667, 186), (664, 189), (664, 190), (664, 189),
+                    (665, 189), (665, 189), (667, 188), (675, 185), (683, 181),
+                    (693, 172), (469, 381), (471, 395), (471, 396)]
+        self.assertEqual(list_582, points[582])
 
     def test_convert_to_evemu_format(self):
         evemu_filename = self._get_filepath('one_finger_swipe.evemu.dat')
@@ -168,7 +183,6 @@ class MTBTest(unittest.TestCase):
                 # Prefix, type, code, and value should be the same.
                 for i in [0, 2, 3, 4]:
                     self.assertEqual(evemu_original[i], evemu_converted[i])
-
 
 
 if __name__ == '__main__':
