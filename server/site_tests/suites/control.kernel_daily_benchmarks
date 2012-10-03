@@ -24,7 +24,12 @@ CLIENT_TESTS = [
     ('hardware_MemoryThroughput', {'num_iteration': 10, 'test_list': '21'}),
     ('hardware_StorageFio', {} ),
     ('iozone', {}),
-    ('kernel_fs_Punybench', {}),
+    # Possible tests to run:
+    # --nop - does nothing, quietly
+    # --mem - run memory benchmarks
+    # --disk - run disk benchmarks
+    # --ecryptfs - run encryption benchmarks
+    ('kernel_fs_Punybench', {'args':'--nop --mem --disk'}),
 ]
 
 

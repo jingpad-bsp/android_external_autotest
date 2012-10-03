@@ -348,12 +348,18 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
           args: Non-option arguments, as per optparse.
         """
         parser = optparse.OptionParser()
-        parser.add_option('--nomem', dest='want_mem_tests',
-                          action='store_false', default=True,
-                          help='Skip memory tests.')
-        parser.add_option('--nodisk', dest='want_disk_tests',
-                          action='store_false', default=True,
-                          help='Skip disk tests.')
+        parser.add_option('--disk', dest='want_disk_tests',
+                          action='store_true', default=False,
+                          help='Run disk tests.')
+        parser.add_option('--ecryptfs', dest='want_ecryptfs_tests',
+                          action='store_true', default=False,
+                          help='Run ecryptfs tests.')
+        parser.add_option('--mem', dest='want_mem_tests',
+                          action='store_true', default=False,
+                          help='Run memory tests.')
+        parser.add_option('--nop', dest='want_nop_tests',
+                          action='store_true', default=False,
+                          help='Do nothing.')
         # Preprocess the args to remove quotes before/after each one if they
         # exist.  This is necessary because arguments passed via
         # run_remote_tests.sh may be individually quoted, and those quotes must
@@ -377,10 +383,14 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
             raise error.TestFail("Unknown args: %s" % repr(test_args))
 
         utils.system_output('stop ui')
+        if options.want_nop_tests:
+            pass
         if options.want_mem_tests:
             self._memcpy_test()
             self._memcpy()
         if options.want_disk_tests:
             self._disk_tests('ext4_', '/usr/local/_Dir', '/usr/local/xyzzy')
+        if options.want_ecryptfs_tests:
             self._ecryptfs()
+
         utils.system_output('start ui')
