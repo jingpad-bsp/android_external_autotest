@@ -1,7 +1,7 @@
 exe,euser,mj_uid,mj_gid,mj_pidns,mj_caps,mj_filter
 udevd,root,No,No,No,No,No
 session_manager,root,No,No,No,No,No
-rsyslogd,root,No,No,No,No,No
+rsyslogd,syslog,No,No,No,No,No
 dbus-daemon,messagebus,No,No,No,No,No
 powerm,root,No,No,No,No,No
 wpa_supplicant,wpa,Yes,Yes,No,Yes,No
@@ -26,3 +26,4 @@ unclutter,chronos,No,No,No,No,No
 login,root,No,No,No,No,No
 logger,syslog,No,No,No,No,No
 wimax-manager,root,No,No,No,No,No
+mtpd,mtp,Yes,Yes,No,No,Yes
