@@ -180,6 +180,7 @@ class base_sysinfo(object):
         self.boot_loggables.add(logfile('/proc/mounts', logf='proc_mounts'))
         self.boot_loggables.add(command("uname -a", logf="uname",
                                              log_in_keyval=True))
+        self._installed_packages = None
 
 
     def serialize(self):
