@@ -8,7 +8,7 @@ Note that this file is mixed in by utils.py - note very carefully the
 precedence order defined there
 """
 import os, shutil, sys, signal, commands, pickle, glob, statvfs
-import math, re, string, fnmatch, logging
+import math, re, string, fnmatch, logging, multiprocessing
 from autotest_lib.client.common_lib import error, utils, magic
 
 
@@ -326,12 +326,20 @@ def get_file_arch(filename):
 
 def count_cpus():
     """number of CPUs in the local machine according to /proc/cpuinfo"""
+    try:
+      return multiprocessing.cpu_count()
+    except Exception as e:
+      logging.exception('can not get cpu count from'
+                        ' multiprocessing.cpu_count()')
+
     f = file('/proc/cpuinfo', 'r')
     cpus = 0
     for line in f.readlines():
-        if line.lower().startswith('processor'):
+        # Matches lines like "processor      : 0"
+        if re.search(r'^processor\s*:\s*[0-9]+$', line):
             cpus += 1
-    return cpus
+    # Returns at least one cpu. Check comment #1 in crosbug.com/p/9582.
+    return cpus if cpus > 0 else 1
 
 
 # Returns total memory in kb
