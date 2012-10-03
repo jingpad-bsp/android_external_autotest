@@ -52,7 +52,8 @@ def parse_options():
     parser.add_option("-i", "--build", dest="build")
     #  This should just be a boolean flag, but the autotest "proxy" code
     #  can't handle flags that don't take arguments.
-    parser.add_option("-n", "--no_wait", dest="no_wait", default=None)
+    parser.add_option("-n", "--no_wait", dest="no_wait", default="False",
+                      help='Must pass "True" or "False" if used.')
     parser.add_option("-p", "--pool", dest="pool", default=None)
     parser.add_option("-s", "--suite_name", dest="name")
     parser.add_option("-t", "--timeout_min", dest="timeout_min", default=30)
@@ -62,8 +63,9 @@ def parse_options():
     parser.add_option("-u", "--num", dest="num", type="int", default=None,
                       help="Run on at most NUM machines.")
     #  Same boolean flag issue applies here.
-    parser.add_option("-f", "--file_bugs", dest="file_bugs", default=None,
-                      help="File bugs on test failures.")
+    parser.add_option("-f", "--file_bugs", dest="file_bugs", default='False',
+                      help='File bugs on test failures. Must pass "True" or '
+                           '"False" if used.')
 
 
     options, args = parser.parse_args()
@@ -307,13 +309,21 @@ def main():
         print 'Number of machines must be more than 0, if specified.'
         parser.print_help()
         return
+    if options.no_wait != 'True' and options.no_wait != 'False':
+        print 'Please specify "True" or "False" for --no_wait.'
+        parser.print_help()
+        return
+    if options.file_bugs != 'True' and options.file_bugs != 'False':
+        print 'Please specify "True" or "False" for --file_bugs.'
+        parser.print_help()
+        return
     setup_logging(logfile=log_name)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
 
-    wait = options.no_wait is None
-    file_bugs = options.file_bugs is not None
+    wait = (options.no_wait == 'False')
+    file_bugs = (options.file_bugs == 'True')
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
