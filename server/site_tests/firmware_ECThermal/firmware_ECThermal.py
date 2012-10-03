@@ -98,7 +98,7 @@ class firmware_ECThermal(FAFTSequence):
                         ["\d+ K:\s+([0-9-]+) RPM"] * num_steps)
         match = self.send_uart_command_get_output("thermalfan 0", expected_pat)
         for m in match:
-            self._fan_steps.append(int(m.group(1)))
+            self._fan_steps.append(int(m[1]))
 
         # Get the actual value of each fan step
         for i in xrange(num_steps + 1):

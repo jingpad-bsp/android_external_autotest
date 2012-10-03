@@ -27,7 +27,7 @@ class firmware_ECSharedMem(FAFTSequence):
     def shared_mem_checker(self):
         match = self.send_uart_command_get_output("shmem",
                                                   ["Size:\s+([0-9-]+)\r"])[0]
-        shmem_size = int(match.group(1))
+        shmem_size = int(match[1])
         logging.info("EC shared memory size if %d bytes", shmem_size)
         if shmem_size <= 0:
             return False

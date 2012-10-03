@@ -24,12 +24,12 @@ class firmware_ECBootTime(FAFTSequence):
                 if self._x86 else "([0-9\.]+) AP running")
         power_cmd = "powerbtn" if self._x86 else "power on"
         reboot = self.send_uart_command_get_output("reboot ap-off",
-                "([0-9\.]+) Inits done")
+                ["([0-9\.]+) Inits done"])
         power_press = self.send_uart_command_get_output(power_cmd,
                 ["\[([0-9\.]+) PB", boot_msg], timeout=3)
-        reboot_time = float(reboot[0].group(1))
-        power_press_time = float(power_press[0].group(1))
-        firmware_resp_time = float(power_press[1].group(1))
+        reboot_time = float(reboot[0][1])
+        power_press_time = float(power_press[0][1])
+        firmware_resp_time = float(power_press[1][1])
         boot_time = firmware_resp_time - power_press_time
         logging.info("EC cold boot time: %f s" % reboot_time)
         if reboot_time > 1.0:

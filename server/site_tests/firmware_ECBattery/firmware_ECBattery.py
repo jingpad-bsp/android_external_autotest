@@ -103,7 +103,7 @@ class firmware_ECBattery(FAFTSequence):
             BATTERY_TEMP_UPPER_BOUND or lower than BATTERY_TEMP_LOWER_BOUND.
         """
         battery_temp = float(self.send_uart_command_get_output("battery",
-                ["Temp:.+\(([0-9\.]+) C\)"])[0].group(1))
+                ["Temp:.+\(([0-9\.]+) C\)"])[0][1])
         logging.info("Battery temperature is %f C" % battery_temp)
         if (battery_temp > self.BATTERY_TEMP_UPPER_BOUND or
             battery_temp < self.BATTERY_TEMP_LOWER_BOUND):

@@ -25,7 +25,7 @@ class firmware_ECCharging(FAFTSequence):
     def _get_battery_desired_voltage(self):
         """Get battery desired voltage value."""
         voltage = int(self.send_uart_command_get_output("battery",
-                ["V-desired:\s+0x[0-9a-f]*\s+=\s+(\d+)\s+mV"])[0].group(1))
+                ["V-desired:\s+0x[0-9a-f]*\s+=\s+(\d+)\s+mV"])[0][1])
         logging.info("Battery desired voltage = %d mV" % voltage)
         return voltage
 
@@ -33,7 +33,7 @@ class firmware_ECCharging(FAFTSequence):
     def _get_battery_desired_current(self):
         """Get battery desired current value."""
         current = int(self.send_uart_command_get_output("battery",
-                ["I-desired:\s+0x[0-9a-f]*\s+=\s+(\d+)\s+mA"])[0].group(1))
+                ["I-desired:\s+0x[0-9a-f]*\s+=\s+(\d+)\s+mA"])[0][1])
         logging.info("Battery desired current = %d mA" % current)
         return current
 
@@ -41,7 +41,7 @@ class firmware_ECCharging(FAFTSequence):
     def _get_battery_actual_voltage(self):
         """Get the actual voltage from charger to battery."""
         voltage = int(self.send_uart_command_get_output("battery",
-                ["V:\s+0x[0-9a-f]*\s+=\s+(\d+)\s+mV"])[0].group(1))
+                ["V:\s+0x[0-9a-f]*\s+=\s+(\d+)\s+mV"])[0][1])
         logging.info("Battery actual voltage = %d mV" % voltage)
         return voltage
 
@@ -49,7 +49,7 @@ class firmware_ECCharging(FAFTSequence):
     def _get_battery_actual_current(self):
         """Get the actual current from charger to battery."""
         current = int(self.send_uart_command_get_output("battery",
-                ["I:\s+0x[0-9a-f]*\s+=\s+([0-9-]+)\s+mA"])[0].group(1))
+                ["I:\s+0x[0-9a-f]*\s+=\s+([0-9-]+)\s+mA"])[0][1])
         logging.info("Battery actual current = %d mA" % current)
         return current
 
@@ -57,7 +57,7 @@ class firmware_ECCharging(FAFTSequence):
     def _get_battery_charge(self):
         """Get battery charge state."""
         charge = int(self.send_uart_command_get_output("battery",
-                ["Charge:\s+(\d+)\s+"])[0].group(1))
+                ["Charge:\s+(\d+)\s+"])[0][1])
         logging.info("Battery charge = %d %%" % charge)
         return charge
 
@@ -65,7 +65,7 @@ class firmware_ECCharging(FAFTSequence):
     def _get_charger_target_voltage(self):
         """Get target charging voltage set in charger."""
         voltage = int(self.send_uart_command_get_output("charger",
-                ["V_batt:\s+(\d+)\s"])[0].group(1))
+                ["V_batt:\s+(\d+)\s"])[0][1])
         logging.info("Charger target voltage = %d mV" % voltage)
         return voltage
 
@@ -73,7 +73,7 @@ class firmware_ECCharging(FAFTSequence):
     def _get_charger_target_current(self):
         """Get target charging current set in charger."""
         current = int(self.send_uart_command_get_output("charger",
-                ["I_batt:\s+(\d+)\s"])[0].group(1))
+                ["I_batt:\s+(\d+)\s"])[0][1])
         logging.info("Charger target current = %d mA" % current)
         return current
 

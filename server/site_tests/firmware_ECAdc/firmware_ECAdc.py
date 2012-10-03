@@ -25,7 +25,7 @@ class firmware_ECAdc(FAFTSequence):
         """
         try:
             t = int(self.send_uart_command_get_output("ectemp",
-                    ["EC temperature is (\d+) K"])[0].group(1))
+                    ["EC temperature is (\d+) K"])[0][1])
             if t < 273 or t > 373:
                 raise error.TestFail("Abnormal EC temperature %d K" % t)
         except pexpect.TIMEOUT:

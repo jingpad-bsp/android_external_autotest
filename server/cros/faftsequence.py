@@ -482,7 +482,16 @@ class FAFTSequence(ServoTest):
             Note, list must be ordered.
 
         Returns:
-          List of match objects of response message.
+          List of tuples, each of which contains the entire matched string and
+          all the subgroups of the match. None if not matched.
+          For example:
+            response of the given command:
+              High temp: 37.2
+              Low temp: 36.4
+            regex_list:
+              ['High temp: (\d+)\.(\d+)', 'Low temp: (\d+)\.(\d+)']
+            returns:
+              [('High temp: 37.2', '37', '2'), ('Low temp: 36.4', '36', '4')]
 
         Raises:
           error.TestFail: If timed out waiting for EC response.
@@ -495,7 +504,12 @@ class FAFTSequence(ServoTest):
             self._uart_send(child, command)
             for regex in regex_list:
                 child.expect(regex, timeout=timeout)
-                result_list.append(child.match)
+                match = child.match
+                lastindex = match.lastindex if match and match.lastindex else 0
+                # Create a tuple which contains the entire matched string and
+                # all the subgroups of the match.
+                result = match.group(*range(lastindex + 1)) if match else None
+                result_list.append(result)
         except pexpect.TIMEOUT:
             raise error.TestFail("Timeout waiting for UART response.")
         finally:
