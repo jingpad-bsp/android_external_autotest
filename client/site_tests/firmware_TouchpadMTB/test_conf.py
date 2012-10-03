@@ -40,6 +40,12 @@ range_criteria = '<= 0.05, ~ +0.05'
 stationary_finger_criteria = '<= 20, ~ +20'
 
 
+# Define filename and path for html report
+docroot = '/tmp'
+report_basename = 'touchpad_firmware_report'
+base_url = report_basename + '.html'
+
+
 # Define the score colors
 score_colors = ((0.9, 'blue'), (0.8, 'orange'), (0.0, 'red'))
 

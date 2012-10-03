@@ -12,6 +12,7 @@ import urllib
 
 import common_util
 import firmware_log
+import test_conf as conf
 
 from string import Template
 
@@ -148,6 +149,11 @@ class ReportHtml:
         """Close the file."""
         with open(self.html_filename, 'w') as report_file:
             report_file.write(self.doc.get_doc())
+        # Make a copy to /tmp so that it could be viewed in Chrome.
+        tmp_copy = os.path.join(conf.docroot,
+                                os.path.basename(self.html_filename))
+        copy_cmd = 'cp %s %s' % (self.html_filename, tmp_copy)
+        common_util.simple_system(copy_cmd)
 
     def _reset_content(self):
         self.glog = firmware_log.GestureLog()

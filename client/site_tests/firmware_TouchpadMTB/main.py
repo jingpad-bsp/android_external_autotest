@@ -5,13 +5,20 @@
 """This module sets up the system for the touchpad firmware test suite."""
 
 
+# Include the paths for running pyauto to show test result html file.
+import sys
+sys.path.append('/usr/local/autotest/cros')
+pyautolib = '/usr/local/autotest/deps/pyauto_dep/test_src/chrome/test/pyautolib'
+sys.path.append(pyautolib)
+import httpd
+import pyauto
+
 import logging
 import os
 
 import firmware_utils
 import firmware_window
 import mtb
-import sys
 import test_conf as conf
 import test_flow
 import touch_device
@@ -20,6 +27,19 @@ from report_html import ReportHtml
 
 # Include some constants
 execfile('firmware_constants.py', globals())
+
+
+class DummyTest(pyauto.PyUITest):
+    """This is a dummpy test class derived from PyUITest to use pyauto tool."""
+    def test_navigate_to_url(self):
+        """Navigate to the html test result file using pyauto."""
+        testServer = httpd.HTTPListener(8000, conf.docroot)
+        testServer.run()
+        result = os.path.join(conf.docroot, conf.base_url)
+        self.NavigateToURL('http://localhost:8000/%s' % conf.base_url)
+        testServer.stop()
+        url = os.path.join(conf.docroot, conf.base_url)
+        print 'Chrome has navigated to the specified url: %s' % url
 
 
 class firmware_TouchpadMTB:
@@ -52,8 +72,7 @@ class firmware_TouchpadMTB:
         # Create the HTML report object and the output object to print messages
         # on the window and to print the results in the report.
         self.log_dir = firmware_utils.create_log_dir()
-        self.report_name = os.path.join(self.log_dir,
-                                        'touchpad_firmware_report')
+        self.report_name = os.path.join(self.log_dir, conf.report_basename)
         self.report_html_name = self.report_name + '.html'
         self.report_html = ReportHtml(self.report_html_name,
                                       self.screen_size,
@@ -109,6 +128,7 @@ class firmware_TouchpadMTB:
     def main(self):
         """A helper to enter gtk main loop."""
         fw.win.main()
+        pyauto.Main()
 
 
 if __name__ == '__main__':
