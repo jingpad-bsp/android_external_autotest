@@ -51,10 +51,22 @@ def create_log_dir():
     """Create a directory to save the report and device event files."""
     log_root_dir = '/var/tmp/touchpad_firmware_test'
     log_dir = os.path.join(log_root_dir, get_current_time_str())
+    latest_symlink = os.path.join(log_root_dir, 'latest')
+
+    # Create the log directory.
     try:
         os.makedirs(log_dir)
     except OSError, e:
         print 'Error in create the directory (%s): %s' % (log_dir, e)
+        sys.exit(-1)
+
+    # Set up the latest symbolic link to the newly created log directory.
+    try:
+        if os.path.islink(latest_symlink):
+            os.remove(latest_symlink)
+        os.symlink(log_dir, latest_symlink)
+    except OSError, e:
+        print 'Error in setup latest symlink (%s): %s' % (latest_symlink, e)
         sys.exit(-1)
     return log_dir
 
