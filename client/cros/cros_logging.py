@@ -19,7 +19,7 @@ def extract_kernel_timestamp(msg):
         The timestamp as float in seconds since last boot.
     """
 
-    match = re.search(' \[\s*([0-9.]+)\] ', msg)
+    match = re.search(' \[\s*([0-9]+\.[0-9]+)\] ', msg)
     if match:
         return float(match.group(1))
     raise error.TestError('Could not extract timestamp from message: ' + msg)
