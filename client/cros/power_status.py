@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, math, numpy, os, re, threading, time
+import ctypes, fcntl, glob, logging, math, numpy, os, struct, threading, time
 
 import common
 from autotest_lib.client.bin import utils
@@ -863,3 +863,148 @@ class PowerLogger(threading.Thread):
                 fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
                 line = '\t'.join(fmt_row)
                 f.write(line + '\n')
+
+
+class DiskStateLogger(threading.Thread):
+    """Records the time percentages the disk stays in its different power modes.
+
+    Example code snippet:
+        mylogger = power_status.DiskStateLogger()
+        mylogger.start()
+        result = mylogger.result()
+
+    Public methods:
+        start: Launches the thread and starts measurements.
+        result: Stops the thread if it's still running and returns measurements.
+        get_error: Returns the exception in _error if it exists.
+
+    Private functions:
+        _get_disk_state: Returns the disk's current ATA power mode as a string.
+
+    Private attributes:
+        _seconds_period: Disk polling interval in seconds.
+        _stats: Dict that maps disk states to seconds spent in them.
+        _running: Flag that is True as long as the logger should keep running.
+        _time: Timestamp of last disk state reading.
+        _device_path: The file system path of the disk's device node.
+        _error: Contains a TestError exception if an unexpected error occured
+    """
+    def __init__(self, seconds_period = 5.0, device_path = '/dev/sda'):
+        """Initializes a logger.
+
+        Args:
+            seconds_period: Disk polling interval in seconds. Default 5.0
+            device_path: The path of the disk's device node. Default '/dev/sda'
+        """
+        threading.Thread.__init__(self)
+        self._seconds_period = seconds_period
+        self._device_path = device_path
+        self._stats = {}
+        self._running = False
+        self._error = None
+
+
+    def _get_disk_state(self):
+        """Checks the disk's power mode and returns it as a string.
+
+        This uses the SG_IO ioctl to issue a raw SCSI command data block with
+        the ATA-PASS-THROUGH command that allows SCSI-to-ATA translation (see
+        T10 document 04-262r8). The ATA command issued is CHECKPOWERMODE1,
+        which returns the device's current power mode.
+        """
+
+        def _addressof(obj):
+            """Shortcut to return the memory address of an object as integer."""
+            return ctypes.cast(obj, ctypes.c_void_p).value
+
+        scsi_cdb = struct.pack("12B", # SCSI command data block (uint8[12])
+                               0xa1, # SCSI opcode: ATA-PASS-THROUGH
+                               3 << 1, # protocol: Non-data
+                               1 << 5, # flags: CK_COND
+                               0, # features
+                               0, # sector count
+                               0, 0, 0, # LBA
+                               1 << 6, # flags: ATA-USING-LBA
+                               0xe5, # ATA opcode: CHECKPOWERMODE1
+                               0, # reserved
+                               0, # control (no idea what this is...)
+                              )
+        scsi_sense = (ctypes.c_ubyte * 32)() # SCSI sense buffer (uint8[32])
+        sgio_header = struct.pack("iiBBHIPPPIIiPBBBBHHiII", # see <scsi/sg.h>
+                                  83, # Interface ID magic number (int32)
+                                  -1, # data transfer direction: none (int32)
+                                  12, # SCSI command data block length (uint8)
+                                  32, # SCSI sense data block length (uint8)
+                                  0, # iovec_count (not applicable?) (uint16)
+                                  0, # data transfer length (uint32)
+                                  0, # data block pointer
+                                  _addressof(scsi_cdb), # SCSI CDB pointer
+                                  _addressof(scsi_sense), # sense buffer pointer
+                                  500, # timeout in milliseconds (uint32)
+                                  0, # flags (uint32)
+                                  0, # pack ID (unused) (int32)
+                                  0, # user data pointer (unused)
+                                  0, 0, 0, 0, 0, 0, 0, 0, 0, # output params
+                                 )
+        try:
+            with open(self._device_path, 'r') as dev:
+                result = fcntl.ioctl(dev, 0x2285, sgio_header)
+        except IOError, e:
+            raise error.TestError('ioctl(SG_IO) error: %s' % str(e))
+        _, _, _, _, status, host_status, driver_status = \
+            struct.unpack("4x4xxx2x4xPPP4x4x4xPBxxxHH4x4x4x", result)
+        if status != 0x2: # status: CHECK_CONDITION
+            raise error.TestError('SG_IO status: %d' % status)
+        if host_status != 0:
+            raise error.TestError('SG_IO host status: %d' % host_status)
+        if driver_status != 0x8: # driver status: SENSE
+            raise error.TestError('SG_IO driver status: %d' % driver_status)
+
+        if scsi_sense[0] != 0x72: # resp. code: current error, descriptor format
+            raise error.TestError('SENSE response code: %d' % scsi_sense[0])
+        if scsi_sense[1] != 0: # sense key: No Sense
+            raise error.TestError('SENSE key: %d' % scsi_sense[1])
+        if scsi_sense[7] < 14: # additional length (ATA status is 14 - 1 bytes)
+            raise error.TestError('ADD. SENSE too short: %d' % scsi_sense[7])
+        if scsi_sense[8] != 0x9: # additional descriptor type: ATA Return Status
+            raise error.TestError('SENSE descriptor type: %d' % scsi_sense[8])
+        if scsi_sense[11] != 0: # errors: none
+            raise error.TestError('ATA error code: %d' % scsi_sense[11])
+
+        if scsi_sense[13] == 0x00: return 'standby'
+        if scsi_sense[13] == 0x80: return 'idle'
+        if scsi_sense[13] == 0xff: return 'active'
+        return 'unknown(%d)' % scsi_sense[13]
+
+
+    def run(self):
+        """The Thread's run method."""
+        try:
+            self._time = time.time()
+            self._running = True
+            while(self._running):
+                time.sleep(self._seconds_period)
+                state = self._get_disk_state()
+                new_time = time.time()
+                if state in self._stats:
+                    self._stats[state] += new_time - self._time
+                else:
+                    self._stats[state] = new_time - self._time
+                self._time = new_time
+        except error.TestError, e:
+            self._error = e
+            self._running = False
+
+
+    def result(self):
+        """Stop the logger and return dict with result percentages."""
+        if (self._running):
+            self._running = False
+            self.join(self._seconds_period * 2)
+        total = sum(self._stats.itervalues())
+        return dict((k, v * 100 / total) for (k, v) in self._stats.iteritems())
+
+
+    def get_error(self):
+        """Returns the _error exception... please only call after result()."""
+        return self._error
