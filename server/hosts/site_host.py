@@ -11,6 +11,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import global_config, error
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
+from autotest_lib.server import autotest
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_remote_power
 from autotest_lib.server.cros import servo
@@ -209,7 +210,11 @@ class SiteHost(remote.RemoteHost):
 
     def cleanup(self):
         """Special cleanup method to make sure hosts always get power back."""
-        super(SiteHost, self).cleanup()
+        # We're explicitly choosing not to run super(SiteHost, self).cleanup()
+        # because it does nothing useful, and reboots the device unnecessarily.
+        client_at = autotest.Autotest(self)
+        client_at.run_static_method('autotest_lib.client.cros.cros_ui',
+                                    'restart')
         remote_power = site_remote_power.RemotePower(self.hostname)
         if remote_power:
             remote_power.set_power_on()

@@ -61,7 +61,7 @@ class site_job(base_client_job):
         # sync first, so that a sync during shutdown doesn't time out
         utils.system("sync; sync", ignore_status=True)
 
-        utils.system("(sleep 5; reboot) </dev/null >/dev/null 2>&1 &")
+        utils.system("reboot </dev/null >/dev/null 2>&1 &")
         self.quit()
 
 
