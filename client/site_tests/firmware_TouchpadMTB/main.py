@@ -95,6 +95,9 @@ class firmware_TouchpadMTB:
         self.win.register_callback('expose_event',
                                    self.test_flow.init_gesture_setup_callback)
 
+        # Stop power management so that the screen does not dim during tests
+        firmware_utils.stop_power_management()
+
     def _get_screen_size(self):
         """Get the screen size."""
         self.screen_size = self.chrome.get_screen_size()
@@ -128,6 +131,7 @@ class firmware_TouchpadMTB:
     def main(self):
         """A helper to enter gtk main loop."""
         fw.win.main()
+        firmware_utils.start_power_management()
         pyauto.Main()
 
 

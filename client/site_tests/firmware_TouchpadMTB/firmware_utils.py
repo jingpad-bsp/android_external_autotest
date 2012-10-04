@@ -71,6 +71,25 @@ def create_log_dir():
     return log_dir
 
 
+def stop_power_management():
+    """Stop the power daemon management."""
+    ret_d = common_util.simple_system('stop -q powerd')
+    ret_m = common_util.simple_system('stop -q powerm')
+    if ret_d or ret_m:
+        print 'Error in stopping powerd/powerm'
+        print 'The screen may dim during the test.'
+
+
+def start_power_management():
+    """Start the power daemon management."""
+    ret_d = common_util.simple_system('start -q powerd')
+    ret_m = common_util.simple_system('start -q powerm')
+    if ret_d or ret_m:
+        print 'Error in starting powerd/powerm.'
+        print 'The screen may not go into suspend mode.'
+        print 'If this is a problem, you could reboot the machine.'
+
+
 class Gesture:
     """A class defines the structure of Gesture."""
     # define the default timeout (in milli-seconds) when performing a gesture.
