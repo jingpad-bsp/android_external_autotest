@@ -177,7 +177,7 @@ After the whole test is completed, three quick 1000Hz pulses will be played.
 
 _PLAYBACK_INSTRUCTIONS = '''<p>
 This is a playback test.  For the hardware device listed below, the following
-tests sequence will be done once for evey channel configuration listed 
+tests sequence will be done once for evey channel configuration listed
 at the end of the page:
 <ol>
     <ol>
@@ -235,7 +235,7 @@ with the input muted, should yield nothing at playback.
 _CONTROL_MASTER = "'Master'"
 _CONTROL_HEADPHONE = "'Headphone'"
 _CONTROL_SPEAKER = "'Speaker'"
-_CONTROL_CAPTURE = "'Capture',0"
+_CONTROL_CAPTURE = "'(Capture|MIC1)'"
 _CONTROL_PCM = "'PCM'"
 
 # Names for various test webpages.
@@ -261,8 +261,9 @@ _VOLUME_TEST_VOLUME = 90
 # Tests to perform, and mixer settings to use for the tests.  'X' denotes a
 # volume that will be varied by the (volume) test
 
+_DEVICE = "HDA Intel|DAISYI2S"
 _TESTS = [{'name': "Volume Test (Master)",
-           'device': "HDA Intel",
+           'device': _DEVICE,
            'mixer': [{'name':_CONTROL_HEADPHONE, 'value': "100% on"},
                      {'name':_CONTROL_SPEAKER, 'value': "100% on"},
                      {'name':_CONTROL_PCM, 'value':"100% on"}],
@@ -270,7 +271,7 @@ _TESTS = [{'name': "Volume Test (Master)",
            'test': _VOLUME_TEST},
 
           {'name': 'Tones Test (Master)',
-           'device': 'HDA Intel',
+           'device': _DEVICE,
            'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
                      {'name':_CONTROL_HEADPHONE, 'value': "100% on"},
                      {'name':_CONTROL_SPEAKER, 'value': "100% on"},
@@ -278,7 +279,7 @@ _TESTS = [{'name': "Volume Test (Master)",
            'test': _TONES_TEST},
 
           {'name': 'Volume Test (Speakers Only)',
-           'device': 'HDA Intel',
+           'device': _DEVICE,
            'mixer': [{'name':_CONTROL_MASTER, 'value': "100% on"},
                      {'name':_CONTROL_HEADPHONE, 'value': "0% off"},
                      {'name':_CONTROL_PCM, 'value':"100% on"}],
@@ -286,7 +287,7 @@ _TESTS = [{'name': "Volume Test (Master)",
            'test': _VOLUME_TEST},
 
           {'name': 'Tones Test (Speakers Only)',
-           'device': 'HDA Intel',
+           'device': _DEVICE,
            'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
                      {'name':_CONTROL_HEADPHONE, 'value': "0% off"},
                      {'name':_CONTROL_SPEAKER, 'value': "100% on"},
@@ -294,7 +295,7 @@ _TESTS = [{'name': "Volume Test (Master)",
            'test': _TONES_TEST},
 
           {'name': 'Volume Test (Headphones Only)',
-           'device': 'HDA Intel',
+           'device': _DEVICE,
            'mixer': [{'name':_CONTROL_MASTER, 'value': "100% on"},
                      {'name':_CONTROL_SPEAKER, 'value': "0% off"},
                      {'name':_CONTROL_PCM, 'value':"100% on"}],
@@ -302,7 +303,7 @@ _TESTS = [{'name': "Volume Test (Master)",
            'test': _VOLUME_TEST},
 
           {'name': 'Tones Test (Headphones Only)',
-           'device': 'HDA Intel',
+           'device': _DEVICE,
            'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
                      {'name':_CONTROL_SPEAKER, 'value': "0% off"},
                      {'name':_CONTROL_HEADPHONE, 'value': "100% on"},
@@ -310,7 +311,7 @@ _TESTS = [{'name': "Volume Test (Master)",
            'test': _TONES_TEST},
 
           {'name': 'Recording Test',
-           'device': 'HDA Intel',
+           'device': _DEVICE,
            'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
                      {'name':_CONTROL_SPEAKER, 'value': "100% on"},
                      {'name':_CONTROL_HEADPHONE, 'value': "100% on"},
@@ -320,7 +321,7 @@ _TESTS = [{'name': "Volume Test (Master)",
          ]
 
 # Device regexp, adds '*' before and after device in _TESTS before comparing
-_DEVICE_RE_TEMPLATE_ = "(.*)%s(.*)"
+_NAME_RE_TEMPLATE_ = "(.*)%s(.*)"
 
 _USR_BIN_PATH = '/usr/bin/'
 
@@ -333,6 +334,7 @@ _MIXER_CAPS_RE = re.compile('\s+Capabilities:\s+(.+)')
 _MIXER_LIMITS_RE = re.compile('\s+Limits:\s*(.*) (\d+) - (\d+)')
 _MIXER_CHANNELS_RE = re.compile('(.+)channels:\s(.+)')
 _MIXER_CHANNEL_LIST_RE = re.compile('(.+) - (.+)')
+_MIXER_DIRECTION_RE = re.compile('.*(Playback|Capture).*')
 
 # Regexps for parsing output of alsa_caps.
 _CAPS_RATES_RE = re.compile('Rates: (.*)')
@@ -353,7 +355,7 @@ class ToneThread(threading.Thread):
 class VolumeChangeThread(threading.Thread):
     _WAKE_INTERVAL_SEC = 0.02
 
-    def __init__(self, audio, start_volume, end_volume, period, control):
+    def __init__(self, audio, start_volume, end_volume, card, period, control):
         """Changes the volume to end_volume over period seconds.
 
         Volume will be updated as max every 50ms, with a target of reaching max
@@ -363,6 +365,7 @@ class VolumeChangeThread(threading.Thread):
             audio: An instance of the audio object.
             start_volume: An integer specifying the start volume.
             end_volume: An integer specifying the stop volume.
+            card: The index of the audio card to test.
             period: The period, in seconds, over which to adjust the volume from
                     start_volume to end_volume.
             control: Adjust volume of this control.
@@ -371,6 +374,7 @@ class VolumeChangeThread(threading.Thread):
         self.audio = audio
         self.start_volume = start_volume
         self.end_volume = end_volume
+        self.card = card
         self.period = period
         self.control = control
 
@@ -385,11 +389,12 @@ class VolumeChangeThread(threading.Thread):
             elapsed = now - start
             new_volume = int(self.start_volume + delta * elapsed / self.period)
             if new_volume != last_volume:
-                self.audio.do_set_volume_alsa(self.control, new_volume)
+                self.audio.do_set_volume_alsa(self.card, self.control,
+                        new_volume)
                 last_volume = new_volume
             time.sleep(self._WAKE_INTERVAL_SEC)
             now = time.time()
-        self.audio.do_set_volume_alsa(self.control, self.end_volume)
+        self.audio.do_set_volume_alsa(self.card, self.control, self.end_volume)
 
 
 class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
@@ -688,7 +693,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
         for device in self._playback_devices['info']:
             for test in _TESTS:
-                regexp = re.compile(_DEVICE_RE_TEMPLATE_ % (test['device']))
+                regexp = re.compile(_NAME_RE_TEMPLATE_ % (test['device']))
                 m = regexp.match(device['name'])
                 if m is not None:
                     expected_tests = expected_tests + 1
@@ -718,7 +723,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         for device in self._playback_devices['info']:
             # Treat the 'device' in _TESTS as a regexp we try to match.
             for test in _TESTS:
-                regexp = re.compile(_DEVICE_RE_TEMPLATE_ % (test['device']))
+                regexp = re.compile(_NAME_RE_TEMPLATE_ % (test['device']))
                 m = regexp.match(device['name'])
                 if m is not None:
                     server.wfile.write(self.get_testing_item(
@@ -883,12 +888,14 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                 if current_control is not None:
                     if direction == current_control['direction']:
                         device_info['control_names'].append(
-                            current_control['name'])
+                                current_control['name'])
                         device_info['controls'].append(current_control)
                 current_control = {}
                 current_control['name'] =  '\'%s\',%d' % (m.group(1),
                                                           int(m.group(2)))
                 current_control['direction'] = 'Invalid'
+                if re.compile('.*((?i)mic).*').match(current_control['name']):
+                    current_control['direction'] = 'Capture'
             if current_control is not None:
                 m = _MIXER_CAPS_RE.match(line)
                 if m is not None:
@@ -896,7 +903,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
                 m = _MIXER_LIMITS_RE.match(line)
                 if m is not None:
-                    current_control['direction'] = m.group(1)
+                    if _MIXER_DIRECTION_RE.match(m.group(1)):
+                        current_control['direction'] = m.group(1)
                     current_control['min_volume'] = int(m.group(2))
                     current_control['max_volume'] = int(m.group(3))
 
@@ -912,6 +920,12 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                         else:
                             current_control['channel_map'].append(mm.group(1))
                             channel_list = mm.group(2)
+                # While direction has not been decided yet, match all lines
+                # in the output which might tell us the direction.
+                if current_control['direction'] == 'Invalid':
+                    m = _MIXER_DIRECTION_RE.match(line)
+                    if m:
+                        current_control['direction'] = m.group(1)
 
         if current_control is not None:
             if direction == current_control['direction']:
@@ -968,7 +982,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         logging.info('Setting active control to %s' % (control_name))
 
         for control in device['controls']:
-            if control_name in control['name']:
+            if re.compile(_NAME_RE_TEMPLATE_ %
+                    control_name).match(control['name']):
                 device['active_control'] = control
                 break
 
@@ -987,7 +1002,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             logging.info(self._pp.pformat(item))
             control = self.find_control(item['name'], device)
             if control is not None:
-                self.do_set_volume_alsa(control, item['value'])
+                self.do_set_volume_alsa(device['card_index'],
+                        control, item['value'])
 
 
     def do_signal_test_end(self):
@@ -1031,7 +1047,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             return
 
         control = device_rec['active_control']
-        self.do_set_volume_alsa(control, "100% cap")
+        self.do_set_volume_alsa(device_rec['card_index'], control, "100% cap")
 
         # Record from each channel, then from all channels.
         num_channels = len(device_rec['active_control']['channel_map'])
@@ -1042,29 +1058,30 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
         # Try recording at max, un-amped, 50% amp, and mute volumes.
         logging.info('-- record max vol all channels')
-        self.do_set_volume_alsa(control, "100% cap")
+        self.do_set_volume_alsa(device_rec['card_index'], control, "100% cap")
         self.record_playback_sample(device_rec, None)
 
         half_amp_volume = control['max_volume'] / 2.0
 
         logging.info('-- record half-amp volume all channels')
-        self.do_set_volume_alsa(control, "%d cap" % (half_amp_volume))
+        self.do_set_volume_alsa(device_rec['card_index'], control, "%d cap" %
+                (half_amp_volume))
         self.record_playback_sample(device_rec, None)
 
         logging.info('-- record muted all channels')
 
-        self.do_set_volume_alsa(control, "100% nocap")
+        self.do_set_volume_alsa(device_rec['card_index'], control, "100% nocap")
         self.record_playback_sample(device_rec, None)
 
         # Reset mic to on and max level
-        self.do_set_volume_alsa(control, "100% cap")
+        self.do_set_volume_alsa(device_rec['card_index'], control, "100% cap")
         self.do_signal_test_end()
 
 
     # There is a lag between invocation of the recording process
     # and when it actually starts recording. A 4sec "duration" makes a
-    # good default because it generates about 2sec worth of recording 
-    # when playing back the recording. 
+    # good default because it generates about 2sec worth of recording
+    # when playing back the recording.
     def record_playback_sample(self, device, channel, duration=4):
         """Records a sample from the default input device and plays it back.
 
@@ -1072,7 +1089,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             device: device info dictionary gotten from
                     enumerate_record devices()
             channel: Which channel to record from. "None" to specify all.
-            duration: How long to record in seconds. 
+            duration: How long to record in seconds.
                       (Duration > 3sec to be discernable)
         """
         # Record a sample.
@@ -1092,7 +1109,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                     if len(vol_arg):
                         vol_arg = "%s," % (vol_arg)
                     vol_arg = "%s%s" % (vol_arg, chan_vol)
-                self.do_set_volume_alsa(device['active_control'], vol_arg)
+                self.do_set_volume_alsa(device['card_index'],
+                        device['active_control'], vol_arg)
 
             cmd_rec = 'arecord -d %f -f cd %s' % (duration, tmpfile)
 
@@ -1121,7 +1139,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             #
             # Optionally, we can denoise it first with something like.
             #
-            #   sox $tmpfile -n trim 0 1 noiseprof | 
+            #   sox $tmpfile -n trim 0 1 noiseprof |
             #     sox $tmpfile reduced-$tmpfile.wav noisered
             #
             # To try and make sure we aren't picking up bad nose. Then run
@@ -1234,8 +1252,9 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         config['tone_length_sec'] = 5
 
         # Silence and un-mute the active control.
-        self.do_set_volume_alsa(device['active_control'], 0)
-        self.do_set_mute_alsa(device['active_control'], 0)
+        self.do_set_volume_alsa(device['card_index'],
+                device['active_control'], 0)
+        self.do_set_mute_alsa(device['card_index'], device['active_control'], 0)
 
         # TODO(ajwong): What is a good test volume? 50% of max default is
         # pretty arbitrary.
@@ -1249,6 +1268,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         tone_thread = ToneThread(self, config)
 
         volume_change_thread = VolumeChangeThread(self, 0, test_volume,
+                                                  device['card_index'],
                                                   config['tone_length_sec'],
                                                   device['active_control'])
         volume_change_thread.start()
@@ -1265,28 +1285,30 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         return utils.system_output(self.cmd(command), retain_output=True)
 
 
-    def do_set_volume_alsa(self, control, new_volume):
+    def do_set_volume_alsa(self, card, control, new_volume):
         """Helper function for invoking 'amixer sset' command.
 
-        Args: control: control structure from device dictionary
+        Args: card: audio card number to set
+              control: control structure from device dictionary
               new_volume: Either percentage, e.g. "50%" or actual value in range
                           of control's min_volume to max_volume
         """
         if 'volume' in control['caps']:
-            result = self.do_cmd('amixer sset %s %s' % (control['name'],
-                                                        new_volume))
+            result = self.do_cmd('amixer -c %d sset %s %s' %
+                    (card, control['name'], new_volume))
 
 
-    def do_set_mute_alsa(self, control, mute):
+    def do_set_mute_alsa(self, card, control, mute):
         """Helper function for invoking 'amixer sset' command.
 
-        Args: control: control structure from device dictionary
+        Args: card: audio card number to set
+              control: control structure from device dictionary
               new_mute: Either 1 for mute or 0 for unmuted
         """
         if 'pswitch' in control['caps']:
             enabled = ['on', 'off']
-            result = self.do_cmd('amixer sset %s %s' % (control['name'],
-                                                        enabled[mute]))
+            result = self.do_cmd('amixer -c %d sset %s %s' %
+                    (card, control['name'], enabled[mute]))
 
 
     def play_tone(self, base_config, frequency):
