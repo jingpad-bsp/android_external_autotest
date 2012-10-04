@@ -2,11 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ast
 import ctypes
-import fdpexpect
 import logging
 import os
-import pexpect
 import re
 import sys
 import tempfile
@@ -410,48 +409,6 @@ class FAFTSequence(ServoTest):
                 })
 
 
-    def _open_uart_pty(self):
-        """Open UART pty and spawn pexpect object.
-
-        Returns:
-          Tuple (fd, child): fd is the file descriptor of opened UART pty, and
-            child is a fdpexpect object tied to it.
-        """
-        fd = os.open(self.servo.get("uart1_pty"), os.O_RDWR | os.O_NONBLOCK)
-        child = fdpexpect.fdspawn(fd)
-        return (fd, child)
-
-
-    def _flush_uart_pty(self, child):
-        """Flush UART output to prevent previous pending message interferring.
-
-        Args:
-          child: The fdpexpect object tied to UART pty.
-        """
-        child.sendline("")
-        while True:
-            try:
-                child.expect(".", timeout=0.01)
-            except pexpect.TIMEOUT:
-                break
-
-
-    def _uart_send(self, child, line):
-        """Flush and send command through UART.
-
-        Args:
-          child: The pexpect object tied to UART pty.
-          line: String to send through UART.
-
-        Raises:
-          error.TestFail: Raised when writing to UART fails.
-        """
-        logging.info("Sending UART command: %s" % line)
-        self._flush_uart_pty(child)
-        if child.sendline(line) != len(line) + 1:
-            raise error.TestFail("Failed to send UART command.")
-
-
     def send_uart_command(self, command):
         """Send command through UART.
 
@@ -460,26 +417,20 @@ class FAFTSequence(ServoTest):
 
         Args:
           command: The command string to send.
-
-        Raises:
-          error.TestFail: Raised when writing to UART fails.
         """
-        (fd, child) = self._open_uart_pty()
-        try:
-            self._uart_send(child, command)
-        finally:
-            os.close(fd)
+        self.servo.set('ec_uart_regexp', 'None')
+        self.servo.set_nocheck('ec_uart_cmd', command)
 
 
-    def send_uart_command_get_output(self, command, regex_list, timeout=1):
+    def send_uart_command_get_output(self, command, regexp_list, timeout=1):
         """Send command through UART and wait for response.
 
         This function waits for response message matching regular expressions.
 
         Args:
           command: The command sent.
-          regex_list: List of regular expressions used to match response message.
-            Note, list must be ordered.
+          regexp_list: List of regular expressions used to match response
+            message. Note, list must be ordered.
 
         Returns:
           List of tuples, each of which contains the entire matched string and
@@ -488,33 +439,22 @@ class FAFTSequence(ServoTest):
             response of the given command:
               High temp: 37.2
               Low temp: 36.4
-            regex_list:
+            regexp_list:
               ['High temp: (\d+)\.(\d+)', 'Low temp: (\d+)\.(\d+)']
             returns:
               [('High temp: 37.2', '37', '2'), ('Low temp: 36.4', '36', '4')]
 
         Raises:
-          error.TestFail: If timed out waiting for EC response.
+          error.TestError: An error when the given regexp_list is not valid.
         """
-        if not isinstance(regex_list, list):
-            regex_list = [regex_list]
-        result_list = []
-        (fd, child) = self._open_uart_pty()
-        try:
-            self._uart_send(child, command)
-            for regex in regex_list:
-                child.expect(regex, timeout=timeout)
-                match = child.match
-                lastindex = match.lastindex if match and match.lastindex else 0
-                # Create a tuple which contains the entire matched string and
-                # all the subgroups of the match.
-                result = match.group(*range(lastindex + 1)) if match else None
-                result_list.append(result)
-        except pexpect.TIMEOUT:
-            raise error.TestFail("Timeout waiting for UART response.")
-        finally:
-            os.close(fd)
-        return result_list
+        if not isinstance(regexp_list, list):
+            raise error.TestError('Arugment regexp_list is not a list: %s' %
+                                  str(regexp_list))
+
+        self.servo.set('ec_uart_timeout', str(float(timeout)))
+        self.servo.set('ec_uart_regexp', str(regexp_list))
+        self.servo.set_nocheck('ec_uart_cmd', command)
+        return ast.literal_eval(self.servo.get('ec_uart_cmd'))
 
 
     def check_ec_capability(self, required_cap=[], suppress_warning=False):
