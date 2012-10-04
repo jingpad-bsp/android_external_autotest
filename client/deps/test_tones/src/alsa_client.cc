@@ -190,16 +190,70 @@ bool AlsaPlaybackClient::Init(int sample_rate, SampleFormat format,
   }
 
   /* Set format, access, num_channels, sample rate */
+  char const* hwdevname = playback_device_.c_str();
+  unsigned int rate_set;
   int soft_resample = 1;
-  if ((last_error_ = snd_pcm_set_params(pcm_out_handle_,
-                                        SampleFormatToAlsaFormat(format),
-                                        SND_PCM_ACCESS_RW_INTERLEAVED,
-                                        num_channels,
-                                        sample_rate,
-                                        soft_resample,
-                                        1000 * latency_ms_)) < 0) {
-    return false;
+  snd_pcm_hw_params_t *hwparams_;
+
+  snd_pcm_hw_params_malloc(&hwparams_);
+
+  if ((last_error_ = snd_pcm_hw_params_any(pcm_out_handle_, hwparams_)) < 0) {
+    fprintf(stderr, "No config available for PCM device %s\n",
+            hwdevname);
+    goto set_hw_err;
   }
+
+  if ((last_error_ = snd_pcm_hw_params_set_rate_resample(pcm_out_handle_,
+      hwparams_, soft_resample)) < 0) {
+    fprintf(stderr, "Resampling not available on PCM device %s\n",
+            hwdevname);
+    goto set_hw_err;
+  }
+
+  if ((last_error_ = snd_pcm_hw_params_set_access(pcm_out_handle_, hwparams_,
+      SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
+    fprintf(stderr, "Access type not available on PCM device %s\n",
+            hwdevname);
+    goto set_hw_err;
+  }
+
+  if ((last_error_ = snd_pcm_hw_params_set_format(pcm_out_handle_, hwparams_,
+      SampleFormatToAlsaFormat(format))) < 0) {
+    fprintf(stderr, "Could not set format for device %s\n", hwdevname);
+    goto set_hw_err;
+  }
+
+  if ((last_error_ = snd_pcm_hw_params_set_channels(pcm_out_handle_, hwparams_,
+      num_channels)) < 0) {
+    fprintf(stderr, "Could not set channel count for device %s\n",
+            hwdevname);
+    goto set_hw_err;
+  }
+
+  rate_set = static_cast<unsigned int>(sample_rate);
+  if ((last_error_ = snd_pcm_hw_params_set_rate_near(pcm_out_handle_,
+      hwparams_, &rate_set, 0)) < 0) {
+    fprintf(stderr, "Could not set bitrate near %u for PCM device %s\n",
+            sample_rate, hwdevname);
+    goto set_hw_err;
+  }
+
+  if (rate_set != static_cast<unsigned int>(sample_rate))
+    fprintf(stderr, "Warning: Actual rate(%u) != Requested rate(%u)\n",
+            rate_set,
+            sample_rate);
+
+  snd_pcm_hw_params_set_periods(pcm_out_handle_, hwparams_, 2, 0);
+  snd_pcm_hw_params_set_period_size(pcm_out_handle_,
+                                    hwparams_,
+                                    period_size * num_channels,
+                                    0);
+
+  if ((last_error_ = snd_pcm_hw_params(pcm_out_handle_, hwparams_)) < 0) {
+    fprintf(stderr, "Unable to install hw params\n");
+    goto set_hw_err;
+  }
+
 
   /* Init playback parameter (a buffer with num_frame_ and frame_bytes) */
   if ((last_error_ = pb_param_.Init(pcm_out_handle_, format_,
@@ -207,7 +261,11 @@ bool AlsaPlaybackClient::Init(int sample_rate, SampleFormat format,
     return false;
   }
   set_state(kReady);
-  return true;
+
+set_hw_err:
+  if (hwparams_)
+    snd_pcm_hw_params_free(hwparams_);
+  return last_error_ == 0;
 }
 
 void AlsaPlaybackClient::Play(shared_ptr<CircularBuffer<char> > buffers) {
@@ -333,6 +391,8 @@ AlsaCaptureClient::AlsaCaptureClient(const std::string &capture_device)
 AlsaCaptureClient::~AlsaCaptureClient() {
   if (pcm_capture_handle_)
     snd_pcm_close(pcm_capture_handle_);
+  if (hwparams_)
+    snd_pcm_hw_params_free(hwparams_);
 }
 
 bool AlsaCaptureClient::Init(int sample_rate, SampleFormat format,
@@ -428,7 +488,7 @@ bool AlsaCaptureClient::Init(int sample_rate, SampleFormat format,
 
   set_state(kReady);
 
-  /* Setup cirular buffer */
+  /* Setup circular buffer */
   snd_pcm_uframes_t actual_buffer_size = 0;
   snd_pcm_uframes_t actual_period_size = 0;
   if ((last_error_ = snd_pcm_get_params(
