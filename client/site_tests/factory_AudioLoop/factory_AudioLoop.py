@@ -13,16 +13,13 @@ import re
 import subprocess
 import tempfile
 import time
-import utils
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.test import factory
 from cros.factory.test.test_ui import UI
-from cros.factory.test.event import Event
 from autotest_lib.client.cros.audio import audio_helper
-from cros.factory.test import ui as ful
 
 
 # Default setting
@@ -49,10 +46,7 @@ _MUTE_RIGHT_MIXER_SETTINGS = [{'name': '"Headphone Playback Switch"',
                                'value': 'on,off'},
                               {'name': '"Speaker Playback Switch"',
                                'value': 'on,off'}]
-_MUTE_HEADPHONE = [{'name': '"Headphone Playback Switch"',
-                    'value': 'off,off'}]
-_MUTE_SPEAKER = [{'name': '"Speaker Playback Switch"',
-                  'value': 'off,off'}]
+
 
 class factory_AudioLoop(test.test):
     version = 1
@@ -60,15 +54,15 @@ class factory_AudioLoop(test.test):
     def start_run_test(self, event):
         if self._audiofuntest:
             for odev in self._output_devices:
-                for settings in [_MUTE_LEFT_MIXER_SETTINGS,
-                        _MUTE_RIGHT_MIXER_SETTINGS]:
+                for settings in [self._mute_left_mixer_settings,
+                                 self._mute_right_mixer_settings]:
                     for idev in self._input_devices:
                         self._ah.set_mixer_controls(settings)
-                        if self._device_to_mute == 'speaker':
-                            self._ah.set_mixer_controls(_MUTE_SPEAKER)
-                        elif self._device_to_mute == 'headphone':
-                            self._ah.set_mixer_controls(_MUTE_HEADPHONE)
-                        self.run_audiofuntest(idev, odev)
+                        if self._mute_device_mixer_settings:
+                            self._ah.set_mixer_controls(
+                                    self._mute_device_mixer_settings)
+                        self.run_audiofuntest(idev, odev,
+                                              self._audiofuntest_duration)
                         time.sleep(0.5)
 
             self.ui.Pass()
@@ -76,7 +70,7 @@ class factory_AudioLoop(test.test):
             self.audio_loopback()
         return True
 
-    def run_audiofuntest(self, idev, odev):
+    def run_audiofuntest(self, idev, odev, dur):
         '''
         Sample audiofuntest message:
 
@@ -86,7 +80,8 @@ class factory_AudioLoop(test.test):
         '''
         factory.console.info('Run audiofuntest')
         self._proc = subprocess.Popen([self._audiofuntest_path, '-r', '48000',
-                '-i', idev, '-o', odev], stderr=subprocess.PIPE)
+                                       '-i', idev, '-o', odev, '-l',
+                                       '%d' % dur], stderr=subprocess.PIPE)
 
         while True:
             proc_output = self._proc.stderr.readline()
@@ -155,17 +150,25 @@ class factory_AudioLoop(test.test):
             self._result = True
             factory.console.info('Got frequency %d' % freq)
 
-    def run_once(self, audiofuntest=True, duration=_DEFAULT_DURATION_SEC,
+    def run_once(self, audiofuntest=True, audiofuntest_duration=10,
+            duration=_DEFAULT_DURATION_SEC,
             input_devices=['hw:0,0'], output_devices=['hw:0,0'],
-            mixer_controls=None, device_to_mute=None):
+            mixer_controls=None, device_to_mute=None,
+            mute_left_mixer_settings=_MUTE_LEFT_MIXER_SETTINGS,
+            mute_right_mixer_settings=_MUTE_RIGHT_MIXER_SETTINGS,
+            mute_device_mixer_settings=None):
         factory.console.info('%s run_once' % self.__class__)
 
         self._audiofuntest = audiofuntest
+        self._audiofuntest_duration = audiofuntest_duration
         self._duration = duration
         self._freq = _DEFAULT_FREQ_HZ
         self._input_devices = input_devices
         self._output_devices = output_devices
         self._device_to_mute = device_to_mute
+        self._mute_left_mixer_settings = mute_left_mixer_settings
+        self._mute_right_mixer_settings = mute_right_mixer_settings
+        self._mute_device_mixer_settings = mute_device_mixer_settings
 
         # Create a default audio helper to do the setup jobs.
         self._ah = audio_helper.AudioHelper(self, record_duration=duration)
