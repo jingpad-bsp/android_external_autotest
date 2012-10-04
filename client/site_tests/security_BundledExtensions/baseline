@@ -116,7 +116,7 @@
                             "app.window"]
       },
       { "crx_file": "felcaaldnbdncclmgdcncolpebgiejap.crx",
-        "name": "Spreadsheets",
+        "name": "Sheets",
         "effective_host_permissions": [],
         "api_permissions": []
       },
