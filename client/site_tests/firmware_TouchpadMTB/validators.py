@@ -253,8 +253,8 @@ class LinearityValidator(BaseValidator):
             ave_distance = self._simple_linear_regression(list_x, list_y)
             deviation_touch = ave_distance / resolution_y
 
-        self.log_details('ave fitting error: %.2f' % ave_distance)
-        msg_device = 'deviation (pad) slot[%d]: %.2f mm'
+        self.log_details('ave fitting error: %.2f px' % ave_distance)
+        msg_device = 'deviation (pad) slot%d: %.2f mm'
         self.log_details(msg_device % (self.slot, deviation_touch))
         self.log_score(self.fc.mf.grade(deviation_touch))
         return self.log
@@ -353,8 +353,8 @@ class StationaryFingerValidator(BaseValidator):
         self.init_check(packets)
         # Get the count of tracking id
         distance = self.packets.get_largest_distance(self.slot)
-        self.log_details('Largest distance in slot[%d]: %d' % (self.slot,
-                                                               distance))
+        self.log_details('Largest distance slot%d: %d px' %
+                         (self.slot, distance))
         self.log_score(self.fc.mf.grade(distance))
         return self.log
 
@@ -377,7 +377,7 @@ class NoGapValidator(BaseValidator):
         self.init_check(packets)
         # Get the largest gap ratio
         gap_ratio = self.packets.get_largest_gap_ratio(self.slot)
-        msg = 'Largest gap ratio in slot[%d]: %f'
+        msg = 'Largest gap ratio slot%d: %f'
         self.log_details(msg % (self.slot, gap_ratio))
         self.log_score(self.fc.mf.grade(gap_ratio))
         return self.log
@@ -406,7 +406,7 @@ class NoReversedMotionValidator(BaseValidator):
             # Get the reversed motions if any
             reversed_motions = self.packets.get_reversed_motions(slot,
                                                                  direction)
-            msg = 'Reversed motions in slot[%d]: %s'
+            msg = 'Reversed motions slot%d: %s px'
             self.log_details(msg % (slot, reversed_motions))
             sum_reversed_motions += sum(map(abs, reversed_motions.values()))
         self.log_score(self.fc.mf.grade(sum_reversed_motions))
@@ -432,7 +432,7 @@ class CountPacketsValidator(BaseValidator):
         self.init_check(packets)
         # Get the number of packets in that slot
         num_packets = self.packets.get_num_packets(self.slot)
-        msg = 'Number of packets in slot[%d]: %s'
+        msg = 'Number of packets slot%d: %s'
         self.log_details(msg % (self.slot, num_packets))
         self.log_score(self.fc.mf.grade(num_packets))
         return self.log
@@ -458,7 +458,7 @@ class PinchValidator(BaseValidator):
         relative_motion = self.packets.get_relative_motion(slots)
         if variation == ZOOM_OUT:
             relative_motion = -relative_motion
-        msg = 'Relative motions of the two fingers: %.2f'
+        msg = 'Relative motions of the two fingers: %.2f px'
         self.log_details(msg % relative_motion)
         self.log_score(self.fc.mf.grade(relative_motion))
         return self.log
@@ -508,7 +508,7 @@ class DrumrollValidator(BaseValidator):
         self.init_check(packets)
         # Get the max distance of all tracking IDs
         max_distance = self.packets.get_max_distance_of_all_tracking_ids()
-        msg = 'Max distance: %.2f'
+        msg = 'Max distance: %.2f px'
         self.log_details(msg % max_distance)
         self.log_score(self.fc.mf.grade(max_distance))
         return self.log
