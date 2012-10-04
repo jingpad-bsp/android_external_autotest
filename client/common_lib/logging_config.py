@@ -24,7 +24,7 @@ class LoggingConfig(object):
     stderr_level = logging.ERROR
 
     file_formatter = logging.Formatter(
-        fmt='%(asctime)s.%(msecs)d %(levelname)-5.5s|%(module)10.10s:'
+        fmt='%(asctime)s.%(msecs)03d %(levelname)-5.5s|%(module)10.10s:'
             '%(lineno)4.4d| %(message)s',
         datefmt='%m/%d %H:%M:%S')
 
