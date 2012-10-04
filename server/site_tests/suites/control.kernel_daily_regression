@@ -17,8 +17,6 @@ from autotest_lib.client.cros import cros_logging
 
 
 CLIENT_TESTS = [
-    # Trackpad regression test
-    ('hardware_Trackpad', {'test_set': 'regression'}),
 ]
 
 
