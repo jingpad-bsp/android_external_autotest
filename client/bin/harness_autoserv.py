@@ -35,11 +35,9 @@ class harness_autoserv(harness.harness):
 
 
     def run_start(self):
-        if global_config.global_config.get_config_value(
-                'CLIENT', 'fetch_from_autoserv', type=bool, default=True):
-            # set up the package fetcher for direct-from-autoserv fetches
-            fetcher = AutoservFetcher(self.job.pkgmgr, self)
-            self.job.pkgmgr.add_repository(fetcher)
+        # set up the package fetcher for direct-from-autoserv fetches
+        fetcher = AutoservFetcher(self.job.pkgmgr, self)
+        self.job.pkgmgr.add_repository(fetcher)
 
 
     def _send_and_wait(self, title, *args):
@@ -103,10 +101,21 @@ class AutoservFetcher(base_packages.RepositoryFetcher):
     def fetch_pkg_file(self, filename, dest_path):
         if os.path.exists(dest_path):
             os.remove(dest_path)
-        logging.info('Fetching %s from autoserv to %s', filename, dest_path)
+
+        if not global_config.global_config.get_config_value(
+                'CLIENT', 'fetch_from_autoserv', type=bool, default=True):
+            # In order to preserve autotest semantics, we treat this as a
+            # PackageFetchError rather than a success or not including the
+            # fetcher: see crosbug.com/35080.
+            logging.error('Not fetching %s from autoserv.', filename)
+            raise error.PackageFetchError(
+                    '%s not fetched from autoserv as fetching from autoserv is '
+                    'disabled.' % filename)
+
+        logging.info('Fetching %s from autoserv to %s.', filename, dest_path)
         self.job_harness.fetch_package(filename, dest_path)
         if os.path.exists(dest_path):
-            logging.debug('Successfully fetched %s from autoserv', filename)
+            logging.debug('Successfully fetched %s from autoserv.', filename)
         else:
-            raise error.PackageFetchError('%s not fetched from autoserv'
+            raise error.PackageFetchError('%s not fetched from autoserv.'
                                           % filename)
