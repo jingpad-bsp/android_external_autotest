@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -33,7 +34,7 @@ class firmware_CorruptFwBodyA(FAFTSequence):
 
     def run_once(self, host=None):
         if (self.faft_client.get_firmware_flags('a') &
-                self.PREAMBLE_USE_RO_NORMAL):
+                vboot.PREAMBLE_USE_RO_NORMAL):
             # USE_RO_NORMAL flag is ON. Firmware body corruption doesn't
             # hurt the booting results.
             logging.info('The firmware USE_RO_NORMAL flag is enabled.')

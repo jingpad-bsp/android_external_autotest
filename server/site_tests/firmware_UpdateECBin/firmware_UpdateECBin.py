@@ -6,6 +6,7 @@
 import logging, os
 
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -83,7 +84,7 @@ class firmware_UpdateECBin(FAFTSequence):
             return
 
         flags = self.faft_client.get_firmware_flags('a')
-        if flags & self.PREAMBLE_USE_RO_NORMAL == 0:
+        if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             return
 

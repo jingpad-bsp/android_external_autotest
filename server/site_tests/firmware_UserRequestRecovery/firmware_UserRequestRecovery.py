@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -67,7 +68,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
             {   # Step 2, expected recovery boot, request recovery again
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.RECOVERY_REASON['US_TEST'],
+                    'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': None if dev_mode else
@@ -76,7 +77,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
             {   # Step 3, expected recovery boot
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.RECOVERY_REASON['US_TEST'],
+                    'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                 }),
             },
             {   # Step 4, expected normal boot

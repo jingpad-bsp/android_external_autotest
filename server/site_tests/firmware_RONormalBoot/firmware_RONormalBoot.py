@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -35,15 +36,15 @@ class firmware_RONormalBoot(FAFTSequence):
 
     def run_once(self, host=None):
         flags = self.faft_client.get_firmware_flags('a')
-        if flags & self.PREAMBLE_USE_RO_NORMAL == 0:
+        if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             return
 
         self.register_faft_sequence((
             {   # Step 1, disable the RO normal boot flag
                 'state_checker': (self.ro_normal_checker, 'A'),
-                'userspace_action': (self.faft_client.set_firmware_flags,
-                                    ('a', flags ^ self.PREAMBLE_USE_RO_NORMAL)),
+                'userspace_action': (self.faft_client.set_firmware_flags, ('a',
+                                     flags ^ vboot.PREAMBLE_USE_RO_NORMAL)),
             },
             {   # Step 2, expected TwoStop boot, restore the original flags
                 'state_checker': (lambda: self.ro_normal_checker('A',

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -46,8 +47,8 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
             {   # Step 2, expected recovery boot and set fwb_tries flag
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason': (self.RECOVERY_REASON['RO_INVALID_RW'],
-                            self.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
+                    'recovery_reason': (vboot.RECOVERY_REASON['RO_INVALID_RW'],
+                            vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
                 }),
                 'userspace_action': self.faft_client.set_try_fw_b,
                 'firmware_action': None if dev_mode else
@@ -56,8 +57,8 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
             {   # Step 3, still expected recovery boot and restore firmware
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason': (self.RECOVERY_REASON['RO_INVALID_RW'],
-                            self.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
+                    'recovery_reason': (vboot.RECOVERY_REASON['RO_INVALID_RW'],
+                            vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
                 }),
                 'userspace_action': (self.faft_client.restore_firmware,
                                      (('a', 'b'),)),

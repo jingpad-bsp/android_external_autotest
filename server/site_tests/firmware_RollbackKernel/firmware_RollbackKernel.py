@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -51,11 +52,11 @@ class firmware_RollbackKernel(FAFTSequence):
     def run_once(self, host=None, dev_mode=False):
         # Historical reason that the old models use a different value.
         if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
-            recovery_reason = self.RECOVERY_REASON['RW_NO_OS']
+            recovery_reason = vboot.RECOVERY_REASON['RW_NO_OS']
         else:
             # TODO(waihong): Should be RW_INVALID_OS but the current vboot
             # implementation overwrites it with RW_NO_DISK.
-            recovery_reason = self.RECOVERY_REASON['RW_NO_DISK']
+            recovery_reason = vboot.RECOVERY_REASON['RW_NO_DISK']
 
         if dev_mode:
             faft_sequence = (

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -23,7 +24,7 @@ class firmware_RollbackFirmware(FAFTSequence):
         self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
-        self.clear_set_gbb_flags(self.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK, 0)
+        self.clear_set_gbb_flags(vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK, 0)
 
 
     def cleanup(self):
@@ -34,9 +35,9 @@ class firmware_RollbackFirmware(FAFTSequence):
     def run_once(self, host=None, dev_mode=False):
         # Recovery reason RW_FW_ROLLBACK available after Alex/ZGB.
         if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
-            recovery_reason = self.RECOVERY_REASON['RO_INVALID_RW']
+            recovery_reason = vboot.RECOVERY_REASON['RO_INVALID_RW']
         else:
-            recovery_reason = self.RECOVERY_REASON['RW_FW_ROLLBACK']
+            recovery_reason = vboot.RECOVERY_REASON['RW_FW_ROLLBACK']
 
         self.register_faft_sequence((
             {   # Step 1, rollbacks firmware A.

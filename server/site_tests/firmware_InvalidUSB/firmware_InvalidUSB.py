@@ -6,6 +6,7 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -75,7 +76,7 @@ class firmware_InvalidUSB(FAFTSequence):
             {   # Step 2, expected to boot the restored USB image and reboot.
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.RECOVERY_REASON['US_TEST'],
+                    'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                 }),
             },
             {   # Step 3, expected to normal boot and done.

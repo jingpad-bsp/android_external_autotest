@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -31,7 +32,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
 
     def run_once(self, host=None):
         RO_enabled = (self.faft_client.get_firmware_flags('b') &
-                      self.PREAMBLE_USE_RO_NORMAL)
+                      vboot.PREAMBLE_USE_RO_NORMAL)
         self.register_faft_sequence((
             {   # Step 1, corrupt firmware body B
                 'state_checker': (self.crossystem_checker, {

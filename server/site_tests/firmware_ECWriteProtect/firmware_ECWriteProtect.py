@@ -5,6 +5,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -54,7 +55,7 @@ class firmware_ECWriteProtect(FAFTSequence):
 
     def run_once(self, host=None):
         flags = self.faft_client.get_firmware_flags('a')
-        if flags & self.PREAMBLE_USE_RO_NORMAL == 0:
+        if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             return
 
@@ -84,7 +85,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                                               twostop=True) and
                                           self.write_protect_checker()),
                 'userspace_action': (self.faft_client.set_firmware_flags,
-                                     ('a', self.PREAMBLE_USE_RO_NORMAL)),
+                                     ('a', vboot.PREAMBLE_USE_RO_NORMAL)),
                 'reboot_action': (self.set_EC_write_protect_and_reboot, False),
             },
             {   # Step 5, expected EC RO boot.

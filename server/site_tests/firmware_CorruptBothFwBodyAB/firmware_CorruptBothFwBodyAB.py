@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -28,7 +29,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
         super(firmware_CorruptBothFwBodyAB, self).setup()
         self.backup_firmware()
         if (self.faft_client.get_firmware_flags('a') &
-                self.PREAMBLE_USE_RO_NORMAL):
+                vboot.PREAMBLE_USE_RO_NORMAL):
             self.use_ro = True
             self.setup_dev_mode(dev_mode)
         else:
@@ -79,8 +80,8 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                     'state_checker': (self.crossystem_checker, {
                         'mainfw_type': 'recovery',
                         'recovery_reason':
-                            (self.RECOVERY_REASON['RO_INVALID_RW'],
-                             self.RECOVERY_REASON['RW_VERIFY_BODY']),
+                            (vboot.RECOVERY_REASON['RO_INVALID_RW'],
+                             vboot.RECOVERY_REASON['RW_VERIFY_BODY']),
                     }),
                     'userspace_action': (self.faft_client.restore_firmware_body,
                                          (('a', 'b'),)),

@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -99,7 +100,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.RECOVERY_REASON['RW_DEV_SCREEN'],
+                    'recovery_reason' : vboot.RECOVERY_REASON['RW_DEV_SCREEN'],
                 }),
                 'userspace_action': self.servo.disable_development_mode,
             },

@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -51,11 +52,11 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
     def run_once(self, host=None, dev_mode=False):
         platform = self.faft_client.get_platform_name()
         if platform in ('Mario', 'Alex', 'ZGB'):
-            recovery_reason = self.RECOVERY_REASON['RW_NO_OS']
+            recovery_reason = vboot.RECOVERY_REASON['RW_NO_OS']
         elif platform in ('Aebl', 'Kaen'):
-            recovery_reason = self.RECOVERY_REASON['RW_INVALID_OS']
+            recovery_reason = vboot.RECOVERY_REASON['RW_INVALID_OS']
         else:
-            recovery_reason = self.RECOVERY_REASON['RW_NO_DISK']
+            recovery_reason = vboot.RECOVERY_REASON['RW_NO_DISK']
 
         self.register_faft_sequence((
             {   # Step 1, corrupt kernel A and B
