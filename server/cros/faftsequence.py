@@ -235,7 +235,6 @@ class FAFTSequence(ServoTest):
     _install_image_path = None
     _firmware_update = False
 
-    _backup_firmware_name = ('VBOOTA', 'VBOOTB', 'FVMAIN', 'FVMAINB')
     _backup_firmware_sha = ()
 
 
@@ -1505,26 +1504,6 @@ class FAFTSequence(ServoTest):
             index += 1
 
 
-    def get_file_from_dut(self, file_list):
-        """Get multiple files from client.
-
-        Args:
-            file_list: a list with format [(remote_path, host_path), ...]
-        """
-        for remote_path, host_path in file_list:
-            self._client.get_file(remote_path, host_path)
-
-
-    def send_file_to_dut(self, file_list):
-        """Send multiple files from client.
-
-        Args:
-            file_list: a list with format [(host_path, remote_path), ...]
-        """
-        for host_path, remote_path in file_list:
-            self._client.send_file(host_path, remote_path)
-
-
     def get_current_firmware_sha(self):
         """Get current firmware sha of body and vblock.
 
@@ -1537,31 +1516,6 @@ class FAFTSequence(ServoTest):
                                 self.faft_client.get_firmware_sig_sha('b'),
                                 self.faft_client.get_firmware_sha('b'))
         return current_firmware_sha
-
-
-    def create_backup_file_list(self, files,
-                                src_dir, src_suffix,
-                                dst_dir, dst_suffix):
-        """Create a file list to transfer.
-
-        [('src_dir/file.src_suffix', 'dst_dir/file.dst_suffix'), ...]
-
-        Args:
-            files: a tuple of file's name
-            src_dir: source directory
-            src_suffix: files in src_dir with suffix
-            dst_dir: destination directory
-            dst_suffix: files in dst_dir with suffix
-
-        Returns:
-            A file list.
-        """
-
-        file_list = []
-        for file_name in self._backup_firmware_name:
-            file_list.append((os.path.join(src_dir, file_name + src_suffix),
-                              os.path.join(dst_dir, file_name + dst_suffix)))
-        return file_list
 
 
     def is_firmware_changed(self):
@@ -1597,12 +1551,9 @@ class FAFTSequence(ServoTest):
             suffix: a string appended to backup file name
         """
         remote_temp_dir = self.faft_client.create_temp_dir()
-        self.faft_client.dump_firmware_rw(remote_temp_dir)
-
-        file_list = self.create_backup_file_list(self._backup_firmware_name,
-                                            remote_temp_dir, '',
-                                            self.resultsdir, suffix)
-        self.get_file_from_dut(file_list)
+        self.faft_client.dump_firmware(os.path.join(remote_temp_dir, 'bios'))
+        self._client.get_file(os.path.join(remote_temp_dir, 'bios'),
+                              os.path.join(self.resultsdir, 'bios' + suffix))
 
         self._backup_firmware_sha = self.get_current_firmware_sha()
         logging.info('Backup firmware stored in %s with suffix %s' % (
@@ -1632,12 +1583,10 @@ class FAFTSequence(ServoTest):
 
         # Restore firmware.
         remote_temp_dir = self.faft_client.create_temp_dir()
-        file_list = self.create_backup_file_list(self._backup_firmware_name,
-                                                 self.resultsdir, suffix,
-                                                 remote_temp_dir, '')
-        self.send_file_to_dut(file_list)
+        self._client.send_file(os.path.join(self.resultsdir, 'bios' + suffix),
+                               os.path.join(remote_temp_dir, 'bios'))
 
-        self.faft_client.write_firmware_rw(remote_temp_dir)
+        self.faft_client.write_firmware(os.path.join(remote_temp_dir, 'bios'))
         self.sync_and_warm_reboot()
         self.wait_for_client_offline()
         self.wait_for_client()
