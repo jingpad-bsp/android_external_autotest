@@ -34,6 +34,21 @@ class XxxValidator(BaseValidator):
         xxx = self.packets.xxx()
         self.print_msg(...)
         return (self.fc.mf.grade(...), self.msg_list)
+
+
+Note that it is also possible to instantiate a validator as
+          XxxValidator('<= 0.05, ~ +0.05', slot=0)
+
+    Difference between fingers and slot:
+      . When specifying 'fingers', e.g., fingers=2, the purpose is to pass
+        the information about how many fingers there are in the gesture. In
+        this case, the events in a specific slot is usually not important.
+        An example is to check how many fingers there are when making a click:
+            PhysicalClickValidator('== 0', fingers=2)
+      . When specifying 'slot', e.g., slot=0, the purpose is pass the slot
+        number to the validator to examine detailed events in that slot.
+        An example of such usage:
+            LinearityValidator('<= 0.03, ~ +0.07', slot=0)
 '''
 
 
