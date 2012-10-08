@@ -473,6 +473,7 @@ class SentryRPMController(RPMController):
     DEVICE_PROMPT = 'Switched CDU:'
     SET_STATE_CMD = '%s %s'
     SUCCESS_MSG = 'Command successful'
+    SET_OUTLET_NAME_CMD = 'set outlet name .A%d %s'
 
 
     def __init__(self, hostname, hydra_name=None):
@@ -485,6 +486,83 @@ class SentryRPMController(RPMController):
 
     def type(self):
         return 'Sentry'
+
+
+    def _setup_test_user(self, ssh):
+        """Configure the test user for the RPM
+
+        @param ssh: Pexpect object to use to configure the RPM.
+        """
+        # Create and configure the testing user profile.
+        testing_user = CONFIG.get('SENTRY','testing_user')
+        testing_password = CONFIG.get('SENTRY','testing_password')
+        ssh.sendline('create user %s' % testing_user)
+        response = ssh.expect_list([re.compile('not unique'),
+                                    re.compile(self.PASSWORD_PROMPT)])
+        if not response:
+            return
+        # Testing user is not set up yet.
+        ssh.sendline(testing_password)
+        ssh.expect('Verify Password:')
+        ssh.sendline(testing_password)
+        ssh.expect(self.SUCCESS_MSG)
+        ssh.expect(self.DEVICE_PROMPT)
+        ssh.sendline('add outlettouser all %s' % testing_user)
+        ssh.expect(self.SUCCESS_MSG)
+        ssh.expect(self.DEVICE_PROMPT)
+
+
+    def _clear_outlet_names(self, ssh):
+        """
+        Before setting the outlet names, we need to clear out all the old
+        names so there are no conflicts. For example trying to assign outlet
+        2 a name already assigned to outlet 9.
+        """
+        for outlet in range(1,17):
+            outlet_name = 'Outlet_%d' % outlet
+            ssh.sendline(self.SET_OUTLET_NAME_CMD % (outlet, outlet_name))
+            ssh.expect(self.SUCCESS_MSG)
+            ssh.expect(self.DEVICE_PROMPT)
+
+
+    def setup(self, outlet_naming_map):
+        """
+        Configure the RPM by adding the test user and setting up the outlet
+        names.
+
+        @param outlet_naming_map: Dictionary used to map the outlet numbers to
+                                  host names. Keys must be ints. And names are
+                                  in the format of 'hostX'.
+
+        @return: True if setup completed successfully, False otherwise.
+        """
+        ssh = self._login()
+        if not ssh:
+            logging.error('Could not connect to %s.', self.hostname)
+            return False
+        try:
+            self._setup_test_user(ssh)
+            # Set up the outlet names.
+            # Hosts have the same name format as the RPM hostname except they
+            # end in hostX instead of rpm1.
+            dut_name_format = self.hostname.replace('-rpm1', '')
+            if self.behind_hydra:
+                # Remove "chromeos2" from DUTs behind the hydra due to a length
+                # constraint on the names we can store inside the RPM.
+                dut_name_format = dut_name_format.replace('chromeos2-', '')
+            dut_name_format = dut_name_format + '-%s'
+            self._clear_outlet_names(ssh)
+            for outlet, name in outlet_naming_map.items():
+                dut_name = dut_name_format % name
+                ssh.sendline(self.SET_OUTLET_NAME_CMD % (outlet, dut_name))
+                ssh.expect(self.SUCCESS_MSG)
+                ssh.expect(self.DEVICE_PROMPT)
+        except pexpect.ExceptionPexpect as e:
+            logging.error('Setup failed. %s', e)
+            return False
+        finally:
+            self._logout(ssh)
+        return True
 
 
 class WebPoweredRPMController(RPMController):
