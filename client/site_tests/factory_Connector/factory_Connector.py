@@ -68,7 +68,7 @@ _AUDIOFUNTEST_SUCCESS_RATE_RE = re.compile('.*rate\s=\s(.*)$')
 
 
 class factory_Connector(state_machine.FactoryStateMachine):
-    version = 7
+    version = 8
 
     def setup_tests(self):
         # Register more states for test procedure with configuration data
@@ -186,7 +186,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
     def setup_internal_probing(self):
         # Prepare the status row.
         self.probe_list = self.probing_config['items']
-        for test_name in self.probe_list:
+        for test_name in sorted(self.probe_list):
             self._status_rows.append((test_name, test_name, True))
             self._results_to_check.append(test_name)
 
@@ -218,7 +218,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.advance_state()
 
     def perform_internal_probing(self):
-        for test_name in self.probe_list:
+        for test_name in sorted(self.probe_list):
             commands = self.probe_list[test_name]
             self.update_status(test_name, True)
             for cmd, expect_re in commands:
