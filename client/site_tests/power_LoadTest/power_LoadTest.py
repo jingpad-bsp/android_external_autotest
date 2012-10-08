@@ -92,7 +92,9 @@ class power_LoadTest(cros_ui_test.UITest):
             # take several tries for WiFi to connect. More experimentation with
             # the retry settings here may be necessary if this becomes a source
             # of test flakiness in the future.
-            if not flimflam.FlimFlam().ConnectService(retries=3,
+            # Edit: As per above advice, upped retries from 3 to 8 hoping to
+            # solve crosbug.com/35120 .
+            if not flimflam.FlimFlam().ConnectService(retries=8,
                                                       retry=True,
                                                       service_type='wifi',
                                                       ssid=wifi_ap,
