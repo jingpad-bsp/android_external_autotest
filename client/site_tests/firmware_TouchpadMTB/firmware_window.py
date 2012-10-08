@@ -22,6 +22,7 @@ class BaseFrame(object):
         # Create a regular/aspect frame
         self.frame = gtk.AspectFrame() if aspect else gtk.Frame()
         self.frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
+        self.size = size
         if label:
             self.frame.set_label(label)
             self.frame.set_label_align(0.0, 0.0)
@@ -56,6 +57,16 @@ class PromptFrame(BaseFrame):
         self.label_gesture = gtk.Label('Gesture Name')
         self.label_gesture.set_justify(gtk.JUSTIFY_LEFT)
         self.vbox.pack_start(self.label_gesture, True, True, 0)
+        # Expand the lable to be wider and wrap the line if necessary.
+        if self.size:
+            _, label_height = self.label_gesture.get_size_request()
+            width, _ = self.size
+            label_width = int(width * 0.9)
+            self.label_gesture.set_size_request(label_width, label_height)
+        self.label_gesture.set_line_wrap(True)
+
+        # Pack a horizontal separator
+        self.vbox.pack_start(gtk.HSeparator(), True, True, 0)
 
         # Create a label to show the prompt
         self.label_prompt = gtk.Label('Prompt')
