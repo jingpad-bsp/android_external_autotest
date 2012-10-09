@@ -9,8 +9,10 @@ import re
 import gobject
 import gtk
 import gtk.gdk
+import pango
 
 import firmware_utils
+import test_conf as conf
 
 
 TITLE = "Touchpad Firmware Test"
@@ -118,12 +120,20 @@ class ResultFrame(BaseFrame):
         # Show all widgets added to this frame
         self.frame.show_all()
 
+    def _calc_result_font_size(self):
+        """Calculate the font size so that it does not overflow."""
+        label_width_in_px, _ = self.size
+        font_size = int(float(label_width_in_px) / conf.num_chars_per_row *
+                        pango.SCALE)
+        return font_size
+
     def set_result(self, text, color='black'):
         """Set the text in the result label."""
         mod_text = re.sub('<', '&lt;', text)
         mod_text = re.sub('>', '&gt;', mod_text)
-        markup_str = '<b><span foreground="%s" size="large"> %s </span></b>'
-        self.result.set_markup(markup_str % (color, mod_text))
+        markup_str = '<b><span foreground="%s" size="%d"> %s </span></b>'
+        font_size = self._calc_result_font_size()
+        self.result.set_markup(markup_str % (color, font_size, mod_text))
 
 
 class ImageFrame(BaseFrame):

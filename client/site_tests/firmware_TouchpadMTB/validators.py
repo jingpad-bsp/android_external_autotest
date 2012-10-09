@@ -86,9 +86,9 @@ def validate(packets, gesture, variation):
         if score is not None:
             score_list.append(score)
             # save the validator messages
-            msg_validator_name = '    %s' % log.get_name()
-            msg_criteria = '        criteria_str: %s' % log.get_criteria()
-            msg_score = '    score: %f' % score
+            msg_validator_name = '%s' % log.get_name()
+            msg_criteria = '    criteria_str: %s' % log.get_criteria()
+            msg_score = 'score: %f' % score
             msg_list.append(os.linesep)
             msg_list.append(msg_validator_name)
             msg_list += log.get_details()
@@ -153,7 +153,7 @@ class BaseValidator(object):
 
     def log_details(self, msg):
         """Collect the detailed messages to be printed within this module."""
-        prefix_space = ' ' * 8
+        prefix_space = ' ' * 4
         formatted_msg = '%s%s' % (prefix_space, msg)
         self.msg_list.append(formatted_msg)
         self.log.insert_details(formatted_msg)

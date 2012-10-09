@@ -46,8 +46,9 @@ report_basename = 'touchpad_firmware_report'
 base_url = report_basename + '.html'
 
 
-# Define the score colors
+# Define parameters for GUI
 score_colors = ((0.9, 'blue'), (0.8, 'orange'), (0.0, 'red'))
+num_chars_per_row = 28
 
 
 # Define the gesture list that the user needs to perform in the test suite.
