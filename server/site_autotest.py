@@ -89,31 +89,6 @@ class SiteAutotest(installable_object.InstallableObject):
         super(SiteAutotest, self).install(host=host, autodir=autodir)
 
 
-    def run_static_method(self, module, method, results_dir='.', host=None,
-                          *args):
-        """Runs a non-instance method with |args| from |module| on the client.
-
-        This method runs a static/class/module autotest method on the client.
-        For example:
-          run_static_method(autotest_lib.client.cros.cros_ui, reboot)
-
-        Will run autotest_lib.client.cros.cros_ui.reboot() on the client.
-
-        @param module: module name as you would refer to it when importing in a
-            control file. e.g. autotest_lib.client.common_lib.module_name.
-        @param method: the method you want to call.
-        @param results_dir: A str path where the results should be stored
-            on the local filesystem.
-        @param host: A Host instance on which the control file should
-            be run.
-        @param args: args to pass to the method.
-        """
-        control = "\n".join(["import %s" % module,
-                             "%s.%s(%s)\n" % (module, method,
-                                              ','.join(map(repr, args)))])
-        self.run(control, results_dir=results_dir, host=host)
-
-
 class SiteClientLogger(object):
     """Overrides default client logger to allow for using a local package cache.
     """

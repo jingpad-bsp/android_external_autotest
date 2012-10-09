@@ -566,11 +566,11 @@ class base_server_job(base_job.base_job):
                     self._execute_code(CRASHINFO_CONTROL_FILE, namespace)
                 else:
                     self._execute_code(CRASHDUMPS_CONTROL_FILE, namespace)
+            if self._uncollected_log_file and created_uncollected_logs:
+                os.remove(self._uncollected_log_file)
             self.disable_external_logging()
             if cleanup and machines:
                 self._execute_code(CLEANUP_CONTROL_FILE, namespace)
-            if self._uncollected_log_file and created_uncollected_logs:
-                os.remove(self._uncollected_log_file)
             if install_after and machines:
                 self._execute_code(INSTALL_CONTROL_FILE, namespace)
 
