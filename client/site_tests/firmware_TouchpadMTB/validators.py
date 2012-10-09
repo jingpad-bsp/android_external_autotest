@@ -101,17 +101,24 @@ def validate(packets, gesture, variation):
 class BaseValidator(object):
     """Base class of validators."""
     aggregator = 'fuzzy.average'
+    _device = None
 
     def __init__(self, criteria_str, mf=None, device=None, name=None):
         self.criteria_str = criteria_str
         self.fc = fuzzy.FuzzyCriteria(criteria_str, mf=mf)
-        self.device = TouchpadDevice() if device is None else device
+        self.device = self._create_device() if device is None else device
         self.device_width, self.device_height = self.device.get_dimensions()
         self.packets = None
         self.msg_list = []
         self.log = firmware_log.ValidatorLog()
         self.log.insert_name(name)
         self.log.insert_criteria(criteria_str)
+
+    def _create_device(self):
+        """Create a touchpad device and reuse it."""
+        if BaseValidator._device is None:
+            BaseValidator._device = TouchpadDevice()
+        return BaseValidator._device
 
     def init_check(self, packets):
         """Initialization before check() is called."""
