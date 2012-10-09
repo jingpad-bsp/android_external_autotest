@@ -542,6 +542,15 @@ class CPUIdleStats(object):
 
                 name = utils.read_one_line(os.path.join(state, 'name'))
                 time = int(utils.read_one_line(os.path.join(state, 'time')))
+
+                if name == '<null>':
+                    # Kernel race condition that can happen while a new C-state
+                    # gets added (e.g. AC->battery). Don't know the 'name' of
+                    # the state yet, but its 'time' would be 0 anyway.
+                    logging.warn('Read name: <null>, time: %d from %s'
+                        % (time, state) + '... skipping.')
+                    continue
+
                 if name in cpuidle_stats:
                     cpuidle_stats[name] += time
                 else:
@@ -571,7 +580,10 @@ class CPUIdleStats(object):
     def _do_diff(self, stats_new, stats_old):
         diff_stats = {}
         for state in stats_new:
-            diff_stats[state] = stats_new[state] -  stats_old[state]
+            if state in stats_old:
+                diff_stats[state] = stats_new[state] -  stats_old[state]
+            else:
+                diff_stats[state] = stats_new[state]
         return diff_stats
 
 
