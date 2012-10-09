@@ -43,7 +43,8 @@ stationary_finger_criteria = '<= 20, ~ +20'
 # Define filename and path for html report
 docroot = '/tmp'
 report_basename = 'touchpad_firmware_report'
-base_url = report_basename + '.html'
+html_ext = '.html'
+ENVIRONMENT_REPORT_HTML_NAME = 'REPORT_HTML_NAME'
 
 
 # Define parameters for GUI

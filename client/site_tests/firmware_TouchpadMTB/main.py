@@ -35,11 +35,18 @@ class DummyTest(pyauto.PyUITest):
         """Navigate to the html test result file using pyauto."""
         testServer = httpd.HTTPListener(8000, conf.docroot)
         testServer.run()
-        result = os.path.join(conf.docroot, conf.base_url)
-        self.NavigateToURL('http://localhost:8000/%s' % conf.base_url)
+        # Note that the report_html_name is passed from firmware_TouchpadMTB
+        # to DummyTest as an environment variable.
+        # It is not passed as a global variable in this module because pyauto
+        # seems to create its own global scope.
+        report_html_name = os.environ[conf.ENVIRONMENT_REPORT_HTML_NAME]
+        if report_html_name:
+            base_url = os.path.basename(report_html_name)
+            url = os.path.join('http://localhost:8000', base_url)
+            self.NavigateToURL(url)
+            msg = 'Chrome has navigated to the specified url: %s'
+            logging.info(msg % os.path.join(conf.docroot, base_url))
         testServer.stop()
-        url = os.path.join(conf.docroot, conf.base_url)
-        print 'Chrome has navigated to the specified url: %s' % url
 
 
 class firmware_TouchpadMTB:
@@ -72,8 +79,7 @@ class firmware_TouchpadMTB:
         # Create the HTML report object and the output object to print messages
         # on the window and to print the results in the report.
         self.log_dir = firmware_utils.create_log_dir()
-        self.report_name = os.path.join(self.log_dir, conf.report_basename)
-        self.report_html_name = self.report_name + '.html'
+        self._create_report_name()
         self.report_html = ReportHtml(self.report_html_name,
                                       self.screen_size,
                                       self.touchpad_window_size,
@@ -97,6 +103,22 @@ class firmware_TouchpadMTB:
 
         # Stop power management so that the screen does not dim during tests
         firmware_utils.stop_power_management()
+
+    def _create_report_name(self):
+        """Create the report names for both plain-text and html files.
+
+        A typical html file name looks like:
+            touchpad_firmware_report-lumpy-fw_11.25-20121016_080924.html
+        """
+        firmware_str = 'fw_' + self.touchpad.get_firmware_version()
+        board = firmware_utils.get_board()
+        curr_time = firmware_utils.get_current_time_str()
+        sep = conf.filename.sep
+        fname = sep.join([conf.report_basename, board, firmware_str, curr_time])
+        self.report_name = os.path.join(self.log_dir, fname)
+        self.report_html_name = self.report_name + conf.html_ext
+        # Pass the report_html_name to DummyTest as an environment variable.
+        os.environ[conf.ENVIRONMENT_REPORT_HTML_NAME] = self.report_html_name
 
     def _get_screen_size(self):
         """Get the screen size."""
