@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import json
 import optparse
 import os
 import re
@@ -22,6 +23,7 @@ class desktopui_PyAutoPerfTests(chrome_test.PyAutoFunctionalTest):
     _PERF_MARKER_PRE = '_PERF_PRE_'
     _PERF_MARKER_POST = '_PERF_POST_'
     _DEFAULT_NUM_ITERATIONS = 10  # Keep synced with perf.py.
+    _PERF_KEYS_JSON_FILE = 'perf_keys.json'
 
     version = 1
 
@@ -51,16 +53,28 @@ class desktopui_PyAutoPerfTests(chrome_test.PyAutoFunctionalTest):
                           default=self._DEFAULT_NUM_ITERATIONS,
                           help='Number of iterations for perf measurements. '
                                'Defaults to %default iterations.')
+        parser.add_option('--list-tests', dest='list_tests',
+                          action='store_true', default=False,
+                          help='List all pyauto perf test names and exit.')
+        parser.add_option('--perf-key-info', dest='perf_key_info',
+                          type='string', default='',
+                          help='A comma-separated list of perf keys for which '
+                               'to display associated test case information. '
+                               'If specified, will list the info and exit.')
+        parser.add_option('--run-perf-keys', dest='run_perf_keys',
+                          type='string', default='',
+                          help='A comma-separated list of perf keys for which '
+                               'to run the associated tests.')
+        parser.add_option('--suite', dest='suite', type='string',
+                          default='PERFORMANCE',
+                          help='Name of the suite to run, as specified in the '
+                               '"PYAUTO_TESTS" suite file. Defaults to '
+                               '%default, which contains all perf tests.')
         parser.add_option('--max-timeouts', dest='max_timeouts', type='int',
                           default=0,
                           help='Maximum number of automation timeouts to '
                                'ignore before failing the test. Defaults to '
                                'the value given in perf.py.')
-        parser.add_option('--suite', dest='suite', type='string',
-                          default='PERFORMANCE',
-                          help='Name of the suite to run, as specified in the '
-                               '"PYAUTO_TESTS" suite file. Defaults to '
-                               '%default, which runs all perf tests.')
         parser.add_option('--pgo', dest='pgo', action='store_true',
                           default=False,
                           help='Run the suite under PGO mode. In the PGO '
@@ -76,24 +90,71 @@ class desktopui_PyAutoPerfTests(chrome_test.PyAutoFunctionalTest):
     def run_once(self, args=[]):
         """Runs the PyAuto performance tests."""
         if isinstance(args, str):
-          args = args.split()
+            args = args.split()
         options, test_args = self.parse_args(args)
-        test_args = ' '.join(test_args)
 
-        deps_dir = os.path.join(self.autodir, 'deps')
+        with open(os.path.join(self.bindir,
+                               self._PERF_KEYS_JSON_FILE), 'r') as fp:
+            perf_key_test_info = json.loads(fp.read())
+
+        def GetTestsForPerfKey(perf_key):
+            return [x['test_name'] for x in perf_key_test_info
+                    if perf_key in x['perf_keys']]
+
+        if options.list_tests:
+            # List all pyauto perf test names and exit.
+            print 'Pyauto performance test names:'
+            test_names = sorted([x['test_name'] for x in perf_key_test_info])
+            max_name_length = max([len(x) for x in test_names])
+            print '=' * max_name_length
+            print '\n'.join(test_names)
+            print '=' * max_name_length
+            return
+        elif options.perf_key_info:
+            # List pyauto perf test names associated with specified perf keys,
+            # then exit.
+            print 'Perf keys and associated test names:'
+            print '=' * 40
+            for perf_key in options.perf_key_info.split(','):
+                associated_tests = GetTestsForPerfKey(perf_key)
+                if associated_tests:
+                    if len(associated_tests) > 1:
+                        print ('Warning: perf key %s associated with multiple '
+                               'tests: %s' % (perf_key, associated_tests))
+                    print '%s: computed by test "%s"' % (perf_key,
+                                                         associated_tests[0])
+                else:
+                    print '%s: unknown perf key name' % perf_key
+            print '=' * 40
+            return
+        elif options.run_perf_keys:
+            tests_to_run = set()
+            for perf_key in options.run_perf_keys.split(','):
+                for test_name in GetTestsForPerfKey(perf_key):
+                    tests_to_run.add(test_name)
+            test_args.extend(list(tests_to_run))
 
         # Run the PyAuto performance tests.
-        print 'About to run the pyauto performance tests.'
+        if test_args:
+            print 'About to run the following pyauto performance tests:'
+            test_args = sorted(test_args)
+            for test_name in test_args:
+                print '  %s' % test_name
+        else:
+            print 'About to run the pyauto performance tests.'
+
         print 'Note: you will see two timestamps for each logging message.'
         print '      The outer timestamp occurs when the autotest dumps the '
         print '      pyauto output, which only occurs after all tests are '
         print '      complete. The inner timestamp is the time at which the '
         print '      message was logged by pyauto while the test was actually '
         print '      running.'
+
+        deps_dir = os.path.join(self.autodir, 'deps')
         functional_cmd = cros_ui.xcommand_as(
             '%s/chrome_test/test_src/chrome/test/functional/'
             'pyauto_functional.py --suite=%s %s' % (
-                deps_dir, options.suite, test_args))
+                deps_dir, options.suite, ' '.join(test_args)))
 
         os.putenv('NUM_ITERATIONS', str(options.num_iterations))
         self.write_perf_keyval({'iterations': options.num_iterations})
