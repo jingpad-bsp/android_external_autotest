@@ -284,7 +284,11 @@ class ServoTest(test.test):
         for info in self._remote_infos.itervalues():
             if info['remote_process'] and info['remote_process'].poll() is None:
                 remote_object = getattr(self, info['ref_name'])
-                remote_object.cleanup()
+                try:
+                    remote_object.cleanup()
+                    logging.info('Cleanup succeeded.')
+                except xmlrpclib.ProtocolError, e:
+                    logging.info('Cleanup returned protocol error: ' + str(e))
         self._terminate_all_ssh()
 
 
