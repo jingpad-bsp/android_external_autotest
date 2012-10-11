@@ -86,7 +86,8 @@ class TestFlow:
     def _get_prompt_result(self):
         """Prompt to see test result through timeout callback."""
         prompt = ("Perform the gesture now.\n"
-                  "See the test result on the right after finger lifted.")
+                  "See the test result on the right after finger lifted.\n"
+                  "Or press 'x' to exit.")
         return prompt
 
     def _get_prompt_result_for_keyboard(self):
@@ -330,13 +331,7 @@ class TestFlow:
             else:
                 self.win.set_prompt(self._get_prompt_next(), color='red')
         else:
-            # Save this gesture file and go to next gesture.
-            if choice in (' ', '\r'):
-                self._handle_user_choice_validate_before_parsing()
-            # Discard this file and perform the gesture again.
-            elif choice == 'd':
-                self._handle_user_choice_discard_after_parsing()
-            elif choice == 'x':
+            if choice == 'x':
                 self._handle_user_choice_exit_before_parsing()
             # The user presses any wrong key.
             else:
