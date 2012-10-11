@@ -252,7 +252,7 @@ class ServoTest(test.test):
         # Wait for the client to come up.
         while timeout > 0 and not self._sshd_test(self._client.ip, timeout=2):
             timeout -= 2
-        assert timeout, 'Timed out waiting for client to reboot.'
+        assert (timeout > 0), 'Timed out waiting for client to reboot.'
         logging.info('Server: Client machine is up.')
         # Relaunch remote clients.
         for name, info in self._remote_infos.iteritems():
