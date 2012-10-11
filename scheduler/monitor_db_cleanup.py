@@ -235,7 +235,15 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
         if query.count() != 0:
             subject = ('%d queue entries found with active=complete=1'
                        % query.count())
-            lines = [str(entry.get_object_dict()) for entry in query]
+            lines = []
+            for entry in query:
+                lines.append(str(entry.get_object_dict()))
+                if entry.status == 'Aborted':
+                    logging.error('Aborted entry: %s is both active and '
+                                  'complete. Setting active value to False.',
+                                  str(entry))
+                    entry.active = False
+                    entry.save()
             self._send_inconsistency_message(subject, lines)
 
 
