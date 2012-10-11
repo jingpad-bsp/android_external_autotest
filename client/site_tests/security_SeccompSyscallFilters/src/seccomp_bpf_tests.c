@@ -96,22 +96,28 @@ TEST(mode_filter_support) {
 	}
 }
 
-/* TODO(wad) add a TEST_IF_UID() wrapper */
 TEST(mode_filter_without_nnp) {
-	int expect_errno = EACCES;
+	struct sock_filter filter[] = {
+		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ALLOW),
+	};
+	struct sock_fprog prog = {
+		.len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+		.filter = filter,
+	};
 	int ret = prctl(PR_GET_NO_NEW_PRIVS, 0, NULL, 0, 0);
 	ASSERT_LE(0, ret) {
 		TH_LOG("Expected 0 or unsupported for NO_NEW_PRIVS");
 	}
+	errno = 0;
+	ret = prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog, 0, 0);
 	/* Succeeds with CAP_SYS_ADMIN, fails without */
 	/* TODO(wad) check caps not euid */
-	if (geteuid() == 0) {
-		expect_errno = EFAULT;
+	if (geteuid()) {
+		EXPECT_EQ(-1, ret);
+		EXPECT_EQ(EACCES, errno);
+	} else {
+		EXPECT_EQ(0, ret);
 	}
-	errno = 0;
-	ret = prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, NULL, NULL, NULL);
-	EXPECT_EQ(-1, ret);
-	EXPECT_EQ(expect_errno, errno);
 }
 
 TEST(mode_filter_cannot_move_to_strict) {
