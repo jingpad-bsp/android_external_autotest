@@ -682,8 +682,8 @@ TEST_F(precedence, trace_is_fourth_in_any_order) {
 #ifndef PTRACE_O_TRACESECCOMP
 #define PTRACE_O_TRACESECCOMP	0x00000080
 #endif
-void tracer(struct __test_metadata *_metadata, pid_t tracee, unsigned long
-	poke_addr) {
+void tracer(struct __test_metadata *_metadata, pid_t tracee,
+	    unsigned long poke_addr, int fd) {
 	int ret = -1;
 	errno = 0;
 	while (ret == -1 && errno != EINVAL) {
@@ -694,12 +694,18 @@ void tracer(struct __test_metadata *_metadata, pid_t tracee, unsigned long
 	}
 	/* Wait for attach stop */
 	wait(NULL);
+
 	ret = ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESECCOMP);
 	ASSERT_EQ(0, ret) {
 		TH_LOG("Failed to set PTRACE_O_TRACESECCOMP");
 		kill(tracee, SIGKILL);
 	}
-	ptrace(PTRACE_CONT, tracee, NULL, SIGALRM);
+	ptrace(PTRACE_CONT, tracee, NULL, 0);
+
+	/* Unblock the tracee */
+	ASSERT_EQ(1, write(fd, "A", 1));
+	ASSERT_EQ(0, close(fd));
+
 	while (1) {
 		int status;
 		unsigned long msg;
@@ -743,6 +749,8 @@ FIXTURE_SETUP(TRACE) {
 		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_TRACE | 0x1001),
 		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ALLOW),
 	};
+	int pipefd[2];
+	char sync;
 	pid_t tracer_pid;
 	pid_t tracee = getpid();
 	unsigned long poke_addr = (unsigned long)&self->poked;
@@ -753,20 +761,25 @@ FIXTURE_SETUP(TRACE) {
 	memcpy(self->prog.filter, filter, sizeof(filter));
 	self->prog.len = (unsigned short)(sizeof(filter)/sizeof(filter[0]));
 
+	/* Setup a pipe for clean synchronization. */
+	ASSERT_EQ(0, pipe(pipefd));
+
 	/* Fork a child which we'll promote to tracer */
 	tracer_pid = fork();
 	ASSERT_LE(0, tracer_pid);
 	signal(SIGALRM, cont_handler);
 	if (tracer_pid == 0) {
-		tracer(_metadata, tracee, poke_addr);
+		close(pipefd[0]);
+		tracer(_metadata, tracee, poke_addr, pipefd[1]);
 		syscall(__NR_exit, 0);
 	}
+	close(pipefd[1]);
 	self->tracer = tracer_pid;
 #ifdef PR_SET_PTRACER
 	prctl(PR_SET_PTRACER, self->tracer, 0, 0, 0);
 #endif
-	/* Install dummy handler */
-	pause();
+	read(pipefd[0], &sync, 1);
+	close(pipefd[0]);
 }
 
 FIXTURE_TEARDOWN(TRACE) {
