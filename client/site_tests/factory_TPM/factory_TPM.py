@@ -30,7 +30,8 @@ class factory_TPM(test.test):
             cryptohome.take_tpm_ownership()
         status = cryptohome.get_tpm_status()
         if status['Password'] == '':
-            raise error.TestError("TPM owner password is not available.")
+            raise error.TestError("TPM owner password is not available. "
+                                  "Boot in recovery mode to clear the TPM.")
         result = cryptohome.verify_ek()
         self.__tpm_clear(status['Password'])
         if not result:
