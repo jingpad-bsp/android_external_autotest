@@ -24,11 +24,14 @@ import validators
 sys.path.append('/usr/local/autotest/bin/input')
 import input_device
 
+# Include some constants
+execfile('firmware_constants.py', globals())
+
 
 class TestFlow:
     """Guide the user to perform gestures. Record and validate the gestures."""
 
-    def __init__(self, device_geometry, device, win, parser, output):
+    def __init__(self, device_geometry, device, win, parser, output, options):
         self.device_geometry = device_geometry
         self.device = device
         self.device_node = self.device.device_node
@@ -44,7 +47,7 @@ class TestFlow:
         self.prefix_space = self.output.get_prefix_space()
         self.scores = []
         self.gesture_list = conf.get_gesture_list()
-        self._get_all_gesture_variations()
+        self._get_all_gesture_variations(options[OPTIONS_SIMPLIFIED])
         self.init_flag = False
         self.system_device = self._non_blocking_open(self.device_node)
         self.evdev_device = input_device.InputEvent()
@@ -337,13 +340,15 @@ class TestFlow:
             else:
                 self.win.set_prompt(self._get_prompt_result(), color='red')
 
-    def _get_all_gesture_variations(self):
+    def _get_all_gesture_variations(self, simplified):
         """Get all variations for all gestures."""
         gesture_variations_list = []
         for gesture in self.gesture_list:
             variations = self.span_variations(gesture.variations)
             for variation in variations:
                 gesture_variations_list.append((gesture, variation))
+                if simplified:
+                    break
         self.gesture_variations = iter(gesture_variations_list)
 
     def gesture_timeout_callback(self):

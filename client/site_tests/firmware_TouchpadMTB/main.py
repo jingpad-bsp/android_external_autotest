@@ -13,8 +13,10 @@ sys.path.append(pyautolib)
 import httpd
 import pyauto
 
+import getopt
 import logging
 import os
+import sys
 
 import firmware_utils
 import firmware_window
@@ -52,7 +54,7 @@ class DummyTest(pyauto.PyUITest):
 class firmware_TouchpadMTB:
     """Set up the system for touchpad firmware tests."""
 
-    def __init__(self):
+    def __init__(self, options):
         # Probe touchpad device node.
         self.touchpad = touch_device.TouchpadDevice()
         if self.touchpad.device_node is None:
@@ -93,7 +95,8 @@ class firmware_TouchpadMTB:
                                             self.touchpad,
                                             self.win,
                                             self.parser,
-                                            self.output)
+                                            self.output,
+                                            options=options)
 
         # Register some callback functions for firmware window
         self.win.register_callback('key_press_event',
@@ -157,6 +160,56 @@ class firmware_TouchpadMTB:
         pyauto.Main()
 
 
+def _usage():
+    """Print the usage of this program."""
+    print 'Usage: $ %s [options]\n' % sys.argv[0]
+    print 'options:'
+    print '  -h, --%s: show this help' % OPTIONS_HELP
+    print '  -s, --%s: Use one variation per gesture' % OPTIONS_SIMPLIFIED
+    print
+
+
+def _parsing_error(msg):
+    """Print the usage and exit when encountering parsing error."""
+    print 'Error: %s' % msg
+    _usage()
+    sys.exit(1)
+
+
+def _parse_options():
+    """Parse the options.
+
+    Note that the options are specified with environment variable OPTIONS,
+    because pyauto seems not compatible with command line options.
+    """
+    # Initialize and get the environment OPTIONS
+    options = {OPTIONS_SIMPLIFIED: False}
+    options_str = os.environ.get('OPTIONS')
+    if not options_str:
+        return options
+
+    options_list = options_str.split()
+    try:
+        short_opt = 'hs'
+        long_opt = [OPTIONS_HELP, OPTIONS_SIMPLIFIED]
+        opts, args = getopt.getopt(options_list, short_opt, long_opt)
+    except getopt.GetoptError, err:
+        _parsing_error(str(err))
+
+    for opt, arg in opts:
+        if opt in ('-h', '--%s' % OPTIONS_HELP):
+            _usage()
+            sys.exit(1)
+        elif opt in ('-s', '--%s' % OPTIONS_SIMPLIFIED):
+            options[OPTIONS_SIMPLIFIED] = True
+        else:
+            msg = 'This option "%s" is not supported.' % opt
+            _parsing_error(opt)
+
+    return options
+
+
 if __name__ == '__main__':
-    fw = firmware_TouchpadMTB()
+    options = _parse_options()
+    fw = firmware_TouchpadMTB(options)
     fw.main()

@@ -58,3 +58,7 @@ Z_FUNCTION = 'Z_Function'
 SINGLETON_FUNCTION = 'Singleton_Function'
 TRAPEZ_FUNCTION = 'Trapez_Function'
 TRIANGLE_FUNCTION = 'Triangle_Function'
+
+# Constants about command line options
+OPTIONS_HELP = 'help'
+OPTIONS_SIMPLIFIED = 'simplified'
