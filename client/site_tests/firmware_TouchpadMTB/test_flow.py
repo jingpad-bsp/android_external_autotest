@@ -17,6 +17,7 @@ import firmware_log
 import firmware_utils
 import fuzzy
 import mini_color
+import mtb
 import test_conf as conf
 import validators
 
@@ -48,6 +49,7 @@ class TestFlow:
         self.system_device = self._non_blocking_open(self.device_node)
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
+        self.mtb_evemu = mtb.MTBEvemu()
 
     def __del__(self):
         self.system_device.close()
@@ -351,7 +353,11 @@ class TestFlow:
 
     def gesture_timeout_callback(self):
         """A callback watching whether a gesture has timed out."""
-        if self.gesture_continues_flag:
+        # A gesture is stopped only when two conditions are met simultaneously:
+        # (1) there are no reported packets for a timeout interval, and
+        # (2) the number of tracking IDs is 0.
+        if (self.gesture_continues_flag or
+            not self.mtb_evemu.all_fingers_leaving()):
             self.gesture_continues_flag = False
             return True
         else:
@@ -367,6 +373,8 @@ class TestFlow:
         event = True
         while event:
             event = self._non_blocking_read(evdev_device, fd)
+            if event:
+                self.mtb_evemu.process_event(event)
 
         self.gesture_continues_flag = True
         if (not self.gesture_begins_flag):

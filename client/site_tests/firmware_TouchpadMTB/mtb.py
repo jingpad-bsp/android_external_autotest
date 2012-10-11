@@ -86,10 +86,37 @@ def convert_mtplot_file_to_evemu_file(mtplot_filename, evemu_ext='.evemu',
         evemu_f.write('\n'.join(evemu_packets))
 
 
+class MTBEvemu:
+    """A simplified class provides MTB utilities for evemu event format."""
+    def __init__(self):
+        self.mtb = MTB()
+        self.num_tracking_ids = 0
+
+    def _convert_event(self, event):
+        (tv_sec, tv_usec, ev_type, ev_code, ev_value) = event
+        ev_dict = {EV_TIME: tv_sec + 0.000001 * tv_usec,
+                   EV_TYPE: ev_type,
+                   EV_CODE: ev_code,
+                   EV_VALUE: ev_value}
+        return ev_dict
+
+    def all_fingers_leaving(self):
+        """Is there no finger on the pad?"""
+        return self.num_tracking_ids <= 0
+
+    def process_event(self, event):
+        """Process the event and count existing fingers."""
+        converted_event = self._convert_event(event)
+        if self.mtb._is_new_contact(converted_event):
+            self.num_tracking_ids += 1
+        elif self.mtb._is_finger_leaving(converted_event):
+            self.num_tracking_ids -= 1
+
+
 class MTB:
     """An MTB class providing MTB format related utility methods."""
 
-    def __init__(self, packets):
+    def __init__(self, packets=None):
         self.packets = packets
         self._define_check_event_func_list()
 
