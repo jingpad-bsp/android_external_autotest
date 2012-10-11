@@ -421,7 +421,7 @@ def get_gesture_list():
 
         Gesture(
             name='drumroll',
-            variations=(SLOW, NORMAL, FAST),
+            variations=(FAST, NORMAL, SLOW),
             prompt='Use two fingers to make drum roll {0} for a total of '
                    '5 seconds.',
             subprompt={
