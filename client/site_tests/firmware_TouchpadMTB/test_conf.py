@@ -60,7 +60,7 @@ def get_gesture_list():
             variations=((LR, RL, TB, BT, BLTR, TRBL),
                         (SLOW, NORMAL),
             ),
-            prompt='Draw a {0} line {1} in {2}.',
+            prompt='Draw a {0} line {1} using a ruler in {2}.',
             subprompt={
                 LR: ('horizontal', 'from left edge to right edge',),
                 RL: ('horizontal', 'from right edge to left edge',),
@@ -85,7 +85,8 @@ def get_gesture_list():
             variations=((LR, RL, TB, BT, BLTR, TRBL),
                         (SLOW, NORMAL),
             ),
-            prompt='Use two fingers to draw {0} lines {1} in {2}.',
+            prompt='Use two fingers to draw {0} lines {1} using a ruler '
+                   'in {2}.',
             subprompt={
                 LR: ('horizontal', 'from left edge to right edge',),
                 RL: ('horizontal', 'from right edge to left edge',),
