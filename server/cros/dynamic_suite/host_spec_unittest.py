@@ -21,31 +21,35 @@ class HostSpecTest(mox.MoxTestBase):
 
 
     _BOARD = 'board'
+    _SPECS = [host_spec.HostSpec([_BOARD]),
+              host_spec.HostSpec([_BOARD, 'pool:bvt']),
+              host_spec.HostSpec([_BOARD], ['label1'])]
 
 
     def testOrderSpecsByComplexity(self):
         """Should return new host spec list with simpler entries later."""
-        specs = [host_spec.HostSpec([self._BOARD]),
-                 host_spec.HostSpec([self._BOARD, 'pool:bvt']),
-                 host_spec.HostSpec([self._BOARD, 'label1'])]
-        reordered = host_spec.order_by_complexity(specs)
+        reordered = host_spec.order_by_complexity(self._SPECS)
 
-        for spec in specs[1:]:
+        for spec in self._SPECS[1:]:
             self.assertTrue(spec in reordered[:-1])
-        self.assertEquals(specs[0], reordered[-1])
+        self.assertEquals(self._SPECS[0], reordered[-1])
 
 
     def testSpecSubsets(self):
         """Validate HostSpec subset checks."""
-        specs = [host_spec.HostSpec([self._BOARD]),
-                 host_spec.HostSpec([self._BOARD, 'pool:bvt']),
-                 host_spec.HostSpec([self._BOARD, 'label1'])]
-        self.assertTrue(specs[0].is_subset(specs[1]))
-        self.assertTrue(specs[0].is_subset(specs[2]))
-        self.assertFalse(specs[1].is_subset(specs[2]))
-        self.assertFalse(specs[2].is_subset(specs[1]))
-        self.assertFalse(specs[1].is_subset(specs[0]))
-        self.assertFalse(specs[2].is_subset(specs[0]))
+        self.assertTrue(self._SPECS[0].is_subset(self._SPECS[1]))
+        self.assertTrue(self._SPECS[0].is_subset(self._SPECS[2]))
+        self.assertFalse(self._SPECS[1].is_subset(self._SPECS[2]))
+        self.assertFalse(self._SPECS[2].is_subset(self._SPECS[1]))
+        self.assertFalse(self._SPECS[1].is_subset(self._SPECS[0]))
+        self.assertFalse(self._SPECS[2].is_subset(self._SPECS[0]))
+
+
+    def testTrivialSpec(self):
+        """Validate that HostSpecs are correctly marked as trivial."""
+        self.assertTrue(self._SPECS[0].is_trivial)
+        self.assertTrue(self._SPECS[1].is_trivial)
+        self.assertFalse(self._SPECS[2].is_trivial)
 
 
 class HostGroupTest(mox.MoxTestBase):
@@ -123,7 +127,7 @@ class HostGroupTest(mox.MoxTestBase):
         """Track unsatisfiable HostSpecs in ExplicitHostGroup."""
         group = host_spec.ExplicitHostGroup()
         satisfiable_spec = host_spec.HostSpec(['l2'])
-        unsatisfiable_spec = host_spec.HostSpec(['l1', 'e1'])
+        unsatisfiable_spec = host_spec.HostSpec(['l1'], ['e1'])
         group.add_host_for_spec(unsatisfiable_spec, None)
         group.add_host_for_spec(satisfiable_spec, FakeHost('h1'))
         self.assertTrue(unsatisfiable_spec in group.unsatisfied_specs)
@@ -146,10 +150,10 @@ class HostGroupTest(mox.MoxTestBase):
 
     def testExplicitSubsetSpecSatisfiedIfAnyAre(self):
         """Ensures that any satisfied spec also satisfies a subset HostSpec."""
-        specs = [host_spec.HostSpec(['l1', 'l3']),
-                 host_spec.HostSpec(['l1', 'l3', 'l4']),
-                 host_spec.HostSpec(['l1', 'l5', 'l4']),
-                 host_spec.HostSpec(['l1', 'l2', 'l3', 'l4'])]
+        specs = [host_spec.HostSpec(['l1'], ['l3']),
+                 host_spec.HostSpec(['l1'], ['l3', 'l4']),
+                 host_spec.HostSpec(['l1'], ['l5', 'l4']),
+                 host_spec.HostSpec(['l1'], ['l2', 'l3', 'l4'])]
         group = host_spec.ExplicitHostGroup()
         group.add_host_for_spec(specs[0], None)
         group.add_host_for_spec(specs[1], FakeHost('h1'))

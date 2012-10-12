@@ -193,11 +193,11 @@ class Reimager(object):
 
     def _build_host_specs_from_dependencies(self, board, pool, deps):
         """
-        Return an iterable of host specs, given some test dependencies.
+        Return a dict of {test name: HostSpec}, given some test dependencies.
 
-        Given a dict of test dependency sets, build and return an iterable
-        of 'host specifications' -- sets of labels that specify a kind of host
-        needed to run at least one test in the suite.
+        Given a dict of test dependency sets, build and return a dict
+        mapping each test to an appropriate HostSpec -- an object that
+        specifies the kind of host needed to run the named test in the suite.
 
         @param board: which kind of devices to reimage.
         @param pool: the pool of machines to use for scheduling purposes.
@@ -207,7 +207,7 @@ class Reimager(object):
         """
         base = [l for l in [board, pool] if l is not None]
         return dict(
-            [(name, HostSpec(base + d)) for name, d in deps.iteritems()])
+            [(name, HostSpec(base, d)) for name, d in deps.iteritems()])
 
 
     def _build_host_group(self, host_specs, num, require_usable_hosts=True):
@@ -229,13 +229,13 @@ class Reimager(object):
                 greater than the number of hosts requested.
         @raises error.NoHostsException if we find no usable hosts at all.
         """
-        if len(host_specs) > num:
+        if len([s for s in host_specs if not s.is_trivial]) > num:
             raise error.InadequateHostsException(
                 '%d hosts cannot satisfy dependencies %r' % (num, host_specs))
 
         hosts_per_spec = self._gather_hosts_from_host_specs(host_specs)
-        if host_spec.is_trivial_list(host_specs):
-            spec, hosts = host_spec.trivial_get_spec_and_hosts(
+        if host_spec.is_simple_list(host_specs):
+            spec, hosts = host_spec.simple_get_spec_and_hosts(
                 host_specs, hosts_per_spec)
             if require_usable_hosts and not filter(tools.is_usable, hosts):
                 raise error.NoHostsException('All hosts with %r are dead!' %
@@ -279,6 +279,8 @@ class Reimager(object):
         ordered_specs = host_spec.order_by_complexity(hosts_per_spec.keys())
         hosts_to_use = ExplicitHostGroup()
         for spec in ordered_specs:
+            if hosts_to_use.size() == num:
+                break  # Bail early if we've already exhausted our allowance.
             to_check = filter(lambda h: not hosts_to_use.contains_host(h),
                               hosts_per_spec[spec])
             chosen = self._get_random_best_host(to_check, require_usable_hosts)

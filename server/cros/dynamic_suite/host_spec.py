@@ -20,11 +20,11 @@ def order_by_complexity(host_spec_list):
     return sorted(host_spec_list, key=extract_label_list_len, reverse=True)
 
 
-def is_trivial_list(host_spec_list):
+def is_simple_list(host_spec_list):
     """
-    Returns true if this is a 'trivial' list of HostSpec objects.
+    Returns true if this is a 'simple' list of HostSpec objects.
 
-    A 'trivial' list of HostSpec objects is defined as a list of one HostSpec.
+    A 'simple' list of HostSpec objects is defined as a list of one HostSpec.
 
     @param host_spec_list: a list of HostSpec objects.
     @return True if this is a list of size 1, False otherwise.
@@ -32,10 +32,10 @@ def is_trivial_list(host_spec_list):
     return len(host_spec_list) == 1
 
 
-def trivial_get_spec_and_hosts(host_specs, hosts_per_spec):
-    """Given a trivial list of HostSpec, extract hosts from hosts_per_spec.
+def simple_get_spec_and_hosts(host_specs, hosts_per_spec):
+    """Given a simple list of HostSpec, extract hosts from hosts_per_spec.
 
-    Given a trivial list of HostSpec objects, pull out the spec and use it to
+    Given a simple list of HostSpec objects, pull out the spec and use it to
     get the associated hosts out of hosts_per_spec.  Return the spec and the
     host list as a pair.
 
@@ -251,16 +251,22 @@ class HostSpec(object):
     on which a test with matching dependencies can be run.
     """
 
-    def __init__(self, labels):
-        self._labels = frozenset(labels)
+    def __init__(self, base, extended=[]):
+        self._labels = frozenset(base + extended)
         # To amortize cost of __hash__()
         self._str = 'HostSpec %r' % sorted(self._labels)
+        self._trivial = extended == []
 
 
     @property
     def labels(self):
         # Can I just do this as a set?  Inquiring minds want to know.
         return sorted(self._labels)
+
+
+    @property
+    def is_trivial(self):
+        return self._trivial
 
 
     def is_subset(self, other):

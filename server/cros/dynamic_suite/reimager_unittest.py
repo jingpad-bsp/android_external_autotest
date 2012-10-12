@@ -61,7 +61,7 @@ class ReimagerTest(mox.MoxTestBase):
         host_spec_list = [HostSpec([self._BOARD, self._POOL])]
         for dep_list in self._DEPENDENCIES.itervalues():
             host_spec_list.append(
-                HostSpec([self._BOARD, self._POOL] + dep_list))
+                HostSpec([self._BOARD, self._POOL], dep_list))
         self.specs = host_spec.order_by_complexity(host_spec_list)
         self._CONFIG.override_config_value('CROS',
                                            'sharding_factor',
@@ -236,6 +236,49 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._choose_hosts(hosts_per_spec, len(self.specs)+1)
 
 
+    def testSubsumeTrivialHostSpec(self):
+        """Should tolerate num hosts < host specs, if we have a trivial spec."""
+        self.mox.StubOutWithMock(self.reimager, '_get_random_best_host')
+        num = len(self.specs) - 1
+
+        host_lists = [[FakeHost('h1')], [FakeHost('h2')], [FakeHost('h3')]]
+        hosts_per_spec = dict(zip(self.specs, host_lists))
+
+        for spec, hosts in hosts_per_spec.iteritems():
+            if spec.is_trivial:
+                continue
+            self.reimager._get_random_best_host(
+                AllInHostList(hosts),
+                True).InAnyOrder('random').AndReturn(hosts[-1])
+        self.mox.ReplayAll()
+
+        hosts = self.reimager._choose_hosts(hosts_per_spec, num)
+        self.assertEquals(num, hosts.size())
+
+
+    def testNumOneStillGetDownToTrivialHostSpec(self):
+        """Still run tests, even if we can only satisfy trivial spec."""
+        self.mox.StubOutWithMock(self.reimager, '_get_random_best_host')
+        num = 1
+
+        host_lists = [[FakeHost('h1')], [FakeHost('h2')], [FakeHost('h3')]]
+        hosts_per_spec = dict(zip(self.specs, host_lists))
+
+        for spec, hosts in hosts_per_spec.iteritems():
+            if spec.is_trivial:
+                self.reimager._get_random_best_host(
+                    AllInHostList(hosts),
+                    True).InAnyOrder('random').AndReturn(hosts[-1])
+            else:
+                self.reimager._get_random_best_host(
+                    AllInHostList(hosts),
+                    True).InAnyOrder('random').AndReturn([])
+        self.mox.ReplayAll()
+
+        hosts = self.reimager._choose_hosts(hosts_per_spec, num)
+        self.assertEquals(num, hosts.size())
+
+
     def testRandomBestHostReadyAvailable(self):
         """Should return one of the 'Ready' hosts."""
         ready = [FakeHost('h3'), FakeHost('h4')]
@@ -393,8 +436,8 @@ class ReimagerTest(mox.MoxTestBase):
                           hosts_per_spec, len(self.specs))
 
 
-    def testBuildHostGroupNonTrivial(self):
-        """Build a HostGroup from hosts, given a non-trivial set of HostSpec."""
+    def testBuildHostGroupComplex(self):
+        """Build a HostGroup from hosts, given a complex set of HostSpec."""
         self.mox.StubOutWithMock(self.reimager, '_choose_hosts')
         self.mox.StubOutWithMock(self.reimager, '_gather_hosts_from_host_specs')
 
@@ -417,17 +460,42 @@ class ReimagerTest(mox.MoxTestBase):
                                                           require_usable_hosts))
 
 
+    def testBuildHostGroupComplexContainingTrivial(self):
+        """Build a HostGroup, given a complex set of specs, with one trivial."""
+        self.mox.StubOutWithMock(self.reimager, '_choose_hosts')
+        self.mox.StubOutWithMock(self.reimager, '_gather_hosts_from_host_specs')
+
+        require_usable_hosts = True
+        host_lists = [[FakeHost('h%d' % i)] for i,spec in enumerate(self.specs)]
+        hosts_per_spec = dict(zip(self.specs, host_lists))
+        host_group = ExplicitHostGroup(hosts_per_spec)
+
+        self.reimager._gather_hosts_from_host_specs(
+            self.specs).AndReturn(hosts_per_spec)
+        self.reimager._choose_hosts(
+            hosts_per_spec,
+            len(self.specs) - 1,
+            require_usable_hosts).AndReturn(host_group)
+
+        self.mox.ReplayAll()
+        self.assertEquals(host_group,
+                          self.reimager._build_host_group(self.specs,
+                                                          len(self.specs) - 1,
+                                                          require_usable_hosts))
+
+
     def testBuildHostGroupNotEnough(self):
-        """Raise when there are more HostSpecs than machines allowed."""
+        """Raise if more nontrivial HostSpecs than machines allowed."""
+        specs = [HostSpec(['l1'], ['e1']), HostSpec(['21'], ['e1'])]
         self.assertRaises(error.InadequateHostsException,
                           self.reimager._build_host_group,
-                          self.specs,
-                          len(self.specs) - 1,
+                          specs,
+                          len(specs) - 1,
                           True)
 
 
-    def testBuildHostGroupTrivial(self):
-        """Build a HostGroup from labels, given a trivial set of HostSpec."""
+    def testBuildHostGroupSimple(self):
+        """Build a HostGroup from labels, given a simple set of HostSpec."""
         spec = self.specs[0]
         host_list = [FakeHost(), FakeHost()]
         self.afe.get_hosts(multiple_labels=spec.labels).AndReturn(host_list)
@@ -441,8 +509,8 @@ class ReimagerTest(mox.MoxTestBase):
                                                         True))
 
 
-    def testBuildHostGroupTrivialNone(self):
-        """Raise when we find no machines to match a trivial HostSpec."""
+    def testBuildHostGroupSimpleNone(self):
+        """Raise when we find no machines to match a simple set of HostSpec."""
         spec = self.specs[0]
         self.afe.get_hosts(multiple_labels=spec.labels).AndReturn([])
 
@@ -617,7 +685,7 @@ class ReimagerTest(mox.MoxTestBase):
         statuses = {canary.hostnames[0]: job_status.Status('GOOD',
                                                            canary.hostnames[0])}
         bad_test, bad_labels = self._DEPENDENCIES.items()[0]
-        bad_spec = HostSpec([self._BOARD, self._POOL] + bad_labels)
+        bad_spec = HostSpec([self._BOARD, self._POOL], bad_labels)
         self.expect_attempt(canary, statuses, unsatisfiable_specs=[bad_spec])
 
         rjob = self.mox.CreateMock(base_job.base_job)
@@ -644,7 +712,7 @@ class ReimagerTest(mox.MoxTestBase):
             canary.hostnames[1]: job_status.Status('GOOD', canary.hostnames[1]),
         }
         bad_test, bad_labels = self._DEPENDENCIES.items()[0]
-        bad_spec = HostSpec([self._BOARD, self._POOL] + bad_labels)
+        bad_spec = HostSpec([self._BOARD, self._POOL], bad_labels)
         self.expect_attempt(canary, statuses, doomed_specs=[bad_spec])
 
         rjob = self.mox.CreateMock(base_job.base_job)
