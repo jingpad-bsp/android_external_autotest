@@ -30,6 +30,7 @@ board-netbook platform.
 <span class="legend failure">F</span> Fail |
 <span class="legend failure">E</span> Error |
 <span style="background-color:#FFFFFF;" class="legend">N</span> None |
+<span class="experimental_legend">&nbsp;</span> Experimental |
 <i><a href="/results/dashboard/emails.html" target="_blank">
 Click here to learn how to receive test failure emails.
 </a></i>
@@ -48,8 +49,13 @@ Click here to learn how to receive test failure emails.
     {% if forloop.first %}
     <th class="tableheader roundedheader" style="height:150px;">&nbsp;</th>
     {% endif %}
-    {% for path, alias, name, author in table_dict.header %}
-    <th class="tableheader roundedheader" style="height:150px;" valign="bottom">
+    {% for path, alias, name, experimental in table_dict.header %}
+    <th style="height:150px;" valign="bottom"
+      {% if experimental %}
+        class="experimental_tableheader roundedheader">
+      {% else %}
+        class="tableheader roundedheader">
+      {% endif %}
       <div class="div_testname">
       {% if path %}
       <a class="info"

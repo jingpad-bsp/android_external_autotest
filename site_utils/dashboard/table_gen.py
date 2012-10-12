@@ -134,8 +134,8 @@ def _GetLandingDetails(dash_view, summary_ranges, netbook, board, category,
   Returns:
     Tuple of data for populating one waterfall row (build).
   """
-  job_attempted, job_good, passed, total = dash_view.GetCategorySummary(
-      netbook, board, category, build)
+  job_attempted, job_good, passed, total, xpassed, xtotal = (
+      dash_view.GetCategorySummary(netbook, board, category, build))
   kernel = summary_ranges.GetKernel(board, netbook, build)
   failed_tests = dash_view.GetCategoryFailedTests(
       netbook, board, category, build)
@@ -152,7 +152,8 @@ def _GetLandingDetails(dash_view, summary_ranges, netbook, board, category,
   else:
     pure_board = board
   return (board, pure_board, netbook, build, job_attempted, job_good, passed,
-          total, kernel, failed_tests, crashes, crash_count, crash_category)
+          total, xpassed, xtotal, kernel, failed_tests, crashes, crash_count,
+          crash_category)
 
 
 def BuildLandingSummaries(dash_view, category, tots, branches, summary_ranges):

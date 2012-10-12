@@ -650,15 +650,19 @@ class AutotestDashView(object):
       """
       ngood = 0
       ntotal = 0
+      xngood = 0
+      xntotal = 0
       job_attempted = False
       job_good = False
       if build in self._build_tree[netbook][board][category]:
         job = self._build_tree[netbook][board][category][build]
         ngood = job["ngood"]
         ntotal = job["ntotal"]
+        xngood = job["xngood"]
+        xntotal = job["xntotal"]
         job_good = job["server_good"]
         job_attempted = True
-      return job_attempted, job_good, ngood, ntotal
+      return job_attempted, job_good, ngood, ntotal, xngood, xntotal
 
     def TestDetailIterator(self, netbook, board, category, build):
       """Common iterator for looking through test details.
@@ -714,13 +718,19 @@ class AutotestDashView(object):
         build: a full build string: 0.8.73.0-r3ed8d12f-b719.
 
       Returns:
-        List of unique test names of failed tests.
+        Tuple including a List of unique test names of failed tests,
+        and a List of unique test names of experimental failed tests.
       """
       failed_tests = set()
+      xfailed_tests = set()
       for t in self.TestDetailIterator(netbook, board, category, build):
         if t['status'] != 'GOOD':
-          failed_tests.add(t['test_name'])
-      return ', '.join(sorted(failed_tests))
+          if t.get('experimental'):
+            xfailed_tests.add(t['test_name'])
+          else:
+            failed_tests.add(t['test_name'])
+      return (', '.join(sorted(failed_tests)),
+              ', '.join(sorted(xfailed_tests)))
 
     def GetJobTimes(self, netbook, board, category, build):
       """Return job_start_time,  job_end_time and elapsed for the given job.
@@ -1269,6 +1279,8 @@ class AutotestDashView(object):
               "finish": datetime.datetime(2010, 1, 1),
               "ngood": 0, # number of good test results excluding experimental
               "ntotal": 0, # number of tests run excluding experimental
+              "xngood": 0, # number of good experimental test results
+              "xntotal": 0, # number of experimental tests run
               "server_good": True})
 
           if start_time < build_info["start"]:
@@ -1292,10 +1304,16 @@ class AutotestDashView(object):
               build_info["ntotal"] += 1
               if status == "GOOD":
                 build_info["ngood"] += 1
+            else:
+              build_info["xntotal"] += 1
+              if status == "GOOD":
+                build_info["xngood"] += 1
           elif not status == "GOOD" and test_index_list[1] == "GOOD":
             test_index_list[1] = status
             if not experimental:
               build_info["ngood"] -= 1
+            else:
+              build_info["xngood"] -= 1
 
       query = [
           "SELECT test_idx, attribute, value",

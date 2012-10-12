@@ -36,8 +36,7 @@ class TableBuilder(object):
 
   def  _SplitTestList(self):
     """Determine and list the tests that passed and failed."""
-    all_set = set(self._test_list)
-    experimental_set = set()
+    good_set = set()
     failed_list = []  # Maintains order discovered.
 
     for build in self._build_numbers:
@@ -45,25 +44,28 @@ class TableBuilder(object):
         test_details = self._GetTestDetails(test_name, build)
         if test_details:
           for t in test_details:
-            if t['experimental'] and self._category == BVT_TAG:
-              experimental_set.add(test_name)
+            good_status = (t['status'] == 'GOOD')
+            test_tuple = (test_name, t['experimental'])
+            if test_tuple in failed_list:
               continue
-            test_status = t['status']
-            if not test_status == 'GOOD' and not test_name in failed_list:
-              failed_list.append(test_name)
-    return sorted(all_set - experimental_set - set(failed_list)), failed_list
+            if good_status:
+              good_set.add(test_tuple)
+            else:
+              failed_list.append(test_tuple)
+              good_set.discard(test_tuple)
+    return sorted(good_set), failed_list
 
   def _BuildTableHeader(self, test_list):
     """Generate header with test names for columns."""
     table_header = []
-    for test_name in test_list:
-      author, test_path = self._dash_view.GetAutotestInfo(test_name)
+    for test_name, experimental in test_list:
+      test_path = self._dash_view.GetAutotestInfo(test_name)[1]
       if len(test_name) > DEFAULT_TEST_NAME_LENGTH:
         test_alias = test_name[:DEFAULT_TEST_NAME_LENGTH] + '...'
       else:
         test_alias = test_name
-      table_header.append((test_path, test_alias.replace('_', ' '), test_name,
-                           author))
+      table_header.append((test_path, test_alias.replace('_', ' '),
+                           test_name, experimental))
     return table_header
 
   def _GetBuildMetadata(self, build):
@@ -88,7 +90,7 @@ class TableBuilder(object):
       chrome_version = self._build_info.GetChromeVersion(self._board_type,
                                                          build)
       test_status_list = []
-      for test_name in test_list:
+      for test_name, experimental in test_list:
         # Include either the good details or the details of the
         # first failure in the list (last chronological failure).
         cell_content = []
