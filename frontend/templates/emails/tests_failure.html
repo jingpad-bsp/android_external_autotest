@@ -19,6 +19,9 @@ This template builds an email with details of test(s) that failed.
           <a title="Click to view source." target="_blank"
              href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.test_path }}">
              {{ name }}
+             {% if details.experimental %}
+               <b>&nbsp;(experimental)</b>
+             {% endif %}
           </a>
         </td>
       {% endif %}
@@ -72,6 +75,9 @@ This template builds an email with details of test(s) that failed.
           <a title="Click to view source." target="_blank"
              href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.0.test_path }}">
              {{ name }}
+             {% if details.0.experimental %}
+               <b>&nbsp;(experimental)</b>
+             {% endif %}
           </a>
         </td>
       </tr>
