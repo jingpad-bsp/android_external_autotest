@@ -48,13 +48,13 @@ class firmware_ECKeyboard(FAFTSequence):
 
     def key_down(self, keyname):
         """Simulate pressing a key."""
-        self.send_uart_command('kbpress %d %d 1' %
+        self.ec.send_command('kbpress %d %d 1' %
                 (KEYMATRIX[keyname][1], KEYMATRIX[keyname][0]))
 
 
     def key_up(self, keyname):
         """Simulate releasing a key."""
-        self.send_uart_command('kbpress %d %d 0' %
+        self.ec.send_command('kbpress %d %d 0' %
                 (KEYMATRIX[keyname][1], KEYMATRIX[keyname][0]))
 
 

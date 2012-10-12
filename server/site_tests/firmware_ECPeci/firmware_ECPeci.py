@@ -24,7 +24,7 @@ class firmware_ECPeci(FAFTSequence):
           error.TestFail: Raised when read fails.
         """
         try:
-            t = int(self.send_uart_command_get_output("pecitemp",
+            t = int(self.ec.send_command_get_output("pecitemp",
                     ["CPU temp = (\d+) K"])[0][1])
             if t < 273 or t > 400:
                 raise error.TestFail("Abnormal CPU temperature %d K" % t)

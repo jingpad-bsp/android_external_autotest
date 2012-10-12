@@ -77,7 +77,7 @@ class firmware_ECWakeSource(FAFTSequence):
         """Shutdown and hibernate EC. Then wake by power button."""
         self.faft_client.run_shell_command("shutdown -P now")
         time.sleep(self.SHUTDOWN_DELAY)
-        self.send_uart_command("hibernate 1000")
+        self.ec.send_command("hibernate 1000")
         time.sleep(self.WAKE_DELAY)
         self.servo.power_short_press()
 

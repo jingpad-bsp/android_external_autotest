@@ -50,9 +50,9 @@ class firmware_FAFTSetup(FAFTSequence):
                                "RO:\s+[^\r\n]*\r\n",
                                "RW:\s+[^\r\n]*\r\n",
                                "Build:\s+[^\r\n]*\r\n"]
-            self.send_uart_command_get_output("version",
-                                              expected_output,
-                                              timeout=0.2)
+            self.ec.send_command_get_output("version",
+                                            expected_output,
+                                            timeout=0.2)
             return True
         except:
             logging.error("Cannot talk to EC console.")

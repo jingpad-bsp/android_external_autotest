@@ -31,7 +31,7 @@ class firmware_ECWatchdog(FAFTSequence):
         Trigger a watchdog reset.
         """
         self.faft_client.run_shell_command("sync")
-        self.send_uart_command("waitms %d" % self.WATCHDOG_DELAY)
+        self.ec.send_command("waitms %d" % self.WATCHDOG_DELAY)
         time.sleep((self.WATCHDOG_DELAY + self.EC_BOOT_DELAY) / 1000.0)
         self.check_lid_and_power_on()
 

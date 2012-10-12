@@ -25,8 +25,8 @@ class firmware_ECSharedMem(FAFTSequence):
 
 
     def shared_mem_checker(self):
-        match = self.send_uart_command_get_output("shmem",
-                                                  ["Size:\s+([0-9-]+)\r"])[0]
+        match = self.ec.send_command_get_output("shmem",
+                                                ["Size:\s+([0-9-]+)\r"])[0]
         shmem_size = int(match[1])
         logging.info("EC shared memory size if %d bytes", shmem_size)
         if shmem_size <= 0:
@@ -37,7 +37,7 @@ class firmware_ECSharedMem(FAFTSequence):
 
 
     def jump_checker(self):
-        self.send_uart_command("sysjump RW")
+        self.ec.send_command("sysjump RW")
         time.sleep(self.EC_BOOT_DELAY)
         return self.shared_mem_checker()
 
@@ -48,7 +48,7 @@ class firmware_ECSharedMem(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, check shared memory in normal operation and crash EC
                 'state_checker': self.shared_mem_checker,
-                'reboot_action': (self.send_uart_command, "crash unaligned")
+                'reboot_action': (self.ec.send_command, "crash unaligned")
             },
             {   # Step 2, Check shared memory after crash and system jump
                 'state_checker': (lambda: self.shared_mem_checker() and

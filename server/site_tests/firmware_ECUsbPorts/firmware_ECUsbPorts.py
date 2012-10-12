@@ -58,7 +58,7 @@ class firmware_ECUsbPorts(FAFTSequence):
         while limit > 0:
             try:
                 gpio_name = "USB%d_ENABLE" % (cnt + 1)
-                self.send_uart_command_get_output(
+                self.ec.send_command_get_output(
                         "gpioget %s" % gpio_name,
                         ["[01].\s*%s" % gpio_name],
                         timeout=1)
@@ -87,7 +87,7 @@ class firmware_ECUsbPorts(FAFTSequence):
                 timeout = timeout - 1
                 for idx in xrange(1, port_count+1):
                     gpio_name = "USB%d_ENABLE" % idx
-                    self.send_uart_command_get_output(
+                    self.ec.send_command_get_output(
                             "gpioget %s" % gpio_name,
                             ["0.\s*%s" % gpio_name],
                             timeout=1)

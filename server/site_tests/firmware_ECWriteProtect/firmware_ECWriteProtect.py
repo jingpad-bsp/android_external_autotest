@@ -33,7 +33,7 @@ class firmware_ECWriteProtect(FAFTSequence):
             - all_now
         """
         try:
-            self.send_uart_command_get_output("flashinfo",
+            self.ec.send_command_get_output("flashinfo",
                   ["Flags:\s+wp_gpio_asserted\s+ro_at_boot\s+ro_now\s+all_now"],
                   timeout=0.1)
             return True

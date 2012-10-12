@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ast
 import ctypes
 import logging
 import os
@@ -10,11 +9,11 @@ import re
 import sys
 import tempfile
 import time
-import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
+from autotest_lib.server.cros.chrome_ec import ChromeEC
 from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
 from autotest_lib.server.cros.servo_test import ServoTest
 from autotest_lib.site_utils import lab_test
@@ -176,6 +175,9 @@ class FAFTSequence(ServoTest):
         if use_faft:
             self.client_attr = FAFTClientAttribute(
                     self.faft_client.get_platform_name())
+
+            if self.client_attr.chrome_ec:
+                self.ec = ChromeEC(self.servo)
 
             # Setting up key matrix mapping
             self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
@@ -407,54 +409,6 @@ class FAFTSequence(ServoTest):
                 self.run_faft_step({
                     'firmware_action': self.wait_fw_screen_and_ctrl_d,
                 })
-
-
-    def send_uart_command(self, command):
-        """Send command through UART.
-
-        This function open UART pty when called, and then command is sent
-        through UART.
-
-        Args:
-          command: The command string to send.
-        """
-        self.servo.set('ec_uart_regexp', 'None')
-        self.servo.set_nocheck('ec_uart_cmd', command)
-
-
-    def send_uart_command_get_output(self, command, regexp_list, timeout=1):
-        """Send command through UART and wait for response.
-
-        This function waits for response message matching regular expressions.
-
-        Args:
-          command: The command sent.
-          regexp_list: List of regular expressions used to match response
-            message. Note, list must be ordered.
-
-        Returns:
-          List of tuples, each of which contains the entire matched string and
-          all the subgroups of the match. None if not matched.
-          For example:
-            response of the given command:
-              High temp: 37.2
-              Low temp: 36.4
-            regexp_list:
-              ['High temp: (\d+)\.(\d+)', 'Low temp: (\d+)\.(\d+)']
-            returns:
-              [('High temp: 37.2', '37', '2'), ('Low temp: 36.4', '36', '4')]
-
-        Raises:
-          error.TestError: An error when the given regexp_list is not valid.
-        """
-        if not isinstance(regexp_list, list):
-            raise error.TestError('Arugment regexp_list is not a list: %s' %
-                                  str(regexp_list))
-
-        self.servo.set('ec_uart_timeout', str(float(timeout)))
-        self.servo.set('ec_uart_regexp', str(regexp_list))
-        self.servo.set_nocheck('ec_uart_cmd', command)
-        return ast.literal_eval(self.servo.get('ec_uart_cmd'))
 
 
     def check_ec_capability(self, required_cap=[], suppress_warning=False):
@@ -754,13 +708,13 @@ class FAFTSequence(ServoTest):
         self.set_hardware_write_protect(enabled)
         if enabled:
             # Set write protect flag and reboot to take effect.
-            self.send_uart_command("flashwp enable")
+            self.ec.send_command("flashwp enable")
             self.sync_and_ec_reboot()
         else:
             # Reboot after deasserting hardware write protect pin to deactivate
             # write protect. And then remove software write protect flag.
             self.sync_and_ec_reboot()
-            self.send_uart_command("flashwp disable")
+            self.ec.send_command("flashwp disable")
 
 
     def send_ctrl_d_to_dut(self):
@@ -888,9 +842,9 @@ class FAFTSequence(ServoTest):
             time.sleep(self.COLD_RESET_DELAY)
             self.servo.set('cold_reset', 'off')
             time.sleep(self.EC_BOOT_DELAY)
-            self.send_uart_command("reboot ap-off")
+            self.ec.send_command("reboot ap-off")
             time.sleep(self.EC_BOOT_DELAY)
-            self.send_uart_command("hostevent set 0x4000")
+            self.ec.send_command("hostevent set 0x4000")
             self.servo.power_short_press()
         else:
             self.servo.enable_recovery_mode()

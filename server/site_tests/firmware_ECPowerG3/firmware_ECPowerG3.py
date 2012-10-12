@@ -42,9 +42,9 @@ class firmware_ECPowerG3(FAFTSequence):
         while timeout > 0:
             try:
                 timeout = timeout - 1
-                self.send_uart_command_get_output("powerinfo",
-                                                  [reg_ex],
-                                                  timeout=1)
+                self.ec.send_command_get_output("powerinfo",
+                                                [reg_ex],
+                                                timeout=1)
                 return True
             except:
                 pass
