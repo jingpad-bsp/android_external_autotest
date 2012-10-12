@@ -2,10 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import logging
+import os
 import re
+import signal
 import socket
+import time
 
-from autotest_lib.client.common_lib import base_utils, global_config
+from autotest_lib.client.common_lib import base_utils, error, global_config
+
+
+# Keep checking if the pid is alive every second until the timeout (in seconds)
+CHECK_PID_IS_ALIVE_TIMEOUT = 6
+
 
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
@@ -115,3 +123,33 @@ def gs_upload(local_file, remote_file, acl, result_dir=None,
                            stdout_tee=ftrace, stderr_tee=ftrace)
         ftrace.write('Postamble\n')
         return True
+
+
+def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
+    """
+    Given a list of pid's, kill them via an esclating series of signals.
+
+    @param pid_list: List of PID's to kill.
+    @param signal_queue: Queue of signals to send the PID's to terminate them.
+    """
+    for sig in signal_queue:
+        logging.debug('Sending signal %s to the following pids:', sig)
+        for pid in pid_list:
+            logging.debug('Pid %d', pid)
+            try:
+                os.kill(pid, sig)
+            except OSError:
+                # The process may have died from a previous signal before we
+                # could kill it.
+                pass
+        time.sleep(CHECK_PID_IS_ALIVE_TIMEOUT)
+    failed_list = []
+    if signal.SIGKILL in signal_queue:
+        return
+    for pid in pid_list:
+        if base_utils.pid_is_alive(pid):
+            failed_list.append('Could not kill %d for process name: %s.' % pid,
+                               get_process_name(pid))
+    if failed_list:
+        raise error.AutoservRunError('Following errors occured: %s' %
+                                     failed_list, None)

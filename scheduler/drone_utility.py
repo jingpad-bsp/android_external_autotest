@@ -40,7 +40,7 @@ def call(method, *args, **kwargs):
     return _MethodCall(method, args, kwargs)
 
 
-class DroneUtility(object):
+class BaseDroneUtility(object):
     """
     This class executes actual OS calls on the drone machine.
 
@@ -422,6 +422,15 @@ def parse_input():
                          '%s\n%s\n%s' %
                          (pickled_input, separator, traceback.format_exc(),
                           separator))
+
+
+SiteDroneUtility = utils.import_site_class(
+   __file__, 'autotest_lib.scheduler.site_drone_utility',
+   'SiteDroneUtility', BaseDroneUtility)
+
+
+class DroneUtility(SiteDroneUtility):
+    pass
 
 
 def return_data(data):

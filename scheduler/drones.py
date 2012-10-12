@@ -1,7 +1,7 @@
 import cPickle, os, tempfile, logging
 import common
 from autotest_lib.scheduler import drone_utility, email_manager
-from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib import error, global_config, utils
 
 
 AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value('SCHEDULER',
@@ -12,7 +12,7 @@ class DroneUnreachable(Exception):
     pass
 
 
-class _AbstractDrone(object):
+class _BaseAbstractDrone(object):
     """
     Attributes:
     * allowed_users: set of usernames allowed to use this drone.  if None,
@@ -88,6 +88,15 @@ class _AbstractDrone(object):
 
     def set_autotest_install_dir(self, path):
         pass
+
+
+SiteDrone = utils.import_site_class(
+   __file__, 'autotest_lib.scheduler.site_drones',
+   '_SiteAbstractDrone', _BaseAbstractDrone)
+
+
+class _AbstractDrone(SiteDrone):
+    pass
 
 
 class _LocalDrone(_AbstractDrone):

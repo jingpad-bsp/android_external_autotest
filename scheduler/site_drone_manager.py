@@ -39,3 +39,12 @@ class SiteDroneManager(object):
                 copy_parse_log_back or not parse_log):
             super(SiteDroneManager, self).copy_to_results_repository(process,
                     source_path, destination_path)
+
+
+    def kill_process(self, process):
+        """
+        Kill the given process.
+        """
+        logging.info('killing %s', process)
+        drone = self._get_drone_for_process(process)
+        drone.queue_kill_process(process)
