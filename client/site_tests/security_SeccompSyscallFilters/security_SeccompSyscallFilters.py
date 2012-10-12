@@ -30,7 +30,9 @@ class security_SeccompSyscallFilters(test.test):
         """Main function.
 
         Runs the compiled tests, logs output.  Fails if the call to run
-        tests fails (meaning that a test failed).
+        tests fails (meaning that a test failed). Runs both as root
+        and non-root.
         """
-        utils.system_output(os.path.join(self.srcdir, self.executable),
-                retain_output = True)
+        binpath = os.path.join(self.srcdir, self.executable)
+        utils.system_output(binpath, retain_output = True)
+        utils.system_output("su chronos -c %s" % binpath, retain_output = True)
