@@ -6,7 +6,6 @@ NAME = 'hardware_Trackpad'
 AUTHOR = 'Chromium OS Authors'
 PURPOSE = 'Verify the functionalities of a trackpad driver.'
 CRITERIA = 'Fails if the performance does not meet a specified requirement.'
-SUITE = "kernel_daily_regression"
 TIME = 'SHORT'
 TEST_CLASS = 'Hardware'
 TEST_CATEGORY = 'Functional'
