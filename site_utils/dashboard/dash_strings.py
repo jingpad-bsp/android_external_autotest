@@ -8,7 +8,6 @@
 AUTOTEST_ARCHIVE = 'gs://chromeos-autotest-results'
 AUTOTEST_PATH = '/usr/local/autotest'
 AUTOTEST_SERVER = 'http://cautotest'
-RESULTS_SERVER = 'http://atlantis2.mtv.corp.google.com'
 AUTOTEST_USER = 'chromeos-test'
 
 BVT_TAG = 'bvt'
@@ -62,6 +61,7 @@ IMAGE_URLS = {
       ('https://sandbox.google.com/storage/chromeos-image-archive/'
        'x86-generic-full/')}
 
+CGI_RETRIEVE_LOGS_CMD = 'tko/retrieve_logs.cgi?job=/results'
 GSUTIL_GET_CMD = 'gsutil cat '
 WGET_CMD = 'wget --timeout=30 --tries=1 --no-proxy -qO- '
 

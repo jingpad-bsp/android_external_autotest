@@ -21,8 +21,8 @@ import dash_util
 from dash_strings import AUTOTEST_ARCHIVE
 from dash_strings import AUTOTEST_PATH
 from dash_strings import AUTOTEST_SERVER
+from dash_strings import CGI_RETRIEVE_LOGS_CMD
 from dash_strings import GSUTIL_GET_CMD
-from dash_strings import RESULTS_SERVER
 from dash_strings import WGET_CMD
 
 LOG_BASE_PATH = '%s/%s/results.json'
@@ -93,31 +93,18 @@ class TestSummaryInfo(object):
         return f.read()
     return None
 
-  def _RetrieveResultsJson(self, server, job_name, use_gs=False):
+  def _RetrieveResultsJson(self, job_name):
     """Helper to retrieve the results.json file from a result server.
 
-    This abstracts the file retrieval to handle either a straight wget
-    from an http share or a gsutil cp from gs.
+    The tko/retrieve_logs.cgi script handles finding the results server
+    and/or retrieving results from gs using gsutil.
 
     Args:
-      server: base server that may hold the job result.json.
       job_name: used to locate the job-specific result.json.
-      use_gs: if True look on gs else the http server supplied.
     """
-    log_file_path = os.path.join(AUTOTEST_PATH, 'results')
-    summary_text = self._LocalResultFile(job_name, base_dir=log_file_path,
-                                         use_json=False)
-    if summary_text is None:
-      if use_gs:
-        # gsutil cat it and load it.
-        cmd = GSUTIL_GET_CMD
-        results_base = AUTOTEST_ARCHIVE
-      else:
-        # wget it and load it.
-        cmd = WGET_CMD
-        results_base = os.path.join(server, 'results')
+    results_base = os.path.join(AUTOTEST_SERVER, CGI_RETRIEVE_LOGS_CMD)
     log_file_path = LOG_BASE_PATH % (results_base, job_name)
-    return commands.getoutput('%s %s' % (cmd, log_file_path))
+    return commands.getoutput('%s %s' % (WGET_CMD, log_file_path))
 
   def _UpdateFileCache(self, job_name):
     """Helper to update a job file cache with a results Json file.
@@ -132,11 +119,7 @@ class TestSummaryInfo(object):
     Returns:
       Json valid version of the file content or None.
     """
-    for server, use_gs in [(AUTOTEST_SERVER, False), (RESULTS_SERVER, False),
-                           (AUTOTEST_ARCHIVE, True)]:
-      summary_text = self._RetrieveResultsJson(server, job_name, use_gs)
-      if summary_text and self._GetJsonFromFileOrString(summary_text, False):
-        break
+    summary_text = self._RetrieveResultsJson(job_name)
     cache_path = os.path.abspath(LOG_BASE_PATH % (self._job_cache_dir,
                                                   job_name))
     dash_util.MakeChmodDirs(os.path.dirname(cache_path))
