@@ -68,15 +68,8 @@ class FAFTSequence(ServoTest):
         _faft_template: The default FAFT_STEP of each step. The actions would
             be over-written if the registered FAFT_SEQUENCE is valid.
         _faft_sequence: The registered FAFT_SEQUENCE.
-        _customized_ctrl_d_key_command: The customized Ctrl-D key command
-            instead of sending key via servo board.
-        _customized_enter_key_command: The customized Enter key command instead
-            of sending key via servo board.
-        _customized_space_key_command: The customized Space key command instead
-            of sending key via servo board.
-        _customized_rec_reboot_command: The customized recovery reboot command
-            instead of sending key combination of Power + Esc + F3 for
-            triggering recovery reboot.
+        _customized_key_commands: The dict of the customized key commands,
+            including Ctrl-D, Ctrl-U, Enter, Space, and recovery reboot.
         _install_image_path: The path of Chrome OS test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
             installing the image.
@@ -122,10 +115,13 @@ class FAFTSequence(ServoTest):
     _faft_template = {}
     _faft_sequence = ()
 
-    _customized_ctrl_d_key_command = None
-    _customized_enter_key_command = None
-    _customized_space_key_command = None
-    _customized_rec_reboot_command = None
+    _customized_key_commands = {
+        'ctrl_d': None,
+        'ctrl_u': None,
+        'enter': None,
+        'rec_reboot': None,
+        'space': None,
+    }
     _install_image_path = None
     _firmware_update = False
 
@@ -141,22 +137,12 @@ class FAFTSequence(ServoTest):
                 args[match.group(1)] = match.group(2)
 
         # Keep the arguments which will be used later.
-        if 'ctrl_d_cmd' in args:
-            self._customized_ctrl_d_key_command = args['ctrl_d_cmd']
-            logging.info('Customized Ctrl-D key command: %s' %
-                    self._customized_ctrl_d_key_command)
-        if 'enter_cmd' in args:
-            self._customized_enter_key_command = args['enter_cmd']
-            logging.info('Customized Enter key command: %s' %
-                    self._customized_enter_key_command)
-        if 'space_cmd' in args:
-            self._customized_space_key_command = args['space_cmd']
-            logging.info('Customized Space key command: %s' %
-                    self._customized_space_key_command)
-        if 'rec_reboot_cmd' in args:
-            self._customized_rec_reboot_command = args['rec_reboot_cmd']
-            logging.info('Customized recovery reboot command: %s' %
-                    self._customized_rec_reboot_command)
+        for key in self._customized_key_commands:
+            key_cmd = key + '_cmd'
+            if key_cmd in args:
+                self._customized_key_commands[key] = args[key_cmd]
+                logging.info('Customized %s key command: %s' %
+                             (key, args[key_cmd]))
         if 'image' in args:
             self._install_image_path = args['image']
             logging.info('Install Chrome OS test image path: %s' %
@@ -719,27 +705,50 @@ class FAFTSequence(ServoTest):
 
     def send_ctrl_d_to_dut(self):
         """Send Ctrl-D key to DUT."""
-        if self._customized_ctrl_d_key_command:
+        if self._customized_key_commands['ctrl_d']:
             logging.info('running the customized Ctrl-D key command')
-            os.system(self._customized_ctrl_d_key_command)
+            os.system(self._customized_key_commands['ctrl_d'])
         else:
             self.servo.ctrl_d()
 
 
+    def send_ctrl_u_to_dut(self):
+        """Send Ctrl-U key to DUT.
+
+        Raises:
+          error.TestError: if a non-Chrome EC device or no Ctrl-U command given
+                           on a no-build-in-keyboard device.
+        """
+        if self._customized_key_commands['ctrl_u']:
+            logging.info('running the customized Ctrl-U key command')
+            os.system(self._customized_key_commands['ctrl_u'])
+        elif self.check_ec_capability(['keyboard'], suppress_warning=True):
+            self.ec.key_down('<ctrl_l>')
+            self.ec.key_down('u')
+            self.ec.key_up('u')
+            self.ec.key_up('<ctrl_l>')
+        elif self.client_attr.has_keyboard:
+            raise error.TestError(
+                    "Can't send Ctrl-U to DUT without using Chrome EC.")
+        else:
+            raise error.TestError(
+                    "Should specify the ctrl_u_cmd argument.")
+
+
     def send_enter_to_dut(self):
         """Send Enter key to DUT."""
-        if self._customized_enter_key_command:
+        if self._customized_key_commands['enter']:
             logging.info('running the customized Enter key command')
-            os.system(self._customized_enter_key_command)
+            os.system(self._customized_key_commands['enter'])
         else:
             self.servo.enter_key()
 
 
     def send_space_to_dut(self):
         """Send Space key to DUT."""
-        if self._customized_space_key_command:
+        if self._customized_key_commands['space']:
             logging.info('running the customized Space key command')
-            os.system(self._customized_space_key_command)
+            os.system(self._customized_key_commands['space'])
         else:
             # Send the alternative key combinaton of space key to servo.
             self.servo.ctrl_refresh_key()
@@ -749,6 +758,12 @@ class FAFTSequence(ServoTest):
         """Wait for firmware warning screen and press Ctrl-D."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
         self.send_ctrl_d_to_dut()
+
+
+    def wait_fw_screen_and_ctrl_u(self):
+        """Wait for firmware warning screen and press Ctrl-U."""
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        self.send_ctrl_u_to_dut()
 
 
     def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
@@ -833,9 +848,9 @@ class FAFTSequence(ServoTest):
         i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
         recovery mode, i.e. just press Power + Esc + Refresh.
         """
-        if self._customized_rec_reboot_command:
+        if self._customized_key_commands['rec_reboot']:
             logging.info('running the customized rec reboot command')
-            os.system(self._customized_rec_reboot_command)
+            os.system(self._customized_key_commands['rec_reboot'])
         elif self.client_attr.chrome_ec:
             # Cold reset to clear EC_IN_RW signal
             self.servo.set('cold_reset', 'on')

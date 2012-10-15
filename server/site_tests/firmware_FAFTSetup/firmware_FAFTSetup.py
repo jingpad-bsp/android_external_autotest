@@ -69,8 +69,9 @@ class firmware_FAFTSetup(FAFTSequence):
         """
         if not self.client_attr.has_keyboard:
             # Check all customized key commands are provided
-            if not all([self._customized_ctrl_d_key_command,
-                        self._customized_enter_key_command]):
+            if not all([self._customized_key_commands['ctrl_d'],
+                        self._customized_key_commands['ctrl_u'],
+                        self._customized_key_commands['enter']):
                 logging.error("No customized key command assigned.")
                 return False
 
