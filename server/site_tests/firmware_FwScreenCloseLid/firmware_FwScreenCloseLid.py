@@ -5,6 +5,7 @@
 import logging
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -60,8 +61,8 @@ class firmware_FwScreenCloseLid(FAFTSequence):
             return
 
         if self.client_attr.chrome_ec and not self.check_ec_capability(['lid']):
-            logging.info('Requires EC capability "lid" to run this test.')
-            return
+            raise error.TestError("TEST IT MANUALLY! Chrome EC can't control "
+                    "lid on the device %s" % self.client_attr.platform)
 
         self.register_faft_sequence((
             {   # Step 1, expected dev mode and reboot.
