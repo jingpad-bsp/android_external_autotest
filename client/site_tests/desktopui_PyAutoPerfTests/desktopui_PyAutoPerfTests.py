@@ -87,6 +87,14 @@ class desktopui_PyAutoPerfTests(chrome_test.PyAutoFunctionalTest):
         return parser.parse_args(map(lambda arg: arg.strip('\'\"'), args))
 
 
+    def extract_pyauto_errors(self, output):
+        """Extracts pyauto error messages from the raw pyauto test output."""
+        result = re.search(r'=+\n(ERROR|FAIL):.+FAILED \([^)]+\)', output,
+                           flags=re.DOTALL)
+        return (result.group(0) if result
+                else '(Could not identify pyauto error messages)')
+
+
     def run_once(self, args=[]):
         """Runs the PyAuto performance tests."""
         if isinstance(args, str):
@@ -184,10 +192,11 @@ class desktopui_PyAutoPerfTests(chrome_test.PyAutoFunctionalTest):
         # are still graphed.
         if cmd_result.exit_status != 0:
             raise error.TestFail(
-                'Pyauto returned error code %d.  This is likely because at '
-                'least one pyauto test failed.  Refer to the full autotest '
-                'output in desktopui_PyAutoPerfTests.DEBUG for details.'
-                % cmd_result.exit_status)
+                'Pyauto returned error code %d. This is likely because at '
+                'least one pyauto test failed. Refer to the full autotest '
+                'output in desktopui_PyAutoPerfTests.DEBUG for details.\n'
+                'Pyauto errors found:\n%s' % (
+                    cmd_result.exit_status, self.extract_pyauto_errors(output)))
 
         # TODO(dennisjeffrey): need further investigation on where
         # we should put the checking logic, i.e. integrated
