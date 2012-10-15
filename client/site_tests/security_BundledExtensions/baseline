@@ -130,10 +130,17 @@
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "cmbmjjimlbmpkonhnfabflhampihgnea.crx",
+      { "crx_file": "hfhhnacclhffhdffklopdkcgdhifgngh.crx",
         "name": "Camera",
         "effective_host_permissions": [],
-        "api_permissions": []
+        "api_permissions": ["app.currentWindowInternal",
+                            "app.runtime",
+                            "app.window",
+                            "contextMenus",
+                            "fileSystem",
+                            "storage",
+                            "unlimitedStorage",
+                            "videoCapture"]
       }
   ],
   "component_extension_baseline": [
