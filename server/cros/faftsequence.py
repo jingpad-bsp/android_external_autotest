@@ -87,6 +87,8 @@ class FAFTSequence(ServoTest):
     FIRMWARE_SCREEN_DELAY = 10
     # Delay between passing firmware screen and text mode warning screen.
     TEXT_SCREEN_DELAY = 20
+    # Delay for waiting beep done.
+    BEEP_DELAY = 1
     # Delay of loading the USB kernel.
     USB_LOAD_DELAY = 10
     # Delay between USB plug-out and plug-in.
@@ -180,8 +182,9 @@ class FAFTSequence(ServoTest):
             'reboot_action': (self.sync_and_warm_reboot),
             'firmware_action': (None)
         })
-        self.clear_set_gbb_flags(vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
-                                 vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY,
+        self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
+                                 vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
+                                 vboot.GBB_FLAG_FORCE_DEV_BOOT_USB,
                                  vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM)
         if self._install_image_path:
             self.install_test_image(self._install_image_path,
@@ -549,6 +552,20 @@ class FAFTSequence(ServoTest):
                     vboot.VDAT_FLAG_LF_USE_RO_NORMAL,
                     0 if twostop else vboot.VDAT_FLAG_LF_USE_RO_NORMAL) and
                 self.crossystem_checker(crossystem_dict))
+
+
+    def dev_boot_usb_checker(self, dev_boot_usb=True):
+        """Check the current boot is from a developer USB (Ctrl-U trigger).
+
+        Args:
+          dev_boot_usb: True to expect an USB boot;
+                        False to expect an internal device boot.
+
+        Returns:
+          True if the currect boot device matched; otherwise, False.
+        """
+        return (self.crossystem_checker({'mainfw_type': 'developer'})
+                and self.faft_client.is_removable_device_boot() == dev_boot_usb)
 
 
     def root_part_checker(self, expected_part):

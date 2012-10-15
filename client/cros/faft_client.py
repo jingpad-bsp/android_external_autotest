@@ -239,6 +239,26 @@ class FAFTClient(object):
         self._chromeos_interface.cs.request_recovery()
 
 
+    def get_dev_boot_usb(self):
+        """Get dev_boot_usb value which controls developer mode boot from USB.
+
+        Returns:
+          True if enable, False if disable.
+        """
+        self._chromeos_interface.log('Getting dev_boot_usb')
+        return self._chromeos_interface.cs.dev_boot_usb == '1'
+
+
+    def set_dev_boot_usb(self, value):
+        """Set dev_boot_usb value which controls developer mode boot from USB.
+
+        Args:
+          value: True to enable, False to disable.
+        """
+        self._chromeos_interface.log('Setting dev_boot_usb to %s' % str(value))
+        self._chromeos_interface.cs.dev_boot_usb = 1 if value else 0
+
+
     def get_gbb_flags(self):
         """Get the GBB flags.
 
@@ -516,6 +536,17 @@ class FAFTClient(object):
         header_b = self._chromeos_interface.read_partition(kernel_b, 0x10000)
 
         return header_a != header_b
+
+
+    def is_removable_device_boot(self):
+        """Check the current boot device is removable.
+
+        Returns:
+            True: if a removable device boots.
+            False: if a non-removable device boots.
+        """
+        root_part = self._chromeos_interface.get_root_part()
+        return self._chromeos_interface.is_removable_device(root_part)
 
 
     def setup_EC_image(self, ec_path):

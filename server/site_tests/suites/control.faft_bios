@@ -26,6 +26,7 @@ TESTS_ON_NORMAL_MODE = [
 
 TESTS_ON_DEV_MODE = [
     ('firmware_DevFwNormalBoot', {}),
+    ('firmware_DevBootUSB', {}),
     ('firmware_DevScreenTimeout', {}),
     ('firmware_FwScreenPressPower', {}),
     ('firmware_FwScreenCloseLid', {}),
