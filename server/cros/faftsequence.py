@@ -1193,7 +1193,7 @@ class FAFTSequence(ServoTest):
                 if not isinstance(args, tuple):
                     args = (args,)
             if len(action_tuple) >= 3:
-                error_msg = action
+                error_msg = action_tuple[2]
 
         if action is None:
             return
