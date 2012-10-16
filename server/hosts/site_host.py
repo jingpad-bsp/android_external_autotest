@@ -57,6 +57,14 @@ def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
     return base_command % (opts, user, port)
 
 
+def add_function_to_list(functions_list):
+    """Decorator used to group functions together into the provided list."""
+    def add_func(func):
+        functions_list.append(func)
+        return func
+    return add_func
+
+
 class SiteHost(remote.RemoteHost):
     """Chromium OS specific subclass of Host."""
 
@@ -98,6 +106,11 @@ class SiteHost(remote.RemoteHost):
     LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     RPM_HOSTNAME_REGEX = ('chromeos[0-9]+(-row[0-9]+)?-rack[0-9]+[a-z]*-'
                           'host[0-9]+')
+    LIGHTSENSOR_FILES = ['in_illuminance0_input',
+                         'in_illuminance0_raw',
+                         'illuminance0_input']
+    LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
+    LABEL_FUNCTIONS = []
 
 
     def _initialize(self, hostname, servo_host=None, servo_port=None,
@@ -555,3 +568,87 @@ class SiteHost(remote.RemoteHost):
 
     def power_cycle(self):
         self._set_power('CYCLE')
+
+
+    def get_platform(self):
+        """Determine the correct platform label for this host.
+
+        @returns a string representing this host's platform.
+        """
+        crossystem = utils.Crossystem(self)
+        crossystem.init()
+        # Extract fwid value and use the leading part as the platform id.
+        # fwid generally follow the format of {platform}.{firmware version}
+        # Example: Alex.X.YYY.Z or Google_Alex.X.YYY.Z
+        platform = crossystem.fwid().split('.')[0].lower()
+        # Newer platforms start with 'Google_' while the older ones do not.
+        return platform.replace('google_', '')
+
+
+    @add_function_to_list(LABEL_FUNCTIONS)
+    def get_board(self):
+        """Determine the correct board label for this host.
+
+        @returns a string representing this host's board.
+        """
+        release_info = utils.parse_cmd_output('cat /etc/lsb-release',
+                                              run_method=self.run)
+        board = release_info['CHROMEOS_RELEASE_BOARD']
+        # Devices in the lab generally have the correct board name but our own
+        # development devices have {board_name}-signed-{key_type}. The board
+        # name may also begin with 'x86-' which we need to keep.
+        if 'x86' not in board:
+            return 'board:%s' % board.split('-')[0]
+        return 'board:%s' % '-'.join(board.split('-')[0:2])
+
+
+    @add_function_to_list(LABEL_FUNCTIONS)
+    def has_lightsensor(self):
+        """Determine the correct board label for this host.
+
+        @returns the string 'lightsensor' if this host has a lightsensor or
+                 None if it does not.
+        """
+        search_cmd = "find -L %s -maxdepth 4 | egrep '%s'" % (
+                self.LIGHTSENSOR_SEARCH_DIR, '|'.join(self.LIGHTSENSOR_FILES))
+        try:
+            # Run the search cmd following the symlinks. Stderr_tee is set to
+            # None as there can be a symlink loop, but the command will still
+            # execute correctly with a few messages printed to stderr.
+            self.run(search_cmd, stdout_tee=None, stderr_tee=None)
+            return 'lightsensor'
+        except error.AutoservRunError:
+            # egrep exited with a return code of 1 meaning none of the possible
+            # lightsensor files existed.
+            return None
+
+
+    @add_function_to_list(LABEL_FUNCTIONS)
+    def has_bluetooth(self):
+        """Determine the correct board label for this host.
+
+        @returns the string 'bluetooth' if this host has bluetooth or
+                 None if it does not.
+        """
+        try:
+            self.run('test -d /sys/class/bluetooth/hci0')
+            # test exited with a return code of 0.
+            return 'bluetooth'
+        except error.AutoservRunError:
+            # test exited with a return code 1 meaning the directory did not
+            # exist.
+            return None
+
+
+    def get_labels(self):
+        """Return a list of labels for this given host.
+
+        This is the main way to retrieve all the automatic labels for a host
+        as it will run through all the currently implemented label functions.
+        """
+        labels = []
+        for label_function in self.LABEL_FUNCTIONS:
+            label = label_function(self)
+            if label:
+                labels.append(label)
+        return labels

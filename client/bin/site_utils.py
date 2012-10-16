@@ -246,3 +246,33 @@ def require_mountpoint(path):
 
 def random_username():
     return str(uuid.uuid4()) + '@example.com'
+
+
+def parse_cmd_output(command, run_method=utils.run):
+    """Runs a command on a host object to retrieve host attributes.
+
+    The command should output to stdout in the format of:
+    <key> = <value> # <optional_comment>
+
+
+    @param command: Command to execute on the host.
+    @param run_method: Function to use to execute the command. Defaults to
+                       utils.run so that the command will be executed locally.
+                       Can be replace with a host.run call so that it will
+                       execute on a DUT or external machine. Method must accept
+                       a command argument, stdout_tee and stderr_tee args and
+                       return a result object with a string attribute stdout
+                       which will be parsed.
+
+    @returns a dictionary mapping host attributes to their values.
+    """
+    result = {}
+    # Suppresses stdout so that the files are not printed to the logs.
+    cmd_result = run_method(command, stdout_tee=None, stderr_tee=None)
+    for line in cmd_result.stdout.splitlines():
+        # Lines are of the format "<key>     = <value>      # <comment>"
+        key_value = re.match('^\s*(?P<key>[^ ]+)\s*=\s*(?P<value>[^ ]+)'
+                             '(?:\s*#.*)?$', line)
+        if key_value:
+            result[key_value.group('key')] = key_value.group('value')
+    return result
