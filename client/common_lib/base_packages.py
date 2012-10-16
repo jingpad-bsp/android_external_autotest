@@ -179,12 +179,13 @@ class HttpFetcher(RepositoryFetcher):
 
             logging.debug('Successfully fetched %s from %s', filename,
                           package_url)
-        except error.CmdError:
+        except error.CmdError as e:
             # remove whatever junk was retrieved when the get failed
             self.run_command('rm -f %s' % dest_path)
 
-            raise error.PackageFetchError('%s not found in %s' % (filename,
-                                                                  package_url))
+            raise error.PackageFetchError('%s not found in %s\n%s'
+                    'wget error code: %d' % (filename, package_url,
+                    e.result_obj.stderr, e.result_obj.exit_status))
 
 
 class LocalFilesystemFetcher(RepositoryFetcher):
@@ -455,10 +456,9 @@ class BasePackageManager(object):
                     if use_checksum:
                         self.update_checksum(dest_path)
                 return
-            except (error.PackageFetchError, error.AutoservRunError):
+            except (error.PackageFetchError, error.AutoservRunError) as e:
                 # The package could not be found in this repo, continue looking
-                logging.debug('%s could not be fetched from %s', pkg_name,
-                              fetcher.url)
+                logging.debug(e)
 
         repo_url_list = [repo.url for repo in repositories]
         message = ('%s could not be fetched from any of the repos %s' %
