@@ -374,7 +374,7 @@ class FAFTSequence(ServoTest):
         ))
         self.run_faft_sequence()
         # 'Unplug' any USB keys in the servo from the dut.
-        self.servo.disable_usb_hub()
+        self.servo.enable_usb_hub(host=True)
 
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
