@@ -6,6 +6,7 @@ import ctypes
 import logging
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import time
@@ -70,12 +71,12 @@ class FAFTSequence(ServoTest):
         _faft_sequence: The registered FAFT_SEQUENCE.
         _customized_key_commands: The dict of the customized key commands,
             including Ctrl-D, Ctrl-U, Enter, Space, and recovery reboot.
-        _install_image_path: The path of Chrome OS test image to be installed.
+        _install_image_path: The URL or the path on the host to the Chrome OS
+            test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
             installing the image.
     """
     version = 1
-
 
     # Mapping of partition number of kernel and rootfs.
     KERNEL_MAP = {'a':'2', 'b':'4', '2':'2', '4':'4', '3':'2', '5':'4'}
@@ -113,6 +114,9 @@ class FAFTSequence(ServoTest):
 
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
+
+    _HTTP_PREFIX = 'http://'
+    _DEVSERVER_PORT = '8090'
 
     _faft_template = {}
     _faft_sequence = ()
@@ -321,6 +325,16 @@ class FAFTSequence(ServoTest):
                     'The image in the USB disk should be a test image.')
 
 
+    def get_server_address(self):
+        """Get the server address seen from the client.
+
+        Returns:
+          A string of the server address.
+        """
+        r = self.faft_client.run_shell_command_get_output("echo $SSH_CLIENT")
+        return r[0].split()[0]
+
+
     def install_test_image(self, image_path=None, firmware_update=False):
         """Install the test image specied by the path onto the USB and DUT disk.
 
@@ -343,16 +357,42 @@ class FAFTSequence(ServoTest):
         4. network connected via usb dongle in the dut in usb 3.0 slot.
 
         Args:
-            image_path: Path on the host to the test image.
+            image_path: An URL or a path on the host to the test image.
             firmware_update: Also update the firmware after installing.
         """
-        build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
-                                                             image_path)
-        logging.info('Processing build: %s %s' % (build_ver, build_hash))
+        if image_path.startswith(self._HTTP_PREFIX):
+            # TODO(waihong@chromium.org): Add the check of the URL to ensure
+            # it is a test image.
+            devserver = None
+            image_url = image_path
+        else:
+            build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
+                                                                 image_path)
+            logging.info('Processing build: %s %s' % (build_ver, build_hash))
 
-        # Reuse the servo method that uses the servo USB key to install
-        # the test image.
-        self.servo.image_to_servo_usb(image_path)
+            image_dir, image_base = os.path.split(image_path)
+            logging.info('Starting devserver to serve the image...')
+            # The following stdout and stderr arguments should not be None,
+            # even we don't use them. Otherwise, the socket of devserve is
+            # created as fd 1 (as no stdout) but it still thinks stdout is fd
+            # 1 and dump the log to the socket. Wrong HTTP protocol happens.
+            devserver = subprocess.Popen(['start_devserver',
+                        '--archive_dir=%s' % image_dir,
+                        '--port=%s' % self._DEVSERVER_PORT],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE)
+            image_url = '%s%s:%s/static/archive/%s' % (
+                        self._HTTP_PREFIX,
+                        self.get_server_address(),
+                        self._DEVSERVER_PORT,
+                        image_base)
+
+        logging.info('Ask Servo to install the image from %s' % image_url)
+        self.servo.image_to_servo_usb(image_url)
+
+        if devserver and devserver.poll() is None:
+            logging.info('Shutting down devserver...')
+            devserver.terminate()
 
         # DUT is powered off while imaging servo USB.
         # Now turn it on.
