@@ -184,6 +184,19 @@ class MTBTest(unittest.TestCase):
                 for i in [0, 2, 3, 4]:
                     self.assertEqual(evemu_original[i], evemu_converted[i])
 
+    def test_calc_farthest_distance(self):
+        filename = 'drumroll_no_points.dat'
+        gesture_filename = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(gesture_filename)
+        points = mtb_packets.get_points_for_every_tracking_id()
+        for tracking_id in points.keys():
+            # The function _calc_farthest_distance() should not incur any
+            # exception in the tracking id 242 in which there are no points.
+            if tracking_id == 242:
+                this_id_points = points[tracking_id]
+                distance = mtb_packets._calc_farthest_distance(this_id_points)
+                self.assertEqual(distance, 0)
+
 
 if __name__ == '__main__':
   unittest.main()
