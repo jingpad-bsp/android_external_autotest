@@ -4,7 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "network_WiFiSimpleConnectionServer"
-TIME = "MEDIUM"
+TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "server"

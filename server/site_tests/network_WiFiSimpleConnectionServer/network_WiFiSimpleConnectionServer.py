@@ -49,23 +49,23 @@ class network_WiFiSimpleConnectionServer(test.test):
             logging.debug('Turning on ap: %s' % ap_name)
             ap.power_up_router()
             bands_info = ap.get_supported_bands()
-            bands = []
             for band in bands_info:
-                bands.append(band['band'])
-            for band in bands:
-                ap.set_band(band)
+                ap.set_band(band['band'])
                 ap.apply_settings()
-                ssid = ap_name
-                if len(bands) > 1:
-                    ssid = ap_name + '_%s' % band
-                ap.set_radio(enabled=True)
-                ap.set_ssid(ssid)
-                ap.set_visibility(visible=True)
-                ap.set_security_disabled()
-                logging.debug('Setting up ap with no security and visible '
-                              'ssid:%s' % ssid)
-                ap.apply_settings()
-                logging.debug('Running client test.')
-                self._run_client_test(ssid)
+                for pos in range(len(band['channels'])-1):
+                    ap.set_channel(pos)
+                    ap.apply_settings()
+                    ssid = ap_name
+                    if len(bands_info) > 1:
+                         ssid = ap_name + '_%s' % band['band']
+                    ap.set_radio(enabled=True)
+                    ap.set_ssid(ssid)
+                    ap.set_visibility(visible=True)
+                    ap.set_security_disabled()
+                    logging.debug('Setting up ap with no security and visible '
+                                  'ssid:%s' % ssid)
+                    ap.apply_settings()
+                    logging.debug('Running client test.')
+                    self._run_client_test(ssid)
             logging.debug('Client test complete, powering down router')
             ap.power_down_router()
