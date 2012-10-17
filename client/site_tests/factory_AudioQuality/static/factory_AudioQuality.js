@@ -5,14 +5,22 @@ window.onkeydown = function(event) {
   }
 }
 
+var active = 'loop_0';
+
 function setMessage(msg) {
   document.getElementById("message").innerHTML = msg;
 }
 
-function commandEntered(event) {
-  if (event.keyCode == 13) {
-    alert(document.getElementById("command").value);
-    test.sendTestEvent("test_command",
-        {"cmd": document.getElementById("command").value});
-  }
+function testCommand(cmd) {
+  if (active.length != 0)
+    document.getElementById(active).checked = false;
+  test.sendTestEvent("test_command", {"cmd": cmd});
+  active = cmd;
+}
+
+function restore() {
+  if (active.length != 0)
+    document.getElementById(active).checked = false;
+  testCommand('loop_0');
+  document.getElementById('loop_0').checked = true;
 }

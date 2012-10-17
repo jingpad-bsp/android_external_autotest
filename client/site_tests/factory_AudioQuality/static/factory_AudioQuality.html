@@ -3,6 +3,38 @@
   | 插上网路线后按下S键开始测试
 </h1>
 <br>
-<div>Type in test command and enter:
-  <input id="command" type="text" onkeydown="commandEntered(event);">
+<div>FA utility:<br>
+  <input type="radio" id="loop_0"
+      onClick="testCommand('loop_0')">
+    No audio looping
+  <br>
+  <input type="radio" id="loop_1"
+      onClick="testCommand('loop_1')">
+    Loop from digital mic to headphone out
+  <br>
+  <input type="radio" id="loop_2"
+      onClick="testCommand('loop_2')">
+    Loop from headphone in to speaker
+  <br>
+  <input type="radio" id="loop_3"
+      onClick="testCommand('loop_3')">
+    Loop from headphone in to headphone out
+  <br>
+  <input type="radio" id="xtalk_l"
+      onClick="testCommand('xtalk_l')">
+    Mute headphone left channel while playing tone
+  <br>
+  <input type="radio" id="xtalk_r"
+      onClick="testCommand('xtalk_r')">
+    Mute headphone right channel while playing tone
+  <br>
+  <input type="radio" id="multitone"
+      onClick="testCommand('multitone')">
+    Play multitone
+  <br>
+  <input type="radio" id="sweep"
+      onClick="testCommand('sweep')">
+    Play sweep
+  <br>
+  <input type="button" onClick="restore()" value="Restore"/>
 </div>

@@ -53,7 +53,9 @@ _LOOP_2_RE = re.compile("(?i)loop_2")
 _LOOP_3_RE = re.compile("(?i)loop_3")
 _XTALK_L_RE = re.compile("(?i)xtalk_l")
 _XTALK_R_RE = re.compile("(?i)xtalk_r")
+_MULTITONE_RE = re.compile("(?i)multitone")
 _SEND_FILE_RE = re.compile("(?i)send_file\,\s*[^\,]+\,\s*(\d)+$")
+_SWEEP_RE = re.compile("(?i)sweep")
 _TEST_COMPLETE_RE = re.compile("(?i)test_complete")
 _RESULT_PASS_RE = re.compile("(?i)result_pass")
 _RESULT_FAIL_RE = re.compile("(?i)result_fail")
@@ -127,10 +129,15 @@ class factory_AudioQuality(test.test):
         '''
         Stops all the running process and restore the mute settings.
         '''
-        if self._wav_job:
-            utils.nuke_subprocess(self._wav_job.sp)
-            utils.join_bg_jobs([self._wav_job], timeout=1)
-            self._wav_job = None
+        if self._multitone_job:
+            utils.nuke_subprocess(self._multitone_job.sp)
+            utils.join_bg_jobs([self._multitone_job], timeout=1)
+            self._multitone_job = None
+
+        if self._sweep_job:
+            utils.nuke_subprocess(self._sweep_job.sp)
+            utils.join_bg_jobs([self._sweep_job], timeout=1)
+            self._sweep_job = None
 
         if self._tone_job:
             utils.nuke_subprocess(self._tone_job.sp)
@@ -195,16 +202,23 @@ class factory_AudioQuality(test.test):
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP)
         self.start_loop()
 
-    def play_wav(self):
+    def handle_multitone(self, *args):
         '''Plays the multi-tone wav file'''
         self.restore_configuration()
         wav_path = os.path.join(self.srcdir, '10SEC.wav')
         cmdargs = ['aplay', wav_path]
-        self._wav_job = utils.BgJob(' '.join(cmdargs))
+        self._multitone_job = utils.BgJob(' '.join(cmdargs))
+
+    def handle_sweep(self, *args):
+        '''Plays the sweep wav file'''
+        self.restore_configuration()
+        wav_path = os.path.join(self.srcdir, 'sweep.wav')
+        cmdargs = ['aplay', wav_path]
+        self._sweep_job = utils.BgJob(' '.join(cmdargs))
 
     def handle_loop_jack(self, *args):
         if self._use_multitone:
-            self.play_wav()
+            self.handle_multitone()
         else:
             self.handle_loop()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP)
@@ -217,7 +231,7 @@ class factory_AudioQuality(test.test):
 
     def handle_loop_speaker_unmute(self, *args):
         if self._use_multitone:
-            self.play_wav()
+            self.handle_multitone()
         else:
             self.handle_loop()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
@@ -339,7 +353,8 @@ class factory_AudioQuality(test.test):
         self._use_sox_loop = use_sox_loop
         self._use_multitone = use_multitone
 
-        self._wav_job = None
+        self._multitone_job = None
+        self._sweep_job = None
         self._tone_job = None
         self._loop_process = None
 
@@ -362,6 +377,8 @@ class factory_AudioQuality(test.test):
         self._handlers[_LOOP_3_RE] = self.handle_loop_jack
         self._handlers[_XTALK_L_RE] = self.handle_xtalk_left
         self._handlers[_XTALK_R_RE] = self.handle_xtalk_right
+        self._handlers[_MULTITONE_RE] = self.handle_multitone
+        self._handlers[_SWEEP_RE] = self.handle_sweep
 
         self.ui.AddEventHandler('init_audio_server', self.init_audio_server)
         self.ui.AddEventHandler('test_command', self.test_command)
