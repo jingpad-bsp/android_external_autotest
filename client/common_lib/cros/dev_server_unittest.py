@@ -16,6 +16,14 @@ import urllib2
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros import retry
+
+def retry_mock(ExceptionToCheck):
+  """A mock retry decorator to use in place of the actual one for testing."""
+  def inner_retry(func):
+    return func
+
+  return inner_retry
 
 
 class DevServerTest(mox.MoxTestBase):
@@ -56,6 +64,28 @@ class DevServerTest(mox.MoxTestBase):
         # Mock out bad ping failure to bad_host by raising devserver exception.
         urllib2.urlopen(mox.StrContains(bad_host)).AndRaise(
                 dev_server.DevServerException())
+        # Good host is good.
+        to_return = StringIO.StringIO('Success')
+        urllib2.urlopen(mox.StrContains(good_host)).AndReturn(to_return)
+
+        self.mox.ReplayAll()
+        host = dev_server.ImageServer.resolve(0) # Using 0 as it'll hash to 0.
+        self.assertEquals(host.url(), good_host)
+        self.mox.VerifyAll()
+
+    def testResolveWithFailureURLError(self):
+        """Ensure we rehash on a failed ping on a bad_host after urlerror."""
+        # Retry mock just return the original method.
+        retry.retry = retry_mock
+        self.mox.StubOutWithMock(time, 'time')
+        self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
+        bad_host, good_host = 'http://bad_host:99', 'http://good_host:8080'
+        dev_server._get_dev_server_list().AndReturn([bad_host, good_host])
+
+        # Mock out bad ping failure to bad_host by raising devserver exception.
+        urllib2.urlopen(mox.StrContains(bad_host)).MultipleTimes().AndRaise(
+                urllib2.URLError('urlopen connection timeout'))
+
         # Good host is good.
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.StrContains(good_host)).AndReturn(to_return)

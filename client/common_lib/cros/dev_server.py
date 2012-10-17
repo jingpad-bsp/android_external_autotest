@@ -117,7 +117,7 @@ class DevServer(object):
         try:
             make_call()
             return True
-        except DevServerException:
+        except (DevServerException, urllib2.URLError):
             return False
 
 
