@@ -112,6 +112,8 @@ class FAFTSequence(ServoTest):
     COLD_RESET_DELAY = 0.1
     # devserver startup time
     DEVSERVER_DELAY = 10
+    # Delay of reseting TPM with factory install shim
+    RESET_TPM_WITH_INSTALL_SHIM_DELAY = 120
 
     # The developer screen timeouts fit our spec.
     DEV_SCREEN_TIMEOUT = 30
@@ -1267,6 +1269,22 @@ class FAFTSequence(ServoTest):
                                            (self.EC_REBOOT_DELAY, args))
         time.sleep(self.EC_REBOOT_DELAY)
         self.check_lid_and_power_on()
+
+
+    def sync_and_reboot_with_factory_install_shim(self):
+        """Request the client sync and do a warm reboot to recovery mode.
+
+        After reboot, the client will use factory install shim to reset TPM
+        values. The client ignore TPM rollback, so here forces it to recovery
+        mode.
+        """
+        is_dev = self.crossystem_checker({'devsw_boot': '1'})
+        if not is_dev:
+            self.enable_dev_mode_and_reboot()
+        time.sleep(self.SYNC_DELAY)
+        self.enable_rec_mode_and_reboot()
+        time.sleep(self.RESET_TPM_WITH_INSTALL_SHIM_DELAY)
+        self.warm_reboot()
 
 
     def full_power_off_and_on(self):

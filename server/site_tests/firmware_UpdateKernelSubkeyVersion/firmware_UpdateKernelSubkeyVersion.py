@@ -73,7 +73,6 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
             self.wait_for_client()
 
         super(firmware_UpdateKernelSubkeyVersion, self).setup()
-
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 
         ver = self.faft_client.retrieve_kernel_subkey_version('a')
@@ -99,7 +98,6 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
             {   # Step1. Update firmware with new kernel subkey version.
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'A',
-                    'mainfw_type': 'developer',
                     'tried_fwb': '0',
                     'fwid': self._fwid
                 }),
@@ -107,7 +105,6 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
                     self.faft_client.run_firmware_autoupdate,
                     'test'
                 ),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d)
             },
             {   # Step2. Check firmware data key version and Rollback
                 'state_checker': (self.crossystem_checker, {
@@ -115,7 +112,6 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
                     'tried_fwb': '1'
                 }),
                 'userspace_action': (self.run_bootok_and_recovery),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d)
             },
             {   # Step3, Check Rollback version
                 'state_checker': (self.crossystem_checker, {

@@ -423,6 +423,11 @@ class FAFTClient(object):
         return self._bios_handler.get_section_version(section)
 
 
+    def get_tpm_firmware_version(self):
+        """Retrieve tpm firmware body version."""
+        return self._tpm_handler.get_fw_version()
+
+
     def _modify_firmware_version(self, section, delta):
         """Modify firmware version for the requested section, by adding delta.
 
@@ -449,13 +454,13 @@ class FAFTClient(object):
         """Increase firmware version for the requested section."""
         self._modify_firmware_version(section, 1)
 
-    def retrieve_firmware_version(self, section):
-        """Return firmware version."""
-        return self._bios_handler.get_section_version(section)
-
-    def retrieve_firmware_datakey_version(self, section):
+    def get_firmware_datakey_version(self, section):
         """Return firmware data key version."""
         return self._bios_handler.get_section_datakey_version(section)
+
+    def get_tpm_firmware_datakey_version(self):
+        """Retrieve tpm firmware data key version."""
+        return self._tpm_handler.get_fw_body_version()
 
     def retrieve_kernel_subkey_version(self,section):
         """Return kernel subkey version."""
@@ -813,8 +818,9 @@ class FAFTClient(object):
                     chromeos-firmwareupdate-[append]
         """
         self.run_shell_command(
-            '/bin/sh %s --mode autoupdate --noupdate_ec'
-            % os.path.join(self._temp_path,
+            '/bin/sh %s --mode autoupdate '
+            '--noupdate_ec --nocheck_rw_compatible'
+                % os.path.join(self._temp_path,
                            'chromeos-firmwareupdate-%s' % append))
 
 
@@ -838,8 +844,8 @@ class FAFTClient(object):
     def run_firmware_recovery(self):
         """Recovery to original shellball."""
         self.run_shell_command(
-            '/bin/sh %s --mode recovery --noupdate_ec' % os.path.join(
-                self._temp_path, 'chromeos-firmwareupdate'))
+            '/bin/sh %s --mode recovery --noupdate_ec --nocheck_rw_compatible'
+                % os.path.join(self._temp_path, 'chromeos-firmwareupdate'))
 
 
     def get_temp_path(self):

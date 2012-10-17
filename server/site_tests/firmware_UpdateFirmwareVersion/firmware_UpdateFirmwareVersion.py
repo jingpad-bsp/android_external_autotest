@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging
+import os
+import time
 from autotest_lib.server import utils
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 from autotest_lib.client.common_lib import error
@@ -12,28 +14,32 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
     """
     Servo based firmware update test which checks the firmware version.
 
-    This test requires the firmware id of the current running firmware
-    matches the system shellball's. On runtime, this test modifies the firmware
-    version of the shellball and runs autoupdate. Check firmware version after
-    boot with firmware B, and then recover firmware A and B to original
-    shellball.
+    This test requires a USB disk plugged-in, which contains a Chrome OS
+    install shim (built by "build_image factory_install"). The firmware id of
+    the current running firmware must matches the system shellball's, or user
+    can provide a shellball to do this test. In this way, the client will be
+    update with the given shellball first. On runtime, this test modifies the
+    firmware version of the shellball and runs autoupdate. Check firmware
+    version after boot with firmware B, and then recover firmware A and B to
+    original shellball.
     """
     version = 1
 
     def check_firmware_version(self, expected_ver):
-        actual_ver = self.faft_client.retrieve_firmware_version('a')
-        if actual_ver != expected_ver:
+        actual_ver = self.faft_client.get_firmware_version('a')
+        actual_tpm_fwver = self.faft_client.get_tpm_firmware_version()
+        if actual_ver != expected_ver or actual_tpm_fwver != expected_ver:
             raise error.TestFail(
-                'Firmware version should be %s, but got %s.'
-                % (expected_ver, actual_ver))
+                'Firmware version should be %s,'
+                'but got (fwver, tpm_fwver) = (%s, %s).'
+                % (expected_ver, actual_ver, actual_tpm_fwver))
         else:
             logging.info(
                 'Update success, now version is %s'
                 % actual_ver)
 
 
-    def run_bootok_and_recovery(self):
-        self.faft_client.run_firmware_bootok('test')
+    def check_version_and_run_recovery(self):
         self.check_firmware_version(self._update_version)
         self.faft_client.run_firmware_recovery()
 
@@ -57,10 +63,11 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
             self.wait_for_client()
 
         super(firmware_UpdateFirmwareVersion, self).setup()
-
+        self.servo.enable_usb_hub(host=False)
+        self.setup_dev_mode(dev_mode=False)
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 
-        actual_ver = self.faft_client.retrieve_firmware_version('a')
+        actual_ver = self.faft_client.get_firmware_version('a')
         logging.info('Origin version is %s' % actual_ver)
         self._update_version = actual_ver + 1
         logging.info('Firmware version will update to version %s'
@@ -81,25 +88,33 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
             {   # Step 1, Update firmware with new version.
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'A',
-                    'mainfw_type': 'developer',
+                    'mainfw_type': 'normal',
                     'tried_fwb': '0',
                     'fwid': self._fwid
                 }),
                 'userspace_action': (
                      self.faft_client.run_firmware_autoupdate,
                      'test'
-                ),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d)
+                )
             },
-            {   # Step2, Check firmware Version and Rollback.
+            {   # Step2, Copy firmware form B to A.
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'B',
                     'tried_fwb': '1'
                 }),
-                'userspace_action': (self.run_bootok_and_recovery),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d)
+                'userspace_action': (self.faft_client.run_firmware_bootok,
+                                     'test')
             },
-            {   # Step3, Check Rollback version
+            {   # Step3, Check firmware and TPM version, then recovery.
+                'state_checker': (self.crossystem_checker, {
+                    'mainfw_act': 'A',
+                    'tried_fwb': '0'
+                }),
+                'userspace_action': (self.check_version_and_run_recovery),
+                'reboot_action': (
+                    self.sync_and_reboot_with_factory_install_shim)
+            },
+            {   # Step4, Check Rollback version.
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
