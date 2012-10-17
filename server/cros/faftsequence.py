@@ -129,6 +129,10 @@ class FAFTSequence(ServoTest):
 
     _backup_firmware_sha = ()
 
+    # True if this is the first test in the same run
+    _first_test = True
+    _setup_invalidated = False
+
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
         # Parse arguments from command line
@@ -182,11 +186,13 @@ class FAFTSequence(ServoTest):
             'reboot_action': (self.sync_and_warm_reboot),
             'firmware_action': (None)
         })
-        self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
-                                 vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
-                                 vboot.GBB_FLAG_FORCE_DEV_BOOT_USB |
-                                 vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK,
-                                 vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM)
+        if FAFTSequence._first_test:
+            logging.info('Running first test. Set proper GBB flags.')
+            self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
+                                     vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
+                                     vboot.GBB_FLAG_FORCE_DEV_BOOT_USB |
+                                     vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK,
+                                     vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM)
         if self._install_image_path:
             self.install_test_image(self._install_image_path,
                                     self._firmware_update)
@@ -196,7 +202,17 @@ class FAFTSequence(ServoTest):
         """Autotest cleanup function."""
         self._faft_sequence = ()
         self._faft_template = {}
+        FAFTSequence._first_test = self._setup_invalidated
         super(FAFTSequence, self).cleanup()
+
+
+    def invalidate_setup(self):
+        """Invalidate current setup flag.
+
+        This reset the first test flag so that the next test setup
+        properly again.
+        """
+        self._setup_invalidated = True
 
 
     def reset_client(self):
