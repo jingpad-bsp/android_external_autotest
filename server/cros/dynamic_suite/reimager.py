@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-import compiler, datetime, hashlib, itertools, logging, random, os
+import compiler, datetime, hashlib, itertools, logging, os
 
 import common
 
@@ -283,7 +283,8 @@ class Reimager(object):
                 break  # Bail early if we've already exhausted our allowance.
             to_check = filter(lambda h: not hosts_to_use.contains_host(h),
                               hosts_per_spec[spec])
-            chosen = self._get_random_best_host(to_check, require_usable_hosts)
+            chosen = tools.get_random_best_host(self._afe, to_check,
+                                                require_usable_hosts)
             hosts_to_use.add_host_for_spec(spec, chosen)
 
         if hosts_to_use.size() == 0:
@@ -295,7 +296,8 @@ class Reimager(object):
         for i in xrange(num - hosts_to_use.size()):
             to_check = filter(lambda h: not hosts_to_use.contains_host(h),
                               hosts_per_spec[simplest_spec])
-            chosen = self._get_random_best_host(to_check, require_usable_hosts)
+            chosen = tools.get_random_best_host(self._afe, to_check,
+                                                require_usable_hosts)
             hosts_to_use.add_host_for_spec(simplest_spec, chosen)
 
         if hosts_to_use.unsatisfied_specs:
@@ -307,40 +309,6 @@ class Reimager(object):
                          'but dependencies are satisfied.', num)
 
         return hosts_to_use
-
-
-    def _get_random_best_host(self, host_list, require_usable_hosts=True):
-        """
-        Randomly choose the 'best' host from host_list, using fresh status.
-
-        Hit the AFE to get latest status for the listed hosts.  Then apply
-        the following heuristic to pick the 'best' set:
-
-        Remove unusable hosts (not tools.is_usable()), then
-        'Ready' > 'Running, Cleaning, Verifying, etc'
-
-        If any 'Ready' hosts exist, return a random choice.  If not, randomly
-        choose from the next tier.  If there are none of those either, None.
-
-        @param host_list: an iterable of Host objects, per server/frontend.py
-        @param require_usable_hosts: only return hosts currently in a usable
-                                     state.
-        @return a Host object, or None if no appropriate host is found.
-        """
-        if not host_list:
-            return None
-        hostnames = [host.hostname for host in host_list]
-        updated_hosts = self._afe.get_hosts(hostnames=hostnames)
-        usable_hosts = [host for host in updated_hosts if tools.is_usable(host)]
-        ready_hosts = [host for host in usable_hosts if host.status == 'Ready']
-        unusable_hosts = [h for h in updated_hosts if not tools.is_usable(h)]
-        if ready_hosts:
-            return random.choice(ready_hosts)
-        if usable_hosts:
-            return random.choice(usable_hosts)
-        if not require_usable_hosts and unusable_hosts:
-            return random.choice(unusable_hosts)
-        return None
 
 
     def _discover_unrunnable_tests(self, per_test_specs, bad_specs):

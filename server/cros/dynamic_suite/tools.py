@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 
+import random
+
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 
@@ -36,6 +38,41 @@ def get_package_url(devserver_url, build):
     @return the url where you can find the packages for the build.
     """
     return package_url_pattern() % (devserver_url, build)
+
+
+def get_random_best_host(afe, host_list, require_usable_hosts=True):
+    """
+    Randomly choose the 'best' host from host_list, using fresh status.
+
+    Hit the AFE to get latest status for the listed hosts.  Then apply
+    the following heuristic to pick the 'best' set:
+
+    Remove unusable hosts (not tools.is_usable()), then
+    'Ready' > 'Running, Cleaning, Verifying, etc'
+
+    If any 'Ready' hosts exist, return a random choice.  If not, randomly
+    choose from the next tier.  If there are none of those either, None.
+
+    @param afe: autotest front end that holds the hosts being managed.
+    @param host_list: an iterable of Host objects, per server/frontend.py
+    @param require_usable_hosts: only return hosts currently in a usable
+                                 state.
+    @return a Host object, or None if no appropriate host is found.
+    """
+    if not host_list:
+        return None
+    hostnames = [host.hostname for host in host_list]
+    updated_hosts = afe.get_hosts(hostnames=hostnames)
+    usable_hosts = [host for host in updated_hosts if is_usable(host)]
+    ready_hosts = [host for host in usable_hosts if host.status == 'Ready']
+    unusable_hosts = [h for h in updated_hosts if not is_usable(h)]
+    if ready_hosts:
+        return random.choice(ready_hosts)
+    if usable_hosts:
+        return random.choice(usable_hosts)
+    if not require_usable_hosts and unusable_hosts:
+        return random.choice(unusable_hosts)
+    return None
 
 
 def inject_vars(vars, control_file_in):
