@@ -45,11 +45,6 @@ class _ChromeTestBase(cros_ui_test.UITest):
         utils.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
 
 
-    def start_authserver(self):
-        # Do not fake login
-        pass
-
-
     def initialize(self, nuke_browser_norestart=True, skip_deps=False):
         # Make sure Chrome minidumps are written locally.
         # Requires UI restart to take effect. It'll be done by parent's
@@ -121,6 +116,11 @@ class ChromeBinaryTest(_ChromeTestBase):
             shutil.rmtree(self.home_dir, ignore_errors=True)
 
         _ChromeTestBase.cleanup(self)
+
+
+    def start_authserver(self):
+        # Do not fake login
+        pass
 
 
     def filter_bad_tests(self, tests, blacklist=None):

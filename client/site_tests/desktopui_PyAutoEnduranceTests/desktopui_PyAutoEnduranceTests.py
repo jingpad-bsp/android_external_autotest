@@ -21,6 +21,11 @@ class desktopui_PyAutoEnduranceTests(chrome_test.PyAutoFunctionalTest):
     version = 1
 
 
+    def start_authserver(self):
+        # Do not fake login
+        pass
+
+
     def parse_args(self, args):
         """Parses input arguments to this autotest."""
         parser = optparse.OptionParser()
