@@ -46,8 +46,9 @@ class network_ONC(cros_ui_test.UITest):
     logging.debug('Scanned network list after connect.')
     logging.debug(pprint.pformat(network_list))
     for network_path, network_obj in network_list.iteritems():
-      if network_obj['name'] == ssid and \
-         network_obj['status'] in ['Connected', 'Online state', 'Portal state']:
+      if isinstance(network_obj, dict) and network_obj.get('name') == ssid and \
+         network_obj.get('status') in ['Connected', 'Online state',
+                                       'Portal state']:
         break
     else:
       raise error.TestFail('Failed to connect to network %s' % ssid)
