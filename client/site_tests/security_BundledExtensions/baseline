@@ -75,7 +75,7 @@
         "api_permissions": []
       },
       { "crx_file": "gbkeegbaiigmenfmjfclcdgdpimamgkj.crx",
-        "name": "Document viewing",
+        "name": "Quickoffice Viewer",
         "effective_host_permissions": [],
         "api_permissions": ["experimental",
                             "fileBrowserHandler",
@@ -94,7 +94,7 @@
         "api_permissions": ["background", "tabs"]
       },
       { "crx_file": "hkhhlkdconhgemhegnplaldnmnmkaemd.crx",
-        "name": "Tips and Tricks",
+        "name": "Get Started",
         "effective_host_permissions": [],
         "api_permissions": ["unlimitedStorage"]
       },
