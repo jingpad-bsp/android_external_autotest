@@ -295,7 +295,7 @@ class Modem(DBusObjectWithProperties):
             esn: string, the electronic serial number.
             sim: a SIM object.
         """
-        self.state = mm1.MM_MODEM_STATE_UNKNOWN
+        self.state = mm1.MM_MODEM_STATE_DISABLED
         self.manager = manager
         self.name = name
         self.path = manager.path + name
@@ -504,7 +504,12 @@ class Modem(DBusObjectWithProperties):
             logging.info('Modem: DisconnectDone %s -> %s because %s',
                          str(old), str(new), str(why))
             if self.state == mm1.MM_MODEM_STATE_DISCONNECTING:
+                logging.info('Modem: State is DISCONNECTING, changing to %s',
+                             str(new))
                 self.ChangeState(new)
+                return_cb()
+            elif self.state == mm1.MM_MODEM_STATE_DISABLED:
+                logging.info('Modem: State is DISABLED, not changing state')
                 return_cb()
             else:
                 raise_cb(mm1.ConnectionUnknownError())

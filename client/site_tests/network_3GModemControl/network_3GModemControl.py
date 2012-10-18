@@ -25,6 +25,7 @@ class ModemManagerContext:
     def __enter__(self):
         if self.start_pseudo_manager:
             subprocess.call(['/sbin/stop', 'modemmanager'])
+            subprocess.call(['/sbin/stop', 'cromo'])
             self.fp = open('/var/log/pseudo_modem.log', 'a')
             self.process = subprocess.Popen(
                 ['/usr/local/autotest/cros/cellular/pseudo_modem.py'],
@@ -38,6 +39,7 @@ class ModemManagerContext:
             print 'Process pseudo_modem: terminate: %s' % self.process.pid
             self.process.terminate()
             self.fp.close()
+            subprocess.call(['/sbin/start', 'cromo'])
             subprocess.call(['/sbin/start', 'modemmanager'])
 
 
