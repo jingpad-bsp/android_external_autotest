@@ -5,8 +5,8 @@
 # The constants of verified boot.
 
 # Recovery reason codes, copied from:
-#     vboot_reference/firmware/lib/vboot_nvstorage.h
-#     vboot_reference/firmware/lib/vboot_struct.h
+#     vboot_reference/firmware/include/vboot_nvstorage.h
+#     vboot_reference/firmware/include/vboot_struct.h
 RECOVERY_REASON = {
     # Recovery not requested
     'NOT_REQUESTED':      '0',   # 0x00
@@ -51,6 +51,20 @@ RECOVERY_REASON = {
     # The system was already in recovery mode for some other reason
     # when this happened.
     'RO_TPM_REBOOT':      '33',  # 0x21
+    # EC software sync - other error
+    'EC_SOFTWARE_SYNC':   '34',  # 0x22
+    # EC software sync - unable to determine active EC image
+    'EC_UNKNOWN_IMAGE':   '35',  # 0x23
+    # EC software sync - error obtaining EC image hash
+    'EC_HASH':            '36',  # 0x24
+    # EC software sync - error obtaining expected EC image
+    'EC_EXPECTED_IMAGE':  '37',  # 0x25
+    # EC software sync - error updating EC
+    'EC_UPDATE':          '38',  # 0x26
+    # EC software sync - unable to jump to EC-RW
+    'EC_JUMP_RW':         '39',  # 0x27
+    # EC software sync - unable to protect / unprotect EC-RW
+    'EC_PROTECT':         '40',  # 0x28
     # Unspecified/unknown error in read-only firmware
     'RO_UNSPECIFIED':     '63',  # 0x3F
     # User manually requested recovery by pressing a key at developer
