@@ -6,7 +6,6 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -86,8 +85,6 @@ class firmware_DevScreenTimeout(FAFTSequence):
         super(firmware_DevScreenTimeout, self).setup()
         # This test is run on developer mode only.
         self.setup_dev_mode(dev_mode=True)
-        # Clear the short delay flag to verify the release behavior.
-        self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY, 0)
 
 
     def run_once(self, host=None):
