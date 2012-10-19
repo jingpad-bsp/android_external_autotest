@@ -6,7 +6,7 @@ import logging, os, shutil, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
-from autotest_lib.client.cros import httpd, login, power_status
+from autotest_lib.client.cros import httpd, login, power_status, power_utils
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
@@ -49,7 +49,7 @@ class power_LoadTest(cros_ui_test.UITest):
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', low_battery_threshold=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
-                 wifi_pw='', tasks=""):
+                 wifi_pw='', tasks="", kblight_percent=10):
 
         """
         percent_initial_charge_min: min battery charge at start of test
@@ -61,6 +61,7 @@ class power_LoadTest(cros_ui_test.UITest):
         scroll_loop: continue scrolling indefinitely
         scroll_interval_ms: how often to scoll
         scroll_by_pixels: number of pixels to scroll each time
+        kblight_percent: percent brightness of keyboard backlight
         """
         self._loop_time = loop_time
         self._loop_count = loop_count
@@ -78,6 +79,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
         self._backchannel = None
+        self._kblight_percent = kblight_percent
 
         self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
@@ -148,6 +150,14 @@ class power_LoadTest(cros_ui_test.UITest):
         t0 = time.time()
         ext_path = os.path.join(os.path.dirname(__file__), 'extension.crx')
 
+        try:
+            kblight = power_utils.KbdBacklight()
+            kblight.set(self._kblight_percent)
+            self._tmp_keyvals['percent_kbd_backlight'] = kblight.get()
+        except power_utils.KbdBacklightException as e:
+            logging.info("Assuming no keyboard backlight due to :: %s", str(e))
+            kblight = None
+
         for i in range(self._loop_count):
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
@@ -164,6 +174,8 @@ class power_LoadTest(cros_ui_test.UITest):
             # reset backlight level since powerd might've modified it
             # based on ambient light
             self._set_backlight_level()
+            if kblight:
+                kblight.set(self._kblight_percent)
 
             low_battery = self._do_wait(self._verbose, self._loop_time,
                                         latch)
