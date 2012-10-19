@@ -8,7 +8,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 
 from autotest_lib.client.bin import utils
@@ -18,6 +17,7 @@ from autotest_lib.server.cros.chrome_ec import ChromeEC
 from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
 from autotest_lib.server.cros.servo_test import ServoTest
 from autotest_lib.site_utils import lab_test
+from autotest_lib.site_utils.chromeos_test.common_util import ChromeOSTestError
 
 dirname = os.path.dirname(sys.modules[__name__].__file__)
 autotest_dir = os.path.abspath(os.path.join(dirname, "..", ".."))
@@ -294,6 +294,25 @@ class FAFTSequence(ServoTest):
             raise error.TestError('Failed to boot the USB image.')
 
 
+    def assert_test_image_in_path(self, image_path):
+        """Assert the image of image_path be a Chrome OS test image.
+
+        Args:
+          image_path: A path on the host to the test image.
+
+        Raises:
+          error.TestError: if the image is not a test image.
+        """
+        try:
+            build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
+                                                                 image_path)
+            logging.info('Build of image: %s %s' % (build_ver, build_hash))
+        except ChromeOSTestError:
+            raise error.TestError(
+                    'An USB disk containning a test image should be plugged '
+                    'in the servo board.')
+
+
     def assert_test_image_in_usb_disk(self, usb_dev=None):
         """Assert an USB disk plugged-in on servo and a test image inside.
 
@@ -312,17 +331,7 @@ class FAFTSequence(ServoTest):
             if not usb_dev:
                 raise error.TestError(
                         'An USB disk should be plugged in the servo board.')
-
-        tmp_dir = tempfile.mkdtemp()
-        utils.system('sudo mount -r -t ext2 %s3 %s' % (usb_dev, tmp_dir))
-        code = utils.system(
-               'grep -qE "(Test Build|testimage-channel)" %s/etc/lsb-release' %
-               tmp_dir, ignore_status=True)
-        utils.system('sudo umount -l %s' % tmp_dir)
-        os.removedirs(tmp_dir)
-        if code != 0:
-            raise error.TestError(
-                    'The image in the USB disk should be a test image.')
+        self.assert_test_image_in_path(usb_dev)
 
 
     def get_server_address(self):
@@ -366,10 +375,7 @@ class FAFTSequence(ServoTest):
             devserver = None
             image_url = image_path
         else:
-            build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
-                                                                 image_path)
-            logging.info('Processing build: %s %s' % (build_ver, build_hash))
-
+            self.assert_test_image_in_path(image_path)
             image_dir, image_base = os.path.split(image_path)
             logging.info('Starting devserver to serve the image...')
             # The following stdout and stderr arguments should not be None,
