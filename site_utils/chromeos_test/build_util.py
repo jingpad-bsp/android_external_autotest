@@ -239,7 +239,8 @@ def CreateUpdateZip(cros_checkout, staging_dir, image_file=TEST_IMAGE,
   os.rmdir(out_chroot_dir)
 
 
-def MountImage(cros_checkout, staging_dir, image_file=TEST_IMAGE):
+def MountImage(cros_checkout, staging_dir, image_file=TEST_IMAGE,
+               image_dir='.'):
   """Mount an image to ROOTFS_MOUNT_DIR and STATEFUL_MOUNT_DIR in staging_dir.
 
   Uses mount_gpt_image.sh from outside the chroot to setup the mounts. Image is
@@ -251,16 +252,16 @@ def MountImage(cros_checkout, staging_dir, image_file=TEST_IMAGE):
     staging_dir: Work directory. Should also contain a ChromeOS image. If the
         image is elsewhere, specify using image_dir.
     image_file: Name of the image to process.
+    image_dir: The directory of the image, using staging_dir if not given.
   """
   scripts_dir = os.path.join(cros_checkout, SCRIPTS_DIR)
-
   # Mount rootfs and stateful partitions. Mount rootfs as read_only.
   common_util.MakedirsExisting(os.path.join(staging_dir, ROOTFS_MOUNT_DIR))
   common_util.MakedirsExisting(os.path.join(staging_dir,
                                             STATEFUL_MOUNT_DIR))
-  cmd = ('sudo %s/mount_gpt_image.sh --image %s --from . --rootfs_mountpt=%s'
-         ' --stateful_mountpt=%s --safe'
-         % (scripts_dir, image_file, ROOTFS_MOUNT_DIR, STATEFUL_MOUNT_DIR))
+  cmd = ('sudo %s/mount_gpt_image.sh --image %s --from %s --rootfs_mountpt=%s'
+         ' --stateful_mountpt=%s --safe' % (scripts_dir, image_file, image_dir,
+         ROOTFS_MOUNT_DIR, STATEFUL_MOUNT_DIR))
   msg = 'Failed to mount partitions!'
   common_util.RunCommand(cmd=cmd, cwd=staging_dir, error_msg=msg)
 

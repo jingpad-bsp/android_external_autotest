@@ -21,6 +21,7 @@ import json
 import logging
 import optparse
 import os
+import shutil
 import sys
 import tempfile
 
@@ -120,25 +121,25 @@ def FindAutotestDir(options):
 
 def VerifyImageAndGetId(cros_dir, image_path):
   """Verifies image is a test image and returns tuple of version, hash."""
-  build_util.MountImage(cros_dir, os.path.dirname(image_path),
-                        image_file=os.path.basename(image_path))
+  tempdir = tempfile.mkdtemp()
+  build_util.MountImage(cros_dir, tempdir,
+                        image_file=os.path.basename(image_path),
+                        image_dir=os.path.dirname(image_path))
   try:
     cmd = 'cat etc/lsb-release | grep CHROMEOS_RELEASE_DESCRIPTION'
     msg = 'Failed to read /etc/lsb-release from mounted image!'
     version = common_util.RunCommand(
-        cmd=cmd, cwd=os.path.join(
-            os.path.dirname(image_path), build_util.ROOTFS_MOUNT_DIR),
+        cmd=cmd, cwd=os.path.join(tempdir, build_util.ROOTFS_MOUNT_DIR),
         error_msg=msg, output=True)
-
     cmd = ('diff root/.ssh/authorized_keys %s'
            % os.path.join(cros_dir, CROS_TEST_KEY_PUB))
     msg = 'The specified image is not a test image! Only test images allowed.'
     common_util.RunCommand(
-        cmd=cmd, cwd=os.path.join(
-            os.path.dirname(image_path), build_util.ROOTFS_MOUNT_DIR),
+        cmd=cmd, cwd=os.path.join(tempdir, build_util.ROOTFS_MOUNT_DIR),
         error_msg=msg)
   finally:
-    build_util.UnmountImage(cros_dir, os.path.dirname(image_path))
+    build_util.UnmountImage(cros_dir, tempdir)
+    shutil.rmtree(tempdir, ignore_errors=True)
 
   # String looks like '<tag>=<version> (Test Build <hash> ...' After =, we want
   # the first and third elements. TODO(dalecurtis): verify what we're parsing.
