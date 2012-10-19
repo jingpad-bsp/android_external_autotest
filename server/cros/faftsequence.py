@@ -135,7 +135,11 @@ class FAFTSequence(ServoTest):
 
     # True if this is the first test in the same run
     _first_test = True
+
     _setup_invalidated = False
+
+    # True if the image inside USB stick is confirmed a test image
+    _usb_test_image_checked = False
 
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
@@ -323,6 +327,9 @@ class FAFTSequence(ServoTest):
         Raises:
           error.TestError: if USB disk not detected or not a test image.
         """
+        if FAFTSequence._usb_test_image_checked:
+            return
+
         # TODO(waihong@chromium.org): We skip the check when servod runs in
         # a different host since no easy way to access the servo host so far.
         # Should find a way to work-around it.
@@ -340,6 +347,7 @@ class FAFTSequence(ServoTest):
                 raise error.TestError(
                         'An USB disk should be plugged in the servo board.')
         self.assert_test_image_in_path(usb_dev)
+        FAFTSequence._usb_test_image_checked = True
 
 
     def get_server_address(self):
