@@ -38,6 +38,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
     def setup(self):
         super(firmware_FwScreenCloseLid, self).setup()
         if self.client_attr.has_lid:
+            self.assert_test_image_in_usb_disk()
             self.setup_dev_mode(dev_mode=True)
             self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
             usb_dev = self.servo.probe_host_usb_dev()
