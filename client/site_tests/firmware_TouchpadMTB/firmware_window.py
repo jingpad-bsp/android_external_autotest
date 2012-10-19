@@ -219,6 +219,14 @@ class FirmwareWindow(object):
         """Register a callback function for gobject.io_add_watch."""
         return gobject.io_add_watch(fd, condition, callback, data)
 
+    def create_key_press_event(self, keyval):
+        """Create a key_press_event."""
+        event = gtk.gdk.Event(gtk.gdk.KEY_PRESS)
+        # Assign current time to the event
+        event.time = 0
+        event.keyval = keyval
+        self.win.emit('key_press_event', event)
+
     def remove_event_source(self, tag):
         """Remove the registered callback."""
         gobject.source_remove(tag)

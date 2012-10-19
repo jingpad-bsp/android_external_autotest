@@ -12,6 +12,8 @@ import subprocess
 import sys
 import time
 
+import gtk.keysyms
+
 import common_util
 import firmware_log
 import firmware_utils
@@ -27,6 +29,14 @@ import input_device
 
 # Include some constants
 execfile('firmware_constants.py', globals())
+
+
+# Define the keys for test flow
+GTK_KEY_DISCARD = gtk.keysyms.d
+GTK_KEY_EXIT = gtk.keysyms.x
+GTK_KEY_MORE = gtk.keysyms.m
+GTK_KEY_SAVE = gtk.keysyms.Return
+GTK_KEY_SAVE2 = gtk.keysyms.space
 
 
 class TestFlow:
@@ -46,6 +56,7 @@ class TestFlow:
         self.gesture_file_name = None
         self.prefix_space = self.output.get_prefix_space()
         self.scores = []
+        self.mode = options[OPTIONS_MODE]
         self.gesture_list = conf.get_gesture_list()
         self._get_all_gesture_variations(options[OPTIONS_SIMPLIFIED])
         self.init_flag = False
@@ -58,6 +69,10 @@ class TestFlow:
 
     def __del__(self):
         self.system_device.close()
+
+    def _is_robot_mode(self):
+        """Is it in robot mode?"""
+        return self.mode == ROBOT
 
     def _non_blocking_open(self, filename):
         """Open the file in non-blocing mode."""
@@ -256,7 +271,7 @@ class TestFlow:
         """Set the prompt and perform the action if in robot mode."""
         self.win.set_prompt(self._get_prompt_result())
         # Have the robot perform the gesture if it is in ROBOT mode.
-        if self.mode == ROBOT:
+        if self._is_robot_mode():
             self.robot.control(self.gesture, self.variation)
 
     def _handle_user_choice_save_after_parsing(self, next_gesture):
@@ -282,8 +297,8 @@ class TestFlow:
         """Handle user choice for discarding the parsed gesture file."""
         self.output.print_window('')
         self.output.report_html.reset_logs()
-        self._prompt_and_action()
         self._setup_this_gesture_variation()
+        self._prompt_and_action()
         self.packets = None
 
     def _handle_user_choice_exit_after_parsing(self):
@@ -325,25 +340,25 @@ class TestFlow:
 
         This is the primary GUI event-driven method handling the user input.
         """
-        choice = event.string
+        choice = event.keyval
         if self._is_parsing_gesture_file_done():
             # Save this gesture file and go to next gesture.
-            if choice in (' ', '\r'):
+            if choice in (GTK_KEY_SAVE, GTK_KEY_SAVE2):
                 self._handle_user_choice_save_after_parsing(next_gesture=True)
             # Save this file and perform the same gesture again.
-            elif choice == 'm':
+            elif choice == GTK_KEY_MORE:
                 self._handle_user_choice_save_after_parsing(next_gesture=False)
             # Discard this file and perform the gesture again.
-            elif choice == 'd':
+            elif choice == GTK_KEY_DISCARD:
                 self._handle_user_choice_discard_after_parsing()
             # The user wants to exit.
-            elif choice == 'x':
+            elif choice == GTK_KEY_EXIT:
                 self._handle_user_choice_exit_after_parsing()
             # The user presses any wrong key.
             else:
                 self.win.set_prompt(self._get_prompt_next(), color='red')
         else:
-            if choice == 'x':
+            if choice == GTK_KEY_EXIT:
                 self._handle_user_choice_exit_before_parsing()
             # The user presses any wrong key.
             else:
@@ -374,6 +389,8 @@ class TestFlow:
             self._handle_user_choice_validate_before_parsing()
             self.win.remove_event_source(self.gesture_file_watch_tag)
             self.win.set_input_focus()
+            if self._is_robot_mode():
+                self.win.create_key_press_event(GTK_KEY_SAVE)
             return False
 
     def gesture_file_watch_callback(self, fd, condition, evdev_device):
