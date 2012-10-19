@@ -318,7 +318,7 @@ class FAFTSequence(ServoTest):
         code = utils.system(
                'grep -qE "(Test Build|testimage-channel)" %s/etc/lsb-release' %
                tmp_dir, ignore_status=True)
-        utils.system('sudo umount %s' % tmp_dir)
+        utils.system('sudo umount -l %s' % tmp_dir)
         os.removedirs(tmp_dir)
         if code != 0:
             raise error.TestError(
