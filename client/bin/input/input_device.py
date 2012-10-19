@@ -146,7 +146,7 @@ class InputDevice:
 
         # Open the device node, and use ioctls to probe its properties
         self.f = None
-        self.f = open(path, 'r+')
+        self.f = open(path, 'rb+', buffering=0)
         self._ioctl_version()
         self._ioctl_id()
         self._ioctl_name()
