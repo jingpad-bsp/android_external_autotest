@@ -9,9 +9,13 @@ class enterprise_DevicePolicy(chrome_test.PyAutoFunctionalTest):
     version = 1
 
 
+    def start_authserver(self):
+        pass
+
+
     def run_once(self):
         tests = [
-            # TODO(nirnimesh): Stuck at 'pick user iamge' screen after login.
+            # TODO(nirnimesh): Stuck at 'pick user image' screen after login.
             # crbug.com/149126
             # 'testGuestModeEnabled',
             # 'testUserWhitelistInAccountPicker',
