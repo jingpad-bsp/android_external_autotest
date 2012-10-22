@@ -888,9 +888,6 @@ class BaseClientLogger(object):
             self.job.record_entry(entry, log_in_subdir=False)
         if log_list:
             self.last_line = log_list[-1].render()
-            # TODO(milleral): Remove the following line once crosbug.com/34788
-            # gets solved.
-            logging.info("last_line = %s", self.last_line)
 
 
     def _process_quoted_line(self, tag, line):
@@ -906,9 +903,6 @@ class BaseClientLogger(object):
             self._process_logs()
             self.job.record_entry(entry, log_in_subdir=False)
             self.last_line = line
-            # TODO(milleral): Remove the following line once crosbug.com/34788
-            # gets solved.
-            logging.info("last_line = %s", self.last_line)
         else:
             tag_parts = [int(x) for x in tag.split(".")]
             log_dict = self.logs
