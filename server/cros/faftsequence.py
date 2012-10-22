@@ -323,6 +323,14 @@ class FAFTSequence(ServoTest):
         Raises:
           error.TestError: if USB disk not detected or not a test image.
         """
+        # TODO(waihong@chromium.org): We skip the check when servod runs in
+        # a different host since no easy way to access the servo host so far.
+        # Should find a way to work-around it.
+        if not self.servo.is_localhost():
+            logging.info('Skip checking Chrome OS test image in USB as servod '
+                         'runs in a different host.')
+            return
+
         if usb_dev:
             assert self.servo.get('usb_mux_sel1') == 'servo_sees_usbkey'
         else:

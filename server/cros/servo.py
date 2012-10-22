@@ -117,6 +117,7 @@ class Servo(object):
         self._key_matrix = 0
         self._server = None
         self._connect_servod(servo_host, servo_port)
+        self._is_localhost = (servo_host == 'localhost')
 
 
     def initialize_dut(self, cold_reset=False):
@@ -143,6 +144,15 @@ class Servo(object):
         self._server.hwinit()
         if cold_reset:
             self.cold_reset()
+
+
+    def is_localhost(self):
+        """Is the servod hosted locally?
+
+        Returns:
+          True if local hosted; otherwise, False.
+        """
+        return self._is_localhost
 
 
     def power_long_press(self):
