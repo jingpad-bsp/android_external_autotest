@@ -688,10 +688,6 @@ class _BaseRun(object):
             err = None
 
         # log something if the client failed AND never finished logging
-
-        # TODO(milleral): Remove this line once crosbug.com/34788 gets solved.
-        logging.info("last_line: %s", last_line)
-
         if err and not self.is_client_job_finished(last_line):
             self.log_unexpected_abort(stderr_redirector)
 
