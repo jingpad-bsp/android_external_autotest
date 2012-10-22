@@ -6,7 +6,6 @@
 
 """This configuration file defines the gestures to perform."""
 
-from firmware_utils import Gesture
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -58,11 +57,74 @@ python_package = 'python2.6'
 gestures_sub_path = 'site-packages/gestures'
 
 
+# Define the gesture names
+ONE_FINGER_TRACKING = 'one_finger_tracking'
+TWO_FINGER_TRACKING = 'two_finger_tracking'
+FINGER_CROSSING = 'finger_crossing'
+ONE_FINGER_SWIPE = 'one_finger_swipe'
+TWO_FINGER_SWIPE = 'two_finger_swipe'
+PINCH_TO_ZOOM = 'pinch_to_zoom'
+ONE_FINGER_TAP = 'one_finger_tap'
+TWO_FINGER_TAP = 'two_finger_tap'
+ONE_FINGER_PHYSICAL_CLICK = 'one_finger_physical_click'
+TWO_FINGER_PHYSICAL_CLICK = 'two_fingers_physical_click'
+THREE_FINGER_PHYSICAL_CLICK = 'three_fingers_physical_click'
+FOUR_FINGER_PHYSICAL_CLICK = 'four_fingers_physical_click'
+FIVE_FINGER_PHYSICAL_CLICK = 'five_fingers_physical_click'
+STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS = \
+        'stationary_finger_not_affected_by_2nd_finger_taps'
+FAT_FINGER_MOVE_WITH_RESTING_FINGER = 'fat_finger_move_with_resting_finger'
+DRAG_EDGE_THUMB = 'drag_edge_thumb'
+TWO_CLOSE_FINGERS_TRACKING = 'two_close_fingers_tracking'
+RESTING_FINGER_PLUS_2ND_FINGER_MOVE = 'resting_finger_plus_2nd_finger_move'
+TWO_FAT_FINGERS_TRACKING = 'two_fat_fingers_tracking'
+FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS = \
+        'first_finger_tracking_and_second_finger_taps'
+DRUMROLL = 'drumroll'
+
+
+# Define the complete list
+gesture_names_complete = [
+    ONE_FINGER_TRACKING,
+    TWO_FINGER_TRACKING,
+    FINGER_CROSSING,
+    ONE_FINGER_SWIPE,
+    TWO_FINGER_SWIPE,
+    PINCH_TO_ZOOM,
+    ONE_FINGER_TAP,
+    TWO_FINGER_TAP,
+    ONE_FINGER_PHYSICAL_CLICK,
+    TWO_FINGER_PHYSICAL_CLICK,
+    THREE_FINGER_PHYSICAL_CLICK,
+    FOUR_FINGER_PHYSICAL_CLICK,
+    FIVE_FINGER_PHYSICAL_CLICK,
+    STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
+    FAT_FINGER_MOVE_WITH_RESTING_FINGER,
+    DRAG_EDGE_THUMB,
+    TWO_CLOSE_FINGERS_TRACKING,
+    RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+    TWO_FAT_FINGERS_TRACKING,
+    FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
+    DRUMROLL,
+]
+
+
+# Define the list of simple one-finger gestures to test using the robot.
+gesture_names_robot = [
+    ONE_FINGER_TRACKING,
+    # Mark off the following gestures temporarily.
+    # ONE_FINGER_SWIPE,
+    # ONE_FINGER_TAP,
+    # ONE_FINGER_PHYSICAL_CLICK,
+]
+
+
 # Define the gesture list that the user needs to perform in the test suite.
-def get_gesture_list():
-    gesture_list = [
+def get_gesture_dict():
+    gesture_dict = {
+        ONE_FINGER_TRACKING:
         Gesture(
-            name='one_finger_tracking',
+            name=ONE_FINGER_TRACKING,
             variations=((LR, RL, TB, BT, BLTR, TRBL),
                         (SLOW, NORMAL),
             ),
@@ -86,8 +148,9 @@ def get_gesture_list():
             ),
         ),
 
+        TWO_FINGER_TRACKING:
         Gesture(
-            name='two_finger_tracking',
+            name=TWO_FINGER_TRACKING,
             variations=((LR, RL, TB, BT, BLTR, TRBL),
                         (SLOW, NORMAL),
             ),
@@ -114,9 +177,10 @@ def get_gesture_list():
             ),
         ),
 
+        FINGER_CROSSING:
         Gesture(
             # also covers stationary_finger_not_affected_by_2nd_moving_finger
-            name='finger_crossing',
+            name=FINGER_CROSSING,
             variations=((LR, RL, TB, BT, BLTR, TRBL),
                         (SLOW, NORMAL),
             ),
@@ -141,8 +205,9 @@ def get_gesture_list():
             ),
         ),
 
+        ONE_FINGER_SWIPE:
         Gesture(
-            name='one_finger_swipe',
+            name=ONE_FINGER_SWIPE,
             variations=(BLTR, TRBL),
             prompt='Use a finger to swipe quickly {0}.',
             subprompt={
@@ -156,8 +221,9 @@ def get_gesture_list():
             ),
         ),
 
+        TWO_FINGER_SWIPE:
         Gesture(
-            name='two_finger_swipe',
+            name=TWO_FINGER_SWIPE,
             variations=(TB, BT),
             prompt='Use two fingers to swipe quickly {0}.',
             subprompt={
@@ -173,8 +239,9 @@ def get_gesture_list():
             ),
         ),
 
+        PINCH_TO_ZOOM:
         Gesture(
-            name='pinch_to_zoom',
+            name=PINCH_TO_ZOOM,
             variations=(ZOOM_IN, ZOOM_OUT),
             prompt='Use two fingers to pinch to {0} by drawing {1}.',
             subprompt={
@@ -187,8 +254,9 @@ def get_gesture_list():
             ),
         ),
 
+        ONE_FINGER_TAP:
         Gesture(
-            name='one_finger_tap',
+            name=ONE_FINGER_TAP,
             variations=(TL, TR, BL, BR, TS, BS, LS, RS, CENTER),
             prompt='Use one finger to make a tap on the {0} of the pad.',
             subprompt={
@@ -210,8 +278,9 @@ def get_gesture_list():
             ),
         ),
 
+        TWO_FINGER_TAP:
         Gesture(
-            name='two_finger_tap',
+            name=TWO_FINGER_TAP,
             variations=(HORIZONTAL, VERTICAL, DIAGONAL),
             prompt='Use two fingers aligned {0} to make a tap.',
             subprompt={
@@ -228,8 +297,9 @@ def get_gesture_list():
             ),
         ),
 
+        ONE_FINGER_PHYSICAL_CLICK:
         Gesture(
-            name='one_finger_physical_click',
+            name=ONE_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use one finger to make 1 physical click.',
             subprompt=None,
@@ -240,8 +310,9 @@ def get_gesture_list():
             ),
         ),
 
+        TWO_FINGER_PHYSICAL_CLICK:
         Gesture(
-            name='two_fingers_physical_click',
+            name=TWO_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use two fingers to make 1 physical click.',
             subprompt=None,
@@ -253,8 +324,9 @@ def get_gesture_list():
             ),
         ),
 
+        THREE_FINGER_PHYSICAL_CLICK:
         Gesture(
-            name='three_fingers_physical_click',
+            name=THREE_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use three fingers to make 1 physical click.',
             subprompt=None,
@@ -267,8 +339,9 @@ def get_gesture_list():
             ),
         ),
 
+        FOUR_FINGER_PHYSICAL_CLICK:
         Gesture(
-            name='four_fingers_physical_click',
+            name=FOUR_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use four fingers to make 1 physical click.',
             subprompt=None,
@@ -282,8 +355,9 @@ def get_gesture_list():
             ),
         ),
 
+        FIVE_FINGER_PHYSICAL_CLICK:
         Gesture(
-            name='five_fingers_physical_click',
+            name=FIVE_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use five fingers to make 1 physical click.',
             subprompt=None,
@@ -298,8 +372,9 @@ def get_gesture_list():
             ),
         ),
 
+        STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS:
         Gesture(
-            name='stationary_finger_not_affected_by_2nd_finger_taps',
+            name=STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
             variations=None,
             prompt='Place your left finger on the middle of the pad. '
                    'And use 2nd finger to tap around the first finger',
@@ -310,8 +385,9 @@ def get_gesture_list():
             ),
         ),
 
+        FAT_FINGER_MOVE_WITH_RESTING_FINGER:
         Gesture(
-            name='fat_finger_move_with_resting_finger',
+            name=FAT_FINGER_MOVE_WITH_RESTING_FINGER,
             variations=(LR, RL, TB, BT),
             prompt='With a stationary finger resting on the {0} of the pad, '
                    'the 2nd FAT finger moves {1} {2} the first finger.',
@@ -330,8 +406,9 @@ def get_gesture_list():
             ),
         ),
 
+        DRAG_EDGE_THUMB:
         Gesture(
-            name='drag_edge_thumb',
+            name=DRAG_EDGE_THUMB,
             variations=(LR, RL, TB, BT),
             prompt='Drag the edge of your thumb {0} across the pad',
             subprompt={
@@ -348,11 +425,12 @@ def get_gesture_list():
             ),
         ),
 
+        TWO_CLOSE_FINGERS_TRACKING:
         Gesture(
             # TODO(josephsih): make a special two-finger pen to perform this
             # gesture so that the finger distance remains the same every time
             # this test is conducted.
-            name='two_close_fingers_tracking',
+            name=TWO_CLOSE_FINGERS_TRACKING,
             variations=(LR, TB, TLBR),
             prompt='With two fingers close together (lightly touching each '
                    'other) in a two finger scrolling gesture, draw a {0} '
@@ -370,8 +448,9 @@ def get_gesture_list():
             ),
         ),
 
+        RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
         Gesture(
-            name='resting_finger_plus_2nd_finger_move',
+            name=RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
             variations=(TLBR, BRTL),
             prompt='With a stationary finger resting on the bottom left corner,'
                    ' the 2nd finger moves {0} in 3 seconds.',
@@ -388,8 +467,9 @@ def get_gesture_list():
             ),
         ),
 
+        TWO_FAT_FINGERS_TRACKING:
         Gesture(
-            name='two_fat_fingers_tracking',
+            name=TWO_FAT_FINGERS_TRACKING,
             variations=(LR, RL),
             prompt='Place two FAT fingers separated by about 1 cm on the pad '
                 'next to each other. Move {0} with the two fingers.',
@@ -408,8 +488,9 @@ def get_gesture_list():
             ),
         ),
 
+        FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS:
         Gesture(
-            name='first_finger_tracking_and_second_finger_taps',
+            name=FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
             variations=(TLBR, BRTL),
             prompt='A finger moves {0} slowly in 3 seconds. '
                    'Without the 1st finger leaving the pad, '
@@ -426,8 +507,9 @@ def get_gesture_list():
             ),
         ),
 
+        DRUMROLL:
         Gesture(
-            name='drumroll',
+            name=DRUMROLL,
             variations=(FAST, NORMAL, SLOW),
             prompt='Use two fingers to make drum roll {0} for a total of '
                    '5 seconds.',
@@ -442,9 +524,8 @@ def get_gesture_list():
             ),
             timeout = 2000,
         ),
-
-    ]
-    return gesture_list
+    }
+    return gesture_dict
 
 
 class FileName:
@@ -453,3 +534,20 @@ class FileName:
 filename = FileName()
 filename.sep = '-'
 filename.ext = 'dat'
+
+
+class Gesture:
+    """A class defines the structure of Gesture."""
+    # define the default timeout (in milli-seconds) when performing a gesture.
+    # A gesture is considered done when finger is lifted for this time interval.
+    TIMEOUT = int(1000/80*10)
+
+    def __init__(self, name=None, variations=None, prompt=None, subprompt=None,
+                 validators=None, touchpad_edge=False, timeout=TIMEOUT):
+        self.name = name
+        self.variations = variations
+        self.prompt = prompt
+        self.subprompt = subprompt
+        self.validators = validators
+        self.touchpad_edge = touchpad_edge
+        self.timeout = timeout

@@ -24,6 +24,8 @@ import robot_wrapper
 import test_conf as conf
 import validators
 
+from firmware_utils import GestureList
+
 sys.path.append('/usr/local/autotest/bin/input')
 import input_device
 
@@ -57,7 +59,8 @@ class TestFlow:
         self.prefix_space = self.output.get_prefix_space()
         self.scores = []
         self.mode = options[OPTIONS_MODE]
-        self.gesture_list = conf.get_gesture_list()
+        gesture_names = self._get_gesture_names()
+        self.gesture_list = GestureList(gesture_names).get_gesture_list()
         self._get_all_gesture_variations(options[OPTIONS_SIMPLIFIED])
         self.init_flag = False
         self.system_device = self._non_blocking_open(self.device_node)
@@ -73,6 +76,13 @@ class TestFlow:
     def _is_robot_mode(self):
         """Is it in robot mode?"""
         return self.mode == ROBOT
+
+    def _get_gesture_names(self):
+        """Determine the gesture names based on the mode."""
+        if self._is_robot_mode():
+            return conf.gesture_names_robot
+        else:
+            return conf.gesture_names_complete
 
     def _non_blocking_open(self, filename):
         """Open the file in non-blocing mode."""

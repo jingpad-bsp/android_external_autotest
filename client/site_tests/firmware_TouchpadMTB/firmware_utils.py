@@ -10,6 +10,7 @@ import sys
 import time
 
 import common_util
+import test_conf as conf
 
 # Include some constants
 execfile('firmware_constants.py', globals())
@@ -90,20 +91,25 @@ def start_power_management():
         print 'If this is a problem, you could reboot the machine.'
 
 
-class Gesture:
-    """A class defines the structure of Gesture."""
-    # define the default timeout (in milli-seconds) when performing a gesture.
-    # A gesture is considered done when finger is lifted for this time interval.
-    TIMEOUT = int(1000/80*10)
+class GestureList:
+    """A class defines the gesture list."""
 
-    def __init__(self, name=None, variations=None, prompt=None, subprompt=None,
-                 validators=None, timeout=TIMEOUT):
-        self.name = name
-        self.variations = variations
-        self.prompt = prompt
-        self.subprompt = subprompt
-        self.validators = validators
-        self.timeout = timeout
+    def __init__(self, gesture_names=None):
+        self.gesture_names = (gesture_names if gesture_names
+                                            else conf.gesture_names_complete)
+
+    def get_gesture_list(self):
+        """Get the list of Gesture objects based on the gesture names."""
+        gesture_dict = conf.get_gesture_dict()
+        gesture_list = []
+        for name in self.gesture_names:
+            gesture = gesture_dict.get(name)
+            if gesture is None:
+                msg = 'Error: the gesture "%s" is not defined in the config.'
+                print msg % name
+                return []
+            gesture_list.append(gesture)
+        return gesture_list
 
 
 class Output:
