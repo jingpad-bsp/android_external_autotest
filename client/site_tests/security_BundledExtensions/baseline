@@ -138,6 +138,7 @@
                             "app.window",
                             "contextMenus",
                             "fileSystem",
+                            "fileSystem.write",
                             "storage",
                             "unlimitedStorage",
                             "videoCapture"]
