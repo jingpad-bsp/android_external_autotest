@@ -231,7 +231,10 @@ class SiteHost(remote.RemoteHost):
         self.xmlrpc_disconnect_all()
 
 
-    def cleanup(self):
+    # TODO (sbasi) crosbug.com/35656
+    # Renamed the sitehost cleanup method so we don't go down this pathway.
+    # def cleanup(self):
+    def cleanup_poweron(self):
         """Special cleanup method to make sure hosts always get power back."""
         super(SiteHost, self).cleanup()
         if self.has_power():
