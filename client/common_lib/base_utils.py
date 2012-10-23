@@ -1769,3 +1769,12 @@ def ask(question, auto=False):
         return "y"
     return raw_input("%s INFO | %s (y/n) " %
                      (time.strftime("%H:%M:%S", time.localtime()), question))
+
+
+def rdmsr(address, cpu=0):
+    """
+    Reads an x86 MSR from the specified CPU, returns as long integer.
+    """
+    with open('/dev/cpu/%s/msr' % cpu, 'r', 0) as fd:
+        fd.seek(address)
+        return struct.unpack('=Q', fd.read(8))[0]

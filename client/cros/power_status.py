@@ -542,6 +542,72 @@ class CPUIdleStats(AbstractStats):
         return cpuidle_stats
 
 
+class CPUPackageStats(AbstractStats):
+    """
+    Package C-state residency statistics for modern Intel CPUs.
+    """
+
+    ATOM         =              {'C2': 0x3F8, 'C4': 0x3F9, 'C6': 0x3FA}
+    NEHALEM      =              {'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
+    SANDY_BRIDGE = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
+
+    def __init__(self):
+        def _get_platform_states():
+            """
+            Helper to decide what set of microarchitecture-specific MSRs to use.
+
+            Returns: dict that maps C-state name to MSR address, or None.
+            """
+            modalias = '/sys/devices/system/cpu/modalias'
+            if not os.path.exists(modalias): return None
+
+            values = utils.read_one_line(modalias).split(':')
+            # values[2]: vendor, values[4]: family, values[6]: model (CPUID)
+            if values[2] != '0000' or values[4] != '0006': return None
+
+            return {
+                # model groups pulled from Intel manual, volume 3 chapter 35
+                '0027': self.ATOM,         # unreleased? (Next Generation Atom)
+                '001A': self.NEHALEM,      # Bloomfield, Nehalem-EP (i7/Xeon)
+                '001E': self.NEHALEM,      # Clarks-/Lynnfield, Jasper (i5/i7/X)
+                '001F': self.NEHALEM,      # unreleased? (abandoned?)
+                '0025': self.NEHALEM,      # Arran-/Clarksdale (i3/i5/i7/C/X)
+                '002C': self.NEHALEM,      # Gulftown, Westmere-EP (i7/Xeon)
+                '002E': self.NEHALEM,      # Nehalem-EX (Xeon)
+                '002F': self.NEHALEM,      # Westmere-EX (Xeon)
+                '002A': self.SANDY_BRIDGE, # SandyBridge (i3/i5/i7/C/X)
+                '002D': self.SANDY_BRIDGE, # SandyBridge-E (i7)
+                '003A': self.SANDY_BRIDGE, # IvyBridge (i3/i5/i7/X)
+                '003C': self.SANDY_BRIDGE, # unclear (Haswell?)
+                '003E': self.SANDY_BRIDGE, # IvyBridge (Xeon)
+                }.get(values[6], None)
+
+        self._platform_states = _get_platform_states()
+        super(CPUPackageStats, self).__init__()
+
+
+    def _read_stats(self):
+        packages = set()
+        template = '/sys/devices/system/cpu/cpu%s/topology/physical_package_id'
+        if not self._platform_states: return {}
+        stats = dict((state, 0) for state in self._platform_states)
+        stats['C0_C1'] = 0
+
+        for cpu in os.listdir('/dev/cpu'):
+            if not os.path.exists(template % cpu): continue
+            package = utils.read_one_line(template % cpu)
+            if package in packages: continue
+            packages.add(package)
+
+            stats['C0_C1'] += utils.rdmsr(0x10, cpu) # TSC
+            for (state, msr) in self._platform_states.iteritems():
+                ticks = utils.rdmsr(msr, cpu)
+                stats[state] += ticks
+                stats['C0_C1'] -= ticks
+
+        return stats
+
+
 class USBSuspendStats(AbstractStats):
     """
     USB active/suspend statistics (over all devices)

@@ -140,6 +140,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._usb_stats = power_status.USBSuspendStats()
         self._cpufreq_stats = power_status.CPUFreqStats()
         self._cpuidle_stats = power_status.CPUIdleStats()
+        self._cpupkg_stats = power_status.CPUPackageStats()
         self._disk_logger = power_status.DiskStateLogger()
         if os.path.exists('/dev/sda'):
             self._disk_logger.start()
@@ -214,6 +215,7 @@ class power_LoadTest(cros_ui_test.UITest):
 
         _format_stats(keyvals, self._usb_stats.refresh(), 'usb')
         _format_stats(keyvals, self._cpufreq_stats.refresh(), 'cpufreq')
+        _format_stats(keyvals, self._cpupkg_stats.refresh(), 'cpupkg')
         _format_stats(keyvals, self._cpuidle_stats.refresh(), 'cpuidle')
         if (self._disk_logger.get_error()):
             keyvals['disk_logging_error'] = str(self._disk_logger.get_error())
