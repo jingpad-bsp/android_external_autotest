@@ -10,8 +10,9 @@ unconfigured, simply pass None.  You may also specify the subnet of your ip
 addresses.  Failing to do so leaves them with default in ifconfig.
 
 Example usage:
-vif = virtual_ethernet_pair.VirtualEthernetPair(interface_prefix="veth_",
-                                                interface_ip="192.168.177.1/24",
+vif = virtual_ethernet_pair.VirtualEthernetPair(interface_name="master",
+                                                peer_interface_name="peer",
+                                                interface_ip="10.9.8.1/24",
                                                 peer_interface_ip=None)
 vif.setup()
 if not vif.is_healthy:
