@@ -476,6 +476,8 @@ class FAFTSequence(ServoTest):
         self.run_faft_sequence()
         # 'Unplug' any USB keys in the servo from the dut.
         self.servo.enable_usb_hub(host=True)
+        # Mark usb_check done so it won't check a test image in USB anymore.
+        self.mark_setup_done('usb_check')
 
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
