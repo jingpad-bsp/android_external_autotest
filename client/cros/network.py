@@ -56,6 +56,21 @@ def ResetAllModems(flim):
                 utils.TimeoutError('Timed out waiting for modem disable'),
             sleep_interval=1,
             timeout=30)
+
+        # Shill disables the modem when it processes the disabled state change
+        # signal.  We'll wait for shill to process this signal before
+        # re-enabling the modem to make sure shill doesn't disable it while
+        # we're enabling it.
+        cm_device = flim.FindElementByPropertySubstring('Device',
+                                                        'DBus.Object',
+                                                        path)
+        utils.poll_for_condition(
+            lambda: not cm_device.GetProperties()['Powered'],
+            exception=utils.TimeoutError(
+                'Timed out waiting for shill device disable'),
+            sleep_interval=1,
+            timeout=30)
+
         if 'Y3300XXKB1' in version:
             _Bug24628WorkaroundEnable(modem)
         else:
