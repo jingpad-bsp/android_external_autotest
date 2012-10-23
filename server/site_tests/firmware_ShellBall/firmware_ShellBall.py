@@ -31,7 +31,7 @@ class firmware_ShellBall(FAFTSequence):
     def install_original_firmware(self):
         self.faft_client.run_shell_command('sudo chromeos-firmwareupdate' \
                                            ' --mode=factory_install')
-        self.invalidate_setup()
+        self.invalidate_firmware_setup()
 
     def setup(self, host=None, shellball_path=None, shellball_name=None):
         super(firmware_ShellBall, self).setup()

@@ -133,13 +133,41 @@ class FAFTSequence(ServoTest):
 
     _backup_firmware_sha = ()
 
-    # True if this is the first test in the same run
-    _first_test = True
+    # Class level variable, keep track the states of one time setup.
+    # This variable is preserved across tests which inherit this class.
+    _global_setup_done = {
+        'gbb_flags': False,
+        'usb_check': False,
+    }
 
-    _setup_invalidated = False
+    @classmethod
+    def check_setup_done(cls, label):
+        """Check if the given setup is done.
 
-    # True if the image inside USB stick is confirmed a test image
-    _usb_test_image_checked = False
+        Args:
+          label: The label of the setup.
+        """
+        return cls._global_setup_done[label]
+
+
+    @classmethod
+    def mark_setup_done(cls, label):
+        """Mark the given setup done.
+
+        Args:
+          label: The label of the setup.
+        """
+        cls._global_setup_done[label] = True
+
+
+    @classmethod
+    def unmark_setup_done(cls, label):
+        """Mark the given setup not done.
+
+        Args:
+          label: The label of the setup.
+        """
+        cls._global_setup_done[label] = False
 
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
@@ -194,13 +222,7 @@ class FAFTSequence(ServoTest):
             'reboot_action': (self.sync_and_warm_reboot),
             'firmware_action': (None)
         })
-        if FAFTSequence._first_test:
-            logging.info('Running first test. Set proper GBB flags.')
-            self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
-                                     vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
-                                     vboot.GBB_FLAG_FORCE_DEV_BOOT_USB |
-                                     vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK,
-                                     vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM)
+        self.setup_gbb_flags()
         if self._install_image_path:
             self.install_test_image(self._install_image_path,
                                     self._firmware_update)
@@ -210,17 +232,17 @@ class FAFTSequence(ServoTest):
         """Autotest cleanup function."""
         self._faft_sequence = ()
         self._faft_template = {}
-        FAFTSequence._first_test = self._setup_invalidated
         super(FAFTSequence, self).cleanup()
 
 
-    def invalidate_setup(self):
-        """Invalidate current setup flag.
+    def invalidate_firmware_setup(self):
+        """Invalidate all firmware related setup state.
 
-        This reset the first test flag so that the next test setup
-        properly again.
+        This method is called when the firmware is re-flashed. It resets all
+        firmware related setup states so that the next test setup properly
+        again.
         """
-        self._setup_invalidated = True
+        self.unmark_setup_done('gbb_flags')
 
 
     def reset_client(self):
@@ -327,7 +349,7 @@ class FAFTSequence(ServoTest):
         Raises:
           error.TestError: if USB disk not detected or not a test image.
         """
-        if FAFTSequence._usb_test_image_checked:
+        if self.check_setup_done('usb_check'):
             return
 
         # TODO(waihong@chromium.org): We skip the check when servod runs in
@@ -347,7 +369,7 @@ class FAFTSequence(ServoTest):
                 raise error.TestError(
                         'An USB disk should be plugged in the servo board.')
         self.assert_test_image_in_path(usb_dev)
-        FAFTSequence._usb_test_image_checked = True
+        self.mark_setup_done('usb_check')
 
 
     def get_server_address(self):
@@ -912,6 +934,20 @@ class FAFTSequence(ServoTest):
         """Wait for firmware screen without timeout and close lid."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
         self.wait_fw_screen_and_close_lid()
+
+
+    def setup_gbb_flags(self):
+        """Setup the GBB flags for FAFT test."""
+        if self.check_setup_done('gbb_flags'):
+            return
+
+        logging.info('Set proper GBB flags for test.')
+        self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
+                                 vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
+                                 vboot.GBB_FLAG_FORCE_DEV_BOOT_USB |
+                                 vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK,
+                                 vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM)
+        self.mark_setup_done('gbb_flags')
 
 
     def setup_tried_fwb(self, tried_fwb):

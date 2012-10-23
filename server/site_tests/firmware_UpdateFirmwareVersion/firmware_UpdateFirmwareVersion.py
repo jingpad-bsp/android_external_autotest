@@ -72,7 +72,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
     def cleanup(self):
         self.faft_client.cleanup_firmwareupdate_temp_dir()
         self.restore_firmware()
-        self.invalidate_setup()
+        self.invalidate_firmware_setup()
         super(firmware_UpdateFirmwareVersion, self).cleanup()
 
 

@@ -23,7 +23,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                 'userspace_action': (self.faft_client.run_shell_command,
                     'chromeos-firmwareupdate --mode recovery')
             })
-            self.invalidate_setup()
+            self.invalidate_firmware_setup()
 
 
     def write_protect_checker(self):
