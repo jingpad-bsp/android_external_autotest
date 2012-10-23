@@ -222,7 +222,13 @@ class SiteHost(remote.RemoteHost):
         """Special cleanup method to make sure hosts always get power back."""
         super(SiteHost, self).cleanup()
         if self.has_power():
-            self.power_on()
+            try:
+                self.power_on()
+            except RemotePowerException:
+                # If cleanup has completed but there was an issue with the RPM
+                # Infrastructure, log an error message rather than fail cleanup
+                logging.error('Failed to turn Power On for this host after '
+                              'cleanup through the RPM Infrastructure.')
 
 
     def reboot(self, **dargs):
