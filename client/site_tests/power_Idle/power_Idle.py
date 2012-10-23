@@ -64,7 +64,7 @@ class power_Idle(cros_ui_test.UITest):
         cpuidle_stats = self._cpuidle_stats.refresh()
 
         # record percent time USB devices were not in suspended state
-        keyvals['percent_usb_active'] = usb_stats
+        keyvals['percent_usb_active'] = usb_stats['active']
 
         # record percent time spent in each CPU C-state
         for state in cpuidle_stats:

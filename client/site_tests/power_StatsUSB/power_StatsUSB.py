@@ -16,7 +16,7 @@ class power_StatsUSB(test.test):
 
         # get USB percent active since boot
         stats = usb.refresh(incremental=False)
-        logging.info('USB active time since boot: %.2f%%', stats)
+        logging.info('USB active time since boot: %.2f%%', stats['active'])
 
         # sleep for some time
         time.sleep(test_time)
@@ -24,4 +24,4 @@ class power_StatsUSB(test.test):
         # get USB percent active during the test time
         stats = usb.refresh()
         logging.info('USB active time in the last %d seconds: %.2f%%',
-                     test_time, stats)
+                     test_time, stats['active'])

@@ -132,13 +132,10 @@ class power_LoadTest(cros_ui_test.UITest):
         self._cpufreq_stats = power_status.CPUFreqStats()
         self._cpuidle_stats = power_status.CPUIdleStats()
         self._disk_logger = power_status.DiskStateLogger()
-
-        self._usb_stats.refresh()
-        self._cpufreq_stats.refresh()
-        self._cpuidle_stats.refresh()
-        self._power_status.refresh()
         if os.path.exists('/dev/sda'):
             self._disk_logger.start()
+
+        self._power_status.refresh()
 
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
@@ -187,30 +184,19 @@ class power_LoadTest(cros_ui_test.UITest):
 
 
     def postprocess_iteration(self):
+        def _format_stats(keyvals, stats, name):
+            for state in stats:
+                keyvals['percent_%s_%s_time' % (name, state)] = stats[state]
+
         keyvals = {}
 
-        # refresh power related statistics
-        usb_stats = self._usb_stats.refresh()
-        cpufreq_stats = self._cpufreq_stats.refresh()
-        cpuidle_stats = self._cpuidle_stats.refresh()
-        disk_stats = self._disk_logger.result()
-
-        # record percent time USB devices were not in suspended state
-        keyvals['percent_usb_active'] = usb_stats
-
-        # record percent time spent in each CPU C-state
-        for state in cpuidle_stats:
-            keyvals['percent_cpuidle_%s_time' % state] = cpuidle_stats[state]
-
-        # record percent time spent at each CPU frequency
-        for freq in cpufreq_stats:
-            keyvals['percent_cpufreq_%s_time' % freq] = cpufreq_stats[freq]
-
+        _format_stats(keyvals, self._usb_stats.refresh(), 'usb')
+        _format_stats(keyvals, self._cpufreq_stats.refresh(), 'cpufreq')
+        _format_stats(keyvals, self._cpuidle_stats.refresh(), 'cpuidle')
         if (self._disk_logger.get_error()):
             keyvals['disk_logging_error'] = str(self._disk_logger.get_error())
         else:
-            for state in disk_stats:
-                keyvals['percent_disk_%s_time' % state] = disk_stats[state]
+            _format_stats(keyvals, self._disk_logger.result(), 'disk')
 
         # record battery stats
         keyvals['a_current_now'] = self._power_status.battery[0].current_now

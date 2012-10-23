@@ -417,10 +417,58 @@ def get_status():
     return status
 
 
-class CPUFreqStats(object):
+class AbstractStats(object):
+    """
+    Common superclass for measurements of percentages per state over time.
+    """
+
+    @staticmethod
+    def to_percent(stats):
+        """
+        Turns a dict with absolute time values into a dict with percentages.
+        """
+        total = sum(stats.itervalues())
+        if total == 0: return {}
+        return dict((k, v * 100.0 / total) for (k, v) in stats.iteritems())
+
+
+    @staticmethod
+    def do_diff(new, old):
+        """
+        Returns a dict with value deltas from two dicts with matching keys.
+        """
+        return dict((k, new[k] - old.get(k, 0)) for k in new.iterkeys())
+
+
+    def __init__(self):
+        self._stats = self._read_stats()
+
+
+    def refresh(self, incremental=True):
+        """
+        Returns dict mapping state names to percentage of time spent in them.
+
+        @incremental: If False, stats returned are from a single _read_stats.
+                      Otherwise, stats are from the difference between the
+                      current and last refresh.
+        """
+        raw_stats = self._read_stats()
+        if incremental:
+            raw_stats = self.do_diff(raw_stats, self._stats)
+        self._stats = raw_stats
+        return self.to_percent(raw_stats)
+
+
+    def _read_stats(self):
+        """
+        Override! Reads the raw data values that shall be measured into a dict.
+        """
+        raise NotImplementedError('Override _read_stats in the subclass!')
+
+
+class CPUFreqStats(AbstractStats):
     """
     CPU Frequency statistics
-
     """
 
     def __init__(self):
@@ -429,26 +477,7 @@ class CPUFreqStats(object):
         self._file_paths = glob.glob(cpufreq_stats_path)
         if not self._file_paths:
             logging.debug('time_in_state file not found')
-
-        self._stats = self._read_stats()
-
-
-    def refresh(self, incremental=True):
-        """
-        This method returns the percentage time spent in each of the CPU
-        frequency levels.
-
-        @incremental: If False, stats returned are from when the system
-                      was booted up. Otherwise, stats are since the last time
-                      stats were refreshed.
-        """
-        stats = self._read_stats()
-        diff_stats = stats
-        if incremental:
-            diff_stats = self._do_diff(stats, self._stats)
-        percent_stats = self._to_percent(diff_stats)
-        self._stats = stats
-        return percent_stats
+        super(CPUFreqStats, self).__init__()
 
 
     def _read_stats(self):
@@ -456,76 +485,29 @@ class CPUFreqStats(object):
         for path in self._file_paths:
             data = utils.read_file(path)
             for line in data.splitlines():
-                list = line.split()
-                freq = int(list[0])
-                time = int(list[1])
+                pair = line.split()
+                freq = int(pair[0])
+                timeunits = int(pair[1])
                 if freq in stats:
-                    stats[freq] += time
+                    stats[freq] += timeunits
                 else:
-                    stats[freq] = time
+                    stats[freq] = timeunits
         return stats
 
 
-    def _get_total_time(self, stats):
-        total_time = 0
-        for freq in stats:
-            total_time += stats[freq]
-        return total_time
-
-
-    def _to_percent(self, stats):
-        percent_stats = {}
-        total_time = self._get_total_time(stats)
-        for freq in stats:
-            percent_stats[freq] = stats[freq] * 100.0 / total_time
-        return percent_stats
-
-
-    def _do_diff(self, stats_new, stats_old):
-        diff_stats = {}
-        for freq in stats_new:
-            diff_stats[freq] = stats_new[freq] -  stats_old[freq]
-        return diff_stats
-
-
-class CPUIdleStats(object):
+class CPUIdleStats(AbstractStats):
     """
-    CPU Idle statistics
+    CPU Idle statistics (refresh() will not work with incremental=False!)
     """
     # TODO (snanda): Handle changes in number of c-states due to events such
     # as ac <-> battery transitions.
     # TODO (snanda): Handle non-S0 states. Time spent in suspend states is
     # currently not factored out.
 
-    def __init__(self):
-        self._num_cpus = utils.count_cpus()
-        self._time = time.time()
-        self._stats = self._read_stats()
-
-
-    def refresh(self):
-        """
-        This method returns the percentage time spent in each of the CPU
-        idle states. The stats returned are from whichever is the later of:
-        a) time this class was instantiated, or
-        b) time when refresh was last called
-        """
-        time_now = time.time()
-        stats = self._read_stats()
-
-        diff_stats = self._do_diff(stats, self._stats)
-        diff_time = time_now - self._time
-
-        percent_stats = self._to_percent(diff_stats, diff_time)
-
-        self._time = time_now
-        self._stats = stats
-        return percent_stats
-
-
     def _read_stats(self):
-        cpuidle_stats = {}
+        cpuidle_stats = {'C0': 0}
         cpuidle_path = '/sys/devices/system/cpu/cpu*/cpuidle'
+        epoch_usecs = int(time.time() * 1000 * 1000)
         cpus = glob.glob(cpuidle_path)
 
         for cpu in cpus:
@@ -533,61 +515,37 @@ class CPUIdleStats(object):
             states = glob.glob(state_path)
 
             for state in states:
-                latency = int(utils.read_one_line(os.path.join(state,
-                                                               'latency')))
-
-                if not latency:
-                    # C0 state. Skip it since the stats aren't right for it.
+                if not int(utils.read_one_line(os.path.join(state, 'latency'))):
+                    # C0 state. Kernel stats aren't right, so calculate by
+                    # subtracting all other states from total time (using epoch
+                    # timer since we calculate differences in the end anyway)
+                    cpuidle_stats['C0'] += epoch_usecs
                     continue
 
                 name = utils.read_one_line(os.path.join(state, 'name'))
-                time = int(utils.read_one_line(os.path.join(state, 'time')))
+                usecs = int(utils.read_one_line(os.path.join(state, 'time')))
+                cpuidle_stats['C0'] -= usecs
 
                 if name == '<null>':
                     # Kernel race condition that can happen while a new C-state
                     # gets added (e.g. AC->battery). Don't know the 'name' of
                     # the state yet, but its 'time' would be 0 anyway.
                     logging.warn('Read name: <null>, time: %d from %s'
-                        % (time, state) + '... skipping.')
+                        % (usecs, state) + '... skipping.')
                     continue
 
                 if name in cpuidle_stats:
-                    cpuidle_stats[name] += time
+                    cpuidle_stats[name] += usecs
                 else:
-                    cpuidle_stats[name] = time
+                    cpuidle_stats[name] = usecs
 
         return cpuidle_stats
 
 
-    def _to_percent(self, stats, test_time):
-        # convert time from sec to us.
-        test_time *= 1000 * 1000
-        # scale time by the number of CPUs in the system
-        test_time *= self._num_cpus
-
-        percent_stats = {}
-        non_c0_time = 0
-        for state in stats:
-            percent_stats[state] = stats[state] * 100.0 / test_time
-            non_c0_time += stats[state]
-
-        c0_time = test_time - non_c0_time
-        percent_stats['C0'] = c0_time * 100.0 / test_time
-
-        return percent_stats
-
-
-    def _do_diff(self, stats_new, stats_old):
-        diff_stats = {}
-        for state in stats_new:
-            if state in stats_old:
-                diff_stats[state] = stats_new[state] -  stats_old[state]
-            else:
-                diff_stats[state] = stats_new[state]
-        return diff_stats
-
-
-class USBSuspendStats(object):
+class USBSuspendStats(AbstractStats):
+    """
+    USB active/suspend statistics (over all devices)
+    """
     # TODO (snanda): handle hot (un)plugging of USB devices
     # TODO (snanda): handle duration counters wraparound
 
@@ -596,55 +554,30 @@ class USBSuspendStats(object):
         self._file_paths = glob.glob(usb_stats_path)
         if not self._file_paths:
             logging.debug('USB stats path not found')
-
-        self._active, self._connected = self._read_stats()
-
-
-    def refresh(self, incremental=True):
-        """
-        This method returns the percentage time spent in active state for
-        all USB devices in the system.
-
-        @incremental: If False, stats returned are from when the system
-                      was booted up. Otherwise, stats are since the last time
-                      stats were refreshed.
-        """
-
-        active, connected = self._read_stats()
-        if incremental:
-            percent_active = (active - self._active) * 100.0 / \
-                             (connected - self._connected)
-        else:
-            percent_active = active * 100.0 / connected
-
-        self._active = active
-        self._connected = connected
-
-        return percent_active
+        super(USBSuspendStats, self).__init__()
 
 
     def _read_stats(self):
-        total_active = 0
-        total_connected = 0
+        usb_stats = {'active': 0, 'suspended': 0}
 
         for path in self._file_paths:
             active_duration_path = os.path.join(path, 'active_duration')
-            connected_duration_path = os.path.join(path, 'connected_duration')
+            total_duration_path = os.path.join(path, 'connected_duration')
 
             if not os.path.exists(active_duration_path) or \
-               not os.path.exists(connected_duration_path):
+               not os.path.exists(total_duration_path):
                 logging.debug('duration paths do not exist for: %s', path)
                 continue
 
             active = int(utils.read_file(active_duration_path))
-            connected = int(utils.read_file(connected_duration_path))
+            total = int(utils.read_file(total_duration_path))
             logging.debug('device %s active for %.2f%%',
-                          path, active * 100.0 / connected)
+                          path, active * 100.0 / total)
 
-            total_active += active
-            total_connected += connected
+            usb_stats['active'] += active
+            usb_stats['suspended'] += total - active
 
-        return total_active, total_connected
+        return usb_stats
 
 
 class PowerMeasurement(object):
@@ -1013,8 +946,7 @@ class DiskStateLogger(threading.Thread):
         if (self._running):
             self._running = False
             self.join(self._seconds_period * 2)
-        total = sum(self._stats.itervalues())
-        return dict((k, v * 100 / total) for (k, v) in self._stats.iteritems())
+        return AbstractStats.to_percent(self._stats)
 
 
     def get_error(self):
