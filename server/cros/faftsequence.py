@@ -137,6 +137,7 @@ class FAFTSequence(ServoTest):
     # This variable is preserved across tests which inherit this class.
     _global_setup_done = {
         'gbb_flags': False,
+        'reimage': False,
         'usb_check': False,
     }
 
@@ -407,6 +408,9 @@ class FAFTSequence(ServoTest):
             image_path: An URL or a path on the host to the test image.
             firmware_update: Also update the firmware after installing.
         """
+        if self.check_setup_done('reimage'):
+            return
+
         if image_path.startswith(self._HTTP_PREFIX):
             # TODO(waihong@chromium.org): Add the check of the URL to ensure
             # it is a test image.
@@ -478,6 +482,7 @@ class FAFTSequence(ServoTest):
         self.servo.enable_usb_hub(host=True)
         # Mark usb_check done so it won't check a test image in USB anymore.
         self.mark_setup_done('usb_check')
+        self.mark_setup_done('reimage')
 
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
