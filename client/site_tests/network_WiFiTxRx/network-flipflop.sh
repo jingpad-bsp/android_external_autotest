@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# This script stops flimflam, associates with each test AP in turn,
+# This script stops shill, associates with each test AP in turn,
 # and harvests signal strength and quality numbers for us, then restarts
-# flimflam so the old network can be reacquired and our test can complete
+# shill so the old network can be reacquired and our test can complete
 
 set +o posix;
 shopt -s extglob;
@@ -261,8 +261,8 @@ wifi_status $1; # this will figure out all our initial if_… values
 modulations=$if_80211;
 
 progress "Start: $iface ($if_mode/$if_80211) ap $if_ap essid '$if_essid'";
-progress "Shutting down flimflam";
-stop flimflam 1>&2
+progress "Shutting down shill";
+stop shill 1>&2
 
 progress "Looking for test APs";
 wifi_scan $iface;
@@ -278,6 +278,6 @@ if contains_modulations $modulations an; then
   for ap in $hifreq_aps; do test_association $iface $ap an; done;
 fi
 
-start flimflam 1>&2;
+start shill 1>&2;
 
 close_vtx;
