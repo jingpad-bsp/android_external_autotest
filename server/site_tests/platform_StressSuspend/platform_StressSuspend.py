@@ -20,22 +20,27 @@ class platform_StressSuspend(test.test):
     def run_once(self, host, client_autotest):
         autotest_client = autotest.Autotest(host)
 
-        def sleepwake():
-            """Close and open the lid with enough delay to induce suspend."""
-            host.servo.lid_close()
-            time.sleep(_TIME_TO_SUSPEND + _EXTRA_DELAY)
-            host.servo.lid_open()
-            time.sleep(_EXTRA_DELAY)
-
         def loggedin():
             """
             Checks if the host has a logged in user.
 
             @return True if a user is logged in on the device.
             """
-            cmd_out = host.run('cryptohome --action=status').stdout.strip()
+            try:
+                cmd_out = host.run('cryptohome --action=status').stdout.strip()
+            except:
+                return False
             status = json.loads(cmd_out)
             return any((mount['mounted'] for mount in status['mounts']))
+
+        def sleepwake():
+            """Close and open the lid with enough delay to induce suspend."""
+            if not loggedin():
+                return
+            host.servo.lid_close()
+            time.sleep(_TIME_TO_SUSPEND + _EXTRA_DELAY)
+            host.servo.lid_open()
+            time.sleep(_EXTRA_DELAY)
 
         stressor = stress.ControlledStressor(sleepwake)
         stressor.start(start_condition=loggedin)

@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "platform_StressSuspendYoutube"
+NAME = "platform_StressSuspendUrl"
 PURPOSE = "Servo based ChromeOS functional tests."
 CRITERIA = "This test will fail if YouTube tests fail to run under stress."
 TIME = "LONG"
@@ -25,6 +25,6 @@ def run(machine):
     host = hosts.create_host(machine, servo_host=servo_host,
                              servo_port=servo_port)
     job.run_test("platform_StressSuspend", host=host, disable_sysinfo=True,
-                 client_autotest='desktopui_Youtube')
+                 client_autotest='desktopui_UrlStress')
 
 parallel_simple(run, machines)

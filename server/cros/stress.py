@@ -113,7 +113,7 @@ class CountedStressor(BaseStressor):
     """
     def _loop_stressor(self):
         """Overloaded from parent."""
-        for i in xrange(self._count):
+        for _ in xrange(self._count):
             self.stressor()
 
 
