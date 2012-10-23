@@ -32,7 +32,7 @@ class FAFTClientAttribute(object):
         setting['platform'] = platform
 
         # Set 'broken_warm_reset'
-        if platform in ['Parrot']:
+        if platform in ['Parrot', 'Butterfly']:
             setting['broken_warm_reset'] = True
 
         # Set 'chrome_ec'

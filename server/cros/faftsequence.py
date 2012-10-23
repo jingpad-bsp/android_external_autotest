@@ -1120,7 +1120,7 @@ class FAFTSequence(ServoTest):
 
         A wrapper for underlying servo cold reset.
         """
-        if self.client_attr.platform == 'Parrot':
+        if self.client_attr.broken_warm_reset:
             self.servo.set('pwr_button', 'press')
             self.servo.set('cold_reset', 'on')
             self.servo.set('cold_reset', 'off')
