@@ -20,7 +20,7 @@ class desktopui_PyAutoPerf(test.test):
         self.client_test = 'desktopui_PyAutoPerfTests'
         self.server_test = 'desktopui_PyAutoPerf'
         client_at = autotest.Autotest(self.client)
-        client_at.run_test(self.client_test, args=str(args))
+        client_at.run_test(self.client_test, *args)
         if not self.job.label:
             logging.debug('Job has no label, therefore not uploading perf'
                           ' results to google storage.')
