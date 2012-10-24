@@ -25,6 +25,6 @@ DOC = """
 """
 
 job.run_test('network_3GModemControl', pseudo_modem=True,
-             autoconnect=False, tag='no-autoconnect')
+             autoconnect=False, tag='no-autoconnect-pseudomodem')
 job.run_test('network_3GModemControl', pseudo_modem=True,
-             autoconnect=True, tag='autoconnect')
+             autoconnect=True, tag='autoconnect-pseudomodem')
