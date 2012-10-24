@@ -49,6 +49,17 @@ def ResetAllModems(flim):
     for manager, path in mm.EnumerateDevices():
         modem = manager.GetModem(path)
         version = modem.GetVersion()
+        # Icera modems behave weirdly if we cancel the operation while the
+        # modem is connecting or disconnecting. Work around the issue by waiting
+        # until the connect/disconnect operation completes.
+        # TODO(benchan): Remove this workaround once the issue is addressed
+        # on the modem side.
+        utils.poll_for_condition(
+            lambda: not modem.IsConnectingOrDisconnecting(),
+            exception=utils.TimeoutError('Timed out waiting for modem to ' +
+                                         'finish connecting/disconnecting'),
+            sleep_interval=1,
+            timeout=30)
         modem.Enable(False)
         utils.poll_for_condition(
             lambda: modem.IsDisabled(),

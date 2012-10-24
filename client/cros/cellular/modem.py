@@ -36,6 +36,19 @@ class Modem(object):
     _MM_MODEM_GSM_ACCESS_TECH_HSUPA = 7
     _MM_MODEM_GSM_ACCESS_TECH_HSPA = 8
 
+    # MM_MODEM_STATE (not exported)
+    # From /usr/include/mm/mm-modem.h
+    _MM_MODEM_STATE_UNKNOWN = 0
+    _MM_MODEM_STATE_DISABLED = 10
+    _MM_MODEM_STATE_DISABLING = 20
+    _MM_MODEM_STATE_ENABLING = 30
+    _MM_MODEM_STATE_ENABLED = 40
+    _MM_MODEM_STATE_SEARCHING = 50
+    _MM_MODEM_STATE_REGISTERED = 60
+    _MM_MODEM_STATE_DISCONNECTING = 70
+    _MM_MODEM_STATE_CONNECTING = 80
+    _MM_MODEM_STATE_CONNECTED = 90
+
     # Mapping of modem technologies to cellular technologies
     _ACCESS_TECH_TO_TECHNOLOGY = {
         _MM_MODEM_GSM_ACCESS_TECH_GSM: cellular.Technology.WCDMA,
@@ -174,6 +187,13 @@ class Modem(object):
         }
 
         return BASESTATION_TO_REPORTED_TECHNOLOGY[technology] == reported_tech
+
+    def IsConnectingOrDisconnecting(self):
+        props = self.GetAll(Modem.MODEM_INTERFACE)
+        return props['State'] in [
+            Modem._MM_MODEM_STATE_CONNECTING,
+            Modem._MM_MODEM_STATE_DISCONNECTING
+        ]
 
     def IsEnabled(self):
         props = self.GetAll(Modem.MODEM_INTERFACE)

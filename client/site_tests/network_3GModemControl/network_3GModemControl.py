@@ -192,6 +192,19 @@ class network_3GModemControl(test.test):
         logging.info('Service State = %s' % state)
         return state in expected_states
 
+    def EnsureNotConnectingOrDisconnecting(self):
+        """
+        Ensure modem is not connecting or disconnecting.
+
+        Raises:
+            error.TestFail if it timed out waiting for the modem to finish
+            connecting or disconnecting.
+        """
+        utils.poll_for_condition(
+            lambda: not self.modem.IsConnectingOrDisconnecting(),
+            error.TestFail('Timed out waiting for modem to finish connecting ' +
+                           'or disconnecting.'))
+
     def EnsureDisabled(self):
         """
         Ensure modem disabled, device powered off, and no service.
@@ -274,6 +287,13 @@ class network_3GModemControl(test.test):
 
         simple_connect_props = {'number': r'#777', 'apn': self.FindAPN()}
 
+        # Icera modems behave weirdly if we cancel the operation while the
+        # modem is connecting. Work around the issue by waiting until the
+        # connect operation completes.
+        # TODO(benchan): Remove this workaround once the issue is addressed
+        # on the modem side.
+        self.EnsureNotConnectingOrDisconnecting()
+
         logging.info('Disabling')
         commands.Disable()
         self.EnsureDisabled()
@@ -291,6 +311,14 @@ class network_3GModemControl(test.test):
 
         logging.info('Disconnecting')
         will_autoreconnect = commands.Disconnect()
+
+        # Icera modems behave weirdly if we cancel the operation while the
+        # modem is disconnecting. Work around the issue by waiting until
+        # the disconnect operation completes.
+        # TODO(benchan): Remove this workaround once the issue is addressed
+        # on the modem side.
+        self.EnsureNotConnectingOrDisconnecting()
+
         if not (self.autoconnect and will_autoreconnect):
             self.EnsureEnabled(check_idle=True)
             logging.info('Connecting manually, since AutoConnect was on')

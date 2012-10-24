@@ -137,6 +137,13 @@ class Modem(object):
 
         return BASESTATION_TO_REPORTED_TECHNOLOGY[technology] == reported_tech
 
+    def IsConnectingOrDisconnecting(self):
+        props = self.GetAll(mm1.MODEM_INTERFACE)
+        return props['State'] in [
+            mm1.MM_MODEM_STATE_CONNECTING,
+            mm1.MM_MODEM_STATE_DISCONNECTING
+        ]
+
     def IsEnabled(self):
         props = self.GetAll(mm1.MODEM_INTERFACE)
         return props['State'] in [
