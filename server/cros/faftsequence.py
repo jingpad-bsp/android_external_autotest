@@ -223,10 +223,8 @@ class FAFTSequence(ServoTest):
             'reboot_action': (self.sync_and_warm_reboot),
             'firmware_action': (None)
         })
+        self.install_test_image(self._install_image_path, self._firmware_update)
         self.setup_gbb_flags()
-        if self._install_image_path:
-            self.install_test_image(self._install_image_path,
-                                    self._firmware_update)
 
 
     def cleanup(self):
@@ -408,6 +406,9 @@ class FAFTSequence(ServoTest):
             image_path: An URL or a path on the host to the test image.
             firmware_update: Also update the firmware after installing.
         """
+        if not image_path:
+            return
+
         if self.check_setup_done('reimage'):
             return
 
