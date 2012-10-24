@@ -88,13 +88,7 @@ class power_LoadTest(cros_ui_test.UITest):
             if not self._backchannel.setup():
                 raise error.TestError('Could not setup Backchannel network.')
 
-            # Note: FlimFlam is flaky after Backchannel setup sometimes. It may
-            # take several tries for WiFi to connect. More experimentation with
-            # the retry settings here may be necessary if this becomes a source
-            # of test flakiness in the future.
-            # Edit: As per above advice, upped retries from 3 to 8 hoping to
-            # solve crosbug.com/35120 .
-            if not flimflam.FlimFlam().ConnectService(retries=8,
+            if not flimflam.FlimFlam().ConnectService(retries=3,
                                                       retry=True,
                                                       service_type='wifi',
                                                       ssid=wifi_ap,
