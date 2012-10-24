@@ -1,0 +1,23 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = "example_CrosTest"
+AUTHOR = "The Chromium OS Authors"
+TIME = "SHORT"
+TEST_CATEGORY = "example"
+TEST_CLASS = "example"
+TEST_TYPE = "client"
+
+DOC = """
+This is an example cros test that pulls in an example client deps package.
+
+This test pulls in code from the chromiumos source tree (in chromite) and lists
+the files as part of a test. It is intended to demonstrate how to
+get Chromium OS code onto a device-under-test (DUT) during an
+autotest test.
+"""
+
+# "example_CrosTest" must match the module/folder name as well as the class name
+# within the module.
+job.run_test("example_CrosTest")
