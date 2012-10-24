@@ -108,6 +108,8 @@ class FAFTSequence(ServoTest):
     EC_BOOT_DELAY = 0.5
     # Duration of holding cold_reset to reset device
     COLD_RESET_DELAY = 0.1
+    # devserver startup time
+    DEVSERVER_DELAY = 10
 
     # The developer screen timeouts fit our spec.
     DEV_SCREEN_TIMEOUT = 30
@@ -405,6 +407,9 @@ class FAFTSequence(ServoTest):
         Args:
             image_path: An URL or a path on the host to the test image.
             firmware_update: Also update the firmware after installing.
+
+        Raises:
+          error.TestError: If devserver failed to start.
         """
         if not image_path:
             return
@@ -425,7 +430,7 @@ class FAFTSequence(ServoTest):
             # even we don't use them. Otherwise, the socket of devserve is
             # created as fd 1 (as no stdout) but it still thinks stdout is fd
             # 1 and dump the log to the socket. Wrong HTTP protocol happens.
-            devserver = subprocess.Popen(['start_devserver',
+            devserver = subprocess.Popen(['/usr/lib/devserver/devserver.py',
                         '--archive_dir=%s' % image_dir,
                         '--port=%s' % self._DEVSERVER_PORT],
                         stdout=subprocess.PIPE,
@@ -435,6 +440,14 @@ class FAFTSequence(ServoTest):
                         self.get_server_address(),
                         self._DEVSERVER_PORT,
                         image_base)
+
+            # Wait devserver startup completely
+            time.sleep(self.DEVSERVER_DELAY)
+            # devserver is a service running forever. If it is terminated,
+            # some error does happen.
+            if devserver.poll():
+                raise error.TestError('Starting devserver failed, '
+                                      'returning %d.' % devserver.returncode)
 
         logging.info('Ask Servo to install the image from %s' % image_url)
         self.servo.image_to_servo_usb(image_url)
