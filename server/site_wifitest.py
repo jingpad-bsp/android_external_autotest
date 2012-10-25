@@ -2305,6 +2305,7 @@ class test(test.test):
     try:
       if 'skip_test' in testcase and 'no_skip' not in config['run_options']:
         logging.info("%s: SKIP: %s", name, testcase['skip_test'])
+        raise error.TestNAError(testcase['skip_test'])
       else:
         wt = self.testtype(name, testcase['steps'],
                            testcase.get('requires', []), config)
