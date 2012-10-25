@@ -11,10 +11,12 @@ CRITERIA = """
     Verify that if autoconnect is turned on that the modem autoconnects
     after resuming.
 """
+SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+DEPENDENCIES = "modem:gobi3k, carrier:verizon"
 
 DOC = """
     Verify that 3g can be enabled under all suspend/resume situations.
@@ -22,6 +24,6 @@ DOC = """
 
 # Run all scenarios twice, first with autoconnect off, then with it on
 job.run_test('network_3GSuspendResume',
-             autoconnect=False, tag='autoconnect_off')
+             autoconnect=False, tag='autoconnect_off-gobi3k_verizon')
 job.run_test('network_3GSuspendResume',
-             autoconnect=True, tag='autoconnect_on')
+             autoconnect=True, tag='autoconnect_on-gobi3k_verizon')
