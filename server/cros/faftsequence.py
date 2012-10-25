@@ -75,6 +75,8 @@ class FAFTSequence(ServoTest):
             test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
             installing the image.
+        _trapped_in_recovery_reason: Keep the recovery reason when the test is
+            trapped in the recovery screen.
     """
     version = 1
 
@@ -132,6 +134,7 @@ class FAFTSequence(ServoTest):
     }
     _install_image_path = None
     _firmware_update = False
+    _trapped_in_recovery_reason = 0
 
     _backup_firmware_sha = ()
 
@@ -262,6 +265,24 @@ class FAFTSequence(ServoTest):
 
         # TODO(waihong@chromium.org): Implement replugging the Ethernet in the
         # first reset item.
+
+        # DUT may be trapped in the recovery screen. Try to boot into USB to
+        # retrieve the recovery reason.
+        logging.info('Try to retrieve recovery reason...')
+        if self.servo.get('usb_mux_sel1') == 'dut_sees_usbkey':
+            self.wait_fw_screen_and_plug_usb()
+        else:
+            self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+
+        try:
+            self.wait_for_client(install_deps=True)
+            lines = self.faft_client.run_shell_command_get_output(
+                        'crossystem recovery_reason')
+            self._trapped_in_recovery_reason = int(lines[0])
+            logging.info('Got the recovery reason %d.' %
+                         self._trapped_in_recovery_reason)
+        except AssertionError:
+            logging.info('Failed to get the recovery reason.')
 
         # DUT may halt on a firmware screen. Try cold reboot.
         logging.info('Try cold reboot...')
@@ -1429,6 +1450,7 @@ class FAFTSequence(ServoTest):
 
         Raises:
           error.TestError: An error when the given step is not valid.
+          error.TestFail: Test failed in waiting DUT reboot.
         """
         FAFT_STEP_KEYS = ('state_checker', 'userspace_action', 'reboot_action',
                           'firmware_action', 'install_deps_after_boot')
@@ -1461,7 +1483,11 @@ class FAFTSequence(ServoTest):
             except AssertionError:
                 logging.info('wait_for_client() timed out.')
                 self.reset_client()
-                raise
+                if self._trapped_in_recovery_reason:
+                    raise error.TestFail('Trapped in the recovery reason: %d' %
+                                          self._trapped_in_recovery_reason)
+                else:
+                    raise error.TestFail('Timed out waiting for DUT reboot.')
 
 
     def run_faft_sequence(self):
