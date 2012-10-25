@@ -32,15 +32,6 @@ from autotest_lib.server import subcommand
 from autotest_lib.server import test
 
 
-class NotImplemented(Exception):
-    def __init__(self, what):
-        self.what = what
-
-
-    def __str__(self):
-        return repr("Test method '%s' not implemented" % self.what)
-
-
 class ScriptNotFound(Exception):
     """Raised when site_wlan scripts cannot be found."""
     def __init__(self, scriptname):
@@ -1017,22 +1008,22 @@ class WiFiTest(object):
 
     def client_monitor_start(self, params):
         """ Start monitoring system events """
-        raise NotImplemented("client_monitor_start")
+        raise NotImplementedError("client_monitor_start")
 
 
     def client_monitor_stop(self, params):
         """ Stop monitoring system events """
-        raise NotImplemented("client_monitor_stop")
+        raise NotImplementedError("client_monitor_stop")
 
 
     def client_check_event_mic(self, params):
         """ Check for MIC error event """
-        raise NotImplemented("client_check_event_mic")
+        raise NotImplementedError("client_check_event_mic")
 
 
     def client_check_event_countermeasures(self, params):
         """ Check for WPA CounterMeasures event """
-        raise NotImplemented("client_check_event_countermeasures")
+        raise NotImplementedError("client_check_event_countermeasures")
 
 
     def client_check_frequency(self, params):
