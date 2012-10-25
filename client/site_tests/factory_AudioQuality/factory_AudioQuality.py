@@ -17,6 +17,7 @@ import socket
 import subprocess
 import tempfile
 import threading
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
@@ -98,6 +99,7 @@ class factory_AudioQuality(test.test):
 
         if self._test_complete:
             factory.console.info('Test completed')
+            time.sleep(3)
             if self._test_passed:
                 self.ui.Pass()
             else:
