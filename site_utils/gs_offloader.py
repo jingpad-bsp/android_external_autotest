@@ -22,6 +22,8 @@ import sys
 import tempfile
 import time
 
+from optparse import OptionParser
+
 import is_job_complete
 
 # Google Storage bucket URI to store results in.
@@ -157,7 +159,7 @@ def offload_dir(dir_entry, dest_path=''):
     stderr_file.close()
 
 
-def offload_files(results_dir):
+def offload_files(results_dir, process_all, process_hosts_only):
   """
   Offload files to Google Storage or the RSYNC_HOST_PATH host if USE_RSYNC is
   True.
@@ -168,6 +170,10 @@ def offload_files(results_dir):
   know the timeout has occured and can react accordingly.
 
   @param results_dir: The Autotest results dir to look for dirs to offload.
+  @param process_all: Indicates whether or not we want to process all the
+                      files in results or just the larger test job files.
+  @param process_hosts_only: Indicates whether we only want to process files
+                             in the hosts subdirectory.
   """
   # Nice our process (carried to subprocesses) so we don't kill the system.
   os.nice(NICENESS)
@@ -180,10 +186,14 @@ def offload_files(results_dir):
   job_matcher = re.compile('^\d+-\w+')
   signal.signal(signal.SIGALRM, timeout_handler)
   while True:
+    if process_hosts_only:
+      # Only offload the hosts/ sub directory.
+      offload_hosts_sub_dir()
+      continue
     # Iterate over all directories in results_dir.
     for dir_entry in os.listdir('.'):
       logging.debug('Processing %s', dir_entry)
-      if dir_entry == HOSTS_SUB_DIR:
+      if dir_entry == HOSTS_SUB_DIR and process_all:
         offload_hosts_sub_dir()
         continue
       if not job_matcher.match(dir_entry):
@@ -206,29 +216,35 @@ def offload_files(results_dir):
         offload_dir(dir_entry)
 
 
-def _check_args_and_print_usage(args):
+def parse_options():
   """
-  Check that no args have been passed to gs_offloader, and if so print out the
-  proper usage.
-
-  @param args: Command line args passed into gs_offloader.
+  Parse the args passed into gs_offloader.
   """
-  if len(args) > 1:
-    print __help__
-    print 'Defaults:'
-    print '  Destination: ' + GS_URI
-    print '  Results path: ' + RESULTS_DIR
-    print '\nUsage:'
-    print '  ./gs_offloader.py\n'
-    sys.exit(0)
+  defaults = 'Defaults:\n  Destination: %s\n  Results Path: %s' % (GS_URI,
+                                                                   RESULTS_DIR)
+  usage = 'usage: %prog [options]\n' + defaults
+  parser = OptionParser(usage)
+  parser.add_option('-a', '--all', dest='process_all', action='store_true',
+                    help='Offload all files in the results directory.')
+  parser.add_option('-s', '--hosts', dest='process_hosts_only',
+                    action='store_true',
+                    help='Offload only the special tasks result files located'
+                         'in the results/hosts subdirectory')
+  options = parser.parse_args()[0]
+  if options.process_all and options.process_hosts_only:
+    parser.print_help()
+    print ('Cannot process all files and only the hosts subdirectory. '
+           'Please remove an argument.')
+    sys.exit(1)
+  return options
 
 
 def main():
-  _check_args_and_print_usage(sys.argv)
+  options = parse_options()
   log_filename = time.strftime(LOG_FILENAME_FORMAT)
   logging.basicConfig(filename=log_filename, level=logging.DEBUG,
                       format=LOGGING_FORMAT)
-  offload_files(RESULTS_DIR)
+  offload_files(RESULTS_DIR, options.process_all, options.process_hosts_only)
 
 
 if __name__ == '__main__':
