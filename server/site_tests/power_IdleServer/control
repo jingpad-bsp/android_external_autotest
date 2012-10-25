@@ -27,7 +27,7 @@ def run_system_power_idle(machine):
 
     host_at.run_test(host_test)
 
-    if host.has_power()):
+    if host.has_power():
         host.power_on()
 
 
