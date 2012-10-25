@@ -9,10 +9,12 @@ CRITERIA = """
 This test will fail if a disconnect request while the modem is
 connecting is not promptly executed.
 """
+SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+DEPENDENCIES = "modem:gobi3k, carrier:tmobile"
 
 DOC = """
 Check that the 3G modem can handle a disconnect while connecting.
@@ -22,10 +24,10 @@ ITERATIONS_PER_TEST=1
 
 job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
-             delay_before_disable_ms=0,
-             disable_delay_per_iteration_ms=0,
+             delay_before_disable_ms=200,
+             async_connect_sleep_ms=3000,
              iterations=ITERATIONS_PER_TEST,
-             tag='instant_disable')
+             tag='short_delay_disable-gobi3k_tmobile')
 
 # Since dbus-python emits our calls asynchronously, it is sometimes
 # (often?) the case that the disable arrives before the connect.
@@ -34,6 +36,7 @@ job.run_test('network_3GDisableWhileConnecting',
 job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
              delay_before_disable_ms=0,
-             disable_delay_per_iteration_ms=int(1000.0 / ITERATIONS_PER_TEST),
+             disable_delay_per_iteration_ms=0,
+             connect_fails_with_error_sending_qmi_request=1,
              iterations=ITERATIONS_PER_TEST,
-             tag='disable_delay_ramp')
+             tag='qmi_failure-gobi3k_tmobile')
