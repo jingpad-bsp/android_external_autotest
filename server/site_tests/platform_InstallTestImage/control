@@ -30,13 +30,11 @@ servo:
 DEFAULT_URL_FORMAT = '/static/servo-images/%s_test_image.bin'
 
 args_dict = utils.args_to_dict(args)
-servo_host = args_dict.get("servo_host", "localhost")
-servo_port = args_dict.get("servo_port", None)
+servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 
 def run(machine):
     # Setup the client machine.
-    host = hosts.create_host(machine, servo_host=servo_host,
-                             servo_port=servo_port)
+    host = hosts.create_host(machine, servo_args=servo_args)
 
     image = args_dict.get("image", None)
     if image is None:

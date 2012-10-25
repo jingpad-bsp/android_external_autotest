@@ -27,16 +27,14 @@ from autotest_lib.client.common_lib import error
 opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])
 
 args_dict = utils.args_to_dict(args)
-servo_host = args_dict.get('servo_host', 'localhost')
-servo_port = args_dict.get('servo_port', None)
+servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 
 def run_shellball(machine):
     # Verify bios path arg.
     if 'shellball_path' and 'shellball_name' not in opts:
         raise error.TestFail('Invalid shellball information.')
     # Setup the client machine.
-    host = hosts.create_host(machine, servo_host=servo_host,
-                             servo_port=servo_port)
+    host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test("firmware_ShellBall", host=host,
                  cmdline_args=args,
                  shellball_path=opts['shellball_path'],

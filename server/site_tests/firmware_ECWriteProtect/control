@@ -31,12 +31,10 @@ RO normal mode.
 """
 
 args_dict = utils.args_to_dict(args)
-servo_host = args_dict.get('servo_host', 'localhost')
-servo_port = args_dict.get('servo_port', None)
+servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 
 def run_ecwriteprotect(machine):
-    host = hosts.create_host(machine, servo_host=servo_host,
-                             servo_port=servo_port)
+    host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test("firmware_ECWriteProtect", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
                  dev_mode=False, tag="normal")

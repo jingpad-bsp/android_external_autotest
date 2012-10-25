@@ -112,9 +112,16 @@ class SiteHost(remote.RemoteHost):
     LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
     LABEL_FUNCTIONS = []
 
+    @staticmethod
+    def get_servo_arguments(arglist):
+        servo_args = {}
+        for arg in ('servo_host', 'servo_port'):
+            if arg in arglist:
+                servo_args[arg] = arglist[arg]
+        return servo_args
 
-    def _initialize(self, hostname, servo_host=None, servo_port=None,
-                    *args, **dargs):
+
+    def _initialize(self, hostname, servo_args=None, *args, **dargs):
         """Initialize superclasses, and |self.servo|.
 
         For creating the host servo object, there are three
@@ -135,17 +142,8 @@ class SiteHost(remote.RemoteHost):
         self.env['LIBC_FATAL_STDERR_'] = '1'
         self._xmlrpc_proxy_map = {}
         self.servo = servo.Servo.get_lab_servo(hostname)
-        if not self.servo:
-            # The Servo constructor generally doesn't accept 'None'
-            # for its parameters.
-            if servo_host is not None:
-                if servo_port is not None:
-                    self.servo = servo.Servo(servo_host=servo_host,
-                                             servo_port=servo_port)
-                else:
-                    self.servo = servo.Servo(servo_host=servo_host)
-            elif servo_port is not None:
-                self.servo = servo.Servo(servo_port=servo_port)
+        if not self.servo and servo_args:
+            self.servo = servo.Servo(**servo_args)
 
 
     def machine_install(self, update_url=None, force_update=False,

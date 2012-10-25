@@ -17,12 +17,10 @@ This test uses servo to simulate lid close and open events. Device state is
 verified by pinging."""
 
 args_dict = utils.args_to_dict(args)
-servo_host = args_dict.get('servo_host', 'localhost')
-servo_port = args_dict.get('servo_port', None)
+servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 
 def run(machine):
-    host = hosts.create_host(machine, servo_host=servo_host,
-                             servo_port=servo_port)
+    host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test("platform_CloseOpenLid", host=host, disable_sysinfo=True)
 
 parallel_simple(run, machines)
