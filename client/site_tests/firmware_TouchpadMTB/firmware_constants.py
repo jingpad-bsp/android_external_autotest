@@ -64,4 +64,11 @@ TRIANGLE_FUNCTION = 'Triangle_Function'
 
 # Constants about command line options
 OPTIONS_HELP = 'help'
+OPTIONS_MODE = 'mode'
 OPTIONS_SIMPLIFIED = 'simplified'
+
+# Gesture playing mode
+MANUAL = 'MANUAL'
+ROBOT = 'ROBOT'
+REPLAY = 'REPLAY'
+GESTURE_PLAY_MODE = [MANUAL, ROBOT, REPLAY]

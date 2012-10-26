@@ -165,6 +165,7 @@ def _usage():
     print 'Usage: $ %s [options]\n' % sys.argv[0]
     print 'options:'
     print '  -h, --%s: show this help' % OPTIONS_HELP
+    print '  -m, --%s: gesture playing mode' % OPTIONS_MODE
     print '  -s, --%s: Use one variation per gesture' % OPTIONS_SIMPLIFIED
     print
 
@@ -183,15 +184,15 @@ def _parse_options():
     because pyauto seems not compatible with command line options.
     """
     # Initialize and get the environment OPTIONS
-    options = {OPTIONS_SIMPLIFIED: False}
+    options = {OPTIONS_MODE: MANUAL, OPTIONS_SIMPLIFIED: False}
     options_str = os.environ.get('OPTIONS')
     if not options_str:
         return options
 
     options_list = options_str.split()
     try:
-        short_opt = 'hs'
-        long_opt = [OPTIONS_HELP, OPTIONS_SIMPLIFIED]
+        short_opt = 'hm:s'
+        long_opt = [OPTIONS_HELP, OPTIONS_MODE, OPTIONS_SIMPLIFIED]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
         _parsing_error(str(err))
@@ -200,6 +201,12 @@ def _parse_options():
         if opt in ('-h', '--%s' % OPTIONS_HELP):
             _usage()
             sys.exit(1)
+        elif opt in ('-m', '--%s' % OPTIONS_MODE):
+            if arg in GESTURE_PLAY_MODE:
+                options[OPTIONS_MODE] = arg
+            else:
+                print 'Warning: -m should be one of %s' % GESTURE_PLAY_MODE
+                print '         Use %s mode as default.' % MANUAL
         elif opt in ('-s', '--%s' % OPTIONS_SIMPLIFIED):
             options[OPTIONS_SIMPLIFIED] = True
         else:

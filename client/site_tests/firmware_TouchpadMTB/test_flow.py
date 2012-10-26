@@ -18,6 +18,7 @@ import firmware_utils
 import fuzzy
 import mini_color
 import mtb
+import robot_wrapper
 import test_conf as conf
 import validators
 
@@ -40,7 +41,6 @@ class TestFlow:
         self.output = output
         self._get_record_cmd()
         self.win = win
-        self.win.set_prompt(self._get_prompt_result())
         self.parser = parser
         self.packets = None
         self.gesture_file_name = None
@@ -53,6 +53,8 @@ class TestFlow:
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
         self.mtb_evemu = mtb.MTBEvemu()
+        self.mode = options[OPTIONS_MODE]
+        self.robot = robot_wrapper.RobotWrapper(self.board)
 
     def __del__(self):
         self.system_device.close()
@@ -250,17 +252,24 @@ class TestFlow:
         final_score = eval(conf.score_aggregator)(scores)
         self.output.print_report('\nFinal score: %s\n' % str(final_score))
 
+    def _prompt_and_action(self):
+        """Set the prompt and perform the action if in robot mode."""
+        self.win.set_prompt(self._get_prompt_result())
+        # Have the robot perform the gesture if it is in ROBOT mode.
+        if self.mode == ROBOT:
+            self.robot.control(self.gesture, self.variation)
+
     def _handle_user_choice_save_after_parsing(self, next_gesture):
         """Handle user choice for saving the parsed gesture file."""
         self.output.print_window('')
         self.output.print_report(self.saved_msg)
         self._add_scores(self.new_scores)
-        self.win.set_prompt(self._get_prompt_result())
         self.output.report_html.insert_image(self.gesture_image_name)
         self.output.report_html.flush()
         if self._pre_setup_this_gesture_variation(next_gesture=next_gesture):
             # There are more gestures.
             self._setup_this_gesture_variation()
+            self._prompt_and_action()
         else:
             # No more gesture.
             self._final_scores(self.scores)
@@ -273,7 +282,7 @@ class TestFlow:
         """Handle user choice for discarding the parsed gesture file."""
         self.output.print_window('')
         self.output.report_html.reset_logs()
-        self.win.set_prompt(self._get_prompt_result())
+        self._prompt_and_action()
         self._setup_this_gesture_variation()
         self.packets = None
 
@@ -389,6 +398,7 @@ class TestFlow:
             self.init_flag = True
             self._pre_setup_this_gesture_variation()
             self._setup_this_gesture_variation()
+            self._prompt_and_action()
 
     def _pre_setup_this_gesture_variation(self, next_gesture=True):
         """Get gesture, variation, filename, prompt, etc."""
