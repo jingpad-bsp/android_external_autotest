@@ -223,6 +223,10 @@ IntField = CreatePacketPieceClass(Field, "!I")
 
 HwAddrField = CreatePacketPieceClass(Field, "!16s")
 
+ServerNameField = CreatePacketPieceClass(Field, "!64s")
+
+BootFileField = CreatePacketPieceClass(Field, "!128s")
+
 class IpAddressField(Field):
     @staticmethod
     def pack(value):
@@ -253,8 +257,10 @@ FIELD_YOUR_IP = IpAddressField("yiaddr", 16, 4)
 FIELD_SERVER_IP = IpAddressField("siaddr", 20, 4)
 FIELD_GATEWAY_IP = IpAddressField("giaddr", 24, 4)
 FIELD_CLIENT_HWADDR = HwAddrField("chaddr", 28, 16)
-# For legacy BOOTP reasons, there are 192 octets of 0's that
-# come after the chaddr.
+# The following two fields are considered "legacy BOOTP" fields but may
+# sometimes be used by DHCP clients.
+FIELD_LEGACY_SERVER_NAME = ServerNameField("servername", 44, 64);
+FIELD_LEGACY_BOOT_FILE = BootFileField("bootfile", 108, 128);
 FIELD_MAGIC_COOKIE = IntField("magic_cookie", 236, 4)
 
 OPTION_TIME_OFFSET = IntOption("time_offset", 2)
@@ -297,8 +303,7 @@ OPTION_DNS_DOMAIN_SEARCH_LIST = DomainListOption("domain_search_list", 119)
 OPTION_PAD = 0
 OPTION_END = 255
 
-# All fields are required.
-DHCP_PACKET_FIELDS = [
+DHCP_COMMON_FIELDS = [
         FIELD_OP,
         FIELD_HWTYPE,
         FIELD_HWADDR_LEN,
@@ -311,6 +316,15 @@ DHCP_PACKET_FIELDS = [
         FIELD_SERVER_IP,
         FIELD_GATEWAY_IP,
         FIELD_CLIENT_HWADDR,
+        ]
+
+DHCP_REQUIRED_FIELDS = DHCP_COMMON_FIELDS + [
+        FIELD_MAGIC_COOKIE,
+        ]
+
+DHCP_ALL_FIELDS = DHCP_COMMON_FIELDS + [
+        FIELD_LEGACY_SERVER_NAME,
+        FIELD_LEGACY_BOOT_FILE,
         FIELD_MAGIC_COOKIE,
         ]
 
@@ -540,7 +554,7 @@ class DhcpPacket(object):
         if len(byte_str) < OPTIONS_START_OFFSET + 1:
             logging.error("Invalid byte string for packet.")
             return
-        for field in DHCP_PACKET_FIELDS:
+        for field in DHCP_ALL_FIELDS:
             self._fields[field] = field.unpack(byte_str[field.offset :
                                                         field.offset +
                                                         field.size])
@@ -582,10 +596,10 @@ class DhcpPacket(object):
     @property
     def is_valid(self):
         """
-        Checks that we have (at a minimum) values for all the fields, and that
-        the magic cookie is set correctly.
+        Checks that we have (at a minimum) values for all the required fields,
+        and that the magic cookie is set correctly.
         """
-        for field in DHCP_PACKET_FIELDS:
+        for field in DHCP_REQUIRED_FIELDS:
             if self._fields.get(field) is None:
                 logging.warning("Missing field %s in packet." % field)
                 return False
@@ -620,7 +634,9 @@ class DhcpPacket(object):
         # A list of byte strings to be joined into a single string at the end.
         data = []
         offset = 0
-        for field in DHCP_PACKET_FIELDS:
+        for field in DHCP_ALL_FIELDS:
+            if field not in self._fields:
+                continue
             field_data = field.pack(self._fields[field])
             while offset < field.offset:
                 # This should only happen when we're padding the fields because

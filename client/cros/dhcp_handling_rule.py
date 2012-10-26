@@ -44,7 +44,7 @@ class DhcpHandlingRule(object):
     respond().
     """
 
-    def __init__(self, additional_options):
+    def __init__(self, additional_options, custom_fields):
         """
         |additional_options| should be a dictionary that maps from
         dhcp_packet.OPTION_* to values.  For instance:
@@ -58,6 +58,7 @@ class DhcpHandlingRule(object):
         self._is_final_handler = False
         self._logger = logging.getLogger("dhcp.handling_rule")
         self._options = additional_options
+        self._fields = custom_fields
         self._target_time_seconds = None
         self._allowable_time_delta_seconds = 0.5
 
@@ -79,6 +80,13 @@ class DhcpHandlingRule(object):
         Returns a dictionary that maps from DhcpPacket options to their values.
         """
         return self._options
+
+    @property
+    def fields(self):
+        """
+        Returns a dictionary that maps from DhcpPacket fields to their values.
+        """
+        return self._fields
 
     @property
     def target_time_seconds(self):
@@ -185,6 +193,20 @@ class DhcpHandlingRule(object):
             if option.number in requested_parameters:
                 packet.set_option(option, value)
 
+    def inject_fields(self, packet):
+        """
+        Adds fields listed in |self.fields| to |packet|.
+
+        |packet| is a DhcpPacket.
+
+        Subclassed handling rules may call this to inject fields into response
+        packets to the client.  This process emulates a real DHCP server which
+        would have a pool of configuration settings to hand out to DHCP clients
+        upon request.
+        """
+        for field, value in self.fields.items():
+            packet.set_field(field, value)
+
 
 class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
     """
@@ -196,6 +218,7 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
                  intended_ip,
                  server_ip,
                  additional_options,
+                 custom_fields,
                  should_respond=True):
         """
         |intended_ip| is an IPv4 address string like "192.168.1.100".
@@ -205,7 +228,7 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
         |additional_options| is handled as explained by DhcpHandlingRule.
         """
         super(DhcpHandlingRule_RespondToDiscovery, self).__init__(
-                additional_options)
+                additional_options, custom_fields)
         self._intended_ip = intended_ip
         self._server_ip = server_ip
         self._should_respond = should_respond
@@ -240,6 +263,7 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
                 dhcp_packet.OPTION_PARAMETER_REQUEST_LIST)
         if requested_parameters is not None:
             self.inject_options(response_packet, requested_parameters)
+        self.inject_fields(response_packet)
         return response_packet
 
 
@@ -257,6 +281,7 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
                  expected_requested_ip,
                  expected_server_ip,
                  additional_options,
+                 custom_fields,
                  should_respond=True,
                  response_server_ip=None,
                  response_granted_ip=None):
@@ -266,7 +291,7 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         |additional_options| is handled as explained by DhcpHandlingRule.
         """
         super(DhcpHandlingRule_RespondToRequest, self).__init__(
-                additional_options)
+                additional_options, custom_fields)
         self._expected_requested_ip = expected_requested_ip
         self._expected_server_ip = expected_server_ip
         self._should_respond = should_respond
@@ -328,6 +353,7 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
                 dhcp_packet.OPTION_PARAMETER_REQUEST_LIST)
         if requested_parameters is not None:
             self.inject_options(response_packet, requested_parameters)
+        self.inject_fields(response_packet)
         return response_packet
 
 
@@ -343,6 +369,7 @@ class DhcpHandlingRule_RespondToPostT2Request(
                  expected_requested_ip,
                  response_server_ip,
                  additional_options,
+                 custom_fields,
                  should_respond=True,
                  response_granted_ip=None):
         """
@@ -354,6 +381,7 @@ class DhcpHandlingRule_RespondToPostT2Request(
                 expected_requested_ip,
                 None,
                 additional_options,
+                custom_fields,
                 should_respond=should_respond,
                 response_server_ip=response_server_ip,
                 response_granted_ip=response_granted_ip)

@@ -185,7 +185,10 @@ class DhcpTestBase(test.test):
         """
         return self._ethernet_pair
 
-    def negotiate_and_check_lease(self, dhcp_options, disable_check=False):
+    def negotiate_and_check_lease(self,
+                                  dhcp_options,
+                                  custom_fields={},
+                                  disable_check=False):
         if dhcp_packet.OPTION_REQUESTED_IP not in dhcp_options:
             raise error.TestFail("You must specify OPTION_REQUESTED_IP to "
                                  "negotiate a DHCP lease")
@@ -195,11 +198,13 @@ class DhcpTestBase(test.test):
         rules.append(dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
                 intended_ip,
                 self.server_ip,
-                dhcp_options))
+                dhcp_options,
+                custom_fields))
         rules.append(dhcp_handling_rule.DhcpHandlingRule_RespondToRequest(
                 intended_ip,
                 self.server_ip,
-                dhcp_options))
+                dhcp_options,
+                custom_fields))
         rules[-1].is_final_handler = True
         self.server.start_test(rules, DHCP_NEGOTIATION_TIMEOUT_SECONDS)
         self.server.wait_for_test_to_finish()
