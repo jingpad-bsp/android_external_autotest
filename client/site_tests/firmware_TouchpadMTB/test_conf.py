@@ -52,6 +52,12 @@ score_colors = ((0.9, 'blue'), (0.8, 'orange'), (0.0, 'red'))
 num_chars_per_row = 28
 
 
+# Define the path to find the robot gestures library path
+robot_lib_path = '/usr/local/lib*'
+python_package = 'python2.6'
+gestures_sub_path = 'site-packages/gestures'
+
+
 # Define the gesture list that the user needs to perform in the test suite.
 def get_gesture_list():
     gesture_list = [

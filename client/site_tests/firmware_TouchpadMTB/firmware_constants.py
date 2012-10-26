@@ -31,6 +31,8 @@ TLBR = 'top_left_to_bottom_right'
 HORIZONTAL_DIRECTIONS = [HORIZONTAL, LR, RL]
 VERTICAL_DIRECTIONS = [VERTICAL, TB, BT]
 DIAGONAL_DIRECTIONS = [DIAGONAL, BLTR, BRTL, TRBL, TLBR]
+GESTURE_DIRECTIONS = (HORIZONTAL_DIRECTIONS + VERTICAL_DIRECTIONS +
+                      DIAGONAL_DIRECTIONS)
 # location
 TL = 'top_left'
 TR = 'top_right'
@@ -48,6 +50,7 @@ ZOOM_OUT = 'zoom_out'
 SLOW = 'slow'
 NORMAL = 'normal'
 FAST = 'fast'
+GESTURE_SPEED = [SLOW, NORMAL, FAST]
 
 # Constants about fuzzy membership functions
 # In fuzzy logic, a membership function indicates the degree of truth
