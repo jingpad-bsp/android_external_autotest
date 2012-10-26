@@ -456,6 +456,7 @@ class FAFTSequence(ServoTest):
         install_cmd = 'chromeos-install --yes'
         if firmware_update:
             install_cmd += ' && chromeos-firmwareupdate --mode recovery'
+            self.backup_firmware()
 
         self.register_faft_sequence((
             {   # Step 1, request recovery boot
@@ -483,6 +484,10 @@ class FAFTSequence(ServoTest):
             },
         ))
         self.run_faft_sequence()
+
+        if firmware_update:
+            self.clear_saved_firmware()
+
         # 'Unplug' any USB keys in the servo from the dut.
         self.servo.enable_usb_hub(host=True)
         # Mark usb_check done so it won't check a test image in USB anymore.
@@ -1538,6 +1543,11 @@ class FAFTSequence(ServoTest):
             True if the firmware is backuped; otherwise False.
         """
         return self._backup_firmware_sha != ()
+
+
+    def clear_saved_firmware(self):
+        """Clear the firmware saved by the method backup_firmware."""
+        self._backup_firmware_sha = ()
 
 
     def restore_firmware(self, suffix='.original'):
