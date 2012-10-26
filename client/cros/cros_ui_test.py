@@ -504,10 +504,19 @@ class UITest(pyauto_test.PyAutoTest):
                                     line[match.start():])
 
 
-    def execute(self, *args, **kwargs):
+    def execute(self, iterations=None, test_length=None,
+                profile_only=None, _get_time=time.time,
+                postprocess_profiled_run=None, constraints=(), *args, **kwargs):
         """Wrapper around execute to take a screenshot for any exception."""
         try:
-            super(UITest, self).execute(*args, **kwargs)
+            super(UITest, self).execute(iterations=iterations,
+                                        test_length=test_length,
+                                        profile_only=profile_only,
+                                        _get_time=_get_time,
+                                        postprocess_profiled_run=
+                                          postprocess_profiled_run,
+                                        constraints=constraints,
+                                        *args, **kwargs)
         except:
             self.take_screenshot(fname_prefix='test-fail-screenshot')
             raise
