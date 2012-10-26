@@ -2,18 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+
 AUTHOR = "Chrome OS Team"
 NAME = "platform_Shutdown"
-PURPOSE = "Collect shutdown metrics."
-CRITERIA = "This test is a benchmark."
-SUITE = "bvt, kaen_bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Logging"
 TEST_CLASS = "platform"
-TEST_TYPE = "client"
+TEST_TYPE = "server"
+SUITE = "bvt"
 
 DOC = """
 This test collects the shutdown metrics from a system that has rebooted.
 """
 
-job.run_test('platform_Shutdown')
+
+def run(machine):
+    host = hosts.create_host(machine)
+    job.run_test("platform_Shutdown", host=host)
+
+
+parallel_simple(run, machines)
