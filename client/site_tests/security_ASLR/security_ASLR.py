@@ -49,10 +49,7 @@ class security_ASLR(test.test):
         """
         return [
             self.process('chrome', 'ui', 'session_manager'),
-            # TODO(jimhebert) restore after crosbug.com/35340 is fixed.
-            # Tracked as crosbug.com/35224.
-            #self.process('debugd', 'debugd'),
-            self.process('htpdate', 'htpdate')]
+            self.process('debugd', 'debugd')]
 
     class process:
         """Holds information about a process.

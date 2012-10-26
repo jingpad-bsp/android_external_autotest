@@ -3,41 +3,34 @@
 # found in the LICENSE file.
 
 import logging, math, re
+import subprocess
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging
 
+OPENSSL = '/usr/bin/openssl'
+TLSDATE = '/usr/sbin/tlsdate'
 
 class platform_AccurateTime(test.test):
     version = 1
 
+    def serve(self):
+        self.ca = '%s/ca.pem' % self.srcdir
+        self.cert = '%s/cert.pem' % self.srcdir
+        self.key = '%s/cert.key' % self.srcdir
+        self.server = subprocess.Popen([OPENSSL, 's_server', '-www',
+                                        '-CAfile', self.ca, '-cert', self.cert,
+                                        '-key', self.key, '-port', '4433'])
 
-    def __get_offset(self, string):
-        if (string.find('No time correction needed') > -1) :
-            return float(0.0)
-        else :
-            offset = re.search(r'Setting (-?[\d+\.]+) seconds', string)
-            if offset is None:
-                # If string is empty, check the sys logs dumped later.
-                raise error.TestError('Unable to find offset in %s' % string)
-            return float(offset.group(1))
+    def tlsdate(self):
+        proc = subprocess.Popen([TLSDATE, '-H', 'localhost', '-p', '4433',
+                                 '-C', self.srcdir,
+                                 '-nv'], stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+        (out,err) = proc.communicate()
+        print err
 
     def run_once(self):
-        reader = cros_logging.LogReader()
-        reader.set_start_by_current()
-        # Check if htpdate is currently running
-        if utils.system('pgrep htpdate', ignore_status=True) != 0:
-            raise error.TestError('htpdate server was not already running')
-        # Stop it since we cannot start another instance of htpdate
-        utils.system('initctl stop htpdate')
-        try:
-            # Now grab the current time and get its offset
-            cmd = '/usr/sbin/htpdate -4 -u ntp:ntp -s -t -w www.google.com'
-            output = utils.system_output(cmd,retain_output=True)
-            server_offset = self.__get_offset(output)
-            logging.info("server time offset: %f" % server_offset)
-
-            self.write_perf_keyval({'seconds_offset': abs(server_offset)})
-        finally:
-            utils.system('initctl start htpdate')
-            logging.debug('sys logs emitted: %s' % reader.get_logs())
+        self.serve()
+        self.tlsdate()
+        self.server.terminate()

@@ -7,7 +7,6 @@ powerm,root,No,No,No,No,No
 wpa_supplicant,wpa,Yes,Yes,No,Yes,No
 shill,root,No,No,No,No,No
 X,root,No,No,No,No,No
-htpdate,ntp,No,No,No,No,No
 chapsd,chaps,No,No,No,No,No
 cryptohomed,root,No,No,No,No,No
 powerd,chronos,Yes,No,No,No,No

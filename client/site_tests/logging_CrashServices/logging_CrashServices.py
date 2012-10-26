@@ -22,7 +22,6 @@ class logging_CrashServices(crash_test.CrashTest):
                     "/usr/libexec/devkit-power-daemon",
                     "/sbin/dhcpcd",
                     "/usr/sbin/flimflamd",
-                    "/usr/sbin/htpdate",
                     "/usr/bin/metrics_daemon",
                     "/usr/sbin/pkcsslotd",
                     "/usr/bin/powerd",

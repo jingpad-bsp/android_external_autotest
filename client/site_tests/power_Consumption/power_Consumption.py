@@ -56,10 +56,9 @@ class power_Consumption(cros_ui_test.UITest):
         # powerd: dims backlights and suspends the device.
         # powerm: power manager running as root
         # update-engine: we don't want any updates downloaded during the test
-        # htpdate: time sync, we don't want spontaneous network traffic
         # bluetoothd: bluetooth, scanning for devices can create a spike
         self._daemons_to_stop = ['powerd', 'powerm', 'update-engine',
-                                 'htpdate', 'bluetoothd']
+                                 'bluetoothd']
 
         # Verify that we are running on battery and the battery is
         # sufficiently charged
