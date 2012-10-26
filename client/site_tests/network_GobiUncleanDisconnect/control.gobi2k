@@ -9,14 +9,16 @@ CRITERIA = """
 This test will fail if any of its subtest programs fails to find or connect to
 the Gobi.
 """
+SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Regression"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+DEPENDENCIES = "modem:gobi2k"
 
 DOC = """
   This test triggers unclean disconnects from the Gobi to ensure that the kernel
   driver properly cleans up after it.
 """
 
-job.run_test('network_GobiUncleanDisconnect')
+job.run_test('network_GobiUncleanDisconnect', tag='gobi2k')
