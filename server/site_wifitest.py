@@ -41,6 +41,13 @@ class NotImplemented(Exception):
         return repr("Test method '%s' not implemented" % self.what)
 
 
+class ScriptNotFound(Exception):
+    """Raised when site_wlan scripts cannot be found."""
+    def __init__(self, scriptname):
+        super(ScriptNotFound, self).__init__(
+            'Script %s not found in search path' % scriptname)
+
+
 class WiFiTest(object):
     """
     WiFi Test.
@@ -599,8 +606,20 @@ class WiFiTest(object):
         script_client_dir = self.client.get_tmp_dir()
         script_client_file = os.path.join(script_client_dir, script_name)
         for copy_file in [script_name] + list(support_scripts):
-            src_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                    copy_file)
+            # Look either relative to the current location of this file or
+            # relative to ../client/common_lib/cros/site_wlan for the script.
+            script_relative_paths = [['.'],
+                                     ['..', 'client', 'common_lib',
+                                      'cros', 'site_wlan']]
+            for rel_path in script_relative_paths:
+                src_file = os.path.join(
+                    os.path.dirname(os.path.realpath(__file__)),
+                    *(rel_path + [copy_file]))
+                if os.path.exists(src_file):
+                    break
+            else:
+                raise ScriptNotFound(copy_file)
+
             dest_file = os.path.join(script_client_dir,
                                      os.path.basename(src_file))
             self.client.send_file(src_file, dest_file, delete_dest=True)
