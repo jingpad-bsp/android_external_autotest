@@ -443,6 +443,12 @@ class FAFTSequence(ServoTest):
             # it is a test image.
             devserver = None
             image_url = image_path
+        elif self.servo.is_localhost():
+            self.assert_test_image_in_path(image_path)
+            # If servod is localhost, i.e. both servod and FAFT see the same
+            # file system, do nothing.
+            devserver = None
+            image_url = image_path
         else:
             self.assert_test_image_in_path(image_path)
             image_dir, image_base = os.path.split(image_path)

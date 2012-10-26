@@ -493,7 +493,8 @@ class Servo(object):
         self.set('prtctl4_pwren', 'on')
         self.enable_usb_hub(host=True)
         if image_path:
-            logging.info('Searching for usb device and copying image to it.')
+            logging.info('Searching for usb device and copying image to it. '
+                         'Please wait a few minutes...')
             if not self._server.download_image_to_usb(image_path):
                 logging.error('Failed to transfer requested image to USB. '
                               'Please take a look at Servo Logs.')
