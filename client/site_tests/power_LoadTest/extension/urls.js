@@ -86,7 +86,7 @@ var tasks = [
     duration: minutes(6),
     focus: true,
     tabs: [
-        'http://www.youtube.com/v/ecI_hCBGEIM&autoplay=1'
+        'http://www.youtube.com/v/ecI_hCBGEIM&autoplay=1&start=3364'
     ]
   },
 ];
