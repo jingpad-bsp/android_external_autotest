@@ -478,7 +478,8 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
                 afe=afe, tko=tko, pool=spec.pool,
                 results_dir=spec.job.resultdir,
                 max_runtime_mins=spec.max_runtime_mins,
-                version_prefix=reimager.version_prefix)
+                version_prefix=reimager.version_prefix,
+                file_bugs=spec.file_bugs)
 
             suite.run_and_wait(spec.job.record_entry, manager,
                                spec.add_experimental)
