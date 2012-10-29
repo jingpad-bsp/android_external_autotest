@@ -30,17 +30,12 @@ import optparse
 import sys
 import time
 import subprocess
+
+# Once these are no longer copied to DUTs manually, this should become
+# from autotest_lib.client.common_lib.cros.site_wlan import constants
+import constants
+
 from site_wlan_dbus_setup import *
-
-SUPPLICANT = 'fi.w1.wpa_supplicant1'
-
-def GetObject(kind, path):
-  return dbus.Interface(bus.get_object(FLIMFLAM, path), FLIMFLAM + '.' + kind)
-
-def GetObjectList(kind, path_list):
-  if not path_list:
-    path_list = manager.GetProperties().get(kind + 's', [])
-  return [GetObject(kind, path) for path in path_list]
 
 
 def PrintProperties(item):
@@ -74,14 +69,17 @@ def DumpObjectList(kind):
       pass
 
 
-# Returns the list of the wifi interfaces (e.g. "wlan0") known to flimflam
 def GetWifiInterfaces():
+  """Returns wifi interfaces (e.g. "wlan0") known to the connection manager.
+
+  @return a list of wifi interfaces.
+  """
   interfaces = []
   device_paths = manager.GetProperties().get('Devices', None)
   for device_path in device_paths:
     device = dbus.Interface(
-      bus.get_object('org.chromium.flimflam', device_path),
-      'org.chromium.flimflam.Device')
+      bus.get_object(constants.CONNECTION_MANAGER, device_path),
+      constants.CONNECTION_MANAGER_DEVICE)
     props = device.GetProperties()
     type = props.get('Type', None)
     interface = props.get('Interface', None)
@@ -295,10 +293,11 @@ class StateHandler(object):
 
     if not self.waiting_for_services:
       self.waiting_for_services = True
-      self.bus.add_signal_receiver(self.ServicesChangeCallback,
-                                   signal_name='PropertyChanged',
-                                   dbus_interface=FLIMFLAM+'.Manager',
-                                   path='/')
+      self.bus.add_signal_receiver(
+          self.ServicesChangeCallback,
+          signal_name='PropertyChanged',
+          dbus_interface=constants.CONNECTION_MANAGER_MANAGER,
+          path='/')
 
     self.StartTimeout(wait_time)
 
@@ -318,11 +317,12 @@ class StateHandler(object):
 
     if not self.wait_path in self.waiting_paths:
       self.waiting_paths[self.wait_path] = True
-      self.bus.add_signal_receiver(self.StateChangeCallback,
-                                   signal_name='PropertyChanged',
-                                   dbus_interface=FLIMFLAM+'.Service',
-                                   path=self.wait_path,
-                                   path_keyword='path')
+      self.bus.add_signal_receiver(
+          self.StateChangeCallback,
+          signal_name='PropertyChanged',
+          dbus_interface=constants.CONNECTION_MANAGER_SERVICE,
+          path=self.wait_path,
+          path_keyword='path')
 
     self.StartTimeout(wait_time)
 

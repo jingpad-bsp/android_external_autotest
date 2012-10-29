@@ -24,21 +24,6 @@ import dbus
 import site_wlan_dbus_setup
 
 
-def GetObject(kind, path):
-  """Returns a DBus interface for the specified object.
-
-  Args:
-    kind: String containing the type of object such as "Profile" or "Service".
-    path: String containing the DBus path to the object.
-
-  Returns:
-    The DBus interface to the object.
-  """
-  return dbus.Interface(
-      site_wlan_dbus_setup.bus.get_object(site_wlan_dbus_setup.FLIMFLAM, path),
-      site_wlan_dbus_setup.FLIMFLAM + "." + kind)
-
-
 class DbusInterface(object):
   """Top-level wrapper class for objects found on the DBus."""
 
@@ -140,7 +125,8 @@ class Profile(DbusInterface):
     Args:
       profile_name: A string, possibly returned by Manager.GetProperty().
     """
-    DbusInterface.__init__(self, GetObject("Profile", profile_name))
+    DbusInterface.__init__(
+        self, site_wlan_dbus_setup.GetObject("Profile", profile_name))
 
   def IterEntries(self):
     return self.EntryIterator(self)
@@ -186,7 +172,8 @@ class Service(DbusInterface):
     Args:
       service_name: A string, possibly returned by Manager.GetProperty().
     """
-    DbusInterface.__init__(self, GetObject("Service", service_name))
+    DbusInterface.__init__(
+        self, site_wlan_dbus_setup.GetObject("Service", service_name))
 
   @property
   def name(self):

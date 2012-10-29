@@ -733,7 +733,8 @@ class WiFiTest(object):
 
         script_client_file = self.install_script('site_wlan_connect.py',
                                                  'site_wlan_dbus_setup.py',
-                                                 'site_wlan_wait_state.py')
+                                                 'site_wlan_wait_state.py',
+                                                 'constants.py')
 
         flags = []
         if params.get('debug', True):
@@ -790,7 +791,8 @@ class WiFiTest(object):
         self.client_ping_bg_stop({})
 
         script_client_file = self.install_script('site_wlan_disconnect.py',
-                                                 'site_wlan_dbus_setup.py')
+                                                 'site_wlan_dbus_setup.py',
+                                                 'constants.py')
         result = self.client.run('python "%s" "%s" "%d"' %
             (script_client_file,
             params.get('ssid', self.defssid),
@@ -823,7 +825,8 @@ class WiFiTest(object):
         args.append('--command ClientCheckProfileProperties')
 
         script_client_file = self.install_script('site_wlan_profiles.py',
-                                                 'site_wlan_dbus_setup.py')
+                                                 'site_wlan_dbus_setup.py',
+                                                 'constants.py')
 
         result = self.client.run('python "%s" %s' %
              (script_client_file, ' '.join(args))).stdout.rstrip()
@@ -839,7 +842,8 @@ class WiFiTest(object):
         args.append('--command ClientProfileDeleteEntry')
 
         script_client_file = self.install_script('site_wlan_profiles.py',
-                                                 'site_wlan_dbus_setup.py')
+                                                 'site_wlan_dbus_setup.py',
+                                                 'constants.py')
 
         result = self.client.run('python "%s" %s' %
              (script_client_file, ' '.join(args))).stdout.rstrip()
@@ -850,7 +854,8 @@ class WiFiTest(object):
         """ Wait for service transitions on client. """
 
         script_client_file = self.install_script('site_wlan_wait_state.py',
-                                                 'site_wlan_dbus_setup.py')
+                                                 'site_wlan_dbus_setup.py',
+                                                 'constants.py')
         args = []
 
         # Whether to print out all state transitions of watched services to

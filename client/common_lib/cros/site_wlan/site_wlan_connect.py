@@ -20,12 +20,17 @@ import optparse
 import sys
 import time
 import traceback
+
+# Once these are no longer copied to DUTs manually, this should become
+# from autotest_lib.client.common_lib.cros.site_wlan import constants
+import constants
+
 from site_wlan_wait_state import *
 
-FLIMFLAM_ERROR = FLIMFLAM + '.Error'
-FLIMFLAM_ERROR_INPROGRESS = FLIMFLAM_ERROR + '.InProgress'
-FLIMFLAM_ERROR_UNKNOWNMETHOD = FLIMFLAM_ERROR + '.UnknownMethod'
-FLIMFLAM_ERROR_ALREADYCONNECTED = FLIMFLAM_ERROR + '.AlreadyConnected'
+CONNECTION_MANAGER_ERROR = constants.CONNECTION_MANAGER + '.Error'
+ERROR_INPROGRESS = CONNECTION_MANAGER_ERROR + '.InProgress'
+ERROR_UNKNOWNMETHOD = CONNECTION_MANAGER_ERROR + '.UnknownMethod'
+ERROR_ALREADYCONNECTED = CONNECTION_MANAGER_ERROR + '.AlreadyConnected'
 connect_quirks = {}
 
 def convert_dbus_value(value):
@@ -58,9 +63,10 @@ class ConnectStateHandler(StateHandler):
     if start_time:
       self.run_start_time = start_time
 
-    self.bus.add_signal_receiver(self.SupplicantChangeCallback,
-                                 signal_name='PropertiesChanged',
-                                 dbus_interface=SUPPLICANT+'.Interface')
+    self.bus.add_signal_receiver(
+        self.SupplicantChangeCallback,
+        signal_name='PropertiesChanged',
+        dbus_interface=constants.SUPPLICANT_INTERFACE)
 
 
   def _GetMatchedService(self, service_list):
@@ -123,7 +129,8 @@ class ConnectStateHandler(StateHandler):
         path = manager.GetService(
             dbus.Dictionary(self.connection_settings, signature='sv'))
         service = dbus.Interface(
-            self.bus.get_object(FLIMFLAM, path), FLIMFLAM + '.Service')
+            self.bus.get_object(constants.CONNECTION_MANAGER, path),
+            constants.CONNECTION_MANAGER_SERVICE)
       except dbus.exceptions.DBusException, e:
         self.failure = ('GetService: DBus exception %s for settings %s' %
                         (e, self.connection_settings))
@@ -143,7 +150,7 @@ class ConnectStateHandler(StateHandler):
       try:
         service.Connect()
       except dbus.exceptions.DBusException, e:
-        if e.get_dbus_name() == FLIMFLAM_ERROR_INPROGRESS:
+        if e.get_dbus_name() == ERROR_INPROGRESS:
           self.Debug('Service was already in progress (state=%s)' %
                      service.GetProperties().get('State'))
           connect_quirks['in_progress'] = 1
@@ -163,7 +170,7 @@ class ConnectStateHandler(StateHandler):
     try:
       manager.RequestScan('wifi')
     except dbus.exceptions.DBusException, e:
-      if e.get_dbus_name() != FLIMFLAM_ERROR_INPROGRESS:
+      if e.get_dbus_name() != ERROR_INPROGRESS:
         raise
     self.scan_timeout = gobject.timeout_add(int(self.scan_retry*1000),
                                                   self.DoScan)
@@ -264,13 +271,13 @@ def main(argv):
     if handler.NextState():
       handler.RunLoop()
   except dbus.exceptions.DBusException, e:
-    if e.get_dbus_name() == FLIMFLAM_ERROR_INPROGRESS:
+    if e.get_dbus_name() == ERROR_INPROGRESS:
       connect_quirks['in_progress'] = 1
       print>>sys.stderr, 'Previous connect is still in progress!'
-    if e.get_dbus_name() == FLIMFLAM_ERROR_UNKNOWNMETHOD:
+    if e.get_dbus_name() == ERROR_UNKNOWNMETHOD:
       connect_quirks['lost_dbus_connect'] = 1
       print>>sys.stderr, 'Lost the service handle during Connect()!'
-    if e.get_dbus_name() != FLIMFLAM_ERROR_ALREADYCONNECTED:
+    if e.get_dbus_name() != ERROR_ALREADYCONNECTED:
       print 'FAIL(%s): ssid %s DBus exception %s' % (handler.Stage(), ssid, e)
       ErrExit(2)
   except Exception, e:

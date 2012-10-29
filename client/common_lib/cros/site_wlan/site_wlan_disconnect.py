@@ -7,6 +7,11 @@
 import dbus
 import sys
 import time
+
+# Once these are no longer copied to DUTs manually, this should become
+# from autotest_lib.client.common_lib.cros.site_wlan import constants
+import constants
+
 from site_wlan_dbus_setup import *
 
 ssid         = sys.argv[1]
@@ -14,8 +19,8 @@ wait_timeout = int(sys.argv[2])
 
 mprops = manager.GetProperties()
 for path in mprops["Services"]:
-    service = dbus.Interface(bus.get_object("org.chromium.flimflam", path),
-        "org.chromium.flimflam.Service")
+    service = dbus.Interface(bus.get_object(constants.CONNECTION_MANAGER, path),
+        constants.CONNECTION_MANAGER_SERVICE)
     sprops = service.GetProperties()
     if sprops.get("Name", None) != ssid:
         continue
