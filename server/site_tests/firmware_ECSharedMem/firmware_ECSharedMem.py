@@ -14,9 +14,6 @@ class firmware_ECSharedMem(FAFTSequence):
     """
     version = 1
 
-    # Delay for EC boot
-    EC_BOOT_DELAY = 0.5
-
 
     def setup(self):
         super(firmware_ECSharedMem, self).setup()
@@ -38,7 +35,7 @@ class firmware_ECSharedMem(FAFTSequence):
 
     def jump_checker(self):
         self.ec.send_command("sysjump RW")
-        time.sleep(self.EC_BOOT_DELAY)
+        time.sleep(self.delay.ec_boot_to_console)
         return self.shared_mem_checker()
 
 

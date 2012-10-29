@@ -73,12 +73,13 @@ class firmware_DevScreenTimeout(FAFTSequence):
                        self.fw_time_record['ctrl_d_boot'])
         logging.info('Estimated developer firmware timeout: %s' % got_timeout)
 
-        if got_timeout < self.DEV_SCREEN_TIMEOUT - self.TIMEOUT_MARGIN or \
-                got_timeout > self.DEV_SCREEN_TIMEOUT + self.TIMEOUT_MARGIN:
+        if (abs(got_timeout - self.delay.dev_screen_timeout) >
+                self.TIMEOUT_MARGIN):
             raise error.TestFail(
                     'The developer firmware timeout does not match our spec: ' \
                     'expected %.2f +/- %.2f but got %.2f.' %
-                    (self.DEV_SCREEN_TIMEOUT, self.TIMEOUT_MARGIN, got_timeout))
+                    (self.delay.dev_screen_timeout, self.TIMEOUT_MARGIN,
+                     got_timeout))
 
 
     def setup(self):

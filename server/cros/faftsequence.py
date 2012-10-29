@@ -15,6 +15,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.chrome_ec import ChromeEC
 from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
+from autotest_lib.server.cros.faft_delay_constants import FAFTDelayConstants
 from autotest_lib.server.cros.servo_test import ServoTest
 from autotest_lib.site_utils import lab_test
 from autotest_lib.site_utils.chromeos_test.common_util import ChromeOSTestError
@@ -85,38 +86,6 @@ class FAFTSequence(ServoTest):
     ROOTFS_MAP = {'a':'3', 'b':'5', '2':'3', '4':'5', '3':'3', '5':'5'}
     OTHER_KERNEL_MAP = {'a':'4', 'b':'2', '2':'4', '4':'2', '3':'4', '5':'2'}
     OTHER_ROOTFS_MAP = {'a':'5', 'b':'3', '2':'5', '4':'3', '3':'5', '5':'3'}
-
-    # Delay between power-on and firmware screen.
-    FIRMWARE_SCREEN_DELAY = 10
-    # Delay between passing firmware screen and text mode warning screen.
-    TEXT_SCREEN_DELAY = 20
-    # Delay for waiting beep done.
-    BEEP_DELAY = 1
-    # Delay of loading the USB kernel.
-    USB_LOAD_DELAY = 10
-    # Delay between USB plug-out and plug-in.
-    USB_PLUG_DELAY = 10
-    # Delay after running the 'sync' command.
-    SYNC_DELAY = 5
-    # Delay for waiting client to return before EC reboot
-    EC_REBOOT_DELAY = 1
-    # Delay for waiting client to full power off
-    FULL_POWER_OFF_DELAY = 30
-    # Delay between EC reboot and pressing power button
-    POWER_BTN_DELAY = 0.5
-    # Delay of EC software sync hash calculating time
-    SOFTWARE_SYNC_DELAY = 6
-    # Delay between EC boot and ChromeEC console functional
-    EC_BOOT_DELAY = 0.5
-    # Duration of holding cold_reset to reset device
-    COLD_RESET_DELAY = 0.1
-    # devserver startup time
-    DEVSERVER_DELAY = 10
-    # Delay of reseting TPM with factory install shim
-    RESET_TPM_WITH_INSTALL_SHIM_DELAY = 120
-
-    # The developer screen timeouts fit our spec.
-    DEV_SCREEN_TIMEOUT = 30
 
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
@@ -210,6 +179,8 @@ class FAFTSequence(ServoTest):
                 use_faft)
         if use_faft:
             self.client_attr = FAFTClientAttribute(
+                    self.faft_client.get_platform_name())
+            self.delay = FAFTDelayConstants(
                     self.faft_client.get_platform_name())
 
             if self.client_attr.chrome_ec:
@@ -471,7 +442,7 @@ class FAFTSequence(ServoTest):
                         image_base)
 
             # Wait devserver startup completely
-            time.sleep(self.DEVSERVER_DELAY)
+            time.sleep(self.delay.devserver)
             # devserver is a service running forever. If it is terminated,
             # some error does happen.
             if devserver.poll():
@@ -924,33 +895,33 @@ class FAFTSequence(ServoTest):
 
     def wait_fw_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         self.send_ctrl_d_to_dut()
 
 
     def wait_fw_screen_and_ctrl_u(self):
         """Wait for firmware warning screen and press Ctrl-U."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         self.send_ctrl_u_to_dut()
 
 
     def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
         """Wait for firmware warning screen and trigger recovery boot."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         self.send_enter_to_dut()
 
         # For Alex/ZGB, there is a dev warning screen in text mode.
         # Skip it by pressing Ctrl-D.
         if need_dev_transition:
-            time.sleep(self.TEXT_SCREEN_DELAY)
+            time.sleep(self.delay.legacy_text_screen)
             self.send_ctrl_d_to_dut()
 
 
     def wait_fw_screen_and_unplug_usb(self):
         """Wait for firmware warning screen and then unplug the servo USB."""
-        time.sleep(self.USB_LOAD_DELAY)
+        time.sleep(self.delay.load_usb)
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
-        time.sleep(self.USB_PLUG_DELAY)
+        time.sleep(self.delay.between_usb_plug)
 
 
     def wait_fw_screen_and_plug_usb(self):
@@ -961,7 +932,7 @@ class FAFTSequence(ServoTest):
 
     def wait_fw_screen_and_press_power(self):
         """Wait for firmware warning screen and press power button."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         # While the firmware screen, the power button probing loop sleeps
         # 0.25 second on every scan. Use the normal delay (1.2 second) for
         # power press.
@@ -970,19 +941,19 @@ class FAFTSequence(ServoTest):
 
     def wait_longer_fw_screen_and_press_power(self):
         """Wait for firmware screen without timeout and press power button."""
-        time.sleep(self.DEV_SCREEN_TIMEOUT)
+        time.sleep(self.delay.dev_screen_timeout)
         self.wait_fw_screen_and_press_power()
 
 
     def wait_fw_screen_and_close_lid(self):
         """Wait for firmware warning screen and close lid."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         self.servo.lid_close()
 
 
     def wait_longer_fw_screen_and_close_lid(self):
         """Wait for firmware screen without timeout and close lid."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         self.wait_fw_screen_and_close_lid()
 
 
@@ -1036,17 +1007,17 @@ class FAFTSequence(ServoTest):
         elif self.client_attr.chrome_ec:
             # Cold reset to clear EC_IN_RW signal
             self.servo.set('cold_reset', 'on')
-            time.sleep(self.COLD_RESET_DELAY)
+            time.sleep(self.delay.hold_cold_reset)
             self.servo.set('cold_reset', 'off')
-            time.sleep(self.EC_BOOT_DELAY)
+            time.sleep(self.delay.ec_boot_to_console)
             self.ec.send_command("reboot ap-off")
-            time.sleep(self.EC_BOOT_DELAY)
+            time.sleep(self.delay.ec_boot_to_console)
             self.ec.send_command("hostevent set 0x4000")
             self.servo.power_short_press()
         else:
             self.servo.enable_recovery_mode()
             self.cold_reboot()
-            time.sleep(self.EC_REBOOT_DELAY)
+            time.sleep(self.delay.ec_reboot_cmd)
             self.servo.disable_recovery_mode()
 
 
@@ -1076,12 +1047,12 @@ class FAFTSequence(ServoTest):
         Args:
           dev: True if switching into dev mode. Otherwise, False.
         """
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         if dev:
             self.send_ctrl_d_to_dut()
         else:
             self.send_enter_to_dut()
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.delay.firmware_screen)
         self.send_enter_to_dut()
 
 
@@ -1185,7 +1156,7 @@ class FAFTSequence(ServoTest):
                 (self.KERNEL_MAP[part], root_dev))
         # Safer to sync and wait until the cgpt status written to the disk.
         self.faft_client.run_shell_command('sync')
-        time.sleep(self.SYNC_DELAY)
+        time.sleep(self.delay.sync)
 
 
     def warm_reboot(self):
@@ -1210,7 +1181,7 @@ class FAFTSequence(ServoTest):
             self.servo.set('pwr_button', 'press')
             self.servo.set('cold_reset', 'on')
             self.servo.set('cold_reset', 'off')
-            time.sleep(self.POWER_BTN_DELAY)
+            time.sleep(self.delay.ec_boot_to_pwr_button)
             self.servo.set('pwr_button', 'release')
         elif self.check_ec_capability(suppress_warning=True):
             # We don't use servo.cold_reset() here because software sync is
@@ -1226,7 +1197,7 @@ class FAFTSequence(ServoTest):
             #    press.
             self.servo.set('cold_reset', 'on')
             self.servo.set('cold_reset', 'off')
-            time.sleep(self.POWER_BTN_DELAY)
+            time.sleep(self.delay.ec_boot_to_pwr_button)
             self.servo.power_short_press()
         else:
             self.servo.cold_reset()
@@ -1238,7 +1209,7 @@ class FAFTSequence(ServoTest):
         This is the default reboot action on FAFT.
         """
         self.faft_client.run_shell_command('sync')
-        time.sleep(self.SYNC_DELAY)
+        time.sleep(self.delay.sync)
         self.warm_reboot()
 
 
@@ -1248,7 +1219,7 @@ class FAFTSequence(ServoTest):
         This reboot action is used to reset EC for recovery mode.
         """
         self.faft_client.run_shell_command('sync')
-        time.sleep(self.SYNC_DELAY)
+        time.sleep(self.delay.sync)
         self.cold_reboot()
 
 
@@ -1262,12 +1233,12 @@ class FAFTSequence(ServoTest):
                   cold: Cold/hard reboot.
         """
         self.faft_client.run_shell_command('sync')
-        time.sleep(self.SYNC_DELAY)
+        time.sleep(self.delay.sync)
         # Since EC reboot happens immediately, delay before actual reboot to
         # allow FAFT client returning.
         self.faft_client.run_shell_command('(sleep %d; ectool reboot_ec %s)&' %
-                                           (self.EC_REBOOT_DELAY, args))
-        time.sleep(self.EC_REBOOT_DELAY)
+                                           (self.delay.ec_reboot_cmd, args))
+        time.sleep(self.delay.ec_reboot_cmd)
         self.check_lid_and_power_on()
 
 
@@ -1283,7 +1254,7 @@ class FAFTSequence(ServoTest):
             self.enable_dev_mode_and_reboot()
         time.sleep(self.SYNC_DELAY)
         self.enable_rec_mode_and_reboot()
-        time.sleep(self.RESET_TPM_WITH_INSTALL_SHIM_DELAY)
+        time.sleep(self.delay.install_shim_done)
         self.warm_reboot()
 
 
@@ -1291,7 +1262,7 @@ class FAFTSequence(ServoTest):
         """Shutdown the device by pressing power button and power on again."""
         # Press power button to trigger Chrome OS normal shutdown process.
         self.servo.power_normal_press()
-        time.sleep(self.FULL_POWER_OFF_DELAY)
+        time.sleep(self.delay.shutdown)
         # Short press power button to boot DUT again.
         self.servo.power_short_press()
 
@@ -1304,7 +1275,7 @@ class FAFTSequence(ServoTest):
         necessary.
         """
         if self.servo.get("lid_open") == "no":
-            time.sleep(self.SOFTWARE_SYNC_DELAY)
+            time.sleep(self.delay.software_sync)
             self.servo.power_short_press()
 
 

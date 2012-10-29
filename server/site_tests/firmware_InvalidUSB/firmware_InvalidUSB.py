@@ -41,7 +41,7 @@ class firmware_InvalidUSB(FAFTSequence):
                 'The USB image is surely unable to boot. Restore it and try...')
 
         self.restore_usb()
-        time.sleep(self.SYNC_DELAY)
+        time.sleep(self.delay.sync)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
 
