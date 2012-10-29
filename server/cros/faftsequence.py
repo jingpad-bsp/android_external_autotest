@@ -70,8 +70,6 @@ class FAFTSequence(ServoTest):
         _faft_template: The default FAFT_STEP of each step. The actions would
             be over-written if the registered FAFT_SEQUENCE is valid.
         _faft_sequence: The registered FAFT_SEQUENCE.
-        _customized_key_commands: The dict of the customized key commands,
-            including Ctrl-D, Ctrl-U, and Enter.
         _install_image_path: The URL or the path on the host to the Chrome OS
             test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
@@ -96,11 +94,6 @@ class FAFTSequence(ServoTest):
     _faft_template = {}
     _faft_sequence = ()
 
-    _customized_key_commands = {
-        'ctrl_d': None,
-        'ctrl_u': None,
-        'enter': None,
-    }
     _install_image_path = None
     _firmware_update = False
     _trapped_in_recovery_reason = 0
@@ -152,14 +145,6 @@ class FAFTSequence(ServoTest):
             match = re.search("^(\w+)=(.+)", arg)
             if match:
                 args[match.group(1)] = match.group(2)
-
-        # Keep the arguments which will be used later.
-        for key in self._customized_key_commands:
-            key_cmd = key + '_cmd'
-            if key_cmd in args:
-                self._customized_key_commands[key] = args[key_cmd]
-                logging.info('Customized %s key command: %s' %
-                             (key, args[key_cmd]))
         if 'image' in args:
             self._install_image_path = args['image']
             logging.info('Install Chrome OS test image path: %s' %
@@ -183,6 +168,14 @@ class FAFTSequence(ServoTest):
 
             if self.client_attr.chrome_ec:
                 self.ec = ChromeEC(self.servo)
+
+            if not self.client_attr.has_keyboard:
+                # The environment variable USBKM232_UART_DEVICE should point
+                # to the USB-KM232 UART device.
+                if ('USBKM232_UART_DEVICE' not in os.environ or
+                        not os.path.exists(os.environ['USBKM232_UART_DEVICE'])):
+                    raise error.TestError('Must set a valid environment '
+                            'variable USBKM232_UART_DEVICE.')
 
             # Setting up key matrix mapping
             self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
@@ -842,9 +835,9 @@ class FAFTSequence(ServoTest):
 
     def press_ctrl_d(self):
         """Send Ctrl-D key to DUT."""
-        if self._customized_key_commands['ctrl_d']:
-            logging.info('running the customized Ctrl-D key command')
-            os.system(self._customized_key_commands['ctrl_d'])
+        if not self.client_attr.has_keyboard:
+            logging.info('Running usbkm232-ctrld...')
+            os.system('usbkm232-ctrld')
         else:
             self.servo.ctrl_d()
 
@@ -856,9 +849,9 @@ class FAFTSequence(ServoTest):
           error.TestError: if a non-Chrome EC device or no Ctrl-U command given
                            on a no-build-in-keyboard device.
         """
-        if self._customized_key_commands['ctrl_u']:
-            logging.info('running the customized Ctrl-U key command')
-            os.system(self._customized_key_commands['ctrl_u'])
+        if not self.client_attr.has_keyboard:
+            logging.info('Running usbkm232-ctrlu...')
+            os.system('usbkm232-ctrlu')
         elif self.check_ec_capability(['keyboard'], suppress_warning=True):
             self.ec.key_down('<ctrl_l>')
             self.ec.key_down('u')
@@ -874,9 +867,9 @@ class FAFTSequence(ServoTest):
 
     def press_enter(self):
         """Send Enter key to DUT."""
-        if self._customized_key_commands['enter']:
-            logging.info('running the customized Enter key command')
-            os.system(self._customized_key_commands['enter'])
+        if not self.client_attr.has_keyboard:
+            logging.info('Running usbkm232-enter...')
+            os.system('usbkm232-enter')
         else:
             self.servo.enter_key()
 

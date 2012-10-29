@@ -67,14 +67,6 @@ class firmware_FAFTSetup(FAFTSequence):
             press_action: A callable that would press the keys when called.
             expected_output: Expected output from "showkey".
         """
-        if not self.client_attr.has_keyboard:
-            # Check all customized key commands are provided
-            if not all([self._customized_key_commands['ctrl_d'],
-                        self._customized_key_commands['ctrl_u'],
-                        self._customized_key_commands['enter']]):
-                logging.error("No customized key command assigned.")
-                return False
-
         # Stop UI so that key presses don't go to X.
         self.faft_client.run_shell_command("stop ui")
         # Press the keys

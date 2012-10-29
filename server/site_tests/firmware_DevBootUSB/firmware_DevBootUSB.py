@@ -67,11 +67,6 @@ class firmware_DevBootUSB(FAFTSequence):
             raise error.TestError("TEST IT MANUALLY! This test can't be "
                     "automated on non-Chrome-EC devices.")
 
-        if (not self.client_attr.has_keyboard and
-                not self._customized_key_commands['ctrl_u']):
-            raise error.TestError("Should specify the ctrl_u_cmd argument "
-                    "on no-build-in-keyboard devices.")
-
         self.register_faft_sequence((
             {   # Step 1, expected developer mode, set dev_boot_usb to 0
                 'state_checker': (self.dev_boot_usb_checker, False),
