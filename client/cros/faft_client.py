@@ -16,6 +16,7 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 
 from saft import cgpt_state, chromeos_interface, flashrom_handler
 from saft import kernel_handler, saft_flashrom_util, tpm_handler
+from firmware_updater import FirmwareUpdater
 
 
 def allow_multiple_section_input(image_operator):
@@ -65,6 +66,7 @@ class FAFTClient(object):
         _ec_image: An object to automate EC image for autest.
         _kernel_handler: An object to provide kernel related actions.
         _tpm_handler: An object to control TPM device.
+        _updater: An object to update firmware.
         _temp_path: Path of a temp directory.
         _keys_path: Path of a directory, keys/, in temp directory.
         _work_path: Path of a directory, work/, in temp directory.
@@ -116,6 +118,9 @@ class FAFTClient(object):
 
         self._cgpt_state = cgpt_state.CgptState(
                 'SHORT', self._chromeos_interface, self.get_root_dev())
+
+        self._updater = FirmwareUpdater(self._chromeos_interface)
+
 
         # Initialize temporary directory path
         self._temp_path = '/var/tmp/faft/autest'
@@ -717,166 +722,6 @@ class FAFTClient(object):
         return self._cgpt_state.get_step()
 
 
-    def setup_firmwareupdate_temp_dir(self, shellball=None):
-        """Setup temporary directory.
-
-        Devkeys are copied to _key_path. Then, shellball (default:
-        /usr/sbin/chromeos-firmwareupdate) is extracted to _work_path.
-
-        Args:
-            shellball: Path of shellball.
-        """
-
-        self.cleanup_firmwareupdate_temp_dir()
-
-        os.mkdir(self._temp_path)
-        os.chdir(self._temp_path)
-
-        os.mkdir(self._work_path)
-        shutil.copytree('/usr/share/vboot/devkeys/', self._keys_path)
-
-        shellball_path = os.path.join(self._temp_path,
-                                      'chromeos-firmwareupdate')
-
-        if shellball:
-            shutil.copyfile(shellball, shellball_path)
-        else:
-            shutil.copyfile('/usr/sbin/chromeos-firmwareupdate',
-                            shellball_path)
-        self.run_shell_command(
-            'sh %s --sb_extract %s' % (shellball_path, self._work_path))
-
-
-    def retrieve_shellball_fwid(self):
-        """Retrieve shellball's fwid.
-
-        This method should be called after setup_firmwareupdate_temp_dir.
-
-        Returns:
-            Shellball's fwid.
-        """
-        self.run_shell_command('dump_fmap -x %s %s' %
-                                  (os.path.join(self._work_path, 'bios.bin'),
-                                   'RW_FWID_A'))
-
-        [fwid] = self.run_shell_command_get_output(
-                "cat RW_FWID_A | tr '\\0' '\\t' | cut -f1")
-
-        return fwid
-
-
-    def cleanup_firmwareupdate_temp_dir(self):
-        """Cleanup temporary directory."""
-        if os.path.isdir(self._temp_path):
-            shutil.rmtree(self._temp_path)
-
-
-    def repack_firmwareupdate_shellball(self, append):
-        """Repack shellball with new fwid.
-
-           New fwid follows the rule: [orignal_fwid]-[append].
-
-        Args:
-            append: use for new fwid naming.
-        """
-        shutil.copy('/usr/sbin/chromeos-firmwareupdate', '%s' %
-            os.path.join(self._temp_path,
-                         'chromeos-firmwareupdate-%s' % append))
-
-        self.run_shell_command('sh %s  --sb_repack %s' % (
-            os.path.join(self._temp_path,
-                         'chromeos-firmwareupdate-%s' % append),
-            self._work_path))
-
-        args = ['-i']
-        args.append('"s/TARGET_FWID=\\"\\(.*\\)\\"/TARGET_FWID=\\"\\1.%s\\"/g"'
-                    % append)
-        args.append('%s'
-                    % os.path.join(self._temp_path,
-                                   'chromeos-firmwareupdate-%s' % append))
-        cmd = 'sed %s' % ' '.join(args)
-        self.run_shell_command(cmd)
-
-        args = ['-i']
-        args.append('"s/TARGET_UNSTABLE=\\".*\\"/TARGET_UNSTABLE=\\"\\"/g"')
-        args.append('%s'
-                    % os.path.join(self._temp_path,
-                                   'chromeos-firmwareupdate-%s' % append))
-        cmd = 'sed %s' % ' '.join(args)
-        self.run_shell_command(cmd)
-
-
-    def resign_firmware(self, version):
-        """Resign firmware with version.
-
-        Args:
-            version: new firmware version number.
-        """
-        args = [os.path.join(self._work_path, 'bios.bin')]
-        args.append(os.path.join(self._temp_path, 'output.bin'))
-        args.append(os.path.join(self._keys_path, 'firmware_data_key.vbprivk'))
-        args.append(os.path.join(self._keys_path, 'firmware.keyblock'))
-        args.append(os.path.join(self._keys_path,
-                                 'dev_firmware_data_key.vbprivk'))
-        args.append(os.path.join(self._keys_path, 'dev_firmware.keyblock'))
-        args.append(os.path.join(self._keys_path, 'kernel_subkey.vbpubk'))
-        args.append('%d' % version)
-        args.append('1')
-        cmd = '/usr/share/vboot/bin/resign_firmwarefd.sh %s' % ' '.join(args)
-        self.run_shell_command(cmd)
-
-        shutil.copyfile('%s' % os.path.join(self._temp_path, 'output.bin'),
-                        '%s' % os.path.join(self._work_path, 'bios.bin'))
-
-
-    def run_firmware_autoupdate(self, append):
-        """Do firmwareupdate with autoupdate mode using new shellball.
-
-        Args:
-            append: decide which shellball to use with format
-                    chromeos-firmwareupdate-[append]
-        """
-        self.run_shell_command(
-            '/bin/sh %s --mode autoupdate '
-            '--noupdate_ec --nocheck_rw_compatible'
-                % os.path.join(self._temp_path,
-                           'chromeos-firmwareupdate-%s' % append))
-
-
-    def run_firmware_factory_install(self):
-        """ Do firmwareupdate with factory_install mode using new shellball."""
-        self.run_shell_command(
-            '/bin/sh %s --mode factory_install --noupdate_ec'
-            % os.path.join(self._temp_path, 'chromeos-firmwareupdate'))
-
-
-    def run_firmware_bootok(self, append):
-        """Do bootok mode using new shellball.
-
-           Copy firmware B to firmware A if reboot success.
-        """
-        self.run_shell_command(
-            '/bin/sh %s --mode bootok' % os.path.join(self._temp_path,
-                    'chromeos-firmwareupdate-%s' % append))
-
-
-    def run_firmware_recovery(self):
-        """Recovery to original shellball."""
-        self.run_shell_command(
-            '/bin/sh %s --mode recovery --noupdate_ec --nocheck_rw_compatible'
-                % os.path.join(self._temp_path, 'chromeos-firmwareupdate'))
-
-
-    def get_temp_path(self):
-        """Get temporary directory path."""
-        return self._temp_path
-
-
-    def get_keys_path(self):
-        """Get keys path in temporary directory."""
-        return self._keys_path
-
-
     def resign_kernel_with_keys(self, section, key_path=None):
         """Resign kernel with temporary key."""
         self._kernel_handler.resign_kernel(section, key_path)
@@ -885,6 +730,93 @@ class FAFTClient(object):
     def create_temp_dir(self, prefix='backup_'):
         """Create a temporary directory and return the path."""
         return tempfile.mkdtemp(prefix=prefix)
+
+
+    # for updater
+    def setup_updater(self, shellball=None):
+        """Setup the updater.
+
+        Args:
+            shellball: Path of provided shellball. Use default shellball
+                if None,
+        """
+        self._updater.setup(self._chromeos_interface, shellball)
+
+
+    def cleanup_updater(self):
+        self._updater.cleanup_temp_dir()
+
+
+    def retrieve_updater_fwid(self):
+        """Retrieve shellball's fwid.
+
+        This method should be called after updater_setup.
+
+        Returns:
+            Shellball's fwid.
+        """
+        return self._updater.retrieve_fwid()
+
+
+    def resign_updater_firmware(self, version):
+        """Resign firmware with version.
+
+        Args:
+            version: new version number.
+        """
+        self._updater.resign_firmware(version)
+
+
+    def repack_updater_shellball(self, append):
+        """Repack shellball with new fwid.
+
+        Args:
+            append: use for new fwid naming.
+        """
+        self._updater.repack_shellball(append)
+
+
+    def run_autoupdate(self, append):
+        """Run chromeos-firmwareupdate with autoupdate mode."""
+        options = ['--noupdate_ec', '--nocheck_rw_compatible']
+        self._updater.run_firmwareupdate(mode='autoupdate',
+                                         updater_append=append,
+                                         options=options)
+
+
+    def run_factory_install(self):
+        """Run chromeos-firmwareupdate with factory_install mode."""
+        options = ['--noupdate_ec']
+        self._updater.run_firmwareupdate(mode='factory_install',
+                                         options=options)
+
+
+    def run_bootok(self, append):
+        """Run chromeos-firmwareupdate with bootok mode."""
+        self._updater.run_firmwareupdate(mode='bootok',
+                                         updater_append=append)
+
+
+    def run_recovery(self):
+        """Run chromeos-firmwareupdate with recovery mode."""
+        options = ['--noupdate_ec', '--nocheck_rw_compatible']
+        self._updater.run_firmwareupdate(mode='recovery',
+                                         options=options)
+
+
+    def get_updater_temp_path(self):
+        """Get updater's temp directory path."""
+        return self._updater.get_temp_path()
+
+
+    def get_updater_keys_path(self):
+        """Get updater's keys directory path."""
+        return self._updater.get_keys_path()
+
+
+    def get_updater_work_path(self):
+        """Get updater's work directory path."""
+        return self._updater.get_work_path()
 
 
     def cleanup(self):

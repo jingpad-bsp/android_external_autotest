@@ -24,17 +24,18 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
         host.send_file(os.path.join(
                             '~/trunk/src/platform/vboot_reference/scripts',
                             'keygeneration/common.sh'),
-                       os.path.join(self.faft_client.get_temp_path(),
+                       os.path.join(self.faft_client.get_updater_temp_path(),
                                      'common.sh'))
         host.send_file(os.path.join('~/trunk/src/third_party/autotest/files/',
                                     'server/site_tests',
                                     'firmware_UpdateFirmwareDataKeyVersion',
                                     'files/make_keys.sh'),
-                       os.path.join(self.faft_client.get_temp_path(),
+                       os.path.join(self.faft_client.get_updater_temp_path(),
                                     'make_keys.sh'))
 
         self.faft_client.run_shell_command('/bin/bash %s %s' % (
-             os.path.join(self.faft_client.get_temp_path(), 'make_keys.sh'),
+             os.path.join(self.faft_client.get_updater_temp_path(),
+                          'make_keys.sh'),
              self._update_version))
 
 
@@ -53,7 +54,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
 
     def check_version_and_run_recovery(self):
         self.check_firmware_datakey_version(self._update_version)
-        self.faft_client.run_firmware_recovery()
+        self.faft_client.run_recovery()
 
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
@@ -66,11 +67,11 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
     def setup(self, host=None):
         self.backup_firmware()
         updater_path = self.setup_firmwareupdate_shellball(self.use_shellball)
-        self.faft_client.setup_firmwareupdate_temp_dir(updater_path)
+        self.faft_client.setup_updater(updater_path)
 
         # Update firmware if needed
         if updater_path:
-            self.faft_client.run_firmware_factory_install()
+            self.faft_client.run_factory_install()
             self.sync_and_warm_reboot()
             self.wait_for_client_offline()
             self.wait_for_client()
@@ -78,7 +79,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
         super(firmware_UpdateFirmwareDataKeyVersion, self).setup()
         self.setup_usbkey(usbkey=True, host=True, install_shim=True)
         self.setup_dev_mode(dev_mode=False)
-        self._fwid = self.faft_client.retrieve_shellball_fwid()
+        self._fwid = self.faft_client.retrieve_updater_fwid()
 
         actual_ver = self.faft_client.get_firmware_datakey_version('a')
         logging.info('Origin version is %s', actual_ver)
@@ -87,12 +88,12 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
             self._update_version)
 
         self.resign_datakey_version(host)
-        self.faft_client.resign_firmware(1)
-        self.faft_client.repack_firmwareupdate_shellball('test')
+        self.faft_client.resign_updater_firmware(1)
+        self.faft_client.repack_updater_shellball('test')
 
 
     def cleanup(self):
-        self.faft_client.cleanup_firmwareupdate_temp_dir()
+        self.faft_client.cleanup_updater()
         self.restore_firmware()
         self.invalidate_firmware_setup()
         super(firmware_UpdateFirmwareDataKeyVersion, self).cleanup()
@@ -108,7 +109,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
                     'fwid': self._fwid
                 }),
                 'userspace_action': (
-                     self.faft_client.run_firmware_autoupdate,
+                     self.faft_client.run_autoupdate,
                      'test'
                 )
             },
@@ -117,7 +118,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
                     'mainfw_act': 'B',
                     'tried_fwb': '1'
                 }),
-                'userspace_action': (self.faft_client.run_firmware_bootok,
+                'userspace_action': (self.faft_client.run_bootok,
                                      'test')
             },
             {   # Step3, Check firmware and TPM version, then recovery.

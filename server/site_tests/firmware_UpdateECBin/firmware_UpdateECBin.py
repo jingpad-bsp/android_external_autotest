@@ -54,8 +54,8 @@ class firmware_UpdateECBin(FAFTSequence):
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
 
-        temp_path = self.faft_client.get_temp_path()
-        self.faft_client.setup_firmwareupdate_temp_dir()
+        temp_path = self.faft_client.get_updater_temp_path()
+        self.faft_client.setup_updater()
 
         self.old_bios_path = os.path.join(temp_path, 'old_bios.bin')
         self.faft_client.dump_firmware(self.old_bios_path)
@@ -66,6 +66,7 @@ class firmware_UpdateECBin(FAFTSequence):
 
     def cleanup(self):
         self.restore_firmware()
+        self.faft_client.cleanup_updater()
         super(firmware_UpdateECBin, self).cleanup()
 
 

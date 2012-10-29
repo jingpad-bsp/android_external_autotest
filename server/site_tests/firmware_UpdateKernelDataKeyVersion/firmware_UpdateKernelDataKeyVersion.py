@@ -34,27 +34,25 @@ class firmware_UpdateKernelDataKeyVersion(FAFTSequence):
         host.send_file(os.path.join(
                            '~/trunk/src/platform/vboot_reference/scripts',
                            'keygeneration/common.sh'),
-                       os.path.join(self.faft_client.get_temp_path(),
+                       os.path.join(self.faft_client.get_updater_temp_path(),
                                     'common.sh'))
         host.send_file(os.path.join('~/trunk/src/third_party/autotest/files/',
                                     'server/site_tests',
                                     'firmware_UpdateKernelDataKeyVersion',
                                     'files/make_keys.sh'),
-                       os.path.join(self.faft_client.get_temp_path(),
+                       os.path.join(self.faft_client.get_updater_temp_path(),
                                     'make_keys.sh'))
-        # TODO(ctchang) Delete this after adding dumpRSAPublicKey to image
-        host.send_file(os.path.join('/usr/bin/dumpRSAPublicKey'),
-                       '/usr/local/sbin/firmware/saft/dumpRSAPublicKey')
 
         self.faft_client.run_shell_command('/bin/bash %s %s' % (
-            os.path.join(self.faft_client.get_temp_path(), 'make_keys.sh'),
+            os.path.join(self.faft_client.get_updater_temp_path(),
+                         'make_keys.sh'),
             self._update_version))
 
 
     def modify_kernel_b_and_set_cgpt_priority(self, delta, target_dev):
         if delta == 1:
             self.faft_client.resign_kernel_with_keys(
-                'b', self.faft_client.get_keys_path())
+                'b', self.faft_client.get_updater_keys_path())
         elif delta == -1:
             self.check_kernel_datakey_version(self._update_version)
             self.faft_client.resign_kernel_with_keys('b')
@@ -77,12 +75,12 @@ class firmware_UpdateKernelDataKeyVersion(FAFTSequence):
         logging.info('KERN-B will update to version %s', self._update_version)
 
         self.setup_kernel('a')
-        self.faft_client.setup_firmwareupdate_temp_dir()
+        self.faft_client.setup_updater()
         self.resign_kernel_datakey_version(host)
 
 
     def cleanup(self):
-        self.faft_client.cleanup_firmwareupdate_temp_dir()
+        self.faft_client.cleanup_updater()
         super(firmware_UpdateKernelDataKeyVersion, self).cleanup()
 
 
