@@ -71,7 +71,7 @@ class FAFTSequence(ServoTest):
             be over-written if the registered FAFT_SEQUENCE is valid.
         _faft_sequence: The registered FAFT_SEQUENCE.
         _customized_key_commands: The dict of the customized key commands,
-            including Ctrl-D, Ctrl-U, Enter, Space, and recovery reboot.
+            including Ctrl-D, Ctrl-U, Enter, and recovery reboot.
         _install_image_path: The URL or the path on the host to the Chrome OS
             test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
@@ -101,7 +101,6 @@ class FAFTSequence(ServoTest):
         'ctrl_u': None,
         'enter': None,
         'rec_reboot': None,
-        'space': None,
     }
     _install_image_path = None
     _firmware_update = False
@@ -842,7 +841,7 @@ class FAFTSequence(ServoTest):
             self.ec.send_command("flashwp disable")
 
 
-    def send_ctrl_d_to_dut(self):
+    def press_ctrl_d(self):
         """Send Ctrl-D key to DUT."""
         if self._customized_key_commands['ctrl_d']:
             logging.info('running the customized Ctrl-D key command')
@@ -851,7 +850,7 @@ class FAFTSequence(ServoTest):
             self.servo.ctrl_d()
 
 
-    def send_ctrl_u_to_dut(self):
+    def press_ctrl_u(self):
         """Send Ctrl-U key to DUT.
 
         Raises:
@@ -874,7 +873,7 @@ class FAFTSequence(ServoTest):
                     "Should specify the ctrl_u_cmd argument.")
 
 
-    def send_enter_to_dut(self):
+    def press_enter(self):
         """Send Enter key to DUT."""
         if self._customized_key_commands['enter']:
             logging.info('running the customized Enter key command')
@@ -883,38 +882,28 @@ class FAFTSequence(ServoTest):
             self.servo.enter_key()
 
 
-    def send_space_to_dut(self):
-        """Send Space key to DUT."""
-        if self._customized_key_commands['space']:
-            logging.info('running the customized Space key command')
-            os.system(self._customized_key_commands['space'])
-        else:
-            # Send the alternative key combinaton of space key to servo.
-            self.servo.ctrl_refresh_key()
-
-
     def wait_fw_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
         time.sleep(self.delay.firmware_screen)
-        self.send_ctrl_d_to_dut()
+        self.press_ctrl_d()
 
 
     def wait_fw_screen_and_ctrl_u(self):
         """Wait for firmware warning screen and press Ctrl-U."""
         time.sleep(self.delay.firmware_screen)
-        self.send_ctrl_u_to_dut()
+        self.press_ctrl_u()
 
 
     def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
         """Wait for firmware warning screen and trigger recovery boot."""
         time.sleep(self.delay.firmware_screen)
-        self.send_enter_to_dut()
+        self.press_enter()
 
         # For Alex/ZGB, there is a dev warning screen in text mode.
         # Skip it by pressing Ctrl-D.
         if need_dev_transition:
             time.sleep(self.delay.legacy_text_screen)
-            self.send_ctrl_d_to_dut()
+            self.press_ctrl_d()
 
 
     def wait_fw_screen_and_unplug_usb(self):
@@ -1049,11 +1038,11 @@ class FAFTSequence(ServoTest):
         """
         time.sleep(self.delay.firmware_screen)
         if dev:
-            self.send_ctrl_d_to_dut()
+            self.press_ctrl_d()
         else:
-            self.send_enter_to_dut()
+            self.press_enter()
         time.sleep(self.delay.firmware_screen)
-        self.send_enter_to_dut()
+        self.press_enter()
 
 
     def enable_keyboard_dev_mode(self):

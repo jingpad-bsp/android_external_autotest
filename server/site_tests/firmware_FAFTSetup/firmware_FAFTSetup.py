@@ -98,8 +98,8 @@ class firmware_FAFTSetup(FAFTSequence):
     def keyboard_checker(self):
         """Press 'd', Ctrl, ENTER by servo and check from DUT."""
         def keypress():
-            Timer(2, self.send_ctrl_d_to_dut).start()
-            Timer(4, self.send_enter_to_dut).start()
+            Timer(2, self.press_ctrl_d).start()
+            Timer(4, self.press_enter).start()
 
         expected_output = [
                 "keycode  29 press",

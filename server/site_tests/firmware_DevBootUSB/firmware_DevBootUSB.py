@@ -43,7 +43,7 @@ class firmware_DevBootUSB(FAFTSequence):
         # If the above Ctrl-U doesn't work, the firmware beeps twice.
         # Should wait the beep done before pressing Ctrl-D.
         time.sleep(self.delay.beep)
-        self.send_ctrl_d_to_dut()
+        self.press_ctrl_d()
 
 
     def ensure_internal_device_boot(self):

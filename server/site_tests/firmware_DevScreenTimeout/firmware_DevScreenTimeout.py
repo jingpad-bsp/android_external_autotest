@@ -39,7 +39,7 @@ class firmware_DevScreenTimeout(FAFTSequence):
     def ctrl_d_repeatedly(self):
         """Press Ctrl-D repeatedly."""
         for i in range(self.CTRL_D_REPEAT_COUNT):
-            self.send_ctrl_d_to_dut()
+            self.press_ctrl_d_()
             time.sleep(self.CTRL_D_REPEAT_DELAY)
 
 
