@@ -61,8 +61,8 @@ GV.TLBR = 'top_left_to_bottom_right'
 GV.HORIZONTAL_DIRECTIONS = [GV.HORIZONTAL, GV.LR, GV.RL]
 GV.VERTICAL_DIRECTIONS = [GV.VERTICAL, GV.TB, GV.BT]
 GV.DIAGONAL_DIRECTIONS = [GV.DIAGONAL, GV.BLTR, GV.BRTL, GV.TRBL, GV.TLBR]
-GV.GESTURE_DIRECTIONS = [GV.HORIZONTAL_DIRECTIONS + GV.VERTICAL_DIRECTIONS +
-                         GV.DIAGONAL_DIRECTIONS]
+GV.GESTURE_DIRECTIONS = (GV.HORIZONTAL_DIRECTIONS + GV.VERTICAL_DIRECTIONS +
+                         GV.DIAGONAL_DIRECTIONS)
 # constants about locations
 GV.TL = 'top_left'
 GV.TR = 'top_right'
@@ -73,6 +73,8 @@ GV.BS = 'bottom_side'
 GV.LS = 'left_side'
 GV.RS = 'right_side'
 GV.CENTER = 'center'
+GV.GESTURE_LOCATIONS = [GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
+                        GV.CENTER]
 # constants about pinch to zoom
 GV.ZOOM_IN = 'zoom_in'
 GV.ZOOM_OUT = 'zoom_out'
