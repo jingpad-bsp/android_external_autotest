@@ -94,6 +94,13 @@ class LoggingFile(object):
     File-like object that will receive messages pass them to the logging
     infrastructure in an appropriate way.
     """
+
+    # This object is used to replace stdout and stderr, but doesn't expose
+    # the same interface as a file object. To work around the most troublesome
+    # part of the API, |fileno()|, we need to be able to provide a fake fd that
+    # can pass basic checks.
+    _fake_fds = os.pipe()
+
     def __init__(self, prefix='', level=logging.DEBUG):
         """
         @param prefix - The prefix for each line logged by this object.
@@ -139,6 +146,15 @@ class LoggingFile(object):
     @do_not_report_as_logging_caller
     def flush(self):
         self._flush_buffer()
+
+
+    @do_not_report_as_logging_caller
+    def fileno(self):
+        # We return the read end of the pipe here becauase if we return the
+        # write end, one can make the reasonable assumption that writing to the
+        # fd is the same as stdout.write(). As we aren't reading from the other
+        # end of the pipe, writing to this fd should be an error.
+        return self._fake_fds[0]
 
 
 class _StreamManager(object):
