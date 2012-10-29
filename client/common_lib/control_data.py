@@ -4,8 +4,7 @@
 import compiler, textwrap, types
 
 
-REQUIRED_VARS = set(['author', 'doc', 'name', 'time', 'test_class',
-                     'test_category', 'test_type'])
+REQUIRED_VARS = set(['author', 'doc', 'name', 'time', 'test_type'])
 
 class ControlVariableException(Exception):
     pass
@@ -20,6 +19,8 @@ class ControlData(object):
         self.run_verify = True
         self.sync_count = 1
         self.test_parameters = set()
+        self.test_category = ''
+        self.test_class = ''
 
         diff = REQUIRED_VARS - set(vars)
         if len(diff) > 0:
