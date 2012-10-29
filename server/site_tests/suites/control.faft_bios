@@ -48,7 +48,6 @@ TESTS_ON_BOTH_MODES = [
     ('firmware_RollbackFirmware', {}),
     ('firmware_RollbackKernel', {}),
     ('firmware_RONormalBoot', {}),
-    ('firmware_UpdateECBin', {}),
 ]
 
 
