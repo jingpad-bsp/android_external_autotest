@@ -9,8 +9,7 @@ import os
 import common_util
 import test_conf as conf
 
-# Include some constants
-execfile('firmware_constants.py', globals())
+from firmware_constants import GV
 
 
 class RobotWrapper:
@@ -19,16 +18,16 @@ class RobotWrapper:
     def __init__(self, board):
         self.board = board
         self.robot_action_dict = {
-                LR: (0.0, 0.5, 1.0, 0.5),
-                RL: (1.0, 0.5, 0.0, 0.5),
-                TB: (0.5, 0.0, 0.5, 1.0),
-                BT: (0.5, 1.0, 0.5, 0.0),
-                BLTR: (0.1, 0.9, 0.9, 0.1),
-                TRBL: (0.9, 0.1, 0.1, 0.9),
-                BRTL: (0.9, 0.9, 0.1, 0.1),
-                TLBR: (0.1, 0.1, 0.9, 0.9),
-                SLOW: 33,
-                NORMAL: 100,
+                GV.LR: (0.0, 0.5, 1.0, 0.5),
+                GV.RL: (1.0, 0.5, 0.0, 0.5),
+                GV.TB: (0.5, 0.0, 0.5, 1.0),
+                GV.BT: (0.5, 1.0, 0.5, 0.0),
+                GV.BLTR: (0.1, 0.9, 0.9, 0.1),
+                GV.TRBL: (0.9, 0.1, 0.1, 0.9),
+                GV.BRTL: (0.9, 0.9, 0.1, 0.1),
+                GV.TLBR: (0.1, 0.1, 0.9, 0.9),
+                GV.SLOW: 33,
+                GV.NORMAL: 100,
         }
         self.robot_script_dir = self._get_robot_script_dir()
 
@@ -53,9 +52,9 @@ class RobotWrapper:
 
         direction = speed = None
         for element in variation:
-            if element in GESTURE_DIRECTIONS:
+            if element in GV.GESTURE_DIRECTIONS:
                 direction = self.robot_action_dict[element]
-            elif element in GESTURE_SPEED:
+            elif element in GV.GESTURE_SPEED:
                 speed = self.robot_action_dict[element]
 
         # TODO(josephsih): use 'line.py' only at this time.

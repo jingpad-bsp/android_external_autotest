@@ -8,17 +8,16 @@
 import logging
 import math
 
-# Include some constants
-execfile('firmware_constants.py', globals())
+from firmware_constants import MF
 
 
 DEFAULT_MEMBERSHIP_FUNCTION = {
-    '<=': Z_FUNCTION,
-    '<': Z_FUNCTION,
-    '>=': S_FUNCTION,
-    '>': S_FUNCTION,
-    '==': SINGLETON_FUNCTION,
-    '~=': PI_FUNCTION,
+    '<=': MF.Z_FUNCTION,
+    '<': MF.Z_FUNCTION,
+    '>=': MF.S_FUNCTION,
+    '>': MF.S_FUNCTION,
+    '==': MF.SINGLETON_FUNCTION,
+    '~=': MF.PI_FUNCTION,
 }
 
 
@@ -161,12 +160,12 @@ class FuzzyZMemberFunction(FuzzyMemberFunctions):
 # Mapping from membership functions to the fuzzy member function classes.
 MF_DICT = {
     # TODO(josephsih): PI, TRAPEZ, and TRIANGLE functions are to be implemented.
-    # PI_FUNCTION: FuzzyPiMemberFunction,
-    SINGLETON_FUNCTION: FuzzySingletonMemberFunction,
-    S_FUNCTION: FuzzySMemberFunction,
-    # TRAPEZ_FUNCTION: FuzzyTrapezMemberFunction,
-    # TRIANGLE_FUNCTION: FuzzyTriangleMemberFunction
-    Z_FUNCTION: FuzzyZMemberFunction,
+    # MF.PI_FUNCTION: FuzzyPiMemberFunction,
+    MF.SINGLETON_FUNCTION: FuzzySingletonMemberFunction,
+    MF.S_FUNCTION: FuzzySMemberFunction,
+    # MF.TRAPEZ_FUNCTION: FuzzyTrapezMemberFunction,
+    # MF.TRIANGLE_FUNCTION: FuzzyTriangleMemberFunction
+    MF.Z_FUNCTION: FuzzyZMemberFunction,
 }
 
 

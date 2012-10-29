@@ -10,19 +10,18 @@ import unittest
 import common_unittest_utils
 import mtb
 
-# Include some constants
-execfile('firmware_constants.py', globals())
+from firmware_constants import AXIS, GV
 
 
 def get_mtb_packets(gesture_filename):
     """Get mtb_packets object by reading the gesture file."""
-    parser = mtb.MTBParser()
+    parser = mtb.MtbParser()
     packets = parser.parse_file(gesture_filename)
-    mtb_packets = mtb.MTB(packets)
+    mtb_packets = mtb.Mtb(packets)
     return mtb_packets
 
 
-class FakeMTB(mtb.MTB):
+class FakeMtb(mtb.Mtb):
     """A fake MTB class to set up x and y positions directly."""
     def __init__(self, list_x, list_y):
         self.list_x = list_x
@@ -33,8 +32,8 @@ class FakeMTB(mtb.MTB):
         return (self.list_x, self.list_y)
 
 
-class MTBTest(unittest.TestCase):
-    """Unit tests for mtb.MTB class."""
+class MtbTest(unittest.TestCase):
+    """Unit tests for mtb.Mtb class."""
 
     def setUp(self):
         self.test_dir = os.path.join(os.getcwd(), 'tests')
@@ -45,20 +44,20 @@ class MTBTest(unittest.TestCase):
 
     def _call_get_reversed_motions(self, list_x, list_y, expected_x,
                                    expected_y, direction):
-        mtb = FakeMTB(list_x, list_y)
+        mtb = FakeMtb(list_x, list_y)
         displacement = mtb.get_reversed_motions(0, direction)
-        self.assertEqual(displacement[X], expected_x)
-        self.assertEqual(displacement[Y], expected_y)
+        self.assertEqual(displacement[AXIS.X], expected_x)
+        self.assertEqual(displacement[AXIS.Y], expected_y)
 
     def test_get_reversed_motions_no_reversed(self):
         list_x = (10, 22 ,36, 54, 100)
         list_y = (1, 2 ,6, 10, 22)
-        self._call_get_reversed_motions(list_x, list_y, 0, 0, DIAGONAL)
+        self._call_get_reversed_motions(list_x, list_y, 0, 0, GV.DIAGONAL)
 
     def test_get_reversed_motions_reversed_x_y(self):
         list_x = (10, 22 ,36, 154, 100)
         list_y = (1, 2 ,6, 30, 22)
-        self._call_get_reversed_motions(list_x, list_y, -54, -8, DIAGONAL)
+        self._call_get_reversed_motions(list_x, list_y, -54, -8, GV.DIAGONAL)
 
     def _test_get_x_y(self, filename, slot, expected_value):
         gesture_filename = self._get_filepath(filename)
@@ -168,7 +167,7 @@ class MTBTest(unittest.TestCase):
     def test_convert_to_evemu_format(self):
         evemu_filename = self._get_filepath('one_finger_swipe.evemu.dat')
         mtplot_filename = self._get_filepath('one_finger_swipe.dat')
-        packets = mtb.MTBParser().parse_file(mtplot_filename)
+        packets = mtb.MtbParser().parse_file(mtplot_filename)
         evemu_converted_iter = iter(mtb.convert_to_evemu_format(packets))
         with open(evemu_filename) as evemuf:
             for line_evemu_original in evemuf:

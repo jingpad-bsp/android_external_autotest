@@ -12,9 +12,6 @@ import time
 import common_util
 import test_conf as conf
 
-# Include some constants
-execfile('firmware_constants.py', globals())
-
 
 def get_display_name():
     """Return the display name."""

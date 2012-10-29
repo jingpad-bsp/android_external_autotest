@@ -8,7 +8,7 @@
 '''
 How to add a new validator/gesture:
 (1) Implement a new validator class inheriting BaseValidator,
-(2) add proper method in mtb.MTB class,
+(2) add proper method in mtb.Mtb class,
 (3) add the new validator in test_conf, and
         'from validators import the_new_validator'
     in alphabetical order, and
@@ -62,10 +62,8 @@ import firmware_utils
 import fuzzy
 import mtb
 
+from firmware_constants import GV
 from touch_device import TouchpadDevice
-
-# Include some constants
-execfile('firmware_constants.py', globals())
 
 
 def validate(packets, gesture, variation):
@@ -122,7 +120,7 @@ class BaseValidator(object):
 
     def init_check(self, packets):
         """Initialization before check() is called."""
-        self.packets = mtb.MTB(packets)
+        self.packets = mtb.Mtb(packets)
         self.msg_list = []
 
     def _is_direction_in_variation(self, variation, directions):
@@ -134,25 +132,28 @@ class BaseValidator(object):
 
     def is_horizontal(self, variation):
         """Is the direction horizontal?"""
-        return self._is_direction_in_variation(variation, HORIZONTAL_DIRECTIONS)
+        return self._is_direction_in_variation(variation,
+                                               GV.HORIZONTAL_DIRECTIONS)
 
     def is_vertical(self, variation):
         """Is the direction vertical?"""
-        return self._is_direction_in_variation(variation, VERTICAL_DIRECTIONS)
+        return self._is_direction_in_variation(variation,
+                                               GV.VERTICAL_DIRECTIONS)
 
     def is_diagonal(self, variation):
         """Is the direction diagonal?"""
-        return self._is_direction_in_variation(variation, DIAGONAL_DIRECTIONS)
+        return self._is_direction_in_variation(variation,
+                                               GV.DIAGONAL_DIRECTIONS)
 
     def get_direction(self, variation):
         """Get the direction."""
         # TODO(josephsih): raise an exception if a proper direction is not found
         if self.is_horizontal(variation):
-            return HORIZONTAL
+            return GV.HORIZONTAL
         elif self.is_vertical(variation):
-            return VERTICAL
+            return GV.VERTICAL
         elif self.is_diagonal(variation):
-            return DIAGONAL
+            return GV.DIAGONAL
 
     def log_name(self, msg):
         """Collect the validator name."""
@@ -456,7 +457,7 @@ class PinchValidator(BaseValidator):
         # Get the relative motion of the two fingers
         slots = (0, 1)
         relative_motion = self.packets.get_relative_motion(slots)
-        if variation == ZOOM_OUT:
+        if variation == GV.ZOOM_OUT:
             relative_motion = -relative_motion
         msg = 'Relative motions of the two fingers: %.2f px'
         self.log_details(msg % relative_motion)

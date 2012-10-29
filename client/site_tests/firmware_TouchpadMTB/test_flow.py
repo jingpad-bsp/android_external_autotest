@@ -30,7 +30,7 @@ sys.path.append('/usr/local/autotest/bin/input')
 import input_device
 
 # Include some constants
-execfile('firmware_constants.py', globals())
+from firmware_constants import MODE, OPTIONS
 
 
 # Define the keys for test flow
@@ -58,16 +58,15 @@ class TestFlow:
         self.gesture_file_name = None
         self.prefix_space = self.output.get_prefix_space()
         self.scores = []
-        self.mode = options[OPTIONS_MODE]
+        self.mode = options[OPTIONS.MODE]
         gesture_names = self._get_gesture_names()
         self.gesture_list = GestureList(gesture_names).get_gesture_list()
-        self._get_all_gesture_variations(options[OPTIONS_SIMPLIFIED])
+        self._get_all_gesture_variations(options[OPTIONS.SIMPLIFIED])
         self.init_flag = False
         self.system_device = self._non_blocking_open(self.device_node)
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
-        self.mtb_evemu = mtb.MTBEvemu()
-        self.mode = options[OPTIONS_MODE]
+        self.mtb_evemu = mtb.MtbEvemu()
         self.robot = robot_wrapper.RobotWrapper(self.board)
 
     def __del__(self):
@@ -75,7 +74,7 @@ class TestFlow:
 
     def _is_robot_mode(self):
         """Is it in robot mode?"""
-        return self.mode == ROBOT
+        return self.mode == MODE.ROBOT
 
     def _get_gesture_names(self):
         """Determine the gesture names based on the mode."""

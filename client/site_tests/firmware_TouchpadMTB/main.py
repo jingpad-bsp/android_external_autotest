@@ -25,10 +25,8 @@ import test_conf as conf
 import test_flow
 import touch_device
 
+from firmware_constants import MODE, OPTIONS
 from report_html import ReportHtml
-
-# Include some constants
-execfile('firmware_constants.py', globals())
 
 
 class DummyTest(pyauto.PyUITest):
@@ -62,7 +60,7 @@ class firmware_TouchpadMTB:
             exit(-1)
 
         # Get the MTB parser.
-        self.parser = mtb.MTBParser()
+        self.parser = mtb.MtbParser()
 
         # Get the chrome browser.
         self.chrome = firmware_utils.SimpleX('aura')
@@ -164,9 +162,9 @@ def _usage():
     """Print the usage of this program."""
     print 'Usage: $ %s [options]\n' % sys.argv[0]
     print 'options:'
-    print '  -h, --%s: show this help' % OPTIONS_HELP
-    print '  -m, --%s: gesture playing mode' % OPTIONS_MODE
-    print '  -s, --%s: Use one variation per gesture' % OPTIONS_SIMPLIFIED
+    print '  -h, --%s: show this help' % OPTIONS.HELP
+    print '  -m, --%s: gesture playing mode' % OPTIONS.MODE
+    print '  -s, --%s: Use one variation per gesture' % OPTIONS.SIMPLIFIED
     print
 
 
@@ -184,7 +182,7 @@ def _parse_options():
     because pyauto seems not compatible with command line options.
     """
     # Initialize and get the environment OPTIONS
-    options = {OPTIONS_MODE: MANUAL, OPTIONS_SIMPLIFIED: False}
+    options = {OPTIONS.MODE: MODE.MANUAL, OPTIONS.SIMPLIFIED: False}
     options_str = os.environ.get('OPTIONS')
     if not options_str:
         return options
@@ -192,23 +190,23 @@ def _parse_options():
     options_list = options_str.split()
     try:
         short_opt = 'hm:s'
-        long_opt = [OPTIONS_HELP, OPTIONS_MODE, OPTIONS_SIMPLIFIED]
+        long_opt = [OPTIONS.HELP, OPTIONS.MODE, OPTIONS.SIMPLIFIED]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
         _parsing_error(str(err))
 
     for opt, arg in opts:
-        if opt in ('-h', '--%s' % OPTIONS_HELP):
+        if opt in ('-h', '--%s' % OPTIONS.HELP):
             _usage()
             sys.exit(1)
-        elif opt in ('-m', '--%s' % OPTIONS_MODE):
-            if arg in GESTURE_PLAY_MODE:
-                options[OPTIONS_MODE] = arg
+        elif opt in ('-m', '--%s' % OPTIONS.MODE):
+            if arg in MODE.GESTURE_PLAY_MODE:
+                options[OPTIONS.MODE] = arg
             else:
-                print 'Warning: -m should be one of %s' % GESTURE_PLAY_MODE
-                print '         Use %s mode as default.' % MANUAL
-        elif opt in ('-s', '--%s' % OPTIONS_SIMPLIFIED):
-            options[OPTIONS_SIMPLIFIED] = True
+                print 'Warning: -m should be one of %s' % MODE.GESTURE_PLAY_MODE
+                print '         Use %s mode as default.' % MODE.MANUAL
+        elif opt in ('-s', '--%s' % OPTIONS.SIMPLIFIED):
+            options[OPTIONS.SIMPLIFIED] = True
         else:
             msg = 'This option "%s" is not supported.' % opt
             _parsing_error(opt)

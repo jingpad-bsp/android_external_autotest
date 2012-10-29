@@ -13,6 +13,7 @@ import common_util
 import test_conf as conf
 
 from common_unittest_utils import MockTouchpadDevice, parse_tests_data
+from firmware_constants import GV
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -149,7 +150,7 @@ class LinearityValidatorTest(BaseValidatorTest):
 
     def _test_linearity_criteria(self, criteria_str, slots, device):
         filename = '2f_scroll_diagonal.dat'
-        direction = 'diagonal'
+        direction = GV.DIAGONAL
         packets = parse_tests_data(filename)
         scores = {}
         for slot in slots:
@@ -197,7 +198,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """Test two-finger jagged lines."""
         filename = 'two_finger_tracking.diagonal.slow.dat'
         scores = self._test_linearity_validator(filename, self.criteria, (0, 1),
-                self.mock_device[self.LUMPY], 'diagonal')
+                self.mock_device[self.LUMPY], GV.DIAGONAL)
         self.assertTrue(scores[0] < 0.7)
         self.assertTrue(scores[1] < 0.7)
 
@@ -210,7 +211,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'stationary_finger_fat_finger_wobble.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 1,
-                self.mock_device[self.LUMPY], 'horizontal')
+                self.mock_device[self.LUMPY], GV.HORIZONTAL)
         self.assertTrue(scores[1] <= 0.1)
 
     def test_thumb_edge(self):
@@ -220,7 +221,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'thumb_edge_wobble.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 0,
-                self.mock_device[self.LUMPY], 'horizontal')
+                self.mock_device[self.LUMPY], GV.HORIZONTAL)
         self.assertTrue(scores[0] < 0.5)
 
     def test_two_close_fingers_merging_changed_ids_gaps(self):
@@ -230,7 +231,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 0,
-                self.mock_device[self.LUMPY], 'vertical')
+                self.mock_device[self.LUMPY], GV.VERTICAL)
         self.assertTrue(scores[0] < 0.3)
 
     def test_jagged_two_finger_scroll(self):
@@ -241,7 +242,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'jagged_two_finger_scroll_horizontal.dat'
         scores = self._test_linearity_validator(filename, self.criteria, (0, 1),
-                self.mock_device[self.LUMPY], 'horizontal')
+                self.mock_device[self.LUMPY], GV.HORIZONTAL)
         self.assertTrue(scores[0] < 0.3)
         self.assertTrue(scores[1] < 0.3)
 
@@ -255,7 +256,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'two_finger_tracking.bottom_left_to_top_right.slow.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 0,
-                self.mock_device[self.LUMPY], 'diagonal')
+                self.mock_device[self.LUMPY], GV.DIAGONAL)
         self.assertTrue(scores[0] < 0.3)
 
     def test_simple_linear_regression0(self):

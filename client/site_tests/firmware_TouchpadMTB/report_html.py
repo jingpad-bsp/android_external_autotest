@@ -16,9 +16,6 @@ import test_conf as conf
 
 from string import Template
 
-# Include some constants
-execfile('firmware_constants.py', globals())
-
 
 class TemplateHtml:
     """An html Template."""

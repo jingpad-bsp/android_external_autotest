@@ -41,7 +41,7 @@ def parse_tests_data(filename):
     """Parse the unit tests data."""
     import mtb
     with open(os.path.join(get_tests_data_path(), filename)) as test_file:
-        return mtb.MTBParser().parse(test_file)
+        return mtb.MtbParser().parse(test_file)
 
 
 class MockTouchpadDevice:

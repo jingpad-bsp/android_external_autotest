@@ -11,11 +11,9 @@ import os
 import re
 import sys
 
+from firmware_constants import AXIS, GV, MTB
 sys.path.append('/usr/local/autotest/bin/input')
 from linux_input import *
-
-# Include some constants
-execfile('firmware_constants.py', globals())
 
 
 def make_pretty_packet(packet):
@@ -24,16 +22,16 @@ def make_pretty_packet(packet):
     for event in packet:
         pretty_event = []
         pretty_event.append('Event:')
-        pretty_event.append('time %.6f,' % event[EV_TIME])
-        if event.get(SYN_REPORT):
+        pretty_event.append('time %.6f,' % event[MTB.EV_TIME])
+        if event.get(MTB.SYN_REPORT):
             pretty_event.append('-------------- SYN_REPORT ------------\n')
         else:
-            ev_type = event[EV_TYPE]
+            ev_type = event[MTB.EV_TYPE]
             pretty_event.append('type %d (%s),' % (ev_type, EV_TYPES[ev_type]))
-            ev_code = event[EV_CODE]
+            ev_code = event[MTB.EV_CODE]
             pretty_event.append('code %d (%s),' %
                                  (ev_code, EV_STRINGS[ev_type][ev_code]))
-            pretty_event.append('value %d' % event[EV_VALUE])
+            pretty_event.append('value %d' % event[MTB.EV_VALUE])
         pretty_packet.append(' '.join(pretty_event))
     return '\n'.join(pretty_packet)
 
@@ -45,13 +43,13 @@ def convert_to_evemu_format(packets):
     evemu_format_syn_report = 'E: %.6f 0000 0000 0'
     for packet in packets:
         for event in packet:
-            if event.get(SYN_REPORT):
-                evemu_event = evemu_format_syn_report % event[EV_TIME]
+            if event.get(MTB.SYN_REPORT):
+                evemu_event = evemu_format_syn_report % event[MTB.EV_TIME]
             else:
-                evemu_event = evemu_format % (event[EV_TIME],
-                                              event[EV_TYPE],
-                                              event[EV_CODE],
-                                              event[EV_VALUE])
+                evemu_event = evemu_format % (event[MTB.EV_TIME],
+                                              event[MTB.EV_TYPE],
+                                              event[MTB.EV_CODE],
+                                              event[MTB.EV_VALUE])
             evemu_output.append(evemu_event)
     return evemu_output
 
@@ -68,7 +66,7 @@ def convert_mtplot_file_to_evemu_file(mtplot_filename, evemu_ext='.evemu',
         return
 
     # Convert mtplot event format to evemu event format.
-    mtplot_packets = MTBParser().parse_file(mtplot_filename)
+    mtplot_packets = MtbParser().parse_file(mtplot_filename)
     evemu_packets = convert_to_evemu_format(mtplot_packets)
 
     # Create the evemu filename from the mtplot filename.
@@ -86,18 +84,18 @@ def convert_mtplot_file_to_evemu_file(mtplot_filename, evemu_ext='.evemu',
         evemu_f.write('\n'.join(evemu_packets))
 
 
-class MTBEvemu:
+class MtbEvemu:
     """A simplified class provides MTB utilities for evemu event format."""
     def __init__(self):
-        self.mtb = MTB()
+        self.mtb = Mtb()
         self.num_tracking_ids = 0
 
     def _convert_event(self, event):
         (tv_sec, tv_usec, ev_type, ev_code, ev_value) = event
-        ev_dict = {EV_TIME: tv_sec + 0.000001 * tv_usec,
-                   EV_TYPE: ev_type,
-                   EV_CODE: ev_code,
-                   EV_VALUE: ev_value}
+        ev_dict = {MTB.EV_TIME: tv_sec + 0.000001 * tv_usec,
+                   MTB.EV_TYPE: ev_type,
+                   MTB.EV_CODE: ev_code,
+                   MTB.EV_VALUE: ev_value}
         return ev_dict
 
     def all_fingers_leaving(self):
@@ -113,7 +111,7 @@ class MTBEvemu:
             self.num_tracking_ids -= 1
 
 
-class MTB:
+class Mtb:
     """An MTB class providing MTB format related utility methods."""
 
     def __init__(self, packets=None):
@@ -156,67 +154,73 @@ class MTB:
 
     def _is_ABS_MT_TRACKING_ID(self, event):
         """Is this event ABS_MT_TRACKING_ID?"""
-        return (not event.get(SYN_REPORT) and
-                event[EV_TYPE] == EV_ABS and
-                event[EV_CODE] == ABS_MT_TRACKING_ID)
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_TRACKING_ID)
 
     def _is_new_contact(self, event):
         """Is this packet generating new contact (Tracking ID)?"""
-        return self._is_ABS_MT_TRACKING_ID(event) and event[EV_VALUE] != -1
+        return self._is_ABS_MT_TRACKING_ID(event) and event[MTB.EV_VALUE] != -1
 
     def _is_finger_leaving(self, event):
         """Is the finger is leaving in this packet?"""
-        return self._is_ABS_MT_TRACKING_ID(event) and event[EV_VALUE] == -1
+        return self._is_ABS_MT_TRACKING_ID(event) and event[MTB.EV_VALUE] == -1
 
     def _is_ABS_MT_SLOT(self, event):
         """Is this packet ABS_MT_SLOT?"""
-        return (not event.get(SYN_REPORT) and
-                event[EV_TYPE] == EV_ABS and
-                event[EV_CODE] == ABS_MT_SLOT)
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_SLOT)
 
     def _is_ABS_MT_POSITION_X(self, event):
         """Is this packet ABS_MT_POSITION_X?"""
-        return (not event.get(SYN_REPORT) and
-                event[EV_TYPE] == EV_ABS and
-                event[EV_CODE] == ABS_MT_POSITION_X)
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_POSITION_X)
 
     def _is_ABS_MT_POSITION_Y(self, event):
         """Is this packet ABS_MT_POSITION_Y?"""
-        return (not event.get(SYN_REPORT) and
-                event[EV_TYPE] == EV_ABS and
-                event[EV_CODE] == ABS_MT_POSITION_Y)
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_POSITION_Y)
 
     def _is_EV_KEY(self, event):
         """Is this an EV_KEY event?"""
-        return (not event.get(SYN_REPORT) and event[EV_TYPE] == EV_KEY)
+        return (not event.get(MTB.SYN_REPORT) and event[MTB.EV_TYPE] == EV_KEY)
 
     def _is_BTN_LEFT(self, event):
         """Is this event BTN_LEFT?"""
-        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_LEFT)
+        return (self._is_EV_KEY(event) and event[MTB.EV_CODE] == BTN_LEFT)
 
     def _is_BTN_TOOL_FINGER(self, event):
         """Is this event BTN_TOOL_FINGER?"""
-        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_FINGER)
+        return (self._is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_FINGER)
 
     def _is_BTN_TOOL_DOUBLETAP(self, event):
         """Is this event BTN_TOOL_DOUBLETAP?"""
-        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_DOUBLETAP)
+        return (self._is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_DOUBLETAP)
 
     def _is_BTN_TOOL_TRIPLETAP(self, event):
         """Is this event BTN_TOOL_TRIPLETAP?"""
-        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_TRIPLETAP)
+        return (self._is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_TRIPLETAP)
 
     def _is_BTN_TOOL_QUADTAP(self, event):
         """Is this event BTN_TOOL_QUADTAP?"""
-        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_QUADTAP)
+        return (self._is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_QUADTAP)
 
     def _is_BTN_TOOL_QUINTTAP(self, event):
         """Is this event BTN_TOOL_QUINTTAP?"""
-        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOOL_QUINTTAP)
+        return (self._is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_QUINTTAP)
 
     def _is_BTN_TOUCH(self, event):
         """Is this event BTN_TOUCH?"""
-        return (self._is_EV_KEY(event) and event[EV_CODE] == BTN_TOUCH)
+        return (self._is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOUCH)
 
     def _calc_movement_for_axis(self, x, prev_x):
         """Calculate the distance moved in an axis."""
@@ -272,7 +276,7 @@ class MTB:
                 initial_default_slot_0 = False
             for event in packet:
                 if self._is_ABS_MT_SLOT(event):
-                    slot = event[EV_VALUE]
+                    slot = event[MTB.EV_VALUE]
                     if slot == target_slot and not target_slot_live:
                         target_slot_live = True
                 if slot != target_slot:
@@ -280,10 +284,10 @@ class MTB:
 
                 # Update x value if available.
                 if self._is_ABS_MT_POSITION_X(event):
-                    prev_x = event[EV_VALUE]
+                    prev_x = event[MTB.EV_VALUE]
                 # Update y value if available.
                 elif self._is_ABS_MT_POSITION_Y(event):
-                    prev_y = event[EV_VALUE]
+                    prev_y = event[MTB.EV_VALUE]
                 # Check if the finger at the target_slot is leaving.
                 elif self._is_finger_leaving(event):
                     target_slot_live = False
@@ -320,11 +324,11 @@ class MTB:
         for packet in self.packets:
             for event in packet:
                 if self._is_ABS_MT_SLOT(event):
-                    slot = event[EV_VALUE]
+                    slot = event[MTB.EV_VALUE]
 
                 # Find a new tracking ID
                 if self._is_new_contact(event):
-                    tracking_id = event[EV_VALUE]
+                    tracking_id = event[MTB.EV_VALUE]
                     tracking_ids_all.append(tracking_id)
                     tracking_ids_live.append(tracking_id)
                     points[tracking_id] = []
@@ -341,11 +345,11 @@ class MTB:
 
                 # Update x value if available.
                 elif self._is_ABS_MT_POSITION_X(event):
-                    x[slot_to_tracking_id[slot]] = event[EV_VALUE]
+                    x[slot_to_tracking_id[slot]] = event[MTB.EV_VALUE]
 
                 # Update y value if available.
                 elif self._is_ABS_MT_POSITION_Y(event):
-                    y[slot_to_tracking_id[slot]] = event[EV_VALUE]
+                    y[slot_to_tracking_id[slot]] = event[MTB.EV_VALUE]
 
             for tracking_id in tracking_ids_live:
                 if x[tracking_id] and y[tracking_id]:
@@ -397,7 +401,7 @@ class MTB:
         for packet in self.packets:
             for event in packet:
                 if self._is_ABS_MT_SLOT(event):
-                    slot = event[EV_VALUE]
+                    slot = event[MTB.EV_VALUE]
                 if slot not in target_slots:
                     continue
 
@@ -407,9 +411,9 @@ class MTB:
                     elif self._is_finger_leaving(event):
                         slot_exists[slot] = False
                 elif self._is_ABS_MT_POSITION_X(event):
-                    x[slot] = event[EV_VALUE]
+                    x[slot] = event[MTB.EV_VALUE]
                 elif self._is_ABS_MT_POSITION_Y(event):
-                    y[slot] = event[EV_VALUE]
+                    y[slot] = event[MTB.EV_VALUE]
 
             # Note:
             # - All slot_exists must be True to append x, y positions for the
@@ -485,11 +489,11 @@ class MTB:
         for packet in self.packets:
             for event in packet:
                 if self._is_ABS_MT_POSITION_X(event):
-                    x = event[EV_VALUE]
+                    x = event[MTB.EV_VALUE]
                     min_x = min(min_x, x)
                     max_x = max(max_x, x)
                 elif self._is_ABS_MT_POSITION_Y(event):
-                    y = event[EV_VALUE]
+                    y = event[MTB.EV_VALUE]
                     min_y = min(min_y, y)
                     max_y = max(max_y, y)
         return (min_x, max_x, min_y, max_y)
@@ -502,13 +506,13 @@ class MTB:
         for packet in self.packets:
             for event in packet:
                 if self._is_ABS_MT_SLOT(event):
-                    slot = event[EV_VALUE]
+                    slot = event[MTB.EV_VALUE]
                 elif self._is_ABS_MT_POSITION_X(event) and slot == target_slot:
-                    x = event[EV_VALUE]
+                    x = event[MTB.EV_VALUE]
                     accu_x += self._calc_movement_for_axis(x, prev_x)
                     prev_x = x
                 elif self._is_ABS_MT_POSITION_Y(event) and slot == target_slot:
-                    y = event[EV_VALUE]
+                    y = event[MTB.EV_VALUE]
                     accu_y += self._calc_movement_for_axis(y, prev_y)
                     prev_y = y
         return (accu_x, accu_y)
@@ -551,7 +555,7 @@ class MTB:
         """Get the displacement in the target slot."""
         displace = [map(lambda p0, p1: p1 - p0, axis[:len(axis) - 1], axis[1:])
                     for axis in self.get_x_y(target_slot)]
-        displacement_dict = dict(zip((X, Y), displace))
+        displacement_dict = dict(zip((AXIS.X, AXIS.Y), displace))
         return displacement_dict
 
     def get_reversed_motions(self, target_slot, direction):
@@ -576,7 +580,9 @@ class MTB:
         the sum of negative values is smaller. Hence, the reversed motion is
         the sum of negative values.
         """
-        check_axes = {HORIZONTAL: (X,), VERTICAL: (Y,), DIAGONAL: (X, Y)}
+        check_axes = {GV.HORIZONTAL: (AXIS.X,),
+                      GV.VERTICAL: (AXIS.Y,),
+                      GV.DIAGONAL: (AXIS.X, AXIS.Y)}
         displacement_dict = self.get_displacement(target_slot)
 
         reversed_motions = {}
@@ -615,7 +621,8 @@ class MTB:
         """
         for func in check_event_func:
             if func(event):
-                check_event_result[func] = (event[EV_VALUE] == expected_value)
+                event_value = event[MTB.EV_VALUE]
+                check_event_result[func] = (event_value == expected_value)
                 break
 
     def _get_event_cycles(self, check_event_func):
@@ -701,7 +708,7 @@ class MTB:
         return click_cycles if flag_fingers_touch else 0
 
 
-class MTBParser:
+class MtbParser:
     """Touchpad MTB event Parser."""
 
     def __init__(self):
@@ -738,10 +745,10 @@ class MTBParser:
         result = self.event_re_patt.search(line)
         ev_dict = {}
         if result is not None:
-            ev_dict[EV_TIME] = float(result.group(1))
-            ev_dict[EV_TYPE] = int(result.group(2))
-            ev_dict[EV_CODE] = int(result.group(3))
-            ev_dict[EV_VALUE] = int(result.group(4))
+            ev_dict[MTB.EV_TIME] = float(result.group(1))
+            ev_dict[MTB.EV_TYPE] = int(result.group(2))
+            ev_dict[MTB.EV_CODE] = int(result.group(3))
+            ev_dict[MTB.EV_VALUE] = int(result.group(4))
         return ev_dict
 
     def _get_event_dict_SYN_REPORT(self, line):
@@ -749,8 +756,8 @@ class MTBParser:
         result = self.event_re_patt_SYN_REPORT.search(line)
         ev_dict = {}
         if result is not None:
-            ev_dict[EV_TIME] = float(result.group(1))
-            ev_dict[SYN_REPORT] = True
+            ev_dict[MTB.EV_TIME] = float(result.group(1))
+            ev_dict[MTB.SYN_REPORT] = True
         return ev_dict
 
     def _get_event_dict(self, line):
@@ -765,7 +772,7 @@ class MTBParser:
 
     def _is_SYN_REPORT(self, ev_dict):
         """Determine if this event is SYN_REPORT."""
-        return ev_dict.get(SYN_REPORT, False)
+        return ev_dict.get(MTB.SYN_REPORT, False)
 
     def parse(self, raw_event):
         """Parse the raw event string into a list of event dictionary."""
@@ -800,6 +807,6 @@ if __name__ == '__main__':
         exit(1)
 
     with open(sys.argv[1]) as event_file:
-        packets = MTBParser().parse(event_file)
+        packets = MtbParser().parse(event_file)
     for packet in packets:
         print make_pretty_packet(packet)

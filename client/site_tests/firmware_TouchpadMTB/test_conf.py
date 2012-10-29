@@ -6,6 +6,7 @@
 
 """This configuration file defines the gestures to perform."""
 
+from firmware_constants import MF, GV
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -17,9 +18,6 @@ from validators import (CountPacketsValidator,
                         RangeValidator,
                         StationaryFingerValidator,
 )
-
-# Include some constants
-execfile('firmware_constants.py', globals())
 
 
 # Define which score aggregator is to be used. A score aggregator collects
@@ -125,19 +123,19 @@ def get_gesture_dict():
         ONE_FINGER_TRACKING:
         Gesture(
             name=ONE_FINGER_TRACKING,
-            variations=((LR, RL, TB, BT, BLTR, TRBL),
-                        (SLOW, NORMAL),
+            variations=((GV.LR, GV.RL, GV.TB, GV.BT, GV.BLTR, GV.TRBL),
+                        (GV.SLOW, GV.NORMAL),
             ),
             prompt='Draw a {0} line {1} using a ruler in {2}.',
             subprompt={
-                LR: ('horizontal', 'from left edge to right edge',),
-                RL: ('horizontal', 'from right edge to left edge',),
-                TB: ('vertical', 'from top edge to bottom edge',),
-                BT: ('vertical', 'from bottom edge to top edge',),
-                BLTR: ('diagonal', 'from bottom left to top right',),
-                TRBL: ('diagonal', 'from top right to bottom left',),
-                SLOW: ('3 seconds',),
-                NORMAL: ('1 second',),
+                GV.LR: ('horizontal', 'from left edge to right edge',),
+                GV.RL: ('horizontal', 'from right edge to left edge',),
+                GV.TB: ('vertical', 'from top edge to bottom edge',),
+                GV.BT: ('vertical', 'from bottom edge to top edge',),
+                GV.BLTR: ('diagonal', 'from bottom left to top right',),
+                GV.TRBL: ('diagonal', 'from top right to bottom left',),
+                GV.SLOW: ('3 seconds',),
+                GV.NORMAL: ('1 second',),
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
@@ -151,20 +149,20 @@ def get_gesture_dict():
         TWO_FINGER_TRACKING:
         Gesture(
             name=TWO_FINGER_TRACKING,
-            variations=((LR, RL, TB, BT, BLTR, TRBL),
-                        (SLOW, NORMAL),
+            variations=((GV.LR, GV.RL, GV.TB, GV.BT, GV.BLTR, GV.TRBL),
+                        (GV.SLOW, GV.NORMAL),
             ),
             prompt='Use two fingers to draw {0} lines {1} using a ruler '
                    'in {2}.',
             subprompt={
-                LR: ('horizontal', 'from left edge to right edge',),
-                RL: ('horizontal', 'from right edge to left edge',),
-                TB: ('vertical', 'from top edge to bottom edge',),
-                BT: ('vertical', 'from bottom edge to top edge',),
-                BLTR: ('diagonal', 'from bottom left to top right',),
-                TRBL: ('diagonal', 'from top right to bottom left',),
-                SLOW: ('3 seconds',),
-                NORMAL: ('1 second',),
+                GV.LR: ('horizontal', 'from left edge to right edge',),
+                GV.RL: ('horizontal', 'from right edge to left edge',),
+                GV.TB: ('vertical', 'from top edge to bottom edge',),
+                GV.BT: ('vertical', 'from bottom edge to top edge',),
+                GV.BLTR: ('diagonal', 'from bottom left to top right',),
+                GV.TRBL: ('diagonal', 'from top right to bottom left',),
+                GV.SLOW: ('3 seconds',),
+                GV.NORMAL: ('1 second',),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -181,21 +179,22 @@ def get_gesture_dict():
         Gesture(
             # also covers stationary_finger_not_affected_by_2nd_moving_finger
             name=FINGER_CROSSING,
-            variations=((LR, RL, TB, BT, BLTR, TRBL),
-                        (SLOW, NORMAL),
+            variations=((GV.LR, GV.RL, GV.TB, GV.BT, GV.BLTR, GV.TRBL),
+                        (GV.SLOW, GV.NORMAL),
             ),
             prompt='The 1st finger touches the center of the touchpad. '
                    'The 2nd finger moves {0} {1} in {2}.',
             subprompt={
-                LR: ('from left to right', 'above the 1st finger'),
-                RL: ('from right to left', 'below the 1st finger'),
-                TB: ('from top to bottom', 'on the right to the 1st finger'),
-                BT: ('from bottom to top', 'on the left to the 1st finger'),
-                BLTR: ('from bottom left to top right',
-                       'above the 1st finger',),
-                TRBL: ('from top right to bottom left', 'below the 1st finger'),
-                SLOW: ('3 seconds',),
-                NORMAL: ('1 second',),
+                GV.LR: ('from left to right', 'above the 1st finger'),
+                GV.RL: ('from right to left', 'below the 1st finger'),
+                GV.TB: ('from top to bottom', 'on the right to the 1st finger'),
+                GV.BT: ('from bottom to top', 'on the left to the 1st finger'),
+                GV.BLTR: ('from bottom left to top right',
+                          'above the 1st finger',),
+                GV.TRBL: ('from top right to bottom left',
+                          'below the 1st finger'),
+                GV.SLOW: ('3 seconds',),
+                GV.NORMAL: ('1 second',),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -208,11 +207,11 @@ def get_gesture_dict():
         ONE_FINGER_SWIPE:
         Gesture(
             name=ONE_FINGER_SWIPE,
-            variations=(BLTR, TRBL),
+            variations=(GV.BLTR, GV.TRBL),
             prompt='Use a finger to swipe quickly {0}.',
             subprompt={
-                BLTR: ('from bottom left to top right',),
-                TRBL: ('from top right to bottom left',),
+                GV.BLTR: ('from bottom left to top right',),
+                GV.TRBL: ('from top right to bottom left',),
             },
             validators=(
                 CountPacketsValidator(count_packets_criteria, slot=0),
@@ -224,11 +223,11 @@ def get_gesture_dict():
         TWO_FINGER_SWIPE:
         Gesture(
             name=TWO_FINGER_SWIPE,
-            variations=(TB, BT),
+            variations=(GV.TB, GV.BT),
             prompt='Use two fingers to swipe quickly {0}.',
             subprompt={
-                TB: ('from top to bottom',),
-                BT: ('from bottom to top',),
+                GV.TB: ('from top to bottom',),
+                GV.BT: ('from bottom to top',),
             },
             validators=(
                 CountPacketsValidator(count_packets_criteria, slot=0),
@@ -242,11 +241,11 @@ def get_gesture_dict():
         PINCH_TO_ZOOM:
         Gesture(
             name=PINCH_TO_ZOOM,
-            variations=(ZOOM_IN, ZOOM_OUT),
+            variations=(GV.ZOOM_IN, GV.ZOOM_OUT),
             prompt='Use two fingers to pinch to {0} by drawing {1}.',
             subprompt={
-                ZOOM_IN: ('zoom in', 'farther'),
-                ZOOM_OUT: ('zoom out', 'closer'),
+                GV.ZOOM_IN: ('zoom in', 'farther'),
+                GV.ZOOM_OUT: ('zoom out', 'closer'),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -257,18 +256,19 @@ def get_gesture_dict():
         ONE_FINGER_TAP:
         Gesture(
             name=ONE_FINGER_TAP,
-            variations=(TL, TR, BL, BR, TS, BS, LS, RS, CENTER),
+            variations=(GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
+                        GV.CENTER),
             prompt='Use one finger to make a tap on the {0} of the pad.',
             subprompt={
-                TL: ('top left corner',),
-                TR: ('top right corner',),
-                BL: ('bottom left corner',),
-                BR: ('bottom right corner',),
-                TS: ('top side',),
-                BS: ('bottom side',),
-                LS: ('left hand side',),
-                RS: ('right hand side',),
-                CENTER: ('center',),
+                GV.TL: ('top left corner',),
+                GV.TR: ('top right corner',),
+                GV.BL: ('bottom left corner',),
+                GV.BR: ('bottom right corner',),
+                GV.TS: ('top side',),
+                GV.BS: ('bottom side',),
+                GV.LS: ('left hand side',),
+                GV.RS: ('right hand side',),
+                GV.CENTER: ('center',),
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
@@ -281,12 +281,12 @@ def get_gesture_dict():
         TWO_FINGER_TAP:
         Gesture(
             name=TWO_FINGER_TAP,
-            variations=(HORIZONTAL, VERTICAL, DIAGONAL),
+            variations=(GV.HORIZONTAL, GV.VERTICAL, GV.DIAGONAL),
             prompt='Use two fingers aligned {0} to make a tap.',
             subprompt={
-                HORIZONTAL: ('horizontally',),
-                VERTICAL: ('vertically',),
-                DIAGONAL: ('diagonally',),
+                GV.HORIZONTAL: ('horizontally',),
+                GV.VERTICAL: ('vertically',),
+                GV.DIAGONAL: ('diagonally',),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -388,14 +388,14 @@ def get_gesture_dict():
         FAT_FINGER_MOVE_WITH_RESTING_FINGER:
         Gesture(
             name=FAT_FINGER_MOVE_WITH_RESTING_FINGER,
-            variations=(LR, RL, TB, BT),
+            variations=(GV.LR, GV.RL, GV.TB, GV.BT),
             prompt='With a stationary finger resting on the {0} of the pad, '
                    'the 2nd FAT finger moves {1} {2} the first finger.',
             subprompt={
-                LR: ('center', 'from left to right', 'below'),
-                RL: ('bottom', 'from right to left', 'above'),
-                TB: ('center', 'from top to bottom', 'on the right to'),
-                BT: ('center', 'from bottom to top', 'on the left to'),
+                GV.LR: ('center', 'from left to right', 'below'),
+                GV.RL: ('bottom', 'from right to left', 'above'),
+                GV.TB: ('center', 'from top to bottom', 'on the right to'),
+                GV.BT: ('center', 'from bottom to top', 'on the left to'),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -409,13 +409,13 @@ def get_gesture_dict():
         DRAG_EDGE_THUMB:
         Gesture(
             name=DRAG_EDGE_THUMB,
-            variations=(LR, RL, TB, BT),
+            variations=(GV.LR, GV.RL, GV.TB, GV.BT),
             prompt='Drag the edge of your thumb {0} across the pad',
             subprompt={
-                LR: ('horizontally from left to right',),
-                RL: ('horizontally from right to left',),
-                TB: ('vertically from top to bottom',),
-                BT: ('vertically from bottom to top',),
+                GV.LR: ('horizontally from left to right',),
+                GV.RL: ('horizontally from right to left',),
+                GV.TB: ('vertically from top to bottom',),
+                GV.BT: ('vertically from bottom to top',),
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
@@ -431,14 +431,14 @@ def get_gesture_dict():
             # gesture so that the finger distance remains the same every time
             # this test is conducted.
             name=TWO_CLOSE_FINGERS_TRACKING,
-            variations=(LR, TB, TLBR),
+            variations=(GV.LR, GV.TB, GV.TLBR),
             prompt='With two fingers close together (lightly touching each '
                    'other) in a two finger scrolling gesture, draw a {0} '
                    'line {1}.',
             subprompt={
-                LR: ('horizontal', 'from left to right',),
-                TB: ('vertical', 'from top to bottom',),
-                TLBR: ('diagonal', 'from top left to bottom right',),
+                GV.LR: ('horizontal', 'from left to right',),
+                GV.TB: ('vertical', 'from top to bottom',),
+                GV.TLBR: ('diagonal', 'from top left to bottom right',),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -451,12 +451,12 @@ def get_gesture_dict():
         RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
         Gesture(
             name=RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
-            variations=(TLBR, BRTL),
+            variations=(GV.TLBR, GV.BRTL),
             prompt='With a stationary finger resting on the bottom left corner,'
                    ' the 2nd finger moves {0} in 3 seconds.',
             subprompt={
-                TLBR: ('from top left to bottom right',),
-                BRTL: ('from bottom right to top left',),
+                GV.TLBR: ('from top left to bottom right',),
+                GV.BRTL: ('from bottom right to top left',),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -470,12 +470,12 @@ def get_gesture_dict():
         TWO_FAT_FINGERS_TRACKING:
         Gesture(
             name=TWO_FAT_FINGERS_TRACKING,
-            variations=(LR, RL),
+            variations=(GV.LR, GV.RL),
             prompt='Place two FAT fingers separated by about 1 cm on the pad '
                 'next to each other. Move {0} with the two fingers.',
             subprompt={
-                LR: ('from left to right',),
-                RL: ('from right to left',),
+                GV.LR: ('from left to right',),
+                GV.RL: ('from right to left',),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -491,13 +491,13 @@ def get_gesture_dict():
         FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS:
         Gesture(
             name=FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
-            variations=(TLBR, BRTL),
+            variations=(GV.TLBR, GV.BRTL),
             prompt='A finger moves {0} slowly in 3 seconds. '
                    'Without the 1st finger leaving the pad, '
                    'the 2nd finger taps gently for 3 times.',
             subprompt={
-                TLBR: ('from top left to bottom right',),
-                BRTL: ('from bottom right to top left',),
+                GV.TLBR: ('from top left to bottom right',),
+                GV.BRTL: ('from bottom right to top left',),
             },
             validators=(
                 CountTrackingIDValidator('== 4'),
@@ -510,13 +510,13 @@ def get_gesture_dict():
         DRUMROLL:
         Gesture(
             name=DRUMROLL,
-            variations=(FAST, NORMAL, SLOW),
+            variations=(GV.FAST, GV.NORMAL, GV.SLOW),
             prompt='Use two fingers to make drum roll {0} for a total of '
                    '5 seconds.',
             subprompt={
-                SLOW: ('at about 1 tap per second',),
-                NORMAL: ('at about 2 taps per second',),
-                FAST: ('as fast as possible',),
+                GV.SLOW: ('at about 1 tap per second',),
+                GV.NORMAL: ('at about 2 taps per second',),
+                GV.FAST: ('as fast as possible',),
             },
             validators=(
                 CountTrackingIDValidator('>= 5'),
