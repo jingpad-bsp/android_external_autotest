@@ -12,6 +12,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import global_config, error
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
+from autotest_lib.server import autotest
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server.cros import servo
 from autotest_lib.server.hosts import remote
@@ -227,6 +228,14 @@ class SiteHost(remote.RemoteHost):
     def close(self):
         super(SiteHost, self).close()
         self.xmlrpc_disconnect_all()
+
+
+    def cleanup(self):
+        # We're explicitly choosing not to run super(SiteHost, self).cleanup()
+        # because it does nothing useful, and reboots the device unnecessarily.
+        client_at = autotest.Autotest(self)
+        client_at.run_static_method('autotest_lib.client.cros.cros_ui',
+                                    'restart')
 
 
     # TODO (sbasi) crosbug.com/35656
