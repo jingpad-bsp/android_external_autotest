@@ -22,7 +22,6 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
     # Note that these strings must be escaped to be contained in JavaScript
     # double quote strings.
     _MALICIOUS_STRINGS = [
-            'fake',
             '<SCRIPT>alert(1)</SCRIPT>',
             '>\'>\\"><SCRIPT>alert(1)</SCRIPT>',
             '<IMG SRC=\\"javascript:alert(1)\\">',
@@ -82,13 +81,37 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
               var results = {
                   "effects_found":!(numberOfNodesAfterAdding ==
                   numberOfNodesBeforeAdding + additionExpected),
+                  "count": (numberOfNodesAfterAdding-numberOfNodesBeforeAdding),
                   "reason":reason};
               return results;
             }
             """
 
+    # The test needs to evaluate the impact to the DOM, of adding
+    # certain malformed strings to the Bluetooth interface. To avoid
+    # having a brittle connection to the current particular UI,
+    # we avoid hardcoding these values. Instead, we can determine them
+    # at runtime by sending a "nice" value through the test first,
+    # and measuring the impact of that.
+    _EXPECTED_DOM_IMPACT = None
+
+    def init_expectations(self):
+        self._EXPECTED_DOM_IMPACT = {}
+        # A fake, but non-malicious, device name/address to use:
+        fake = 'fake'
+        # For add_bluetooth_device_to_list we need to baseline 2 cases,
+        # 'unpaired' and 'paired'. It takes 2 calls to do this.
+        self._EXPECTED_DOM_IMPACT['add'] = {'paired': 0, 'unpaired': 0}
+        self.add_bluetooth_device_to_list(fake, fake, False, False, False, True)
+        self.add_bluetooth_device_to_list(fake, fake, True, False, False, True)
+
+        # For connect_bluetooth_device we need to baseline 2 cases,
+        # 'clean' and 'unclean'. We can do this in 1 call.
+        self._EXPECTED_DOM_IMPACT['connect'] = {'clean': 0, 'unclean': 0}
+        self.connect_bluetooth_device(fake, fake, True, True, True, True)
+
     def add_bluetooth_device_to_list(self, name, address, paired, bonded,
-            connected):
+            connected, self_calibrating=False):
         """Adds a fake Bluetooth device and checks for side effects.
 
         Uses JavaScript API calls to create a malicious fake Bluetooth device
@@ -101,14 +124,17 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
             paired: Boolean for whether or not device is already paired.
             bonded: Boolean for whether or not device is already bonded.
             connected: Boolean for whether or not device is already connected.
+            self_calibrating: Boolean for whether the test is being run in a
+                              self calibrating mode.
 
         Returns:
             A boolean representing whether or not XSS was successful.
         """
         if paired:
-            _NUMBER_OF_EXPECTED_NEW_NODES = 0
+            expectations_key = 'paired'
         else:
-            _NUMBER_OF_EXPECTED_NEW_NODES = 5
+            expectations_key = 'unpaired'
+        expected_nodes = self._EXPECTED_DOM_IMPACT['add'][expectations_key]
 
         output = json.loads(self.pyauto.ExecuteJavascript("""
                 %s
@@ -128,7 +154,12 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
                 testAddToBluetoothList("%s", "%s", %s, %s, %s, %d);
                 """ % (self._NUMBER_OF_NODES_FUNC, self._TEST_FOR_EFFECTS_FUNC,
                 name, address, str(paired).lower(), str(bonded).lower(),
-                str(connected).lower(), _NUMBER_OF_EXPECTED_NEW_NODES)))
+                str(connected).lower(), expected_nodes)))
+
+        if self_calibrating:
+            logging.debug('Setting expectations for %s to %s' %
+                          (expectations_key, output['count']))
+            self._EXPECTED_DOM_IMPACT['add'][expectations_key] = output['count']
 
         side_effects_found = output['effects_found']
 
@@ -194,7 +225,7 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
         return side_effects_found
 
     def connect_bluetooth_device(self, name, address, paired, bonded,
-            connected):
+            connected, self_calibrating=False):
         """Connects a fake Bluetooth device and checks for side effects.
 
         Uses JavaScript UI API calls to simulate connecting to a fake Bluetooth
@@ -207,6 +238,8 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
             paired: Boolean for whether or not device is already paired.
             bonded: Boolean for whether or not device is already bonded.
             connected: Boolean for whether or not device is already connected.
+            self_calibrating: Boolean for whether the test is being run in
+                              a self calibrating mode.
 
         Returns:
             A boolean representing whether or not XSS was successful.
@@ -219,13 +252,10 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
 
         self.pyauto.NavigateToURL('chrome://settings-frame/')
 
-        is_clean = True
+        is_clean = 'clean'
         side_effects_found = False
         for state in _PAIRING_STATES:
-            if is_clean:
-                new_nodes_expected = 8
-            else:
-                new_nodes_expected = 0
+            new_nodes_expected = self._EXPECTED_DOM_IMPACT['connect'][is_clean]
             js = """
                 %s
                 %s
@@ -251,20 +281,25 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
                 }
                 testConnectBluetoothDevice("%s", "%s", %s, %s, %s, "%s", %d);
                 """ % (self._NUMBER_OF_NODES_FUNC, self._TEST_FOR_EFFECTS_FUNC,
-                name, address, str(paired).lower(), str(bonded).lower(),
-                str(connected).lower(), state, new_nodes_expected)
+                       name, address, str(paired).lower(), str(bonded).lower(),
+                       str(connected).lower(), state, new_nodes_expected)
             output = json.loads(self.pyauto.ExecuteJavascript(js))
+
+            if self_calibrating:
+                logging.debug('Setting expectations for %s to %s' %
+                              (is_clean, output['count']))
+                self._EXPECTED_DOM_IMPACT['connect'][is_clean] = output['count']
 
             side_effects_found_now = output['effects_found']
 
             if not side_effects_found_now:
                 log_msg = '[PASS]'
-                is_clean = False
+                is_clean = 'unclean'
             else:
                 side_effects_found = True
                 log_msg = '[FAIL]'
                 self.pyauto.NavigateToURL('chrome://settings-frame/')
-                is_clean = True
+                is_clean = 'clean'
 
             logging.debug('%s Connected device at stage %s with name "%s", '
             'address "%s", paired:%s, bonded:%s, connected:%s; %s' % (log_msg,
@@ -343,6 +378,7 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
             error.TestFail if XSS was successful in any test.
         """
         self.set_up()
+        self.init_expectations()
 
         side_effects_found = self.test_adding()
         side_effects_found = self.test_connecting() or side_effects_found
