@@ -1,0 +1,19 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "TouchscreenSynDrop"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+This script bombards the evdev kernel driver to generate SYN_DROPPED event(s)
+as the queue inside will be filled up quickly. Therefore, it is designed to
+test if we can see the SYN_DROPPED event and process it inside xf86-input-evdev
+driver by examining the log file Xorg.0.log.
+"""
+
+job.run_test('platform_TouchscreenSynDrop')
