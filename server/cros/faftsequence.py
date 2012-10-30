@@ -75,8 +75,6 @@ class FAFTSequence(ServoTest):
             test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
             installing the image.
-        _trapped_in_recovery_reason: Keep the recovery reason when the test is
-            trapped in the recovery screen.
     """
     version = 1
 
@@ -97,7 +95,6 @@ class FAFTSequence(ServoTest):
 
     _install_image_path = None
     _firmware_update = False
-    _trapped_in_recovery_reason = 0
 
     _backup_firmware_sha = ()
 
@@ -215,25 +212,13 @@ class FAFTSequence(ServoTest):
         self.unmark_setup_done('gbb_flags')
 
 
-    def reset_client(self):
-        """Reset client, if necessary.
+    def _retrieve_recovery_reason_from_trap(self):
+        """Try to retrieve the recovery reason from a trapped recovery screen.
 
-        This method is called when the client is not responsive. It may be
-        caused by the following cases:
-          - network flaky (can be recovered by replugging the Ethernet);
-          - halt on a firmware screen without timeout, e.g. REC_INSERT screen;
-          - corrupted firmware;
-          - corrutped OS image.
+        Returns:
+          The recovery_reason, 0 if any error.
         """
-        # DUT works fine, done.
-        if self._ping_test(self._client.ip, timeout=5):
-            return
-
-        # TODO(waihong@chromium.org): Implement replugging the Ethernet in the
-        # first reset item.
-
-        # DUT may be trapped in the recovery screen. Try to boot into USB to
-        # retrieve the recovery reason.
+        recovery_reason = 0
         logging.info('Try to retrieve recovery reason...')
         if self.servo.get('usb_mux_sel1') == 'dut_sees_usbkey':
             self.wait_fw_screen_and_plug_usb()
@@ -244,12 +229,22 @@ class FAFTSequence(ServoTest):
             self.wait_for_client(install_deps=True)
             lines = self.faft_client.run_shell_command_get_output(
                         'crossystem recovery_reason')
-            self._trapped_in_recovery_reason = int(lines[0])
-            logging.info('Got the recovery reason %d.',
-                         self._trapped_in_recovery_reason)
+            recovery_reason = int(lines[0])
+            logging.info('Got the recovery reason %d.', recovery_reason)
         except AssertionError:
             logging.info('Failed to get the recovery reason.')
+        return recovery_reason
 
+
+    def _reset_client(self):
+        """Reset client to a workable state.
+
+        This method is called when the client is not responsive. It may be
+        caused by the following cases:
+          - halt on a firmware screen without timeout, e.g. REC_INSERT screen;
+          - corrupted firmware;
+          - corrutped OS image.
+        """
         # DUT may halt on a firmware screen. Try cold reboot.
         logging.info('Try cold reboot...')
         self.cold_reboot()
@@ -264,7 +259,7 @@ class FAFTSequence(ServoTest):
         # code is in RO region and all FAFT tests don't change the RO region
         # except GBB.
         if self.is_firmware_saved():
-            self.ensure_client_in_recovery()
+            self._ensure_client_in_recovery()
             logging.info('Try restore the original firmware...')
             if self.is_firmware_changed():
                 try:
@@ -274,7 +269,7 @@ class FAFTSequence(ServoTest):
                     logging.info('Restoring firmware doesn\'t help.')
 
         # DUT may be broken by a corrupted OS image. Restore OS image.
-        self.ensure_client_in_recovery()
+        self._ensure_client_in_recovery()
         logging.info('Try restore the OS image...')
         self.faft_client.run_shell_command('chromeos-install --yes')
         self.sync_and_warm_reboot()
@@ -287,7 +282,7 @@ class FAFTSequence(ServoTest):
             logging.info('Restoring OS image doesn\'t help.')
 
 
-    def ensure_client_in_recovery(self):
+    def _ensure_client_in_recovery(self):
         """Ensure client in recovery boot; reboot into it if necessary.
 
         Raises:
@@ -306,6 +301,49 @@ class FAFTSequence(ServoTest):
             self.wait_for_client(install_deps=True)
         except AssertionError:
             raise error.TestError('Failed to boot the USB image.')
+
+
+    def _restore_routine_from_timeout(self, next_step=None):
+        """A routine to try to restore the system from a timeout error.
+
+        This method is called when FAFT failed to connect DUT after reboot.
+
+        Args:
+          next_step: Optional, a FAFT_STEP dict of the next step, which is used
+                     for diagnostic.
+
+        Raises:
+          error.TestFail: This exception is already raised, with a decription
+                          why it failed.
+        """
+        next_checker_matched = False
+        if next_step is not None:
+            next_test = {}
+            next_test.update(self._faft_template)
+            next_test.update(next_step)
+
+        # TODO(waihong@chromium.org): Implement replugging the Ethernet to
+        # identify if it is a network flaky.
+
+        recovery_reason = self._retrieve_recovery_reason_from_trap()
+        if next_step is not None and recovery_reason:
+            if self._call_action(next_test['state_checker']):
+                # Repluging the USB can pass the state_checker of the next step,
+                # meaning that the firmware failed to boot into USB directly.
+                next_checker_matched = True
+
+        # Reset client to a workable state.
+        self._reset_client()
+
+        # Raise the proper TestFail exception.
+        if next_checker_matched:
+            raise error.TestFail('Firmware failed to auto-boot USB in the '
+                                 'recovery reason: %d.' % recovery_reason)
+        elif recovery_reason:
+            raise error.TestFail('Trapped in the recovery reason: %d' %
+                                 recovery_reason)
+        else:
+            raise error.TestFail('Timed out waiting for DUT reboot.')
 
 
     def assert_test_image_in_path(self, image_path):
@@ -1239,7 +1277,7 @@ class FAFTSequence(ServoTest):
         self._faft_sequence = sequence
 
 
-    def run_faft_step(self, step, no_reboot=False):
+    def run_faft_step(self, step, no_reboot=False, next_step=None):
         """Run a single FAFT step.
 
         Any missing field falls back to faft_template. An empty step means
@@ -1248,6 +1286,8 @@ class FAFTSequence(ServoTest):
         Args:
           step: A FAFT_STEP dict.
           no_reboot: True to prevent running reboot_action and firmware_action.
+          next_step: Optional, a FAFT_STEP dict of the next step, which is used
+                     for diagnostic.
 
         Raises:
           error.TestError: An error when the given step is not valid.
@@ -1283,24 +1323,20 @@ class FAFTSequence(ServoTest):
                     self.wait_for_client()
             except AssertionError:
                 logging.info('wait_for_client() timed out.')
-                self.reset_client()
-                if self._trapped_in_recovery_reason:
-                    raise error.TestFail('Trapped in the recovery reason: %d' %
-                                          self._trapped_in_recovery_reason)
-                else:
-                    raise error.TestFail('Timed out waiting for DUT reboot.')
+                self._restore_routine_from_timeout(next_step)
 
 
     def run_faft_sequence(self):
         """Run FAFT sequence which was previously registered."""
         sequence = self._faft_sequence
-        index = 1
-        for step in sequence:
+        for index, step in enumerate(sequence):
             logging.info('======== Running FAFT sequence step %d ========',
-                         index)
+                         index + 1)
             # Don't reboot in the last step.
-            self.run_faft_step(step, no_reboot=(step is sequence[-1]))
-            index += 1
+            if index == len(sequence) - 1:
+                self.run_faft_step(step, no_reboot=True)
+            else:
+                self.run_faft_step(step, next_step=sequence[index + 1])
 
 
     def get_current_firmware_sha(self):
