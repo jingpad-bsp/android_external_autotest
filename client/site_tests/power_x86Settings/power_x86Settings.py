@@ -79,7 +79,7 @@ ASPM_EXCEPTED_DEVICES = {
     }
 
 GFX_CHECKS = {
-    'Non-Atom': {'i915_enable_rc6': 1, 'i915_enable_fbc': 1, 'powersave': 1,
+    'Non-Atom': {'i915_enable_rc6': -1, 'i915_enable_fbc': 1, 'powersave': 1,
         'semaphores': 1, 'lvds_downclock': 1}
     }
 
@@ -87,7 +87,7 @@ GFX_CHECKS = {
 RAPL_CHECKS = {
     'Non-Atom': {'pkg': {'max': 5.0, 'min': 1.0},
                 'pp0': {'max': 1.0, 'min': 0.001},
-                'pp1': {'max': 1.0, 'min': 0.001}}
+                'pp1': {'max': 1.0, 'min': 0.000}}
     }
 
 SUBTESTS = ['dmi', 'mch', 'msr', 'pcie_aspm', 'wifi', 'usb', 'storage',
