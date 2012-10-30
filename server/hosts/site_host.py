@@ -142,7 +142,7 @@ class SiteHost(remote.RemoteHost):
         self.env['LIBC_FATAL_STDERR_'] = '1'
         self._xmlrpc_proxy_map = {}
         self.servo = servo.Servo.get_lab_servo(hostname)
-        if not self.servo and servo_args:
+        if not self.servo and servo_args is not None:
             self.servo = servo.Servo(**servo_args)
 
 
