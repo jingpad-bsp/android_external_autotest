@@ -137,6 +137,13 @@ class firmware_ECThermal(FAFTSequence):
 
     def setup(self):
         super(firmware_ECThermal, self).setup()
+        try:
+            self.faft_client.run_shell_command('stop temp_metrics')
+        except ChromeOSInterfaceError:
+            self._has_temp_metrics = False
+        else:
+            logging.info('Stopped temp_metrics')
+            self._has_temp_metrics = True
         if self.check_ec_capability(['thermal']):
             self.get_thermal_setting()
             self.get_fan_steps()
@@ -146,6 +153,9 @@ class firmware_ECThermal(FAFTSequence):
     def cleanup(self):
         if self.check_ec_capability(['thermal']):
             self.enable_auto_fan_control()
+        if self._has_temp_metrics:
+            logging.info('Starting temp_metrics')
+            self.faft_client.run_shell_command('start temp_metrics')
         super(firmware_ECThermal, self).cleanup()
 
 
