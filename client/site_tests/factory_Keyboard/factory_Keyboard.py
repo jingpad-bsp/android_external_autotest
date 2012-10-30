@@ -50,7 +50,8 @@ def GenerateKeycodeBinding(old_bindings):
     '''Offsets the bindings keycodes for GTK.'''
     key_to_geom = {}
     for item in old_bindings.items():
-        key_to_geom[item[0] + _GTK_KB_KEYCODE_OFFSET] = item[1]
+        key_to_geom[item[0] + _GTK_KB_KEYCODE_OFFSET] = (
+                item[1] if isinstance(item[1], list) else [item[1],])
     return key_to_geom
 
 class KeyboardTest:
@@ -101,15 +102,15 @@ class KeyboardTest:
         context.paint()
 
         for key in self.successful_keys:
-            coords = self._bindings[key]
-            context.rectangle(*coords)
-            context.set_source_rgba(*ful.RGBA_GREEN_OVERLAY)
-            context.fill()
+            for coords in self._bindings[key]:
+                context.rectangle(*coords)
+                context.set_source_rgba(*ful.RGBA_GREEN_OVERLAY)
+                context.fill()
         for key in self._pressed_keys:
-            coords = self._bindings[key]
-            context.rectangle(*coords)
-            context.set_source_rgba(*ful.RGBA_YELLOW_OVERLAY)
-            context.fill()
+            for coords in self._bindings[key]:
+                context.rectangle(*coords)
+                context.set_source_rgba(*ful.RGBA_YELLOW_OVERLAY)
+                context.fill()
 
         return True
 
