@@ -71,7 +71,7 @@ class FAFTSequence(ServoTest):
             be over-written if the registered FAFT_SEQUENCE is valid.
         _faft_sequence: The registered FAFT_SEQUENCE.
         _customized_key_commands: The dict of the customized key commands,
-            including Ctrl-D, Ctrl-U, Enter, and recovery reboot.
+            including Ctrl-D, Ctrl-U, and Enter.
         _install_image_path: The URL or the path on the host to the Chrome OS
             test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
@@ -100,7 +100,6 @@ class FAFTSequence(ServoTest):
         'ctrl_d': None,
         'ctrl_u': None,
         'enter': None,
-        'rec_reboot': None,
     }
     _install_image_path = None
     _firmware_update = False
@@ -990,10 +989,7 @@ class FAFTSequence(ServoTest):
         i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
         recovery mode, i.e. just press Power + Esc + Refresh.
         """
-        if self._customized_key_commands['rec_reboot']:
-            logging.info('running the customized rec reboot command')
-            os.system(self._customized_key_commands['rec_reboot'])
-        elif self.client_attr.chrome_ec:
+        if self.client_attr.chrome_ec:
             # Cold reset to clear EC_IN_RW signal
             self.servo.set('cold_reset', 'on')
             time.sleep(self.delay.hold_cold_reset)
