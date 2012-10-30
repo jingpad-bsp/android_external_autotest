@@ -27,6 +27,31 @@ KEYMATRIX = {'`': (3, 1), '1': (6, 1), '2': (6, 4), '3': (6, 2), '4': (6, 3),
              '<left>': (7, 12)}
 
 
+# Hostevent codes, copied from:
+#     ec/include/ec_commands.h
+HOSTEVENT_LID_CLOSED        = 0x00000001
+HOSTEVENT_LID_OPEN          = 0x00000002
+HOSTEVENT_POWER_BUTTON      = 0x00000004
+HOSTEVENT_AC_CONNECTED      = 0x00000008
+HOSTEVENT_AC_DISCONNECTED   = 0x00000010
+HOSTEVENT_BATTERY_LOW       = 0x00000020
+HOSTEVENT_BATTERY_CRITICAL  = 0x00000040
+HOSTEVENT_BATTERY           = 0x00000080
+HOSTEVENT_THERMAL_THRESHOLD = 0x00000100
+HOSTEVENT_THERMAL_OVERLOAD  = 0x00000200
+HOSTEVENT_THERMAL           = 0x00000400
+HOSTEVENT_USB_CHARGER       = 0x00000800
+HOSTEVENT_KEY_PRESSED       = 0x00001000
+HOSTEVENT_INTERFACE_READY   = 0x00002000
+# Keyboard recovery combo has been pressed
+HOSTEVENT_KEYBOARD_RECOVERY = 0x00004000
+# Shutdown due to thermal overload
+HOSTEVENT_THERMAL_SHUTDOWN  = 0x00008000
+# Shutdown due to battery level too low
+HOSTEVENT_BATTERY_SHUTDOWN  = 0x00010000
+HOSTEVENT_INVALID           = 0x80000000
+
+
 class ChromeEC(object):
     """Manages control of a Chrome EC.
 
@@ -178,3 +203,12 @@ class ChromeEC(object):
             self.send_command("flashwp enable")
         else:
             self.send_command("flashwp disable")
+
+
+    def set_hostevent(self, codes):
+        """Set the EC hostevent codes.
+
+        Args:
+          codes: Hostevent codes, HOSTEVENT_*
+        """
+        self.send_command("hostevent set %#x" % codes)

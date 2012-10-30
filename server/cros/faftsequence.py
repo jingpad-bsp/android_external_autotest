@@ -13,7 +13,7 @@ import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.chrome_ec import ChromeEC
+from autotest_lib.server.cros import chrome_ec
 from autotest_lib.server.cros.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
 from autotest_lib.server.cros.faft_delay_constants import FAFTDelayConstants
@@ -169,7 +169,7 @@ class FAFTSequence(ServoTest):
             self.checkers = FAFTCheckers(self, self.faft_client)
 
             if self.client_attr.chrome_ec:
-                self.ec = ChromeEC(self.servo)
+                self.ec = chrome_ec.ChromeEC(self.servo)
 
             if not self.client_attr.has_keyboard:
                 # The environment variable USBKM232_UART_DEVICE should point
@@ -821,7 +821,7 @@ class FAFTSequence(ServoTest):
             time.sleep(self.delay.ec_boot_to_console)
             self.ec.reboot("ap-off")
             time.sleep(self.delay.ec_boot_to_console)
-            self.ec.send_command("hostevent set 0x4000")
+            self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
             self.servo.power_short_press()
         else:
             self.servo.enable_recovery_mode()
