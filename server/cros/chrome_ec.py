@@ -166,3 +166,15 @@ class ChromeEC(object):
                 raise error.TestError(
                         'The flag %s of EC reboot command is invalid.' % flag)
         self.send_command("reboot %s" % flags)
+
+
+    def set_flash_write_protect(self, enable):
+        """Set the software write protect of EC flash.
+
+        Args:
+          enable: True to enable write protect, False to disable.
+        """
+        if enable:
+            self.send_command("flashwp enable")
+        else:
+            self.send_command("flashwp disable")
