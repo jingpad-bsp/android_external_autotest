@@ -5,10 +5,12 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_3GRecoverFromGobiDesync"
 PURPOSE = "Verify that gobi-cromo-plugin recovers from driver failures"
+SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+DEPENDENCIES = "modem:gobi3k"
 
 DOC = """
   Tests that a Gobi modem recovers from driver failures
@@ -19,4 +21,4 @@ DOC = """
 
  """
 
-job.run_test('network_3GRecoverFromGobiDesync')
+job.run_test('network_3GRecoverFromGobiDesync', tag='gobi3k')
