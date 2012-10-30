@@ -75,7 +75,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                 'state_checker': (lambda: self.checkers.ro_normal_checker('A',
                                               twostop=True) and
                                           self.write_protect_checker()),
-                'reboot_action': (self.sync_and_ec_reboot, 'cold'),
+                'reboot_action': (self.sync_and_ec_reboot, 'hard'),
             },
             {   # Step 4, expected EC RW boot, write protected. Restore RO
                 #         normal flag and deactivate write protect.

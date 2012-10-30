@@ -145,3 +145,24 @@ class ChromeEC(object):
                 self.send_key_string_raw(raw)
             else:
                 self.key_press(sp)
+
+
+    def reboot(self, flags=''):
+        """Reboot EC with given flags.
+
+        Args:
+          flags: Optional, a space-separated string of flags passed to the
+                 reboot command, including:
+                   default: EC soft reboot;
+                   'hard': EC hard/cold reboot;
+                   'ap-off': Leave AP off after EC reboot (by default, EC turns
+                             AP on after reboot if lid is open).
+
+        Raises:
+          error.TestError: If the string of flags is invalid.
+        """
+        for flag in flags.split():
+            if flag not in ('hard', 'ap-off'):
+                raise error.TestError(
+                        'The flag %s of EC reboot command is invalid.' % flag)
+        self.send_command("reboot %s" % flags)
