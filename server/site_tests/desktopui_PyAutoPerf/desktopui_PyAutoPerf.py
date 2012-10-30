@@ -6,7 +6,7 @@ import logging
 import os
 import subprocess
 
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server import test, autotest
 
 
@@ -27,8 +27,9 @@ class desktopui_PyAutoPerf(test.test):
             return
         # The label is in the format of builder/build/suite/test
         result_file = os.path.join(self.job.resultdir, self.server_test,
-                                   self.client_test, 'results', 'keyval')
-        builder,build = self.job.label.split('/')[0:2]
+                                   self.client_test, 'debug',
+                                   '%s.DEBUG' % self.client_test)
+        builder, build = self.job.label.split('/')[0:2]
         gs_path = self._GS_PATH_FORMAT % (builder, build)
         if not utils.gs_upload(result_file, gs_path, 'project-private'):
             raise error.TestFail('Failed to upload perf results %s to google'
