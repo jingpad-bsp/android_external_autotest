@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
 from autotest_lib.client.cros import httpd, login, power_status, power_utils
 from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros.audio import audio_helper
 import flimflam
 
 params_dict = {
@@ -49,8 +50,8 @@ class power_LoadTest(cros_ui_test.UITest):
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', low_battery_threshold=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
-                 wifi_pw='', tasks="", kblight_percent=10):
-
+                 wifi_pw='', tasks="", kblight_percent=10, volume_level=10,
+                 mic_gain=10):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -62,6 +63,8 @@ class power_LoadTest(cros_ui_test.UITest):
         scroll_interval_ms: how often to scoll
         scroll_by_pixels: number of pixels to scroll each time
         kblight_percent: percent brightness of keyboard backlight
+        volume_level: percent audio volume level
+        mic_gain: percent audio microphone gain level
         """
         self._loop_time = loop_time
         self._loop_count = loop_count
@@ -80,6 +83,8 @@ class power_LoadTest(cros_ui_test.UITest):
         self._tasks = '\'' + tasks.replace(' ','') + '\''
         self._backchannel = None
         self._kblight_percent = kblight_percent
+        self._volume_level = volume_level
+        self._mic_gain = mic_gain
 
         self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
@@ -110,6 +115,8 @@ class power_LoadTest(cros_ui_test.UITest):
               if check_network and backchannel.is_network_iface_running(iface):
                   raise error.TestError('Ethernet interface is active. ' + \
                                                 'Please remove Ethernet cable')
+
+        self._audio_helper = audio_helper.AudioHelper(None)
 
         # record the max backlight level
         cmd = 'backlight-tool --get_max_brightness'
@@ -176,6 +183,8 @@ class power_LoadTest(cros_ui_test.UITest):
             self._set_backlight_level()
             if kblight:
                 kblight.set(self._kblight_percent)
+            self._audio_helper.set_volume_levels(self._volume_level,
+                                                 self._mic_gain)
 
             low_battery = self._do_wait(self._verbose, self._loop_time,
                                         latch)
