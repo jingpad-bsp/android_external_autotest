@@ -181,6 +181,7 @@ class power_LoadTest(cros_ui_test.UITest):
             # reset backlight level since powerd might've modified it
             # based on ambient light
             self._set_backlight_level()
+            self._set_lightbar_level()
             if kblight:
                 kblight.set(self._kblight_percent)
             self._audio_helper.set_volume_levels(self._volume_level,
@@ -339,3 +340,20 @@ class power_LoadTest(cros_ui_test.UITest):
         level = int(utils.system_output(cmd).rstrip())
         logging.info('backlight level is %d' % level)
         self._tmp_keyvals['level_backlight_current'] = level
+
+
+    def _set_lightbar_level(self, level='off'):
+        """Set lightbar level.
+
+        Args:
+          level: string value to set lightbar to.  See ectool for more details.
+        """
+        rv = utils.system('which ectool', ignore_status=True)
+        if rv:
+            return
+        rv = utils.system('ectool lightbar %s' % level, ignore_status=True)
+        if rv:
+            logging.info('Assuming no lightbar due to non-zero exit status')
+        else:
+            logging.info('Setting lightbar to %s', level)
+            self._tmp_keyvals['level_lightbar_current'] = level
