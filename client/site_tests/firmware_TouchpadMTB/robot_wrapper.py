@@ -12,8 +12,20 @@ import test_conf as conf
 from firmware_constants import GV
 
 
+# Define the robot control script names.
 SCRIPT_LINE = 'line.py'
 SCRIPT_CLICK = 'click.py'
+
+# Define constants for coordinates.
+# Normally, a gesture is performed within [START, END].
+# For tests involved with RangeValidator which intends to verify
+# the min/max reported coordinates, use [OFF_START, OFF_END] instead
+# so that the gestures are performed off the edge.
+START = 0.1
+CENTER = 0.5
+END = 0.9
+OFF_START = -0.05
+OFF_END = 1.05
 
 
 class RobotWrapperError(Exception):
@@ -41,14 +53,14 @@ class RobotWrapper:
         }
 
         self._line_dict = {
-            GV.LR: (0.0, 0.5, 1.0, 0.5),
-            GV.RL: (1.0, 0.5, 0.0, 0.5),
-            GV.TB: (0.5, 0.0, 0.5, 1.0),
-            GV.BT: (0.5, 1.0, 0.5, 0.0),
-            GV.BLTR: (0.1, 0.9, 0.9, 0.1),
-            GV.TRBL: (0.9, 0.1, 0.1, 0.9),
-            GV.BRTL: (0.9, 0.9, 0.1, 0.1),
-            GV.TLBR: (0.1, 0.1, 0.9, 0.9),
+            GV.LR: (OFF_START, CENTER, OFF_END, CENTER),
+            GV.RL: (OFF_END, CENTER, OFF_START, CENTER),
+            GV.TB: (CENTER, OFF_START, CENTER, OFF_END),
+            GV.BT: (CENTER, OFF_END, CENTER, OFF_START),
+            GV.BLTR: (START, END, END, START),
+            GV.TRBL: (END, START, START, END),
+            GV.BRTL: (END, END, START, START),
+            GV.TLBR: (START, START, END, END),
         }
 
         self._speed_dict = {
@@ -58,16 +70,16 @@ class RobotWrapper:
         }
 
         self._location_dict = {
-            GV.TL: (0.2, 0.2),
-            GV.TR: (0.8, 0.2),
-            GV.BL: (0.2, 0.8),
-            GV.BR: (0.8, 0.8),
-            GV.TS: (0.5, 0.2),
-            GV.BS: (0.5, 0.8),
-            GV.LS: (0.2, 0.5),
-            GV.RS: (0.8, 0.5),
-            GV.CENTER: (0.5, 0.5),
-            None: (0.5, 0.5),
+            GV.TL: (START, START),
+            GV.TR: (END, START),
+            GV.BL: (START, END),
+            GV.BR: (END, END),
+            GV.TS: (CENTER, START),
+            GV.BS: (CENTER, END),
+            GV.LS: (START, CENTER),
+            GV.RS: (END, CENTER),
+            GV.CENTER: (CENTER, CENTER),
+            None: (CENTER, CENTER),
         }
 
     def _get_robot_script_dir(self):
