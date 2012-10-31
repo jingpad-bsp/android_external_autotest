@@ -8,6 +8,8 @@ class FAFTDelayConstants(object):
 
     # Delay between power-on and firmware screen
     firmware_screen = 10
+    # Delay between keypresses in firmware screen
+    confirm_screen = 3
     # Delay between passing firmware screen and text mode warning screen
     legacy_text_screen = 20
     # The developer screen timeouts fit our spec

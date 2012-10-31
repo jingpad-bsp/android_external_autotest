@@ -861,7 +861,7 @@ class FAFTSequence(ServoTest):
             self.press_ctrl_d()
         else:
             self.press_enter()
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.delay.confirm_screen)
         self.press_enter()
 
 
