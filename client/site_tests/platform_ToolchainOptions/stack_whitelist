@@ -1,2 +1,7 @@
 # Whitelist of ELF files with an executable stack. Hint: this file should
 # have nothing listed. :)
+#
+# chrome-os-partner:15814
+/opt/google/talkplugin/GoogleTalkPlugin
+# chrome-os-partner:15815
+/usr/lib/libmali.so.0.0.39
