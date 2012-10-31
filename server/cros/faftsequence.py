@@ -1061,7 +1061,7 @@ class FAFTSequence(ServoTest):
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
             self.enable_dev_mode_and_reboot()
-        time.sleep(self.SYNC_DELAY)
+        time.sleep(self.delay.sync)
         self.enable_rec_mode_and_reboot()
         time.sleep(self.delay.install_shim_done)
         self.warm_reboot()
