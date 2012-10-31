@@ -55,4 +55,7 @@ class FAFTDelayConstants(object):
 
         # Add the platform-specific delay values here.
 
+        if platform == 'Link':
+            self.firmware_screen = 7
+
         pass
