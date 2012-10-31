@@ -79,18 +79,18 @@ class FAFTCheckers(object):
         got_dict = self._parse_crossystem_output(lines)
         for key in expected_dict:
             if key not in got_dict:
-                logging.info('Expected key "%s" not in crossystem result' % key)
+                logging.info('Expected key "%s" not in crossystem result', key)
                 return False
             if isinstance(expected_dict[key], str):
                 if got_dict[key] != expected_dict[key]:
-                    logging.info("Expected '%s' value '%s' but got '%s'" %
-                                 (key, expected_dict[key], got_dict[key]))
+                    logging.info("Expected '%s' value '%s' but got '%s'",
+                                 key, expected_dict[key], got_dict[key])
                     return False
             elif isinstance(expected_dict[key], tuple):
                 # Expected value is a tuple of possible actual values.
                 if got_dict[key] not in expected_dict[key]:
-                    logging.info("Expected '%s' values %s but got '%s'" %
-                                 (key, str(expected_dict[key]), got_dict[key]))
+                    logging.info("Expected '%s' values %s but got '%s'",
+                                 key, str(expected_dict[key]), got_dict[key])
                     return False
             else:
                 logging.info("The expected_dict is neither a str nor a dict.")
@@ -115,8 +115,8 @@ class FAFTCheckers(object):
                     'crossystem vdat_flags')
         vdat_flags = int(lines[0], 16)
         if vdat_flags & mask != value:
-            logging.info("Expected vdat_flags 0x%x mask 0x%x but got 0x%x" %
-                         (value, mask, vdat_flags))
+            logging.info("Expected vdat_flags 0x%x mask 0x%x but got 0x%x",
+                         value, mask, vdat_flags)
             return False
         return True
 
@@ -171,8 +171,8 @@ class FAFTCheckers(object):
         """
         part = self.faft_client.get_root_part()[-1]
         if self.faftsequence.ROOTFS_MAP[expected_part] != part:
-            logging.info("Expected root part %s but got %s" %
-                         (self.faftsequence.ROOTFS_MAP[expected_part], part))
+            logging.info("Expected root part %s but got %s",
+                         self.faftsequence.ROOTFS_MAP[expected_part], part)
             return False
         return True
 

@@ -148,7 +148,7 @@ class FAFTSequence(ServoTest):
                 args[match.group(1)] = match.group(2)
         if 'image' in args:
             self._install_image_path = args['image']
-            logging.info('Install Chrome OS test image path: %s' %
+            logging.info('Install Chrome OS test image path: %s',
                     self._install_image_path)
         if 'firmware_update' in args and args['firmware_update'].lower() \
                 not in ('0', 'false', 'no'):
@@ -245,7 +245,7 @@ class FAFTSequence(ServoTest):
             lines = self.faft_client.run_shell_command_get_output(
                         'crossystem recovery_reason')
             self._trapped_in_recovery_reason = int(lines[0])
-            logging.info('Got the recovery reason %d.' %
+            logging.info('Got the recovery reason %d.',
                          self._trapped_in_recovery_reason)
         except AssertionError:
             logging.info('Failed to get the recovery reason.')
@@ -320,7 +320,7 @@ class FAFTSequence(ServoTest):
         try:
             build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
                                                                  image_path)
-            logging.info('Build of image: %s %s' % (build_ver, build_hash))
+            logging.info('Build of image: %s %s', build_ver, build_hash)
         except ChromeOSTestError:
             raise error.TestError(
                     'An USB disk containning a test image should be plugged '
@@ -442,7 +442,7 @@ class FAFTSequence(ServoTest):
                 raise error.TestError('Starting devserver failed, '
                                       'returning %d.' % devserver.returncode)
 
-        logging.info('Ask Servo to install the image from %s' % image_url)
+        logging.info('Ask Servo to install the image from %s', image_url)
         self.servo.image_to_servo_usb(image_url)
 
         if devserver and devserver.poll() is None:
@@ -508,8 +508,8 @@ class FAFTSequence(ServoTest):
         new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
 
         if (gbb_flags != new_flags):
-            logging.info('Change the GBB flags from 0x%x to 0x%x.' %
-                         (gbb_flags, new_flags))
+            logging.info('Change the GBB flags from 0x%x to 0x%x.',
+                         gbb_flags, new_flags)
             self.faft_client.run_shell_command(
                     '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' % new_flags)
             self.faft_client.reload_firmware()
@@ -520,7 +520,7 @@ class FAFTSequence(ServoTest):
                 })
 
 
-    def check_ec_capability(self, required_cap=[], suppress_warning=False):
+    def check_ec_capability(self, required_cap=None, suppress_warning=False):
         """Check if current platform has required EC capabilities.
 
         Args:
@@ -536,11 +536,14 @@ class FAFTSequence(ServoTest):
                 logging.warn('Requires Chrome EC to run this test.')
             return False
 
+        if not required_cap:
+            return True
+
         for cap in required_cap:
             if cap not in self.client_attr.ec_capability:
                 if not suppress_warning:
                     logging.warn('Requires EC capability "%s" to run this '
-                                 'test.' % cap)
+                                 'test.', cap)
                 return False
 
         return True
@@ -589,12 +592,12 @@ class FAFTSequence(ServoTest):
           to_part: A string of partition number to be copied to.
         """
         root_dev = self.faft_client.get_root_dev()
-        logging.info('Copying kernel from %s to %s. Please wait...' %
+        logging.info('Copying kernel from %s to %s. Please wait...',
                      (from_part, to_part))
         self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
                 (self._join_part(root_dev, self.KERNEL_MAP[from_part]),
                  self._join_part(root_dev, self.KERNEL_MAP[to_part])))
-        logging.info('Copying rootfs from %s to %s. Please wait...' %
+        logging.info('Copying rootfs from %s to %s. Please wait...',
                      (from_part, to_part))
         self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
                 (self._join_part(root_dev, self.ROOTFS_MAP[from_part]),
@@ -1106,13 +1109,13 @@ class FAFTSequence(ServoTest):
         read_cmd = "sudo dd if=%s bs=8 count=1 2>/dev/null" % kernel_part
         current_magic = utils.system_output(read_cmd)
         if current_magic == to_magic:
-            logging.info("The kernel magic is already %s." % current_magic)
+            logging.info("The kernel magic is already %s.", current_magic)
             return
         if current_magic != from_magic:
             raise error.TestError("Invalid kernel image on USB: wrong magic.")
 
-        logging.info('Modify the kernel magic in USB, from %s to %s.' %
-                     (from_magic, to_magic))
+        logging.info('Modify the kernel magic in USB, from %s to %s.',
+                     from_magic, to_magic)
         write_cmd = ("echo -n '%s' | sudo dd of=%s oflag=sync conv=notrunc "
                      " 2>/dev/null" % (to_magic, kernel_part))
         utils.system(write_cmd)
@@ -1296,7 +1299,7 @@ class FAFTSequence(ServoTest):
         sequence = self._faft_sequence
         index = 1
         for step in sequence:
-            logging.info('======== Running FAFT sequence step %d ========' %
+            logging.info('======== Running FAFT sequence step %d ========',
                          index)
             # Don't reboot in the last step.
             self.run_faft_step(step, no_reboot=(step is sequence[-1]))
@@ -1336,10 +1339,10 @@ class FAFTSequence(ServoTest):
             corrupt_VBOOTB = (current_sha[2] != self._backup_firmware_sha[2])
             corrupt_FVMAINB = (current_sha[3] != self._backup_firmware_sha[3])
             logging.info("Firmware changed:")
-            logging.info('VBOOTA is changed: %s' % corrupt_VBOOTA)
-            logging.info('VBOOTB is changed: %s' % corrupt_VBOOTB)
-            logging.info('FVMAIN is changed: %s' % corrupt_FVMAIN)
-            logging.info('FVMAINB is changed: %s' % corrupt_FVMAINB)
+            logging.info('VBOOTA is changed: %s', corrupt_VBOOTA)
+            logging.info('VBOOTB is changed: %s', corrupt_VBOOTB)
+            logging.info('FVMAIN is changed: %s', corrupt_FVMAIN)
+            logging.info('FVMAINB is changed: %s', corrupt_FVMAINB)
             return True
 
 
@@ -1355,8 +1358,8 @@ class FAFTSequence(ServoTest):
                               os.path.join(self.resultsdir, 'bios' + suffix))
 
         self._backup_firmware_sha = self.get_current_firmware_sha()
-        logging.info('Backup firmware stored in %s with suffix %s' % (
-            self.resultsdir, suffix))
+        logging.info('Backup firmware stored in %s with suffix %s',
+            self.resultsdir, suffix)
 
 
     def is_firmware_saved(self):
@@ -1418,8 +1421,8 @@ class FAFTSequence(ServoTest):
             is_shellball = (utils.system_output("file %s" % shellball).find(
                     "shell script") != -1)
             if is_shellball:
-                logging.info('Device will update firmware with shellball %s'
-                             % shellball)
+                logging.info('Device will update firmware with shellball %s',
+                             shellball)
                 temp_dir = self.faft_client.create_temp_dir('shellball_')
                 temp_shellball = os.path.join(temp_dir, 'updater.sh')
                 self._client.send_file(shellball, temp_shellball)
