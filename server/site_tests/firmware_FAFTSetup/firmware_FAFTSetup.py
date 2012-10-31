@@ -148,7 +148,7 @@ class firmware_FAFTSetup(FAFTSequence):
                 "install_deps_after_boot": True,
             },
             {   # Step 3, Test cold reboot
-                "state_checker": (self.crossystem_checker,
+                "state_checker": (self.checkers.crossystem_checker,
                                   {'mainfw_type': 'recovery'}),
                 "reboot_action": self.sync_and_cold_reboot,
             },

@@ -27,28 +27,28 @@ class firmware_CorruptFwSigB(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, expected firmware A boot and corrupt firmware
                 # signature B.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
                 'userspace_action': (self.faft_client.corrupt_firmware, 'b'),
             },
             {   # Step 2, expected firmware A boot and set try_fwb flag
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
                 'userspace_action': self.faft_client.set_try_fw_b,
             },
             {   # Step 3, expected firmware A boot and restore firmware B
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '1',
                 }),
                 'userspace_action': (self.faft_client.restore_firmware, 'b'),
             },
             {   # Step 4, final check and done
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),

@@ -101,7 +101,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step1. Update firmware with new datakey version.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                     'mainfw_type': 'normal',
@@ -113,7 +113,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
                 )
             },
             {   # Step2. Check firmware data key version and Rollback.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'B',
                     'tried_fwb': '1'
                 }),
@@ -121,7 +121,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
                                      'test')
             },
             {   # Step3, Check firmware and TPM version, then recovery.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0'
                 }),
@@ -130,7 +130,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
                     self.sync_and_reboot_with_factory_install_shim)
             },
             {   # Step4, Check Rollback version.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                     'fwid': self._fwid

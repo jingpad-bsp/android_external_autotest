@@ -21,20 +21,20 @@ class firmware_TryFwB(FAFTSequence):
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, set fwb_tries flag
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
                 'userspace_action': self.faft_client.set_try_fw_b,
             },
             {   # Step 2, expected firmware B boot, reboot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'B',
                     'tried_fwb': '1',
                 }),
             },
             {   # Step 3, expected firmware A boot, done
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),

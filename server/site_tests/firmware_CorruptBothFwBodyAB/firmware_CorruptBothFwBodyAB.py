@@ -50,14 +50,14 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
             logging.info('The firmware USE_RO_NORMAL flag is enabled.')
             self.register_faft_sequence((
                 {   # Step 1, corrupt both firmware body A and B
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
                     'userspace_action': (self.faft_client.corrupt_firmware_body,
                                          (('a', 'b'),)),
                 },
                 {   # Step 2, still expected normal/developer boot and restore
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
                     'userspace_action': (self.faft_client.restore_firmware_body,
@@ -67,7 +67,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
         else:
             self.register_faft_sequence((
                 {   # Step 1, corrupt both firmware body A and B
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
                     'userspace_action': (self.faft_client.corrupt_firmware_body,
@@ -77,7 +77,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                     'install_deps_after_boot': True,
                 },
                 {   # Step 2, expected recovery boot and restore firmware
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'recovery',
                         'recovery_reason':
                             (vboot.RECOVERY_REASON['RO_INVALID_RW'],
@@ -87,7 +87,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                                          (('a', 'b'),)),
                 },
                 {   # Step 3, expected normal boot, done
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
                 },

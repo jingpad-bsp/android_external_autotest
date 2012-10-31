@@ -37,13 +37,13 @@ class firmware_ConsecutiveBoot(FAFTSequence):
     def run_once(self, dev_mode=False, host=None):
         self.register_faft_sequence((
             {   # Step 1, expected boot fine, full power off DUT and on
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
                 'reboot_action': self.full_power_off_and_on,
             },
             {   # Step 2, expected boot fine
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
             },

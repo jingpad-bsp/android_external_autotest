@@ -51,7 +51,7 @@ class firmware_DevFwNormalBoot(FAFTSequence):
             self.register_faft_sequence((
                 {   # Step 1, expected dev fw on A, corrupt fw B and force
                     # normal boot.
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'devsw_boot': '1',
                         'mainfw_act': 'A',
                         'mainfw_type': 'developer',
@@ -61,7 +61,7 @@ class firmware_DevFwNormalBoot(FAFTSequence):
                     'install_deps_after_boot': True,
                 },
                 {   # Step 2, expected recovery boot, resume developer boot.
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'devsw_boot': '0',
                         'mainfw_type': 'recovery',
                         'recovery_reason' :
@@ -70,7 +70,7 @@ class firmware_DevFwNormalBoot(FAFTSequence):
                     'userspace_action': self.restore_fw_b_and_enable_devsw,
                 },
                 {   # Step 3, expected developer mode as before, done.
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'devsw_boot': '1',
                         'mainfw_act': 'A',
                         'mainfw_type': 'developer',

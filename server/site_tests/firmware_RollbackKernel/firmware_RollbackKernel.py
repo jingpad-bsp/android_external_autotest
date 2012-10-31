@@ -91,7 +91,7 @@ class firmware_RollbackKernel(FAFTSequence):
                     'install_deps_after_boot': True,
                 },
                 {   # Step 3, expected recovery boot and restores the OS image.
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'recovery',
                         'recovery_reason' : recovery_reason,
                     }),

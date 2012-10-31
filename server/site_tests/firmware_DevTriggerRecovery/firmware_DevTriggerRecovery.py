@@ -29,13 +29,13 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     def check_devsw_on_transition(self):
         if self.faft_client.get_platform_name() in ('Alex', 'ZGB'):
             self.need_dev_transition = True
-            return self.crossystem_checker({
+            return self.checkers.crossystem_checker({
                     'devsw_boot': '1',
                     'mainfw_act': 'A',
                     'mainfw_type': 'normal',
                 })
         else:
-            return self.crossystem_checker({
+            return self.checkers.crossystem_checker({
                     'devsw_boot': '1',
                     'mainfw_act': 'A',
                     'mainfw_type': 'developer',
@@ -47,13 +47,13 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     # For other platforms, it is directly firmware A normal boot.
     def check_devsw_off_transition(self):
         if self.need_dev_transition:
-            return self.crossystem_checker({
+            return self.checkers.crossystem_checker({
                     'devsw_boot': '0',
                     'mainfw_act': 'B',
                     'mainfw_type': 'normal',
                 })
         else:
-            return self.crossystem_checker({
+            return self.checkers.crossystem_checker({
                     'devsw_boot': '0',
                     'mainfw_act': 'A',
                     'mainfw_type': 'normal',
@@ -75,7 +75,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
 
         self.register_faft_sequence((
             {   # Step 1, enable dev mode
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_act': 'A',
                     'mainfw_type': 'normal',
@@ -97,7 +97,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 'install_deps_after_boot': True,
             },
             {   # Step 3, expected recovery boot and disable dev switch
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'recovery',
                     'recovery_reason' : vboot.RECOVERY_REASON['RW_DEV_SCREEN'],
@@ -112,7 +112,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 'reboot_action': None,
             },
             {   # Step 5, expected normal mode boot, done
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_act': 'A',
                     'mainfw_type': 'normal',

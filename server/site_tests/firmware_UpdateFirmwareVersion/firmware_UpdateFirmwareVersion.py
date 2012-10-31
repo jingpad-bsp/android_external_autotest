@@ -86,7 +86,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, Update firmware with new version.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'mainfw_type': 'normal',
                     'tried_fwb': '0',
@@ -98,7 +98,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
                 )
             },
             {   # Step2, Copy firmware form B to A.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'B',
                     'tried_fwb': '1'
                 }),
@@ -106,7 +106,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
                                      'test')
             },
             {   # Step3, Check firmware and TPM version, then recovery.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0'
                 }),
@@ -115,7 +115,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
                     self.sync_and_reboot_with_factory_install_shim)
             },
             {   # Step4, Check Rollback version.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                     'fwid': self._fwid

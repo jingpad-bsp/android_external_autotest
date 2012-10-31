@@ -24,7 +24,7 @@ class firmware_RecoveryButton(FAFTSequence):
         If not, it may be a test failure during step 2, try to recover to
         normal mode by setting no recovery mode and rebooting the machine.
         """
-        if not self.crossystem_checker(
+        if not self.checkers.crossystem_checker(
                 {'mainfw_type': ('normal', 'developer')}):
             self.run_faft_step({
                 'userspace_action': self.servo.disable_recovery_mode,
@@ -49,7 +49,7 @@ class firmware_RecoveryButton(FAFTSequence):
                       ('Mario', 'Alex', 'ZGB', 'Aebl', 'Kaen'))
         self.register_faft_sequence((
             {   # Step 1, switch to recovery mode and reboot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
                 'userspace_action': self.enable_rec_mode_and_reboot,
@@ -68,13 +68,13 @@ class firmware_RecoveryButton(FAFTSequence):
                 'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot and reboot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : vboot.RECOVERY_REASON['RO_MANUAL'],
                 }),
             },
             {   # Step 3, expected normal boot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
             },

@@ -96,7 +96,7 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
     def run_once(self, host=None, dev_mode=False):
         self.register_faft_sequence((
             {   # Step1. Update firmware with new kernel subkey version.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                     'fwid': self._fwid
@@ -107,14 +107,14 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
                 ),
             },
             {   # Step2. Check firmware data key version and Rollback
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'B',
                     'tried_fwb': '1'
                 }),
                 'userspace_action': (self.run_bootok_and_recovery),
             },
             {   # Step3, Check Rollback version
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                     'fwid': self._fwid

@@ -40,7 +40,7 @@ class firmware_CorruptFwBodyA(FAFTSequence):
             logging.info('The firmware USE_RO_NORMAL flag is enabled.')
             self.register_faft_sequence((
                 {   # Step 1, corrupt firmware body A
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_act': 'A',
                         'tried_fwb': '0',
                     }),
@@ -48,7 +48,7 @@ class firmware_CorruptFwBodyA(FAFTSequence):
                                          'a'),
                 },
                 {   # Step 2, still expected firmware A boot and restore
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_act': 'A',
                         'tried_fwb': '0',
                     }),
@@ -60,7 +60,7 @@ class firmware_CorruptFwBodyA(FAFTSequence):
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             self.register_faft_sequence((
                 {   # Step 1, corrupt firmware body A
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_act': 'A',
                         'tried_fwb': '0',
                     }),
@@ -68,7 +68,7 @@ class firmware_CorruptFwBodyA(FAFTSequence):
                                          'a'),
                 },
                 {   # Step 2, expected firmware B boot and restore firmware A
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_act': 'B',
                         'tried_fwb': '0',
                     }),
@@ -76,7 +76,7 @@ class firmware_CorruptFwBodyA(FAFTSequence):
                                          'a'),
                 },
                 {   # Step 3, expected firmware A boot, done
-                    'state_checker': (self.crossystem_checker, {
+                    'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_act': 'A',
                         'tried_fwb': '0',
                     }),

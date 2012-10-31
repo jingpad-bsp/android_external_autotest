@@ -69,7 +69,7 @@ class firmware_DevBootUSB(FAFTSequence):
 
         self.register_faft_sequence((
             {   # Step 1, expected developer mode, set dev_boot_usb to 0
-                'state_checker': (self.dev_boot_usb_checker, False),
+                'state_checker': (self.checkers.dev_boot_usb_checker, False),
                 'userspace_action': (self.faft_client.set_dev_boot_usb, 0),
                 # Ctrl-U doesn't take effect as dev_boot_usb=0.
                 # Falls back to Ctrl-D internal disk boot.
@@ -77,21 +77,21 @@ class firmware_DevBootUSB(FAFTSequence):
                 'install_deps_after_boot': True,
             },
             {   # Step 2, expected internal disk boot, set dev_boot_usb to 1
-                'state_checker': (self.dev_boot_usb_checker, False,
+                'state_checker': (self.checkers.dev_boot_usb_checker, False,
                         "Not internal disk boot, dev_boot_usb misbehaved"),
                 'userspace_action': (self.faft_client.set_dev_boot_usb, 1),
                 'firmware_action': self.wait_fw_screen_and_ctrl_u,
                 'install_deps_after_boot': True,
             },
             {   # Step 3, expected USB boot, set dev_boot_usb to the original
-                'state_checker': (self.dev_boot_usb_checker, True,
+                'state_checker': (self.checkers.dev_boot_usb_checker, True,
                         "Not USB boot, Ctrl-U not work"),
                 'userspace_action': (self.faft_client.set_dev_boot_usb,
                                      self.original_dev_boot_usb),
                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
             },
             {   # Step 4, done
-                'state_checker': (self.dev_boot_usb_checker, False),
+                'state_checker': (self.checkers.dev_boot_usb_checker, False),
             }
         ))
         self.run_faft_sequence()

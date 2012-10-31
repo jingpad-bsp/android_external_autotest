@@ -62,14 +62,14 @@ class firmware_DevModeStress(FAFTSequence):
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, verify dev mode
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
             },
             {   # Step 2, verify dev mode after soft reboot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
@@ -78,7 +78,7 @@ class firmware_DevModeStress(FAFTSequence):
                 'firmware_action': None,
             },
             {   # Step 3, verify dev mode after suspend/wake
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),

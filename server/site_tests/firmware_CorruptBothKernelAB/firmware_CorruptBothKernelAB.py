@@ -70,7 +70,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
                 'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot and restore the OS image.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason': recovery_reason,
                 }),

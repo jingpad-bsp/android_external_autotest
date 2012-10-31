@@ -58,7 +58,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
             {   # Step 1, expected dev mode and reboot.
                 # When the next DEVELOPER SCREEN shown, press power button
                 # to make DUT shutdown.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
@@ -71,7 +71,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 # enter key to trigger either TO_NORM screen (new) or
                 # RECOVERY INSERT screen (old). Then press power button to
                 # make DUT shutdown.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
@@ -82,7 +82,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
             },
             {   # Step 3, request recovery boot. When the RECOVERY INSERT
                 # screen shows, press power button to make DUT shutdown.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
@@ -95,7 +95,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
             {   # Step 4, request recovery boot again. When the recovery
                 # insert screen shows, insert a corrupted USB and trigger
                 # a YUCK SCREEN. Then press power button to make DUT shutdown.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
@@ -106,7 +106,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                                      self.wait_fw_screen_and_ctrl_d)),
             },
             {   # Step 5, switch back to normal mode.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
@@ -116,7 +116,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
             {   # Step 6, expected normal mode and request recovery boot.
                 # Because an USB stick is inserted, a RECOVERY REMOVE screen
                 # shows. Press power button to make DUT shutdown.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
                 }),
@@ -127,7 +127,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                                      None)),
             },
             {   # Step 7, done.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
                 }),

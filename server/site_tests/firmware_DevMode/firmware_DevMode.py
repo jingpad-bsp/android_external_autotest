@@ -20,7 +20,7 @@ class firmware_DevMode(FAFTSequence):
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, enable dev mode
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
                 }),
@@ -29,7 +29,7 @@ class firmware_DevMode(FAFTSequence):
                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
             },
             {   # Step 2, expected developer mode boot and enable normal mode
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
@@ -37,7 +37,7 @@ class firmware_DevMode(FAFTSequence):
                 'reboot_action': None,
             },
             {   # Step 3, expected normal mode boot, done
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
                 }),

@@ -18,7 +18,8 @@ class firmware_ECWriteProtect(FAFTSequence):
 
     def ensure_fw_a_boot(self):
         """Ensure firmware A boot this time."""
-        if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
+        if not self.checkers.crossystem_checker({'mainfw_act': 'A',
+                                                 'tried_fwb': '0'}):
             self.run_faft_step({
                 'userspace_action': (self.faft_client.run_shell_command,
                     'chromeos-firmwareupdate --mode recovery')
@@ -62,27 +63,28 @@ class firmware_ECWriteProtect(FAFTSequence):
 
         self.register_faft_sequence((
             {   # Step 1, expected EC RO boot, enable WP and reboot EC.
-                'state_checker': (self.ro_normal_checker, 'A'),
+                'state_checker': (self.checkers.ro_normal_checker, 'A'),
                 'reboot_action': (self.set_EC_write_protect_and_reboot, True),
             },
             {   # Step 2, expected EC RO boot, write protected. Disable RO flag
                 #         and reboot EC.
-                'state_checker': (lambda: self.ro_normal_checker('A') and
-                                          self.write_protect_checker()),
+                'state_checker': (lambda:
+                    self.checkers.ro_normal_checker('A') and
+                    self.write_protect_checker()),
                 'userspace_action': (self.faft_client.set_firmware_flags,
                                      ('a', 0)),
                 'reboot_action': self.sync_and_cold_reboot,
             },
             {   # Step 3, expected EC RW boot, write protected. Reboot EC by
                 #         ectool.
-                'state_checker': (lambda: self.ro_normal_checker('A',
+                'state_checker': (lambda: self.checkers.ro_normal_checker('A',
                                               twostop=True) and
                                           self.write_protect_checker()),
                 'reboot_action': (self.sync_and_ec_reboot, 'cold'),
             },
             {   # Step 4, expected EC RW boot, write protected. Restore RO
                 #         normal flag and deactivate write protect.
-                'state_checker': (lambda: self.ro_normal_checker('A',
+                'state_checker': (lambda: self.checkers.ro_normal_checker('A',
                                               twostop=True) and
                                           self.write_protect_checker()),
                 'userspace_action': (self.faft_client.set_firmware_flags,
@@ -90,7 +92,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                 'reboot_action': (self.set_EC_write_protect_and_reboot, False),
             },
             {   # Step 5, expected EC RO boot.
-                'state_checker': (self.ro_normal_checker, 'A'),
+                'state_checker': (self.checkers.ro_normal_checker, 'A'),
             },
         ))
         self.run_faft_sequence()

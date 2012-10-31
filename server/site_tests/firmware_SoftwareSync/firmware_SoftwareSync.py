@@ -49,13 +49,13 @@ class firmware_SoftwareSync(FAFTSequence):
         logging.info("Current EC hash: %s", self._ec_hash)
         if self._ec_hash != ec_hash:
             return False
-        return self.ec_act_copy_checker('RW')
+        return self.checkers.ec_act_copy_checker('RW')
 
 
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, Corrupt EC firmware RW body
-                'state_checker': (self.ec_act_copy_checker, 'RW'),
+                'state_checker': (self.checkers.ec_act_copy_checker, 'RW'),
                 'userspace_action': self.record_hash_and_corrupt,
                 'reboot_action': self.sync_and_ec_reboot,
             },

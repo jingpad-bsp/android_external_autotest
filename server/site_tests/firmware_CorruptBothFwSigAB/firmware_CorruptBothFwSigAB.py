@@ -35,7 +35,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
     def run_once(self, host=None, dev_mode=False):
         self.register_faft_sequence((
             {   # Step 1, corrupt both firmware signature A and B
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
                 'userspace_action': (self.faft_client.corrupt_firmware,
@@ -45,7 +45,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                 'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot and set fwb_tries flag
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason': (vboot.RECOVERY_REASON['RO_INVALID_RW'],
                             vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
@@ -55,7 +55,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                                    self.wait_fw_screen_and_plug_usb,
             },
             {   # Step 3, still expected recovery boot and restore firmware
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason': (vboot.RECOVERY_REASON['RO_INVALID_RW'],
                             vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
@@ -64,7 +64,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                                      (('a', 'b'),)),
             },
             {   # Step 4, expected normal boot, done
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
             },

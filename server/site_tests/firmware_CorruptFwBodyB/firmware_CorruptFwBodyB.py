@@ -35,7 +35,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
                       vboot.PREAMBLE_USE_RO_NORMAL)
         self.register_faft_sequence((
             {   # Step 1, corrupt firmware body B
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
@@ -43,7 +43,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
                                      'b'),
             },
             {   # Step 2, expected firmware A boot and set try_fwb flag
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
@@ -51,7 +51,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
             },
             {   # Step 3, if RO enabled, expected firmware B boot; otherwise,
                 # still A boot since B is corrupted. Restore B later.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'B' if RO_enabled else 'A',
                     'tried_fwb': '1',
                 }),
@@ -59,7 +59,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
                                      'b'),
             },
             {   # Step 4, final check and done
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                    'mainfw_act': 'A',
                    'tried_fwb': '0',
                 }),

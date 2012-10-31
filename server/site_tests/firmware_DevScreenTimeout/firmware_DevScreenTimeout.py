@@ -91,7 +91,7 @@ class firmware_DevScreenTimeout(FAFTSequence):
     def run_once(self, host=None):
         # Always expected developer mode firmware A boot.
         self.register_faft_template({
-             'state_checker': (self.crossystem_checker, {
+             'state_checker': (self.checkers.crossystem_checker, {
                 'devsw_boot': '1',
                 'mainfw_act': 'A',
                 'mainfw_type': 'developer',

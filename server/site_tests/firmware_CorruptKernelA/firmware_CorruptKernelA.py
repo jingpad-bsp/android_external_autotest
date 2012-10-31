@@ -29,15 +29,15 @@ class firmware_CorruptKernelA(FAFTSequence):
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, corrupt kernel A
-                'state_checker': (self.root_part_checker, 'a'),
+                'state_checker': (self.checkers.root_part_checker, 'a'),
                 'userspace_action': (self.faft_client.corrupt_kernel, 'a'),
             },
             {   # Step 2, expected kernel B boot and restore kernel A
-                'state_checker': (self.root_part_checker, 'b'),
+                'state_checker': (self.checkers.root_part_checker, 'b'),
                 'userspace_action': (self.faft_client.restore_kernel, 'a'),
             },
             {   # Step 3, expected kernel A boot
-                'state_checker': (self.root_part_checker, 'a'),
+                'state_checker': (self.checkers.root_part_checker, 'a'),
             },
         ))
         self.run_faft_sequence()

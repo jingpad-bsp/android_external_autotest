@@ -25,7 +25,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
         If not, it may be a test failure during step 2, try to recover to
         normal mode by simply rebooting the machine.
         """
-        if not self.crossystem_checker(
+        if not self.checkers.crossystem_checker(
                 {'mainfw_type': ('normal', 'developer')}):
             self.run_faft_step({})
 
@@ -57,7 +57,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
     def run_once(self, host=None, dev_mode=False):
         self.register_faft_sequence((
             {   # Step 1, request recovery boot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
@@ -66,7 +66,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
                 'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot, request recovery again
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                 }),
@@ -75,13 +75,13 @@ class firmware_UserRequestRecovery(FAFTSequence):
                                    self.wait_fw_screen_and_plug_usb,
             },
             {   # Step 3, expected recovery boot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                 }),
             },
             {   # Step 4, expected normal boot
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
             },

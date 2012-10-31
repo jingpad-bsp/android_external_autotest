@@ -60,42 +60,42 @@ class firmware_ShellBall(FAFTSequence):
     def run_once(self, host=None):
         self.register_faft_sequence((
             { # Step 1, change to devmode.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'dev_boot_usb': '0',
                  }),
                 'userspace_action': (self.update_firmware, 'todev'),
                 'firmware_action': (self.wait_fw_screen_and_ctrl_d),
             },
             { # Step 2, check mainfw_type and run autoupdate.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                      'mainfw_type': 'developer'
                  }),
                 'userspace_action': (self.update_firmware, 'autoupdate'),
                 'firmware_action': (self.wait_fw_screen_and_ctrl_d),
             },
             { # Step 3, verify fwid and install system firmware.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'fwid': self._shellball_fwid
                 }),
                 'userspace_action': (self.install_original_firmware),
                 'firmware_action': (self.wait_fw_screen_and_ctrl_d),
             },
             { # Step 4, verify the old firmware id and test factory_install.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'fwid': self._current_fwid
                 }),
                 'userspace_action': (self.update_firmware, 'factory_install'),
                 'firmware_action': (self.wait_fw_screen_and_ctrl_d),
             },
             { # Step 5, verify fwid and install original firmware.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'fwid': self._shellball_fwid
                 }),
                 'userspace_action': (self.install_original_firmware),
                 'firmware_action': (self.wait_fw_screen_and_ctrl_d),
             },
             { # Step 6, verify old fwid.
-                'state_checker': (self.crossystem_checker, {
+                'state_checker': (self.checkers.crossystem_checker, {
                     'fwid': self._current_fwid
                 }),
             }
