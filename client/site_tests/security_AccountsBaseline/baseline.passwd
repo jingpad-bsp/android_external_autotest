@@ -36,5 +36,6 @@ chaps:*:223:223::/dev/null:/bin/false
 dhcp:*:224:224::/dev/null:/bin/false
 tpmd:*:225:225::/dev/null:/bin/false
 mtp:*:226:226::/dev/null:/bin/false
+proxystate:*:227:227::/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
