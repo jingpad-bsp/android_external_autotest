@@ -48,7 +48,7 @@ class firmware_ECBattery(FAFTSequence):
                 'grep -iH --color=no "Battery" /sys/class/power_supply/*/type')
         name = re.search("/sys/class/power_supply/([^/]+)/",
                          match[0]).group(1)
-        logging.info("Battery name is %s" % name)
+        logging.info("Battery name is %s", name)
         self._battery_status = self.BATTERY_STATUS % name
         self._battery_voltage = self.BATTERY_VOLTAGE_READING % name
         self._battery_current = self.BATTERY_CURRENT_READING % name
@@ -65,8 +65,8 @@ class firmware_ECBattery(FAFTSequence):
         # Kernel gives voltage value in uV. Convert to mV here.
         kernel_reading = int(self.faft_client.run_shell_command_get_output(
                 'cat %s' % self._battery_voltage)[0]) / 1000
-        logging.info("Voltage reading from servo: %dmV" % servo_reading)
-        logging.info("Voltage reading from kernel: %dmV" % kernel_reading)
+        logging.info("Voltage reading from servo: %dmV", servo_reading)
+        logging.info("Voltage reading from kernel: %dmV", kernel_reading)
         if abs(servo_reading - kernel_reading) > self.VOLTAGE_MV_ERROR_MARGIN:
             raise error.TestFail(
                     "Voltage reading from servo (%dmV) and kernel (%dmV) "
@@ -87,8 +87,8 @@ class firmware_ECBattery(FAFTSequence):
         # Kernel gives current value in uA. Convert to mA here.
         kernel_reading = abs(int(self.faft_client.run_shell_command_get_output(
                 'cat %s' % self._battery_current)[0])) / 1000
-        logging.info("Current reading from servo: %dmA" % servo_reading)
-        logging.info("Current reading from kernel: %dmA" % kernel_reading)
+        logging.info("Current reading from servo: %dmA", servo_reading)
+        logging.info("Current reading from kernel: %dmA", kernel_reading)
         if abs(servo_reading - kernel_reading) > self.CURRENT_MA_ERROR_MARGIN:
             raise error.TestFail(
                     "Current reading from servo (%dmA) and kernel (%dmA) "
@@ -104,7 +104,7 @@ class firmware_ECBattery(FAFTSequence):
         """
         battery_temp = float(self.ec.send_command_get_output("battery",
                 ["Temp:.+\(([0-9\.]+) C\)"])[0][1])
-        logging.info("Battery temperature is %f C" % battery_temp)
+        logging.info("Battery temperature is %f C", battery_temp)
         if (battery_temp > self.BATTERY_TEMP_UPPER_BOUND or
             battery_temp < self.BATTERY_TEMP_LOWER_BOUND):
             raise error.TestFail("Abnormal battery temperature, %.2f C." %

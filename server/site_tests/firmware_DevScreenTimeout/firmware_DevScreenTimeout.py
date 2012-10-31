@@ -38,8 +38,8 @@ class firmware_DevScreenTimeout(FAFTSequence):
 
     def ctrl_d_repeatedly(self):
         """Press Ctrl-D repeatedly."""
-        for i in range(self.CTRL_D_REPEAT_COUNT):
-            self.press_ctrl_d_()
+        for _ in range(self.CTRL_D_REPEAT_COUNT):
+            self.press_ctrl_d()
             time.sleep(self.CTRL_D_REPEAT_DELAY)
 
 
@@ -54,7 +54,7 @@ class firmware_DevScreenTimeout(FAFTSequence):
         """
         [fw_time] = self.faft_client.run_shell_command_get_output(
                 'cat /tmp/firmware-boot-time')
-        logging.info('Got firmware boot time: %s' % fw_time)
+        logging.info('Got firmware boot time: %s', fw_time)
         if fw_time:
             self.fw_time_record[tag] = float(fw_time)
         else:
@@ -71,7 +71,7 @@ class firmware_DevScreenTimeout(FAFTSequence):
         self.record_fw_boot_time('timeout_boot')
         got_timeout = (self.fw_time_record['timeout_boot'] -
                        self.fw_time_record['ctrl_d_boot'])
-        logging.info('Estimated developer firmware timeout: %s' % got_timeout)
+        logging.info('Estimated developer firmware timeout: %s', got_timeout)
 
         if (abs(got_timeout - self.delay.dev_screen_timeout) >
                 self.TIMEOUT_MARGIN):

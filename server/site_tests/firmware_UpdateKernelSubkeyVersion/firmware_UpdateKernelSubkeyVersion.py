@@ -39,12 +39,12 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
         actual_ver = self.faft_client.retrieve_kernel_subkey_version('a')
         if actual_ver != expected_ver:
             raise error.TestFail(
-                    'Kernel subkey version should be %s, but got %s.'
-                    % (expected_ver, actual_ver))
+                    'Kernel subkey version should be %s, but got %s.' %
+                    (expected_ver, actual_ver))
         else:
             logging.info(
-                'Update success, now subkey version is %s'
-                % actual_ver)
+                'Update success, now subkey version is %s',
+                actual_ver)
 
 
     def run_bootok_and_recovery(self):
@@ -76,10 +76,10 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 
         ver = self.faft_client.retrieve_kernel_subkey_version('a')
-        logging.info('Origin version is %s' % ver)
+        logging.info('Origin version is %s', ver)
         self._update_version = ver + 1
-        logging.info('Kernel subkey version will update to version %s'
-            % self._update_version)
+        logging.info('Kernel subkey version will update to version %s',
+            self._update_version)
 
         self.resign_kernel_subkey_version(host)
         self.faft_client.resign_firmware(1)

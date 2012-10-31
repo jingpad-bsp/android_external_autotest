@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import logging
+import os
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 from autotest_lib.client.common_lib import error
 
@@ -25,8 +26,8 @@ class firmware_UpdateKernelDataKeyVersion(FAFTSequence):
                 % (expected_ver, actual_ver))
         else:
             logging.info(
-                'Update success, now version is %s'
-                % actual_ver)
+                'Update success, now version is %s',
+                actual_ver)
 
 
     def resign_kernel_datakey_version(self, host):
@@ -70,10 +71,10 @@ class firmware_UpdateKernelDataKeyVersion(FAFTSequence):
         self.setup_dev_mode(dev_mode)
 
         actual_ver = self.faft_client.retrieve_kernel_datakey_version('b')
-        logging.info('Original Kernel Version of KERN-B is %s' % actual_ver)
+        logging.info('Original Kernel Version of KERN-B is %s', actual_ver)
 
         self._update_version = actual_ver + 1
-        logging.info('KERN-B will update to version %s' % self._update_version)
+        logging.info('KERN-B will update to version %s', self._update_version)
 
         self.setup_kernel('a')
         self.faft_client.setup_firmwareupdate_temp_dir()

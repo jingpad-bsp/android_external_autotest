@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
+import logging
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 from autotest_lib.client.common_lib import error
 
@@ -25,8 +25,8 @@ class firmware_UpdateKernelVersion(FAFTSequence):
                 % (expected_ver, actual_ver))
         else:
             logging.info(
-                'Update success, now version is %s'
-                % actual_ver)
+                'Update success, now version is %s',
+                actual_ver)
 
 
     def modify_kernel_b_and_set_cgpt_priority(self, delta, target_dev):
@@ -48,10 +48,10 @@ class firmware_UpdateKernelVersion(FAFTSequence):
         self.setup_dev_mode(dev_mode)
 
         actual_ver = self.faft_client.retrieve_kernel_version('b')
-        logging.info('Original Kernel Version of KERN-B is %s' % actual_ver)
+        logging.info('Original Kernel Version of KERN-B is %s', actual_ver)
 
         self._update_version = actual_ver + 1
-        logging.info('KERN-B will update to version %s' % self._update_version)
+        logging.info('KERN-B will update to version %s', self._update_version)
 
         self.setup_kernel('a')
 

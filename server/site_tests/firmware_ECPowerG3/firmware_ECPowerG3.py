@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
@@ -38,7 +37,7 @@ class firmware_ECPowerG3(FAFTSequence):
           reg_ex: Acceptable "powerinfo" response. Can be a regular expression.
           timeout: Timeout range.
         """
-        logging.info('Waiting for "%s" in %d seconds.' % (reg_ex, timeout))
+        logging.info('Waiting for "%s" in %d seconds.', reg_ex, timeout)
         while timeout > 0:
             try:
                 timeout = timeout - 1
@@ -46,7 +45,7 @@ class firmware_ECPowerG3(FAFTSequence):
                                                 [reg_ex],
                                                 timeout=1)
                 return True
-            except:
+            except error.TestFail:
                 pass
         return False
 

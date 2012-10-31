@@ -31,10 +31,10 @@ class firmware_ECBootTime(FAFTSequence):
         power_press_time = float(power_press[0][1])
         firmware_resp_time = float(power_press[1][1])
         boot_time = firmware_resp_time - power_press_time
-        logging.info("EC cold boot time: %f s" % reboot_time)
+        logging.info("EC cold boot time: %f s", reboot_time)
         if reboot_time > 1.0:
             raise error.TestFail("EC cold boot time longer than 1 second.")
-        logging.info("EC boot time: %f s" % boot_time)
+        logging.info("EC boot time: %f s", boot_time)
         if boot_time > 1.0:
             raise error.TestFail("Boot time longer than 1 second.")
 

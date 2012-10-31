@@ -5,6 +5,7 @@
 import logging
 import re
 import time
+import xmlrpclib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
@@ -75,7 +76,7 @@ class firmware_ECThermal(FAFTSequence):
             try:
                 lines = self.faft_client.run_shell_command_get_output(
                         'ectool thermalget %d %d' % (type_id, current_id))
-            except:
+            except xmlrpclib.Fault:
                 break
             pattern = re.compile('Threshold \d* [a-z ]* \d* is (\d*) K.')
             for line in lines:
@@ -107,7 +108,7 @@ class firmware_ECThermal(FAFTSequence):
             self.servo.set_nocheck('fan_target_rpm', "%d" % self._fan_steps[i])
             self._fan_steps[i] = int(self.servo.get('fan_target_rpm'))
 
-        logging.info("Actual fan steps: %s" % self._fan_steps)
+        logging.info("Actual fan steps: %s", self._fan_steps)
 
 
     def get_thermal_setting(self):
@@ -120,7 +121,7 @@ class firmware_ECThermal(FAFTSequence):
                 break
             self._thermal_setting.append(setting)
             type_id = type_id + 1
-        logging.info("Number of tempearture sensor types: %d" % type_id)
+        logging.info("Number of tempearture sensor types: %d", type_id)
 
         # Get the number of temperature sensors
         self._num_temp_sensor = 0
@@ -129,9 +130,9 @@ class firmware_ECThermal(FAFTSequence):
                 self.faft_client.run_shell_command('ectool temps %d' %
                                                    self._num_temp_sensor)
                 self._num_temp_sensor = self._num_temp_sensor + 1
-            except:
+            except xmlrpclib.Fault:
                 break
-        logging.info("Number of temperature sensor: %d" % self._num_temp_sensor)
+        logging.info("Number of temperature sensor: %d", self._num_temp_sensor)
 
 
     def setup(self):
@@ -208,11 +209,11 @@ class firmware_ECThermal(FAFTSequence):
             more than TEMP_MISMATCH_MARGIN.
         """
         cpu_temp_id = self._find_cpu_sensor_id()
-        logging.info("CPU temperature sensor ID is %d" % cpu_temp_id)
+        logging.info("CPU temperature sensor ID is %d", cpu_temp_id)
         ectool_cpu_temp = self._get_temp_reading(cpu_temp_id)
         servo_cpu_temp = int(self.servo.get('cpu_temp'))
-        logging.info("CPU temperature from servo: %d C" % servo_cpu_temp)
-        logging.info("CPU temperature from ectool: %d C" % ectool_cpu_temp)
+        logging.info("CPU temperature from servo: %d C", servo_cpu_temp)
+        logging.info("CPU temperature from ectool: %d C", ectool_cpu_temp)
         if abs(ectool_cpu_temp - servo_cpu_temp) > self.TEMP_MISMATCH_MARGIN:
             raise error.TestFail(
                     'CPU temperature readings from servo and ectool differ')
@@ -242,18 +243,18 @@ class firmware_ECThermal(FAFTSequence):
             self.faft_client.run_shell_command(stress_cmd % block_count)
             return None
         else:
-            logging.info("Stressing DUT with %d threads..." % thread)
+            logging.info("Stressing DUT with %d threads...", thread)
             self.faft_client.run_shell_command('pkill dd')
             stress_cmd = 'dd if=/dev/urandom of=/dev/null bs=1M &'
             # Grep for [d]d instead of dd to prevent getting the PID of grep
             # itself.
             pid_cmd = "ps -ef | grep '[d]d if=/dev/urandom' | awk '{print $2}'"
             self._stress_pid = list()
-            for i in xrange(thread):
+            for _ in xrange(thread):
                 self.faft_client.run_shell_command(stress_cmd)
             lines = self.faft_client.run_shell_command_get_output(pid_cmd)
             for line in lines:
-                logging.info("PID is %s" % line)
+                logging.info("PID is %s", line)
                 self._stress_pid.append(int(line.strip()))
             return self._stress_pid
 
@@ -284,11 +285,11 @@ class firmware_ECThermal(FAFTSequence):
             raise error.TestFail("Fan is not turned off.")
         logging.info("EC reports fan turned off.")
         cpu_temp_before = int(self.servo.get('cpu_temp'))
-        logging.info("CPU temperature before stressing is %d C" %
+        logging.info("CPU temperature before stressing is %d C",
                      cpu_temp_before)
         self._stress_dut()
         cpu_temp_after = int(self.servo.get('cpu_temp'))
-        logging.info("CPU temperature after stressing is %d C" %
+        logging.info("CPU temperature after stressing is %d C",
                      cpu_temp_after)
         if cpu_temp_after - cpu_temp_before < self.TEMP_STRESS_INCREASE:
             raise error.TestFail(
@@ -369,8 +370,8 @@ class firmware_ECThermal(FAFTSequence):
             upper_bound = self._thermal_setting[sensor_type][idx + 3]
 
         temp_reading = self._get_temp_reading(sensor_id)
-        logging.info("Sensor %d = %d C" % (sensor_id, temp_reading))
-        logging.info("  Expecting %d - %d C" % (lower_bound, upper_bound))
+        logging.info("Sensor %d = %d C", sensor_id, temp_reading)
+        logging.info("  Expecting %d - %d C", lower_bound, upper_bound)
         if temp_reading > upper_bound:
             return 0x00
         elif temp_reading < lower_bound:
@@ -392,7 +393,7 @@ class firmware_ECThermal(FAFTSequence):
         self._stress_dut(block_count=-1)
         time.sleep(self.STRESS_DELAY)
         fan_rpm = int(self.servo.get('fan_target_rpm'))
-        logging.info('Fan speed is %d RPM' % fan_rpm)
+        logging.info('Fan speed is %d RPM', fan_rpm)
         try:
             result = reduce(lambda x, y: x | y,
                             [self._check_fan_speed_per_sensor(fan_rpm, x)

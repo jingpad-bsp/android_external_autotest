@@ -28,7 +28,7 @@ class firmware_DevBootUSB(FAFTSequence):
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
         self.original_dev_boot_usb = self.faft_client.get_dev_boot_usb()
-        logging.info('Original dev_boot_usb value: %s' %
+        logging.info('Original dev_boot_usb value: %s',
                      str(self.original_dev_boot_usb))
 
 

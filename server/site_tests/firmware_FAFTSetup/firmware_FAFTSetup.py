@@ -54,7 +54,7 @@ class firmware_FAFTSetup(FAFTSequence):
                                             expected_output,
                                             timeout=0.2)
             return True
-        except:
+        except: # pylint: disable=W0702
             logging.error("Cannot talk to EC console.")
             logging.error(
                     "Please check there is no terminal opened on EC console.")

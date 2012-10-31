@@ -35,7 +35,7 @@ class firmware_ECPeci(FAFTSequence):
     def run_once(self, host=None):
         if not self.check_ec_capability(['peci']):
             return
-        logging.info("Reading PECI CPU temperature for %d times." %
+        logging.info("Reading PECI CPU temperature for %d times.",
                      self.READ_COUNT)
-        for i in xrange(self.READ_COUNT):
+        for _ in xrange(self.READ_COUNT):
             self._check_read()

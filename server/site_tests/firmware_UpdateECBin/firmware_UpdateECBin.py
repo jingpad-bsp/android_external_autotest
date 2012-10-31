@@ -43,7 +43,7 @@ class firmware_UpdateECBin(FAFTSequence):
                     'ec_autest_image.bin". The ec_autest_image.bin file is '
                     'included in the firmware_from_source.tar.bz2.')
         self.arg_new_ec = dict_args['new_ec']
-        logging.info('The EC image to-be-updated is: %s' % self.arg_new_ec)
+        logging.info('The EC image to-be-updated is: %s', self.arg_new_ec)
         super(firmware_UpdateECBin, self).initialize(host, cmdline_args,
                                                      use_pyauto, use_faft)
 

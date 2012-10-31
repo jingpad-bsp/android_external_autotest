@@ -43,7 +43,9 @@ class firmware_ECUsbPorts(FAFTSequence):
         ports_off_cmd = for_all_ports_cmd % 0
         ports_on_cmd = for_all_ports_cmd % 1
         cmd = ("(sleep %d; %s; sleep %d; %s)&" %
-                (self.RPC_DELAY, ports_off_cmd, self.REBOOT_DELAY, ports_on_cmd))
+                (self.RPC_DELAY, ports_off_cmd,
+                 self.REBOOT_DELAY,
+                 ports_on_cmd))
         self.faft_client.run_shell_command(cmd)
         self.kill_remote()
 
@@ -65,7 +67,7 @@ class firmware_ECUsbPorts(FAFTSequence):
                 cnt = cnt + 1
                 limit = limit - 1
             except error.TestFail:
-                logging.info("Found %d USB ports" % cnt)
+                logging.info("Found %d USB ports", cnt)
                 return cnt
 
         # Limit reached. Probably something went wrong.
@@ -81,7 +83,7 @@ class firmware_ECUsbPorts(FAFTSequence):
           port_count: Number of USB ports.
           timeout: Timeout range.
         """
-        logging.info('Waiting for %d USB ports to be disabled.' % port_count)
+        logging.info('Waiting for %d USB ports to be disabled.', port_count)
         while timeout > 0:
             try:
                 timeout = timeout - 1

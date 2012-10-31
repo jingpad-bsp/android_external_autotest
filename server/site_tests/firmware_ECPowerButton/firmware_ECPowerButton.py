@@ -5,7 +5,6 @@
 import re
 from threading import Timer
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 class firmware_ECPowerButton(FAFTSequence):
@@ -68,7 +67,9 @@ class firmware_ECPowerButton(FAFTSequence):
         by power button again.
         """
         self.servo.power_key(shutdown_powerkey_duration)
-        Timer(wake_delay, self.servo.power_key, [wake_powerkey_duration]).start()
+        Timer(wake_delay,
+              self.servo.power_key,
+              [wake_powerkey_duration]).start()
 
 
 

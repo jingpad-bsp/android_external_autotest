@@ -4,7 +4,6 @@
 
 import os
 
-from autotest_lib.server import test, autotest
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 class firmware_ShellBall(FAFTSequence):

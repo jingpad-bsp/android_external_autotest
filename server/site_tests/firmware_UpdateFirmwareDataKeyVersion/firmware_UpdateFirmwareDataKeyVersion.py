@@ -48,7 +48,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
                 % (expected_ver, actual_ver, actual_tpm_fwver))
         else:
             logging.info(
-                'Update success, now datakey version is %s' % actual_ver)
+                'Update success, now datakey version is %s', actual_ver)
 
 
     def check_version_and_run_recovery(self):
@@ -81,10 +81,10 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 
         actual_ver = self.faft_client.get_firmware_datakey_version('a')
-        logging.info('Origin version is %s' % actual_ver)
+        logging.info('Origin version is %s', actual_ver)
         self._update_version = actual_ver + 1
-        logging.info('Firmware version will update to version %s'
-            % self._update_version)
+        logging.info('Firmware version will update to version %s',
+            self._update_version)
 
         self.resign_datakey_version(host)
         self.faft_client.resign_firmware(1)
