@@ -264,6 +264,7 @@ class power_Resume(test.test):
 
 
     def run_once(self, max_devs_returned=10):
+        utils.system('initctl stop tlsdated')
         # Check hwclock is working
         CheckHwclock()
 
@@ -372,3 +373,4 @@ class power_Resume(test.test):
 
     def cleanup(self):
         self._disable_pm_print_times()
+        utils.system('initctl start tlsdated')
