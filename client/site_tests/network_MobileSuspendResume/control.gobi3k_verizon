@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GSuspendResume"
-PURPOSE = "Test 3G state after suspend/resume"
+NAME = "network_MobileSuspendResume"
+PURPOSE = "Test 3g modem state after suspend/resume"
 CRITERIA = """
     Check the 3g state of the device after suspend and resume.  Verify
     that 3g can be enabled under all situations after resuming of device.
@@ -16,14 +16,14 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:gobi3k, carrier:tmobile"
+DEPENDENCIES = "modem:gobi3k, carrier:verizon"
 
 DOC = """
     Verify that 3g can be enabled under all suspend/resume situations.
 """
 
 # Run all scenarios twice, first with autoconnect off, then with it on
-job.run_test('network_3GSuspendResume',
-             autoconnect=False, tag='autoconnect_off-gobi3k_tmobile')
-job.run_test('network_3GSuspendResume',
-             autoconnect=True, tag='autoconnect_on-gobi3k_tmobile')
+job.run_test('network_MobileSuspendResume',
+             autoconnect=False, tag='autoconnect_off-gobi3k_verizon')
+job.run_test('network_MobileSuspendResume',
+             autoconnect=True, tag='autoconnect_on-gobi3k_verizon')
