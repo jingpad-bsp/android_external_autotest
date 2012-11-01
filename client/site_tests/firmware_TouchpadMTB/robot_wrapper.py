@@ -27,6 +27,17 @@ END = 0.9
 OFF_START = -0.05
 OFF_END = 1.05
 
+# Define constants used to determine the types of gestures.
+TRACKING = 'tracking'
+
+# Define constants used as command options of robot control scripts.
+#   For line gesture: [basic | swipe]
+#   For click gesture: [click | tap]
+BASIC = 'basic'
+SWIPE = 'swipe'
+TAP = 'tap'
+CLICK = 'click'
+
 
 class RobotWrapperError(Exception):
     """An exception class for the robot_wrapper module."""
@@ -42,12 +53,14 @@ class RobotWrapper:
 
         self._robot_script_name_dict = {
             conf.ONE_FINGER_TRACKING: SCRIPT_LINE,
+            conf.ONE_FINGER_SWIPE: SCRIPT_LINE,
             conf.ONE_FINGER_TAP: SCRIPT_CLICK,
             conf.ONE_FINGER_PHYSICAL_CLICK: SCRIPT_CLICK,
         }
 
         self._method_of_control_command_dict = {
             conf.ONE_FINGER_TRACKING: self._get_control_command_line,
+            conf.ONE_FINGER_SWIPE: self._get_control_command_line,
             conf.ONE_FINGER_TAP: self._get_control_command_click,
             conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
         }
@@ -92,10 +105,17 @@ class RobotWrapper:
                 return robot_script_dir
         return ''
 
+    def _get_basic_tracking_or_swipe(self, gesture):
+        """Determine whether the gesture is a basic tracking or a swipe."""
+        if SWIPE in gesture:
+            return SWIPE
+        elif TRACKING in gesture:
+            return BASIC
+        else:
+            return None
+
     def _get_tap_or_click(self, gesture):
         """Determine whether the gesture is a tap or a click."""
-        TAP = 'tap'
-        CLICK = 'click'
         if TAP in gesture:
             return TAP
         elif CLICK in gesture:
@@ -105,6 +125,12 @@ class RobotWrapper:
 
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
+        # Determine whether this is a basic tracking gesture or a swipe.
+        basic_tracking_or_swipe = self._get_basic_tracking_or_swipe(gesture)
+        if not basic_tracking_or_swipe:
+            msg = 'Cannot determine whether "%s" is basic tracking or swipe.'
+            raise RobotWrapperError(msg % gesture)
+
         line = speed = None
         for element in variation:
             if element in GV.GESTURE_DIRECTIONS:
@@ -112,14 +138,20 @@ class RobotWrapper:
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
+        # The speed is assigned in the one_finger_tracking gesture.
+        # For the swipe gesture, no speed is specified in test_conf.
+        # Hence, need to assign FAST to the speed of the swipe gesture.
+        if basic_tracking_or_swipe == SWIPE:
+            speed = self._speed_dict[GV.FAST]
+
         if line is None or speed is None:
             msg = 'Cannot derive the line/speed parameters from %s %s.'
             raise RobotWrapperError(msg % (gesture, variation))
 
         start_x, start_y, end_x, end_y = line
         para = (robot_script, self._board, start_x, start_y, end_x, end_y,
-                speed)
-        control_cmd = 'python %s %s %f %f %f %f %f' % para
+                speed, basic_tracking_or_swipe)
+        control_cmd = 'python %s %s %f %f %f %f %f %s' % para
         return control_cmd
 
     def _get_control_command_click(self, robot_script, gesture, variation):

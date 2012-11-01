@@ -110,8 +110,7 @@ gesture_names_complete = [
 # Define the list of simple one-finger gestures to test using the robot.
 gesture_names_robot = [
     ONE_FINGER_TRACKING,
-    # Enable the following gesture when a swipe gesture is supported on robot.
-    # ONE_FINGER_SWIPE,
+    ONE_FINGER_SWIPE,
     ONE_FINGER_TAP,
     ONE_FINGER_PHYSICAL_CLICK,
 ]
