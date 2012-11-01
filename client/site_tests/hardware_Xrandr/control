@@ -1,0 +1,21 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "hardware_Xrandr"
+PURPOSE = 'Verify that Xrandr is able to turn the screen on/off.'
+CRITERIA = """
+If Xrandr cannot turn the screen on/off, the test will fail.
+"""
+SUITE = "hwqual"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "hardware"
+TEST_TYPE = "client"
+
+DOC = """
+Call "xrandr --output [OUTPUT] --auto/--on" to turn screen off/on, respectively.
+"""
+
+job.run_test("hardware_Xrandr")
