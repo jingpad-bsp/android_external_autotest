@@ -1,3 +1,4 @@
+#!/usr/bin/python -u
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -883,7 +884,7 @@ def main():
 
     # Launch the XMLRPC server to provide FAFTClient commands.
     server = SimpleXMLRPCServer(('localhost', options.port), allow_none=True,
-                                logRequests=False)
+                                logRequests=True)
     server.register_introspection_functions()
     server.register_instance(faft_client)
     print 'XMLRPC Server: Serving FAFTClient on port %s' % options.port

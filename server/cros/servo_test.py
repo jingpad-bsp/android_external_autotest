@@ -61,7 +61,7 @@ class ServoTest(test.test):
             'ref_name': 'faft_client',
             'port': 9990,
             'client_test': 'firmware_FAFTClient',
-            'remote_command': 'python /usr/local/autotest/cros/faft_client.py',
+            'remote_command': '/usr/local/autotest/cros/faft_client.py',
             'remote_command_short': 'faft_client',
             'remote_log_file': '/tmp/faft_client.log',
             'remote_process': None,
@@ -233,6 +233,7 @@ class ServoTest(test.test):
                     'ssh -n -q %s root@%s \'cat %s\'' % (info['ssh_config'],
                     self._client.ip, info['remote_log_file'])], shell=True,
                     stdout=subprocess.PIPE)
+                logging.info('Log of running remote %s:', info['ref_name'])
                 logging.info(p.communicate()[0])
         assert succeed, 'Timed out connecting to client RPC server.'
 
