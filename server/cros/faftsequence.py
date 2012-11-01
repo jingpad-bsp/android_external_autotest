@@ -593,12 +593,12 @@ class FAFTSequence(ServoTest):
         """
         root_dev = self.faft_client.get_root_dev()
         logging.info('Copying kernel from %s to %s. Please wait...',
-                     (from_part, to_part))
+                     from_part, to_part)
         self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
                 (self._join_part(root_dev, self.KERNEL_MAP[from_part]),
                  self._join_part(root_dev, self.KERNEL_MAP[to_part])))
         logging.info('Copying rootfs from %s to %s. Please wait...',
-                     (from_part, to_part))
+                     from_part, to_part)
         self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
                 (self._join_part(root_dev, self.ROOTFS_MAP[from_part]),
                  self._join_part(root_dev, self.ROOTFS_MAP[to_part])))
