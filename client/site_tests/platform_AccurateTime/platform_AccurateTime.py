@@ -4,6 +4,7 @@
 
 import logging, math, re
 import subprocess
+import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging
@@ -21,6 +22,7 @@ class platform_AccurateTime(test.test):
         self.server = subprocess.Popen([OPENSSL, 's_server', '-www',
                                         '-CAfile', self.ca, '-cert', self.cert,
                                         '-key', self.key, '-port', '4433'])
+        time.sleep(1)
 
     def tlsdate(self):
         proc = subprocess.Popen([TLSDATE, '-H', 'localhost', '-p', '4433',
@@ -28,9 +30,16 @@ class platform_AccurateTime(test.test):
                                  '-nv'], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
         (out,err) = proc.communicate()
-        print err
+        return err
 
     def run_once(self):
         self.serve()
-        self.tlsdate()
-        self.server.terminate()
+        out = self.tlsdate()
+        print out
+        try:
+            if 'verification passed' not in out:
+                raise error.TestFail('ssl did not verify')
+            if 'difference is about' not in out:
+                raise error.TestFail('no time delta found')
+        finally:
+            self.server.terminate()
