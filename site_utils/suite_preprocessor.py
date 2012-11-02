@@ -18,15 +18,14 @@ Data will be written to stdout (or, optionally a file).  Format will be:
  'suite2': {'path/to/test4/control': set(['dep6']),
             'path/to/test5/control': set(['dep7', 'dep3'])}}
 
-This is intended for use only with Chrome OS test suits that leverage the
+This is intended for use only with Chrome OS test suites that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
 import optparse, os, sys
 import common
-from autotest_lib.client.common_lib import control_data
-from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
+
 
 def parse_options():
     parser = optparse.OptionParser()
@@ -43,10 +42,16 @@ def parse_options():
     return options
 
 
-def main():
-    options = parse_options()
+def calculate_dependencies(autotest_dir):
+    """
+    Traverse through the autotest directory and gather together the information
+    as to what tests each suite contains and what the DEPENDENCIES of each test
+    within a suite are.
 
-    fs_getter = Suite.create_fs_getter(options.autotest_dir)
+    @param autotest_dir The path to the autotest directory to examine for tests
+    @return A dictionary of the form {suite: {test: [dep, dep]}}.
+    """
+    fs_getter = Suite.create_fs_getter(autotest_dir)
     predicate = lambda t: hasattr(t, 'suite')
     test_deps = {}  #  Format will be {suite: {test: [dep, dep]}}.
     for test in Suite.find_and_parse_tests(fs_getter, predicate, True):
@@ -58,12 +63,20 @@ def main():
                 suite_deps[test.path] = list(test.dependencies)
             else:
                 suite_deps[test.path] = []
+    return test_deps
+
+
+def main():
+    options = parse_options()
+
+    test_deps = calculate_dependencies(options.autotest_dir)
 
     if options.output_file:
         with open(options.output_file, 'w+') as fd:
             fd.write('%r' % test_deps)
     else:
         print '%r' % test_deps
+
 
 if __name__ == "__main__":
     sys.exit(main())

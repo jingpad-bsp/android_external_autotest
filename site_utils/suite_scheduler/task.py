@@ -180,6 +180,11 @@ class Task(object):
 
 
     @property
+    def name(self):
+        return self._name
+
+
+    @property
     def suite(self):
         return self._suite
 
@@ -192,6 +197,11 @@ class Task(object):
     @property
     def pool(self):
         return self._pool
+
+
+    @property
+    def num(self):
+        return self._num
 
 
     def __str__(self):

@@ -38,7 +38,7 @@ import getpass, logging, logging.handlers, optparse, os, re, signal, sys
 import traceback
 import common
 import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
-import manifest_versions
+import manifest_versions, sanity
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -182,9 +182,14 @@ def main():
     # If we're just sanity checking, we can stop after we've parsed the
     # config file.
     if options.sanity:
+        # config_file_getter generates a high amount of noise at DEBUG level
+        logging.getLogger().setLevel(logging.WARNING)
         d = driver.Driver(None, None)
         d.SetUpEventsAndTasks(config, None)
-        return 0
+        tasks_per_event = d.TasksFromConfig(config)
+        # flatten [[a]] -> [a]
+        tasks = [x for y in tasks_per_event.values() for x in y]
+        return sanity.CheckDependencies(tasks)
 
     logging_manager.configure_logging(SchedulerLoggingConfig(),
                                       log_dir=options.log_dir)
