@@ -137,9 +137,21 @@ class factory_AudioLoop(test.test):
             time.sleep(0.5)
             self.ui.Pass()
 
-    def playback_sine(self, unused_channel, output_device='default'):
-        cmd = '%s -n -t alsa %s synth %d sine %d' % (self._ah.sox_path,
-                output_device, self._duration, self._freq)
+    def playback_sine(self, channel, output_device='default'):
+        """Generates a sine wave and plays on output_device.
+
+        Args:
+          channel: 0 for left, 1 for right; otherwise, mono.
+          output_device: alsa output device.
+        """
+        cmd = '%s -n -t alsa %s synth %d ' % (self._ah.sox_path,
+                output_device, self._duration)
+        if channel == 0:
+            cmd += 'sine %d sine 0' % self._freq
+        elif channel == 1:
+            cmd += 'sine 0 sine %d' % self._freq
+        else:
+            cmd += 'sine %d' % self._freq
         utils.system(cmd)
 
     def check_recorded_audio(self, sox_output):
