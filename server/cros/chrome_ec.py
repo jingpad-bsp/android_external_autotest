@@ -67,6 +67,14 @@ class ChromeEC(object):
           servo: A Servo object.
         """
         self._servo = servo
+        self._cached_uart_regexp = None
+
+
+    def set_uart_regexp(self, regexp):
+        if self._cached_uart_regexp == regexp:
+            return
+        self._cached_uart_regexp = regexp
+        self._servo.set('ec_uart_regexp', regexp)
 
 
     def send_command(self, command):
@@ -78,7 +86,7 @@ class ChromeEC(object):
         Args:
           command: The command string to send.
         """
-        self._servo.set('ec_uart_regexp', 'None')
+        self.set_uart_regexp('None')
         self._servo.set_nocheck('ec_uart_cmd', command)
 
 
@@ -112,7 +120,7 @@ class ChromeEC(object):
                                   str(regexp_list))
 
         self._servo.set('ec_uart_timeout', str(float(timeout)))
-        self._servo.set('ec_uart_regexp', str(regexp_list))
+        self.set_uart_regexp(str(regexp_list))
         self._servo.set_nocheck('ec_uart_cmd', command)
         return ast.literal_eval(self._servo.get('ec_uart_cmd'))
 
