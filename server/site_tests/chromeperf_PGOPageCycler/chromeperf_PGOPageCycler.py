@@ -88,6 +88,6 @@ class chromeperf_PGOPageCycler(test.test):
                         self.options.destination = f.read().strip()
             if self.options.destination:
                 if not utils.gs_upload(src, self.options.destination,
-                        self.options.acl, result_dir=self.job.resultdir)
+                        self.options.acl, result_dir=self.job.resultdir):
                     raise error.TestFail('Unable to copy from %s to %s' %
                                          (src, self.options.destination))
