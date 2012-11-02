@@ -33,9 +33,8 @@ class firmware_RecoveryButton(FAFTSequence):
 
     def setup(self, dev_mode=False):
         super(firmware_RecoveryButton, self).setup()
-        self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode)
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.setup_usbkey(usbkey=True, host=False)
 
 
     def cleanup(self):

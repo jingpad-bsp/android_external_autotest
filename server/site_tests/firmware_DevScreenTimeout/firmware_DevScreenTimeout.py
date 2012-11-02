@@ -86,6 +86,7 @@ class firmware_DevScreenTimeout(FAFTSequence):
         super(firmware_DevScreenTimeout, self).setup()
         # This test is run on developer mode only.
         self.setup_dev_mode(dev_mode=True)
+        self.setup_usbkey(usbkey=False)
 
 
     def run_once(self, host=None):

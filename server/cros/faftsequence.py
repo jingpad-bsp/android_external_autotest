@@ -398,6 +398,30 @@ class FAFTSequence(ServoTest):
         self.mark_setup_done('usb_check')
 
 
+    def setup_usbkey(self, usbkey, host=None):
+        """Setup the USB disk for the test.
+
+        It checks the setup of USB disk and a valid ChromeOS test image inside.
+        It also muxes the USB disk to either the host or DUT by request.
+
+        Args:
+          usbkey: True if the USB disk is required for the test, False if not
+                  required.
+          host: Optional, True to mux the USB disk to host, False to mux it
+                to DUT, default to do nothing.
+        """
+        if usbkey:
+            self.assert_test_image_in_usb_disk()
+        elif host is None:
+            # USB disk is not required for the test. Better to mux it to host.
+            host = True
+
+        if host is True:
+            self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        elif host is False:
+            self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+
+
     def get_server_address(self):
         """Get the server address seen from the client.
 

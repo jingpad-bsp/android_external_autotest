@@ -32,6 +32,7 @@ class firmware_ConsecutiveBoot(FAFTSequence):
     def setup(self, dev_mode=False):
         super(firmware_ConsecutiveBoot, self).setup()
         self.setup_dev_mode(dev_mode)
+        self.setup_usbkey(usbkey=False)
 
 
     def run_once(self, dev_mode=False, host=None):

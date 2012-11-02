@@ -27,6 +27,7 @@ class firmware_RONormalBoot(FAFTSequence):
         super(firmware_RONormalBoot, self).setup()
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
+        self.setup_usbkey(usbkey=False)
 
 
     def cleanup(self):

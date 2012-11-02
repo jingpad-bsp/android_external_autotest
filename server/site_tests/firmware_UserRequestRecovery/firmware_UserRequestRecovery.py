@@ -32,9 +32,8 @@ class firmware_UserRequestRecovery(FAFTSequence):
 
     def setup(self, dev_mode=False):
         super(firmware_UserRequestRecovery, self).setup()
-        self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode)
-        self.servo.enable_usb_hub(host=True)
+        self.setup_usbkey(usbkey=True, host=True)
 
 
     def cleanup(self):

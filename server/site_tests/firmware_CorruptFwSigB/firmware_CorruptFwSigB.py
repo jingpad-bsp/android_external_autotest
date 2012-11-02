@@ -16,6 +16,7 @@ class firmware_CorruptFwSigB(FAFTSequence):
         super(firmware_CorruptFwSigB, self).setup()
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
+        self.setup_usbkey(usbkey=False)
 
 
     def cleanup(self):

@@ -30,6 +30,7 @@ class firmware_SoftwareSync(FAFTSequence):
         super(firmware_SoftwareSync, self).setup()
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
+        self.setup_usbkey(usbkey=False)
         self.ensure_rw()
 
 

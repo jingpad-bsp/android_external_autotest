@@ -52,6 +52,7 @@ class firmware_UpdateECBin(FAFTSequence):
         super(firmware_UpdateECBin, self).setup()
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
+        self.setup_usbkey(usbkey=False)
 
         temp_path = self.faft_client.get_temp_path()
         self.faft_client.setup_firmwareupdate_temp_dir()

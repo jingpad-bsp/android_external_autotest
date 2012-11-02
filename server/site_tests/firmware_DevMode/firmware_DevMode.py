@@ -15,6 +15,7 @@ class firmware_DevMode(FAFTSequence):
     def setup(self):
         super(firmware_DevMode, self).setup()
         self.setup_dev_mode(dev_mode=False)
+        self.setup_usbkey(usbkey=False)
 
 
     def run_once(self, host=None):

@@ -15,6 +15,7 @@ class firmware_TryFwB(FAFTSequence):
     def setup(self, dev_mode=False):
         super(firmware_TryFwB, self).setup()
         self.setup_dev_mode(dev_mode)
+        self.setup_usbkey(usbkey=False)
         self.setup_tried_fwb(tried_fwb=False)
 
 

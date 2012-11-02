@@ -40,10 +40,9 @@ class firmware_DevFwNormalBoot(FAFTSequence):
         # This test is only meaningful on Alex/ZGB.
         if self.faft_client.get_platform_name() in ('Alex', 'ZGB'):
             self.has_different_dev_fw = True
-            self.assert_test_image_in_usb_disk()
-            self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
             # This test is run on developer mode only.
             self.setup_dev_mode(dev_mode=True)
+            self.setup_usbkey(usbkey=True, host=False)
 
 
     def run_once(self, host=None):

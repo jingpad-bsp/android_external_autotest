@@ -45,6 +45,7 @@ class firmware_CgptState(FAFTSequence):
         super(firmware_CgptState, self).setup()
         self.host = host
         self.setup_dev_mode(dev_mode=False)
+        self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 
 

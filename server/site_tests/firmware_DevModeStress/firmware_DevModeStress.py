@@ -59,6 +59,11 @@ class firmware_DevModeStress(FAFTSequence):
         super(firmware_DevModeStress, self).initialize(host, cmdline_args,
                                                        use_pyauto, use_faft)
 
+    def setup(self):
+        super(firmware_DevModeStress, self).setup()
+        self.setup_usbkey(usbkey=False)
+
+
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, verify dev mode

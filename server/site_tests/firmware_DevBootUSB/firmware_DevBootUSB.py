@@ -23,9 +23,8 @@ class firmware_DevBootUSB(FAFTSequence):
 
     def setup(self):
         super(firmware_DevBootUSB, self).setup()
-        self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode=True)
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.setup_usbkey(usbkey=True, host=False)
 
         self.original_dev_boot_usb = self.faft_client.get_dev_boot_usb()
         logging.info('Original dev_boot_usb value: %s',

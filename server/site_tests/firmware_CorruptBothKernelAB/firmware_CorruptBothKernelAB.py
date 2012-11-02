@@ -38,10 +38,9 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
 
     def setup(self, dev_mode=False):
         super(firmware_CorruptBothKernelAB, self).setup()
-        self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode)
+        self.setup_usbkey(usbkey=True, host=False)
         self.setup_kernel('a')
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
 
     def cleanup(self):
