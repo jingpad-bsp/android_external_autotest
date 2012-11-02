@@ -39,16 +39,16 @@ while getopts ":p:a:h" opt; do
   esac
 done
 
-if [ -z ${PASSWD} ]; then
+if [ -z "${PASSWD}" ]; then
   read -s -p "Autotest DB password: " PASSWD
   echo
-  if [ -z ${PASSWD} ]; then
+  if [ -z "${PASSWD}" ]; then
     echo "Empty passwords not allowed." >&2
     exit 1
   fi
   read -s -p "Re-enter password: " PASSWD2
   echo
-  if [ ${PASSWD} != ${PASSWD2} ]; then
+  if [ "${PASSWD}" != "${PASSWD2}" ]; then
     echo "Passwords don't match." >&2
     exit 1
   fi
@@ -69,12 +69,12 @@ if [ -f ${SHADOW_CONFIG_PATH} ]; then
   clobber=
   while read -n 1 -p "Clobber existing shadow config? [Y/n]: " clobber; do
     echo
-    if [[ -z ${clobber} || $(echo ${clobber} | egrep -qi 'y|n') -eq 0 ]]; then
+    if [[ -z "${clobber}" || $(echo ${clobber} | egrep -qi 'y|n') -eq 0 ]]; then
       break
     fi
     echo "Please enter y or n."
   done
-  if [[ ${clobber} = 'n' || ${clobber} = 'N' ]]; then
+  if [[ "${clobber}" = 'n' || "${clobber}" = 'N' ]]; then
     echo "Refusing to clobber existing shadow_config.ini."
     exit 0
   fi
@@ -125,8 +125,8 @@ FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'chromeos_autotest_db'")
 if [ -n "${EXISTING_DATABASE}" ]; then
   while read -n 1 -p "Clobber existing MySQL database? [y/N]: " CLOBBERDB; do
     echo
-    if [[ -z ${CLOBBERDB} || $(echo ${CLOBBERDB} | egrep -qi 'y|n') -eq 0 ]];
-    then
+    if [[ -z "${CLOBBERDB}" ||
+          $(echo ${CLOBBERDB} | egrep -qi 'y|n') -eq 0 ]]; then
       break
     fi
     echo "Please enter y or n."
