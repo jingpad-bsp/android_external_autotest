@@ -202,11 +202,6 @@ class SiteHost(remote.RemoteHost):
                         ' new kernel as successful.'),
                     timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
-            # TODO(dalecurtis): Hack for R12 builds to make sure BVT runs of
-            # platform_Shutdown pass correctly.
-            if updater.update_version.startswith('0.12'):
-                self.reboot(timeout=60, wait=True)
-
             # Mark host as recently updated. Hosts are rebooted at the end of
             # every test cycle which will remove the file.
             self.run('touch %s' % self._JUST_UPDATED_FLAG)

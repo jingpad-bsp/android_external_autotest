@@ -276,6 +276,11 @@ class ChromiumOSUpdater():
     def check_version(self):
         booted_version = self.get_build_id()
         if self.update_version and not booted_version in self.update_version:
+            # Print out crossystem to make it easier to debug the rollback.
+            logging.debug('Dumping partition table.')
+            self.host.run('cgpt show $(rootdev -s -d)')
+            logging.debug('Dumping crossystem for firmware debugging.')
+            self.host.run('crossystem --all')
             logging.error('Expected Chromium OS version: %s.'
                           'Found Chromium OS %s',
                           self.update_version, booted_version)
