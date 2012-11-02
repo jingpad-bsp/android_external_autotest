@@ -452,11 +452,11 @@ class AbstractStats(object):
                       Otherwise, stats are from the difference between the
                       current and last refresh.
         """
-        raw_stats = self._read_stats()
+        raw_stats = result = self._read_stats()
         if incremental:
-            raw_stats = self.do_diff(raw_stats, self._stats)
+            result = self.do_diff(result, self._stats)
         self._stats = raw_stats
-        return self.to_percent(raw_stats)
+        return self.to_percent(result)
 
 
     def _read_stats(self):
