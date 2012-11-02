@@ -43,7 +43,7 @@
   },
   "/etc/resolv.conf": {
     "can_dangle": false,
-    "destination": "/var/run/flimflam/resolv.conf",
+    "destination": "/var/run/shill/resolv.conf",
     "owner": "root",
     "group": "root",
     "mode": "0644"
