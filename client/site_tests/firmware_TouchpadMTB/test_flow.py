@@ -67,14 +67,14 @@ class TestFlow:
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
         self.mtb_evemu = mtb.MtbEvemu()
-        self.robot = robot_wrapper.RobotWrapper(self.board)
+        self.robot = robot_wrapper.RobotWrapper(self.board, self.mode)
 
     def __del__(self):
         self.system_device.close()
 
     def _is_robot_mode(self):
         """Is it in robot mode?"""
-        return self.mode == MODE.ROBOT
+        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM]
 
     def _get_gesture_names(self):
         """Determine the gesture names based on the mode."""

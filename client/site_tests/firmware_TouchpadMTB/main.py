@@ -164,6 +164,7 @@ def _usage():
     print 'options:'
     print '  -h, --%s: show this help' % OPTIONS.HELP
     print '  -m, --%s: gesture playing mode' % OPTIONS.MODE
+    print '            could be either MANUAL, ROBOT or ROBOT_SIM'
     print '  -s, --%s: Use one variation per gesture' % OPTIONS.SIMPLIFIED
     print
 

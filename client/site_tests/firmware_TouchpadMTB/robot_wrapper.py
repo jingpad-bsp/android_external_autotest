@@ -9,7 +9,7 @@ import os
 import common_util
 import test_conf as conf
 
-from firmware_constants import GV
+from firmware_constants import GV, MODE
 
 
 # Define the robot control script names.
@@ -47,8 +47,9 @@ class RobotWrapperError(Exception):
 class RobotWrapper:
     """A class to wrap and manipulate the robot library."""
 
-    def __init__(self, board):
+    def __init__(self, board, mode):
         self._board = board
+        self._mode = mode
         self._robot_script_dir = self._get_robot_script_dir()
 
         self._robot_script_name_dict = {
@@ -123,6 +124,19 @@ class RobotWrapper:
             None: (CENTER, CENTER),
         }
 
+    def _is_robot_simulation_mode(self):
+        """Is it in robot simulation mode?
+
+        In the robot simulation mode, it does not actually invoke the robot
+        control script. It only prints the command string for debugging purpose.
+        """
+        return self._mode == MODE.ROBOT_SIM
+
+    def _raise_error(self, msg):
+        """Only raise an error if it is not in the simulation mode."""
+        if not self._is_robot_simulation_mode():
+            raise RobotWrapperError(msg)
+
     def _get_robot_script_dir(self):
         """Get the directory of the robot control scripts."""
         cmd = 'find %s -name %s' % (conf.robot_lib_path, conf.python_package)
@@ -157,7 +171,7 @@ class RobotWrapper:
         basic_tracking_or_swipe = self._get_basic_tracking_or_swipe(gesture)
         if not basic_tracking_or_swipe:
             msg = 'Cannot determine whether "%s" is basic tracking or swipe.'
-            raise RobotWrapperError(msg % gesture)
+            self._raise_error(msg % gesture)
 
         line = speed = None
         for element in variation:
@@ -174,7 +188,7 @@ class RobotWrapper:
 
         if line is None or speed is None:
             msg = 'Cannot derive the line/speed parameters from %s %s.'
-            raise RobotWrapperError(msg % (gesture, variation))
+            self._raise_error(msg % (gesture, variation))
 
         start_x, start_y, end_x, end_y = line
         para = (robot_script, self._board, start_x, start_y, end_x, end_y,
@@ -192,13 +206,13 @@ class RobotWrapper:
 
         if location is None:
             msg = 'Cannot derive the location parameters from %s %s.'
-            raise RobotWrapperError(msg % (gesture, variation))
+            self._raise_error(msg % (gesture, variation))
         target_x, target_y = location
 
         tap_or_click = self._get_tap_or_click(gesture)
         if not tap_or_click:
             msg = 'Cannot determine whether "%s" is a tap or a click.'
-            raise RobotWrapperError(msg % gesture)
+            self._raise_error(msg % gesture)
 
         para = (robot_script, self._board, target_x, target_y, tap_or_click)
         control_cmd = 'python %s %s %f %f %s' % para
@@ -211,26 +225,26 @@ class RobotWrapper:
             script_path = os.path.join(conf.robot_lib_path, conf.python_package,
                                        conf.gestures_sub_path)
             msg = 'Cannot find robot script directory in "%s".'
-            raise RobotWrapperError(msg % script_path)
+            self._raise_error(msg % script_path)
 
         # Check if there exists a control script for this gesture.
         script_name = self._robot_script_name_dict.get(gesture)
         if not script_name:
             msg = 'Cannot find "%s" gesture in _robot_script_name_dict.'
-            raise RobotWrapperError(msg % gesture)
+            self._raise_error(msg % gesture)
 
         # Check if the control script actually exists.
         robot_script = os.path.join(self._robot_script_dir, script_name)
         if not os.path.isfile(robot_script):
             msg = 'Cannot find the robot control script: %s'
-            raise RobotWrapperError(msg % robot_script)
+            self._raise_error(msg % robot_script)
 
         # Check if there exists a method to derive the robot script command
         # for this gesture.
         script_method = self._method_of_control_command_dict.get(gesture)
         if not script_method:
             msg = 'Cannot find "%s" gesture in _method_of_control_command_dict.'
-            raise RobotWrapperError(msg % gesture)
+            self._raise_error(msg % gesture)
 
         return script_method(robot_script, gesture, variation)
 
@@ -242,7 +256,8 @@ class RobotWrapper:
             control_cmd = self._get_control_command(gesture.name, variation)
             print gesture.name, variation
             print 'Executing: "%s"' % control_cmd
-            common_util.simple_system(control_cmd)
+            if not self._is_robot_simulation_mode():
+                common_util.simple_system(control_cmd)
         except RobotWrapperError as e:
             print gesture.name, variation
             print 'RobotWrapperError: %s' % str(e)
