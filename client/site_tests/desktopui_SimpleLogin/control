@@ -1,0 +1,20 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Project"
+NAME = "desktopui_SimpleLogin"
+PURPOSE = "Logs into the system, this is used be server based servo tests."
+CRITERIA = """
+This test logs in and waits forever.
+"""
+TIME = "LONG"
+TEST_CATEGORY = "General"
+TEST_CLASS = "desktopui"
+TEST_TYPE = "client"
+
+DOC = """
+This test logs in and waits forever.
+"""
+
+job.run_test('desktopui_SimpleLogin')
