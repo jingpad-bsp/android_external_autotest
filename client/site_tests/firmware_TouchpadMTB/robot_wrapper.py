@@ -56,6 +56,10 @@ class RobotWrapper:
             conf.ONE_FINGER_SWIPE: SCRIPT_LINE,
             conf.ONE_FINGER_TAP: SCRIPT_CLICK,
             conf.ONE_FINGER_PHYSICAL_CLICK: SCRIPT_CLICK,
+            conf.TWO_FINGER_TRACKING: SCRIPT_LINE,
+            conf.TWO_FINGER_SWIPE: SCRIPT_LINE,
+            conf.TWO_FINGER_TAP: SCRIPT_CLICK,
+            conf.TWO_FINGER_PHYSICAL_CLICK: SCRIPT_CLICK,
         }
 
         self._method_of_control_command_dict = {
@@ -63,6 +67,10 @@ class RobotWrapper:
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
             conf.ONE_FINGER_TAP: self._get_control_command_click,
             conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
+            conf.TWO_FINGER_TRACKING: self._get_control_command_line,
+            conf.TWO_FINGER_SWIPE: self._get_control_command_line,
+            conf.TWO_FINGER_TAP: self._get_control_command_click,
+            conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
         }
 
         self._line_dict = {
@@ -83,6 +91,7 @@ class RobotWrapper:
         }
 
         self._location_dict = {
+            # location parameters for one-finger taps
             GV.TL: (START, START),
             GV.TR: (END, START),
             GV.BL: (START, END),
@@ -92,6 +101,25 @@ class RobotWrapper:
             GV.LS: (START, CENTER),
             GV.RS: (END, CENTER),
             GV.CENTER: (CENTER, CENTER),
+
+            # location parameters for two-finger taps
+            #   In the manual mode:
+            #     The original meanings of the following gesture variations:
+            #       HORIZONTAL: two fingers aligned horizontally
+            #       VERTICAL: two fingers aligned vertically
+            #       DIAGONAL: two fingers aligned diagonally
+            #
+            #   In the robot mode:
+            #     The robot fingers cannot rotate automatically. Have the robot
+            #     perform taps on distinct locations instead for convenience.
+            #     Note: the location is specified by the first finger, and the
+            #           second finger is on the left. Choose the tap locations
+            #           that guarantee both fingers on the trackpad.
+            GV.HORIZONTAL: (CENTER, CENTER),
+            GV.VERTICAL: (END, CENTER),
+            GV.DIAGONAL: (CENTER, END),
+
+            # location parameters for one_finger_click and two_finger_click
             None: (CENTER, CENTER),
         }
 

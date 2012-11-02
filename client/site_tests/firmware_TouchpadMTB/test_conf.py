@@ -107,13 +107,24 @@ gesture_names_complete = [
 ]
 
 
-# Define the list of simple one-finger gestures to test using the robot.
+# Define the list of one-finger and two-finger gestures to test using the robot.
 gesture_names_robot = [
     ONE_FINGER_TRACKING,
     ONE_FINGER_SWIPE,
     ONE_FINGER_TAP,
     ONE_FINGER_PHYSICAL_CLICK,
+    TWO_FINGER_TRACKING,
+    TWO_FINGER_SWIPE,
+    TWO_FINGER_TAP,
+    TWO_FINGER_PHYSICAL_CLICK,
 ]
+
+
+# Define those gestures that the robot needs to pause after so the user
+# could adjust the robot during the tests.
+gesture_names_robot_pause = {
+    ONE_FINGER_PHYSICAL_CLICK: 'Two-finger gestures next.'
+}
 
 
 # Define the gesture list that the user needs to perform in the test suite.

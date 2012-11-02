@@ -112,6 +112,19 @@ class TestFlow:
                   "      'x'   to discard this file and exit.")
         return prompt
 
+    def _get_prompt_robot_pause(self):
+        """Prompt for robot pause."""
+        pause_msg = conf.gesture_names_robot_pause.get(self.gesture.name)
+        if pause_msg is None:
+            return None
+
+        prompt = ("----- %s -----\n"
+                  "Adjust the robot accordingly now.\n\n"
+                  "Press SPACE to save this file and go to next test,\n"
+                  "      'd'   to delete this file and try again.\n"
+                 ) % pause_msg
+        return prompt
+
     def _get_prompt_result(self):
         """Prompt to see test result through timeout callback."""
         prompt = ("Perform the gesture now.\n"
@@ -399,7 +412,18 @@ class TestFlow:
             self.win.remove_event_source(self.gesture_file_watch_tag)
             self.win.set_input_focus()
             if self._is_robot_mode():
-                self.win.create_key_press_event(GTK_KEY_SAVE)
+                prompt_msg = self._get_prompt_robot_pause()
+                if prompt_msg is not None:
+                    # Print the prompt on both the window and the console.
+                    # The latter is needed because another machine is used
+                    # to ssh to the chromebook under test. Hence, the user
+                    # could look at the prompt from the console more easily
+                    # rather than staring at the distant window of the
+                    # chromebook under test.
+                    self.win.set_prompt(prompt_msg)
+                    print '\n\n' + prompt_msg
+                else:
+                    self.win.create_key_press_event(GTK_KEY_SAVE)
             return False
 
     def gesture_file_watch_callback(self, fd, condition, evdev_device):
