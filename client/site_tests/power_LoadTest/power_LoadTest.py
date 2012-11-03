@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, shutil, time
+import collections, logging, numpy, os, shutil, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
@@ -48,7 +48,7 @@ class power_LoadTest(cros_ui_test.UITest):
                  check_network=True, loop_time=3600, loop_count=1,
                  should_scroll='true', should_scroll_up='true',
                  scroll_loop='false', scroll_interval_ms='10000',
-                 scroll_by_pixels='600', low_battery_threshold=3,
+                 scroll_by_pixels='600', test_low_batt_p=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
                  wifi_pw='', tasks="", kblight_percent=10, volume_level=10,
                  mic_gain=10):
@@ -65,12 +65,20 @@ class power_LoadTest(cros_ui_test.UITest):
         kblight_percent: percent brightness of keyboard backlight
         volume_level: percent audio volume level
         mic_gain: percent audio microphone gain level
+        test_low_batt_p: percent battery at which test should stop
+        sys_low_batt_p: percent battery at which power manager will
+            shut-down the device
+        sys_low_batt_s: seconds battery at which power manager will
+            shut-down the device
         """
         self._loop_time = loop_time
         self._loop_count = loop_count
         self._mseconds = self._loop_time * 1000
         self._verbose = verbose
-        self._low_battery_threshold = low_battery_threshold
+
+        self._sys_low_batt_p = 0.
+        self._sys_low_batt_s = 0.
+        self._test_low_batt_p = test_low_batt_p
         self._should_scroll = should_scroll
         self._should_scroll_up = should_scroll_up
         self._scroll_loop = scroll_loop
@@ -85,6 +93,8 @@ class power_LoadTest(cros_ui_test.UITest):
         self._kblight_percent = kblight_percent
         self._volume_level = volume_level
         self._mic_gain = mic_gain
+        self._wait_time = 60
+        self._stats = collections.defaultdict(list)
 
         self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
@@ -146,6 +156,14 @@ class power_LoadTest(cros_ui_test.UITest):
             self._disk_logger.start()
 
         self._power_status.refresh()
+        (self._sys_low_batt_p, self._sys_low_batt_s) = \
+            self._get_sys_low_batt_values()
+        if self._sys_low_batt_p and (self._sys_low_batt_p >
+                                     self._test_low_batt_p):
+            logging.warn("test low battery threshold is below system ",
+                         "low battery requirement.  Setting to %f",
+                         self._sys_low_batt_p)
+            self._test_low_batt_p = self._sys_low_batt_p
 
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
@@ -203,7 +221,7 @@ class power_LoadTest(cros_ui_test.UITest):
             self.pyauto.UninstallExtensionById(ext_id)
 
         t1 = time.time()
-        self._tmp_keyvals['minutes_battery_life'] = (t1 - t0) / 60
+        self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60
 
 
     def postprocess_iteration(self):
@@ -211,12 +229,45 @@ class power_LoadTest(cros_ui_test.UITest):
             for state in stats:
                 keyvals['percent_%s_%s_time' % (name, state)] = stats[state]
 
+
+        def _log_stats(prefix, stats):
+            if not len(stats):
+                return
+            np = numpy.array(stats)
+            logging.debug("%s samples: %d", prefix, len(np))
+            logging.debug("%s mean:    %.2f", prefix, np.mean())
+            logging.debug("%s stdev:   %.2f", prefix, np.std())
+            logging.debug("%s max:     %.2f", prefix, np.max())
+            logging.debug("%s min:     %.2f", prefix, np.min())
+
+
+        def _log_per_loop_stats():
+            samples_per_loop = self._loop_time / self._wait_time + 1
+            for kname in self._stats:
+                start_idx = 0
+                loop = 1
+                for end_idx in xrange(samples_per_loop, len(self._stats[kname]),
+                                      samples_per_loop):
+                    _log_stats("%s loop %d" % (kname, loop),
+                               self._stats[kname][start_idx:end_idx])
+                    loop += 1
+                    start_idx = end_idx
+
+
+        def _log_all_stats():
+            for kname in self._stats:
+                _log_stats(kname, self._stats[kname])
+
+
         keyvals = {}
 
         _format_stats(keyvals, self._usb_stats.refresh(), 'usb')
         _format_stats(keyvals, self._cpufreq_stats.refresh(), 'cpufreq')
         _format_stats(keyvals, self._cpupkg_stats.refresh(), 'cpupkg')
         _format_stats(keyvals, self._cpuidle_stats.refresh(), 'cpuidle')
+
+        _log_all_stats()
+        _log_per_loop_stats()
         if (self._disk_logger.get_error()):
             keyvals['disk_logging_error'] = str(self._disk_logger.get_error())
         else:
@@ -237,9 +288,27 @@ class power_LoadTest(cros_ui_test.UITest):
                                     keyvals['wh_energy_now']
         keyvals['v_voltage_min_design'] = \
                              self._power_status.battery[0].voltage_min_design
+        keyvals['wh_energy_full_design'] = \
+                             self._power_status.battery[0].energy_full_design
         keyvals['v_voltage_now'] = self._power_status.battery[0].voltage_now
 
         keyvals.update(self._tmp_keyvals)
+
+        keyvals['percent_sys_low_battery'] = self._sys_low_batt_p
+        keyvals['seconds_sys_low_battery'] = self._sys_low_batt_s
+        voltage_np = numpy.array(self._stats['v_voltage_now'])
+        voltage_mean = voltage_np.mean()
+        keyvals['v_voltage_mean'] = voltage_mean
+        bat_life_scale = (keyvals['wh_energy_full_design'] /
+                          (keyvals['ah_charge_used'] * voltage_mean)) * \
+                          (100 - keyvals['percent_sys_low_battery'] / 100)
+
+        keyvals['minutes_battery_life'] = bat_life_scale * \
+            keyvals['minutes_battery_life_tested']
+        # In the case where sys_low_batt_s is non-zero subtract those minutes
+        # from the final extrapolation.
+        if self._sys_low_batt_s:
+            keyvals['minutes_battery_life'] -= self._sys_low_batt_s / 60
 
         keyvals['a_current_rate'] = keyvals['ah_charge_used'] * 60 / \
                                     keyvals['minutes_battery_life']
@@ -278,25 +347,26 @@ class power_LoadTest(cros_ui_test.UITest):
     def _do_wait(self, verbose, seconds, latch):
         latched = False
         low_battery = False
-        total_time = seconds + 60
+        total_time = seconds + self._wait_time
         elapsed_time = 0
-        wait_time = 60
 
         while elapsed_time < total_time:
-            time.sleep(wait_time)
-            elapsed_time += wait_time
+            time.sleep(self._wait_time)
+            elapsed_time += self._wait_time
 
             self._power_status.refresh()
+            charge_now = self._power_status.battery[0].charge_now
+            energy_rate = self._power_status.battery[0].energy_rate
+            voltage_now = self._power_status.battery[0].voltage_now
+            self._stats['w_energy_rate'].append(energy_rate)
+            self._stats['v_voltage_now'].append(voltage_now)
             if verbose:
-                logging.debug('ah_charge_now %f' \
-                    % self._power_status.battery[0].charge_now)
-                logging.debug('w_energy_rate %f' \
-                    % self._power_status.battery[0].energy_rate)
-                logging.debug('v_voltage_now %f' \
-                    % self._power_status.battery[0].voltage_now)
+                logging.debug('ah_charge_now %f', charge_now)
+                logging.debug('w_energy_rate %f', energy_rate)
+                logging.debug('v_voltage_now %f', voltage_now)
 
             low_battery = (self._power_status.percent_current_charge() <
-                           self._low_battery_threshold)
+                           self._test_low_batt_p)
 
             latched = latch.is_set()
 
@@ -359,3 +429,34 @@ class power_LoadTest(cros_ui_test.UITest):
         else:
             logging.info('Setting lightbar to %s', level)
             self._tmp_keyvals['level_lightbar_current'] = level
+
+
+    def _get_sys_low_batt_values(self):
+        """Determine the low battery values for device and return.
+
+        2012/11/01: power manager (powerd.cc) parses parameters in filesystem
+          and outputs a log message like:
+
+           [1101/173837:INFO:powerd.cc(258)] Using low battery time threshold
+                     of 0 secs and using low battery percent threshold of 3.5
+
+           It currently checks to make sure that only one of these values is
+           defined.
+
+        Returns:
+          Tuple of (percent, seconds)
+            percent: float of low battery percentage
+            seconds: float of low battery seconds
+
+        """
+        split_re = 'threshold of'
+
+        powerd_log = '/var/log/power_manager/powerd.LATEST'
+        cmd = 'grep "low battery time" %s' % powerd_log
+        line = utils.system_output(cmd)
+        secs = float(line.split(split_re)[1].split()[0])
+        percent = float(line.split(split_re)[2].split()[0])
+        if secs and percent:
+            raise error.TestError("Low battery percent and seconds " +
+                                  "are non-zero.")
+        return (percent, secs)

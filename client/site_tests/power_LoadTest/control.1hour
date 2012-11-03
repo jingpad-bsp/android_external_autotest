@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -26,9 +26,10 @@ You are now ready to run the test.
 """
 
 # TODO (bleung): Find a way to do automatic Facebook login for test account.
-
+# TODO (tbroch): Find way to not replicate all these parameters that are common
+# between this control file and the original
 loop_time = 3600
-loop_count = 11
+loop_count = 1
 
 # To specify a list of custom tasks, pass in the task parameter:
 #    tasks='<task00>&<task01>+<task10>&<task11>+<task20>&<task21>+...'
@@ -62,4 +63,4 @@ tasks='window;http://www.cnn.com,http://www.ebay.com,http://www.msn.com;900' + \
       'm;1200'
 
 job.run_test('power_LoadTest', loop_time=loop_time, loop_count=loop_count,
-             test_low_batt_p=3)
+             test_low_batt_p=6)
