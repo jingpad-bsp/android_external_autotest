@@ -139,7 +139,7 @@ class firmware_ECThermal(FAFTSequence):
         super(firmware_ECThermal, self).setup()
         try:
             self.faft_client.run_shell_command('stop temp_metrics')
-        except ChromeOSInterfaceError:
+        except xmlrpclib.Fault:
             self._has_temp_metrics = False
         else:
             logging.info('Stopped temp_metrics')
@@ -191,7 +191,7 @@ class firmware_ECThermal(FAFTSequence):
           Temperature reading in degree C.
 
         Raises:
-          ChromeOSInterfaceError: Raised when we fail to read temperature.
+          xmlrpclib.Fault: Raised when we fail to read temperature.
           error.TestError: Raised if ectool doesn't behave as we expected.
         """
         assert sensor_id < self._num_temp_sensor
