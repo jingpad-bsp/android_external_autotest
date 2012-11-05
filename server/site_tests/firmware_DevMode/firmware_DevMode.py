@@ -18,6 +18,11 @@ class firmware_DevMode(FAFTSequence):
         self.setup_usbkey(usbkey=False)
 
 
+    def cleanup(self):
+        self.setup_dev_mode(dev_mode=False)
+        super(firmware_DevMode, self).cleanup()
+
+
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, enable dev mode

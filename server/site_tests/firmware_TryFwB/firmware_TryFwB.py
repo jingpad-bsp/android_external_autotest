@@ -19,6 +19,11 @@ class firmware_TryFwB(FAFTSequence):
         self.setup_tried_fwb(tried_fwb=False)
 
 
+    def cleanup(self):
+        self.setup_tried_fwb(tried_fwb=False)
+        super(firmware_TryFwB, self).cleanup()
+
+
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, set fwb_tries flag
