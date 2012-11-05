@@ -19,6 +19,10 @@ _DEFAULT_INPUT_DEVICE = 'hw:0,0'
 _DEFAULT_RECORD_DURATION = 10
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
+_JACK_VALUE_ON_RE = re.compile('.*values=on')
+_HP_JACK_CONTROL_RE = re.compile('numid=(\d+).*Headphone\sJack')
+_MIC_JACK_CONTROL_RE = re.compile('numid=(\d+).*Mic\sJack')
+
 _SOX_RMS_AMPLITUDE_RE = re.compile('RMS\s+amplitude:\s+(.+)')
 _SOX_ROUGH_FREQ_RE = re.compile('Rough\s+frequency:\s+(.+)')
 _SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
@@ -98,6 +102,65 @@ class AudioHelper(object):
         utils.system('/usr/bin/cras_test_client --capture_gain %d' % capture)
         utils.system('/usr/bin/cras_test_client --dump_server_info')
         utils.system('amixer -c 0 contents')
+
+    def get_jack_status(self, jack_reg_exp):
+        '''
+        Gets the jack status.
+
+        Args:
+            jack_reg_exp: The regular expression to match jack control name.
+
+        Returns:
+            None if the control does not exist, return True if jack control
+            is detected plugged, return False otherwise.
+        '''
+        output = utils.system_output('amixer -c0 controls', retain_output=True)
+        numid = None
+        for line in output.split('\n'):
+            m = jack_reg_exp.match(line)
+            if m:
+                numid = m.group(1)
+                break
+        if numid is not None:
+            output = utils.system_output('amixer -c0 cget numid=%s' % numid)
+            for line in output.split('\n'):
+                if _JACK_VALUE_ON_RE.match(line):
+                    return True
+            return False
+        else:
+            return None
+
+    def get_hp_jack_status(self):
+        return self.get_jack_status(_HP_JACK_CONTROL_RE)
+
+    def get_mic_jack_status(self):
+        return self.get_jack_status(_MIC_JACK_CONTROL_RE)
+
+    def check_loopback_dongle(self):
+        '''
+        Checks if loopback dongle is equipped correctly.
+        '''
+        # Check Mic Jack
+        mic_jack_status = self.get_mic_jack_status()
+        if mic_jack_status is None:
+            logging.warning('Found no Mic Jack control, skip check.')
+        elif not mic_jack_status:
+            logging.info('Mic jack is not plugged.')
+            return False
+        else:
+            logging.info('Mic jack is plugged.')
+
+        # Check Headphone Jack
+        hp_jack_status = self.get_hp_jack_status()
+        if hp_jack_status is None:
+            logging.warning('Found no Headphone Jack control, skip check.')
+        elif not hp_jack_status:
+            logging.info('Headphone jack is not plugged.')
+            return False
+        else:
+            logging.info('Headphone jack is plugged.')
+
+        return True
 
     def set_mixer_controls(self, mixer_settings={}, card='0'):
         '''

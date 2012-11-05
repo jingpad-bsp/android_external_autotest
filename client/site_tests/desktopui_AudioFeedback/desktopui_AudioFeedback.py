@@ -82,6 +82,9 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
 
     def run_once(self):
         self._ah.set_volume_levels(self._volume_level, self._capture_gain)
+        if not self._ah.check_loopback_dongle():
+            raise error.TestError('Audio loopback dongle is in bad state.')
+
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s' % noise_file.name)
