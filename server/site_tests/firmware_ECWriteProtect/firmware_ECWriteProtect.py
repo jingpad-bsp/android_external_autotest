@@ -33,13 +33,22 @@ class firmware_ECWriteProtect(FAFTSequence):
             return False
 
 
+    def ensure_unprotected(self):
+        if not self.checkers.crossystem_checker({'wpsw_boot': '0'}):
+            self.run_faft_step({
+                'reboot_action': (self.set_EC_write_protect_and_reboot, False)
+            })
+
+
     def setup(self, dev_mode=False):
         super(firmware_ECWriteProtect, self).setup()
+        self.ensure_unprotected()
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
 
 
     def cleanup(self):
+        self.ensure_unprotected()
         self.restore_firmware()
         super(firmware_ECWriteProtect, self).cleanup()
 
@@ -48,12 +57,6 @@ class firmware_ECWriteProtect(FAFTSequence):
         flags = self.faft_client.get_firmware_flags('a')
         if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
-            return
-
-        if self.checkers.crossystem_checker({'wpsw_boot': '1'}):
-            # TODO(vicoryang): investigate if wpsw_boot could be overridden by
-            # servo and reinstate the test if it could.
-            logging.info('The DUT is write protected.')
             return
 
         self.register_faft_sequence((
