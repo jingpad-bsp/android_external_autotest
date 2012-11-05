@@ -12,6 +12,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
@@ -86,8 +87,8 @@ class SiteHost(remote.RemoteHost):
     # auto update.
     _KERNEL_UPDATE_TIMEOUT = 120
 
-    # Timeout values associated with various Chrome OS state
-    # changes.
+    # Timeout values (in seconds) associated with various Chrome OS
+    # state changes.
     #
     # In general, a good rule of thumb is that the timeout can be up
     # to twice the typical measured value on the slowest platform.
@@ -105,6 +106,7 @@ class SiteHost(remote.RemoteHost):
     #   network,
     # SHUTDOWN_TIMEOUT: Time to allow for shut down.
     # REBOOT_TIMEOUT: Combination of shutdown and reboot times.
+    # _INSTALL_TIMEOUT: Time to allow for chromeos-install.
 
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 5
@@ -112,6 +114,15 @@ class SiteHost(remote.RemoteHost):
     USB_BOOT_TIMEOUT = 150
     SHUTDOWN_TIMEOUT = 5
     REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
+    _INSTALL_TIMEOUT = 240
+
+    _DEFAULT_SERVO_URL_FORMAT = ('/static/servo-images/'
+                                 '%(board)s_test_image.bin')
+
+    # TODO(jrbarnette):  Servo repair is restricted to x86-alex,
+    # because the existing servo client code won't work on other
+    # boards.  http://crosbug.com/36973
+    _SERVO_REPAIR_WHITELIST = [ 'x86-alex' ]
 
 
     _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
@@ -247,6 +258,34 @@ class SiteHost(remote.RemoteHost):
         return board_name
 
 
+    def _servo_repair(self, board):
+        """Attempt to repair this host using an attached Servo.
+
+        Re-install the OS on the DUT by 1) installing a test image
+        on a USB storage device attached to the Servo board,
+        2) booting that image in recovery mode, and then
+        3) installing the image.
+
+        """
+        server = dev_server.ImageServer.devserver_url_for_servo(board)
+        image = server + (self._DEFAULT_SERVO_URL_FORMAT %
+                          { 'board': board })
+        self.servo.install_recovery_image(image)
+        if not self.wait_up(timeout=self.USB_BOOT_TIMEOUT):
+            raise error.AutoservError('DUT failed to boot from USB'
+                                      ' after %d seconds' %
+                                        self.USB_BOOT_TIMEOUT)
+        self.run('chromeos-install --yes',
+                 timeout=self._INSTALL_TIMEOUT)
+        self.servo.power_long_press()
+        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.servo.power_short_press()
+        if not self.wait_up(timeout=self.BOOT_TIMEOUT):
+            raise error.AutoservError('DUT failed to reboot installed '
+                                      'test image after %d seconds' %
+                                        self.BOOT_TIMEOUT)
+
+
     def _powercycle_to_repair(self):
         """Utilize the RPM Infrastructure to bring the host back up.
 
@@ -292,10 +331,20 @@ class SiteHost(remote.RemoteHost):
             self.verify()
         except:
             host_board = self._get_board_from_afe()
-            if (host_board is None or not self.has_power() or
-                  host_board not in self._RPM_RECOVERY_BOARDS):
+            if host_board is None:
+                logging.error('host %s has no board; failing repair',
+                              self.hostname)
                 raise
-            self._powercycle_to_repair()
+            if (self.servo and
+                    host_board in self._SERVO_REPAIR_WHITELIST):
+                self._servo_repair(host_board)
+            elif (self.has_power() and
+                  host_board in self._RPM_RECOVERY_BOARDS):
+                self._powercycle_to_repair()
+            else:
+                logging.error('host %s has no servo and no RPM control; '
+                              'failing repair', self.hostname)
+                raise
             self.verify()
 
 
