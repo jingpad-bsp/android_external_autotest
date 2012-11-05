@@ -17,10 +17,8 @@ _DEFAULT_CARD = '0'
 _DEFAULT_VOLUME_LEVEL = 100
 _DEFAULT_CAPTURE_GAIN = 2500
 
-_AUDIO_NOT_FOUND = r'Audio\snot\sdetected'
-_MEASURED_LATENCY = r'Measured\sLatency:\s(\d+)\suS'
-_REPORTED_LATENCY = r'Reported\sLatency:\s(\d+)\suS'
-
+_LATENCY_DIFF_LIMIT_US = 3000
+_NOISE_THRESHOLD = 1600
 
 class audiovideo_LoopbackLatency(test.test):
     version = 1
@@ -50,46 +48,23 @@ class audiovideo_LoopbackLatency(test.test):
 
     def run_once(self):
         self._ah.set_volume_levels(self._volume_level, self._capture_gain)
-        self._loopback_latency_path = os.path.join(self.autodir, 'deps',
-                'audioloop', 'src', 'loopback_latency')
-        noise_threshold =  400
-        measured_latency = None
-        reported_latency = None
-        deviation = None
-        while True:
-            cmdargs = [self._loopback_latency_path, '-n', str(noise_threshold)]
-            proc = subprocess.Popen(cmdargs, stdout=subprocess.PIPE)
-            audio_detected = True
+        success = False
 
-            # Parse loopback_latency output
-            while True:
-                line = proc.stdout.readline()
-                if not line:
-                    break
-                match = re.search(_MEASURED_LATENCY, line, re.I)
-                if match:
-                    measured_latency = int(match.group(1))
-                match = re.search(_REPORTED_LATENCY, line, re.I)
-                if match:
-                    reported_latency = int(match.group(1))
-                if re.search(_AUDIO_NOT_FOUND, line, re.I):
-                    audio_detected = False
+        result = self._ah.loopback_latency_check(n=_NOISE_THRESHOLD)
+        if result:
+            diff = abs(result[0] - result[1])
+            logging.info('Tested latency with threshold %d.\nMeasured %d,'
+                         'reported %d uS, diff %d us\n' %
+                         (_NOISE_THRESHOLD, result[0], result[1], diff))
 
-            if measured_latency and reported_latency:
-                deviation = (1.0 * abs(measured_latency - reported_latency) /
-                             reported_latency)
-                logging.info('Tested with threshold %d.\nMeasured %d, reported '
-                             '%d uS, deviation %f%%\n' %
-                             (noise_threshold, measured_latency,
-                              reported_latency, deviation * 100))
-            if not audio_detected:
-                logging.info('Audio not detected.')
-                break
-            noise_threshold *= 2
-        if deviation is None:
-            raise error.TestError('No audio detected')
-        elif deviation > .02:
-            raise error.TestError('Latency deviation(%f) too much, measured %d,'
-                                  ' reported %d\n' %
-                                  (deviation, measured_latency,
-                                   reported_latency))
+            # Difference between measured and reported latency should
+            # within 3 ms.
+            if diff < _LATENCY_DIFF_LIMIT_US:
+                success = True
+        else:
+            raise error.TestError('Audio not detected at threshold %d' %
+                                  _NOISE_THRESHOLD)
+
+        if not success:
+            raise error.TestError('Latency difference too much, diff limit'
+                                  '%d us' % _LATENCY_DIFF_LIMIT_US)

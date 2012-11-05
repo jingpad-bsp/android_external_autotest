@@ -30,6 +30,9 @@ _SOX_RMS_AMPLITUDE_RE = re.compile('RMS\s+amplitude:\s+(.+)')
 _SOX_ROUGH_FREQ_RE = re.compile('Rough\s+frequency:\s+(.+)')
 _SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
+_AUDIO_NOT_FOUND_RE = r'Audio\snot\sdetected'
+_MEASURED_LATENCY_RE = r'Measured\sLatency:\s(\d+)\suS'
+_REPORTED_LATENCY_RE = r'Reported\sLatency:\s(\d+)\suS'
 
 class RecordSampleThread(threading.Thread):
     '''Wraps the execution of arecord in a thread.'''
@@ -71,6 +74,8 @@ class AudioHelper(object):
                 self._test.job.install_pkg(dep, 'dep', dep_dir)
                 self.audioloop_path = os.path.join(dep_dir, 'src',
                         'looptest')
+                self.loopback_latency_path = os.path.join(dep_dir, 'src',
+                        'loopback_latency')
             elif dep == 'sox':
                 dep_dir = os.path.join(self._test.autodir, 'deps', dep)
                 self._test.job.install_pkg(dep, 'dep', dep_dir)
@@ -321,3 +326,38 @@ class AudioHelper(object):
             raise error.TestError(
                 'Audio RMS value %f too low. Minimum pass is %f.' %
                 (rms_val, self._sox_threshold))
+
+    def loopback_latency_check(self, **args):
+        '''
+        Checks loopback latency.
+
+        Args:
+            args: additional arguments for loopback_latency.
+
+        Returns:
+            A tuple containing measured and reported latency in uS.
+            Return None if no audio detected.
+        '''
+        noise_threshold = str(args['n']) if args.has_key('n') else '400'
+
+        cmd = '%s -n %s' % (self.loopback_latency_path, noise_threshold)
+
+        output = utils.system_output(cmd)
+        measured_latency = None
+        reported_latency = None
+        for line in output.split('\n'):
+            match = re.search(_MEASURED_LATENCY_RE, line, re.I)
+            if match:
+                measured_latency = int(match.group(1))
+                continue
+            match = re.search(_REPORTED_LATENCY_RE, line, re.I)
+            if match:
+                reported_latency = int(match.group(1))
+                continue
+            if re.search(_AUDIO_NOT_FOUND_RE, line, re.I):
+                return None
+        if measured_latency and reported_latency:
+            return (measured_latency, reported_latency)
+        else:
+            # Should not reach here, just in case.
+            return None
