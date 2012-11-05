@@ -47,8 +47,7 @@ class firmware_ECSharedMem(FAFTSequence):
                 'reboot_action': (self.ec.send_command, "crash unaligned")
             },
             {   # Step 2, Check shared memory after crash and system jump
-                'state_checker': (lambda: self.shared_mem_checker() and
-                                          self.jump_checker()),
+                'state_checker': [self.shared_mem_checker, self.jump_checker],
                 'reboot_action': self.sync_and_ec_reboot,
             },
             {   # Step 3, dummy step to make step 2 reboot so as to clean EC

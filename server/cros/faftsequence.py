@@ -1210,6 +1210,9 @@ class FAFTSequence(ServoTest):
           action_tuple: A function, or a tuple (function, args, error_msg),
                         in which, args and error_msg are optional. args is
                         either a value or a tuple if multiple arguments.
+                        This can also be a list containing multiple function
+                        or tuple. In this case, these actions are called in
+                        sequence.
           check_status: Check the return value of action function. If not
                         succeed, raises a TestFail exception.
 
@@ -1220,6 +1223,10 @@ class FAFTSequence(ServoTest):
           error.TestError: An error when the action function is not callable.
           error.TestFail: When check_status=True, action function not succeed.
         """
+        if isinstance(action_tuple, list):
+            return all([self._call_action(action, check_status=check_status)
+                        for action in action_tuple])
+
         action = action_tuple
         args = ()
         error_msg = 'Not succeed'
