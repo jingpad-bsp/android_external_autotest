@@ -297,6 +297,7 @@ CREATE TABLE `afe_jobs` (
   `reboot_after` smallint(6) NOT NULL,
   `parse_failed_repair` tinyint(1) NOT NULL default '1',
   `max_runtime_hrs` int(11) NOT NULL,
+  `max_runtime_mins` int(11) NOT NULL,
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 SET character_set_client = @saved_cs_client;

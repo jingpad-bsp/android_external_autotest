@@ -893,7 +893,9 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     synch_count: how many hosts should be used per autoserv execution
     run_verify: Whether or not to run the verify phase
     timeout: hours from queuing time until job times out
-    max_runtime_hrs: hours from job starting time until job times out
+    max_runtime_hrs: DEPRECATED - hours from job starting time until job
+                     times out
+    max_runtime_mins: minutes from job starting time until job times out
     email_list: list of people to email on completion delimited by any of:
                 white space, ',', ':', ';'
     dependency_labels: many-to-many relationship with labels corresponding to
@@ -906,8 +908,12 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     """
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_timeout_default', default=240)
+    # MAX_RUNTIME_HRS is deprecated. Will be removed after switch to mins is
+    # completed.
     DEFAULT_MAX_RUNTIME_HRS = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_max_runtime_hrs_default', default=72)
+    DEFAULT_MAX_RUNTIME_MINS = global_config.global_config.get_config_value(
+        'AUTOTEST_WEB', 'job_max_runtime_mins_default', default=72*60)
     DEFAULT_PARSE_FAILED_REPAIR = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool,
         default=False)
@@ -940,7 +946,10 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         default=DEFAULT_REBOOT_AFTER)
     parse_failed_repair = dbmodels.BooleanField(
         default=DEFAULT_PARSE_FAILED_REPAIR)
+    # max_runtime_hrs is deprecated. Will be removed after switch to mins is
+    # completed.
     max_runtime_hrs = dbmodels.IntegerField(default=DEFAULT_MAX_RUNTIME_HRS)
+    max_runtime_mins = dbmodels.IntegerField(default=DEFAULT_MAX_RUNTIME_MINS)
     drone_set = dbmodels.ForeignKey(DroneSet, null=True, blank=True)
 
     parameterized_job = dbmodels.ForeignKey(ParameterizedJob, null=True,
@@ -1018,7 +1027,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             control_type=options['control_type'],
             synch_count=options.get('synch_count'),
             timeout=options.get('timeout'),
-            max_runtime_hrs=options.get('max_runtime_hrs'),
+            max_runtime_mins=options.get('max_runtime_mins'),
             run_verify=options.get('run_verify'),
             email_list=options.get('email_list'),
             reboot_before=options.get('reboot_before'),
