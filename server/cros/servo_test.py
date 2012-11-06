@@ -214,6 +214,12 @@ class ServoTest(test.test):
             xmlrpclib.ServerProxy(remote_url, allow_none=True))
         logging.info('Server proxy: %s' % remote_url)
 
+        # We found that the following RPC call retrial doesn't work all the
+        # time and causes timeout error happened. So add this delay to wait
+        # the client RPC server start-up as a work-around.
+        # TODO(waihong@chromium.org): Find the root cause why retrial not work.
+        time.sleep(5)
+
         # Poll for client RPC server to come online.
         timeout = 20
         succeed = False
