@@ -14,7 +14,19 @@ from autotest_lib.client.common_lib import error
 class security_OpenFDs(test.test):
     version = 1
 
-    def get_fds(self, pid):
+    def _S_ISANONFD(self, statbits):
+        """
+        Implements the equivalent interface to stat.S_ISREG(x) (and
+        family), for one particular type of file descriptor where no
+        type-checking macro is exposed by python, the "anonymous
+        inode" fd. So, we have to look at the stat bits ourself.
+
+        Takes the stat bits like you'd get from stat(path).st_mode,
+        and returns bool.
+        """
+        return 0 == (statbits & 0770000)
+
+    def get_fds(self, pid, typechecker):
         """
         Given a pid, return the set of open fds for that pid.
         Each open fd is represented as 'mode path' e.g.
@@ -25,7 +37,18 @@ class security_OpenFDs(test.test):
         for link in os.listdir(proc_fd_dir):
             link_path = os.path.join(proc_fd_dir, link)
             target = os.readlink(link_path)
-            mode = stat.S_IMODE(os.lstat(link_path).st_mode)
+            # The "mode" on the link tells us if the file is
+            # opened for read/write. We are more interested
+            # in that than the permissions of the file on the fs.
+            link_st_mode = os.lstat(link_path).st_mode
+            # On the other hand, we need the type information
+            # off the real file, otherwise we're going to get
+            # S_ISLNK for everything.
+            real_st_mode = os.stat(link_path).st_mode
+            if not typechecker(real_st_mode):
+                raise error.TestFail('Pid %s has fd for %s, disallowed type' %
+                                     (pid, target))
+            mode = stat.S_IMODE(link_st_mode)
             fd_perms.add('%s %s' % (oct(mode), target))
         return fd_perms
 
@@ -83,7 +106,7 @@ class security_OpenFDs(test.test):
         return output.splitlines()
 
 
-    def check_process(self, process, args, filters):
+    def check_process(self, process, args, filters, typechecker):
         """
         Perform a complete check for a given process/args:
         * Identify all instances (pids) of that process
@@ -97,7 +120,7 @@ class security_OpenFDs(test.test):
         test_pass = True
         for pid in self.find_pids(process, args):
             logging.debug('Found pid %s for %s' % (pid, process))
-            fds = self.get_fds(pid)
+            fds = self.get_fds(pid, typechecker)
             failed_filters = self.apply_filters(fds, filters)
             if failed_filters:
                 logging.error('Some filter(s) failed to match any fds: %s' %
@@ -118,7 +141,7 @@ class security_OpenFDs(test.test):
         """
         self.snapshot_system()
         passes = []
-        filters = [r'0700 anon_inode:\[eventpoll\]',
+        filters = [r'0700 anon_inode:\[event.*\]',
                    r'0[35]00 pipe:.*',
                    r'0[57]00 socket:.*',
                    r'0500 /dev/null',
@@ -126,12 +149,23 @@ class security_OpenFDs(test.test):
                    r'0300 /var/log/chrome/chrome_.*',
                    r'0[37]00 /var/log/ui/ui.*',
                   ]
-        passes.append(self.check_process('chrome', 'type=plugin', filters))
+
+        # Whitelist fd-type check, suitable for Chrome processes.
+        # Notably, this omits S_ISDIR.
+        permitted_fd_type_check = lambda x: (stat.S_ISREG(x) or
+                                             stat.S_ISCHR(x) or
+                                             stat.S_ISSOCK(x) or
+                                             stat.S_ISFIFO(x) or
+                                             self._S_ISANONFD(x))
+
+        passes.append(self.check_process('chrome', 'type=plugin', filters,
+                                         permitted_fd_type_check))
 
         filters.extend([r'0700 /dev/shm/..*',
                         r'0500 /opt/google/chrome/.*.pak',
                        ])
-        passes.append(self.check_process('chrome', 'type=renderer', filters))
+        passes.append(self.check_process('chrome', 'type=renderer', filters,
+                                         permitted_fd_type_check))
 
         if False in passes:
             raise error.TestFail("Unexpected changes to open fds.")
