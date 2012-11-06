@@ -177,11 +177,9 @@ class DevServer(object):
         devservers = cls.servers()
         while devservers:
             hash_index = hash(build) % len(devservers)
-            devserver = devservers[hash_index]
+            devserver = devservers.pop(hash_index)
             if cls._devserver_up(devserver):
                 return cls(devserver)
-            else:
-                devservers.pop(hash_index)
         else:
             logging.error('All devservers are currently down!!!')
             raise DevServerException('All devservers are currently down!!!')
@@ -257,6 +255,22 @@ class ImageServer(DevServer):
         return cls.servers()[0]
 
 
+    class ArtifactUrls(object):
+        """A container for URLs of staged artifacts.
+
+        Attributes:
+            full_payload: URL for downloading a staged full release update
+            mton_payload: URL for downloading a staged M-to-N release update
+            nton_payload: URL for downloading a staged N-to-N release update
+
+        """
+        def __init__(self, full_payload=None, mton_payload=None,
+                     nton_payload=None):
+            self.full_payload = full_payload
+            self.mton_payload = mton_payload
+            self.nton_payload = nton_payload
+
+
     @remote_devserver_call
     def trigger_download(self, image, synchronous=True):
         """Tell the devserver to download and stage |image|.
@@ -272,8 +286,10 @@ class ImageServer(DevServer):
 
         @param image: the image to fetch and stage.
         @param synchronous: if True, waits until all components of the image are
-                staged before returning.
+               staged before returning.
+
         @raise DevServerException upon any return code that's not HTTP OK.
+
         """
         call = self.build_call(
                 'download', archive_url=_get_image_storage_server() + image)
@@ -305,6 +321,87 @@ class ImageServer(DevServer):
             raise DevServerException("finish_download for %s failed;"
                                      "HTTP OK not accompanied by 'Success'." %
                                      image)
+
+
+    @remote_devserver_call
+    def trigger_test_image_download(self, image_dir):
+        """Tell the devserver to download and stage a Chrome OS test image.
+
+        Tells the devserver to fetch a test image from |image_dir| on the image
+        storage server named by _get_image_storage_server(). The call is
+        synchronous.
+
+        @param image_dir: the directory from which to fetch the image
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+
+        """
+        call = self.build_call(
+                'stage_images',
+                archive_url=_get_image_storage_server() + image_dir,
+                image_types='test')
+        response = urllib2.urlopen(call)
+        was_successful = response.read() == 'Success'
+        if not was_successful:
+            raise DevServerException(
+                "trigger_download of test image from %s failed; "
+                "HTTP OK not accompanied by 'Success'." %
+                image_dir)
+
+
+    def get_delta_payload_url(self, payload_type, board, release, branch):
+        """Returns a URL to a staged delta payload.
+
+        @param payload_type: either 'mton' or 'nton'
+        @param board: the board the payload corresponds to (e.g. 'x86-alex')
+        @param release: the payload target release version (e.g. '2673.0.0')
+        @param branch: the payload target release branch (e.g. 'R22')
+
+        @return A fully qualified URL that can be used for downloading the
+                payload.
+
+        @raise DevServerException if payload type argument is invalid.
+
+        """
+        if payload_type not in ('mton', 'nton'):
+            raise DevServerException('invalid delta payload type: %s' %
+                                     payload_type)
+        url_pattern = CONFIG.get_config_value(
+                'CROS', 'delta_payload_url_pattern', type=str)
+        return url_pattern % (self.url(), board, branch, release, branch,
+                              release, payload_type)
+
+
+    def get_full_payload_url(self, board, release, branch):
+        """Returns a URL to a staged full payload.
+
+        @param board: the board the payload corresponds to (e.g. 'x86-alex')
+        @param release: the payload target release version (e.g. '2673.0.0')
+        @param branch: the payload target release branch (e.g. 'R22')
+
+        @return A fully qualified URL that can be used for downloading the
+                payload.
+
+        """
+        url_pattern = CONFIG.get_config_value(
+                'CROS', 'full_payload_url_pattern', type=str)
+        return url_pattern % (self.url(), board, branch, release)
+
+
+    def get_test_image_url(self, board, release, branch):
+        """Returns a URL to a staged test image.
+
+        @param board: the board to which the image corresponds (e.g. 'x86-alex')
+        @param release: the image release version (e.g. '2673.0.0')
+        @param branch: the image release branch (e.g. 'R22')
+
+        @return A fully qualified URL that can be used for downloading the
+                image.
+
+        """
+        url_pattern = CONFIG.get_config_value(
+                'CROS', 'test_image_url_pattern', type=str)
+        return url_pattern % (self.url(), board, branch, release)
 
 
     @remote_devserver_call

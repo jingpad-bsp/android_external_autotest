@@ -15,6 +15,10 @@ from autotest_lib.client.common_lib import base_utils, error, global_config
 CHECK_PID_IS_ALIVE_TIMEOUT = 6
 
 
+
+_LOCAL_HOST_LIST = ['localhost', '127.0.0.1']
+
+
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
 
@@ -125,6 +129,21 @@ def gs_upload(local_file, remote_file, acl, result_dir=None,
         return True
 
 
+def gs_ls(uri_pattern):
+    """Returns a list of URIs that match a given pattern.
+
+    @param uri_pattern: a GS URI pattern, may contain wildcards
+
+    @return A list of URIs matching the given pattern.
+
+    @raise CmdError: the gsutil command failed.
+
+    """
+    gs_cmd = ' '.join(['gsutil', 'ls', uri_pattern])
+    result = base_utils.system_output(gs_cmd).splitlines()
+    return [path.rstrip() for path in result if path]
+
+
 def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
     """
     Given a list of pid's, kill them via an esclating series of signals.
@@ -153,3 +172,14 @@ def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
     if failed_list:
         raise error.AutoservRunError('Following errors occured: %s' %
                                      failed_list, None)
+
+
+def externalize_host(host):
+    """Returns an externally accessible host name.
+
+    @param host: a host name or address (string)
+
+    @return An externally visible host name or address
+
+    """
+    return socket.gethostname() if host in _LOCAL_HOST_LIST else host

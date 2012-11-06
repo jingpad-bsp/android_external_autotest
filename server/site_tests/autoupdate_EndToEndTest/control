@@ -1,0 +1,86 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import logging
+from autotest_lib.client.common_lib import error, utils
+from autotest_lib.server import host_attributes
+
+AUTHOR = "Chromium OS"
+NAME = "autoupdate_EndToEndTest"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+
+DOC = """
+This is an end-to-end update test of Chrome OS releases. Given a test
+configuration, it will perform an end-to-end test of a Chrome OS update
+payload. A test configuration can be given as command-line arguments (see
+below) or instantiated inline as local varibles.
+
+To invoke this test locally with an attached servo board:
+
+  run_remote_tests.sh \
+          --args="<ARGLIST>" \
+          --servo \
+          --remote=<DUT-IPADDR \
+          --ssh_connect_timeout 2 \       # Make the test run faster
+          --ssh_connection_attempts 2 \   # when not using test
+          --allow_offline_remote \        # images.
+          autoupdate_EndToEndTest
+
+where ARGLIST is a whitespace separated list of the following key=value pairs.
+Values pertaining to the test case include:
+
+  board=BOARD        type of board tested (e.g. 'x86-alex')
+  name=TAG           name tag for the test (e.g. 'nmo', 'npo' or 'fsi')
+  image_type=test|mp      type of images used, either 'test' or 'mp'
+  update_type=full|delta  type of update being applied, either 'full' or 'delta'
+  source_release=REL      source image release version (e.g. 2672.0.0)
+  target_release=REL      target image release version (e.g. 2673.0.0)
+  source_branch=BR        source image release branch (e.g. R22)
+  target_branch=BR        target image release branch (e.g. R22)
+  source_image_uri=URI    URI of the source image
+  target_payload_uri=URI  URI of the target payload
+
+Other values pertaining to the test environment include:
+
+  servo_host=HOST         host running servod (default: localhost)
+  servo_port=PORT         servod's IP port (default: servod's default port)
+  omaha_host=HOST    host on which to spawn Omaha/devserver (default: localhost)
+  dev_mode=yes|no    Speed up dev-mode boot by simulating Ctrl-D (default: no)
+
+"""
+
+TEST_CONF_KEYS = (
+    'board', 'name', 'image_type', 'update_type',
+    'source_release', 'target_release', 'source_branch', 'target_branch',
+    'source_image_uri', 'target_payload_uri', 'omaha_host', 'dev_mode')
+
+
+args_dict = utils.args_to_dict(args)
+servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+
+# Create test configuration based on command-line arguments (higher precedence,
+# for run_remote_tests.sh invocation) and local variables (lower precedence,
+# for Autotest front-end invocation).
+test_conf = {}
+for key in TEST_CONF_KEYS:
+    test_conf[key] = args_dict.get(key) or locals().get(key)
+
+
+def run_test(machine):
+    """Execute a test configuration on a given machine."""
+    host = hosts.create_host(machine, servo_args=servo_args)
+    job.run_test(
+            "autoupdate_EndToEndTest",
+            tag='%s_%s_%s_%s' % (
+                test_conf['board'], test_conf['name'],
+                test_conf['image_type'], test_conf['update_type']),
+            host=host,
+            test_conf=test_conf)
+
+
+# Invoke parallel tests.
+parallel_simple(run_test, machines)

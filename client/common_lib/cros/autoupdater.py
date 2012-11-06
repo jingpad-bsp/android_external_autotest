@@ -169,6 +169,23 @@ class ChromiumOSUpdater():
         return self._run('/postinst %s 2>&1' % part)
 
 
+    def trigger_update(self):
+        """Triggers a background update on a test image.
+
+        @raise RootFSUpdateError if anything went wrong.
+
+        """
+        autoupdate_cmd = '%s --check_for_update --omaha_url=%s' % (
+            UPDATER_BIN, self.update_url)
+        logging.info('triggering update via: %s', autoupdate_cmd)
+        try:
+            # This should return immediately, hence the short timeout.
+            self._run(autoupdate_cmd, timeout=10)
+        except error.AutoservRunError, e:
+            raise RootFSUpdateError('update triggering failed on %s: %s' %
+                                    (self.host.hostname, str(e)))
+
+
     def _update_root(self):
         logging.info('Updating root partition...')
 
