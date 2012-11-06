@@ -416,7 +416,7 @@ class firmware_ECThermal(FAFTSequence):
             raise error.TestFail("Fan speed lower than expected")
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability(['thermal']):
             return
         logging.info("Checking host temperature report.")

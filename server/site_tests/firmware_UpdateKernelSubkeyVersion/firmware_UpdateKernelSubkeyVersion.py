@@ -93,7 +93,7 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
         super(firmware_UpdateKernelSubkeyVersion, self).cleanup()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step1. Update firmware with new kernel subkey version.
                 'state_checker': (self.checkers.crossystem_checker, {

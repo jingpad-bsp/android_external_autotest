@@ -31,7 +31,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
         super(firmware_CorruptFwBodyB, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         RO_enabled = (self.faft_client.get_firmware_flags('b') &
                       vboot.PREAMBLE_USE_RO_NORMAL)
         self.register_faft_sequence((

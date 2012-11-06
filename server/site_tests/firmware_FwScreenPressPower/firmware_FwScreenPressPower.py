@@ -53,7 +53,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
 
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, expected dev mode and reboot.
                 # When the next DEVELOPER SCREEN shown, press power button

@@ -48,7 +48,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
         super(firmware_UpdateFirmwareVersion, self).initialize(
             host, cmdline_args, use_pyauto, use_faft)
 
-    def setup(self, host=None):
+    def setup(self):
         self.backup_firmware()
         updater_path = self.setup_firmwareupdate_shellball(self.use_shellball)
         self.faft_client.setup_firmwareupdate_temp_dir(updater_path)
@@ -81,7 +81,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
         super(firmware_UpdateFirmwareVersion, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, Update firmware with new version.
                 'state_checker': (self.checkers.crossystem_checker, {

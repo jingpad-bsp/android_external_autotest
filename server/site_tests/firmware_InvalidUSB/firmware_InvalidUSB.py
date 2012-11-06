@@ -60,7 +60,7 @@ class firmware_InvalidUSB(FAFTSequence):
         super(firmware_InvalidUSB, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, turn on the recovery boot. Remove and insert the
                 # corrupted USB stick, a boot failure is expected.

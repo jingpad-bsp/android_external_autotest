@@ -45,7 +45,7 @@ class firmware_DevFwNormalBoot(FAFTSequence):
             self.setup_usbkey(usbkey=True, host=False)
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if self.has_different_dev_fw:
             self.register_faft_sequence((
                 {   # Step 1, expected dev fw on A, corrupt fw B and force

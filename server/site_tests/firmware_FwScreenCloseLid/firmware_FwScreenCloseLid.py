@@ -56,7 +56,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
         super(firmware_FwScreenCloseLid, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.client_attr.has_lid:
             logging.info('This test does nothing on devices without lid.')
             return

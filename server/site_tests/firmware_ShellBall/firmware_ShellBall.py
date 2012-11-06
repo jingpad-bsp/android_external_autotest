@@ -56,7 +56,7 @@ class firmware_ShellBall(FAFTSequence):
         super(firmware_ShellBall, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             { # Step 1, change to devmode.
                 'state_checker': (self.checkers.crossystem_checker, {

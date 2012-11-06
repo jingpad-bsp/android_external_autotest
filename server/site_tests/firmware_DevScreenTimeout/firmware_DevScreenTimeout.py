@@ -89,7 +89,7 @@ class firmware_DevScreenTimeout(FAFTSequence):
         self.setup_usbkey(usbkey=False)
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         # Always expected developer mode firmware A boot.
         self.register_faft_template({
              'state_checker': (self.checkers.crossystem_checker, {

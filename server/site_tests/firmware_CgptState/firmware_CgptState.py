@@ -54,7 +54,7 @@ class firmware_CgptState(FAFTSequence):
         super(firmware_CgptState, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.faft_client.set_cgpt_test_step(0)
         while self.not_finished:
             logging.info('======== Running CgptState test step %d ========',

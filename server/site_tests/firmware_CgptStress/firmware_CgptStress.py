@@ -36,7 +36,7 @@ class firmware_CgptStress(FAFTSequence):
         super(firmware_CgptStress, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, expected kernel A boot and prioritize kernel B
                 'state_checker': (self.checkers.root_part_checker, 'a'),

@@ -48,7 +48,7 @@ class firmware_ECKeyboard(FAFTSequence):
         self.ec.send_key_string('reboot<enter>')
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability(['keyboard']):
             return
         self.register_faft_sequence((

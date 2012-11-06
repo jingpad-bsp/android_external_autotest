@@ -60,7 +60,7 @@ class firmware_UpdateKernelVersion(FAFTSequence):
         super(firmware_UpdateKernelVersion, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, Update Kernel Version.
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),

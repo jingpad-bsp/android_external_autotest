@@ -48,7 +48,7 @@ class firmware_RollbackKernel(FAFTSequence):
         super(firmware_RollbackKernel, self).cleanup()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self, dev_mode=False):
         # Historical reason that the old models use a different value.
         if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
             recovery_reason = vboot.RECOVERY_REASON['RW_NO_OS']

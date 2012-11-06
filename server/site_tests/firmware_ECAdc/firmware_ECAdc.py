@@ -32,7 +32,7 @@ class firmware_ECAdc(FAFTSequence):
             raise error.TestFail("Error reading EC internal temperature")
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability(['adc_ectemp']):
             return
         logging.info("Reading EC internal temperature for %d times.",

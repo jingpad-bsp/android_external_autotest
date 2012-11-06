@@ -28,7 +28,7 @@ class firmware_CorruptKernelB(FAFTSequence):
         super(firmware_CorruptKernelB, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, prioritize kernel B
                 'state_checker': (self.checkers.root_part_checker, 'a'),

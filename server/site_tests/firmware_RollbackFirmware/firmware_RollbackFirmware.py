@@ -30,7 +30,7 @@ class firmware_RollbackFirmware(FAFTSequence):
         super(firmware_RollbackFirmware, self).cleanup()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self, dev_mode=False):
         # Recovery reason RW_FW_ROLLBACK available after Alex/ZGB.
         if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
             recovery_reason = vboot.RECOVERY_REASON['RO_INVALID_RW']

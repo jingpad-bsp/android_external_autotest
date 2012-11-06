@@ -64,7 +64,7 @@ class firmware_DevModeStress(FAFTSequence):
         self.setup_usbkey(usbkey=False)
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, verify dev mode
                 'state_checker': (self.checkers.crossystem_checker, {

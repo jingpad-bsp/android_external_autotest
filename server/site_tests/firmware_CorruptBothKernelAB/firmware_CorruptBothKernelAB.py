@@ -48,7 +48,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         super(firmware_CorruptBothKernelAB, self).cleanup()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self, dev_mode=False):
         platform = self.faft_client.get_platform_name()
         if platform in ('Mario', 'Alex', 'ZGB'):
             recovery_reason = vboot.RECOVERY_REASON['RW_NO_OS']

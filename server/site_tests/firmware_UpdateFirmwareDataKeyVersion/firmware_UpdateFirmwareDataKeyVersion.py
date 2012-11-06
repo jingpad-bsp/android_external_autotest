@@ -98,7 +98,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
         super(firmware_UpdateFirmwareDataKeyVersion, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step1. Update firmware with new datakey version.
                 'state_checker': (self.checkers.crossystem_checker, {

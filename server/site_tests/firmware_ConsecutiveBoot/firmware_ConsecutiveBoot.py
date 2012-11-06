@@ -35,7 +35,7 @@ class firmware_ConsecutiveBoot(FAFTSequence):
         self.setup_usbkey(usbkey=False)
 
 
-    def run_once(self, dev_mode=False, host=None):
+    def run_once(self, dev_mode=False):
         self.register_faft_sequence((
             {   # Step 1, expected boot fine, full power off DUT and on
                 'state_checker': (self.checkers.crossystem_checker, {

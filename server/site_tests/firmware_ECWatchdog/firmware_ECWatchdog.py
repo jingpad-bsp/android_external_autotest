@@ -36,7 +36,7 @@ class firmware_ECWatchdog(FAFTSequence):
         self.check_lid_and_power_on()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability():
             return
         self.register_faft_sequence((

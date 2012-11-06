@@ -60,7 +60,7 @@ class firmware_DevBootUSB(FAFTSequence):
             })
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if (self.client_attr.has_keyboard and
                 not self.check_ec_capability(['keyboard'])):
             raise error.TestError("TEST IT MANUALLY! This test can't be "

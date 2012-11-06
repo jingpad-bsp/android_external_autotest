@@ -115,7 +115,7 @@ class firmware_ECUsbPorts(FAFTSequence):
         return not self._failed
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability(['usb']):
             return
         self.register_faft_sequence((

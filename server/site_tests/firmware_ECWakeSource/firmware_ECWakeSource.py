@@ -82,7 +82,7 @@ class firmware_ECWakeSource(FAFTSequence):
         self.servo.power_short_press()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         # TODO(victoryang): make this test run on both x86 and arm
         if not self.check_ec_capability(['x86', 'lid']):
             return

@@ -195,7 +195,7 @@ class firmware_ECLidSwitch(FAFTSequence):
         return ok
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability(['lid']):
             return
         self.register_faft_sequence((

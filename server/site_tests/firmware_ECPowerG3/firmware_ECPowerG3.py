@@ -66,7 +66,7 @@ class firmware_ECPowerG3(FAFTSequence):
         return not self._failed
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability(['x86']):
             return
         self.register_faft_sequence((

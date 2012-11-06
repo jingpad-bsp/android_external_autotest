@@ -53,7 +53,7 @@ class firmware_ECWriteProtect(FAFTSequence):
         super(firmware_ECWriteProtect, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         flags = self.faft_client.get_firmware_flags('a')
         if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')

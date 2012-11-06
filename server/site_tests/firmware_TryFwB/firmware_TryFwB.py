@@ -24,7 +24,7 @@ class firmware_TryFwB(FAFTSequence):
         super(firmware_TryFwB, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, set fwb_tries flag
                 'state_checker': (self.checkers.crossystem_checker, {

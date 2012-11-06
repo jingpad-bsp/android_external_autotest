@@ -38,7 +38,7 @@ class firmware_ECSharedMem(FAFTSequence):
         return self.shared_mem_checker()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability():
             return
         self.register_faft_sequence((

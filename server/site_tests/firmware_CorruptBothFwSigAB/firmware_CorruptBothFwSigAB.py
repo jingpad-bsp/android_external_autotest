@@ -31,7 +31,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
         super(firmware_CorruptBothFwSigAB, self).cleanup()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self, dev_mode=False):
         self.register_faft_sequence((
             {   # Step 1, corrupt both firmware signature A and B
                 'state_checker': (self.checkers.crossystem_checker, {

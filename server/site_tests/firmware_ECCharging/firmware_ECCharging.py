@@ -112,7 +112,7 @@ class firmware_ECCharging(FAFTSequence):
             raise error.TestFail("Battery actual current is too high.")
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability(['battery', 'charging']):
             return
         if self._get_battery_charge() == 100:

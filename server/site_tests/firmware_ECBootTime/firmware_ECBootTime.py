@@ -39,7 +39,7 @@ class firmware_ECBootTime(FAFTSequence):
             raise error.TestFail("Boot time longer than 1 second.")
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability():
             return
         self._x86 = ('x86' in self.client_attr.ec_capability)

@@ -53,7 +53,7 @@ class firmware_SoftwareSync(FAFTSequence):
         return self.checkers.ec_act_copy_checker('RW')
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, Corrupt EC firmware RW body
                 'state_checker': (self.checkers.ec_act_copy_checker, 'RW'),

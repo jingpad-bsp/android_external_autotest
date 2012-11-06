@@ -42,7 +42,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
         super(firmware_CorruptBothFwBodyAB, self).cleanup()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self, dev_mode=False):
         if self.use_ro:
             # USE_RO_NORMAL flag is ON. Firmware body corruption doesn't
             # hurt the booting results.

@@ -24,7 +24,7 @@ class firmware_CorruptFwSigB(FAFTSequence):
         super(firmware_CorruptFwSigB, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, expected firmware A boot and corrupt firmware
                 # signature B.

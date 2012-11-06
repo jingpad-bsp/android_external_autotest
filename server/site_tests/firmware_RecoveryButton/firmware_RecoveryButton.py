@@ -42,7 +42,7 @@ class firmware_RecoveryButton(FAFTSequence):
         super(firmware_RecoveryButton, self).cleanup()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self, dev_mode=False):
         # The old models need users to remove and insert USB stick during boot.
         remove_usb = (self.faft_client.get_platform_name() in
                       ('Mario', 'Alex', 'ZGB', 'Aebl', 'Kaen'))

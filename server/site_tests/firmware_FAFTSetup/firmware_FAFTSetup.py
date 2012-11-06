@@ -201,7 +201,7 @@ class firmware_FAFTSetup(FAFTSequence):
         else:
             self.enable_rec_mode_and_reboot()
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, Check EC console is available and test warm reboot
                 "state_checker": self.console_checker,

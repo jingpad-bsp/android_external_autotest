@@ -23,7 +23,7 @@ class firmware_DevMode(FAFTSequence):
         super(firmware_DevMode, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, enable dev mode
                 'state_checker': (self.checkers.crossystem_checker, {

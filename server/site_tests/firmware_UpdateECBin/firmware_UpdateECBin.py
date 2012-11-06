@@ -85,7 +85,7 @@ class firmware_UpdateECBin(FAFTSequence):
                 (self.faft_client.get_EC_firmware_sha() == self.new_ec_sha))
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         if not self.check_ec_capability():
             return
 

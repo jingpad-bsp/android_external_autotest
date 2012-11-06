@@ -24,7 +24,7 @@ class firmware_CorruptFwSigA(FAFTSequence):
         super(firmware_CorruptFwSigA, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         self.register_faft_sequence((
             {   # Step 1, corrupt firmware signature A
                 'state_checker': (self.checkers.crossystem_checker, {

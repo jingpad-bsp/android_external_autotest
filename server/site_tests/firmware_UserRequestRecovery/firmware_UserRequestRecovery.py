@@ -53,7 +53,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
         self.wait_fw_screen_and_plug_usb()
 
 
-    def run_once(self, host=None, dev_mode=False):
+    def run_once(self, dev_mode=False):
         self.register_faft_sequence((
             {   # Step 1, request recovery boot
                 'state_checker': (self.checkers.crossystem_checker, {
