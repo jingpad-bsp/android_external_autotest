@@ -10,8 +10,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
-SUITE = "bvt"
-EXPERIMENTAL = "True"
+SUITE = "regression"
 
 DOC = """
 Tests for device policy.

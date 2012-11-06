@@ -6,8 +6,7 @@ This test will fail if (a) no renderer is found or (b) the requested URL is not
 sandboxed/jailed.
 """
 TIME = "SHORT"
-SUITE = "bvt"
-EXPERIMENTAL = "True"
+SUITE = "regression"
 TEST_CATEGORY = "Security"
 TEST_CLASS = "security"
 TEST_TYPE = "client"

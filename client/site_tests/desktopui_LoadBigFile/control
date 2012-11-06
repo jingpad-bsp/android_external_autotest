@@ -9,8 +9,7 @@ CRITERIA = """
 This test will fail if the tab fails to load in the default PyAuto timeout.
 """
 # This test should be converted to performance test (http://crosbug.com/34881).
-# SUITE = "bvt"
-EXPERIMENTAL = "True"
+# SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
