@@ -254,7 +254,7 @@ class BatteryStat(DevStat):
         if self.charge_now > (self.charge_full_design * 1.5):
             raise error.TestError('Unreasonable charge_now value')
 
-        self.energy_rate =  voltage_nominal * self.current_now
+        self.energy_rate =  self.voltage_now * self.current_now
 
         self.remaining_time = 0
         if self.current_now:
