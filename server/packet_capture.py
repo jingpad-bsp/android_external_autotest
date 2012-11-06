@@ -27,7 +27,7 @@ configuration (which is either empty or equal to one of "HT20", "HT40+", or
 
             # Do things.
 
-        except error.TestFail as e:
+        except error.TestError as e:
             raise e
 
         except Exception as e:
@@ -68,16 +68,16 @@ class PacketCapture(object):
         Allocates a machine to capture packets.  Locks it so nobody else can
         use it.
 
-        @raises error.TestFail
+        @raises error.TestError
         """
         afe = frontend.AFE(debug=True)
         hosts_maybe = afe.get_hosts(multiple_labels=['packet_capture'])
         if not hosts_maybe:
-            raise error.TestFail('No packet capture machines available')
+            raise error.TestError('No packet capture machines available')
         self._host = tools.get_random_best_host(afe, hosts_maybe,
                                                 require_usable_hosts=True)
         if not self._host:
-            raise error.TestFail('Could not choose packet capture machine')
+            raise error.TestError('Could not choose packet capture machine')
 
         self.manager.add([self._host.hostname])
         self.manager.lock()  # Lock the host so nobody else can use it.
@@ -148,7 +148,7 @@ class PacketCapture(object):
         Force traffic on the previously specified frequency and verify that
         tcpdump is getting something.  Raise an exception if there's a problem.
 
-        @raises error.TestFail
+        @raises error.TestError
         """
         self._host.run('%s %s scan freq %s' % (self._iw, self._scan_iface,
                                                self._freq))
@@ -157,12 +157,12 @@ class PacketCapture(object):
             self._host.run('ls -l %s' % self._remote_filename)
         except Exception as e:
             logging.error('No output to %s: %s', self._remote_filename, str(e))
-            raise error.TestFail('tcpdump is not capturing anything')
+            raise error.TestError('tcpdump is not capturing anything')
 
 
     def stop_capture(self):
         try:
-            self._host.run('/usr/local/bin/killall tcpdump', timeout=30)
+            self._host.run('killall tcpdump', timeout=30)
         except Exception as e:
             # Don't really care if this didn't run -- this is cleanup.
             pass
