@@ -49,6 +49,13 @@ class power_UiResume(cros_ui_test.UITest):
 
     version = 1
 
+
+    def initialize(self, creds='$default'):
+        # It's important to log in with a real user. If logged in as
+        # guest, powerd will shut down instead of suspending.
+        super(power_UiResume, self).initialize(creds=creds)
+
+
     def run_once(self):
 
         # Some idle time before initiating suspend-to-ram
@@ -72,7 +79,7 @@ class power_UiResume(cros_ui_test.UITest):
 
             # Waiting since it can take time to react to suspend request and
             # we don't want to look at the logs before suspend.
-            time.sleep(1)
+            time.sleep(3)
 
             # Get suspend and resume times from /var/log/messages
             tms = {}
