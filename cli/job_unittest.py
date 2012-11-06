@@ -1062,11 +1062,11 @@ class job_create_unittest(cli_mock.cli_unittest):
 
     def test_execute_create_job_with_max_runtime(self):
         data = self.data.copy()
-        data['max_runtime_hrs'] = '222'
+        data['max_runtime_mins'] = '13320'
         file_temp = cli_mock.create_file(self.ctrl_file)
         self.run_cmd(argv=['atest', 'job', 'create', '-f', file_temp.name,
-                           'test_job0', '-m', 'host0', '--max_runtime', '222',
-                           '--ignore_site_file'],
+                           'test_job0', '-m', 'host0', '--max_runtime',
+                           '13320', '--ignore_site_file'],
                      rpcs=[('create_job', data, True, 42)],
                      out_words_ok=['test_job0', 'Created'],)
         file_temp.clean()
@@ -1276,7 +1276,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                     'control_type': u'Server',
                     'dependencies': [],
                     'email_list': u'',
-                    'max_runtime_hrs': 480,
+                    'max_runtime_mins': 28800,
                     'parse_failed_repair': True,
                     'priority': u'Medium',
                     'reboot_after': u'Always',
