@@ -217,6 +217,7 @@ class ServoTest(test.test):
         # Poll for client RPC server to come online.
         timeout = 20
         succeed = False
+        error = None
         while timeout > 0 and not succeed:
             time.sleep(1)
             try:
@@ -224,10 +225,18 @@ class ServoTest(test.test):
                 polling_rpc = getattr(remote_object, info['polling_rpc'])
                 polling_rpc()
                 succeed = True
-            except:
+            except (socket.error, xmlrpclib.ProtocolError) as e:
+                # The client RPC server may not come online fast enough. Retry.
                 timeout -= 1
+                error = e
 
         if not succeed:
+            if isinstance(error, xmlrpclib.ProtocolError):
+                logging.info("A protocol error occurred")
+                logging.info("URL: %s", error.url)
+                logging.info("HTTP/HTTPS headers: %s", error.headers)
+                logging.info("Error code: %d", error.errcode)
+                logging.info("Error message: %s", error.errmsg)
             if 'remote_log_file' in info:
                 p = subprocess.Popen([
                     'ssh -n -q %s root@%s \'cat %s\'' % (info['ssh_config'],
