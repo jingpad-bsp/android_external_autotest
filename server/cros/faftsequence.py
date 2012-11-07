@@ -338,12 +338,12 @@ class FAFTSequence(ServoTest):
         # Raise the proper TestFail exception.
         if next_checker_matched:
             raise error.TestFail('Firmware failed to auto-boot USB in the '
-                                 'recovery reason: %d.' % recovery_reason)
+                                 'recovery boot (reason: %d)' % recovery_reason)
         elif recovery_reason:
-            raise error.TestFail('Trapped in the recovery reason: %d' %
-                                 recovery_reason)
+            raise error.TestFail('Trapped in the recovery screen (reason: %d) '
+                                 'and timed out' % recovery_reason)
         else:
-            raise error.TestFail('Timed out waiting for DUT reboot.')
+            raise error.TestFail('Timed out waiting for DUT reboot')
 
 
     def assert_test_image_in_path(self, image_path):
