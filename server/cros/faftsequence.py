@@ -21,10 +21,6 @@ from autotest_lib.server.cros.servo_test import ServoTest
 from autotest_lib.site_utils import lab_test
 from autotest_lib.site_utils.chromeos_test.common_util import ChromeOSTestError
 
-dirname = os.path.dirname(sys.modules[__name__].__file__)
-autotest_dir = os.path.abspath(os.path.join(dirname, "..", ".."))
-cros_dir = os.path.join(autotest_dir, "..", "..", "..", "..")
-
 class FAFTSequence(ServoTest):
     """
     The base class of Fully Automated Firmware Test Sequence.
@@ -356,8 +352,9 @@ class FAFTSequence(ServoTest):
           error.TestError: if the image is not a test image.
         """
         try:
-            build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
-                                                                 image_path)
+            build_ver, build_hash = lab_test.VerifyImageAndGetId(
+                    os.environ['CROS_WORKON_SRCROOT'],
+                    image_path)
             logging.info('Build of image: %s %s', build_ver, build_hash)
         except ChromeOSTestError:
             raise error.TestError(
