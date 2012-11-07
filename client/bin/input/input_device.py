@@ -16,6 +16,7 @@ import array
 import copy
 import fcntl
 import os.path
+import select
 import struct
 import time
 
@@ -27,6 +28,10 @@ class Valuator:
     def __init__(self):
         self.value = 0
 
+class SwValuator(Valuator):
+    """ A Valuator used for EV_SW (switch) events """
+    def __init__(self, value):
+        self.value = value
 
 class AbsValuator(Valuator):
     """
@@ -220,6 +225,16 @@ class InputDevice:
         name_len = fcntl.ioctl(self.f, EVIOCGNAME(name_len), name, 1)
         self.name = name[0:name_len-1].tostring()
 
+    def _ioctl_get_switch(self, sw):
+        """
+        Queries device file for current value of all switches and returns
+        a boolean indicating whether the switch sw is set.
+        """
+        size = SW_CNT / 8    # Buffer size of one __u16
+        buf = array.array('H', [0])
+        fcntl.ioctl(self.f, EVIOCGSW(size), buf)
+        return SwValuator(((buf[0] >> sw) & 0x01) == 1)
+
     def _ioctl_absinfo(self, axis):
         """
         Queries device file for absinfo structure for given absolute axis.
@@ -245,6 +260,8 @@ class InputDevice:
                 if test_bit(c, ev_code):
                     if ev_type == EV_ABS:
                         self.events[ev_type][c] = self._ioctl_absinfo(c)
+                    elif ev_type == EV_SW:
+                        self.events[ev_type][c] = self._ioctl_get_switch(c)
                     else:
                         self.events[ev_type][c] = Valuator()
         except IOError as (errno, strerror):
@@ -436,6 +453,15 @@ class InputDevice:
     def get_middle(self):
         return int(self._get_value(EV_KEY, BTN_MIDDLE) == 1)
 
+    def get_microphone_insert(self):
+        return self._get_value(EV_SW, SW_MICROPHONE_INSERT)
+
+    def get_headphone_insert(self):
+        return self._get_value(EV_SW, SW_HEADPHONE_INSERT)
+
+    def get_lineout_insert(self):
+        return self._get_value(EV_SW, SW_LINEOUT_INSERT)
+
     def is_touchpad(self):
         return ((EV_KEY in self.events) and
                 (BTN_TOOL_FINGER in self.events[EV_KEY]) and
@@ -456,6 +482,20 @@ class InputDevice:
     def is_mt(self):
         return (EV_ABS in self.events and
                 (set(self.events[EV_ABS]) & set(ABS_MT_RANGE)))
+
+    def is_hp_jack(self):
+        return (EV_SW in self.events and
+                SW_HEADPHONE_INSERT in self.events[EV_SW])
+
+    def is_mic_jack(self):
+        return (EV_SW in self.events and
+                SW_MICROPHONE_INSERT in self.events[EV_SW])
+
+    def is_audio_jack(self):
+        return (EV_SW in self.events and
+                ((SW_HEADPHONE_INSERT in self.events[EV_SW]) or
+                 (SW_MICROPHONE_INSERT in self.events[EV_SW] or
+                 (SW_LINEOUT_INSERT in self.events[EV_SW]))))
 
     """ Debug helper print functions """
 
@@ -519,6 +559,9 @@ if __name__ == "__main__":
     import glob
     parser = OptionParser()
 
+    parser.add_option("-a", "--audio_jack", action="store_true",
+                      dest="audio_jack", default=False,
+                      help="Find and use all audio jacks")
     parser.add_option("-d", "--devpath", dest="devpath",
                       default="/dev/input/event0",
                       help="device path (/dev/input/event0)")
@@ -529,38 +572,50 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     # TODO: Use gudev to detect touchpad
+    devices = []
     if options.touchpad:
         for path in glob.glob('/dev/input/event*'):
             device = InputDevice(path)
             if device.is_touchpad():
                 print 'Using touchpad %s.' % path
                 options.devpath = path
+                devices.append(device)
                 break
         else:
             print 'No touchpad found!'
             exit()
+    elif options.audio_jack:
+        for path in glob.glob('/dev/input/event*'):
+            device = InputDevice(path)
+            if device.is_audio_jack():
+                devices.append(device)
+        device = None
     elif os.path.exists(options.devpath):
         print 'Using %s.' % options.devpath
-        device = InputDevice(options.devpath)
+        devices.append(InputDevice(options.devpath))
     else:
         print '%s does not exist.' % options.devpath
         exit()
 
-    device.print_props()
-
-    if device.is_touchpad():
-        print ('x: (%d,%d), y: (%d,%d), z: (%d, %d)' %
-               (device.get_x_min(), device.get_x_max(),
-                device.get_y_min(), device.get_y_max(),
-                device.get_pressure_min(), device.get_pressure_max()))
+    for device in devices:
+        device.print_props()
+        if device.is_touchpad():
+            print ('x: (%d,%d), y: (%d,%d), z: (%d, %d)' %
+                   (device.get_x_min(), device.get_x_max(),
+                    device.get_y_min(), device.get_y_max(),
+                    device.get_pressure_min(), device.get_pressure_max()))
 
     ev = InputEvent()
     while True:
-        try:
-            ev.read(device.f)
-        except KeyboardInterrupt:
-            exit()
-        is_syn = device.process_event(ev)
-        print ev
-        if is_syn:
-            print_report(device)
+        _rl, _, _ = select.select([d.f for d in devices], [], [])
+        for fd in _rl:
+            # Lookup for the device which owns fd.
+            device = [d for d in devices if d.f == fd][0]
+            try:
+                ev.read(fd)
+            except KeyboardInterrupt:
+                exit()
+            is_syn = device.process_event(ev)
+            print ev
+            if is_syn:
+                print_report(device)
