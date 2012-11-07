@@ -34,13 +34,13 @@ class ModemManager(dbus_std_ifaces.DBusObjectManager):
 
     @dbus.service.method(mm1.I_MODEM_MANAGER, in_signature='s')
     def SetLogging(self, level):
-    """
-    Sets logging verbosity.
+        """
+        Sets logging verbosity.
 
-    Args:
-        level -- One of "ERR", "WARN", "INFO", "DEBUG"
+        Args:
+            level -- One of "ERR", "WARN", "INFO", "DEBUG"
 
-    """
+        """
         if level not in LOG_LEVELS:
             raise mm1.MMCoreError(
-                mm1.MMCoreError.MM_CORE_ERROR_INVALID_ARGS)
+                mm1.MMCoreError.INVALID_ARGS)

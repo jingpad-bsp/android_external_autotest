@@ -72,7 +72,7 @@ class Modem(dbus_std_ifaces.DBusProperties):
             'MaxActiveBearers' : dbus.types.UInt32(0),
             'EquipmentIdentifier' : '',
             'AccessTechnologies' :
-                    dbus.types.UInt32(mm1.MM_ACCESS_TECHNOLOGY_UNKNOWN),
+                    dbus.types.UInt32(mm1.MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
             'SupportedModes' : dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
             'AllowedModes' : dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
             'PreferredMode' : dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
