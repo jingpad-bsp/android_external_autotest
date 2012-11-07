@@ -32,6 +32,11 @@ class power_Backlight(test.test):
         max_brightness = int(utils.system_output(cmd).rstrip())
         if max_brightness < 4:
             raise error.TestFail('Must have at least 5 backlight levels')
+        sysfs_max = _get_highest_sysfs_max_brightness()
+        if max_brightness != sysfs_max:
+            raise error.TestFail(('Max brightness %d is not the highest ' +
+                                  'possible |max_brightness|, which is %d') %
+                                 (max_brightness, sysfs_max))
         keyvals = {}
         rates = []
 
@@ -57,3 +62,10 @@ class power_Backlight(test.test):
     def cleanup(self):
         # Re-enable screen locker and powerd. This also re-enables dpms.
         os.system('start powerd')
+
+    def _get_highest_sysfs_max_brightness(self):
+        # Print |max_brightness| for all backlight sysfs directories, and return
+        # the highest of these max_brightness values.
+        cmd = 'cat /sys/class/backlight/*/max_brightness'
+        output = utils.system_output(cmd)
+        return max(map(int, output.split()))
