@@ -79,7 +79,9 @@ class firmware_ECPowerButton(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, Shutdown when powerd is still running and wake from S5
                 #         with short power button press.
-                'state_checker': self.debounce_power_button,
+                'state_checker': (self.debounce_power_button
+                                  if self.servo.is_localhost()
+                                  else None),
                 'reboot_action': (self.shutdown_and_wake,
                                   (self.POWER_BUTTON_POWERD_DURATION,
                                    self.SHORT_WAKE_DELAY,
