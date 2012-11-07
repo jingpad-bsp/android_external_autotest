@@ -102,6 +102,7 @@ class AudioHelper(object):
         logging.info('Setting capture gain to %d' % capture)
         utils.system('/usr/bin/cras_test_client --capture_gain %d' % capture)
         utils.system('/usr/bin/cras_test_client --dump_server_info')
+        utils.system('/usr/bin/cras_test_client --mute 0')
         utils.system('amixer -c 0 contents')
 
     def get_jack_status(self, jack_reg_exp):
