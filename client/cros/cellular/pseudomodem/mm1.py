@@ -26,7 +26,7 @@ I_MODEM_MANAGER = 'org.freedesktop.ModemManager1'
 # Modems
 I_MODEM = I_MODEM_MANAGER + '.Modem'
 I_MODEM_SIMPLE = I_MODEM + '.Simple'
-I_MODEM_3GPP = I_MODEM + 'Modem3gpp'
+I_MODEM_3GPP = I_MODEM + '.Modem3gpp'
 I_MODEM_3GPP_USSD = I_MODEM_3GPP + '.Ussd'
 I_MODEM_CDMA = I_MODEM + '.ModemCdma'
 I_MODEM_MESSAGING = I_MODEM + '.Messaging'

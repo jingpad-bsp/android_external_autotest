@@ -11,8 +11,9 @@ import dbus
 import dbus.types
 import dbus_std_ifaces
 import mm1
+import modem_simple
 
-class Modem(dbus_std_ifaces.DBusProperties):
+class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
     def __init__(self, bus,
                  device='pseudomodem0',
@@ -55,9 +56,10 @@ class Modem(dbus_std_ifaces.DBusProperties):
             'Plugin' : 'Banana Plugin',
             'UnlockRequired' : dbus.types.UInt32(mm1.MM_MODEM_LOCK_NONE),
             'UnlockRetries' : {
-                mm1.MM_MODEM_LOCK_SIM_PIN : dbus.types.UInt32(3)
+                dbus.types.UInt32(mm1.MM_MODEM_LOCK_SIM_PIN) : (
+                    dbus.types.UInt32(3))
             },
-            'State' : dbus.types.UInt32(mm1.MM_MODEM_STATE_DISABLED),
+            'State' : dbus.types.Int32(mm1.MM_MODEM_STATE_DISABLED),
             'SignalQuality' : dbus.types.Struct(
                                       [dbus.types.UInt32(100), True],
                                       signature='ub'),
@@ -78,15 +80,13 @@ class Modem(dbus_std_ifaces.DBusProperties):
             'PreferredMode' : dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
             'SupportedBands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
             'Bands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
-            'Sim' : '/'
+            'Sim' : dbus.types.ObjectPath('/')
         }
         return { mm1.I_MODEM : props }
 
     def SetSignalQuality(self, quality):
-        self._properties['SignalQuality'] = (
-            dbus.types.Struct(
-                    [dbus.types.UInt32(quality), True],
-                    signature='ub'))
+        self.Set(mm1.I_MODEM, 'SignalQuality', (dbus.types.Struct(
+            [dbus.types.UInt32(quality), True], signature='ub')))
 
     def SetState(self, state):
         self._properties['State'] = dbus.types.UInt32(state)

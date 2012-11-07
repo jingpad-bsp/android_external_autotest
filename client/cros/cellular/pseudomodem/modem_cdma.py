@@ -9,7 +9,7 @@ import modem
 import modem_simple
 
 
-class ModemCdma(modem.Modem, modem_simple.ModemSimple):
+class ModemCdma(modem.Modem):
     """
     Pseudomodem implementation of the
     org.freedesktop.ModemManager1.Modem.ModemCdma and

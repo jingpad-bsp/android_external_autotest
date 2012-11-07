@@ -6,10 +6,9 @@ import dbus
 import dbus.types
 import mm1
 import modem
-import modem_simple
 
 
-class Modem3gpp(modem.Modem, modem_simple.ModemSimple):
+class Modem3gpp(modem.Modem):
     """
     Pseudomodem implementation of the
     org.freedesktop.ModemManager1.Modem.Modem3gpp and
@@ -32,19 +31,16 @@ class Modem3gpp(modem.Modem, modem_simple.ModemSimple):
         }
 
         props = ip[mm1.I_MODEM]
-        props['ModemCapabilities'] = (
-            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_GSM_UMTS) |
-            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_LTE)
-        )
-        props['CurrentCapabilities'] = (
-            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_GSM_UMTS) |
-            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_LTE)
-        )
+        props['ModemCapabilities'] = dbus.types.UInt32(
+            mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)
+        props['CurrentCapabilities'] = dbus.types.UInt32(
+            mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)
         props['MaxBearers'] = dbus.types.UInt32(3)
         props['MaxActiveBearers'] = dbus.types.UInt32(2)
-        props['EquipmentIdentifier'] = props['Imei']
-        props['AccessTechnologies'] = (
-            dbus.types.UInt32(mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM))
+        props['EquipmentIdentifier'] = ip[mm1.I_MODEM_3GPP]['Imei']
+        props['AccessTechnologies'] = dbus.types.UInt32((
+                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM |
+                mm1.MM_MODEM_ACCESS_TECHNOLOGY_UMTS))
         props['SupportedModes'] = dbus.types.UInt32(mm1.MM_MODEM_MODE_ANY)
         props['AllowedModes'] = props['SupportedModes']
         props['PreferredMode'] = dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE)
