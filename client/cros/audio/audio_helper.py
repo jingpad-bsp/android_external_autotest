@@ -9,7 +9,10 @@ import re
 import tempfile
 import threading
 
+from glob import glob
+
 from autotest_lib.client.bin import utils
+from autotest_lib.client.bin.input.input_device import *
 from autotest_lib.client.common_lib import error
 
 LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
@@ -105,9 +108,9 @@ class AudioHelper(object):
         utils.system('/usr/bin/cras_test_client --mute 0')
         utils.system('amixer -c 0 contents')
 
-    def get_jack_status(self, jack_reg_exp):
+    def get_mixer_jack_status(self, jack_reg_exp):
         '''
-        Gets the jack status.
+        Gets the mixer jack status.
 
         Args:
             jack_reg_exp: The regular expression to match jack control name.
@@ -123,7 +126,9 @@ class AudioHelper(object):
             if m:
                 numid = m.group(1)
                 break
-        if numid is not None:
+
+        # Proceed only when matched numid is not empty.
+        if numid:
             output = utils.system_output('amixer -c0 cget numid=%s' % numid)
             for line in output.split('\n'):
                 if _JACK_VALUE_ON_RE.match(line):
@@ -133,10 +138,34 @@ class AudioHelper(object):
             return None
 
     def get_hp_jack_status(self):
-        return self.get_jack_status(_HP_JACK_CONTROL_RE)
+        status = self.get_mixer_jack_status(_HP_JACK_CONTROL_RE)
+        if status is not None:
+            return status
+
+        # When headphone jack is not found in amixer, lookup input devices
+        # instead.
+        #
+        # TODO(hychao): Check hp/mic jack status dynamically from evdev. And
+        # possibly replace the existing check using amixer.
+        for evdev in glob('/dev/input/event*'):
+            device = InputDevice(evdev)
+            if device.is_hp_jack():
+                return device.get_headphone_insert()
+        else:
+            return None
 
     def get_mic_jack_status(self):
-        return self.get_jack_status(_MIC_JACK_CONTROL_RE)
+        status = self.get_mixer_jack_status(_MIC_JACK_CONTROL_RE)
+        if status is not None:
+            return status
+
+        # When mic jack is not found in amixer, lookup input devices instead.
+        for evdev in glob('/dev/input/event*'):
+            device = InputDevice(evdev)
+            if device.is_mic_jack():
+                return device.get_microphone_insert()
+        else:
+            return None
 
     def check_loopback_dongle(self):
         '''
