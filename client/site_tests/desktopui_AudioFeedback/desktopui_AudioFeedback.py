@@ -70,8 +70,9 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         self._volume_level = volume_level
         self._capture_gain = capture_gain
 
+        cmd_rec = 'arecord -D hw:0,0 -d %f -f dat' % record_duration
         self._ah = audio_helper.AudioHelper(self,
-                record_duration=record_duration,
+                record_command=cmd_rec,
                 num_channels=num_channels)
         self._ah.setup_deps(['sox'])
 

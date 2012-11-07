@@ -15,8 +15,7 @@ from autotest_lib.client.common_lib import error
 LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
 
 _DEFAULT_NUM_CHANNELS = 2
-_DEFAULT_INPUT_DEVICE = 'hw:0,0'
-_DEFAULT_RECORD_DURATION = 10
+_DEFAULT_REC_COMMAND = 'arecord -D hw:0,0 -d 10 -f dat'
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
 _JACK_VALUE_ON_RE = re.compile('.*values=on')
@@ -43,14 +42,13 @@ class AudioHelper(object):
     '''
     A helper class contains audio related utility functions.
     '''
-    def __init__(self, test, sox_format=_DEFAULT_SOX_FORMAT,
-                 input_device=_DEFAULT_INPUT_DEVICE,
-                 record_duration=_DEFAULT_RECORD_DURATION,
+    def __init__(self, test,
+                 sox_format = _DEFAULT_SOX_FORMAT,
+                 record_command = _DEFAULT_REC_COMMAND,
                  num_channels = _DEFAULT_NUM_CHANNELS):
         self._test = test
         self._sox_format = sox_format
-        self._input_device = input_device
-        self._record_duration = record_duration
+        self._rec_cmd = record_command
         self._num_channels = num_channels
 
     def setup_deps(self, deps):
@@ -240,10 +238,8 @@ class AudioHelper(object):
             duration: How long to record in seconds.
             tmpfile: The file to record to.
         '''
-        cmd_rec = 'arecord -D %s -d %f -f dat %s' % (self._input_device,
-                self._record_duration, tmpfile)
-        logging.info('Command %s recording now (%fs)' % (cmd_rec,
-                self._record_duration))
+        cmd_rec = self._rec_cmd + ' %s' % tmpfile
+        logging.info('Command %s recording now' % cmd_rec)
         utils.system(cmd_rec)
 
     def loopback_test_channels(self, noise_file, loopback_callback,
