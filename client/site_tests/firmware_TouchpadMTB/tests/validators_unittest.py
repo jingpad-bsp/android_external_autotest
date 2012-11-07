@@ -298,13 +298,15 @@ class LinearityValidatorTest(BaseValidatorTest):
 
 class NoGapValidatorTest(BaseValidatorTest):
     """Unit tests for NoGapValidator class."""
+    GAPS_SUBDIR = 'gaps'
 
     def setUp(self):
         super(NoGapValidatorTest, self).setUp()
         self.criteria = conf.no_gap_criteria
 
     def _test_no_gap(self, filename, criteria, device, slot):
-        packets = parse_tests_data(filename)
+        file_subpath = os.path.join(self.GAPS_SUBDIR, filename)
+        packets = parse_tests_data(file_subpath)
         validator = NoGapValidator(criteria, device=device, slot=slot)
         vlog = validator.check(packets)
         return vlog.get_score()
@@ -315,10 +317,9 @@ class NoGapValidatorTest(BaseValidatorTest):
         Issue 7552: Cyapa : two finger scroll motion produces gaps in tracking
         """
         filename = 'two_finger_gaps.horizontal.dat'
-        score0 = self._test_no_gap(filename, self.criteria,
-                                   self.mock_device[self.LUMPY], 0)
-        score1 = self._test_no_gap(filename, self.criteria,
-                                   self.mock_device[self.LUMPY], 1)
+        mock_device = self.mock_device[self.LUMPY]
+        score0 = self._test_no_gap(filename, self.criteria, mock_device, 0)
+        score1 = self._test_no_gap(filename, self.criteria, mock_device, 1)
         self.assertTrue(score0 <= 0.1)
         self.assertTrue(score1 <= 0.1)
 
@@ -328,15 +329,15 @@ class NoGapValidatorTest(BaseValidatorTest):
         Issue: 8005: Cyapa : gaps appear when new finger arrives or departs
         """
         filename = 'gap_new_finger_arriving_or_departing.dat'
-        score = self._test_no_gap(filename, self.criteria,
-                                  self.mock_device[self.LUMPY], 0)
-        self.assertTrue(score <= 0.75)
+        mock_device = self.mock_device[self.LUMPY]
+        score = self._test_no_gap(filename, self.criteria, mock_device, 0)
+        self.assertTrue(score <= 0.3)
 
     def test_one_stationary_finger_2nd_finger_moving_gaps(self):
         """Test one stationary finger resulting in 2nd finger moving gaps."""
         filename = 'one_stationary_finger_2nd_finger_moving_gaps.dat'
-        device = self.mock_device[self.LUMPY]
-        score = self._test_no_gap(filename, self.criteria, device, 1)
+        mock_device = self.mock_device[self.LUMPY]
+        score = self._test_no_gap(filename, self.criteria, mock_device, 1)
         self.assertTrue(score <= 0.1)
 
     def test_resting_finger_2nd_finger_moving_gaps(self):
@@ -345,9 +346,9 @@ class NoGapValidatorTest(BaseValidatorTest):
         Issue 7648: Cyapa : Resting finger plus one finger move generates a gap
         """
         filename = 'resting_finger_2nd_finger_moving_gaps.dat'
-        score = self._test_no_gap(filename, self.criteria,
-                                  self.mock_device[self.LUMPY], 1)
-        self.assertTrue(score <= 0.1)
+        mock_device = self.mock_device[self.LUMPY]
+        score = self._test_no_gap(filename, self.criteria, mock_device, 1)
+        self.assertTrue(score <= 0.3)
 
 
 class StationaryFingerValidatorTest(BaseValidatorTest):

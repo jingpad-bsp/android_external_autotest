@@ -4,11 +4,14 @@
 #
 # This module contains unit tests for the classes in the mtb module
 
+import glob
 import os
 import unittest
 
 import common_unittest_utils
+import fuzzy
 import mtb
+import test_conf as conf
 
 from firmware_constants import AXIS, GV
 
@@ -195,6 +198,49 @@ class MtbTest(unittest.TestCase):
                 this_id_points = points[tracking_id]
                 distance = mtb_packets._calc_farthest_distance(this_id_points)
                 self.assertEqual(distance, 0)
+
+    def test_get_largest_gap_ratio(self):
+        """Test get_largest_gap_ratio for one-finger and two-finger gestures."""
+        # The following files come with noticeable large gaps.
+        list_large_ratio = [
+            'one_finger_tracking.left_to_right.slow_1.dat',
+            'two_finger_gaps.vertical.dat',
+            'two_finger_gaps.horizontal.dat',
+            'resting_finger_2nd_finger_moving_segment_gaps.dat',
+            'gap_new_finger_arriving_or_departing.dat',
+            'one_stationary_finger_2nd_finger_moving_gaps.dat',
+            'resting_finger_2nd_finger_moving_gaps.dat',
+        ]
+        gesture_slots = {
+            'one_finger': [0,],
+            'two_finger': [0, 1],
+            'resting_finger': [1,],
+            'gap_new_finger': [0,],
+            'one_stationary_finger': [1,],
+        }
+
+        fc = fuzzy.FuzzyCriteria(conf.no_gap_criteria)
+        range_min , range_max = fc.get_criteria_value_range()
+        range_middle = (range_min + range_max) / 2
+        gap_data_dir = self._get_filepath('gaps')
+        gap_data_filenames = glob.glob(os.path.join(gap_data_dir, '*.dat'))
+        for filename in gap_data_filenames:
+            mtb_packets = get_mtb_packets(filename)
+            base_filename = os.path.basename(filename)
+
+            # What slots to check are based on the gesture name.
+            slots = []
+            for gesture in gesture_slots:
+                if base_filename.startswith(gesture):
+                    slots = gesture_slots[gesture]
+                    break
+
+            for slot in slots:
+                largest_gap_ratio = mtb_packets.get_largest_gap_ratio(slot)
+                if base_filename in list_large_ratio:
+                    self.assertTrue(largest_gap_ratio >= range_middle)
+                else:
+                    self.assertTrue(largest_gap_ratio < range_middle)
 
 
 if __name__ == '__main__':

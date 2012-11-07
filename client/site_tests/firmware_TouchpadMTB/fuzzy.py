@@ -178,7 +178,8 @@ class FuzzyCriteria:
         self.mf = None
         self.default_mf_name = None
         self.value_range = None
-        self._create_mf(criteria_str)
+        self._parse_criteria_and_exit_on_failure()
+        self._create_mf()
 
     def _parse_criteria(self, criteria_str):
         """Parse the criteria string.
@@ -229,14 +230,20 @@ class FuzzyCriteria:
 
         return True
 
-    def _create_mf(self, criteria_str):
-        """Parse the criteria and create its membership function object."""
-        if not self._parse_criteria(criteria_str):
+    def _parse_criteria_and_exit_on_failure(self):
+        """Call _parse_critera and exit on failure."""
+        if not self._parse_criteria(self.criteria_str):
             logging.error('Parsing criteria string error.')
             exit(1)
 
+    def _create_mf(self):
+        """Parse the criteria and create its membership function object."""
         # If a membership function is specified in the test_conf, use it.
         # Otherwise, use the default one.
         mf_name = self.mf_name if self.mf_name else self.default_mf_name
         mf_class = MF_DICT[mf_name]
         self.mf = mf_class(self.value_range)
+
+    def get_criteria_value_range(self):
+        """Parse the criteria and return its op value."""
+        return self.value_range

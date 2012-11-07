@@ -536,6 +536,8 @@ class Mtb:
         Note that in a swipe, the gaps tends to become larger and larger.
         """
         RATIO_THRESHOLD_CURR_GAP_TO_NEXT_GAP = 1.2
+        GAP_LOWER_BOUND = 10
+
         gaps = self.get_distances(target_slot)
         gap_ratios = []
         largest_gap_ratio = float('-infinity')
@@ -545,10 +547,11 @@ class Mtb:
             next_gap = max(gaps[index + 1], 1)
             gap_ratio_with_prev = curr_gap / prev_gap
             gap_ratio_with_next = curr_gap / next_gap
-            if (largest_gap_ratio < 0 or
-                (gap_ratio_with_prev > largest_gap_ratio and
-                 gap_ratio_with_next > RATIO_THRESHOLD_CURR_GAP_TO_NEXT_GAP)):
+            if (curr_gap >= GAP_LOWER_BOUND and
+                gap_ratio_with_prev > largest_gap_ratio and
+                gap_ratio_with_next > RATIO_THRESHOLD_CURR_GAP_TO_NEXT_GAP):
                 largest_gap_ratio = gap_ratio_with_prev
+
         return largest_gap_ratio
 
     def get_displacement(self, target_slot):
