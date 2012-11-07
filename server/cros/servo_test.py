@@ -11,7 +11,7 @@ import time
 import xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import autotest, site_host_attributes, test, utils
+from autotest_lib.server import autotest, site_host_attributes, test
 from autotest_lib.server.cros import servo
 
 class ServoTest(test.test):
@@ -126,7 +126,7 @@ class ServoTest(test.test):
         launched and connected.
         """
         # Initialize servotest args.
-        self._client = host;
+        self._client = host
         self._remote_infos['pyauto']['used'] = use_pyauto
         self._remote_infos['faft']['used'] = use_faft
 
@@ -196,11 +196,11 @@ class ServoTest(test.test):
 
         # Launch RPC server remotely.
         self._kill_remote_process(info)
-        logging.info('Client command: %s' % info['remote_command'])
+        logging.info('Client command: %s', info['remote_command'])
         if 'remote_log_file' in info:
-                log_file = info['remote_log_file']
+            log_file = info['remote_log_file']
         else:
-                log_file = '/dev/null'
+            log_file = '/dev/null'
         logging.info("Logging to %s", log_file)
         info['remote_process'] = subprocess.Popen([
             'ssh -n -q %s root@%s \'%s &> %s\'' % (info['ssh_config'],
@@ -212,7 +212,7 @@ class ServoTest(test.test):
         remote_url = 'http://localhost:%s' % info['port']
         setattr(self, info['ref_name'],
             xmlrpclib.ServerProxy(remote_url, allow_none=True))
-        logging.info('Server proxy: %s' % remote_url)
+        logging.info('Server proxy: %s', remote_url)
 
         # We found that the following RPC call retrial doesn't work all the
         # time and causes timeout error happened. So add this delay to wait
@@ -223,7 +223,7 @@ class ServoTest(test.test):
         # Poll for client RPC server to come online.
         timeout = 20
         succeed = False
-        error = None
+        rpc_error = None
         while timeout > 0 and not succeed:
             time.sleep(1)
             try:
@@ -234,15 +234,15 @@ class ServoTest(test.test):
             except (socket.error, xmlrpclib.ProtocolError) as e:
                 # The client RPC server may not come online fast enough. Retry.
                 timeout -= 1
-                error = e
+                rpc_error = e
 
         if not succeed:
-            if isinstance(error, xmlrpclib.ProtocolError):
+            if isinstance(rpc_error, xmlrpclib.ProtocolError):
                 logging.info("A protocol error occurred")
-                logging.info("URL: %s", error.url)
-                logging.info("HTTP/HTTPS headers: %s", error.headers)
-                logging.info("Error code: %d", error.errcode)
-                logging.info("Error message: %s", error.errmsg)
+                logging.info("URL: %s", rpc_error.url)
+                logging.info("HTTP/HTTPS headers: %s", rpc_error.headers)
+                logging.info("Error code: %d", rpc_error.errcode)
+                logging.info("Error message: %s", rpc_error.errmsg)
             if 'remote_log_file' in info:
                 p = subprocess.Popen([
                     'ssh -n -q %s root@%s \'cat %s\'' % (info['ssh_config'],
@@ -278,7 +278,7 @@ class ServoTest(test.test):
                         self._autotest_client = autotest.Autotest(self._client)
                     self._autotest_client.run_test(info['client_test'])
                 self.launch_client(info)
-                logging.info('Server: Relaunched remote %s.' % name)
+                logging.info('Server: Relaunched remote %s.', name)
 
 
     def wait_for_client_offline(self, timeout=60):

@@ -5,8 +5,7 @@
 # Expects to be run in an environment with sudo and no interactive password
 # prompt, such as within the Chromium OS development chroot.
 
-import logging, os, re, select, subprocess, sys, time, xmlrpclib
-from autotest_lib.client.bin import utils as client_utils
+import logging, re, time, xmlrpclib
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 
@@ -104,14 +103,14 @@ class Servo(object):
         """
         servo_host = Servo._make_servo_hostname(target_hostname)
         if utils.host_is_in_lab_zone(servo_host):
-          try:
-              return Servo(servo_host=servo_host)
-          except:
-              # TODO(jrbarnette):  Long-term, if we can't get to
-              # a servo in the lab, we want to fail, so we should
-              # pass any exceptions along.  Short-term, we're not
-              # ready to rely on servo, so we ignore failures.
-              pass
+            try:
+                return Servo(servo_host=servo_host)
+            except: # pylint: disable=W0702
+                # TODO(jrbarnette):  Long-term, if we can't get to
+                # a servo in the lab, we want to fail, so we should
+                # pass any exceptions along.  Short-term, we're not
+                # ready to rely on servo, so we ignore failures.
+                pass
         return None
 
 
@@ -547,8 +546,8 @@ class Servo(object):
                     logging.info('Recovery process completed successfully in '
                                  '%d seconds.', time.time() - start_time)
                 else:
-                    logger.error('Host failed to come back up in the allotted '
-                                 'time: %d seconds.', wait_timeout)
+                    logging.error('Host failed to come back up in the allotted '
+                                  'time: %d seconds.', wait_timeout)
                 logging.info('Removing the usb key from the DUT.')
                 self.disable_usb_hub()
         except:
