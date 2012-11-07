@@ -76,12 +76,12 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         """
         self._card = card
         self._mixer_settings = mixer_settings
-        self._sox_min_rms = sox_min_rms
         self._volume_level = volume_level
         self._capture_gain = capture_gain
 
         cmd_rec = 'arecord -D hw:0,0 -d %f -f dat' % record_duration
         self._ah = audio_helper.AudioHelper(self,
+	        sox_threshold=sox_min_rms,
                 record_command=cmd_rec,
                 num_channels=num_channels)
         self._ah.setup_deps(['sox'])
@@ -104,8 +104,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             # Test each media file for all channels.
             for media_file in _MEDIA_FORMATS:
                 self._ah.loopback_test_channels(noise_file,
-                        lambda channel: self.play_media(media_file),
-                        lambda output: self.check_recorded(output, media_file))
+                        lambda channel: self.play_media(media_file))
 
     def play_media(self, media_file):
         """Plays a media file in Chromium.
@@ -115,28 +114,3 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         """
         logging.info('Playing back now media file %s.' % media_file)
         self.pyauto.NavigateToURL(self._test_url + media_file)
-
-    def check_recorded(self, sox_output, media_file):
-        """Checks if the calculated RMS value is expected.
-
-        Args:
-            sox_output: The output from sox stat command.
-            media_file: Media file name in case we are testing a media file.
-
-        Raises:
-            error.TestFail if the RMS amplitude of the recording isn't above
-                the threshold.
-        """
-        rms_val = self._ah.get_audio_rms(sox_output)
-
-        # In case we don't get a valid RMS value.
-        if rms_val is None:
-            raise error.TestError(
-                'Failed to generate an audio RMS value from playback.')
-
-        logging.info('%s : Got audio RMS value of %f. Minimum pass is %f.' %
-                     (media_file, rms_val, self._sox_min_rms))
-        if rms_val < self._sox_min_rms:
-            raise error.TestError(
-                'Audio RMS value %f too low for %s. Minimum pass is %f.' %
-                (rms_val, media_file, self._sox_min_rms))

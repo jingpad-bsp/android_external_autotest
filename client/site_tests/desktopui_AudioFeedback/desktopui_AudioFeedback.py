@@ -66,13 +66,13 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         """
         self._card = card
         self._mixer_settings = mixer_settings
-        self._sox_min_rms = sox_min_rms
         self._volume_level = volume_level
         self._capture_gain = capture_gain
 
         cmd_rec = 'arecord -D hw:0,0 -d %f -f dat' % record_duration
         self._ah = audio_helper.AudioHelper(self,
                 record_command=cmd_rec,
+                sox_threshold=sox_min_rms,
                 num_channels=num_channels)
         self._ah.setup_deps(['sox'])
 
@@ -93,8 +93,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
 
             # Play the same video to test all channels.
             self._ah.loopback_test_channels(noise_file,
-                    lambda channel: self.play_video(),
-                    self.check_recorded_audio)
+                    lambda channel: self.play_video())
 
     def play_video(self):
         """Plays a Youtube video to record audio samples.
@@ -115,27 +114,3 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
             ytplayer.playVideo();
             window.domAutomationController.send('');
         """)
-
-    def check_recorded_audio(self, sox_output):
-        """Checks if the calculated RMS value is expected.
-
-        Args:
-            sox_output: The output from sox stat command.
-
-        Raises:
-            error.TestFail if the RMS amplitude of the recording isn't above
-                the threshold.
-        """
-        rms_val = self._ah.get_audio_rms(sox_output)
-
-        # In case sox didn't return an RMS value.
-        if rms_val is None:
-            raise error.TestError(
-                'Failed to generate an audio RMS value from playback.')
-
-        logging.info('Got audio RMS value of %f. Minimum pass is %f.' %
-                     (rms_val, self._sox_min_rms))
-        if rms_val < self._sox_min_rms:
-                raise error.TestError(
-                    'Audio RMS value %f too low. Minimum pass is %f.' %
-                    (rms_val, self._sox_min_rms))

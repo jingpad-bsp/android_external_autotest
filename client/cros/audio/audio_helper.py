@@ -17,6 +17,7 @@ LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_REC_COMMAND = 'arecord -D hw:0,0 -d 10 -f dat'
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
+_DEFAULT_SOX_RMS_THRESHOLD = 0.5
 
 _JACK_VALUE_ON_RE = re.compile('.*values=on')
 _HP_JACK_CONTROL_RE = re.compile('numid=(\d+).*Headphone\sJack')
@@ -44,9 +45,11 @@ class AudioHelper(object):
     '''
     def __init__(self, test,
                  sox_format = _DEFAULT_SOX_FORMAT,
+                 sox_threshold = _DEFAULT_SOX_RMS_THRESHOLD,
                  record_command = _DEFAULT_REC_COMMAND,
                  num_channels = _DEFAULT_NUM_CHANNELS):
         self._test = test
+        self._sox_threshold = sox_threshold
         self._sox_format = sox_format
         self._rec_cmd = record_command
         self._num_channels = num_channels
@@ -242,15 +245,12 @@ class AudioHelper(object):
         logging.info('Command %s recording now' % cmd_rec)
         utils.system(cmd_rec)
 
-    def loopback_test_channels(self, noise_file, loopback_callback,
-            check_recorded_callback):
+    def loopback_test_channels(self, noise_file, loopback_callback):
         '''Tests loopback on all channels.
 
         Args:
             noise_file: The file contains the pre-recorded noise.
             loopback_callback: The callback to do the loopback for one channel.
-            check_recorded_callback: The callback function to check the
-                    calculated RMS value.
         '''
         for channel in xrange(self._num_channels):
             # Temp file for the final noise-reduced file.
@@ -266,4 +266,28 @@ class AudioHelper(object):
                             reduced_file.name)
 
                 sox_output = self.sox_stat_output(reduced_file.name, channel)
-                check_recorded_callback(sox_output)
+                self.check_recorded(sox_output)
+
+    def check_recorded(self, sox_output):
+        """Checks if the calculated RMS value is expected.
+
+        Args:
+            sox_output: The output from sox stat command.
+
+        Raises:
+            error.TestFail if the RMS amplitude of the recording isn't above
+                the threshold.
+        """
+        rms_val = self.get_audio_rms(sox_output)
+
+        # In case we don't get a valid RMS value.
+        if rms_val is None:
+            raise error.TestError(
+                'Failed to generate an audio RMS value from playback.')
+
+        logging.info('Got audio RMS value of %f. Minimum pass is %f.' %
+                     (rms_val, self._sox_threshold))
+        if rms_val < self._sox_threshold:
+            raise error.TestError(
+                'Audio RMS value %f too low. Minimum pass is %f.' %
+                (rms_val, self._sox_threshold))
