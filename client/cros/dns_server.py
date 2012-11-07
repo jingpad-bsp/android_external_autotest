@@ -5,6 +5,7 @@
 import common, constants, logging, os, socket, stat, sys, threading, time
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 
 class LocalDns(object):
     """A wrapper around miniFakeDns that runs the server in a separate thread
@@ -101,7 +102,15 @@ class LocalDns(object):
             resolv_dir = os.path.dirname(resolv)
             resolv_bak = os.path.join(resolv_dir, self._resolv_bak_file)
             os.chmod(resolv_dir, self._resolv_dir_mode)
-            os.rename(resolv_bak, resolv)
+            if os.path.exists(resolv_bak):
+                os.rename(resolv_bak, resolv)
+            else:
+                # This probably means shill restarted during the execution
+                # of our test, and has cleaned up the .bak file we created.
+                raise error.TestError('Backup file %s no longer exists!  '
+                                      'Connection manager probably crashed '
+                                      'during the test run.' %
+                                      resolv_bak)
 
             utils.poll_for_condition(
                 lambda: self.__attempt_resolve('www.google.com.',
