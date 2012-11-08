@@ -47,20 +47,50 @@ class DBusProperties(dbus.service.Object):
 
     """
 
-    def __init__(self, bus, path):
+    def __init__(self, path, bus=None, config=None):
         """
         Args:
             bus -- The pydbus bus object.
             path -- The DBus object path of this object.
+            config -- This is an optional dictionary that can be used to
+                      initialize the property dictionary with values other
+                      than the ones provided by |_InitializeProperties|. The
+                      dictionary has to contain a mapping from DBus interfaces
+                      to property-value pairs, and all contained keys must
+                      have been initialized during |_InitializeProperties|,
+                      i.e. if config contains any keys that have not been
+                      already set in the internal property dictionary, an
+                      error will be raised. (See DBusProperties.Set)
 
         """
-        dbus.service.Object.__init__(self, bus, path)
+        if not path:
+            raise TypeError(('A value for "path" has to be provided that is '
+                'not "None".'))
+        if bus:
+          dbus.service.Object.__init__(self, bus, path)
+        else:
+          dbus.service.Object.__init__(self, None, None)
         self.path = path
+        self.bus = bus
         self._properties = self._InitializeProperties()
 
+        if config:
+            for key, props in config:
+                for prop, val in props:
+                    self.Set(key, prop, val)
+
+    def SetBus(self, bus):
+        self.bus = bus
+        self.add_to_connection(bus, self.path)
+
+    def SetUInt32(self, interface_name, property_name, value):
+        self.Set(interface_name, property_name, dbus.types.UInt32(value))
+
+    def SetInt32(self, interface_name, property_name, value):
+        self.Set(interface_name, property_name, dbus.types.Int32(value))
+
     @dbus.service.method(mm1.I_PROPERTIES,
-                         in_signature='ss',
-                         out_signature='v')
+                         in_signature='ss', out_signature='v')
     def Get(self, interface_name, property_name):
         """
         Returns the value matching the given property and interface.
@@ -126,8 +156,7 @@ class DBusProperties(dbus.service.Object):
         self.PropertiesChanged(interface_name, changed, inv)
 
     @dbus.service.method(mm1.I_PROPERTIES,
-                         in_signature='s',
-                         out_signature='a{sv}')
+                         in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface_name):
         """
         Returns all property-value pairs that match the given interface.
@@ -169,9 +198,9 @@ class DBusProperties(dbus.service.Object):
                     when properties changed.
 
         """
-        logging.info(('Properties Changed on interface: ' + interface_name +
-                      'Changed Properties: ' + changed_properties +
-                      'Invalidated Properties: ' + invalidated_properties))
+        logging.info(('Properties Changed on interface: %s Changed Properties:'
+            ' %s InvalidatedProperties: %s.', interface_name,
+            str(changed_properties), str(invalidated_properties)))
 
     def GetInterfacesAndProperties(self):
         return self._properties
@@ -264,9 +293,9 @@ class DBusObjectManager(dbus.service.Object):
     @dbus.service.signal(mm1.I_OBJECT_MANAGER, signature='oa{sa{sv}}')
     def InterfacesAdded(self, object_path, interfaces_and_properties):
         logging.info((self.path + ': InterfacesAdded(' + object_path +
-                     ', ' + interfaces_and_properties) + ')')
+                     ', ' + str(interfaces_and_properties)) + ')')
 
     @dbus.service.signal(mm1.I_OBJECT_MANAGER, signature='oas')
     def InterfacesRemoved(self, object_path, interfaces):
         logging.info((self.path + ': InterfacesRemoved(' + object_path +
-                     ', ' + interfaces + ')'))
+                     ', ' + str(interfaces) + ')'))

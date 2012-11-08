@@ -13,6 +13,8 @@ import dbus.exceptions
 # The ModemManager1 Object
 MM1 = '/org/freedesktop/ModemManager1'
 
+# The Root Object Path
+ROOT_PATH = '/'
 
 # Interfaces
 # Standard Interfaces

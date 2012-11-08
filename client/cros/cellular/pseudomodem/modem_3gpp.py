@@ -23,11 +23,11 @@ class Modem3gpp(modem.Modem):
         ip[mm1.I_MODEM_3GPP] = {
             'Imei' : '00112342342',
             'RegistrationState' : (
-            dbus.types.UInt32(mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)),
-            'OperatorCode' : '310260',
+                dbus.types.UInt32(mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)),
+            'OperatorCode' : '',
             'OperatorName' : '',
             'EnabledFacilityLocks' : (
-            dbus.types.UInt32(mm1.MM_MODEM_3GPP_FACILITY_NONE))
+                dbus.types.UInt32(mm1.MM_MODEM_3GPP_FACILITY_NONE))
         }
 
         props = ip[mm1.I_MODEM]
