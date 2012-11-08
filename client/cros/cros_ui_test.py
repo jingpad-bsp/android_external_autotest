@@ -303,7 +303,8 @@ class UITest(pyauto_test.PyAutoTest):
             cros_ui.start()
         except:
             self.__perform_ui_diagnostics()
-            self.__generate_coredumps(['chrome'])
+            if not login.wait_for_browser_exit('Chrome crashed during login'):
+              self.__generate_coredumps([constants.BROWSER])
             raise
 
         # Save name of the last chrome log before our test started.
@@ -436,7 +437,9 @@ class UITest(pyauto_test.PyAutoTest):
         try:
             cros_ui.restart(self.pyauto.Logout)
         except:
-            self.__generate_coredumps(['chrome'])
+            self.__perform_ui_diagnostics()
+            if not login.wait_for_browser_exit('Chrome crashed during logout'):
+              self.__generate_coredumps([constants.BROWSER])
             raise
 
 

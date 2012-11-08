@@ -30,8 +30,11 @@ def process_crashed(process, log_reader):
     return log_reader.can_find('Received crash notification for %s' % process)
 
 
-def wait_for_condition(condition, timeout_msg, timeout, process, log_reader,
-                       crash_msg):
+def wait_for_condition(condition, timeout_msg, timeout, process, crash_msg):
+    # Mark /var/log/messages now; we'll run through all subsequent log
+    # messages if we couldn't start chrome to see if the browser crashed.
+    log_reader = cros_logging.LogReader()
+    log_reader.set_start_by_current()
     try:
         utils.poll_for_condition(
             condition,
@@ -55,17 +58,37 @@ def wait_for_browser(timeout=cros_ui.DEFAULT_TIMEOUT):
     Raises:
         TimeoutError: Chrome didn't start before timeout
     """
-    # Mark /var/log/messages now; we'll run through all subsequent log messages
-    # if we couldn't start chrome to see if the browser crashed.
-    log_reader = cros_logging.LogReader()
-    log_reader.set_start_by_current()
     wait_for_condition(
         lambda: os.system('pgrep ^%s$' % constants.BROWSER) == 0,
         timeout_msg='Timed out waiting for Chrome to start',
         timeout=timeout,
-        process='chrome',
-        log_reader=log_reader,
+        process=constants.BROWSER,
         crash_msg='Chrome crashed while starting up.')
+
+
+def wait_for_browser_exit(crash_msg, timeout=cros_ui.DEFAULT_TIMEOUT):
+    """Wait for the Chrome process to exit.
+
+    Args:
+        crash_msg: Error message to include if Chrome crashed.
+        timeout: float number of seconds to wait
+
+    Returns:
+        True if Chrome exited; False otherwise.
+
+    Raises:
+        CrashError: Chrome crashed while we were waiting.
+    """
+    try:
+      wait_for_condition(
+          lambda: os.system('pgrep ^%s$' % constants.BROWSER) != 0,
+          timeout_msg='Timed out waiting for Chrome to exit',
+          timeout=timeout,
+          process=constants.BROWSER,
+          crash_msg=crash_msg)
+      return True
+    except utils.TimeoutError, e:
+      return False
 
 
 def wait_for_cryptohome(timeout=cros_ui.DEFAULT_TIMEOUT):
@@ -77,16 +100,11 @@ def wait_for_cryptohome(timeout=cros_ui.DEFAULT_TIMEOUT):
     Raises:
         TimeoutError: cryptohome wasn't mounted before timeout
     """
-    # Mark /var/log/messages now; we'll run through all subsequent log messages
-    # if we couldn't get the browser up to see if the browser crashed.
-    log_reader = cros_logging.LogReader()
-    log_reader.set_start_by_current()
     wait_for_condition(
         condition=lambda: cryptohome.is_vault_mounted(),
         timeout_msg='Timed out waiting for cryptohome to be mounted',
         timeout=timeout,
         process='cryptohomed',
-        log_reader=log_reader,
         crash_msg='cryptohomed crashed during mount attempt')
 
 
@@ -106,12 +124,9 @@ def wait_for_window_manager(timeout=cros_ui.DEFAULT_TIMEOUT):
 
 
 def wait_for_ownership(timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT):
-    log_reader = cros_logging.LogReader()
-    log_reader.set_start_by_current()
     wait_for_condition(
         condition=lambda: os.access(constants.OWNER_KEY_FILE, os.F_OK),
         timeout_msg='Timed out waiting for ownership',
         timeout=timeout,
         process=constants.BROWSER,
-        log_reader=log_reader,
         crash_msg='Chrome crashed before ownership could be taken.')
