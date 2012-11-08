@@ -144,7 +144,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getPriorityList().selectByName(priority);
 
         display.getTimeout().setText(Utils.jsonToString(jobObject.get("timeout")));
-        display.getMaxRuntime().setText(Utils.jsonToString(jobObject.get("max_runtime_mins")));
+        display.getMaxRuntime().setText(Utils.jsonToString(jobObject.get("max_runtime_hrs")));
         display.getEmailList().setText(
                 jobObject.get("email_list").isString().stringValue());
 
@@ -527,7 +527,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getImageUrl().setText("");
         display.getTimeout().setText(Utils.jsonToString(repository.getData("job_timeout_default")));
         display.getMaxRuntime().setText(
-                Utils.jsonToString(repository.getData("job_max_runtime_mins_default")));
+                Utils.jsonToString(repository.getData("job_max_runtime_hrs_default")));
         display.getEmailList().setText("");
         testSelector.reset();
         display.getSkipVerify().setValue(false);
@@ -579,7 +579,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                          new JSONString(controlTypeSelect.getControlType()));
                 args.put("synch_count", synchCount);
                 args.put("timeout", new JSONNumber(timeoutValue));
-                args.put("max_runtime_mins", new JSONNumber(maxRuntimeValue));
+                args.put("max_runtime_hrs", new JSONNumber(maxRuntimeValue));
                 args.put("email_list", new JSONString(display.getEmailList().getText()));
                 args.put("run_verify", JSONBoolean.getInstance(
                         !display.getSkipVerify().getValue()));

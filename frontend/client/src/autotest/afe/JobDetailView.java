@@ -129,7 +129,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
                     imageUrlString = Utils.jsonToString(jobObject.get("image")).trim();
                 }
                 showText(imageUrlString, "view_image_url");
-                showField(jobObject, "max_runtime_mins", "view_max_runtime");
+                showField(jobObject, "max_runtime_hrs", "view_max_runtime");
                 showField(jobObject, "email_list", "view_email_list");
                 showText(runVerify, "view_run_verify");
                 showField(jobObject, "reboot_before", "view_reboot_before");

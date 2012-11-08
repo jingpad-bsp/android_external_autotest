@@ -414,7 +414,7 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
                              meta_hosts=(), one_time_hosts=(),
                              atomic_group_name=None, synch_count=None,
                              is_template=False, timeout=None,
-                             max_runtime_mins=None, run_verify=True,
+                             max_runtime_hrs=None, run_verify=True,
                              email_list='', dependencies=(), reboot_before=None,
                              reboot_after=None, parse_failed_repair=None,
                              hostless=False, keyvals=None, drone_set=None):
@@ -496,7 +496,7 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
 def create_job(name, priority, control_file, control_type,
                hosts=(), meta_hosts=(), one_time_hosts=(),
                atomic_group_name=None, synch_count=None, is_template=False,
-               timeout=None, max_runtime_mins=None, run_verify=True,
+               timeout=None, max_runtime_hrs=None, run_verify=True,
                email_list='', dependencies=(), reboot_before=None,
                reboot_after=None, parse_failed_repair=None, hostless=False,
                keyvals=None, drone_set=None, image=None):
@@ -512,7 +512,7 @@ def create_job(name, priority, control_file, control_type,
     given this value is treated as a minimum.
     @param is_template If true then create a template job.
     @param timeout Hours after this call returns until the job times out.
-    @param max_runtime_mins Minutes from job starting time until job times out
+    @param max_runtime_hrs Hours from job starting time until job times out
     @param run_verify Should the host be verified before running the test?
     @param email_list String containing emails to mail when the job is done
     @param dependencies List of label names on which this job depends
@@ -860,8 +860,7 @@ def get_static_data():
     result['host_statuses'] = sorted(models.Host.Status.names)
     result['job_statuses'] = sorted(models.HostQueueEntry.Status.names)
     result['job_timeout_default'] = models.Job.DEFAULT_TIMEOUT
-    result['job_max_runtime_mins_default'] = (
-        models.Job.DEFAULT_MAX_RUNTIME_MINS)
+    result['job_max_runtime_hrs_default'] = models.Job.DEFAULT_MAX_RUNTIME_HRS
     result['parse_failed_repair_default'] = bool(
         models.Job.DEFAULT_PARSE_FAILED_REPAIR)
     result['reboot_before_options'] = model_attributes.RebootBefore.names

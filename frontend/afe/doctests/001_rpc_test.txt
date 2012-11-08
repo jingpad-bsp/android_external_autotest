@@ -538,7 +538,7 @@ True
 ...         'priority': 'Low',
 ...         'synch_count': 1,
 ...         'timeout': 72,
-...         'max_runtime_mins': 72*60,
+...         'max_runtime_hrs': 72,
 ...         'run_verify': 1,
 ...         'email_list': '',
 ...         'reboot_before': 'If dirty',

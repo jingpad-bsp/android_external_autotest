@@ -436,7 +436,7 @@ class ExecutionInfo(resource_lib.Resource):
             'machines_per_execution': 1,
             'run_verify': bool(_job_fields['run_verify'].default),
             'timeout_hrs': _job_fields['timeout'].default,
-            'maximum_runtime_mins': _job_fields['max_runtime_mins'].default,
+            'maximum_runtime_hrs': _job_fields['max_runtime_hrs'].default,
             'cleanup_before_job':
                 model_attributes.RebootBefore.get_string(
                     models.DEFAULT_REBOOT_BEFORE),
@@ -476,7 +476,7 @@ class ExecutionInfo(resource_lib.Resource):
                 'machines_per_execution': job.synch_count,
                 'run_verify': bool(job.run_verify),
                 'timeout_hrs': job.timeout,
-                'maximum_runtime_mins': job.max_runtime_mins,
+                'maximum_runtime_hrs': job.max_runtime_hrs,
                 'cleanup_before_job':
                     model_attributes.RebootBefore.get_string(job.reboot_before),
                 'cleanup_after_job':
@@ -681,7 +681,7 @@ class Job(resource_lib.InstanceEntry):
                 control_type=control_type,
                 is_template=input_dict.get('is_template', None),
                 timeout=execution_info.get('timeout_hrs'),
-                max_runtime_mins=execution_info.get('maximum_runtime_mins'),
+                max_runtime_hrs=execution_info.get('maximum_runtime_hrs'),
                 synch_count=execution_info.get('machines_per_execution'),
                 run_verify=execution_info.get('run_verify'),
                 email_list=input_dict.get('email_list', None),

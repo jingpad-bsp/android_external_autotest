@@ -423,7 +423,7 @@ class job_create(job_create_or_clone):
         self.parser.add_option('-o', '--timeout', help='Job timeout in hours.',
                                metavar='TIMEOUT')
         self.parser.add_option('--max_runtime',
-                               help='Job maximum runtime in minutes')
+                               help='Job maximum runtime in hours')
 
         self.parser.add_option('-i', '--image',
                                help='OS image to install before running the '
@@ -504,7 +504,7 @@ class job_create(job_create_or_clone):
         if options.timeout:
             self.data['timeout'] = options.timeout
         if options.max_runtime:
-            self.data['max_runtime_mins'] = options.max_runtime
+            self.data['max_runtime_hrs'] = options.max_runtime
 
         if options.atomic_group:
             self.data['atomic_group_name'] = options.atomic_group
