@@ -37,8 +37,8 @@ DMI_BAR_CHECKS = {
 # -- [11:8] : Power-down mode. 0->0x7.  Higher is lower power
 # -- [7:0]  : Power-down idle timer.  Lower is better. Minimum
 #             recommended is 0xf
-MCH_PM_PDWN_CONFIG = [('12', 0), ('11:8', 0x6), ('7:0', 0x40)]
-
+MCH_PM_PDWN_CONFIG = [('12', 0), ('11:8', 0x6, '>='), ('7:0', 0x40, '<='),
+                      ('7:0', 0xf, '>=')]
 MCH_BAR_CHECKS = {
     'Atom': {},
     'Non-Atom': {
@@ -413,6 +413,7 @@ class power_x86Settings(test.test):
     def _shift_mask_match(self, value, match):
         expr = match[1]
         bits = match[0].split(':')
+        operator = match[2] if len(match) == 3 else '=='
         hi_bit = int(bits[0])
         if len(bits) == 2:
             lo_bit = int(bits[1])
@@ -423,10 +424,11 @@ class power_x86Settings(test.test):
         mask = (1 << (hi_bit - lo_bit + 1)) - 1
         value &= mask
 
-        good = (value == expr)
+        good = eval("%d %s %d" % (value, operator, expr))
         if not good:
-            logging.error('FAILED: bits = %s value = %s mask = %s expr = %s',
-                          bits, hex(value), mask, expr)
+            logging.error('FAILED: bits: %s value: %s mask: %s expr: %s ' +
+                          'operator: %s', bits, hex(value), mask, expr,
+                          operator)
         return good
 
 
