@@ -205,7 +205,7 @@ static int capture_some(snd_pcm_t *pcm, short *buf, unsigned len)
 }
 
 /* Looks for the first sample in buffer whose absolute value exceeds
- * noise_threshold. Returns the position of found sample in frames, -1
+ * noise_threshold. Returns the index of found sample in frames, -1
  * if not found. */
 static int check_for_noise(short *buf, unsigned len, unsigned channels)
 {
@@ -246,14 +246,17 @@ static int cras_capture_tone(struct cras_client *client,
     assert(snd_pcm_format_physical_width(format) == 16);
 
     short *data = (short *)samples;
+    int cap_frames_index;
 
-    int cap_frames = check_for_noise(data, frames, channels);
-    if (cap_frames > 0 && !cras_captured_noise) {
+    if (cras_captured_noise)
+        return frames;
+
+    if ((cap_frames_index = check_for_noise(data, frames, channels)) >= 0) {
         fprintf(stderr, "Got noise\n");
         cras_captured_noise = 1;
 
         struct timespec shifted_time = *sample_time;
-        shifted_time.tv_nsec += 1000000000L / rate * cap_frames;
+        shifted_time.tv_nsec += 1000000000L / rate * cap_frames_index;
         while (shifted_time.tv_nsec > 1000000000L) {
             shifted_time.tv_sec++;
             shifted_time.tv_nsec -= 1000000000L;
@@ -291,7 +294,7 @@ static int cras_play_tone(struct cras_client *client,
 
     /* Write zero first at the beginning or noise got captured. */
     if (cras_put_silent-- > 0 || cras_captured_noise) {
-        memset(samples, 0, sample_bytes * frames);
+        memset(samples, 0, sample_bytes * frames * channels);
     } else {
         generate_sine(areas, 0, frames, &phase);
 
@@ -497,7 +500,7 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
     /* Then play a sine wave and look for it on capture.
      * This will fail for latency > 500mS. */
     for (num_buffers = 0; num_buffers < 50; num_buffers++) {
-        int num_cap, noise_delay_frames;
+        int num_cap, noise_frames_index;
 
         if ((err = snd_pcm_writei(playback_handle, play_buf, period_size))
                 != period_size) {
@@ -507,8 +510,8 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
         }
         snd_pcm_delay(capture_handle, &cap_delay_frames);
         num_cap = capture_some(capture_handle, cap_buf, period_size);
-        if (num_cap > 0 && (noise_delay_frames = check_for_noise(cap_buf,
-                num_cap, channels)) > 0) {
+        if (num_cap > 0 && (noise_frames_index = check_for_noise(cap_buf,
+                num_cap, channels)) >= 0) {
             struct timeval cap_time;
             unsigned long latency_us;
 
@@ -520,13 +523,13 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
                     playback_delay_frames);
             fprintf(stderr, "Capture at %ld %ld, %ld delay sample %d\n",
                     cap_time.tv_sec, cap_time.tv_usec,
-                    cap_delay_frames, noise_delay_frames);
+                    cap_delay_frames, noise_frames_index);
 
             latency_us = subtract_timevals(&cap_time, &sine_start_tv);
             fprintf(stdout, "Measured Latency: %lu uS\n", latency_us);
 
             latency_us = (playback_delay_frames + cap_delay_frames -
-                    noise_delay_frames) * 1000000 / rate;
+                    noise_frames_index) * 1000000 / rate;
             fprintf(stdout, "Reported Latency: %lu uS\n", latency_us);
             return;
         }
