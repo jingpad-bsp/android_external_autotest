@@ -57,6 +57,9 @@ class firmware_UpdateECBin(FAFTSequence):
         temp_path = self.faft_client.get_temp_path()
         self.faft_client.setup_firmwareupdate_temp_dir()
 
+        self.old_bios_path = os.path.join(temp_path, 'old_bios.bin')
+        self.faft_client.dump_firmware(self.old_bios_path)
+
         self.new_ec_path = os.path.join(temp_path, 'new_ec.bin')
         host.send_file(self.arg_new_ec, self.new_ec_path)
 
