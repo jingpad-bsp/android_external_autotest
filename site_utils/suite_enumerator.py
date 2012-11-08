@@ -61,7 +61,15 @@ def main():
         return
 
     suite = Suite.create_from_name(args[0], '', devserver, fs_getter)
-    for test in suite.stable_tests():
+    # If in test list, print firmware_FAFTSetup before other tests
+    # NOTE: the test.name value can be *different* from the directory
+    # name that appears in test.path
+    PRETEST_LIST = ['firmware_FAFTSetup',]
+    for test in filter(lambda test: test.name in \
+                              PRETEST_LIST, suite.stable_tests()):
+        print test.path
+    for test in filter(lambda test: test.name not in \
+                       PRETEST_LIST, suite.stable_tests()):
         print test.path
     if options.add_experimental:
         for test in suite.unstable_tests():
