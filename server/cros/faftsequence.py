@@ -1051,22 +1051,6 @@ class FAFTSequence(ServoTest):
             self.servo.set('cold_reset', 'off')
             time.sleep(self.delay.ec_boot_to_pwr_button)
             self.servo.set('pwr_button', 'release')
-        elif self.check_ec_capability(suppress_warning=True):
-            # We don't use servo.cold_reset() here because software sync is
-            # not yet finished, and device may or may not come up after cold
-            # reset. Pressing power button before firmware comes up solves this.
-            #
-            # The correct behavior should be (not work now):
-            #  - If rebooting EC with rec mode on, power on AP and it boots
-            #    into recovery mode.
-            #  - If rebooting EC with rec mode off, power on AP for software
-            #    sync. Then AP checks if lid open or not. If lid open, continue;
-            #    otherwise, shut AP down and need servo for a power button
-            #    press.
-            self.servo.set('cold_reset', 'on')
-            self.servo.set('cold_reset', 'off')
-            time.sleep(self.delay.ec_boot_to_pwr_button)
-            self.servo.power_short_press()
         else:
             self.servo.cold_reset()
 
