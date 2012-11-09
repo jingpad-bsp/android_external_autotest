@@ -7,8 +7,10 @@ import glob
 import logging
 import json
 import os
+import tempfile
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cros_disks import CrosDisksTester
 from autotest_lib.client.cros.cros_disks import ExceptionSuppressor
@@ -102,6 +104,10 @@ class CrosDisksFilesystemTester(CrosDisksTester):
         try:
             for config in self._test_configs:
                 self._run_test_config(config)
+        except RuntimeError:
+            cmd = 'ls -la %s' % tempfile.gettempdir()
+            logging.debug(utils.run(cmd))
+            raise
         finally:
             # Always restore the original value of the ExperimentalFeaturesEnabled
             # property, so cros-disks maintains in the same state of support
