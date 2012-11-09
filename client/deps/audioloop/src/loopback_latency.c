@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <alsa/asoundlib.h>
 #include <sys/time.h>
 #include <math.h>
@@ -39,6 +40,9 @@ static struct timeval *cras_play_time = NULL;
 static struct timeval *cras_cap_time = NULL;
 static int noise_threshold = 0x4000;
 
+static int terminate_playback;
+static snd_pcm_sframes_t playback_delay_frames;
+static struct timeval sine_start_tv;
 
 static void generate_sine(const snd_pcm_channel_area_t *areas,
                           snd_pcm_uframes_t offset, int count,
@@ -363,6 +367,116 @@ static int cras_add_stream(struct cras_client *client,
     return 0;
 }
 
+static void *alsa_play(void *arg) {
+    snd_pcm_t *handle = (snd_pcm_t *)arg;
+    short *play_buf;
+    snd_pcm_channel_area_t *areas;
+    unsigned int chn, num_buffers;
+    int err;
+
+    play_buf = calloc(buffer_frames * channels, sizeof(play_buf[0]));
+    areas = calloc(channels, sizeof(snd_pcm_channel_area_t));
+
+    for (chn = 0; chn < channels; chn++) {
+        areas[chn].addr = play_buf;
+        areas[chn].first = chn * snd_pcm_format_physical_width(format);
+        areas[chn].step = channels * snd_pcm_format_physical_width(format);
+    }
+
+    for (num_buffers = 0; num_buffers < 50; num_buffers++) {
+        if ((err = snd_pcm_writei(handle, play_buf, period_size))
+                != period_size) {
+            fprintf(stderr, "write to audio interface failed (%s)\n",
+                    snd_strerror(err));
+            exit(1);
+        }
+    }
+
+    generate_sine(areas, 0, period_size, &phase);
+    snd_pcm_delay(handle, &playback_delay_frames);
+    gettimeofday(&sine_start_tv, NULL);
+
+    num_buffers = 0;
+    int avail_frames;
+
+    /* Play a sine wave and look for it on capture thread.
+     * This will fail for latency > 500mS. */
+    while (!terminate_playback && num_buffers < 50) {
+        avail_frames = snd_pcm_avail(handle);
+        if (avail_frames >= period_size) {
+            if ((err = snd_pcm_writei(handle, play_buf, period_size))
+                    != period_size) {
+                fprintf(stderr, "write to audio interface failed (%s)\n",
+                        snd_strerror(err));
+            }
+            num_buffers++;
+        }
+    }
+    terminate_playback = 1;
+
+    if (num_buffers == 50)
+        fprintf(stdout, "Audio not detected.\n");
+
+    free(play_buf);
+    free(areas);
+    return 0;
+}
+
+static void *alsa_capture(void *arg) {
+    int err;
+    short *cap_buf;
+    snd_pcm_t *capture_handle = (snd_pcm_t *)arg;
+    snd_pcm_sframes_t cap_delay_frames;
+    int num_cap, noise_delay_frames;
+    int terminate_capture = 0, capture_count = 0;
+
+    cap_buf = calloc(buffer_frames * channels, sizeof(cap_buf[0]));
+
+    /* Begin capture. */
+    if ((err = snd_pcm_start(capture_handle)) < 0) {
+        fprintf(stderr, "cannot start audio interface for use (%s)\n",
+                snd_strerror(err));
+        exit(1);
+    }
+
+    while (!terminate_capture) {
+        snd_pcm_delay(capture_handle, &cap_delay_frames);
+        num_cap = capture_some(capture_handle, cap_buf, buffer_frames);
+        if (num_cap > 0 && (noise_delay_frames = check_for_noise(cap_buf,
+                num_cap, channels)) >= 0) {
+            struct timeval cap_time;
+            unsigned long latency_us;
+            gettimeofday(&cap_time, NULL);
+
+            fprintf(stderr, "Found audio\n");
+            fprintf(stderr, "Played at %ld %ld, %ld delay\n",
+                    sine_start_tv.tv_sec, sine_start_tv.tv_usec,
+                    playback_delay_frames);
+            fprintf(stderr, "Capture at %ld %ld, %ld delay sample %d\n",
+                    cap_time.tv_sec, cap_time.tv_usec,
+                    cap_delay_frames, noise_delay_frames);
+
+            latency_us = subtract_timevals(&cap_time, &sine_start_tv);
+            fprintf(stdout, "Measured Latency: %lu uS\n", latency_us);
+
+            latency_us = (playback_delay_frames + cap_delay_frames -
+                    noise_delay_frames) * 1000000 / rate;
+            fprintf(stdout, "Reported Latency: %lu uS\n", latency_us);
+
+            // Noise captured, terminate both threads.
+            terminate_playback = 1;
+            terminate_capture = 1;
+        } else {
+            // Capture some more buffers after playback thread has terminated.
+            if (terminate_playback && capture_count++ < 50)
+                terminate_capture = 1;
+        }
+    }
+
+    free(cap_buf);
+    return 0;
+}
+
 void cras_test_latency()
 {
     int rc;
@@ -435,20 +549,11 @@ void cras_test_latency()
 void alsa_test_latency(char *play_dev, char* cap_dev)
 {
     int err;
-    short *play_buf;
-    short *cap_buf;
     snd_pcm_t *playback_handle;
     snd_pcm_t *capture_handle;
 
-    unsigned int num_buffers, chn;
-    phase = 0;
-    snd_pcm_sframes_t playback_delay_frames;
-    snd_pcm_sframes_t cap_delay_frames;
-    struct timeval sine_start_tv;
-    snd_pcm_channel_area_t *areas;
-
-    play_buf = calloc(buffer_frames * channels, sizeof(play_buf[0]));
-    cap_buf = calloc(buffer_frames * channels, sizeof(play_buf[0]));
+    pthread_t capture_thread;
+    pthread_t playback_thread;
 
     if ((err = snd_pcm_open(&playback_handle, play_dev,
                 SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
@@ -468,78 +573,14 @@ void alsa_test_latency(char *play_dev, char* cap_dev)
     config_pcm(capture_handle, rate, channels, format, &buffer_frames,
             &period_size);
 
-    areas = calloc(channels, sizeof(snd_pcm_channel_area_t));
-    for (chn = 0; chn < channels; chn++) {
-        areas[chn].addr = play_buf;
-        areas[chn].first = chn * snd_pcm_format_physical_width(format);
-        areas[chn].step = channels * snd_pcm_format_physical_width(format);
-    }
+    pthread_create(&playback_thread, NULL, alsa_play, playback_handle);
+    pthread_create(&capture_thread, NULL, alsa_capture, capture_handle);
 
-    /* Begin capture. */
-    if ((err = snd_pcm_start(capture_handle)) < 0) {
-        fprintf(stderr, "cannot start audio interface for use (%s)\n",
-                snd_strerror(err));
-        exit(1);
-    }
+    pthread_join(capture_thread, NULL);
+    pthread_join(playback_thread, NULL);
 
-    /* Play zeros for a half second. */
-    for (num_buffers = 0; num_buffers < 50; num_buffers++) {
-        if ((err = snd_pcm_writei(playback_handle, play_buf, period_size))
-                != period_size) {
-            fprintf(stderr, "write to audio interface failed (%s)\n",
-                    snd_strerror(err));
-            exit(1);
-        }
-        capture_some(capture_handle, cap_buf, period_size);
-    }
-
-    generate_sine(areas, 0, period_size, &phase);
-    snd_pcm_delay(playback_handle, &playback_delay_frames);
-    gettimeofday(&sine_start_tv, NULL);
-
-    /* Then play a sine wave and look for it on capture.
-     * This will fail for latency > 500mS. */
-    for (num_buffers = 0; num_buffers < 50; num_buffers++) {
-        int num_cap, noise_frames_index;
-
-        if ((err = snd_pcm_writei(playback_handle, play_buf, period_size))
-                != period_size) {
-            fprintf(stderr, "write to audio interface failed (%s)\n",
-                    snd_strerror(err));
-            exit(1);
-        }
-        snd_pcm_delay(capture_handle, &cap_delay_frames);
-        num_cap = capture_some(capture_handle, cap_buf, period_size);
-        if (num_cap > 0 && (noise_frames_index = check_for_noise(cap_buf,
-                num_cap, channels)) >= 0) {
-            struct timeval cap_time;
-            unsigned long latency_us;
-
-            gettimeofday(&cap_time, NULL);
-
-            fprintf(stderr, "Found audio\n");
-            fprintf(stderr, "Played at %ld %ld, %ld delay\n",
-                    sine_start_tv.tv_sec, sine_start_tv.tv_usec,
-                    playback_delay_frames);
-            fprintf(stderr, "Capture at %ld %ld, %ld delay sample %d\n",
-                    cap_time.tv_sec, cap_time.tv_usec,
-                    cap_delay_frames, noise_frames_index);
-
-            latency_us = subtract_timevals(&cap_time, &sine_start_tv);
-            fprintf(stdout, "Measured Latency: %lu uS\n", latency_us);
-
-            latency_us = (playback_delay_frames + cap_delay_frames -
-                    noise_frames_index) * 1000000 / rate;
-            fprintf(stdout, "Reported Latency: %lu uS\n", latency_us);
-            return;
-        }
-        generate_sine(areas, 0, period_size, &phase);
-    }
-
-    fprintf(stdout, "Audio not detected.\n");
     snd_pcm_close(playback_handle);
-    free(play_buf);
-    free(areas);
+    snd_pcm_close(capture_handle);
 }
 
 int main (int argc, char *argv[])
