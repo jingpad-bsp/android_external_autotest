@@ -388,10 +388,10 @@ class RPMController(object):
         @return: True if the attempt to change power state was successful,
                  False otherwise.
         """
-        if dut_hostname.startswith('chromeos2'):
-            # Because the devices behind in chromeos2 lab all have long
+        if 'row' in dut_hostname:
+            # Because the devices with a row and a rack all have long
             # hostnames, we can't store their full names in the rpm, therefore
-            # for these devices we drop the 'chromeos2' part of their name.
+            # for these devices we drop the 'chromeosX' part of their name.
             # For example: chromeos2-rack2-row1-host1 is just stored as
             # rack2-row1-host1 inside the RPM.
             dut_hostname = dut_hostname.split('-', 1)[1]
