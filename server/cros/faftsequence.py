@@ -18,6 +18,7 @@ from autotest_lib.server.cros.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
 from autotest_lib.server.cros.faft_delay_constants import FAFTDelayConstants
 from autotest_lib.server.cros.servo_test import ServoTest
+from autotest_lib.server import hosts
 from autotest_lib.site_utils import lab_test
 from autotest_lib.site_utils.chromeos_test.common_util import ChromeOSTestError
 
@@ -174,6 +175,8 @@ class FAFTSequence(ServoTest):
 
             # Setting up key matrix mapping
             self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
+
+            self._host = hosts.create_host(self.servo.get_target_hostname())
 
 
     def setup(self, ec_wp=None):
@@ -875,7 +878,8 @@ class FAFTSequence(ServoTest):
                                  vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
                                  vboot.GBB_FLAG_FORCE_DEV_BOOT_USB |
                                  vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK,
-                                 vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM)
+                                 vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM |
+                                 vboot.GBB_FLAG_FAFT_KEY_OVERIDE)
         self.mark_setup_done('gbb_flags')
 
 
@@ -922,6 +926,15 @@ class FAFTSequence(ServoTest):
             time.sleep(self.delay.ec_boot_to_console)
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
             self.servo.power_short_press()
+        elif self.client_attr.broken_rec_mode:
+            if self._host.has_power():
+                self._host.power_cycle()
+            else:
+                logging.info('You have %d seconds to power cycle this device.',
+                             self.delay.user_power_cycle)
+                time.sleep(self.delay.user_power_cycle)
+            logging.info('Booting to recovery mode.')
+            self.servo.custom_recovery_mode()
         else:
             self.servo.enable_recovery_mode()
             self.cold_reboot()
@@ -976,7 +989,8 @@ class FAFTSequence(ServoTest):
 
     def disable_keyboard_dev_mode(self):
         logging.info("Disabling keyboard controlled developer mode")
-        if not self.client_attr.chrome_ec:
+        if (not self.client_attr.chrome_ec and
+            not self.client_attr.broken_rec_mode):
             self.servo.disable_recovery_mode()
         self.cold_reboot()
         self.wait_for_client_offline()

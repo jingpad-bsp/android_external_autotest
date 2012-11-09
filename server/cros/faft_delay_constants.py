@@ -38,6 +38,8 @@ class FAFTDelayConstants(object):
     devserver = 10
     # Delay of waiting factory install shim to reset TPM
     install_shim_done = 120
+    # Delay for user to power cycle the device
+    user_power_cycle = 20
 
     def __init__(self, platform=None):
         """Initialized.

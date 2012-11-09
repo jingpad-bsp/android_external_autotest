@@ -81,7 +81,19 @@ class Servo(object):
         'ctrl':          ['1', '1', '1', '0'],
         'none':          ['1', '1', '1', '1']}
 
-    KEY_MATRIX = [KEY_MATRIX_ALT_0, KEY_MATRIX_ALT_1]
+    KEY_MATRIX_ALT_2 = {
+        'ctrl_d':        ['0', '0', '0', '1'],
+        'd':             ['0', '0', '1', '1'],
+        'unused':        ['0', '1', '1', '1'],
+        'rec_mode':      ['1', '0', '0', '0'],
+        'ctrl_enter':    ['1', '0', '0', '1'],
+        'enter':         ['1', '0', '1', '1'],
+        'ctrl':          ['1', '1', '0', '1'],
+        'refresh':       ['1', '1', '1', '0'],
+        'ctrl_refresh':  ['1', '1', '1', '1'],
+        'none':          ['1', '1', '1', '1']}
+
+    KEY_MATRIX = [KEY_MATRIX_ALT_0, KEY_MATRIX_ALT_1, KEY_MATRIX_ALT_2]
 
     @staticmethod
     def _make_servo_hostname(hostname):
@@ -104,7 +116,7 @@ class Servo(object):
         servo_host = Servo._make_servo_hostname(target_hostname)
         if utils.host_is_in_lab_zone(servo_host):
             try:
-                return Servo(servo_host=servo_host)
+                return Servo(servo_host=servo_host, target_host=target_hostname)
             except: # pylint: disable=W0702
                 # TODO(jrbarnette):  Long-term, if we can't get to
                 # a servo in the lab, we want to fail, so we should
@@ -114,17 +126,25 @@ class Servo(object):
         return None
 
 
-    def __init__(self, servo_host='localhost', servo_port=9999):
+    def __init__(self, servo_host='localhost', target_host='local',
+                 servo_port=9999):
         """Sets up the servo communication infrastructure.
 
-        @param servo_host Name of the host where the servod process
-                          is running.
-        @param servo_port Port the servod process is listening on.
+        @param servo_host  Name of the host where the servod process
+                           is running.
+        @param target_host Name of the target which is connected to servo
+        @param servo_port  Port the servod process is listening on.
         """
         self._key_matrix = 0
         self._server = None
         self._connect_servod(servo_host, servo_port)
         self._is_localhost = (servo_host == 'localhost')
+        self._target_host = target_host
+
+
+    def get_target_hostname(self):
+        """Retrieves target (DUT) hostname."""
+        return self._target_host
 
 
     def initialize_dut(self, cold_reset=False):
@@ -218,15 +238,24 @@ class Servo(object):
         time.sleep(Servo.SLEEP_DELAY)
 
 
-    def _press_and_release_keys(self, key,
-                                press_secs=SERVO_KEY_PRESS_DELAY):
-        """Simulate button presses."""
+    def _press_keys(self, key):
+        """Simulate button presses.
+
+        Note, key presses will remain on indefinitely. See
+            _press_and_release_keys for release procedure.
+        """
         (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix][key]
         self.set_nocheck('kbd_m2_a0', m2_a0)
         self.set_nocheck('kbd_m2_a1', m2_a1)
         self.set_nocheck('kbd_m1_a0', m1_a0)
         self.set_nocheck('kbd_m1_a1', m1_a1)
         self.set_nocheck('kbd_en', 'on')
+
+
+    def _press_and_release_keys(self, key,
+                                press_secs=SERVO_KEY_PRESS_DELAY):
+        """Simulate button presses and release."""
+        self._press_keys(key)
         time.sleep(press_secs)
         self.set_nocheck('kbd_en', 'off')
 
@@ -285,6 +314,14 @@ class Servo(object):
     def enable_recovery_mode(self):
         """Enable recovery mode on device."""
         self.set('rec_mode', 'on')
+
+
+    def custom_recovery_mode(self):
+        """Custom key combination to enter recovery mode."""
+        self._press_keys('rec_mode')
+        self.power_normal_press()
+        time.sleep(self.SERVO_KEY_PRESS_DELAY)
+        self.set_nocheck('kbd_en', 'off')
 
 
     def disable_recovery_mode(self):

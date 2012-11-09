@@ -3,11 +3,28 @@
 # found in the LICENSE file.
 
 class FAFTClientAttribute(object):
-    """Class that tests platform name and gives client machine attributes."""
+    """Class that tests platform name and gives client machine attributes.
+
+    Class attributes:
+      broken_warm_reset: boolean, True if warm_reset GPIO is not supported.
+            False otherwise.
+      broken_rec_mode: boolean, True if rec_mode GPIO is not supported.
+            False otherwise.
+      chrome_ec: boolean, True if ec is developed by chrome team.
+            False otherwise.
+      has_lid: boolean, True if the device has a lid. False otherwise.
+      has_keyboard: boolean, True if the device has a built in keyboard.
+            False otherwise.
+      ec_capability: list, specifies ec capability list.
+      wp_voltage: string, specifies write protect pin voltage.
+      key_matrix_layout: int, specifies which keyboard layout needs to be used
+            for testing.
+    """
     version = 1
 
     # Default settings
     broken_warm_reset = False
+    broken_rec_mode = False
     chrome_ec = False
     has_lid = True
     has_keyboard = True
@@ -26,8 +43,12 @@ class FAFTClientAttribute(object):
         self.platform = platform
 
         # Set 'broken_warm_reset'
-        if platform in ['Parrot', 'Butterfly']:
+        if platform in ['Parrot', 'Butterfly', 'Stout']:
             self.broken_warm_reset = True
+
+        # Set 'broken_rec_mode' for Stout because it does not have rec_mode GPIO
+        if platform in ['Stout']:
+            self.broken_rec_mode = True
 
         # Set 'chrome_ec'
         if platform in ['Link', 'Snow']:
@@ -65,3 +86,7 @@ class FAFTClientAttribute(object):
         # Set 'key_matrix_layout'
         if platform == 'Parrot':
             self.key_matrix_layout = 1
+
+        # Set 'key_matrix_layout'
+        if platform == 'Stout':
+            self.key_matrix_layout = 2
