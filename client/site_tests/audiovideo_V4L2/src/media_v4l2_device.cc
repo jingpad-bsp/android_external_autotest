@@ -343,7 +343,9 @@ int32_t V4L2Device::ReadOneFrame() {
         }
       }
       CHECK(buf.index < num_buffers_);
-      CHECK(buf.field == V4L2_FIELD_NONE);  // progressive only.
+      // TODO: uvcvideo driver ignores this field. This is negligible,
+      // so disabling this for now until we get a fix into the upstream driver.
+      // CHECK(buf.field == V4L2_FIELD_NONE);  // progressive only.
       ProcessImage(v4l2_buffers_[buf.index].start);
       if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
         printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
