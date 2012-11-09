@@ -40,8 +40,6 @@ class ServoTest(test.test):
             'ref_name': 'pyauto',
             # Port number of the remote RPC.
             'port': 9988,
-            # Client test for installing dependency.
-            'client_test': 'desktopui_PyAutoInstall',
             # The remote command to be run.
             'remote_command': 'python /usr/local/autotest/cros/remote_pyauto.py'
                               ' --no-http-server',
@@ -60,7 +58,6 @@ class ServoTest(test.test):
             'used': False,
             'ref_name': 'faft_client',
             'port': 9990,
-            'client_test': 'firmware_FAFTClient',
             'remote_command': '/usr/local/autotest/cros/faft_client.py',
             'remote_command_short': 'faft_client',
             'remote_log_file': '/tmp/faft_client.log',
@@ -146,7 +143,7 @@ class ServoTest(test.test):
             if info['used']:
                 if not self._autotest_client:
                     self._autotest_client = autotest.Autotest(self._client)
-                self._autotest_client.run_test(info['client_test'])
+                self._autotest_client.install()
                 self.launch_client(info)
 
 
@@ -276,7 +273,7 @@ class ServoTest(test.test):
                 if install_deps:
                     if not self._autotest_client:
                         self._autotest_client = autotest.Autotest(self._client)
-                    self._autotest_client.run_test(info['client_test'])
+                    self._autotest_client.install()
                 self.launch_client(info)
                 logging.info('Server: Relaunched remote %s.', name)
 
