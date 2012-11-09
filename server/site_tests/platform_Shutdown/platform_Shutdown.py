@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import StringIO
 
 
@@ -28,15 +27,21 @@ class platform_Shutdown(test.test):
 
     def run_once(self, host):
         self.client = host
-        self.client.reboot()
+        try:
+            self.client.reboot()
+        except error.AutoservRebootError as e:
+          raise error.TestFail(str(e))
+
         prefix = '/var/log/metrics/shutdown_'
 
         try:
             startstats = self._parse_shutdown_statistics(prefix + 'start')
             stopstats = self._parse_shutdown_statistics(prefix + 'stop')
-        except AutotestHostRunError, e:
-            logging.error(e)
-            raise error.TestFail('Chrome OS shutdown metrics are missing')
+        except ValueError as e:
+            raise error.TestFail('Chrome OS shutdown metrics are malformed. '
+                                 'Error raised: %s' % e)
+        except error.AutoservRunError:
+            raise error.TestFail('Chrome OS shutdown metrics are missing.')
 
         results = {}
         results['seconds_shutdown'] = stopstats[0] - startstats[0]
