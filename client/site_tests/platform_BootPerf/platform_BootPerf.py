@@ -9,12 +9,26 @@ import math
 import os
 import re
 import shutil
+import StringIO
 import utils
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 class platform_BootPerf(test.test):
     version = 2
+
+
+    def __parse_shutdown_statistics(self, filename):
+        """Returns a tuple containing uptime, read_sectors, and write_sectors.
+        """
+        with open(filename) as statfile:
+            uptime = float(statfile.readline())
+            read_sectors = float(statfile.readline())
+            write_sectors = float(statfile.readline())
+
+        return uptime, read_sectors, write_sectors
+
 
     def __copy_timestamp_files(self):
         tmpdir = '/tmp'
@@ -144,10 +158,26 @@ class platform_BootPerf(test.test):
 
 
     def run_once(self, last_boot_was_reboot=False):
-        self.__copy_timestamp_files()
-
         # Parse key metric files and generate key/value pairs
         results = {}
+
+        # We start by gathering the shutdown metrics from the reboot.
+        try:
+            prefix = '/var/log/metrics/shutdown_'
+            startstats = self.__parse_shutdown_statistics(prefix + 'start')
+            stopstats = self.__parse_shutdown_statistics(prefix + 'stop')
+        except ValueError as e:
+            raise error.TestFail('Chrome OS shutdown metrics are malformed. '
+                                 'Error raised: %s' % e)
+        except error.AutoservRunError:
+            raise error.TestFail('Chrome OS shutdown metrics are missing.')
+
+        results['seconds_shutdown'] = stopstats[0] - startstats[0]
+        results['sectors_read_shutdown'] = stopstats[1] - startstats[1]
+        results['sectors_written_shutdown'] = stopstats[2] - startstats[2]
+
+        # Copy over the boot time results and gather those.
+        self.__copy_timestamp_files()
 
         # Ensure we've completed the OOBE flow.
         if not os.path.exists('/home/chronos/.oobe_completed'):

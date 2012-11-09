@@ -5,9 +5,9 @@
 import logging
 import os
 import shutil
+import traceback
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test, autotest
-
 
 class platform_BootPerfServer(test.test):
     version = 1
@@ -28,7 +28,11 @@ class platform_BootPerfServer(test.test):
 
         # Reboot the client
         logging.info('BootPerfServer: reboot %s' % self.client.hostname)
-        self.client.reboot()
+        try:
+            self.client.reboot()
+        except error.AutoservRebootError as e:
+            raise error.TestFail('%s.\nTest failed with error %s' % (
+                    traceback.format_exc(), str(e)))
 
         # Collect the performance metrics by running a client side test
         logging.info('BootPerfServer: start client test')
