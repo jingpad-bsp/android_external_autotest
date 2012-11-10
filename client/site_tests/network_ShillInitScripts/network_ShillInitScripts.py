@@ -23,7 +23,6 @@ class network_ShillInitScripts(test.test):
     save_directories = [ '/var/cache/shill',
                          '/var/cache/flimflam',
                          '/var/run/shill',
-                         '/var/run/flimflam',
                          '/home/chronos/user/shill',
                          '/home/chronos/user/flimflam',
                          '/var/run/state/logged-in',
@@ -35,6 +34,7 @@ class network_ShillInitScripts(test.test):
     cryptohome_path_command = 'cryptohome-path'
     flimflam_user_profile = '/home/chronos/user/flimflam/flimflam.profile'
     old_shill_user_profile = '/home/chronos/user/shill/shill.profile'
+    guest_shill_user_profile_dir = '/var/run/shill/guest_user_profile/shill'
     magic_header = '# --- shill init file test magic header ---'
 
     def start_shill(self):
@@ -51,9 +51,13 @@ class network_ShillInitScripts(test.test):
         else:
             error.TestFail('Shill process does not appear to be dying')
 
-    def login(self):
+    def login(self, user=None):
         # Note: "start" blocks until the "script" block completes.
-        utils.system('start login CHROMEOS_USER=%s' % self.fake_user)
+        utils.system('start login CHROMEOS_USER=%s' % (user or self.fake_user))
+
+    def login_guest(self):
+        # For guest login, session-manager passes an empty CHROMEOS_USER arg.
+        self.login('""')
 
     def logout(self):
         # Note: "start" blocks until the "script" block completes.
@@ -185,6 +189,7 @@ class network_ShillInitScripts(test.test):
                      self.test_start_logged_in,
                      self.test_start_port_flimflam_profile,
                      self.test_login,
+                     self.test_login_guest,
                      self.test_login_profile_exists,
                      self.test_login_old_shill_profile,
                      self.test_login_invalid_old_shill_profile,
@@ -203,9 +208,7 @@ class network_ShillInitScripts(test.test):
         """
         self.touch('/home/chronos/.disable_shill')
         self.start_shill()
-        self.assure_is_dir('/var/run/flimflam', 'Flimflam run directory')
-        self.assure_is_link_to('/var/run/shill', '/var/run/flimflam',
-                               'Shill run directory')
+        self.assure_is_dir('/var/run/shill', 'Shill run directory')
         self.assure_is_dir('/var/lib/dhcpcd', 'dhcpcd lib directory')
         self.assure_path_owner('/var/lib/dhcpcd', 'dhcp')
         self.assure_path_group('/var/lib/dhcpcd', 'dhcp')
@@ -282,6 +285,31 @@ class network_ShillInitScripts(test.test):
                            'Shill profile root')
         self.assure_is_link_to('/var/run/shill/user_profiles/chronos',
                                self.new_shill_user_profile_dir,
+                               'Shill profile link')
+        self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
+                                  [ 'PushProfile', '~chronos/shill' ]],
+                                 'CreateProfile and PushProfile are called')
+
+    def test_login_guest(self):
+        """ Login should create a temporary profile directory in /var/run,
+            instead of using one within the root directory for normal users.
+        """
+        os.mkdir('/var/run/shill')
+        self.login_guest()
+        self.assure(not os.path.exists(self.flimflam_user_profile),
+                    'Flimflam user profile does not exist')
+        self.assure(not os.path.exists(self.old_shill_user_profile),
+                    'Old shill user profile does not exist')
+        self.assure(not os.path.exists(self.new_shill_user_profile),
+                    'New shill user profile does not exist')
+        self.assure(not os.path.exists(self.new_shill_user_profile_dir),
+                    'New shill user profile directory')
+        self.assure_is_dir(self.guest_shill_user_profile_dir,
+                           'shill guest user profile directory')
+        self.assure_is_dir('/var/run/shill/user_profiles',
+                           'Shill profile root')
+        self.assure_is_link_to('/var/run/shill/user_profiles/chronos',
+                               self.guest_shill_user_profile_dir,
                                'Shill profile link')
         self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
                                   [ 'PushProfile', '~chronos/shill' ]],
@@ -424,13 +452,15 @@ class network_ShillInitScripts(test.test):
                                  'Only PushProfile is called')
 
     def test_logout(self):
-        os.mkdir('/var/run/shill')
-        os.mkdir('/var/run/shill/user_profiles')
+        os.makedirs('/var/run/shill/user_profiles')
+        os.makedirs(self.guest_shill_user_profile_dir)
         self.touch('/var/run/state/logged-in')
         self.logout()
         self.assure(not os.path.exists('/var/run/state/logged-in'),
                     'Logged-in file was removed')
         self.assure(not os.path.exists('/var/run/shill/user_profiles'),
                     'User profile directory was removed')
+        self.assure(not os.path.exists(self.guest_shill_user_profile_dir),
+                    'Guest user profile directory was removed')
         self.assure_method_calls([[ 'PopProfile', '~chronos/shill' ]],
                                  'PopProfile is called')
