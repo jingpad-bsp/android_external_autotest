@@ -9,6 +9,7 @@ import time
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.cros import constants as cros_constants
 from autotest_lib.client.common_lib import global_config, error
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
@@ -231,6 +232,7 @@ class SiteHost(remote.RemoteHost):
         client_at = autotest.Autotest(self)
         client_at.run_static_method('autotest_lib.client.cros.cros_ui',
                                     'restart')
+        self.run('rm %s' % cros_constants.CLEANUP_LOGS_PAUSED_FILE)
 
 
     # TODO (sbasi) crosbug.com/35656
