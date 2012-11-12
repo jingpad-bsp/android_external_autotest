@@ -81,10 +81,10 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
 
         cmd_rec = 'arecord -D hw:0,0 -d %f -f dat' % record_duration
         self._ah = audio_helper.AudioHelper(self,
-	        sox_threshold=sox_min_rms,
+                sox_threshold=sox_min_rms,
                 record_command=cmd_rec,
                 num_channels=num_channels)
-        self._ah.setup_deps(['sox'])
+        self._ah.setup_deps(['audioloop', 'sox'])
 
         super(desktopui_MediaAudioFeedback, self).initialize()
         # _test_url must end with '/'.

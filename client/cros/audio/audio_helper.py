@@ -196,6 +196,17 @@ class AudioHelper(object):
         else:
             logging.info('Headphone jack is plugged.')
 
+        # Use latency check to test if audio can be captured through dongle.
+        # We only want to know the basic function of dongle, so no need to
+        # assert the latency accuracy here.
+        latency = self.loopback_latency_check(n=4000)
+        if latency:
+            logging.info('Got latency measured %d, reported %d' %
+                    (latency[0], latency[1]))
+        else:
+            logging.warning('Latency check fail.')
+            return False
+
         return True
 
     def set_mixer_controls(self, mixer_settings={}, card='0'):

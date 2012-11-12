@@ -74,7 +74,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
                 record_command=cmd_rec,
                 sox_threshold=sox_min_rms,
                 num_channels=num_channels)
-        self._ah.setup_deps(['sox'])
+        self._ah.setup_deps(['audioloop', 'sox'])
 
         super(desktopui_AudioFeedback, self).initialize()
         self._test_url = 'http://localhost:8000/youtube.html'
