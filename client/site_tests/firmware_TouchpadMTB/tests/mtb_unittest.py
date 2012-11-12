@@ -6,6 +6,7 @@
 
 import glob
 import os
+import sys
 import unittest
 
 import common_unittest_utils
@@ -13,7 +14,7 @@ import fuzzy
 import mtb
 import test_conf as conf
 
-from firmware_constants import AXIS, GV
+from firmware_constants import AXIS, GV, MTB
 
 
 def get_mtb_packets(gesture_filename):
@@ -42,8 +43,15 @@ class MtbTest(unittest.TestCase):
         self.test_dir = os.path.join(os.getcwd(), 'tests')
         self.data_dir = os.path.join(self.test_dir, 'data')
 
-    def _get_filepath(self, filename):
-        return os.path.join(self.data_dir, filename)
+    def _get_filepath(self, filename, gesture_dir=''):
+        return os.path.join(self.data_dir, gesture_dir, filename)
+
+    def _get_range_middle(self, criteria):
+        """Get the middle range of the criteria."""
+        fc = fuzzy.FuzzyCriteria(criteria)
+        range_min , range_max = fc.get_criteria_value_range()
+        range_middle = (range_min + range_max) / 2.0
+        return range_middle
 
     def _call_get_reversed_motions(self, list_x, list_y, expected_x,
                                    expected_y, direction):
@@ -100,7 +108,7 @@ class MtbTest(unittest.TestCase):
         mtb_packets = get_mtb_packets(gesture_filename)
         points = mtb_packets.get_points_for_every_tracking_id()
         for tracking_id in expected_values:
-            self.assertEqual(len(points[tracking_id]),
+            self.assertEqual(len(points[tracking_id][MTB.POINTS]),
                              expected_values[tracking_id])
 
     def test_get_points_for_every_tracking_id(self):
@@ -151,8 +159,8 @@ class MtbTest(unittest.TestCase):
         #                  slot in the packet. A slot 1 has already existed.
         list_104 = [(780, 373), (780, 372), (780, 372), (780, 372), (780, 373),
                     (780, 373), (781, 373)]
-        self.assertEqual(list_95, points[95])
-        self.assertEqual(list_104, points[104])
+        self.assertEqual(list_95, points[95][MTB.POINTS])
+        self.assertEqual(list_104, points[104][MTB.POINTS])
 
     def test_get_points_for_every_tracking_id3(self):
         filename = 'drumroll_3.dat'
@@ -165,7 +173,7 @@ class MtbTest(unittest.TestCase):
         list_582 = [(682, 173), (667, 186), (664, 189), (664, 190), (664, 189),
                     (665, 189), (665, 189), (667, 188), (675, 185), (683, 181),
                     (693, 172), (469, 381), (471, 395), (471, 396)]
-        self.assertEqual(list_582, points[582])
+        self.assertEqual(list_582, points[582][MTB.POINTS])
 
     def test_convert_to_evemu_format(self):
         evemu_filename = self._get_filepath('one_finger_swipe.evemu.dat')
@@ -195,7 +203,7 @@ class MtbTest(unittest.TestCase):
             # The function _calc_farthest_distance() should not incur any
             # exception in the tracking id 242 in which there are no points.
             if tracking_id == 242:
-                this_id_points = points[tracking_id]
+                this_id_points = points[tracking_id][MTB.POINTS]
                 distance = mtb_packets._calc_farthest_distance(this_id_points)
                 self.assertEqual(distance, 0)
 
@@ -219,9 +227,7 @@ class MtbTest(unittest.TestCase):
             'one_stationary_finger': [1,],
         }
 
-        fc = fuzzy.FuzzyCriteria(conf.no_gap_criteria)
-        range_min , range_max = fc.get_criteria_value_range()
-        range_middle = (range_min + range_max) / 2
+        range_middle = self._get_range_middle(conf.no_gap_criteria)
         gap_data_dir = self._get_filepath('gaps')
         gap_data_filenames = glob.glob(os.path.join(gap_data_dir, '*.dat'))
         for filename in gap_data_filenames:
@@ -241,6 +247,75 @@ class MtbTest(unittest.TestCase):
                     self.assertTrue(largest_gap_ratio >= range_middle)
                 else:
                     self.assertTrue(largest_gap_ratio < range_middle)
+
+    def test_get_largest_accumulated_level_jumps(self):
+        """Test get_largest_accumulated_level_jumps."""
+        dir_level_jumps = 'drag_edge_thumb'
+
+        filenames = [
+            # filenames with level jumps
+            # ----------------------------------
+            'drag_edge_thumb.horizontal.dat',
+            'drag_edge_thumb.horizontal_2.dat',
+            # test no points in some tracking ID
+            'drag_edge_thumb.horizontal_3.no_points.dat',
+            'drag_edge_thumb.vertical.dat',
+            'drag_edge_thumb.vertical_2.dat',
+            'drag_edge_thumb.diagonal.dat',
+            # Change tracking IDs quickly.
+            'drag_edge_thumb.horizontal_4.change_ids_quickly.dat',
+
+            # filenames without level jumps
+            # ----------------------------------
+            'drag_edge_thumb.horizontal.curvy.dat',
+            'drag_edge_thumb.horizontal_2.curvy.dat',
+            'drag_edge_thumb.vertical.curvy.dat',
+            'drag_edge_thumb.vertical_2.curvy.dat',
+            # Rather small level jumps
+            'drag_edge_thumb.horizontal_5.small_level_jumps.curvy.dat',
+        ]
+
+        largest_level_jumps = {
+            # Large jumps
+            'drag_edge_thumb.horizontal.dat': {AXIS.X: 0, AXIS.Y: 97},
+            # Smaller jumps
+            'drag_edge_thumb.horizontal_2.dat': {AXIS.X: 0, AXIS.Y: 24},
+            # test no points in some tracking ID
+            'drag_edge_thumb.horizontal_3.no_points.dat':
+                    {AXIS.X: 97, AXIS.Y: 88},
+            # Change tracking IDs quickly.
+            'drag_edge_thumb.horizontal_4.change_ids_quickly.dat':
+                    {AXIS.X: 0, AXIS.Y: 14},
+            # Large jumps
+            'drag_edge_thumb.vertical.dat': {AXIS.X: 54, AXIS.Y: 0},
+            # The first slot 0 comes with smaller jumps only.
+            'drag_edge_thumb.vertical_2.dat': {AXIS.X: 20, AXIS.Y: 0},
+            # Large jumps
+            'drag_edge_thumb.diagonal.dat': {AXIS.X: 84, AXIS.Y: 58},
+        }
+
+        target_slot = 0
+        for filename in filenames:
+            filepath = self._get_filepath(filename, gesture_dir=dir_level_jumps)
+            packets = get_mtb_packets(filepath)
+            displacements = packets.get_displacements_for_slots(target_slot)
+
+            # There are no level jumps in a curvy line.
+            file_with_level_jump = 'curvy' not in filename
+
+            # Check the first slot only
+            tids = displacements.keys()
+            tids.sort()
+            tid = tids[0]
+            # Check both axis X and axis Y
+            for axis in AXIS.LIST:
+                disp = displacements[tid][axis]
+                jump = packets.get_largest_accumulated_level_jumps(disp)
+                # Verify that there are no jumps in curvy files, and
+                #        that there are jumps in the other files.
+                expected_jump = (0 if not file_with_level_jump
+                                   else largest_level_jumps[filename][axis])
+                self.assertTrue(jump == expected_jump)
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ from validators import (CountPacketsValidator,
                         DrumrollValidator,
                         LinearityValidator,
                         NoGapValidator,
+                        NoLevelJumpValidator,
                         NoReversedMotionValidator,
                         PhysicalClickValidator,
                         PinchValidator,
@@ -387,6 +388,49 @@ class StationaryFingerValidatorTest(BaseValidatorTest):
         device = self.mock_device[self.LUMPY]
         score = self._test_stationary_finger(filename, self.criteria, device)
         self.assertTrue(score <= 0.1)
+
+
+class NoLevelJumpValidatorTest(BaseValidatorTest):
+    """Unit tests for NoLevelJumpValidator class."""
+
+    def setUp(self):
+        super(NoLevelJumpValidatorTest, self).setUp()
+        self.criteria = conf.no_level_jump_criteria
+        self.gesture_dir = 'drag_edge_thumb'
+
+    def _get_score(self, filename, device):
+        validator = NoLevelJumpValidator(self.criteria, device=device,
+                                         slots=[0,])
+        packets = parse_tests_data(filename, gesture_dir=self.gesture_dir)
+        vlog = validator.check(packets)
+        score = vlog.get_score()
+        return score
+
+    def test_level_jumps(self):
+        """Test files with level jumps."""
+        filenames = [
+            'drag_edge_thumb.horizontal.dat',
+            'drag_edge_thumb.horizontal_2.dat',
+            'drag_edge_thumb.horizontal_3.no_points.dat',
+            'drag_edge_thumb.vertical.dat',
+            'drag_edge_thumb.vertical_2.dat',
+            'drag_edge_thumb.diagonal.dat',
+        ]
+        device = self.mock_device[self.LUMPY]
+        for filename in filenames:
+            self.assertTrue(self._get_score(filename, device) <= 0.6)
+
+    def test_no_level_jumps(self):
+        """Test files without level jumps."""
+        filenames = [
+            'drag_edge_thumb.horizontal.curvy.dat',
+            'drag_edge_thumb.horizontal_2.curvy.dat',
+            'drag_edge_thumb.vertical.curvy.dat',
+            'drag_edge_thumb.vertical_2.curvy.dat',
+        ]
+        device = self.mock_device[self.LUMPY]
+        for filename in filenames:
+            self.assertTrue(self._get_score(filename, device) == 1.0)
 
 
 if __name__ == '__main__':

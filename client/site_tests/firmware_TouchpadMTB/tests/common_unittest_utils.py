@@ -37,10 +37,11 @@ def get_device_description_path():
     return os.path.join(get_tests_path(), 'device')
 
 
-def parse_tests_data(filename):
+def parse_tests_data(filename, gesture_dir=''):
     """Parse the unit tests data."""
     import mtb
-    with open(os.path.join(get_tests_data_path(), filename)) as test_file:
+    filepath = os.path.join(get_tests_data_path(), gesture_dir, filename)
+    with open(filepath) as test_file:
         return mtb.MtbParser().parse(test_file)
 
 

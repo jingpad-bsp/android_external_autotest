@@ -12,6 +12,7 @@ from validators import (CountPacketsValidator,
                         DrumrollValidator,
                         LinearityValidator,
                         NoGapValidator,
+                        NoLevelJumpValidator,
                         NoReversedMotionValidator,
                         PhysicalClickValidator,
                         PinchValidator,
@@ -29,8 +30,13 @@ score_aggregator = 'fuzzy.average'
 # Define some common criteria
 count_packets_criteria = '>= 3, ~ -3'
 drumroll_criteria = '<= 20, ~ +30'
+# linearity_criteria is used for strictly straight line drawn with a ruler.
 linearity_criteria = '<= 0.8, ~ +2.4'
+# linearity_curvy_criteria is used for lines drawn with thumb edge or
+# fat fingers which are allowed to be curvy to some extent.
+linearity_curvy_criteria = '<= 1.5, ~ +3.0'
 no_gap_criteria = '<= 1.8, ~ +1.0'
+no_level_jump_criteria = '<= 10, ~ +30'
 no_reversed_motion_criteria = '== 0, ~ +20'
 pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.05, ~ +0.05'
@@ -458,8 +464,9 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_criteria, slot=1),
+                LinearityValidator(linearity_curvy_criteria, slot=1),
                 NoGapValidator(no_gap_criteria, slot=1),
+                NoLevelJumpValidator(no_level_jump_criteria, slots=[1,]),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
@@ -478,8 +485,9 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
-                LinearityValidator(linearity_criteria, slot=0),
+                LinearityValidator(linearity_curvy_criteria, slot=0),
                 NoGapValidator(no_gap_criteria, slot=0),
+                NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
             ),
         ),
@@ -541,10 +549,11 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_criteria, slot=0),
-                LinearityValidator(linearity_criteria, slot=1),
+                LinearityValidator(linearity_curvy_criteria, slot=0),
+                LinearityValidator(linearity_curvy_criteria, slot=1),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoGapValidator(no_gap_criteria, slot=1),
+                NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
             ),

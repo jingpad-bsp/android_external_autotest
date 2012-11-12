@@ -62,7 +62,7 @@ import firmware_utils
 import fuzzy
 import mtb
 
-from firmware_constants import GV
+from firmware_constants import AXIS, GV, MTB
 from touch_device import TouchpadDevice
 
 
@@ -512,4 +512,57 @@ class DrumrollValidator(BaseValidator):
         msg = 'Max distance: %.2f px'
         self.log_details(msg % max_distance)
         self.log_score(self.fc.mf.grade(max_distance))
+        return self.log
+
+
+class NoLevelJumpValidator(BaseValidator):
+    """Validator to check if there are level jumps
+
+    When a user draws a horizontal line with thumb edge or a fat finger,
+    the line could comprise a horizontal line segment followed by another
+    horizontal line segment (or just dots) one level up or down, and then
+    another horizontal line segment again at different horizontal level, etc.
+    This validator is implemented to detect such level jumps.
+
+    Such level jumps could also occur when drawing vertical or diagonal lines.
+
+    Example:
+        To verify the level jumps in a one-finger tracking gesture:
+          NoLevelJumpValidator('<= 10, ~ +30', slots[0,])
+        where slots[0,] represent the slots with numbers larger than slot 0.
+        This kind of representation is required because when the thumb edge or
+        a fat finger is used, due to the difficulty in handling it correctly
+        in the touchpad firmware, the tracking IDs and slot IDs may keep
+        changing. We would like to analyze all such slots.
+    """
+
+    def __init__(self, criteria_str, mf=None, device=None, slots=0):
+        name = self.__class__.__name__
+        super(NoLevelJumpValidator, self).__init__(criteria_str, mf, device,
+                                                   name)
+        self.slots = slots
+
+    def check(self, packets, variation=None):
+        """Check if there are level jumps."""
+        self.init_check(packets)
+        # Get the displacements of the slots.
+        slots = self.slots[0]
+        displacements = self.packets.get_displacements_for_slots(slots)
+
+        # Iterate through the collected tracking IDs
+        jumps = []
+        for tid in displacements:
+            slot = displacements[tid][MTB.SLOT]
+            for axis in AXIS.LIST:
+                disp = displacements[tid][axis]
+                jump = self.packets.get_largest_accumulated_level_jumps(disp)
+                jumps.append(jump)
+                msg = '  accu jump (%d %s): %d px'
+                self.log_details(msg % (slot, axis, jump))
+
+        # Get the largest accumulated level jump
+        max_jump = max(jumps)
+        msg = 'Max accu jump: %d px'
+        self.log_details(msg % (max_jump))
+        self.log_score(self.fc.mf.grade(max_jump))
         return self.log

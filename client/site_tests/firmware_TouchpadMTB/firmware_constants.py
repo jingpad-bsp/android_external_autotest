@@ -28,6 +28,7 @@ class _Axis(_Constant):
 AXIS = _Axis()
 AXIS.X = 'X'
 AXIS.Y = 'Y'
+AXIS.LIST = [AXIS.X, AXIS.Y]
 
 
 class _Fuzzy_MF(_Constant):
@@ -105,7 +106,7 @@ MODE.GESTURE_PLAY_MODE = [
 
 
 class _MTB(_Constant):
-    """Constants about MTB event format."""
+    """Constants about MTB event format and MTB related constants."""
     pass
 MTB = _MTB()
 MTB.EV_TIME = 'EV_TIME'
@@ -113,6 +114,8 @@ MTB.EV_TYPE = 'EV_TYPE'
 MTB.EV_CODE = 'EV_CODE'
 MTB.EV_VALUE = 'EV_VALUE'
 MTB.SYN_REPORT = 'SYN_REPORT'
+MTB.SLOT = 'slot'
+MTB.POINTS = 'points'
 
 
 class _Options(_Constant):

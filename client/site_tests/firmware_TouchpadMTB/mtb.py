@@ -113,6 +113,10 @@ class MtbEvemu:
 
 class Mtb:
     """An MTB class providing MTB format related utility methods."""
+    LEN_MOVING_AVERAGE = 2
+    LEVEL_JUMP_RATIO = 3
+    LEVEL_JUMP_MAXIUM_ALLOWED = 10
+    LEN_DISCARD = 5
 
     def __init__(self, packets=None):
         self.packets = packets
@@ -318,7 +322,6 @@ class Mtb:
         tracking_ids_all = []
         tracking_ids_live = []
         slot_to_tracking_id = {}
-        tracking_id_to_slot = {}
         x = {}
         y = {}
         for packet in self.packets:
@@ -331,8 +334,9 @@ class Mtb:
                     tracking_id = event[MTB.EV_VALUE]
                     tracking_ids_all.append(tracking_id)
                     tracking_ids_live.append(tracking_id)
-                    points[tracking_id] = []
-                    tracking_id_to_slot[tracking_id] = slot
+                    points[tracking_id] = {}
+                    points[tracking_id][MTB.POINTS] = []
+                    points[tracking_id][MTB.SLOT] = slot
                     slot_to_tracking_id[slot] = tracking_id
                     x[tracking_id] = None
                     y[tracking_id] = None
@@ -353,7 +357,8 @@ class Mtb:
 
             for tracking_id in tracking_ids_live:
                 if x[tracking_id] and y[tracking_id]:
-                    points[tracking_id].append((x[tracking_id], y[tracking_id]))
+                    curr_point = (x[tracking_id], y[tracking_id])
+                    points[tracking_id][MTB.POINTS].append(curr_point)
 
         return points
 
@@ -376,7 +381,8 @@ class Mtb:
         points = self.get_points_for_every_tracking_id()
         max_distance = float('-infinity')
         for tracking_id in sorted(points.keys()):
-            distance = self._calc_farthest_distance(points[tracking_id])
+            slot_points = points[tracking_id][MTB.POINTS]
+            distance = self._calc_farthest_distance(slot_points)
             max_distance = max(max_distance, distance)
         return max_distance
 
@@ -392,7 +398,7 @@ class Mtb:
         # Set the initial slot number to 0 because evdev is a state machine,
         # and may not present slot 0.
         slot = 0
-        # Initialze the following dict to []
+        # Initialize the following dict to []
         # Don't use "dict.fromkeys(target_slots, [])"
         list_x = self._init_dict(target_slots, [])
         list_y = self._init_dict(target_slots, [])
@@ -554,12 +560,104 @@ class Mtb:
 
         return largest_gap_ratio
 
+    def _is_large(self, numbers, index):
+        """Is the number at the index a large number compared to the moving
+        average of the previous LEN_MOVING_AVERAGE numbers? This is used to
+        determine if a distance is a level jump."""
+        if index < self.LEN_MOVING_AVERAGE + 1:
+            return False
+        moving_sum = sum(numbers[index - self.LEN_MOVING_AVERAGE : index])
+        moving_average = float(moving_sum) / self.LEN_MOVING_AVERAGE
+        cond1 = numbers[index] >= self.LEVEL_JUMP_RATIO * moving_average
+        cond2 = numbers[index] >= self.LEVEL_JUMP_MAXIUM_ALLOWED
+        return cond1 and cond2
+
+    def _accumulate_level_jumps(self, level_jumps):
+        """Accumulate level jumps."""
+        if not level_jumps:
+            return []
+
+        is_positive = level_jumps[0] > 0
+        tmp_sum = 0
+        accumulated_level_jumps = []
+        for jump in level_jumps:
+            # If current sign is the same as previous ones, accumulate it.
+            if (jump > 0) is is_positive:
+                tmp_sum += jump
+            # If current jump has changed its sign, reset the tmp_sum to
+            # accumulate the level_jumps onwards.
+            else:
+                accumulated_level_jumps.append(tmp_sum)
+                tmp_sum = jump
+                is_positive = not is_positive
+
+        if tmp_sum != 0:
+            accumulated_level_jumps.append(tmp_sum)
+        return accumulated_level_jumps
+
+    def get_largest_accumulated_level_jumps(self, displacements):
+        """Get the largest accumulated level jumps in displacements."""
+        largest_accumulated_level_jumps = 0
+        if len(displacements) < self.LEN_MOVING_AVERAGE + 1:
+            return largest_accumulated_level_jumps
+
+        # Truncate some elements at both ends of the list which are not stable.
+        displacements = displacements[self.LEN_DISCARD: -self.LEN_DISCARD]
+        distances = map(abs, displacements)
+
+        # E.g., displacements= [5, 6, 5, 6, 20, 3, 5, 4, 6, 21, 4, ...]
+        #       level_jumps = [20, 21, ...]
+        level_jumps = [disp for i, disp in enumerate(displacements)
+                       if self._is_large(distances, i)]
+
+        # E.g., level_jumps= [20, 21, -18, -25, 22, 18, -19]
+        #       accumulated_level_jumps = [41, -43, 40, -19]
+        #       largest_accumulated_level_jumps = 43
+        accumulated_level_jumps = self._accumulate_level_jumps(level_jumps)
+        if accumulated_level_jumps:
+            abs_accumulated_level_jumps = map(abs, accumulated_level_jumps)
+            largest_accumulated_level_jumps = max(abs_accumulated_level_jumps)
+
+        return largest_accumulated_level_jumps
+
     def get_displacement(self, target_slot):
         """Get the displacement in the target slot."""
         displace = [map(lambda p0, p1: p1 - p0, axis[:len(axis) - 1], axis[1:])
                     for axis in self.get_x_y(target_slot)]
         displacement_dict = dict(zip((AXIS.X, AXIS.Y), displace))
         return displacement_dict
+
+    def calc_displacement(self, numbers):
+        """Calculate the displacements in a list of numbers."""
+        if len(numbers) <= 1:
+            return []
+        return [numbers[i + 1] - numbers[i] for i in range(len(numbers) - 1)]
+
+    def get_displacements_for_slots(self, min_slot):
+        """Get the displacements for slots >= min_slot."""
+        points = self.get_points_for_every_tracking_id()
+        slots_to_delete = []
+
+        # Collect those tracking IDs with slots < min_slot and delete them.
+        # Python does not allow to modify a dictionary while iterating over it.
+        for tid in points:
+            slot = points[tid][MTB.SLOT]
+            tid_points = points[tid][MTB.POINTS]
+            if (slot < min_slot) or (tid_points == []):
+                slots_to_delete.append(tid)
+        for tid in slots_to_delete:
+            del points[tid]
+
+        # Calculate the displacements of the coordinates in the tracking IDs.
+        displacements = {}
+        for tid in points:
+            list_x, list_y = zip(*points[tid][MTB.POINTS])
+            displacements[tid] = {}
+            displacements[tid][MTB.SLOT] = points[tid][MTB.SLOT]
+            displacements[tid][AXIS.X] = self.calc_displacement(list_x)
+            displacements[tid][AXIS.Y] = self.calc_displacement(list_y)
+
+        return displacements
 
     def get_reversed_motions(self, target_slot, direction):
         """Get the total reversed motions in the specified direction
