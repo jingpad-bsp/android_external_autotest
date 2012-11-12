@@ -115,6 +115,22 @@ def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
             time.sleep(interval)
 
 
+def _check_jobs_aborted(afe, jobs):
+    """
+    Check through the AFE if all of the jobs in jobs have been aborted.
+
+    @param jobs: an iterable of Running frontend.Jobs
+
+    @returns True if all of jobs have been aborted, False if any are running.
+    """
+    for job in jobs:
+        entries = afe.run('get_host_queue_entries', job=job.id)
+        if not reduce(_collate_aborted, entries, False):
+            # One of the jobs we are polling has not aborted.
+            return False
+    return True
+
+
 def wait_for_and_lock_job_hosts(afe, jobs, manager,
                                 interval=DEFAULT_POLL_INTERVAL_SECONDS):
     """
@@ -129,7 +145,8 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
     @param jobs: an iterable of Running frontend.Jobs
     @param manager: a HostLockManager instance.  Hosts will be added to it
                     as they start Running, and it will be used to lock them.
-    @return iterable of the hosts that were locked.
+    @return iterable of the hosts that were locked or None if all the jobs in
+            jobs have been aborted.
     """
     def get_all_hosts(my_jobs):
         all_hosts = []
@@ -142,6 +159,10 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
     logging.debug('Initial expected hosts: %r', expected_hosts)
 
     while locked_hosts != expected_hosts:
+        if _check_jobs_aborted(afe, jobs):
+            logging.error('All the jobs we are waiting for hosts from have'
+                          ' aborted. Returning None.')
+            return None
         hosts_to_check = [e for e in expected_hosts if e]
         if hosts_to_check:
             logging.debug('Checking to see if %r are Running.', hosts_to_check)

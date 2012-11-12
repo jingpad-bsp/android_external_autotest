@@ -297,6 +297,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(job_status, 'wait_for_jobs_to_finish')
         self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
         self.mox.StubOutWithMock(job_status, 'check_and_record_reimage_results')
+        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
 
         self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
@@ -317,6 +318,7 @@ class ReimagerTest(mox.MoxTestBase):
         if ex:
             job_status.wait_for_jobs_to_finish(self.afe,
                                                [canary_job]).AndRaise(ex)
+            return
         else:
             job_status.wait_for_jobs_to_finish(self.afe, [canary_job])
             job_status.gather_per_host_results(
@@ -477,7 +479,8 @@ class ReimagerTest(mox.MoxTestBase):
         """Should attempt a reimage that raises an exception and record that."""
         canary = FakeJob()
         ex_message = 'Oh no!'
-        self.expect_attempt(canary, statuses={}, ex=Exception(ex_message))
+        statuses = {'hostless': job_status.Status('ABORT', 'fake_job')}
+        self.expect_attempt(canary, statuses=statuses, ex=Exception(ex_message))
 
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record_entry(StatusContains.CreateFromStrings('START'))

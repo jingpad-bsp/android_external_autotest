@@ -555,6 +555,11 @@ class HostLockManagerReuse(CrosDynamicSuiteException):
     pass
 
 
+class ReimageAbortedException(CrosDynamicSuiteException):
+    """Raised when a Reimage job is aborted"""
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

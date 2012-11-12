@@ -190,7 +190,10 @@ class StatusTest(mox.MoxTestBase):
         """Ensure we lock all running hosts as they're discovered."""
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
 
+        job_status._check_jobs_aborted(mox.IgnoreArg(),
+                mox.IgnoreArg()).MultipleTimes().AndReturn(False)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames=['host1', 'host0']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]
@@ -225,11 +228,33 @@ class StatusTest(mox.MoxTestBase):
                                                           manager)))
 
 
+    def testWaitForAndLockWithAbortedSubJobs(self):
+        self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
+
+        manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
+        expected_hostnames=['host1', 'host0']
+        expected_hosts = [FakeHost(h) for h in expected_hostnames]
+        job = FakeJob(7, hostnames=[None, None])
+        job_status.gather_job_hostnames(mox.IgnoreArg(),
+                                        job).AndReturn(expected_hostnames)
+        job_status._check_jobs_aborted(mox.IgnoreArg(),
+                                       mox.IgnoreArg()).AndReturn(True)
+        self.mox.ReplayAll()
+        self.assertEquals(None,
+                          job_status.wait_for_and_lock_job_hosts(self.afe,
+                                                                 [job],
+                                                                 manager))
+
+
     def testWaitForSingleJobHostsToRunAndGetLockedSerially(self):
         """Lock running hosts as discovered, serially."""
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
 
+        job_status._check_jobs_aborted(mox.IgnoreArg(),
+                mox.IgnoreArg()).MultipleTimes().AndReturn(False)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames=['host1', 'host0']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]
@@ -268,7 +293,10 @@ class StatusTest(mox.MoxTestBase):
         """Ensure we lock all running hosts for all jobs as discovered."""
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
 
+        job_status._check_jobs_aborted(mox.IgnoreArg(),
+                mox.IgnoreArg()).MultipleTimes().AndReturn(False)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames = ['host1', 'host0', 'host2']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]

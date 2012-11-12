@@ -112,7 +112,8 @@ class Reimager(object):
                              with builds that have no dependency information.
 
         @param num: the maximum number of devices to reimage.
-        @return True if all reimaging jobs succeed, false otherwise.
+        @return True if all reimaging jobs succeed, false if they all fail or
+                atleast one is aborted.
         """
         if not num:
             num = tools.sharding_factor()
@@ -149,6 +150,8 @@ class Reimager(object):
 
             hosts = job_status.wait_for_and_lock_job_hosts(
                 self._afe, [canary_job], manager)
+            if not hosts:
+                raise error.ReimageAbortedException('Try job was aborted.')
             logging.info('%r locked for reimaging.', hosts)
 
             job_status.wait_for_jobs_to_finish(self._afe, [canary_job])
@@ -163,6 +166,12 @@ class Reimager(object):
         except error.InadequateHostsException as e:
             logging.warning(e)
             Status('WARN', Reimager.JOB_NAME, str(e),
+                   begin_time_str=begin_time_str).record_all(record)
+            return False
+
+        except error.ReimageAbortedException as e:
+            logging.error('Try job aborted, recording ABORT and exiting.')
+            Status('ABORT', Reimager.JOB_NAME, str(e),
                    begin_time_str=begin_time_str).record_all(record)
             return False
 
