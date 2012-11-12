@@ -190,8 +190,12 @@ class FAFTClient(object):
             A string of the platform name.
         """
         self._chromeos_interface.log('Requesting get platform name')
-        return self._chromeos_interface.run_shell_command_get_output(
-                'mosys platform name')[0]
+        # 'mosys platform name' sometimes fails. Let's get the verbose output.
+        lines = self._chromeos_interface.run_shell_command_get_output(
+                '(mosys -vvv platform name 2>&1) || echo Failed')
+        if lines[-1].strip() == 'Failed':
+            raise Exception('Failed getting platform name: ' + '\n'.join(lines))
+        return lines[-1]
 
 
     def get_crossystem_value(self, key):
