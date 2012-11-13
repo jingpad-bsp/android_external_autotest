@@ -43,5 +43,4 @@ class platform_Attestation(test.test):
         status = cryptohome.get_tpm_attestation_status()
         if (not status['Enrolled']):
             raise error.TestFail('Attestation not successfully enrolled.')
-        # TODO(dkrahn): Enable this when the server supports it.
-        # self.cert_request()
+        self.cert_request()
