@@ -6,6 +6,10 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
 
+# TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
+# cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
+from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
+
 import logging, re, socket, string, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
 
@@ -187,6 +191,7 @@ class network_3GSmokeTest(test.test):
                                      (address, interface, expected))
 
     def run_once_internal(self, connect_count, sleep_kludge):
+        # TODO(armansito): Why do we call these?
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
 
@@ -206,18 +211,23 @@ class network_3GSmokeTest(test.test):
         for ii in xrange(connect_count):
             state = self.ConnectTo3GNetwork(config_timeout=120,
                                             service_timeout=30)
-            self.CheckInterfaceForDestination(SERVER,
-                                              self.flim.FindCellularService())
 
-            if state == 'portal':
-                kwargs = dict(
-                    url_pattern=('https://quickaccess.verizonwireless.com/'
-                                 'images_b2c/shared/nav/'
-                                 'vz_logo_quickaccess.jpg?foo=%d'),
-                    size=4476)
-            else:
-                kwargs = dict(size=1<<16)
-            self.FetchUrl(label='3G', **kwargs)
+            # TODO(armansito): The pseudomodem currently cannot connect
+            # to the internet. See crosbug.com/36235
+            if not self.use_pseudomodem:
+                self.CheckInterfaceForDestination(
+                    SERVER, self.flim.FindCellularService())
+
+                if state == 'portal':
+                    kwargs = dict(
+                        url_pattern=('https://quickaccess.verizonwireless.com/'
+                                     'images_b2c/shared/nav/'
+                                     'vz_logo_quickaccess.jpg?foo=%d'),
+                        size=4476)
+                else:
+                    kwargs = dict(size=1<<16)
+                self.FetchUrl(label='3G', **kwargs)
+
             self.DisconnectFrom3GNetwork(disconnect_timeout=60)
 
             # Verify that we can still get information for all the modems
@@ -231,14 +241,24 @@ class network_3GSmokeTest(test.test):
                 logging.info('Sleeping for %.1f seconds', sleep_kludge)
                 time.sleep(sleep_kludge)
 
-    def run_once(self, connect_count=5, sleep_kludge=5, fetch_timeout=120):
+    def run_once(self, connect_count=5, use_pseudomodem=False, sleep_kludge=5,
+        fetch_timeout=120):
+        self.use_pseudomodem = use_pseudomodem
         self.fetch_timeout = fetch_timeout
         with backchannel.Backchannel():
-            time.sleep(3)
-            self.flim = flimflam.FlimFlam()
-            self.device_manager = flimflam.DeviceManager(self.flim)
-            try:
-                self.device_manager.ShutdownAllExcept('cellular')
-                self.run_once_internal(connect_count, sleep_kludge)
-            finally:
-                self.device_manager.RestoreDevices()
+            fake_sim = sim.SIM(sim.SIM.Carrier('att'),
+                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+            with pseudomodem.TestModemManagerContext(use_pseudomodem,
+                                                     ['cromo', 'modemmanager'],
+                                                     fake_sim):
+                time.sleep(3)
+                self.flim = flimflam.FlimFlam()
+                self.device_manager = flimflam.DeviceManager(self.flim)
+                self.flim.SetDebugTags(
+                    'dbus+service+device+modem+cellular+portal+network+'
+                    'manager+dhcp')
+                try:
+                    self.device_manager.ShutdownAllExcept('cellular')
+                    self.run_once_internal(connect_count, sleep_kludge)
+                finally:
+                    self.device_manager.RestoreDevices()
