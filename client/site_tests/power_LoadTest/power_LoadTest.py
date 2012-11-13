@@ -168,8 +168,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
 
-        # from cros_ui_test.UITest.initialize, sans authserver & local dns.
-        cros_ui_test.UITest.initialize(self, creds)
+        super(power_LoadTest, self).initialize(creds=creds)
 
     def run_once(self):
 
