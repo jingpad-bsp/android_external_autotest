@@ -98,11 +98,12 @@ class factory_AudioLoop(test.test):
             if m is not None:
                  if (hasattr(self, '_last_success_rate') and
                          self._last_success_rate is not None):
-                     self._result = self._last_success_rate > _PASS_THRESHOLD
+                     self._test_result = (
+                         self._last_success_rate > _PASS_THRESHOLD)
                      break
 
         # Show instant message and wait for a while
-        if hasattr(self, '_result') and self._result:
+        if self._test_result:
             return True
         elif hasattr(self, '_last_success_rate'):
             self.ui.CallJSFunction('testFailResult', self._last_success_rate)
@@ -132,7 +133,7 @@ class factory_AudioLoop(test.test):
                             lambda ch: self.playback_sine(ch, output_device),
                             self.check_recorded_audio)
 
-        if self._result is True:
+        if self._test_result:
             self.ui.CallJSFunction('testPassResult')
             time.sleep(0.5)
             self.ui.Pass()
@@ -157,9 +158,10 @@ class factory_AudioLoop(test.test):
     def check_recorded_audio(self, sox_output):
         freq = self._ah.get_rough_freq(sox_output)
         if abs(freq - self._freq) > _DEFAULT_FREQ_THRESHOLD_HZ:
+            self._test_result = False
             self.ui.Fail('Test Fail at frequency %d' % freq)
         else:
-            self._result = True
+            self._test_result = True
             factory.console.info('Got frequency %d' % freq)
 
     def run_once(self, audiofuntest=True, audiofuntest_duration=10,
@@ -181,6 +183,9 @@ class factory_AudioLoop(test.test):
         self._mute_left_mixer_settings = mute_left_mixer_settings
         self._mute_right_mixer_settings = mute_right_mixer_settings
         self._mute_device_mixer_settings = mute_device_mixer_settings
+
+        # Used in run_audiofuntest() and audio_loop() for test result.
+        self._test_result = False
 
         # Create a default audio helper to do the setup jobs.
         self._ah = audio_helper.AudioHelper(self, record_duration=duration)
