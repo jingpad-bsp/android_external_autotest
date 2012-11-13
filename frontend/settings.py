@@ -1,4 +1,5 @@
-# Django settings for frontend project.
+"""Django settings for frontend project.
+"""
 
 import os
 import common
@@ -20,6 +21,15 @@ ADMINS = (
 MANAGERS = ADMINS
 
 def _get_config(config_key, default=None):
+    """Retrieves a global config value for the specified key.
+
+    @param config_key: The string key associated with the desired config value.
+    @param default: The default value to return if an existing one cannot be
+        found.
+
+    @return The config value, as returned by
+        global_config.global_config.get_config_value().
+    """
     return c.get_config_value(_section, config_key, default=default)
 
 AUTOTEST_DEFAULT = {
@@ -104,7 +114,8 @@ TEMPLATE_DIRS = (
     # Don't forget to use absolute paths, not relative paths.
 
     os.path.abspath(os.path.dirname(__file__) + '/templates'),
-    os.path.abspath(os.path.dirname(__file__) + '/croschart/templates')
+    os.path.abspath(os.path.dirname(__file__) + '/croschart/templates'),
+    os.path.abspath(os.path.dirname(__file__) + '/perf-dashboard/templates')
 )
 
 INSTALLED_APPS = (
