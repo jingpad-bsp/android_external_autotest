@@ -43,7 +43,7 @@ servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 def run_updatefirmwareversion(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test("firmware_UpdateFirmwareVersion", host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True)
+                 use_faft=True)
 
 # TODO(waihong@chromium.org): Temporarily mask this test until we adds the
 # check of factory install shim. Otherwise, forgetting to insert a factory
