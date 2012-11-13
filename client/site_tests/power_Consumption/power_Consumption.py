@@ -59,6 +59,8 @@ class power_Consumption(cros_ui_test.UITest):
         # bluetoothd: bluetooth, scanning for devices can create a spike
         self._daemons_to_stop = ['powerd', 'powerm', 'update-engine',
                                  'bluetoothd']
+        # list of daemons stopped during power measurements
+        self._daemons_stopped = []
 
         # Verify that we are running on battery and the battery is
         # sufficiently charged
@@ -474,7 +476,6 @@ class power_Consumption(cros_ui_test.UITest):
         time.sleep(5)
 
         # Turn off stuff that introduces noise
-        self._daemons_stopped = []
         for daemon in self._daemons_to_stop:
             try:
                 logging.info('Stopping %s.', daemon)
@@ -537,7 +538,10 @@ class power_Consumption(cros_ui_test.UITest):
 
     def cleanup(self):
         # cleanup() is run by common_lib/test.py
-        self._test_server.stop()
+        try:
+            self._test_server.stop()
+        except AttributeError:
+            logging.debug('test_server could not be stopped in cleanup')
 
         self._set_backlight_level(self._default_brightness)
 
