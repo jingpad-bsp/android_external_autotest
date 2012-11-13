@@ -280,7 +280,8 @@ class AudioHelper(object):
         logging.info('Command %s recording now' % cmd_rec)
         utils.system(cmd_rec)
 
-    def loopback_test_channels(self, noise_file, loopback_callback):
+    def loopback_test_channels(self, noise_file, loopback_callback,
+                               check_recorded_callback=None):
         '''Tests loopback on all channels.
 
         Args:
@@ -301,7 +302,12 @@ class AudioHelper(object):
                             reduced_file.name)
 
                 sox_output = self.sox_stat_output(reduced_file.name, channel)
-                self.check_recorded(sox_output)
+
+                # Use injected check recorded callback if any.
+                if check_recorded_callback:
+                    check_recorded_callback(sox_output)
+                else:
+                    self.check_recorded(sox_output)
 
     def check_recorded(self, sox_output):
         """Checks if the calculated RMS value is expected.

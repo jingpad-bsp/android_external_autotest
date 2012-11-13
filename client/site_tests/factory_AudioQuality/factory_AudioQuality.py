@@ -342,7 +342,7 @@ class factory_AudioQuality(test.test):
             use_sox_loop=False, use_multitone=False):
         factory.console.info('%s run_once' % self.__class__)
 
-        self._ah = audio_helper.AudioHelper(self, input_device=input_dev)
+        self._ah = audio_helper.AudioHelper(self)
         self._ah.setup_deps(['sox', 'audioloop'])
         self._detail_log = ''
         self._input_dev = input_dev

@@ -117,8 +117,9 @@ class factory_AudioLoop(test.test):
     def audio_loopback(self):
         for input_device in self._input_devices:
             self._ah = audio_helper.AudioHelper(self,
-                    input_device=input_device,
-                    record_duration=self._duration)
+                    record_command='arecord -D %s -f dat -d %f' %
+                                   (input_device, self._duration))
+
             # TODO(hychao): split deps and I/O devices to different
             # utils so we can setup deps only once.
             self._ah.setup_deps(['sox'])
@@ -188,7 +189,7 @@ class factory_AudioLoop(test.test):
         self._test_result = False
 
         # Create a default audio helper to do the setup jobs.
-        self._ah = audio_helper.AudioHelper(self, record_duration=duration)
+        self._ah = audio_helper.AudioHelper(self)
         if mixer_controls is not None:
             self._ah.set_mixer_controls(mixer_controls)
 
