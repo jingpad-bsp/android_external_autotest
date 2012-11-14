@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -24,7 +25,11 @@ import time
 
 from optparse import OptionParser
 
+import common
+
 import is_job_complete
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.scheduler import email_manager
 
 # Google Storage bucket URI to store results in.
 GS_URI = 'gs://chromeos-autotest-results/'
@@ -50,6 +55,12 @@ LOG_FILENAME_FORMAT = ('/usr/local/autotest/logs/'
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 
 CLEAN_CMD = 'find %s -iname chrome_20[0-9][0-9]\* -exec rm {} \;'
+
+NOTIFY_ADDRESS = global_config.global_config.get_config_value(
+    'SCHEDULER', 'notify_email', default='')
+
+ERROR_EMAIL_SUBJECT_FORMAT = 'GS Offloader notifications from %s'
+ERROR_EMAIL_MSG_FORMAT = 'Error occured when offloading %s:\n%s'
 
 
 class TimeoutException(Exception):
@@ -153,8 +164,23 @@ def offload_dir(dir_entry, dest_path=''):
       # Rewind the log files for stdout and stderr and log their contents.
       stdout_file.seek(0)
       stderr_file.seek(0)
+      stderr = stderr_file.read()
       logging.error('Stdout:\n%s \nStderr:\n%s', stdout_file.read(),
-                    stderr_file.read())
+                    stderr)
+      # The second to last line of stderr has the error message we're
+      # interested in.
+      try:
+        error_msg = stderr.split('\n')[-2]
+      except IndexError:
+        # In case stderr does not meet our expected format, send out the whole
+        # message.
+        error_msg = stderr
+
+      email_subject = ERROR_EMAIL_SUBJECT_FORMAT % socket.gethostname()
+      email_msg = ERROR_EMAIL_MSG_FORMAT % (dir_entry, error_msg)
+      email_manager.manager.send_email(NOTIFY_ADDRESS, email_subject,
+                                       email_msg)
+
     stdout_file.close()
     stderr_file.close()
 
