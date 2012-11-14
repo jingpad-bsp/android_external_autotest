@@ -76,7 +76,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
             self.wait_for_client()
 
         super(firmware_UpdateFirmwareDataKeyVersion, self).setup()
-        self.setup_usbkey(usbkey=True, host=False, install_shim=True)
+        self.setup_usbkey(usbkey=True, host=True, install_shim=True)
         self.setup_dev_mode(dev_mode=False)
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 
@@ -126,8 +126,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
                     'tried_fwb': '0'
                 }),
                 'userspace_action': (self.check_version_and_run_recovery),
-                'reboot_action': (
-                    self.sync_and_reboot_with_factory_install_shim)
+                'reboot_action': (self.reboot_with_factory_install_shim),
             },
             {   # Step4, Check Rollback version.
                 'state_checker': (self.checkers.crossystem_checker, {

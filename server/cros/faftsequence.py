@@ -1151,18 +1151,21 @@ class FAFTSequence(ServoTest):
         self.check_lid_and_power_on()
 
 
-    def sync_and_reboot_with_factory_install_shim(self):
-        """Request the client sync and do a warm reboot to recovery mode.
+    def reboot_with_factory_install_shim(self):
+        """Request reboot with factory install shim to reset TPM.
 
-        After reboot, the client will use factory install shim to reset TPM
-        values. The client ignore TPM rollback, so here forces it to recovery
-        mode.
+        Factory install shim requires dev mode enabled. So this method switches
+        firmware to dev mode first and reboot. The client uses factory install
+        shim to reset TPM values.
         """
+        # Unplug USB first to avoid the complicated USB autoboot cases.
+        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
             self.enable_dev_mode_and_reboot()
         time.sleep(self.delay.sync)
         self.enable_rec_mode_and_reboot()
+        self.wait_fw_screen_and_plug_usb()
         time.sleep(self.delay.install_shim_done)
         self.warm_reboot()
 
