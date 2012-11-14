@@ -61,7 +61,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
             self.wait_for_client()
 
         super(firmware_UpdateFirmwareVersion, self).setup()
-        self.servo.enable_usb_hub(host=False)
+        self.setup_usbkey(usbkey=True, host=False, install_shim=True)
         self.setup_dev_mode(dev_mode=False)
         self._fwid = self.faft_client.retrieve_shellball_fwid()
 

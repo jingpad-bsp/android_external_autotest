@@ -347,35 +347,40 @@ class FAFTSequence(ServoTest):
             raise error.TestFail('Timed out waiting for DUT reboot')
 
 
-    def assert_test_image_in_path(self, image_path):
+    def assert_test_image_in_path(self, image_path, install_shim=False):
         """Assert the image of image_path be a Chrome OS test image.
 
         Args:
           image_path: A path on the host to the test image.
+          install_shim: True to verify an install shim instead of a test image.
 
         Raises:
-          error.TestError: if the image is not a test image.
+          error.TestError: if the image is not a test (install shim) image.
         """
         try:
             build_ver, build_hash = lab_test.VerifyImageAndGetId(
                     os.environ['CROS_WORKON_SRCROOT'],
-                    image_path)
+                    image_path,
+                    install_shim=install_shim)
             logging.info('Build of image: %s %s', build_ver, build_hash)
         except ChromeOSTestError:
             raise error.TestError(
-                    'An USB disk containning a test image should be plugged '
-                    'in the servo board.')
+                    'An USB disk containning a %s image should be plugged '
+                    'in the servo board.' %
+                    ('install shim' if install_shim else 'test'))
 
 
-    def assert_test_image_in_usb_disk(self, usb_dev=None):
+    def assert_test_image_in_usb_disk(self, usb_dev=None, install_shim=False):
         """Assert an USB disk plugged-in on servo and a test image inside.
 
         Args:
           usb_dev: A string of USB stick path on the host, like '/dev/sdc'.
                    If None, it is detected automatically.
+          install_shim: True to verify an install shim instead of a test image.
 
         Raises:
-          error.TestError: if USB disk not detected or not a test image.
+          error.TestError: if USB disk not detected or not a test (install shim)
+                           image.
         """
         if self.check_setup_done('usb_check'):
             return
@@ -396,11 +401,11 @@ class FAFTSequence(ServoTest):
             if not usb_dev:
                 raise error.TestError(
                         'An USB disk should be plugged in the servo board.')
-        self.assert_test_image_in_path(usb_dev)
+        self.assert_test_image_in_path(usb_dev, install_shim=install_shim)
         self.mark_setup_done('usb_check')
 
 
-    def setup_usbkey(self, usbkey, host=None):
+    def setup_usbkey(self, usbkey, host=None, install_shim=False):
         """Setup the USB disk for the test.
 
         It checks the setup of USB disk and a valid ChromeOS test image inside.
@@ -411,9 +416,10 @@ class FAFTSequence(ServoTest):
                   required.
           host: Optional, True to mux the USB disk to host, False to mux it
                 to DUT, default to do nothing.
+          install_shim: True to verify an install shim instead of a test image.
         """
         if usbkey:
-            self.assert_test_image_in_usb_disk()
+            self.assert_test_image_in_usb_disk(install_shim=install_shim)
         elif host is None:
             # USB disk is not required for the test. Better to mux it to host.
             host = True

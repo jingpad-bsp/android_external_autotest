@@ -119,8 +119,17 @@ def FindAutotestDir(options):
   return autotest_dir
 
 
-def VerifyImageAndGetId(cros_dir, image_path):
-  """Verifies image is a test image and returns tuple of version, hash."""
+def VerifyImageAndGetId(cros_dir, image_path, install_shim=False):
+  """Verifies image is a test image and returns tuple of version, hash.
+
+  Args:
+    cros_dir: Location of Chrome OS code base.
+    image_path: Path to image to verify and convert.
+    install_shim: True to verify an install shim instead of a test image.
+
+  Returns:
+    Tuple of (build_version, build_hash).
+  """
   tempdir = tempfile.mkdtemp()
   build_util.MountImage(cros_dir, tempdir,
                         image_file=os.path.basename(image_path),
@@ -131,9 +140,14 @@ def VerifyImageAndGetId(cros_dir, image_path):
     version = common_util.RunCommand(
         cmd=cmd, cwd=os.path.join(tempdir, build_util.ROOTFS_MOUNT_DIR),
         error_msg=msg, output=True)
-    cmd = ('diff root/.ssh/authorized_keys %s'
-           % os.path.join(cros_dir, CROS_TEST_KEY_PUB))
-    msg = 'The specified image is not a test image! Only test images allowed.'
+    if install_shim:
+      cmd = 'file root/.factory_installer'
+      msg = ('The specified image is not an install shim! Only install shims '
+             'allowed.')
+    else:
+      cmd = ('diff root/.ssh/authorized_keys %s'
+             % os.path.join(cros_dir, CROS_TEST_KEY_PUB))
+      msg = 'The specified image is not a test image! Only test images allowed.'
     common_util.RunCommand(
         cmd=cmd, cwd=os.path.join(tempdir, build_util.ROOTFS_MOUNT_DIR),
         error_msg=msg)
