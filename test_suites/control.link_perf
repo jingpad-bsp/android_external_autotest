@@ -1,0 +1,22 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "link_perf"
+TIME = "SHORT"
+TEST_CATEGORY = "Servo"
+TEST_CLASS = "suite"
+TEST_TYPE = "Server"
+
+DOC = """
+Interim chopped down perf suite for link.
+"""
+
+import common
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+
+dynamic_suite.reimage_and_run(
+    build=build, board=board, name='link_perf', job=job, pool=pool, num=num,
+    add_experimental=True, file_bugs=file_bugs,
+    skip_reimage=dynamic_suite.skip_reimage(globals()))
