@@ -1027,6 +1027,12 @@ class FAFTSequence(ServoTest):
         self.wait_for_client_offline()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
 
+        # TODO (crosbug.com/p/16231) remove this conditional completely if/when
+        # issue is resolved.
+        if self.client_attr.platform == 'Parrot':
+            self.wait_for_client_offline()
+            self.cold_reboot()
+
 
     def disable_keyboard_dev_mode(self):
         logging.info("Disabling keyboard controlled developer mode")

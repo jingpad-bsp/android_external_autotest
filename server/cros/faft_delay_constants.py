@@ -67,3 +67,11 @@ class FAFTDelayConstants(object):
 
         if platform == 'Snow':
             self.ec_boot_to_console = 0.4
+
+        if platform == 'Parrot':
+            # Parrot uses UART to switch to rec mode instead of gpio thus to
+            # clear rec_mode, devices needs to be sufficiently booted.
+            self.ec_boot_to_console = 4
+
+            # Parrot takes slightly longer to get to dev screen.
+            self.dev_screen = 8

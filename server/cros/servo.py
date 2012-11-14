@@ -261,12 +261,18 @@ class Servo(object):
         Note, key presses will remain on indefinitely. See
             _press_and_release_keys for release procedure.
         """
-        (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix][key]
+        (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix]['none']
         self.set_nocheck('kbd_m2_a0', m2_a0)
         self.set_nocheck('kbd_m2_a1', m2_a1)
         self.set_nocheck('kbd_m1_a0', m1_a0)
         self.set_nocheck('kbd_m1_a1', m1_a1)
         self.set_nocheck('kbd_en', 'on')
+
+        (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix][key]
+        self.set_nocheck('kbd_m2_a0', m2_a0)
+        self.set_nocheck('kbd_m2_a1', m2_a1)
+        self.set_nocheck('kbd_m1_a0', m1_a0)
+        self.set_nocheck('kbd_m1_a1', m1_a1)
 
 
     def _press_and_release_keys(self, key,
