@@ -21,21 +21,33 @@ class power_BatteryCharge(test.test):
 
     def run_once(self, max_run_time=180, percent_charge_to_add=1,
                  percent_initial_charge_max=None,
-                 percent_target_charge=None):
+                 percent_target_charge=None,
+                 use_design_charge_capacity=True):
+
         """
         max_run_time: maximum time the test will run for
-        percent_charge_to_add: percentage of the design capacity charge to
-                  add. The target charge will be capped at the design capacity.
+        percent_charge_to_add: percentage of the charge capacity charge to
+                  add. The target charge will be capped at the charge capacity.
         percent_initial_charge_max: maxium allowed initial charge.
+        use_design_charge_capacity: If set, use charge_full_design rather than
+                  charge_full for calculations. charge_full represents
+                  wear-state of battery, vs charge_full_design representing
+                  ideal design state.
         """
 
         time_to_sleep = 60
         self.remaining_time = self.max_run_time = max_run_time
 
         self.charge_full_design = self.status.battery[0].charge_full_design
+        self.charge_full = self.status.battery[0].charge_full
+        if use_design_charge_capacity:
+            self.charge_capacity = self.charge_full_design
+        else:
+            self.charge_capacity = self.charge_full
+
         self.initial_charge = self.status.battery[0].charge_now
         percent_initial_charge = self.initial_charge * 100 / \
-                                 self.charge_full_design
+                                 self.charge_capacity
         if percent_initial_charge_max and percent_initial_charge > \
                                           percent_initial_charge_max:
             raise error.TestError('Initial charge (%f) higher than max (%f)'
@@ -43,16 +55,16 @@ class power_BatteryCharge(test.test):
 
         current_charge = self.initial_charge
         if percent_target_charge is None:
-            charge_to_add = self.charge_full_design * \
+            charge_to_add = self.charge_capacity * \
                             float(percent_charge_to_add) / 100
             target_charge = current_charge + charge_to_add
         else:
-            target_charge = self.charge_full_design * \
+            target_charge = self.charge_capacity * \
                             float(percent_target_charge) / 100
 
-        # trim target_charge if it exceeds designed capacity
-        if target_charge > self.charge_full_design:
-            target_charge = self.charge_full_design
+        # trim target_charge if it exceeds charge capacity
+        if target_charge > self.charge_capacity:
+            target_charge = self.charge_capacity
 
         logging.info('max_run_time: %d' % self.max_run_time)
         logging.info('initial_charge: %f' % self.initial_charge)
@@ -80,15 +92,16 @@ class power_BatteryCharge(test.test):
 
     def postprocess_iteration(self):
         keyvals = {}
-        keyvals['ah_charge_full'] = self.status.battery[0].charge_full
+        keyvals['ah_charge_full'] = self.charge_full
         keyvals['ah_charge_full_design'] = self.charge_full_design
+        keyvals['ah_charge_capacity'] = self.charge_capacity
         keyvals['ah_initial_charge'] = self.initial_charge
         keyvals['ah_final_charge'] = self.status.battery[0].charge_now
         keyvals['s_time_taken'] = self.max_run_time - self.remaining_time
         keyvals['percent_initial_charge'] = self.initial_charge * 100 / \
-                                            keyvals['ah_charge_full_design']
+                                            keyvals['ah_charge_capacity']
         keyvals['percent_final_charge'] = keyvals['ah_final_charge'] * 100 / \
-                                          keyvals['ah_charge_full_design']
+                                          keyvals['ah_charge_capacity']
 
         self.write_perf_keyval(keyvals)
 
