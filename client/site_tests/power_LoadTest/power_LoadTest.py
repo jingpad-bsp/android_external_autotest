@@ -160,7 +160,7 @@ class power_LoadTest(cros_ui_test.UITest):
             self._get_sys_low_batt_values()
         if self._sys_low_batt_p and (self._sys_low_batt_p >
                                      self._test_low_batt_p):
-            logging.warn("test low battery threshold is below system ",
+            logging.warn("test low battery threshold is below system " +
                          "low battery requirement.  Setting to %f",
                          self._sys_low_batt_p)
             self._test_low_batt_p = self._sys_low_batt_p
