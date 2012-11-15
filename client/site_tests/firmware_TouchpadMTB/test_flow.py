@@ -68,6 +68,7 @@ class TestFlow:
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
         self.mtb_evemu = mtb.MtbEvemu()
         self.robot = robot_wrapper.RobotWrapper(self.board, self.mode)
+        self.robot_waiting = False
 
     def __del__(self):
         self.system_device.close()
@@ -120,8 +121,7 @@ class TestFlow:
 
         prompt = ("----- %s -----\n"
                   "Adjust the robot accordingly now.\n\n"
-                  "Press SPACE to save this file and go to next test,\n"
-                  "      'd'   to delete this file and try again.\n"
+                  "Press SPACE when ready.\n"
                  ) % pause_msg
         return prompt
 
@@ -294,7 +294,23 @@ class TestFlow:
         self.win.set_prompt(self._get_prompt_result())
         # Have the robot perform the gesture if it is in ROBOT mode.
         if self._is_robot_mode():
-            self.robot.control(self.gesture, self.variation)
+            prompt_msg = self._get_prompt_robot_pause()
+            if prompt_msg is not None:
+                # Print the prompt on both the window and the console.
+                # The latter is needed because another machine is used
+                # to ssh to the chromebook under test. Hence, the user
+                # could look at the prompt from the console more easily
+                # rather than staring at the distant window of the
+                # chromebook under test.
+                self.win.set_prompt(prompt_msg)
+                print '\n\n' + prompt_msg
+                self.robot_waiting = True
+            else:
+                self._robot_action()
+
+    def _robot_action(self):
+        """Control the robot to perform the action."""
+        self.robot.control(self.gesture, self.variation)
 
     def _handle_user_choice_save_after_parsing(self, next_gesture):
         """Handle user choice for saving the parsed gesture file."""
@@ -363,7 +379,11 @@ class TestFlow:
         This is the primary GUI event-driven method handling the user input.
         """
         choice = event.keyval
-        if self._is_parsing_gesture_file_done():
+        if self.robot_waiting:
+            if choice in (GTK_KEY_SAVE, GTK_KEY_SAVE2):
+                self.robot_waiting = False
+                self._robot_action()
+        elif self._is_parsing_gesture_file_done():
             # Save this gesture file and go to next gesture.
             if choice in (GTK_KEY_SAVE, GTK_KEY_SAVE2):
                 self._handle_user_choice_save_after_parsing(next_gesture=True)
@@ -411,19 +431,7 @@ class TestFlow:
             self._handle_user_choice_validate_before_parsing()
             self.win.remove_event_source(self.gesture_file_watch_tag)
             self.win.set_input_focus()
-            if self._is_robot_mode():
-                prompt_msg = self._get_prompt_robot_pause()
-                if prompt_msg is not None:
-                    # Print the prompt on both the window and the console.
-                    # The latter is needed because another machine is used
-                    # to ssh to the chromebook under test. Hence, the user
-                    # could look at the prompt from the console more easily
-                    # rather than staring at the distant window of the
-                    # chromebook under test.
-                    self.win.set_prompt(prompt_msg)
-                    print '\n\n' + prompt_msg
-                else:
-                    self.win.create_key_press_event(GTK_KEY_SAVE)
+            self.win.create_key_press_event(GTK_KEY_SAVE)
             return False
 
     def gesture_file_watch_callback(self, fd, condition, evdev_device):

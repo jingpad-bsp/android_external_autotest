@@ -123,7 +123,7 @@ gesture_names_robot = [
 # Define those gestures that the robot needs to pause after so the user
 # could adjust the robot during the tests.
 gesture_names_robot_pause = {
-    ONE_FINGER_PHYSICAL_CLICK: 'Two-finger gestures next.'
+    TWO_FINGER_TRACKING: 'Two-finger gestures now.'
 }
 
 
