@@ -29,9 +29,9 @@ class platform_FilePerms(test.test):
         '/dev': { # crosbug.com/32629
             'type': 'devtmpfs',
             'options': ['rw', 'relatime', 'mode=755']},
-        '/dev/pstore': { # crosbug.com/32630
+        '/dev/pstore': {
             'type': 'pstore',
-            'options': ['rw', 'relatime']},
+            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime']},
         '/dev/pts': { # Special case, we want to track gid/mode too.
             'type': 'devpts',
             'options': ['rw', 'nosuid', 'noexec', 'relatime', 'gid=5',
