@@ -26,9 +26,19 @@ CENTER = 0.5
 END = 0.9
 OFF_START = -0.05
 OFF_END = 1.05
+ABOVE_CENTER = 0.3
+BELOW_CENTER = 0.7
+LEFT_TO_CENTER = 0.3
+RIGHT_TO_CENTER = 0.7
 
 # Define constants used to determine the types of gestures.
 TRACKING = 'tracking'
+CROSSING = 'crossing'
+MOVE = 'move'
+
+# Define constants determining which dictionary to use for a gesture
+THROUGH_CENTER = 'through_center'
+OFF_CENTER = 'off_center'
 
 # Define constants used as command options of robot control scripts.
 #   For line gesture: [basic | swipe]
@@ -68,17 +78,36 @@ class RobotWrapper:
             conf.TWO_FINGER_SWIPE: self._get_control_command_line,
             conf.TWO_FINGER_TAP: self._get_control_command_click,
             conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
+            conf.FINGER_CROSSING: self._get_control_command_line,
+            conf.STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS:
+                    self._get_control_command_click,
+            conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
+                    self._get_control_command_line,
         }
 
         self._line_dict = {
-            GV.LR: (OFF_START, CENTER, OFF_END, CENTER),
-            GV.RL: (OFF_END, CENTER, OFF_START, CENTER),
-            GV.TB: (CENTER, OFF_START, CENTER, OFF_END),
-            GV.BT: (CENTER, OFF_END, CENTER, OFF_START),
-            GV.BLTR: (START, END, END, START),
-            GV.TRBL: (END, START, START, END),
-            GV.BRTL: (END, END, START, START),
-            GV.TLBR: (START, START, END, END),
+            # These are the tracking lines that will go through the center.
+            THROUGH_CENTER: {
+                GV.LR: (OFF_START, CENTER, OFF_END, CENTER),
+                GV.RL: (OFF_END, CENTER, OFF_START, CENTER),
+                GV.TB: (CENTER, OFF_START, CENTER, OFF_END),
+                GV.BT: (CENTER, OFF_END, CENTER, OFF_START),
+                GV.BLTR: (START, END, END, START),
+                GV.TRBL: (END, START, START, END),
+                GV.BRTL: (END, END, START, START),
+                GV.TLBR: (START, START, END, END),
+            },
+            # These are the tracking lines that will not go through the center.
+            OFF_CENTER: {
+                GV.LR: (START, ABOVE_CENTER, END, ABOVE_CENTER),
+                GV.RL: (END, BELOW_CENTER, START, BELOW_CENTER),
+                GV.TB: (RIGHT_TO_CENTER, START, RIGHT_TO_CENTER, END),
+                GV.BT: (LEFT_TO_CENTER, END, LEFT_TO_CENTER, START),
+                GV.BLTR: (START, CENTER, RIGHT_TO_CENTER, START),
+                GV.TRBL: (RIGHT_TO_CENTER, START, START, CENTER),
+                GV.BRTL: (END, CENTER, LEFT_TO_CENTER, START),
+                GV.TLBR: (LEFT_TO_CENTER, START, END, CENTER),
+            },
         }
 
         self._speed_dict = {
@@ -98,6 +127,16 @@ class RobotWrapper:
             GV.LS: (START, CENTER),
             GV.RS: (END, CENTER),
             GV.CENTER: (CENTER, CENTER),
+
+            # location parameters for
+            #   stationary_finger_not_affected_by_2nd_finger_taps
+            GV.AROUND: (
+                CENTER, START,
+                RIGHT_TO_CENTER, ABOVE_CENTER,
+                END, CENTER,
+                RIGHT_TO_CENTER, BELOW_CENTER,
+                CENTER, END,
+            ),
 
             # location parameters for two-finger taps
             #   In the manual mode:
@@ -149,7 +188,7 @@ class RobotWrapper:
         """Determine whether the gesture is a basic tracking or a swipe."""
         if SWIPE in gesture:
             return SWIPE
-        elif TRACKING in gesture:
+        elif TRACKING in gesture or CROSSING in gesture or MOVE in gesture:
             return BASIC
         else:
             return None
@@ -171,10 +210,15 @@ class RobotWrapper:
             msg = 'Cannot determine whether "%s" is basic tracking or swipe.'
             self._raise_error(msg % gesture)
 
+        # Determine which line dictionary to use.
+        is_finger_crossing = (gesture == conf.FINGER_CROSSING)
+        dict_choice = OFF_CENTER if is_finger_crossing else THROUGH_CENTER
+        line_dict = self._line_dict[dict_choice]
+
         line = speed = None
         for element in variation:
             if element in GV.GESTURE_DIRECTIONS:
-                line = self._line_dict[element]
+                line = line_dict[element]
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
@@ -200,20 +244,20 @@ class RobotWrapper:
         for element in variation:
             location = self._location_dict.get(element)
             if location:
+                location_str = ' '.join(map(str, location))
                 break
 
         if location is None:
             msg = 'Cannot derive the location parameters from %s %s.'
             self._raise_error(msg % (gesture, variation))
-        target_x, target_y = location
 
         tap_or_click = self._get_tap_or_click(gesture)
         if not tap_or_click:
             msg = 'Cannot determine whether "%s" is a tap or a click.'
             self._raise_error(msg % gesture)
 
-        para = (robot_script, self._board, target_x, target_y, tap_or_click)
-        control_cmd = 'python %s %s %f %f %s' % para
+        para = (robot_script, self._board, location_str, tap_or_click)
+        control_cmd = 'python %s %s %s %s' % para
         return control_cmd
 
     def _build_robot_script_paths(self):
@@ -254,16 +298,20 @@ class RobotWrapper:
 
         return script_method(robot_script, gesture, variation)
 
+    def _execute_control_command(self, control_cmd):
+        """Execute a control command."""
+        print 'Executing: "%s"' % control_cmd
+        if not self._is_robot_simulation_mode():
+            common_util.simple_system(control_cmd)
+
     def control(self, gesture, variation):
         """Have the robot perform the gesture variation."""
         if not isinstance(variation, tuple):
             variation = (variation,)
         try:
-            control_cmd = self._get_control_command(gesture.name, variation)
             print gesture.name, variation
-            print 'Executing: "%s"' % control_cmd
-            if not self._is_robot_simulation_mode():
-                common_util.simple_system(control_cmd)
+            control_cmd = self._get_control_command(gesture.name, variation)
+            self._execute_control_command(control_cmd)
         except RobotWrapperError as e:
             print gesture.name, variation
             print 'RobotWrapperError: %s' % str(e)

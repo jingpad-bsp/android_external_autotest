@@ -31,7 +31,7 @@ sys.path.append('/usr/local/autotest/bin/input')
 import input_device
 
 # Include some constants
-from firmware_constants import MODE, OPTIONS
+from firmware_constants import MODE, OPTIONS, RC
 from linux_input import KEY_D, KEY_M, KEY_X, KEY_ENTER, KEY_SPACE
 
 
@@ -82,12 +82,15 @@ class TestFlow:
 
     def _is_robot_mode(self):
         """Is it in robot mode?"""
-        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM]
+        return self.mode in [MODE.ROBOT, MODE.ROBOT_INT, MODE.ROBOT_SIM]
 
     def _get_gesture_names(self):
         """Determine the gesture names based on the mode."""
         if self._is_robot_mode():
-            return conf.gesture_names_robot
+            if self.mode == MODE.ROBOT:
+                return conf.gesture_names_robot
+            else:
+                return conf.gesture_names_robot_interaction
         else:
             return conf.gesture_names_complete
 
@@ -120,16 +123,28 @@ class TestFlow:
                   "      'x'   to discard this file and exit.")
         return prompt
 
+
+
     def _get_prompt_robot_pause(self):
         """Prompt for robot pause."""
-        pause_msg = conf.gesture_names_robot_pause.get(self.gesture.name)
-        if pause_msg is None:
+        # Check if the robot needs to pause for this gesture.
+        pause = conf.gesture_names_robot_pause.get(self.gesture.name)
+        if not pause:
             return None
 
+        # If the pause is per gesture, pause only at the first variation.
+        pause_msg = pause[RC.PROMPT]
+        if pause[RC.PAUSE_TYPE] == RC.PER_GESTURE:
+            variations_list = self.variations_dict.get(self.gesture.name)
+            # It is possible that there are no variations in a gesture.
+            # Then this is considered to be the first variation.
+            if (variations_list and self.variation != variations_list[0]):
+                return None
+
         prompt = ("----- %s -----\n"
-                  "Adjust the robot accordingly now.\n\n"
-                  "Press SPACE when ready.\n"
-                 ) % pause_msg
+                  "%s\n"
+                  "%s\n"
+                  "%s\n") % pause_msg
         return prompt
 
     def _get_prompt_result(self):
@@ -426,12 +441,16 @@ class TestFlow:
     def _get_all_gesture_variations(self, simplified):
         """Get all variations for all gestures."""
         gesture_variations_list = []
+        self.variations_dict = {}
         for gesture in self.gesture_list:
+            variations_list = []
             variations = self.span_variations(gesture.variations)
             for variation in variations:
                 gesture_variations_list.append((gesture, variation))
+                variations_list.append(variation)
                 if simplified:
                     break
+            self.variations_dict[gesture.name] = variations_list
         self.gesture_variations = iter(gesture_variations_list)
 
     def gesture_timeout_callback(self):

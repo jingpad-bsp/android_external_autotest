@@ -201,7 +201,11 @@ def _usage():
     print 'options:'
     print '  -h, --%s: show this help' % OPTIONS.HELP
     print '  -m, --%s: gesture playing mode' % OPTIONS.MODE
-    print '            could be either MANUAL, ROBOT or ROBOT_SIM'
+    print '            could be one of the following options'
+    print '            MANUAL: all gestures'
+    print '            ROBOT: using robot to perform gestures automatically'
+    print '            ROBOT_INT: using robot with finger interaction'
+    print '            ROBOT_SIM: robot simulation, for developer only'
     print '  -s, --%s: Use one variation per gesture' % OPTIONS.SIMPLIFIED
     print
 

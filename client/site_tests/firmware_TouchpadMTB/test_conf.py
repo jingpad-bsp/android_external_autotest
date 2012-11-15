@@ -6,7 +6,7 @@
 
 """This configuration file defines the gestures to perform."""
 
-from firmware_constants import MF, GV
+from firmware_constants import MF, GV, RC
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -120,10 +120,59 @@ gesture_names_robot = [
 ]
 
 
-# Define those gestures that the robot needs to pause after so the user
-# could adjust the robot during the tests.
+# Define the gestures to test using the robot with finger interaction.
+gesture_names_robot_interaction = gesture_names_robot + [
+    FINGER_CROSSING,
+    STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
+    RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+]
+
+
+# Define those gestures that the robot needs to pause so the user
+# could adjust the robot or do finger interaction.
+msg_step1 = 'Step 1: Place a metal finger on the %s of the touchpad now.'
+msg_step2 = 'Step 2: Press SPACE when ready.'
+msg_step3 = 'Step 3: Remember to lift the metal finger when robot has finished!'
 gesture_names_robot_pause = {
-    TWO_FINGER_TRACKING: 'Two-finger gestures now.'
+    TWO_FINGER_TRACKING: {
+        RC.PAUSE_TYPE: RC.PER_GESTURE,
+        RC.PROMPT: (
+            'Gesture: %s' % TWO_FINGER_TRACKING,
+            'Step 1: Install two fingers for the robot now.',
+            msg_step2,
+            '',
+        )
+    },
+
+    FINGER_CROSSING: {
+        RC.PAUSE_TYPE: RC.PER_VARIATION,
+        RC.PROMPT: (
+            'Gesture: %s' % FINGER_CROSSING,
+            msg_step1 % 'center',
+            msg_step2,
+            msg_step3,
+        )
+    },
+
+    STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS: {
+        RC.PAUSE_TYPE: RC.PER_VARIATION,
+        RC.PROMPT: (
+            'Gesture: %s' % STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
+            msg_step1 % 'center',
+            msg_step2,
+            msg_step3,
+        )
+    },
+
+    RESTING_FINGER_PLUS_2ND_FINGER_MOVE: {
+        RC.PAUSE_TYPE: RC.PER_VARIATION,
+        RC.PROMPT: (
+            'Gesture: %s' % RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+            msg_step1 % 'bottom left corner',
+            msg_step2,
+            msg_step3,
+        )
+    },
 }
 
 
@@ -385,7 +434,7 @@ def get_gesture_dict():
         STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS:
         Gesture(
             name=STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
-            variations=None,
+            variations=(GV.AROUND,),
             prompt='Place your left finger on the middle of the pad. '
                    'And use 2nd finger to tap around the first finger',
             subprompt=None,

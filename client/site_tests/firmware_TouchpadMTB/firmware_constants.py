@@ -73,8 +73,9 @@ GV.BS = 'bottom_side'
 GV.LS = 'left_side'
 GV.RS = 'right_side'
 GV.CENTER = 'center'
+GV.AROUND = 'around'
 GV.GESTURE_LOCATIONS = [GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
-                        GV.CENTER]
+                        GV.CENTER, GV.AROUND]
 # constants about pinch to zoom
 GV.ZOOM_IN = 'zoom_in'
 GV.ZOOM_OUT = 'zoom_out'
@@ -92,8 +93,15 @@ MODE = _Mode()
 MODE.MANUAL = 'MANUAL'
 MODE.REPLAY = 'REPLAY'
 MODE.ROBOT = 'ROBOT'
+MODE.ROBOT_INT = 'ROBOT_INT'
 MODE.ROBOT_SIM = 'ROBOT_SIM'
-MODE.GESTURE_PLAY_MODE = [MODE.MANUAL, MODE.REPLAY, MODE.ROBOT, MODE.ROBOT_SIM]
+MODE.GESTURE_PLAY_MODE = [
+    MODE.MANUAL,
+    MODE.REPLAY,
+    MODE.ROBOT,
+    MODE.ROBOT_INT,
+    MODE.ROBOT_SIM
+]
 
 
 class _MTB(_Constant):
@@ -114,3 +122,19 @@ OPTIONS = _Options()
 OPTIONS.HELP = 'help'
 OPTIONS.MODE = 'mode'
 OPTIONS.SIMPLIFIED = 'simplified'
+
+
+class _RobotControl(_Constant):
+    """Constants about robot control."""
+    pass
+RC = _RobotControl()
+RC.PAUSE_TYPE = 'pause_type'
+RC.PROMPT = 'finger_control_prompt'
+# Finger interaction per gesture
+# e.g., the TWO_FINGER_TRACKING gesture requires installing an extra finger
+#       once for all variations in the same gesture.
+RC.PER_GESTURE = 'per_gesture'
+# Finger interaction per variation
+# e.g., the FINGER_CROSSING gesture requires putting down and lifting up
+# a metal finger repeatedly per variation.
+RC.PER_VARIATION = 'per_variation'
