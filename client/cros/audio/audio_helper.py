@@ -378,3 +378,15 @@ class AudioHelper(object):
         else:
             # Should not reach here, just in case.
             return None
+
+    def play_sound(self, duration_seconds=None, audio_file_path=None):
+        '''
+        Plays a sound file found at |audio_file_path| for |duration_seconds|.
+
+        If |audio_file_path|=None, plays a default audio file.
+        If |duration_seconds|=None, plays audio file in its entirety.
+        '''
+        if not audio_file_path:
+            audio_file_path = '/usr/local/autotest/cros/audio/sine440.wav'
+        duration_arg = ('-d %d' % duration_seconds) if duration_seconds else ''
+        utils.system('aplay %s %s' % (duration_arg, audio_file_path))
