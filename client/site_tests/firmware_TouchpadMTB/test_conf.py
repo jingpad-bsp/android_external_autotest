@@ -461,12 +461,15 @@ def get_gesture_dict():
         RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
         Gesture(
             name=RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
-            variations=(GV.TLBR, GV.BRTL),
+            variations=((GV.TLBR, GV.BRTL),
+                        (GV.SLOW,),
+            ),
             prompt='With a stationary finger resting on the bottom left corner,'
-                   ' the 2nd finger moves {0} in 3 seconds.',
+                   ' the 2nd finger moves {0} in {1}.',
             subprompt={
                 GV.TLBR: ('from top left to bottom right',),
                 GV.BRTL: ('from bottom right to top left',),
+                GV.SLOW: ('3 seconds',),
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
