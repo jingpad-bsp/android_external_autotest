@@ -50,6 +50,7 @@ static struct timeval sine_start_tv;
 
 // Mutex and the variables to protect.
 static pthread_mutex_t latency_test_mutex;
+static pthread_cond_t terminate_test;
 static pthread_cond_t sine_start;
 static int terminate_playback;
 static int terminate_capture;
@@ -280,7 +281,11 @@ static int cras_capture_tone(struct cras_client *client,
         cras_cap_time = (struct timeval*)malloc(sizeof(*cras_cap_time));
         gettimeofday(cras_cap_time, NULL);
 
+        // Terminate the test since noise got captured.
+        pthread_mutex_lock(&latency_test_mutex);
         terminate_capture = 1;
+        pthread_cond_signal(&terminate_test);
+        pthread_mutex_unlock(&latency_test_mutex);
     }
 
     return frames;
@@ -311,9 +316,14 @@ static int cras_play_tone(struct cras_client *client,
 
     /* Write zero first when playback_count < PLAYBACK_SILENT_COUNT
      * or noise got captured. */
-    if (playback_count < PLAYBACK_SILENT_COUNT
-            || playback_count > PLAYBACK_TIMEOUT_COUNT) {
+    if (playback_count < PLAYBACK_SILENT_COUNT) {
         memset(samples, 0, sample_bytes * frames * channels);
+    } else if (playback_count > PLAYBACK_TIMEOUT_COUNT) {
+        // Timeout, terminate test.
+        pthread_mutex_lock(&latency_test_mutex);
+        terminate_capture = 1;
+        pthread_cond_signal(&terminate_test);
+        pthread_mutex_unlock(&latency_test_mutex);
     } else {
         generate_sine(areas, 0, frames, &phase);
 
@@ -534,6 +544,7 @@ void cras_test_latency()
 
     pthread_mutex_init(&latency_test_mutex, NULL);
     pthread_cond_init(&sine_start, NULL);
+    pthread_cond_init(&terminate_test, NULL);
 
     cras_client_run_thread(client);
     rc = cras_add_stream(client,
@@ -553,12 +564,11 @@ void cras_test_latency()
         exit(1);
     }
 
-    int sleep_count = 10;
-    while (sleep_count-- > 0) {
-        if (terminate_capture)
-            break;
-        usleep(300000);
+    pthread_mutex_lock(&latency_test_mutex);
+    while (!terminate_capture) {
+        pthread_cond_wait(&terminate_test, &latency_test_mutex);
     }
+    pthread_mutex_unlock(&latency_test_mutex);
 
     if (cras_cap_time && cras_play_time) {
         unsigned long latency = subtract_timevals(cras_cap_time,
