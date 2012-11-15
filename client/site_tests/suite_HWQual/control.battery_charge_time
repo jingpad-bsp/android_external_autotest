@@ -21,12 +21,17 @@ by design.
 max_hours = 4
 percent_charge_delta = 94.0
 time_limit = max_hours * 60 * 60 * percent_charge_delta / 100.0
+# battery must be at least 80% of design capacity
+percent_battery_wear_allowed = .20
 
 job.run_test('power_BatteryCharge',
              max_run_time=time_limit,
              percent_charge_to_add=100,
              percent_initial_charge_max=5,
+             use_design_charge_capacity=False,
              constraints=[
+                 '1.0 - ah_charge_full / ah_charge_full_design <= %f' %
+                     percent_battery_wear_allowed,
                  'percent_final_charge - percent_initial_charge >= %f' %
                      percent_charge_delta,
              ])
