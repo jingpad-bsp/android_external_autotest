@@ -227,12 +227,19 @@ class SiteHost(remote.RemoteHost):
 
 
     def cleanup(self):
-        # We're explicitly choosing not to run super(SiteHost, self).cleanup()
-        # because it does nothing useful, and reboots the device unnecessarily.
         client_at = autotest.Autotest(self)
-        client_at.run_static_method('autotest_lib.client.cros.cros_ui',
-                                    'restart')
         self.run('rm -f %s' % cros_constants.CLEANUP_LOGS_PAUSED_FILE)
+        try:
+            client_at.run_static_method('autotest_lib.client.cros.cros_ui',
+                                        '_clear_login_prompt_state')
+            self.run('restart ui')
+            client_at.run_static_method('autotest_lib.client.cros.cros_ui',
+                                        '_wait_for_login_prompt')
+        except error.AutoservRunError:
+            logging.warn('Unable to restart ui, rebooting device.')
+            # Since restarting the UI fails fall back to normal Autotest
+            # cleanup routines, i.e. reboot the machine.
+            super(SiteHost, self).cleanup()
 
 
     # TODO (sbasi) crosbug.com/35656

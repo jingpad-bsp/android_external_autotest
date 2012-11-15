@@ -140,7 +140,7 @@ def restart(impl=None):
     try:
         if impl is not None:
             impl()
-        elif utils.system("restart ui") != 0:
+        elif utils.system('restart ui', ignore_status=True) != 0:
             raise error.TestError('Could not stop session')
 
         # Wait for login prompt to appear to indicate that all processes are
