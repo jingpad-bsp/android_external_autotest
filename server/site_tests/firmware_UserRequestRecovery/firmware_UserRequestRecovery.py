@@ -30,8 +30,8 @@ class firmware_UserRequestRecovery(FAFTSequence):
             self.run_faft_step({})
 
 
-    def setup(self, dev_mode=False):
-        super(firmware_UserRequestRecovery, self).setup()
+    def setup(self, dev_mode=False, ec_wp=None):
+        super(firmware_UserRequestRecovery, self).setup(ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=True)
 

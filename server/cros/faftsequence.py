@@ -176,7 +176,7 @@ class FAFTSequence(ServoTest):
             self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
 
 
-    def setup(self):
+    def setup(self, ec_wp=None):
         """Autotest setup function."""
         super(FAFTSequence, self).setup()
         if not self._remote_infos['faft']['used']:
@@ -189,10 +189,12 @@ class FAFTSequence(ServoTest):
         })
         self.install_test_image(self._install_image_path, self._firmware_update)
         self.setup_gbb_flags()
+        self.setup_ec_write_protect(ec_wp)
 
 
     def cleanup(self):
         """Autotest cleanup function."""
+        self.restore_ec_write_protect()
         self._faft_sequence = ()
         self._faft_template = {}
         super(FAFTSequence, self).cleanup()
@@ -721,6 +723,41 @@ class FAFTSequence(ServoTest):
             # write protect. And then remove software write protect flag.
             self.sync_and_ec_reboot()
             self.ec.set_flash_write_protect(enable)
+
+
+    def setup_ec_write_protect(self, ec_wp):
+        """Setup for EC write-protection.
+
+        It makes sure the EC in the requested write-protection state. If not, it
+        flips the state. Flipping the write-protection requires DUT reboot.
+
+        Args:
+          ec_wp: True to request EC write-protected; False to request EC not
+                 write-protected; None to do nothing.
+        """
+        if ec_wp is None:
+            self._old_ec_wp = None
+            return
+        self._old_ec_wp = self.checkers.crossystem_checker({'wpsw_boot': '1'})
+        if ec_wp != self._old_ec_wp:
+            logging.info('The test required EC is %swrite-protected. Reboot '
+                         'and flip the state.', '' if ec_wp else 'not ')
+            self.run_faft_step({
+                'reboot_action': (self.set_EC_write_protect_and_reboot, ec_wp)
+            })
+
+
+    def restore_ec_write_protect(self):
+        """Restore the original EC write-protection."""
+        if self._old_ec_wp is None:
+            return
+        if not self.checkers.crossystem_checker(
+                {'wpsw_boot': '1' if self._old_ec_wp else '0'}):
+            logging.info('Restore the original EC write protection and reboot.')
+            self.run_faft_step({
+                'reboot_action': (self.set_EC_write_protect_and_reboot,
+                                  self._old_ec_wp)
+            })
 
 
     def press_ctrl_d(self):

@@ -12,8 +12,8 @@ class firmware_DevMode(FAFTSequence):
     version = 1
 
 
-    def setup(self):
-        super(firmware_DevMode, self).setup()
+    def setup(self, ec_wp=None):
+        super(firmware_DevMode, self).setup(ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode=False)
         self.setup_usbkey(usbkey=False)
 

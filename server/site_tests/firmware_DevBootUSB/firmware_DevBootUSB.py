@@ -21,8 +21,8 @@ class firmware_DevBootUSB(FAFTSequence):
     version = 1
 
 
-    def setup(self):
-        super(firmware_DevBootUSB, self).setup()
+    def setup(self, ec_wp=None):
+        super(firmware_DevBootUSB, self).setup(ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode=True)
         self.setup_usbkey(usbkey=True, host=False)
 
