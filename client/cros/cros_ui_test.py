@@ -345,19 +345,25 @@ class UITest(pyauto_test.PyAutoTest):
         return [cryptohome.canonicalize(name), passwd]
 
 
-    def take_screenshot(self, fname_prefix):
+    def take_screenshot(self, fname_prefix, format='png'):
       """Take screenshot and save to a new file in the results dir.
 
       Args:
         fname_prefix: prefix for the output fname
+        format:       string indicating file format ('png', 'jpg', etc)
+
+      Returns:
+        the path of the saved screenshot file
       """
       next_index = len(glob.glob(
-          os.path.join(self.resultsdir, '%s-*.png' % fname_prefix)))
+          os.path.join(self.resultsdir, '%s-*.%s' % (fname_prefix, format))))
       screenshot_file = os.path.join(
-          self.resultsdir, '%s-%d.png' % (fname_prefix, next_index))
+          self.resultsdir, '%s-%d.%s' % (fname_prefix, next_index, format))
       logging.info('Saving screenshot to %s.' % screenshot_file)
       utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
-                   '/usr/local/bin/import -window root %s' % screenshot_file)
+                   '/usr/local/bin/import -window root -depth 8 %s' %
+                   screenshot_file)
+      return screenshot_file
 
 
     def login(self, username=None, password=None):
