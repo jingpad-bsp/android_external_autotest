@@ -26,9 +26,9 @@ class platform_FilePerms(test.test):
     # please leave either an explanation for why that mount is special,
     # or a bug number tracking work to harden that mount point, in a comment.
     expected_mount_options = {
-        '/dev': { # crosbug.com/32629
+        '/dev': {
             'type': 'devtmpfs',
-            'options': ['rw', 'relatime', 'mode=755']},
+            'options': ['rw', 'nosuid', 'noexec', 'relatime', 'mode=755']},
         '/dev/pstore': {
             'type': 'pstore',
             'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime']},
