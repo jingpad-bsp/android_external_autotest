@@ -232,7 +232,7 @@ class SiteHost(remote.RemoteHost):
         client_at = autotest.Autotest(self)
         client_at.run_static_method('autotest_lib.client.cros.cros_ui',
                                     'restart')
-        self.run('rm %s' % cros_constants.CLEANUP_LOGS_PAUSED_FILE)
+        self.run('rm -f %s' % cros_constants.CLEANUP_LOGS_PAUSED_FILE)
 
 
     # TODO (sbasi) crosbug.com/35656
