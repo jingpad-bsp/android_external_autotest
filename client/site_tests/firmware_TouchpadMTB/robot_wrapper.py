@@ -52,17 +52,13 @@ class RobotWrapper:
         self._mode = mode
         self._robot_script_dir = self._get_robot_script_dir()
 
+        # Each get_contorol_command method maps to a script name.
         self._robot_script_name_dict = {
-            conf.ONE_FINGER_TRACKING: SCRIPT_LINE,
-            conf.ONE_FINGER_SWIPE: SCRIPT_LINE,
-            conf.ONE_FINGER_TAP: SCRIPT_CLICK,
-            conf.ONE_FINGER_PHYSICAL_CLICK: SCRIPT_CLICK,
-            conf.TWO_FINGER_TRACKING: SCRIPT_LINE,
-            conf.TWO_FINGER_SWIPE: SCRIPT_LINE,
-            conf.TWO_FINGER_TAP: SCRIPT_CLICK,
-            conf.TWO_FINGER_PHYSICAL_CLICK: SCRIPT_CLICK,
+            self._get_control_command_line: SCRIPT_LINE,
+            self._get_control_command_click: SCRIPT_CLICK,
         }
 
+        # Each gesture maps to a get_contorol_command method
         self._method_of_control_command_dict = {
             conf.ONE_FINGER_TRACKING: self._get_control_command_line,
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
@@ -123,6 +119,8 @@ class RobotWrapper:
             # location parameters for one_finger_click and two_finger_click
             None: (CENTER, CENTER),
         }
+
+        self._build_robot_script_paths()
 
     def _is_robot_simulation_mode(self):
         """Is it in robot simulation mode?
@@ -218,8 +216,8 @@ class RobotWrapper:
         control_cmd = 'python %s %s %f %f %s' % para
         return control_cmd
 
-    def _get_control_command(self, gesture, variation):
-        """Get robot control command based on the gesture and variation."""
+    def _build_robot_script_paths(self):
+        """Build the robot script paths."""
         # Check if the robot script dir could be found.
         if not self._robot_script_dir:
             script_path = os.path.join(conf.robot_lib_path, conf.python_package,
@@ -227,24 +225,32 @@ class RobotWrapper:
             msg = 'Cannot find robot script directory in "%s".'
             self._raise_error(msg % script_path)
 
-        # Check if there exists a control script for this gesture.
-        script_name = self._robot_script_name_dict.get(gesture)
-        if not script_name:
-            msg = 'Cannot find "%s" gesture in _robot_script_name_dict.'
-            self._raise_error(msg % gesture)
+        # Build the robot script path dictionary
+        self._robot_script_dict = {}
+        for method in self._robot_script_name_dict:
+            script_name = self._robot_script_name_dict.get(method)
 
-        # Check if the control script actually exists.
-        robot_script = os.path.join(self._robot_script_dir, script_name)
-        if not os.path.isfile(robot_script):
-            msg = 'Cannot find the robot control script: %s'
-            self._raise_error(msg % robot_script)
+            # Check if the control script actually exists.
+            robot_script = os.path.join(self._robot_script_dir, script_name)
+            if not os.path.isfile(robot_script):
+                msg = 'Cannot find the robot control script: %s'
+                self._raise_error(msg % robot_script)
 
+            self._robot_script_dict[method] = robot_script
+
+    def _get_control_command(self, gesture, variation):
+        """Get robot control command based on the gesture and variation."""
         # Check if there exists a method to derive the robot script command
         # for this gesture.
         script_method = self._method_of_control_command_dict.get(gesture)
         if not script_method:
             msg = 'Cannot find "%s" gesture in _method_of_control_command_dict.'
             self._raise_error(msg % gesture)
+
+        robot_script = self._robot_script_dict.get(script_method)
+        if not robot_script:
+            msg = 'Cannot find "%s" method in _robot_script_dict.'
+            self._raise_error(msg % script_method)
 
         return script_method(robot_script, gesture, variation)
 
