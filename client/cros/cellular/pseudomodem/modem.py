@@ -169,6 +169,21 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         }
         return { mm1.I_MODEM : props }
 
+    def IsPendingEnable(self):
+        return self.enable_step and not self.enable_step.cancelled
+
+    def IsPendingDisable(self):
+        return self.disable_step and not self.disable_step.cancelled
+
+    def IsPendingConnect(self):
+        return self.connect_step and not self.connect_step.cancelled
+
+    def IsPendingDisconnect(self):
+        return self.disconnect_step and not self.disconnect_step.cancelled
+
+    def IsPendingRegister(self):
+        return self.register_step and not self.register_step.cancelled
+
     def SetSignalQuality(self, quality):
         self.Set(mm1.I_MODEM, 'SignalQuality', (dbus.types.Struct(
             [dbus.types.UInt32(quality), True], signature='ub')))
