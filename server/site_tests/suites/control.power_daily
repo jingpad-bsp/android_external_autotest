@@ -60,10 +60,8 @@ def _run_client_test(machine):
                                force_wifi=True, wifi_ap=wifi_ap,
                                wifi_sec=wifi_sec, wifi_pw=wifi_pw,
                                tag='WIFI_1hr')
-
-        else:
-            client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
-                               check_network=False, tag='WIRED_1hr')
+        client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
+                           check_network=False, tag='WIRED_1hr')
     finally:
         client.power_on()
 
