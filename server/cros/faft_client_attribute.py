@@ -12,6 +12,7 @@ class FAFTClientAttribute(object):
     has_lid = True
     has_keyboard = True
     keyboard_dev = True
+    long_rec_combo = False
     ec_capability = list()
     wp_voltage = 'pp1800'
     key_matrix_layout = 0
@@ -44,6 +45,10 @@ class FAFTClientAttribute(object):
         if platform in ['Aebl', 'Alex', 'Kaen', 'Kiev', 'Lumpy', 'Mario',
                         'Seaboard', 'Stumpy', 'ZGB']:
             self.keyboard_dev = False
+
+        # Set 'long_rec_combo'
+        if platform in ['Link']:
+            self.long_rec_combo = True
 
         # Set 'ec_capability'
         if platform == 'Link':
