@@ -74,8 +74,10 @@ class PacketCapture(object):
         hosts_maybe = afe.get_hosts(multiple_labels=['packet_capture'])
         if not hosts_maybe:
             raise error.TestError('No packet capture machines available')
-        self._host = tools.get_random_best_host(afe, hosts_maybe,
-                                                require_usable_hosts=True)
+        host_afe = tools.get_random_best_host(afe, hosts_maybe,
+                                              require_usable_hosts=True)
+
+        self._host = hosts.SSHHost(host_afe.hostname+'.cros')
         if not self._host:
             raise error.TestError('Could not choose packet capture machine')
 
@@ -127,7 +129,7 @@ class PacketCapture(object):
                                            str(self._freq))
         if ht40:
           if ht40 in ('HT20', 'HT40+', 'HT40-'):
-            start_cmd.append(ht40)
+            start_cmd = ' '.join([start_cmd, ht40])
           else:
             logging.error('Illegal ht40 parameter: %s, ignoring', ht40)
         self._host.run(start_cmd)

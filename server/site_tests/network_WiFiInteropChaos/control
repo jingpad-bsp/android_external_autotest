@@ -1,0 +1,20 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "stanleyw@google.com"
+NAME = "network_WiFiInteropChaos"
+TIME = "LENGTHY"
+TEST_TYPE = "Server"
+
+DOC = """
+This test attempts to connect to all the ap's as as defined in the
+configuration file wifi_interop_ap_list.conf
+"""
+
+
+def run(machine):
+    host = hosts.create_host(machine)
+    job.run_test("network_WiFiInteropChaos", host=host, tries=1)
+
+parallel_simple(run, machines)
