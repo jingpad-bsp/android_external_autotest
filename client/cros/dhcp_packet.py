@@ -110,6 +110,53 @@ class ByteListOption(Option):
         return [ord(c) for c in byte_string]
 
 
+class ClasslessStaticRoutesOption(Option):
+    """
+    This is a RFC 3442 compliant classless static route option parser and
+    serializer.  The symbolic "value" packed and unpacked from this class
+    is a list (prefix_size, destination, router) tuples.
+    """
+
+    @staticmethod
+    def pack(value):
+        route_list = value
+        byte_string = ""
+        for prefix_size, destination, router in route_list:
+            byte_string += chr(prefix_size)
+            # Encode only the significant octets of the destination
+            # that fall within the prefix.
+            destination_address_count = (prefix_size + 7) / 8
+            destination_address = socket.inet_aton(destination)
+            byte_string += destination_address[:destination_address_count]
+            byte_string += socket.inet_aton(router)
+
+        return byte_string
+
+    @staticmethod
+    def unpack(byte_string):
+        route_list = []
+        offset = 0
+        while offset < len(byte_string):
+            prefix_size = ord(byte_string[offset])
+            destination_address_count = (prefix_size + 7) / 8
+            entry_end = offset + 1 + destination_address_count + 4
+            if entry_end > len(byte_string):
+                raise Exception("Classless domain list is corrupted.")
+            offset += 1
+            destination_address_end = offset + destination_address_count
+            destination_address = byte_string[offset:destination_address_end]
+            # Pad the destination address bytes with zero byte octets to
+            # fill out an IPv4 address.
+            destination_address += '\x00' * (4 - destination_address_count)
+            router_address = byte_string[destination_address_end:entry_end]
+            route_list.append((prefix_size,
+                               socket.inet_ntoa(destination_address),
+                               socket.inet_ntoa(router_address)))
+            offset = entry_end
+
+        return route_list
+
+
 class DomainListOption(Option):
     """
     This is a RFC 1035 compliant domain list option parser and serializer.
@@ -296,6 +343,8 @@ OPTION_CLIENT_ID = RawOption("client_id", 61)
 OPTION_TFTP_SERVER_NAME = RawOption("tftp_server_name", 66)
 OPTION_BOOTFILE_NAME = RawOption("bootfile_name", 67)
 OPTION_DNS_DOMAIN_SEARCH_LIST = DomainListOption("domain_search_list", 119)
+OPTION_CLASSLESS_STATIC_ROUTES = ClasslessStaticRoutesOption(
+        "classless_static_routes", 121)
 
 # Unlike every other option, which are tuples like:
 # <number, length in bytes, data>, the pad and end options are just
@@ -410,6 +459,7 @@ DHCP_PACKET_OPTIONS = [
         OPTION_TFTP_SERVER_NAME,
         OPTION_BOOTFILE_NAME,
         OPTION_DNS_DOMAIN_SEARCH_LIST,
+        OPTION_CLASSLESS_STATIC_ROUTES,
         ]
 
 def get_dhcp_option_by_number(number):

@@ -276,6 +276,22 @@ class DhcpTestBase(test.test):
                                  "search list %s, but got %s instead." %
                                  (expected_search_list, configured_search_list))
 
+        expected_routers = dhcp_options.get(dhcp_packet.OPTION_ROUTERS)
+        if (not expected_routers and
+            dhcp_options.get(dhcp_packet.OPTION_CLASSLESS_STATIC_ROUTES)):
+            classless_static_routes = dhcp_options[
+                dhcp_packet.OPTION_CLASSLESS_STATIC_ROUTES]
+            for prefix, destination, gateway in classless_static_routes:
+                if not prefix:
+                    logging.info("Using %s as the default gateway" % gateway)
+                    expected_routers = [ gateway ]
+                    break
+        configured_router = dhcp_config.get(DHCPCD_KEY_GATEWAY)
+        if expected_routers and expected_routers[0] != configured_router:
+            raise error.TestFail("Expected to be configured with gateway %s, "
+                                 "but got %s instead." %
+                                 (expected_routers[0], configured_router))
+
         self.server.wait_for_test_to_finish()
         if not self.server.last_test_passed:
             raise error.TestFail("Test server didn't get all the messages it "

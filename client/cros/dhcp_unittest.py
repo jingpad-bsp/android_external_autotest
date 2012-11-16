@@ -15,6 +15,15 @@ from autotest_lib.client.cros import dhcp_test_server
 
 TEST_DATA_PATH_PREFIX = "client/cros/dhcp_test_data/"
 
+TEST_CLASSLESS_STATIC_ROUTE_DATA = \
+        "\x12\x0a\x09\xc0\xac\x1f\x9b\x0a" \
+        "\x00\xc0\xa8\x00\xfe"
+
+TEST_CLASSLESS_STATIC_ROUTE_LIST_PARSED = [
+        (18, "10.9.192.0", "172.31.155.10"),
+        (0, "0.0.0.0", "192.168.0.254")
+        ]
+
 TEST_DOMAIN_SEARCH_LIST_COMPRESSED = \
         "\x03eng\x06google\x03com\x00\x09marketing\xC0\x04"
 
@@ -53,6 +62,31 @@ def test_packet_serialization():
         print "Expected: \n%s" % bin2hex(binary_discovery_packet)
         return False
     print "test_packet_serialization PASSED"
+    return True
+
+def test_classless_static_route_parsing():
+    parsed_routes = dhcp_packet.ClasslessStaticRoutesOption.unpack(
+            TEST_CLASSLESS_STATIC_ROUTE_DATA)
+    if parsed_routes != TEST_CLASSLESS_STATIC_ROUTE_LIST_PARSED:
+        print ("Parsed binary domain list and got %s but expected %s" %
+               (repr(parsed_routes),
+                repr(TEST_CLASSLESS_STATIC_ROUTE_LIST_PARSED)))
+        return False
+    print "test_classless_static_route_parsing PASSED"
+    return True
+
+def test_classless_static_route_serialization():
+    byte_string = dhcp_packet.ClasslessStaticRoutesOption.pack(
+            TEST_CLASSLESS_STATIC_ROUTE_LIST_PARSED)
+    if byte_string != TEST_CLASSLESS_STATIC_ROUTE_DATA:
+        # Turn the strings into printable hex strings on a single line.
+        pretty_actual = bin2hex(byte_string, 100)
+        pretty_expected = bin2hex(TEST_CLASSLESS_STATIC_ROUTE_DATA, 100)
+        print ("Expected to serialize %s to %s but instead got %s." %
+               (repr(TEST_CLASSLESS_STATIC_ROUTE_LIST_PARSED), pretty_expected,
+                     pretty_actual))
+        return False
+    print "test_classless_static_route_serialization PASSED"
     return True
 
 def test_domain_search_list_parsing():
@@ -227,6 +261,8 @@ def run_tests():
     stream_handler.setLevel(logging.DEBUG)
     logger.addHandler(stream_handler)
     retval = test_packet_serialization()
+    retval &= test_classless_static_route_parsing()
+    retval &= test_classless_static_route_serialization()
     retval &= test_domain_search_list_parsing()
     retval &= test_domain_search_list_serialization()
     retval &= test_server_dialogue()
