@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections, logging, numpy, os, shutil, time
+import collections, logging, numpy, os, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
-from autotest_lib.client.cros import httpd, login, power_status, power_utils
+from autotest_lib.client.cros import httpd, power_status, power_utils
 from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros.audio import audio_helper
 import flimflam
@@ -122,9 +122,10 @@ class power_LoadTest(cros_ui_test.UITest):
                     and nic.find('eth') != -1) ]
             logging.debug(str(ifaces))
             for iface in ifaces:
-              if check_network and backchannel.is_network_iface_running(iface):
-                  raise error.TestError('Ethernet interface is active. ' + \
-                                                'Please remove Ethernet cable')
+                if check_network and \
+                        backchannel.is_network_iface_running(iface):
+                    raise error.TestError('Ethernet interface is active. ' +
+                                          'Please remove Ethernet cable')
 
         self._audio_helper = audio_helper.AudioHelper(None)
 
@@ -300,7 +301,7 @@ class power_LoadTest(cros_ui_test.UITest):
         keyvals['v_voltage_mean'] = voltage_mean
         bat_life_scale = (keyvals['wh_energy_full_design'] /
                           (keyvals['ah_charge_used'] * voltage_mean)) * \
-                          (100 - keyvals['percent_sys_low_battery'] / 100)
+                          ((100 - keyvals['percent_sys_low_battery']) / 100)
 
         keyvals['minutes_battery_life'] = bat_life_scale * \
             keyvals['minutes_battery_life_tested']
@@ -332,7 +333,7 @@ class power_LoadTest(cros_ui_test.UITest):
 
     def _write_ext_params(self):
         data = ''
-        template= 'var %s = %s;\n'
+        template = 'var %s = %s;\n'
         for k in params_dict:
             data += template % (k, getattr(self, params_dict[k]))
 
