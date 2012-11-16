@@ -46,11 +46,13 @@ class ECControl(object):
 
     def get_fanspeed(self):
         response = self.ec_command('pwmgetfanrpm')
-        match = re.search(self.GET_FANSPEED_RE, response).group(1)
-        logging.info('Fan speed: %s', match)
-        if match:
-            return int(match)
-        raise error.TestError('Unable to read fan speed')
+        match = re.search(self.GET_FANSPEED_RE, response)
+        if not match:
+            raise error.TestError('Unable to read fan speed')
+
+        rpm = int(match.group(1))
+        logging.info('Fan speed: %d', rpm)
+        return rpm
 
     def set_fanspeed(self, rpm):
         response = self.ec_command('pwmsetfanrpm %d' % rpm)
@@ -59,10 +61,11 @@ class ECControl(object):
 
     def get_temperature(self, idx):
         response = self.ec_command('temps %d' % idx)
-        match = re.search(self.TEMP_SENSOR_RE, response).group(1)
-        if match:
-            return int(match)
-        raise error.TestError('Unable to read temperature sensor %d' % idx)
+        match = re.search(self.TEMP_SENSOR_RE, response)
+        if not match:
+            raise error.TestError('Unable to read temperature sensor %d' % idx)
+
+        return int(match.group(1))
 
     def get_battery(self):
         response = self.ec_command('battery')
@@ -79,7 +82,6 @@ class ECControl(object):
 
 class hardware_EC(test.test):
     version = 1
-    FAN_DELAY = 3
 
     def run_once(self,
                  num_temp_sensor=0,
@@ -87,7 +89,8 @@ class hardware_EC(test.test):
                  test_fan=False,
                  fan_rpm_error_margin=200,
                  test_battery=False,
-                 test_lightbar=False):
+                 test_lightbar=False,
+                 fan_delay_secs=3):
         ec = ECControl()
 
         if not ec.hello():
@@ -96,19 +99,21 @@ class hardware_EC(test.test):
         if test_fan:
             try:
                 ec.set_fanspeed(10000)
-                time.sleep(self.FAN_DELAY)
+                time.sleep(fan_delay_secs)
                 max_reading = ec.get_fanspeed()
                 if max_reading == 0:
                     raise error.TestError('Unable to start fan')
 
-                ec.set_fanspeed(max_reading / 2)
-                time.sleep(self.FAN_DELAY)
+                target_fanspeed = max_reading / 2
+                ec.set_fanspeed(target_fanspeed)
+                time.sleep(fan_delay_secs)
                 current_reading = ec.get_fanspeed()
 
                 # Sometimes the actual fan speed is close but not equal to
                 # the target speed, so we add some error margin here.
-                if (current_reading < max_reading / 2 - fan_rpm_error_margin or
-                    current_reading >= max_reading + fan_rpm_error_margin):
+                lower_bound = target_fanspeed - fan_rpm_error_margin
+                upper_bound = target_fanspeed + fan_rpm_error_margin
+                if not (lower_bound <= current_reading <= upper_bound):
                     raise error.TestError('Unable to set fan speed')
             finally:
                 ec.auto_fan_ctrl()
