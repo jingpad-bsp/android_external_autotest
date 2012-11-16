@@ -23,7 +23,7 @@ DOC = """
 # Run all scenarios twice, first with autoconnect off, then with it on
 job.run_test('network_MobileSuspendResume',
              autoconnect=False, tag='autoconnect_off-stress',
-             scenario_group='stress', iterations=1000)
+             scenario_group='stress', stress_iterations=100)
 job.run_test('network_MobileSuspendResume',
              autoconnect=True, tag='autoconnect_on-stress',
-             scenario_group='stress', iterations=1000)
+             scenario_group='stress', stress_iterations=100)

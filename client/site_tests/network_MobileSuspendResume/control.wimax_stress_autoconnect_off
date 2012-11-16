@@ -21,10 +21,6 @@ DOC = """
     situations.
 """
 
-# Run all scenarios twice, first with autoconnect off, then with it on
 job.run_test('network_MobileSuspendResume', autoconnect=False,
              tag='autoconnect_off-stress_wimax', scenario_group='stress',
-             iterations=1000, device_type='wimax')
-job.run_test('network_MobileSuspendResume', autoconnect=True,
-             tag='autoconnect_on-stress_wimax', scenario_group='stress',
-             iterations=1000, device_type='wimax')
+             stress_iterations=1000, device_type='wimax')

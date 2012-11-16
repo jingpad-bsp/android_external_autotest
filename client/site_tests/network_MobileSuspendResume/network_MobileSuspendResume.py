@@ -138,7 +138,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
 
     # The suspend_mobile_enabled test suspends, then resumes the machine while
     # mobile is enabled.
-    def scenario_suspend_mobile_enabled(self):
+    def scenario_suspend_mobile_enabled(self, **kwargs):
         device = self.__get_mobile_device()
         self.enable_device(device, True)
         if not self.mobile_service_available():
@@ -147,7 +147,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
 
     # The suspend_mobile_disabled test suspends, then resumes the machine
     # while mobile is disabled.
-    def scenario_suspend_mobile_disabled(self):
+    def scenario_suspend_mobile_disabled(self, **kwargs):
         device = self.__get_mobile_device()
         self.enable_device(device, False)
         self.suspend_resume(20)
@@ -166,7 +166,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
     # of bug 9405.  The test will suspend/resume the device twice
     # while mobile is disabled.  We will then verify that mobile can be
     # enabled thereafter.
-    def scenario_suspend_mobile_disabled_twice(self):
+    def scenario_suspend_mobile_disabled_twice(self, **kwargs):
         device = self.__get_mobile_device()
         self.enable_device(device, False)
 
@@ -194,15 +194,27 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
     # This test randomly enables or disables the modem.  This
     # is mainly used for stress tests as it does not check the power state of
     # the modem before and after suspend/resume.
-    def scenario_suspend_mobile_random(self):
+    def scenario_suspend_mobile_random(self, stress_iterations=10, **kwargs):
+        logging.debug('Running suspend_mobile_random %d times' %
+                      stress_iterations)
         device = self.__get_mobile_device()
         self.enable_device(device, choice([True, False]))
-        self.suspend_resume(randint(10, 40))
-        device = self.__get_mobile_device()
-        self.enable_device(device, True)
+
+        # Suspend the device for a random duration, wake it,
+        # wait for the service to appear, then wait for
+        # some random duration before suspending again.
+        for i in range(stress_iterations):
+            logging.debug('Running iteration %d' % (i+1))
+            self.suspend_resume(randint(10, 40))
+            device = self.__get_mobile_device()
+            self.enable_device(device, True)
+            if not self.FindMobileService(self.TIMEOUT*2):
+                raise error.TestError('Unable to find mobile service')
+            time.sleep(randint(1, 30))
+
 
     # This verifies that autoconnect works.
-    def scenario_autoconnect(self):
+    def scenario_autoconnect(self, **kwargs):
         device = self.__get_mobile_device()
         self.enable_device(device, True)
         service = self.FindMobileService(self.TIMEOUT)
@@ -275,7 +287,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
 
     # This is the wrapper around the running of each scenario with
     # initialization steps and final checks.
-    def run_scenario(self, function_name):
+    def run_scenario(self, function_name, **kwargs):
         device = self.__get_mobile_device()
 
         # Initialize all tests with the power off.
@@ -283,7 +295,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
 
         function = getattr(self, function_name)
         logging.info('Running %s' % function_name)
-        function()
+        function(**kwargs)
 
         # By the end of each test, the mobile device should be up.
         # Here we verify that the power state of the device is up, and
@@ -324,7 +336,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
                                   device_type)
 
     def run_once(self, scenario_group='all', autoconnect=False,
-                 device_type=flimflam.FlimFlam.DEVICE_CELLULAR):
+                 device_type=flimflam.FlimFlam.DEVICE_CELLULAR, **kwargs):
 
         # Replace the test type with the list of tests
         if scenario_group not in network_MobileSuspendResume.scenarios.keys():
@@ -348,4 +360,4 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
         logging.info('Running scenarios with autoconnect %s.' % autoconnect)
 
         for t in scenarios:
-            self.run_scenario(t)
+            self.run_scenario(t, **kwargs)
