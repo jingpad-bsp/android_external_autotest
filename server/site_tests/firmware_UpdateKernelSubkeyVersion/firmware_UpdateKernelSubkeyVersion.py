@@ -21,23 +21,23 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
         host.send_file(os.path.join(
                            '~/trunk/src/platform/vboot_reference/scripts',
                            'keygeneration/common.sh'),
-                       os.path.join(self.faft_client.get_updater_temp_path(),
+                       os.path.join(self.faft_client.updater.get_temp_path(),
                                     'common.sh'))
         host.send_file(os.path.join(
                            '~/trunk/src/third_party/autotest/files/server',
                            'site_tests/firmware_UpdateKernelSubkeyVersion',
                            'files/make_keys.sh'),
-                       os.path.join(self.faft_client.get_updater_temp_path(),
+                       os.path.join(self.faft_client.updater.get_temp_path(),
                                     'make_keys.sh'))
 
-        self.faft_client.run_shell_command('/bin/bash %s %s' % (
-            os.path.join(self.faft_client.get_updater_temp_path(),
+        self.faft_client.system.run_shell_command('/bin/bash %s %s' % (
+            os.path.join(self.faft_client.updater.get_temp_path(),
                          'make_keys.sh'),
             self._update_version))
 
 
     def check_kernel_subkey_version(self, expected_ver):
-        actual_ver = self.faft_client.retrieve_kernel_subkey_version('a')
+        actual_ver = self.faft_client.bios.get_kernel_subkey_version('a')
         if actual_ver != expected_ver:
             raise error.TestFail(
                     'Kernel subkey version should be %s, but got %s.' %
@@ -49,9 +49,9 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
 
 
     def run_bootok_and_recovery(self):
-        self.faft_client.run_bootok('test')
+        self.faft_client.updater.run_bootok('test')
         self.check_kernel_subkey_version(self._update_version)
-        self.faft_client.run_recovery()
+        self.faft_client.updater.run_recovery()
 
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
@@ -64,32 +64,32 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
     def setup(self, host=None):
         self.backup_firmware()
         updater_path = self.setup_firmwareupdate_shellball(self.use_shellball)
-        self.faft_client.setup_updater(updater_path)
+        self.faft_client.updater.setup(updater_path)
 
         # Update firmware if needed
         if updater_path:
             self.set_hardware_write_protect(enable=False)
-            self.faft_client.run_factory_install()
+            self.faft_client.updater.run_factory_install()
             self.sync_and_warm_reboot()
             self.wait_for_client_offline()
             self.wait_for_client()
 
         super(firmware_UpdateKernelSubkeyVersion, self).setup()
-        self._fwid = self.faft_client.retrieve_updater_fwid()
+        self._fwid = self.faft_client.updater.get_fwid()
 
-        ver = self.faft_client.retrieve_kernel_subkey_version('a')
+        ver = self.faft_client.bios.get_kernel_subkey_version('a')
         logging.info('Origin version is %s', ver)
         self._update_version = ver + 1
         logging.info('Kernel subkey version will update to version %s',
             self._update_version)
 
         self.resign_kernel_subkey_version(host)
-        self.faft_client.resign_updater_firmware(1)
-        self.faft_client.repack_updater_shellball('test')
+        self.faft_client.updater.resign_firmware(1)
+        self.faft_client.updater.repack_shellball('test')
 
 
     def cleanup(self):
-        self.faft_client.cleanup_updater()
+        self.faft_client.updater.cleanup()
         self.restore_firmware()
         self.invalidate_firmware_setup()
         super(firmware_UpdateKernelSubkeyVersion, self).cleanup()
@@ -104,7 +104,7 @@ class firmware_UpdateKernelSubkeyVersion(FAFTSequence):
                     'fwid': self._fwid
                 }),
                 'userspace_action': (
-                    self.faft_client.run_autoupdate,
+                    self.faft_client.updater.run_autoupdate,
                     'test'
                 ),
             },

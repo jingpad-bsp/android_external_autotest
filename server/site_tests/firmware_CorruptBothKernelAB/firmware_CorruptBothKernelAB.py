@@ -31,7 +31,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         if not self.check_root_part_on_non_recovery(part):
             logging.info('Recover the disk OS by running chromeos-install...')
             self.run_faft_step({
-                'userspace_action': (self.faft_client.run_shell_command,
+                'userspace_action': (self.faft_client.system.run_shell_command,
                     'chromeos-install --yes')
             })
 
@@ -49,7 +49,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
 
 
     def run_once(self, dev_mode=False):
-        platform = self.faft_client.get_platform_name()
+        platform = self.faft_client.system.get_platform_name()
         if platform in ('Mario', 'Alex', 'ZGB'):
             recovery_reason = vboot.RECOVERY_REASON['RW_NO_OS']
         elif platform in ('Aebl', 'Kaen'):
@@ -60,7 +60,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, corrupt kernel A and B
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),
-                'userspace_action': (self.faft_client.corrupt_kernel,
+                'userspace_action': (self.faft_client.kernel.corrupt_sig,
                                      (('a', 'b'),)),
                 # Kernel is verified after firmware screen.
                 # Should press Ctrl-D to skip the screen on dev_mode.
@@ -73,7 +73,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
                     'mainfw_type': 'recovery',
                     'recovery_reason': recovery_reason,
                 }),
-                'userspace_action': (self.faft_client.restore_kernel,
+                'userspace_action': (self.faft_client.kernel.restore_sig,
                                      (('a', 'b'),)),
             },
             {   # Step 3, expected kernel A normal/dev boot

@@ -63,7 +63,7 @@ class ServoTest(test.test):
             'remote_log_file': '/tmp/faft_client.log',
             'remote_process': None,
             'ssh_tunnel': None,
-            'polling_rpc': 'is_available',
+            'polling_rpc': 'system.is_available',
             'ssh_config': '-o StrictHostKeyChecking=no '
                           '-o UserKnownHostsFile=/dev/null ',
         },

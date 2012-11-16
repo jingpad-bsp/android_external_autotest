@@ -54,11 +54,11 @@ class firmware_UpdateECBin(FAFTSequence):
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
 
-        temp_path = self.faft_client.get_updater_temp_path()
-        self.faft_client.setup_updater()
+        temp_path = self.faft_client.updater.get_temp_path()
+        self.faft_client.updater.setup()
 
         self.old_bios_path = os.path.join(temp_path, 'old_bios.bin')
-        self.faft_client.dump_firmware(self.old_bios_path)
+        self.faft_client.bios.dump_whole(self.old_bios_path)
 
         self.new_ec_path = os.path.join(temp_path, 'new_ec.bin')
         host.send_file(self.arg_new_ec, self.new_ec_path)
@@ -66,34 +66,34 @@ class firmware_UpdateECBin(FAFTSequence):
 
     def cleanup(self):
         self.restore_firmware()
-        self.faft_client.cleanup_updater()
+        self.faft_client.updater.cleanup()
         super(firmware_UpdateECBin, self).cleanup()
 
 
     def do_ronormal_update(self):
-        self.faft_client.setup_EC_image(self.new_ec_path)
-        self.new_ec_sha = self.faft_client.get_EC_image_sha()
-        self.faft_client.update_EC_from_image('a', 0)
+        self.faft_client.bios.setup_EC_image(self.new_ec_path)
+        self.new_ec_sha = self.faft_client.bios.get_EC_image_sha()
+        self.faft_client.bios.update_EC_from_image('a', 0)
 
 
     def do_twostop_update(self):
         # We update the original BIOS image back. This BIOS image contains
         # the original EC binary. But set RW boot. So it is a TWOSTOP ->
         # TWOSTOP update.
-        self.faft_client.write_firmware(self.old_bios_path)
-        self.faft_client.set_firmware_flags('a', 0)
+        self.faft_client.bios.write_whole(self.old_bios_path)
+        self.faft_client.bios.set_preamble_flags('a', 0)
 
 
     def new_ec_checker(self):
         return (self.checkers.ro_normal_checker('A', twostop=True) and
-                (self.faft_client.get_EC_firmware_sha() == self.new_ec_sha))
+               (self.faft_client.bios.get_EC_firmware_sha() == self.new_ec_sha))
 
 
     def run_once(self):
         if not self.check_ec_capability():
             return
 
-        flags = self.faft_client.get_firmware_flags('a')
+        flags = self.faft_client.bios.get_preamble_flags('a')
         if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             return
@@ -116,7 +116,7 @@ class firmware_UpdateECBin(FAFTSequence):
             },
             {   # Step 3, expected different EC and RW boot, enable RO flag
                 'state_checker': self.new_ec_checker,
-                'userspace_action': (self.faft_client.set_firmware_flags,
+                'userspace_action': (self.faft_client.bios.set_preamble_flags,
                                      ('a', flags)),
                 'reboot_action': self.sync_and_warm_reboot,
             },

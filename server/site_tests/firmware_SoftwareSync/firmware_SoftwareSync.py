@@ -17,11 +17,11 @@ class firmware_SoftwareSync(FAFTSequence):
 
     def ensure_rw(self):
         """Ensure firmware A is not in RO-normal mode."""
-        flags = self.faft_client.get_firmware_flags('a')
+        flags = self.faft_client.bios.get_preamble_flags('a')
         if flags & vboot.PREAMBLE_USE_RO_NORMAL:
             flags = flags ^ vboot.PREAMBLE_USE_RO_NORMAL
             self.run_faft_step({
-                'userspace_action': (self.faft_client.set_firmware_flags,
+                'userspace_action': (self.faft_client.bios.set_preamble_flags,
                     ('a', flags))
             })
 
@@ -40,13 +40,13 @@ class firmware_SoftwareSync(FAFTSequence):
 
 
     def record_hash_and_corrupt(self):
-        self._ec_hash = self.faft_client.get_EC_firmware_sha()
+        self._ec_hash = self.faft_client.ec.get_firmware_sha()
         logging.info("Stored EC hash: %s", self._ec_hash)
-        self.faft_client.corrupt_EC_body('rw')
+        self.faft_client.ec.corrupt_body('rw')
 
 
     def software_sync_checker(self):
-        ec_hash = self.faft_client.get_EC_firmware_sha()
+        ec_hash = self.faft_client.ec.get_firmware_sha()
         logging.info("Current EC hash: %s", self._ec_hash)
         if self._ec_hash != ec_hash:
             return False

@@ -37,11 +37,11 @@ class firmware_CorruptKernelB(FAFTSequence):
             },
             {   # Step 2, expected kernel B boot and corrupt kernel B
                 'state_checker': (self.checkers.root_part_checker, 'b'),
-                'userspace_action': (self.faft_client.corrupt_kernel, 'b'),
+                'userspace_action': (self.faft_client.kernel.corrupt_sig, 'b'),
             },
             {   # Step 3, expected kernel A boot and restore kernel B
                 'state_checker': (self.checkers.root_part_checker, 'a'),
-                'userspace_action': (self.faft_client.restore_kernel, 'b'),
+                'userspace_action': (self.faft_client.kernel.restore_sig, 'b'),
             },
             {   # Step 4, expected kernel B boot and prioritize kerenl A
                 'state_checker': (self.checkers.root_part_checker, 'b'),

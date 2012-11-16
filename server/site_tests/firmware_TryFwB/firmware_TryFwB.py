@@ -31,7 +31,7 @@ class firmware_TryFwB(FAFTSequence):
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
-                'userspace_action': self.faft_client.set_try_fw_b,
+                'userspace_action': self.faft_client.system.set_try_fw_b,
             },
             {   # Step 2, expected firmware B boot, reboot
                 'state_checker': (self.checkers.crossystem_checker, {

@@ -74,7 +74,7 @@ class firmware_ECThermal(FAFTSequence):
         current_id = 0
         while True:
             try:
-                lines = self.faft_client.run_shell_command_get_output(
+                lines = self.faft_client.system.run_shell_command_get_output(
                         'ectool thermalget %d %d' % (type_id, current_id))
             except xmlrpclib.Fault:
                 break
@@ -127,7 +127,7 @@ class firmware_ECThermal(FAFTSequence):
         self._num_temp_sensor = 0
         while True:
             try:
-                self.faft_client.run_shell_command('ectool temps %d' %
+                self.faft_client.system.run_shell_command('ectool temps %d' %
                                                    self._num_temp_sensor)
                 self._num_temp_sensor = self._num_temp_sensor + 1
             except xmlrpclib.Fault:
@@ -138,7 +138,7 @@ class firmware_ECThermal(FAFTSequence):
     def setup(self):
         super(firmware_ECThermal, self).setup()
         try:
-            self.faft_client.run_shell_command('stop temp_metrics')
+            self.faft_client.system.run_shell_command('stop temp_metrics')
         except xmlrpclib.Fault:
             self._has_temp_metrics = False
         else:
@@ -155,7 +155,7 @@ class firmware_ECThermal(FAFTSequence):
             self.enable_auto_fan_control()
         if self._has_temp_metrics:
             logging.info('Starting temp_metrics')
-            self.faft_client.run_shell_command('start temp_metrics')
+            self.faft_client.system.run_shell_command('start temp_metrics')
         super(firmware_ECThermal, self).cleanup()
 
 
@@ -171,7 +171,7 @@ class firmware_ECThermal(FAFTSequence):
             ectool.
         """
         for temp_id in range(self._num_temp_sensor):
-            lines = self.faft_client.run_shell_command_get_output(
+            lines = self.faft_client.system.run_shell_command_get_output(
                     'ectool tempsinfo %d' % temp_id)
             for line in lines:
                 matched = re.match('Sensor name: (.*)', line)
@@ -196,7 +196,7 @@ class firmware_ECThermal(FAFTSequence):
         """
         assert sensor_id < self._num_temp_sensor
         pattern = re.compile('Reading temperature...(\d*)')
-        lines = self.faft_client.run_shell_command_get_output(
+        lines = self.faft_client.system.run_shell_command_get_output(
                 'ectool temps %d' % sensor_id)
         for line in lines:
             matched = pattern.match(line)
@@ -250,19 +250,20 @@ class firmware_ECThermal(FAFTSequence):
         if block_count != -1:
             stress_cmd = 'dd if=/dev/urandom of=/dev/null bs=1M count=%d'
             logging.info("Stressing DUT...")
-            self.faft_client.run_shell_command(stress_cmd % block_count)
+            self.faft_client.system.run_shell_command(stress_cmd % block_count)
             return None
         else:
             logging.info("Stressing DUT with %d threads...", thread)
-            self.faft_client.run_shell_command('pkill dd')
+            self.faft_client.system.run_shell_command('pkill dd')
             stress_cmd = 'dd if=/dev/urandom of=/dev/null bs=1M &'
             # Grep for [d]d instead of dd to prevent getting the PID of grep
             # itself.
             pid_cmd = "ps -ef | grep '[d]d if=/dev/urandom' | awk '{print $2}'"
             self._stress_pid = list()
             for _ in xrange(thread):
-                self.faft_client.run_shell_command(stress_cmd)
-            lines = self.faft_client.run_shell_command_get_output(pid_cmd)
+                self.faft_client.system.run_shell_command(stress_cmd)
+            lines = self.faft_client.system.run_shell_command_get_output(
+                        pid_cmd)
             for line in lines:
                 logging.info("PID is %s", line)
                 self._stress_pid.append(int(line.strip()))
@@ -273,7 +274,7 @@ class firmware_ECThermal(FAFTSequence):
         """Stop stressing DUT system"""
         stop_cmd = 'kill -9 %d'
         for pid in self._stress_pid:
-            self.faft_client.run_shell_command(stop_cmd % pid)
+            self.faft_client.system.run_shell_command(stop_cmd % pid)
 
 
     def check_fan_off(self):
@@ -322,7 +323,7 @@ class firmware_ECThermal(FAFTSequence):
         """
         assert sensor_id < self._num_temp_sensor
         pattern = re.compile('Sensor type: (\d*)')
-        lines = self.faft_client.run_shell_command_get_output(
+        lines = self.faft_client.system.run_shell_command_get_output(
                 'ectool tempsinfo %d' % sensor_id)
         for line in lines:
             matched = pattern.match(line)

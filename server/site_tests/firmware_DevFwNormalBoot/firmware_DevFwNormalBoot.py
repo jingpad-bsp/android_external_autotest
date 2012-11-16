@@ -26,19 +26,19 @@ class firmware_DevFwNormalBoot(FAFTSequence):
 
 
     def corrupt_fw_b_and_disable_devsw(self):
-        self.faft_client.corrupt_firmware('b')
+        self.faft_client.bios.corrupt_sig('b')
         self.servo.disable_development_mode()
 
 
     def restore_fw_b_and_enable_devsw(self):
-        self.faft_client.restore_firmware('b')
+        self.faft_client.bios.restore_sig('b')
         self.servo.enable_development_mode()
 
 
     def setup(self):
         super(firmware_DevFwNormalBoot, self).setup()
         # This test is only meaningful on Alex/ZGB.
-        if self.faft_client.get_platform_name() in ('Alex', 'ZGB'):
+        if self.faft_client.system.get_platform_name() in ('Alex', 'ZGB'):
             self.has_different_dev_fw = True
             # This test is run on developer mode only.
             self.setup_dev_mode(dev_mode=True)

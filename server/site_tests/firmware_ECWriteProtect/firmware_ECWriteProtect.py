@@ -45,7 +45,7 @@ class firmware_ECWriteProtect(FAFTSequence):
 
 
     def run_once(self):
-        flags = self.faft_client.get_firmware_flags('a')
+        flags = self.faft_client.bios.get_preamble_flags('a')
         if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             return
@@ -59,7 +59,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                 #         and reboot EC.
                 'state_checker': [(self.checkers.ro_normal_checker, 'A'),
                                   self.write_protect_checker],
-                'userspace_action': (self.faft_client.set_firmware_flags,
+                'userspace_action': (self.faft_client.bios.set_preamble_flags,
                                      ('a', 0)),
                 'reboot_action': self.sync_and_cold_reboot,
             },
@@ -75,7 +75,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                 'state_checker': [(self.checkers.ro_normal_checker,
                                    ('A', True)),
                                   self.write_protect_checker],
-                'userspace_action': (self.faft_client.set_firmware_flags,
+                'userspace_action': (self.faft_client.bios.set_preamble_flags,
                                      ('a', vboot.PREAMBLE_USE_RO_NORMAL)),
                 'reboot_action': (self.set_ec_write_protect_and_reboot, False),
             },

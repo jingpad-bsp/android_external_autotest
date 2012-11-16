@@ -34,7 +34,7 @@ class firmware_CgptState(FAFTSequence):
                 'tail -f /tmp/faft_log.txt' % self.host.ip], shell=True)
         # Trigger the CgptState test logic on client side.
         # TODO(waihong): Move the test items and logic in FAFT.
-        if self.faft_client.run_cgpt_test_loop():
+        if self.faft_client.cgpt.run_test_loop():
             self.not_finished = False
         # Terminate the log-showing thread and prepare for reboot.
         if show_client_log and show_client_log.poll() is None:
@@ -55,10 +55,10 @@ class firmware_CgptState(FAFTSequence):
 
 
     def run_once(self):
-        self.faft_client.set_cgpt_test_step(0)
+        self.faft_client.cgpt.set_test_step(0)
         while self.not_finished:
             logging.info('======== Running CgptState test step %d ========',
-                         self.faft_client.get_cgpt_test_step() + 1)
+                         self.faft_client.cgpt.get_test_step() + 1)
             self.run_faft_step({
                 'userspace_action': self.run_test_step,
                 'reboot_action': self.full_power_off_and_on,

@@ -91,7 +91,7 @@ class firmware_ECLidSwitch(FAFTSequence):
         Args:
           wake_func: Delayed function to wake DUT.
         """
-        self.faft_client.run_shell_command('shutdown -P now')
+        self.faft_client.system.run_shell_command('shutdown -P now')
         wake_func()
 
 
@@ -106,7 +106,7 @@ class firmware_ECLidSwitch(FAFTSequence):
         pattern_percent = re.compile(
             'Current keyboard backlight percent: (\d*)')
         pattern_disable = re.compile('Keyboard backlight disabled.')
-        lines = self.faft_client.run_shell_command_get_output(cmd)
+        lines = self.faft_client.system.run_shell_command_get_output(cmd)
         for line in lines:
             matched_percent = pattern_percent.match(line)
             if matched_percent is not None:
@@ -124,7 +124,7 @@ class firmware_ECLidSwitch(FAFTSequence):
           value: Backlight brightness percentage 0~100.
         """
         cmd = 'ectool pwmsetkblight %d' % value
-        self.faft_client.run_shell_command(cmd)
+        self.faft_client.system.run_shell_command(cmd)
 
 
     def check_keycode(self):
@@ -137,13 +137,13 @@ class firmware_ECLidSwitch(FAFTSequence):
 
         self._open_lid()
         self.delayed_close_lid()
-        lines = self.faft_client.run_shell_command_get_output(cmd)
+        lines = self.faft_client.system.run_shell_command_get_output(cmd)
         if int(lines[0].strip()) != 0:
             logging.error("Captured power button keycode on lid close.")
             self._open_lid()
             return False
         self.delayed_open_lid()
-        lines = self.faft_client.run_shell_command_get_output(cmd)
+        lines = self.faft_client.system.run_shell_command_get_output(cmd)
         if int(lines[0].strip()) != 0:
             logging.error("Captured power button keycode on lid close.")
             return False
@@ -181,8 +181,8 @@ class firmware_ECLidSwitch(FAFTSequence):
         """
         ok = True
         logging.info("Stopping power management daemons")
-        self.faft_client.run_shell_command('stop powerd')
-        self.faft_client.run_shell_command('stop powerm')
+        self.faft_client.system.run_shell_command('stop powerd')
+        self.faft_client.system.run_shell_command('stop powerm')
         if not self.check_keycode():
             logging.error("check_keycode failed.")
             ok = False
@@ -190,8 +190,8 @@ class firmware_ECLidSwitch(FAFTSequence):
             logging.error("check_backlight failed.")
             ok = False
         logging.info("Restarting power management daemons")
-        self.faft_client.run_shell_command('start powerd')
-        self.faft_client.run_shell_command('start powerm')
+        self.faft_client.system.run_shell_command('start powerd')
+        self.faft_client.system.run_shell_command('start powerm')
         return ok
 
 

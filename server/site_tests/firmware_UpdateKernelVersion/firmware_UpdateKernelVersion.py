@@ -18,7 +18,7 @@ class firmware_UpdateKernelVersion(FAFTSequence):
     version = 1
 
     def check_kernel_version(self, expected_ver):
-        actual_ver = self.faft_client.retrieve_kernel_version('b')
+        actual_ver = self.faft_client.kernel.get_version('b')
         if actual_ver != expected_ver:
             raise error.TestFail(
                 'Kernel Version should be %s, but got %s.'
@@ -31,10 +31,10 @@ class firmware_UpdateKernelVersion(FAFTSequence):
 
     def modify_kernel_b_and_set_cgpt_priority(self, delta, target_dev):
         if delta == 1:
-            self.faft_client.move_kernel_forward('b')
+            self.faft_client.kernel.move_version_forward('b')
         elif delta == -1:
             self.check_kernel_version(self._update_version)
-            self.faft_client.move_kernel_backward('b')
+            self.faft_client.kernel.move_version_backward('b')
 
         if target_dev == 'a':
             self.reset_and_prioritize_kernel('a')
@@ -47,7 +47,7 @@ class firmware_UpdateKernelVersion(FAFTSequence):
 
         self.setup_dev_mode(dev_mode)
 
-        actual_ver = self.faft_client.retrieve_kernel_version('b')
+        actual_ver = self.faft_client.kernel.get_version('b')
         logging.info('Original Kernel Version of KERN-B is %s', actual_ver)
 
         self._update_version = actual_ver + 1

@@ -52,7 +52,7 @@ class firmware_ECPowerG3(FAFTSequence):
 
     def check_G3(self):
         """Shutdown the system and check if X86 drop into G3 correctly."""
-        self.faft_client.run_shell_command("shutdown -P now")
+        self.faft_client.system.run_shell_command("shutdown -P now")
         if not self.wait_power("x86 power state 1 = S5", self.S5_TIMEOUT):
             logging.error("Fails to wait for S5 state")
             self._failed = True

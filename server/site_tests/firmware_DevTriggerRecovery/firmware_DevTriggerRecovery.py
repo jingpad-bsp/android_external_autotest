@@ -27,7 +27,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     # For Alex/ZGB, it is dev switch on but normal firmware boot.
     # For other platforms, it is dev switch on and developer firmware boot.
     def check_devsw_on_transition(self):
-        if self.faft_client.get_platform_name() in ('Alex', 'ZGB'):
+        if self.faft_client.system.get_platform_name() in ('Alex', 'ZGB'):
             self.need_dev_transition = True
             return self.checkers.crossystem_checker({
                     'devsw_boot': '1',
@@ -86,7 +86,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 # run "chromeos-firmwareupdate --mode todev && reboot",
                 # and trigger recovery boot at dev screen
                 'state_checker': self.check_devsw_on_transition,
-                'userspace_action': (self.faft_client.run_shell_command,
+                'userspace_action': (self.faft_client.system.run_shell_command,
                     'chromeos-firmwareupdate --mode todev && reboot'),
                 # Ignore the default reboot_action here because the
                 # userspace_action (firmware updater) will reboot the system.
@@ -106,7 +106,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
             {   # Step 4, expected values based on platforms (see above),
                 # and run "chromeos-firmwareupdate --mode tonormal && reboot"
                 'state_checker': self.check_devsw_off_transition,
-                'userspace_action': (self.faft_client.run_shell_command,
+                'userspace_action': (self.faft_client.system.run_shell_command,
                     'chromeos-firmwareupdate --mode tonormal && reboot'),
                 'reboot_action': None,
             },

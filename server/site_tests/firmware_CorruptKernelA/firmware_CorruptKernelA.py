@@ -31,11 +31,11 @@ class firmware_CorruptKernelA(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, corrupt kernel A
                 'state_checker': (self.checkers.root_part_checker, 'a'),
-                'userspace_action': (self.faft_client.corrupt_kernel, 'a'),
+                'userspace_action': (self.faft_client.kernel.corrupt_sig, 'a'),
             },
             {   # Step 2, expected kernel B boot and restore kernel A
                 'state_checker': (self.checkers.root_part_checker, 'b'),
-                'userspace_action': (self.faft_client.restore_kernel, 'a'),
+                'userspace_action': (self.faft_client.kernel.restore_sig, 'a'),
             },
             {   # Step 3, expected kernel A boot
                 'state_checker': (self.checkers.root_part_checker, 'a'),

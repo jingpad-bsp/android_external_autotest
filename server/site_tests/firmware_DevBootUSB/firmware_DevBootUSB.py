@@ -26,7 +26,7 @@ class firmware_DevBootUSB(FAFTSequence):
         self.setup_dev_mode(dev_mode=True)
         self.setup_usbkey(usbkey=True, host=False)
 
-        self.original_dev_boot_usb = self.faft_client.get_dev_boot_usb()
+        self.original_dev_boot_usb = self.faft_client.system.get_dev_boot_usb()
         logging.info('Original dev_boot_usb value: %s',
                      str(self.original_dev_boot_usb))
 
@@ -51,10 +51,10 @@ class firmware_DevBootUSB(FAFTSequence):
         If not, it may be a test failure during step 2 or 3, try to reboot
         and press Ctrl-D to internal device boot.
         """
-        if self.faft_client.is_removable_device_boot():
+        if self.faft_client.system.is_removable_device_boot():
             logging.info('Reboot into internal disk...')
             self.run_faft_step({
-                'userspace_action': (self.faft_client.set_dev_boot_usb,
+                'userspace_action': (self.faft_client.system.set_dev_boot_usb,
                                      self.original_dev_boot_usb),
                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
             })
@@ -69,7 +69,8 @@ class firmware_DevBootUSB(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, expected developer mode, set dev_boot_usb to 0
                 'state_checker': (self.checkers.dev_boot_usb_checker, False),
-                'userspace_action': (self.faft_client.set_dev_boot_usb, 0),
+                'userspace_action': (self.faft_client.system.set_dev_boot_usb,
+                                     0),
                 # Ctrl-U doesn't take effect as dev_boot_usb=0.
                 # Falls back to Ctrl-D internal disk boot.
                 'firmware_action': self.try_ctrl_u_and_ctrl_d,
@@ -78,14 +79,15 @@ class firmware_DevBootUSB(FAFTSequence):
             {   # Step 2, expected internal disk boot, set dev_boot_usb to 1
                 'state_checker': (self.checkers.dev_boot_usb_checker, False,
                         "Not internal disk boot, dev_boot_usb misbehaved"),
-                'userspace_action': (self.faft_client.set_dev_boot_usb, 1),
+                'userspace_action': (self.faft_client.system.set_dev_boot_usb,
+                                     1),
                 'firmware_action': self.wait_fw_screen_and_ctrl_u,
                 'install_deps_after_boot': True,
             },
             {   # Step 3, expected USB boot, set dev_boot_usb to the original
                 'state_checker': (self.checkers.dev_boot_usb_checker, True,
                         "Not USB boot, Ctrl-U not work"),
-                'userspace_action': (self.faft_client.set_dev_boot_usb,
+                'userspace_action': (self.faft_client.system.set_dev_boot_usb,
                                      self.original_dev_boot_usb),
                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
             },

@@ -46,7 +46,7 @@ class firmware_ECUsbPorts(FAFTSequence):
                 (self.RPC_DELAY, ports_off_cmd,
                  self.REBOOT_DELAY,
                  ports_on_cmd))
-        self.faft_client.run_shell_command(cmd)
+        self.faft_client.system.run_shell_command(cmd)
         self.kill_remote()
 
 
@@ -104,7 +104,7 @@ class firmware_ECUsbPorts(FAFTSequence):
         """Shutdown the system and check USB ports are disabled."""
         self._failed = False
         port_cnt = self.get_port_count()
-        self.faft_client.run_shell_command("shutdown -P now")
+        self.faft_client.system.run_shell_command("shutdown -P now")
         if not self.wait_port_disabled(port_cnt, self.SHUTDOWN_TIMEOUT):
             logging.info("Fails to wait for USB port disabled")
             self._failed = True

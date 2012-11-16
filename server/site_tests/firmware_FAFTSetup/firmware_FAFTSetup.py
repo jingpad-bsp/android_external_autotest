@@ -134,12 +134,12 @@ class firmware_FAFTSetup(FAFTSequence):
             expected_output: Expected output from "showkey".
         """
         # Stop UI so that key presses don't go to X.
-        self.faft_client.run_shell_command("stop ui")
+        self.faft_client.system.run_shell_command("stop ui")
         # Press the keys
         Timer(self.KEY_PRESS_DELAY, press_action).start()
-        lines = self.faft_client.run_shell_command_get_output("showkey")
+        lines = self.faft_client.system.run_shell_command_get_output("showkey")
         # Turn UI back on
-        self.faft_client.run_shell_command("start ui")
+        self.faft_client.system.run_shell_command("start ui")
 
         # We may be getting multiple key-press or key-release.
         # Let's remove duplicated items.

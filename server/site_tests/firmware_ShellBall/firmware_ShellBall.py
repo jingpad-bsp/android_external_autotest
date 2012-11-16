@@ -18,7 +18,7 @@ class firmware_ShellBall(FAFTSequence):
     _shellball_name = None
 
     def update_firmware(self, mode):
-        self.faft_client.run_shell_command('%s --mode %s' %
+        self.faft_client.system.run_shell_command('%s --mode %s' %
             (self._shellball_name, mode))
         # Enalbe dev mode if the mode is todev.
         if mode == 'todev':
@@ -28,8 +28,8 @@ class firmware_ShellBall(FAFTSequence):
             self.servo.disable_development_mode()
 
     def install_original_firmware(self):
-        self.faft_client.run_shell_command('sudo chromeos-firmwareupdate' \
-                                           ' --mode=factory_install')
+        self.faft_client.system.run_shell_command(
+            'sudo chromeos-firmwareupdate --mode=factory_install')
         self.invalidate_firmware_setup()
 
     def setup(self, host=None, shellball_path=None, shellball_name=None):
@@ -37,18 +37,20 @@ class firmware_ShellBall(FAFTSequence):
         self._shellball_name = "/home/chronos/%s" % self._shellball_name
         host.send_file("%s/%s" %(shellball_path, shellball_name),
                        self._shellball_name)
-        self.faft_client.run_shell_command('chmod +x %s' %
+        self.faft_client.system.run_shell_command('chmod +x %s' %
                                            self._shellball_name)
         self.setup_dev_mode(dev_mode=False)
         # Get crossystem fwid.
-        [self._current_fwid] = self.faft_client.run_shell_command_get_output(
-                                               'crossystem fwid')
+        [self._current_fwid] = (
+            self.faft_client.system.run_shell_command_get_output(
+                'crossystem fwid'))
         # Get BIOS version from shellball.
-        [self._shellball_fwid] = self.faft_client.run_shell_command_get_output(
-                                                 '%s -V | grep "BIOS version"' \
-                                                 ' | sed "s/BIOS version: ' \
-                                                 '\(.*\)/\\1/" '
-                                                 % self._shellball_name)
+        [self._shellball_fwid] = self.faft_client. \
+                                        system.run_shell_command_get_output(
+                                            '%s -V | grep "BIOS version"' \
+                                            ' | sed "s/BIOS version: ' \
+                                            '\(.*\)/\\1/" '
+                                            % self._shellball_name)
 
     def cleanup(self):
         if os.path.exists(self._shellball_name):

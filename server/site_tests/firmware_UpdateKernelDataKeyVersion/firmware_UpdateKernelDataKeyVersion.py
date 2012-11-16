@@ -19,7 +19,7 @@ class firmware_UpdateKernelDataKeyVersion(FAFTSequence):
     version = 1
 
     def check_kernel_datakey_version(self, expected_ver):
-        actual_ver = self.faft_client.retrieve_kernel_datakey_version('b')
+        actual_ver = self.faft_client.kernel.get_datakey_version('b')
         if actual_ver != expected_ver:
             raise error.TestFail(
                 'Kernel Version should be %s, but got %s.'
@@ -34,28 +34,28 @@ class firmware_UpdateKernelDataKeyVersion(FAFTSequence):
         host.send_file(os.path.join(
                            '~/trunk/src/platform/vboot_reference/scripts',
                            'keygeneration/common.sh'),
-                       os.path.join(self.faft_client.get_updater_temp_path(),
+                       os.path.join(self.faft_client.updater.get_temp_path(),
                                     'common.sh'))
         host.send_file(os.path.join('~/trunk/src/third_party/autotest/files/',
                                     'server/site_tests',
                                     'firmware_UpdateKernelDataKeyVersion',
                                     'files/make_keys.sh'),
-                       os.path.join(self.faft_client.get_updater_temp_path(),
+                       os.path.join(self.faft_client.updater.get_temp_path(),
                                     'make_keys.sh'))
 
-        self.faft_client.run_shell_command('/bin/bash %s %s' % (
-            os.path.join(self.faft_client.get_updater_temp_path(),
+        self.faft_client.system.run_shell_command('/bin/bash %s %s' % (
+            os.path.join(self.faft_client.updater.get_temp_path(),
                          'make_keys.sh'),
             self._update_version))
 
 
     def modify_kernel_b_and_set_cgpt_priority(self, delta, target_dev):
         if delta == 1:
-            self.faft_client.resign_kernel_with_keys(
-                'b', self.faft_client.get_updater_keys_path())
+            self.faft_client.kernel.resign_with_keys(
+                'b', self.faft_client.updater.get_keys_path())
         elif delta == -1:
             self.check_kernel_datakey_version(self._update_version)
-            self.faft_client.resign_kernel_with_keys('b')
+            self.faft_client.kernel.resign_with_keys('b')
 
         if target_dev == 'a':
             self.reset_and_prioritize_kernel('a')
@@ -68,19 +68,19 @@ class firmware_UpdateKernelDataKeyVersion(FAFTSequence):
 
         self.setup_dev_mode(dev_mode)
 
-        actual_ver = self.faft_client.retrieve_kernel_datakey_version('b')
+        actual_ver = self.faft_client.kernel.get_datakey_version('b')
         logging.info('Original Kernel Version of KERN-B is %s', actual_ver)
 
         self._update_version = actual_ver + 1
         logging.info('KERN-B will update to version %s', self._update_version)
 
         self.setup_kernel('a')
-        self.faft_client.setup_updater()
+        self.faft_client.updater.setup()
         self.resign_kernel_datakey_version(host)
 
 
     def cleanup(self):
-        self.faft_client.cleanup_updater()
+        self.faft_client.updater.cleanup()
         super(firmware_UpdateKernelDataKeyVersion, self).cleanup()
 
 

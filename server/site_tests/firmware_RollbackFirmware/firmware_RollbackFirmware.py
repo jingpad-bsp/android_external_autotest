@@ -32,7 +32,8 @@ class firmware_RollbackFirmware(FAFTSequence):
 
     def run_once(self, dev_mode=False):
         # Recovery reason RW_FW_ROLLBACK available after Alex/ZGB.
-        if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
+        if self.faft_client.system.get_platform_name() in (
+                'Mario', 'Alex', 'ZGB'):
             recovery_reason = vboot.RECOVERY_REASON['RO_INVALID_RW']
         else:
             recovery_reason = vboot.RECOVERY_REASON['RW_FW_ROLLBACK']
@@ -44,8 +45,8 @@ class firmware_RollbackFirmware(FAFTSequence):
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                     'tried_fwb': '0',
                 }),
-                'userspace_action': (self.faft_client.move_firmware_backward,
-                                     'a'),
+                'userspace_action':
+                    (self.faft_client.bios.move_version_backward, 'a'),
             },
             {   # Step 2, expected firmware B boot and rollbacks firmware B.
                 'state_checker': (self.checkers.crossystem_checker, {
@@ -53,8 +54,8 @@ class firmware_RollbackFirmware(FAFTSequence):
                     'mainfw_type': ('normal', 'developer'),
                     'tried_fwb': '0',
                 }),
-                'userspace_action': (self.faft_client.move_firmware_backward,
-                                     'b'),
+                'userspace_action':
+                    (self.faft_client.bios.move_version_backward, 'b'),
                 'firmware_action': None if dev_mode else
                                    self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
@@ -64,8 +65,9 @@ class firmware_RollbackFirmware(FAFTSequence):
                     'mainfw_type': 'recovery',
                     'recovery_reason' : recovery_reason,
                 }),
-                'userspace_action': (self.faft_client.move_firmware_forward,
-                                     (('a', 'b'),)),
+                'userspace_action': (
+                    self.faft_client.bios.move_version_forward,
+                    (('a', 'b'),)),
             },
             {   # Step 4, expected firmware A boot and done.
                 'state_checker': (self.checkers.crossystem_checker, {

@@ -69,7 +69,8 @@ class firmware_InvalidUSB(FAFTSequence):
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
                 }),
-                'userspace_action': self.faft_client.request_recovery_boot,
+                'userspace_action':
+                    (self.faft_client.system.request_recovery_boot),
                 'firmware_action': self.insert_corrupted_usb_and_restore,
                 'install_deps_after_boot': True,
             },

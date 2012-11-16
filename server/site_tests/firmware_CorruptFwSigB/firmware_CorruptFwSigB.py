@@ -32,21 +32,21 @@ class firmware_CorruptFwSigB(FAFTSequence):
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
-                'userspace_action': (self.faft_client.corrupt_firmware, 'b'),
+                'userspace_action': (self.faft_client.bios.corrupt_sig, 'b'),
             },
             {   # Step 2, expected firmware A boot and set try_fwb flag
                 'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
-                'userspace_action': self.faft_client.set_try_fw_b,
+                'userspace_action': self.faft_client.system.set_try_fw_b,
             },
             {   # Step 3, expected firmware A boot and restore firmware B
                 'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '1',
                 }),
-                'userspace_action': (self.faft_client.restore_firmware, 'b'),
+                'userspace_action': (self.faft_client.bios.restore_sig, 'b'),
             },
             {   # Step 4, final check and done
                 'state_checker': (self.checkers.crossystem_checker, {

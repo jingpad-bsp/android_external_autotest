@@ -57,7 +57,11 @@ class FAFTClient(object):
     """A class of FAFT client which aggregates some useful functions of SAFT.
 
     This class can be exposed via a XMLRPC server such that its functions can
-    be accessed remotely.
+    be accessed remotely. Method naming should fit the naming rule
+    '_[categories]_[method_name]' where categories contains system, ec, bios,
+    kernel, cgpt, tpm, updater, etc. Methods should be called by
+    'FAFTClient.[categories].[method_name]', because _dispatch will rename
+    this name to '_[categories]_[method_name]'.
 
     Attributes:
         _chromeos_interface: An object to encapsulate OS services functions.
@@ -117,7 +121,7 @@ class FAFTClient(object):
         self._tpm_handler.init(self._chromeos_interface)
 
         self._cgpt_state = cgpt_state.CgptState(
-                'SHORT', self._chromeos_interface, self.get_root_dev())
+                'SHORT', self._chromeos_interface, self._system_get_root_dev())
 
         self._updater = FirmwareUpdater(self._chromeos_interface)
 
@@ -138,8 +142,15 @@ class FAFTClient(object):
         is_str = method.endswith('.__str__')
         if is_str:
             method = method.rsplit('.', 1)[0]
+
+        categories = ('system', 'bios', 'ec', 'kernel',
+                      'tpm', 'cgpt', 'updater')
         try:
-            func = getattr(self, method)
+            if method.split('.', 1)[0] in categories:
+                func = getattr(self, '_%s_%s' % (method.split('.',1)[0],
+                                                 method.split('.',1)[1]))
+            else:
+                func = getattr(self, method)
         except AttributeError:
             raise Exception('method "%s" is not supported' % method)
         else:
@@ -149,7 +160,7 @@ class FAFTClient(object):
                 return func(*params)
 
 
-    def is_available(self):
+    def _system_is_available(self):
         """Function for polling the RPC server availability.
 
         Returns:
@@ -158,7 +169,7 @@ class FAFTClient(object):
         return True
 
 
-    def run_shell_command(self, command):
+    def _system_run_shell_command(self, command):
         """Run shell command.
 
         Args:
@@ -168,7 +179,7 @@ class FAFTClient(object):
         self._chromeos_interface.run_shell_command(command)
 
 
-    def run_shell_command_get_output(self, command):
+    def _system_run_shell_command_get_output(self, command):
         """Run shell command and get its console output.
 
         Args:
@@ -182,13 +193,13 @@ class FAFTClient(object):
         return self._chromeos_interface.run_shell_command_get_output(command)
 
 
-    def software_reboot(self):
+    def _system_software_reboot(self):
         """Request software reboot."""
         self._chromeos_interface.log('Requesting software reboot')
         self._chromeos_interface.run_shell_command('reboot')
 
 
-    def get_platform_name(self):
+    def _system_get_platform_name(self):
         """Get the platform name of the current system.
 
         Returns:
@@ -203,7 +214,7 @@ class FAFTClient(object):
         return lines[-1]
 
 
-    def get_crossystem_value(self, key):
+    def _system_get_crossystem_value(self, key):
         """Get crossystem value of the requested key.
 
         Args:
@@ -217,7 +228,7 @@ class FAFTClient(object):
                 'crossystem %s' % key)[0]
 
 
-    def get_EC_version(self):
+    def _ec_get_version(self):
         """Get EC version via mosys.
 
         Returns:
@@ -228,7 +239,7 @@ class FAFTClient(object):
                 'mosys ec info | sed "s/.*| //"')[0]
 
 
-    def get_root_dev(self):
+    def _system_get_root_dev(self):
         """Get the name of root device without partition number.
 
         Returns:
@@ -238,7 +249,7 @@ class FAFTClient(object):
         return self._chromeos_interface.get_root_dev()
 
 
-    def get_root_part(self):
+    def _system_get_root_part(self):
         """Get the name of root device with partition number.
 
         Returns:
@@ -248,19 +259,19 @@ class FAFTClient(object):
         return self._chromeos_interface.get_root_part()
 
 
-    def set_try_fw_b(self):
+    def _system_set_try_fw_b(self):
         """Set 'Try Frimware B' flag in crossystem."""
         self._chromeos_interface.log('Requesting restart with firmware B')
         self._chromeos_interface.cs.fwb_tries = 1
 
 
-    def request_recovery_boot(self):
+    def _system_request_recovery_boot(self):
         """Request running in recovery mode on the restart."""
         self._chromeos_interface.log('Requesting restart in recovery mode')
         self._chromeos_interface.cs.request_recovery()
 
 
-    def get_dev_boot_usb(self):
+    def _system_get_dev_boot_usb(self):
         """Get dev_boot_usb value which controls developer mode boot from USB.
 
         Returns:
@@ -270,7 +281,7 @@ class FAFTClient(object):
         return self._chromeos_interface.cs.dev_boot_usb == '1'
 
 
-    def set_dev_boot_usb(self, value):
+    def _system_set_dev_boot_usb(self, value):
         """Set dev_boot_usb value which controls developer mode boot from USB.
 
         Args:
@@ -280,7 +291,7 @@ class FAFTClient(object):
         self._chromeos_interface.cs.dev_boot_usb = 1 if value else 0
 
 
-    def get_gbb_flags(self):
+    def _system_get_gbb_flags(self):
         """Get the GBB flags.
 
         Returns:
@@ -290,7 +301,7 @@ class FAFTClient(object):
         return self._bios_handler.get_gbb_flags()
 
 
-    def get_firmware_flags(self, section):
+    def _bios_get_preamble_flags(self, section):
         """Get the preamble flags of a firmware section.
 
         Args:
@@ -304,7 +315,7 @@ class FAFTClient(object):
         return self._bios_handler.get_section_flags(section)
 
 
-    def set_firmware_flags(self, section, flags):
+    def _bios_set_preamble_flags(self, section, flags):
         """Set the preamble flags of a firmware section.
 
         Args:
@@ -313,12 +324,12 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log(
             'Setting preamble flags of firmware %s to %s' % (section, flags))
-        version = self.get_firmware_version(section)
+        version = self._bios_get_version(section)
         self._bios_handler.set_section_version(section, version, flags,
                                                write_through=True)
 
 
-    def get_firmware_sha(self, section):
+    def _bios_get_body_sha(self, section):
         """Get SHA1 hash of BIOS RW firmware section.
 
         Args:
@@ -328,23 +339,23 @@ class FAFTClient(object):
         return self._bios_handler.get_section_sha(section)
 
 
-    def get_firmware_sig_sha(self, section):
+    def _bios_get_sig_sha(self, section):
         """Get SHA1 hash of firmware vblock in section."""
         return self._bios_handler.get_section_sig_sha(section)
 
 
-    def get_EC_firmware_sha(self):
+    def _ec_get_firmware_sha(self):
         """Get SHA1 hash of EC RW firmware section."""
         return self._ec_handler.get_section_sha('rw')
 
 
-    def reload_firmware(self):
+    def _bios_reload(self):
         """Reload the firmware image that may be changed."""
         self._bios_handler.reload()
 
 
     @allow_multiple_section_input
-    def corrupt_EC(self, section):
+    def _ec_corrupt_sig(self, section):
         """Corrupt the requested EC section signature.
 
         Args:
@@ -356,7 +367,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def corrupt_EC_body(self, section):
+    def _ec_corrupt_body(self, section):
         """Corrupt the requested EC section body.
 
         Args:
@@ -368,7 +379,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def restore_EC(self, section):
+    def _ec_restore_sig(self, section):
         """Restore the previously corrupted EC section signature.
 
         Args:
@@ -380,7 +391,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def restore_EC_body(self, section):
+    def _ec_restore_body(self, section):
         """Restore the previously corrupted EC section body.
 
         Args:
@@ -392,7 +403,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def corrupt_firmware(self, section):
+    def _bios_corrupt_sig(self, section):
         """Corrupt the requested firmware section signature.
 
         Args:
@@ -404,7 +415,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def corrupt_firmware_body(self, section):
+    def _bios_corrupt_body(self, section):
         """Corrupt the requested firmware section body.
 
         Args:
@@ -416,7 +427,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def restore_firmware(self, section):
+    def _bios_restore_sig(self, section):
         """Restore the previously corrupted firmware section signature.
 
         Args:
@@ -428,7 +439,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def restore_firmware_body(self, section):
+    def _bios_restore_body(self, section):
         """Restore the previously corrupted firmware section body.
 
         Args:
@@ -439,23 +450,23 @@ class FAFTClient(object):
         self._bios_handler.restore_firmware_body(section)
 
 
-    def get_firmware_version(self, section):
+    def _bios_get_version(self, section):
         """Retrieve firmware version of a section."""
         return self._bios_handler.get_section_version(section)
 
 
-    def get_tpm_firmware_version(self):
+    def _tpm_get_firmware_version(self):
         """Retrieve tpm firmware body version."""
         return self._tpm_handler.get_fw_version()
 
 
-    def _modify_firmware_version(self, section, delta):
+    def __bios_modify_version(self, section, delta):
         """Modify firmware version for the requested section, by adding delta.
 
         The passed in delta, a positive or a negative number, is added to the
         original firmware version.
         """
-        original_version = self.get_firmware_version(section)
+        original_version = self._bios_get_version(section)
         new_version = original_version + delta
         flags = self._bios_handler.get_section_flags(section)
         self._chromeos_interface.log(
@@ -465,30 +476,30 @@ class FAFTClient(object):
                                                write_through=True)
 
     @allow_multiple_section_input
-    def move_firmware_backward(self, section):
+    def _bios_move_version_backward(self, section):
         """Decrement firmware version for the requested section."""
-        self._modify_firmware_version(section, -1)
+        self.__bios_modify_version(section, -1)
 
 
     @allow_multiple_section_input
-    def move_firmware_forward(self, section):
+    def _bios_move_version_forward(self, section):
         """Increase firmware version for the requested section."""
-        self._modify_firmware_version(section, 1)
+        self.__bios_modify_version(section, 1)
 
-    def get_firmware_datakey_version(self, section):
+    def _bios_get_datakey_version(self, section):
         """Return firmware data key version."""
         return self._bios_handler.get_section_datakey_version(section)
 
-    def get_tpm_firmware_datakey_version(self):
+    def _tpm_get_firmware_datakey_version(self):
         """Retrieve tpm firmware data key version."""
         return self._tpm_handler.get_fw_body_version()
 
-    def retrieve_kernel_subkey_version(self,section):
+    def _bios_get_kernel_subkey_version(self,section):
         """Return kernel subkey version."""
         return self._bios_handler.get_section_kernel_subkey_version(section)
 
     @allow_multiple_section_input
-    def corrupt_kernel(self, section):
+    def _kernel_corrupt_sig(self, section):
         """Corrupt the requested kernel section.
 
         Args:
@@ -499,7 +510,7 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def restore_kernel(self, section):
+    def _kernel_restore_sig(self, section):
         """Restore the requested kernel section (previously corrupted).
 
         Args:
@@ -508,7 +519,7 @@ class FAFTClient(object):
         self._kernel_handler.restore_kernel(section)
 
 
-    def _modify_kernel_version(self, section, delta):
+    def __kernel_modify_version(self, section, delta):
         """Modify kernel version for the requested section, by adding delta.
 
         The passed in delta, a positive or a negative number, is added to the
@@ -523,28 +534,28 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
-    def move_kernel_backward(self, section):
+    def _kernel_move_version_backward(self, section):
         """Decrement kernel version for the requested section."""
-        self._modify_kernel_version(section, -1)
+        self.__kernel_modify_version(section, -1)
 
 
     @allow_multiple_section_input
-    def move_kernel_forward(self, section):
+    def _kernel_move_version_forward(self, section):
         """Increase kernel version for the requested section."""
-        self._modify_kernel_version(section, 1)
+        self.__kernel_modify_version(section, 1)
 
 
-    def retrieve_kernel_version(self, section):
+    def _kernel_get_version(self, section):
         """Return kernel version."""
         return self._kernel_handler.get_version(section)
 
 
-    def retrieve_kernel_datakey_version(self, section):
+    def _kernel_get_datakey_version(self, section):
         """Return kernel datakey version."""
         return self._kernel_handler.get_datakey_version(section)
 
 
-    def diff_kernel_a_b(self):
+    def _kernel_diff_a_b(self):
         """Compare kernel A with B.
 
         Returns:
@@ -564,7 +575,7 @@ class FAFTClient(object):
         return header_a != header_b
 
 
-    def is_removable_device_boot(self):
+    def _system_is_removable_device_boot(self):
         """Check the current boot device is removable.
 
         Returns:
@@ -575,7 +586,7 @@ class FAFTClient(object):
         return self._chromeos_interface.is_removable_device(root_part)
 
 
-    def setup_EC_image(self, ec_path):
+    def _bios_setup_EC_image(self, ec_path):
         """Setup the new EC image for later update.
 
         Args:
@@ -590,16 +601,16 @@ class FAFTClient(object):
         self._ec_image.new_image(ec_path)
 
 
-    def get_EC_image_sha(self):
+    def _bios_get_EC_image_sha(self):
         """Get SHA1 hash of RW firmware section of the EC autest image."""
         return self._ec_image.get_section_sha('rw')
 
 
-    def update_EC_from_image(self, section, flags):
+    def _bios_update_EC_from_image(self, section, flags):
         """Update EC via software sync design.
 
         It copys the RW section from the EC image, which is loaded by calling
-        setup_EC_image(), to the EC area of the specified RW section on the
+        bios_setup_EC_image(), to the EC area of the specified RW section on the
         current AP firmware.
 
         Args:
@@ -612,7 +623,7 @@ class FAFTClient(object):
         self.set_firmware_flags(section, flags)
 
 
-    def dump_firmware(self, bios_path):
+    def _bios_dump_whole(self, bios_path):
         """Dump the current BIOS firmware to a file, specified by bios_path.
 
         Args:
@@ -621,7 +632,7 @@ class FAFTClient(object):
         self._bios_handler.dump_whole(bios_path)
 
 
-    def dump_firmware_rw(self, dir_path):
+    def _bios_dump_rw(self, dir_path):
         """Dump the current BIOS firmware RW to dir_path.
 
         VBOOTA, VBOOTB, FVMAIN, FVMAINB need to be dumped.
@@ -643,7 +654,7 @@ class FAFTClient(object):
         open(os.path.join(dir_path, 'FVMAINB'), 'w').write(FVMAINB_blob)
 
 
-    def write_firmware(self, bios_path):
+    def _bios_write_whole(self, bios_path):
         """Write the firmware from bios_path to the current system.
 
         Args:
@@ -653,7 +664,7 @@ class FAFTClient(object):
         self._bios_handler.write_whole()
 
 
-    def write_firmware_rw(self, dir_path):
+    def _bios_write_rw(self, dir_path):
         """Write the firmware RW from dir_path to the current system.
 
         VBOOTA, VBOOTB, FVMAIN, FVMAINB need to be written.
@@ -682,7 +693,7 @@ class FAFTClient(object):
                                             write_through=True)
 
 
-    def dump_EC_firmware(self, ec_path):
+    def _ec_dump_firmware(self, ec_path):
         """Dump the current EC firmware to a file, specified by ec_path.
 
         Args:
@@ -691,7 +702,7 @@ class FAFTClient(object):
         self._ec_handler.dump_whole(ec_path)
 
 
-    def set_EC_write_protect(self, enable):
+    def _ec_set_write_protect(self, enable):
         """Enable write protect of the EC flash chip.
 
         Args:
@@ -705,7 +716,7 @@ class FAFTClient(object):
             self._ec_handler.disable_write_protect()
 
 
-    def run_cgpt_test_loop(self):
+    def _cgpt_run_test_loop(self):
         """Run the CgptState test loop. The tst logic is handled in the client.
 
         Returns:
@@ -715,7 +726,7 @@ class FAFTClient(object):
         return self._cgpt_state.test_loop()
 
 
-    def set_cgpt_test_step(self, step):
+    def _cgpt_set_test_step(self, step):
         """Set the CgptState test step.
 
         Args:
@@ -724,7 +735,7 @@ class FAFTClient(object):
         self._cgpt_state.set_step(step)
 
 
-    def get_cgpt_test_step(self):
+    def _cgpt_get_test_step(self):
         """Get the CgptState test step.
 
         Returns:
@@ -733,18 +744,18 @@ class FAFTClient(object):
         return self._cgpt_state.get_step()
 
 
-    def resign_kernel_with_keys(self, section, key_path=None):
+    def _kernel_resign_with_keys(self, section, key_path=None):
         """Resign kernel with temporary key."""
         self._kernel_handler.resign_kernel(section, key_path)
 
 
-    def create_temp_dir(self, prefix='backup_'):
+    def _system_create_temp_dir(self, prefix='backup_'):
         """Create a temporary directory and return the path."""
         return tempfile.mkdtemp(prefix=prefix)
 
 
     # for updater
-    def setup_updater(self, shellball=None):
+    def _updater_setup(self, shellball=None):
         """Setup the updater.
 
         Args:
@@ -754,11 +765,11 @@ class FAFTClient(object):
         self._updater.setup(self._chromeos_interface, shellball)
 
 
-    def cleanup_updater(self):
+    def _updater_cleanup(self):
         self._updater.cleanup_temp_dir()
 
 
-    def retrieve_updater_fwid(self):
+    def _updater_get_fwid(self):
         """Retrieve shellball's fwid.
 
         This method should be called after updater_setup.
@@ -769,7 +780,7 @@ class FAFTClient(object):
         return self._updater.retrieve_fwid()
 
 
-    def resign_updater_firmware(self, version):
+    def _updater_resign_firmware(self, version):
         """Resign firmware with version.
 
         Args:
@@ -778,7 +789,7 @@ class FAFTClient(object):
         self._updater.resign_firmware(version)
 
 
-    def repack_updater_shellball(self, append):
+    def _updater_repack_shellball(self, append):
         """Repack shellball with new fwid.
 
         Args:
@@ -787,7 +798,7 @@ class FAFTClient(object):
         self._updater.repack_shellball(append)
 
 
-    def run_autoupdate(self, append):
+    def _updater_run_autoupdate(self, append):
         """Run chromeos-firmwareupdate with autoupdate mode."""
         options = ['--noupdate_ec', '--nocheck_rw_compatible']
         self._updater.run_firmwareupdate(mode='autoupdate',
@@ -795,37 +806,37 @@ class FAFTClient(object):
                                          options=options)
 
 
-    def run_factory_install(self):
+    def _updater_run_factory_install(self):
         """Run chromeos-firmwareupdate with factory_install mode."""
         options = ['--noupdate_ec']
         self._updater.run_firmwareupdate(mode='factory_install',
                                          options=options)
 
 
-    def run_bootok(self, append):
+    def _updater_run_bootok(self, append):
         """Run chromeos-firmwareupdate with bootok mode."""
         self._updater.run_firmwareupdate(mode='bootok',
                                          updater_append=append)
 
 
-    def run_recovery(self):
+    def _updater_run_recovery(self):
         """Run chromeos-firmwareupdate with recovery mode."""
         options = ['--noupdate_ec', '--nocheck_rw_compatible']
         self._updater.run_firmwareupdate(mode='recovery',
                                          options=options)
 
 
-    def get_updater_temp_path(self):
+    def _updater_get_temp_path(self):
         """Get updater's temp directory path."""
         return self._updater.get_temp_path()
 
 
-    def get_updater_keys_path(self):
+    def _updater_get_keys_path(self):
         """Get updater's keys directory path."""
         return self._updater.get_keys_path()
 
 
-    def get_updater_work_path(self):
+    def _updater_get_work_path(self):
         """Get updater's work directory path."""
         return self._updater.get_work_path()
 

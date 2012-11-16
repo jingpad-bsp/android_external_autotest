@@ -28,7 +28,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
     def setup(self, dev_mode=False):
         super(firmware_CorruptBothFwBodyAB, self).setup()
         self.backup_firmware()
-        if (self.faft_client.get_firmware_flags('a') &
+        if (self.faft_client.bios.get_preamble_flags('a') &
                 vboot.PREAMBLE_USE_RO_NORMAL):
             self.use_ro = True
             self.setup_dev_mode(dev_mode)
@@ -52,14 +52,14 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                     'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
-                    'userspace_action': (self.faft_client.corrupt_firmware_body,
+                    'userspace_action': (self.faft_client.bios.corrupt_body,
                                          (('a', 'b'),)),
                 },
                 {   # Step 2, still expected normal/developer boot and restore
                     'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
-                    'userspace_action': (self.faft_client.restore_firmware_body,
+                    'userspace_action': (self.faft_client.bios.restore_body,
                                          (('a', 'b'),)),
                 },
             ))
@@ -69,7 +69,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                     'state_checker': (self.checkers.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                     }),
-                    'userspace_action': (self.faft_client.corrupt_firmware_body,
+                    'userspace_action': (self.faft_client.bios.corrupt_body,
                                          (('a', 'b'),)),
                     'firmware_action': None if dev_mode else
                                        self.wait_fw_screen_and_plug_usb,
@@ -82,7 +82,7 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                             (vboot.RECOVERY_REASON['RO_INVALID_RW'],
                              vboot.RECOVERY_REASON['RW_VERIFY_BODY']),
                     }),
-                    'userspace_action': (self.faft_client.restore_firmware_body,
+                    'userspace_action': (self.faft_client.bios.restore_body,
                                          (('a', 'b'),)),
                 },
                 {   # Step 3, expected normal boot, done

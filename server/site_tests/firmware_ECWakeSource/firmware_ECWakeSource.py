@@ -67,7 +67,7 @@ class firmware_ECWakeSource(FAFTSequence):
         """
         cmd = ('(sleep %d; powerd_suspend)&' %
                 self.EC_SUSPEND_DELAY)
-        self.faft_client.run_shell_command(cmd)
+        self.faft_client.system.run_shell_command(cmd)
         self.kill_remote()
         time.sleep(self.EC_SUSPEND_DELAY)
         wake_func()
@@ -75,7 +75,7 @@ class firmware_ECWakeSource(FAFTSequence):
 
     def hibernate_and_wake_by_power_button(self):
         """Shutdown and hibernate EC. Then wake by power button."""
-        self.faft_client.run_shell_command("shutdown -P now")
+        self.faft_client.system.run_shell_command("shutdown -P now")
         time.sleep(self.SHUTDOWN_DELAY)
         self.ec.send_command("hibernate 1000")
         time.sleep(self.WAKE_DELAY)

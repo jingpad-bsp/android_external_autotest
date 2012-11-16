@@ -32,7 +32,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
 
 
     def run_once(self):
-        RO_enabled = (self.faft_client.get_firmware_flags('b') &
+        RO_enabled = (self.faft_client.bios.get_preamble_flags('b') &
                       vboot.PREAMBLE_USE_RO_NORMAL)
         self.register_faft_sequence((
             {   # Step 1, corrupt firmware body B
@@ -40,7 +40,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
-                'userspace_action': (self.faft_client.corrupt_firmware_body,
+                'userspace_action': (self.faft_client.bios.corrupt_body,
                                      'b'),
             },
             {   # Step 2, expected firmware A boot and set try_fwb flag
@@ -48,7 +48,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
                     'mainfw_act': 'A',
                     'tried_fwb': '0',
                 }),
-                'userspace_action': self.faft_client.set_try_fw_b,
+                'userspace_action': self.faft_client.system.set_try_fw_b,
             },
             {   # Step 3, if RO enabled, expected firmware B boot; otherwise,
                 # still A boot since B is corrupted. Restore B later.
@@ -56,7 +56,7 @@ class firmware_CorruptFwBodyB(FAFTSequence):
                     'mainfw_act': 'B' if RO_enabled else 'A',
                     'tried_fwb': '1',
                 }),
-                'userspace_action': (self.faft_client.restore_firmware_body,
+                'userspace_action': (self.faft_client.bios.restore_body,
                                      'b'),
             },
             {   # Step 4, final check and done

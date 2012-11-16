@@ -86,7 +86,8 @@ class firmware_FwScreenPressPower(FAFTSequence):
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
-                'userspace_action': self.faft_client.request_recovery_boot,
+                'userspace_action':
+                    (self.faft_client.system.request_recovery_boot),
                 'firmware_action': (self.run_shutdown_process,
                                     (self.wait_longer_fw_screen_and_press_power,
                                      None,
@@ -99,7 +100,8 @@ class firmware_FwScreenPressPower(FAFTSequence):
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
-                'userspace_action': self.faft_client.request_recovery_boot,
+                'userspace_action':
+                    (self.faft_client.system.request_recovery_boot),
                 'firmware_action': (self.run_shutdown_process,
                                     (self.wait_yuck_screen_and_press_power,
                                      None,
@@ -120,7 +122,8 @@ class firmware_FwScreenPressPower(FAFTSequence):
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
                 }),
-                'userspace_action': self.faft_client.request_recovery_boot,
+                'userspace_action':
+                    (self.faft_client.system.request_recovery_boot),
                 'firmware_action': (self.run_shutdown_process,
                                     (self.wait_longer_fw_screen_and_press_power,
                                      None,

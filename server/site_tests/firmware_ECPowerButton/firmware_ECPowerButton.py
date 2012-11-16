@@ -39,7 +39,7 @@ class firmware_ECPowerButton(FAFTSequence):
 
     def kill_powerd(self):
         """Stop powerd on client."""
-        self.faft_client.run_shell_command("stop powerd")
+        self.faft_client.system.run_shell_command("stop powerd")
 
 
     def debounce_power_button(self):
@@ -51,7 +51,7 @@ class firmware_ECPowerButton(FAFTSequence):
         # Delay 3 seconds to allow "showkey" to start on client machine.
         # Press power button for only 10ms. Should be debounced.
         Timer(3, self.servo.power_key, [0.001]).start()
-        lines = self.faft_client.run_shell_command_get_output("showkey")
+        lines = self.faft_client.system.run_shell_command_get_output("showkey")
         for line in lines:
             if re.search("keycode 116", line) is not None:
                 return False

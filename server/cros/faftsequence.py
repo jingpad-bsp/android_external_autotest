@@ -157,9 +157,9 @@ class FAFTSequence(ServoTest):
                 use_faft)
         if use_faft:
             self.client_attr = FAFTClientAttribute(
-                    self.faft_client.get_platform_name())
+                    self.faft_client.system.get_platform_name())
             self.delay = FAFTDelayConstants(
-                    self.faft_client.get_platform_name())
+                    self.faft_client.system.get_platform_name())
             self.checkers = FAFTCheckers(self, self.faft_client)
 
             if self.client_attr.chrome_ec:
@@ -213,9 +213,9 @@ class FAFTSequence(ServoTest):
         This info is used by generate_test_report and local_dash later.
         """
         self.write_attr_keyval({
-            'fw_version': self.faft_client.get_EC_version(),
-            'hwid': self.faft_client.get_crossystem_value('hwid'),
-            'fwid': self.faft_client.get_crossystem_value('fwid'),
+            'fw_version': self.faft_client.ec.get_version(),
+            'hwid': self.faft_client.system.get_crossystem_value('hwid'),
+            'fwid': self.faft_client.system.get_crossystem_value('fwid'),
         })
 
 
@@ -244,7 +244,7 @@ class FAFTSequence(ServoTest):
 
         try:
             self.wait_for_client(install_deps=True)
-            lines = self.faft_client.run_shell_command_get_output(
+            lines = self.faft_client.system.run_shell_command_get_output(
                         'crossystem recovery_reason')
             recovery_reason = int(lines[0])
             logging.info('Got the recovery reason %d.', recovery_reason)
@@ -290,7 +290,7 @@ class FAFTSequence(ServoTest):
         # DUT may be broken by a corrupted OS image. Restore OS image.
         self._ensure_client_in_recovery()
         logging.info('Try restore the OS image...')
-        self.faft_client.run_shell_command('chromeos-install --yes')
+        self.faft_client.system.run_shell_command('chromeos-install --yes')
         self.sync_and_warm_reboot()
         self.wait_for_client_offline()
         self.wait_dev_screen_and_ctrl_d()
@@ -455,7 +455,8 @@ class FAFTSequence(ServoTest):
         Returns:
           A string of the server address.
         """
-        r = self.faft_client.run_shell_command_get_output("echo $SSH_CLIENT")
+        r = self.faft_client.system.run_shell_command_get_output(
+                "echo $SSH_CLIENT")
         return r[0].split()[0]
 
 
@@ -554,7 +555,8 @@ class FAFTSequence(ServoTest):
                 'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': ('developer', 'normal'),
                 }),
-                'userspace_action': self.faft_client.request_recovery_boot,
+                'userspace_action': (
+                    self.faft_client.system.request_recovery_boot),
                 'firmware_action': self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
             },
@@ -563,7 +565,7 @@ class FAFTSequence(ServoTest):
                     'mainfw_type': 'recovery',
                     'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                 }),
-                'userspace_action': (self.faft_client.run_shell_command,
+                'userspace_action': (self.faft_client.system.run_shell_command,
                                      install_cmd),
                 'reboot_action': self.cold_reboot,
                 'install_deps_after_boot': True,
@@ -593,15 +595,15 @@ class FAFTSequence(ServoTest):
           clear_mask: A mask of flags to be cleared.
           set_mask: A mask of flags to be set.
         """
-        gbb_flags = self.faft_client.get_gbb_flags()
+        gbb_flags = self.faft_client.system.get_gbb_flags()
         new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
 
         if (gbb_flags != new_flags):
             logging.info('Change the GBB flags from 0x%x to 0x%x.',
                          gbb_flags, new_flags)
-            self.faft_client.run_shell_command(
+            self.faft_client.system.run_shell_command(
                     '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' % new_flags)
-            self.faft_client.reload_firmware()
+            self.faft_client.bios.reload()
             # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
             if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
                 self.run_faft_step({
@@ -680,15 +682,15 @@ class FAFTSequence(ServoTest):
           from_part: A string of partition number to be copied from.
           to_part: A string of partition number to be copied to.
         """
-        root_dev = self.faft_client.get_root_dev()
+        root_dev = self.faft_client.system.get_root_dev()
         logging.info('Copying kernel from %s to %s. Please wait...',
                      from_part, to_part)
-        self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
+        self.faft_client.system.run_shell_command('dd if=%s of=%s bs=4M' %
                 (self._join_part(root_dev, self.KERNEL_MAP[from_part]),
                  self._join_part(root_dev, self.KERNEL_MAP[to_part])))
         logging.info('Copying rootfs from %s to %s. Please wait...',
                      from_part, to_part)
-        self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
+        self.faft_client.system.run_shell_command('dd if=%s of=%s bs=4M' %
                 (self._join_part(root_dev, self.ROOTFS_MAP[from_part]),
                  self._join_part(root_dev, self.ROOTFS_MAP[to_part])))
 
@@ -703,7 +705,7 @@ class FAFTSequence(ServoTest):
           part: A string of kernel partition number or 'a'/'b'.
         """
         if not self.checkers.root_part_checker(part):
-            if self.faft_client.diff_kernel_a_b():
+            if self.faft_client.kernel.diff_a_b():
                 self.copy_kernel_and_rootfs(
                         from_part=self.OTHER_KERNEL_MAP[part],
                         to_part=part)
@@ -747,7 +749,7 @@ class FAFTSequence(ServoTest):
         if self.client_attr.chrome_ec:
             self.set_chrome_ec_write_protect_and_reboot(enable)
         else:
-            self.faft_client.set_EC_write_protect(enable)
+            self.faft_client.ec.set_write_protect(enable)
             self.sync_and_warm_reboot()
 
 
@@ -943,7 +945,7 @@ class FAFTSequence(ServoTest):
                 logging.info(
                     'Firmware is not booted with tried_fwb. Reboot into it.')
                 self.run_faft_step({
-                    'userspace_action': self.faft_client.set_try_fw_b,
+                    'userspace_action': self.faft_client.system.set_try_fw_b,
                 })
         else:
             if not self.checkers.crossystem_checker({'tried_fwb': '0'}):
@@ -994,7 +996,7 @@ class FAFTSequence(ServoTest):
             self.enable_keyboard_dev_mode()
         else:
             self.servo.enable_development_mode()
-            self.faft_client.run_shell_command(
+            self.faft_client.system.run_shell_command(
                     'chromeos-firmwareupdate --mode todev && reboot')
 
 
@@ -1004,7 +1006,7 @@ class FAFTSequence(ServoTest):
             self.disable_keyboard_dev_mode()
         else:
             self.servo.disable_development_mode()
-            self.faft_client.run_shell_command(
+            self.faft_client.system.run_shell_command(
                     'chromeos-firmwareupdate --mode tonormal && reboot')
 
 
@@ -1067,7 +1069,7 @@ class FAFTSequence(ServoTest):
                 logging.info('System is not in dev mode. Reboot into it.')
                 self.run_faft_step({
                     'userspace_action': None if self.client_attr.keyboard_dev
-                        else (self.faft_client.run_shell_command,
+                        else (self.faft_client.system.run_shell_command,
                         'chromeos-firmwareupdate --mode todev && reboot'),
                     'reboot_action': self.enable_keyboard_dev_mode if
                         self.client_attr.keyboard_dev else None,
@@ -1082,7 +1084,7 @@ class FAFTSequence(ServoTest):
                 logging.info('System is not in normal mode. Reboot into it.')
                 self.run_faft_step({
                     'userspace_action': None if self.client_attr.keyboard_dev
-                        else (self.faft_client.run_shell_command,
+                        else (self.faft_client.system.run_shell_command,
                         'chromeos-firmwareupdate --mode tonormal && reboot'),
                     'reboot_action': self.disable_keyboard_dev_mode if
                         self.client_attr.keyboard_dev else None,
@@ -1099,7 +1101,7 @@ class FAFTSequence(ServoTest):
           part: A string of kernel partition number or 'a'/'b'.
         """
         self.ensure_kernel_boot(part)
-        if self.faft_client.diff_kernel_a_b():
+        if self.faft_client.kernel.diff_a_b():
             self.copy_kernel_and_rootfs(from_part=part,
                                         to_part=self.OTHER_KERNEL_MAP[part])
         self.reset_and_prioritize_kernel(part)
@@ -1113,17 +1115,17 @@ class FAFTSequence(ServoTest):
         Args:
           part: A string of partition number to be prioritized.
         """
-        root_dev = self.faft_client.get_root_dev()
+        root_dev = self.faft_client.system.get_root_dev()
         # Reset kernel A and B to bootable.
-        self.faft_client.run_shell_command('cgpt add -i%s -P1 -S1 -T0 %s' %
-                (self.KERNEL_MAP['a'], root_dev))
-        self.faft_client.run_shell_command('cgpt add -i%s -P1 -S1 -T0 %s' %
-                (self.KERNEL_MAP['b'], root_dev))
+        self.faft_client.system.run_shell_command(
+            'cgpt add -i%s -P1 -S1 -T0 %s' % (self.KERNEL_MAP['a'], root_dev))
+        self.faft_client.system.run_shell_command(
+            'cgpt add -i%s -P1 -S1 -T0 %s' % (self.KERNEL_MAP['b'], root_dev))
         # Set kernel part highest priority.
-        self.faft_client.run_shell_command('cgpt prioritize -i%s %s' %
+        self.faft_client.system.run_shell_command('cgpt prioritize -i%s %s' %
                 (self.KERNEL_MAP[part], root_dev))
         # Safer to sync and wait until the cgpt status written to the disk.
-        self.faft_client.run_shell_command('sync')
+        self.faft_client.system.run_shell_command('sync')
         time.sleep(self.delay.sync)
 
 
@@ -1160,7 +1162,7 @@ class FAFTSequence(ServoTest):
 
         This is the default reboot action on FAFT.
         """
-        self.faft_client.run_shell_command('sync')
+        self.faft_client.system.run_shell_command('sync')
         time.sleep(self.delay.sync)
         self.warm_reboot()
 
@@ -1170,7 +1172,7 @@ class FAFTSequence(ServoTest):
 
         This reboot action is used to reset EC for recovery mode.
         """
-        self.faft_client.run_shell_command('sync')
+        self.faft_client.system.run_shell_command('sync')
         time.sleep(self.delay.sync)
         self.cold_reboot()
 
@@ -1184,7 +1186,7 @@ class FAFTSequence(ServoTest):
                    default: EC soft reboot;
                    'hard': EC cold/hard reboot.
         """
-        self.faft_client.run_shell_command('sync')
+        self.faft_client.system.run_shell_command('sync')
         time.sleep(self.delay.sync)
         self.ec.reboot(flags)
         time.sleep(self.delay.ec_reboot_cmd)
@@ -1461,10 +1463,10 @@ class FAFTSequence(ServoTest):
             Current firmware sha follows the order (
                 vblock_a_sha, body_a_sha, vblock_b_sha, body_b_sha)
         """
-        current_firmware_sha = (self.faft_client.get_firmware_sig_sha('a'),
-                                self.faft_client.get_firmware_sha('a'),
-                                self.faft_client.get_firmware_sig_sha('b'),
-                                self.faft_client.get_firmware_sha('b'))
+        current_firmware_sha = (self.faft_client.bios.get_sig_sha('a'),
+                                self.faft_client.bios.get_body_sha('a'),
+                                self.faft_client.bios.get_sig_sha('b'),
+                                self.faft_client.bios.get_body_sha('b'))
         return current_firmware_sha
 
 
@@ -1475,7 +1477,7 @@ class FAFTSequence(ServoTest):
             True if it is changed, otherwise Flase.
         """
         # Device may not be rebooted after test.
-        self.faft_client.reload_firmware()
+        self.faft_client.bios.reload()
 
         current_sha = self.get_current_firmware_sha()
 
@@ -1500,8 +1502,8 @@ class FAFTSequence(ServoTest):
         Args:
             suffix: a string appended to backup file name
         """
-        remote_temp_dir = self.faft_client.create_temp_dir()
-        self.faft_client.dump_firmware(os.path.join(remote_temp_dir, 'bios'))
+        remote_temp_dir = self.faft_client.system.create_temp_dir()
+        self.faft_client.bios.dump_whole(os.path.join(remote_temp_dir, 'bios'))
         self._client.get_file(os.path.join(remote_temp_dir, 'bios'),
                               os.path.join(self.resultsdir, 'bios' + suffix))
 
@@ -1537,11 +1539,12 @@ class FAFTSequence(ServoTest):
         self.backup_firmware(suffix='.corrupt')
 
         # Restore firmware.
-        remote_temp_dir = self.faft_client.create_temp_dir()
+        remote_temp_dir = self.faft_client.system.create_temp_dir()
         self._client.send_file(os.path.join(self.resultsdir, 'bios' + suffix),
                                os.path.join(remote_temp_dir, 'bios'))
 
-        self.faft_client.write_firmware(os.path.join(remote_temp_dir, 'bios'))
+        self.faft_client.bios.write_whole(
+            os.path.join(remote_temp_dir, 'bios'))
         self.sync_and_warm_reboot()
         self.wait_for_client_offline()
         self.wait_dev_screen_and_ctrl_d()
@@ -1572,7 +1575,8 @@ class FAFTSequence(ServoTest):
             if is_shellball:
                 logging.info('Device will update firmware with shellball %s',
                              shellball)
-                temp_dir = self.faft_client.create_temp_dir('shellball_')
+                temp_dir = self.faft_client.system.create_temp_dir(
+                            'shellball_')
                 temp_shellball = os.path.join(temp_dir, 'updater.sh')
                 self._client.send_file(shellball, temp_shellball)
                 updater_path = temp_shellball

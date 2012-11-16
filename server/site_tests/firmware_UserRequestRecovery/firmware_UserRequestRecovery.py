@@ -59,7 +59,8 @@ class firmware_UserRequestRecovery(FAFTSequence):
                 'state_checker': (self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                 }),
-                'userspace_action': self.faft_client.request_recovery_boot,
+                'userspace_action':
+                    (self.faft_client.system.request_recovery_boot),
                 'firmware_action': (self.try_dev_switching_and_plug_usb,
                                     dev_mode),
                 'install_deps_after_boot': True,
@@ -69,7 +70,8 @@ class firmware_UserRequestRecovery(FAFTSequence):
                     'mainfw_type': 'recovery',
                     'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                 }),
-                'userspace_action': self.faft_client.request_recovery_boot,
+                'userspace_action':
+                    (self.faft_client.system.request_recovery_boot),
                 'firmware_action': None if dev_mode else
                                    self.wait_fw_screen_and_plug_usb,
             },
