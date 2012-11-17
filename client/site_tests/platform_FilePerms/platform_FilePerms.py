@@ -48,6 +48,12 @@ class platform_FilePerms(test.test):
             'options': standard_rw_options},
         '/proc': {'type': 'proc', 'options': standard_rw_options},
         '/sys': {'type': 'sysfs', 'options': standard_rw_options},
+        '/sys/fs/cgroup': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/sys/fs/cgroup/cpu': {
+            'type': 'cgroup',
+            'options': standard_rw_options},
         '/sys/fs/fuse/connections': { # crosbug.com/32631
             'type': 'fusectl',
             'options': ['rw', 'relatime']},
