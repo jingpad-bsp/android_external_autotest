@@ -9,9 +9,10 @@ import time
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.cros import constants as cros_constants
-from autotest_lib.client.common_lib import global_config, error
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
+from autotest_lib.client.cros import constants as cros_constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import site_host_attributes
@@ -72,31 +73,28 @@ class SiteHost(remote.RemoteHost):
 
     _parser = autoserv_parser.autoserv_parser
 
-    # Time to wait for new kernel to be marked successful.
+    # Time to wait for new kernel to be marked successful after
+    # auto update.
     _KERNEL_UPDATE_TIMEOUT = 120
 
-    # Ephemeral file to indicate that an update has just occurred.
-    _JUST_UPDATED_FLAG = '/tmp/just_updated'
-
     # Timeout values associated with various Chrome OS state
-    # changes.  In general, the timeouts are the maximum time to
-    # allow between some event X, and the time that the unit is
-    # on (or off) the network.  Note that "time to get on the
-    # network" is typically longer than the time to complete the
-    # operation.
+    # changes.
     #
-    # TODO(jrbarnette):  None of these times have been thoroughly
-    # tested empirically; if timeouts are a problem, increasing the
-    # time limit really might be the right answer.
+    # In general, a good rule of thumb is that the timeout can be up
+    # to twice the typical measured value on the slowest platform.
+    # The times here have not necessarily been empirically tested to
+    # meet this criterion.
     #
     # SLEEP_TIMEOUT:  Time to allow for suspend to memory.
-    # RESUME_TIMEOUT: Time to allow for resume after suspend.
+    # RESUME_TIMEOUT: Time to allow for resume after suspend, plus
+    #   time to restart the netwowrk.
     # BOOT_TIMEOUT: Time to allow for boot from power off.  Among
-    #   other things, this includes time for the 30 second dev-mode
-    #   screen delay,
+    #   other things, this must account for the 30 second dev-mode
+    #   screen delay and time to start the network,
     # USB_BOOT_TIMEOUT: Time to allow for boot from a USB device,
-    #   including the 30 second dev-mode delay.
-    # SHUTDOWN_TIMEOUT: Time to allow to shut down.
+    #   including the 30 second dev-mode delay and time to start the
+    #   network,
+    # SHUTDOWN_TIMEOUT: Time to allow for shut down.
     # REBOOT_TIMEOUT: Combination of shutdown and reboot times.
 
     SLEEP_TIMEOUT = 2
@@ -105,6 +103,8 @@ class SiteHost(remote.RemoteHost):
     USB_BOOT_TIMEOUT = 150
     SHUTDOWN_TIMEOUT = 5
     REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
+
+
     LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     RPM_HOSTNAME_REGEX = ('chromeos[0-9]+(-row[0-9]+)?-rack[0-9]+[a-z]*-'
                           'host[0-9]+')
@@ -113,6 +113,7 @@ class SiteHost(remote.RemoteHost):
                          'illuminance0_input']
     LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
     LABEL_FUNCTIONS = []
+
 
     @staticmethod
     def get_servo_arguments(arglist):
@@ -174,7 +175,7 @@ class SiteHost(remote.RemoteHost):
             update_engine_log = '/var/log/update_engine.log'
             logging.info('Dumping %s', update_engine_log)
             self.run('cat %s' % update_engine_log)
-            # Updater has returned, successfully, reboot the host.
+            # Updater has returned successfully; reboot the host.
             self.reboot(timeout=60, wait=True)
             # Touch the lab machine file to leave a marker that distinguishes
             # this image from other test images.
@@ -203,22 +204,10 @@ class SiteHost(remote.RemoteHost):
                         ' new kernel as successful.'),
                     timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
-            # Mark host as recently updated. Hosts are rebooted at the end of
-            # every test cycle which will remove the file.
-            self.run('touch %s' % self._JUST_UPDATED_FLAG)
-
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(
                 'AUTOSERV', 'client_autodir_paths', type=list):
             self.run('rm -rf ' + path)
-
-
-    def has_just_updated(self):
-        """Indicates whether the host was updated within this boot."""
-        # Check for the existence of the just updated flag file.
-        return self.run(
-            '[ -f %s ] && echo T || echo F'
-            % self._JUST_UPDATED_FLAG).stdout.strip() == 'T'
 
 
     def close(self):
