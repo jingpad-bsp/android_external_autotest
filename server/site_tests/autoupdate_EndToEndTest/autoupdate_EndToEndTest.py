@@ -6,10 +6,12 @@ import json
 import logging
 import socket
 import subprocess
+import tempfile
 import time
 import urllib2
 import urlparse
-from autotest_lib.client.common_lib import error, site_utils
+
+from autotest_lib.client.common_lib import error, global_config, site_utils
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
 from autotest_lib.server import test
 
@@ -156,8 +158,9 @@ class ExpectedUpdateEventChain(object):
 
 class UpdateEventLogVerifier(object):
     """Verifies update event chains on a devserver update log."""
-    def __init__(self, event_log_url):
+    def __init__(self, event_log_url, url_request_timeout=None):
         self._event_log_url = event_log_url
+        self._url_request_timeout = url_request_timeout
         self._event_log = []
         self._num_consumed_events = 0
 
@@ -175,17 +178,26 @@ class UpdateEventLogVerifier(object):
         consumed and returned.
 
         @return The next new event in the host log, as reported by devserver;
-                None if no such event was found.
+                None if no such event was found or an error occurred.
 
         """
         # (Re)read event log from devserver, if necessary.
         if len(self._event_log) <= self._num_consumed_events:
-            conn = urllib2.urlopen(self._event_log_url)
+            try:
+                if self._url_request_timeout:
+                    conn = urllib2.urlopen(self._event_log_url,
+                                           timeout=self._url_request_timeout)
+                else:
+                    conn = urllib2.urlopen(self._event_log_url)
+            except urllib2.URLError, e:
+                logging.warning('urlopen failed: %s', e)
+                return None
+
             event_log_resp = conn.read()
             conn.close()
             self._event_log = json.loads(event_log_resp)
 
-        # Return next new event, if such is present.
+        # Return next new event, if one is found.
         if len(self._event_log) > self._num_consumed_events:
             new_event = self._event_log[self._num_consumed_events]
             self._num_consumed_events += 1
@@ -196,12 +208,15 @@ class UpdateEventLogVerifier(object):
 class OmahaDevserver(object):
     """Spawns a test-private devserver instance."""
     _WAIT_FOR_DEVSERVER_STARTED_SECONDS = 15
+    _WAIT_SLEEP_INTERVAL = 1
 
 
-    def __init__(self, omaha_host, dut_ip_addr, update_payload_lorry_url):
+    def __init__(self, omaha_host, devserver_dir, dut_ip_addr,
+                 update_payload_lorry_url):
         """Starts a private devserver instance, operating at Omaha capacity.
 
         @param omaha_host: host address where the devserver is spawned.
+        @param devserver_dir: path to the devserver source directory
         @param dut_ip_addr: the IP address of the client DUT, used for deriving
                a unique port number.
         @param update_payload_lorry_url: URL to provision for update requests.
@@ -223,7 +238,7 @@ class OmahaDevserver(object):
 
         # Invoke the Omaha/devserver.
         cmdlist = [
-                'start_devserver',
+                './devserver.py',
                 '--archive_dir=static/',
                 '--payload=%s' % update_payload_path,
                 '--port=%d' % self._omaha_port,
@@ -232,8 +247,8 @@ class OmahaDevserver(object):
                 '--max_updates=1',
                 '--host_log',
         ]
-        logging.info('launching omaha/devserver on %s: %s',
-                     omaha_host, ' '.join(cmdlist))
+        logging.info('launching omaha/devserver on %s (%s): %s',
+                     omaha_host, devserver_dir, ' '.join(cmdlist))
         # TODO(garnold) invoke omaha/devserver remotely! The host needs to be
         # either globally known to all DUTs, or inferrable based on the DUT's
         # own IP address, or otherwise provisioned to it.
@@ -245,28 +260,32 @@ class OmahaDevserver(object):
         # We are using subprocess directly (as opposed to existing util
         # wrappers like utils.run() or utils.BgJob) because we need to be able
         # to terminate the subprocess once the test finishes.
-        self._devserver = subprocess.Popen(cmdlist, 0, None, subprocess.PIPE,
-                                           None, subprocess.PIPE)
+        devserver_output_namedtemp = tempfile.NamedTemporaryFile()
+        self._devserver = subprocess.Popen(
+                cmdlist, stdin=subprocess.PIPE,
+                stdout=devserver_output_namedtemp.file,
+                stderr=subprocess.STDOUT, cwd=devserver_dir or None)
         timeout = self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
-        devserver_stderr_log = []
-        while timeout and self._devserver.returncode is None:
-            time.sleep(1)
-            timeout -= 1
-            devserver_started = False
-            while not devserver_started:
-                line = self._devserver.stderr.readline()
-                if not line:
+        devserver_output_log = []
+        with open(devserver_output_namedtemp.name, 'r') as devserver_output:
+            while timeout > 0 and self._devserver.returncode is None:
+                time.sleep(self._WAIT_SLEEP_INTERVAL)
+                timeout -= self._WAIT_SLEEP_INTERVAL
+                devserver_started = False
+                while not devserver_started:
+                    line = devserver_output.readline()
+                    if not line:
+                        break
+                    log_line = '[devserver]' + line.rstrip('\n')
+                    logging.debug(log_line)
+                    devserver_output_log.append(log_line)
+                    devserver_started = 'Bus STARTED' in line
+                else:
                     break
-                log_line = '[devserver]' + line.rstrip('\n')
-                logging.debug(log_line)
-                devserver_stderr_log.append(log_line)
-                devserver_started = 'Bus STARTED' in line
             else:
-                break
-        else:
-            raise error.TestError(
-                'omaha/devserver not running, error log:\n%s' %
-                '\n'.join(devserver_strerr_log))
+                raise error.TestError(
+                    'omaha/devserver not running, error log:\n%s' %
+                    '\n'.join(devserver_output_log))
 
         self._omaha_host = site_utils.externalize_host(omaha_host)
 
@@ -353,6 +372,7 @@ class autoupdate_EndToEndTest(test.test):
     _WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS   = 5 * 60
     _WAIT_FOR_UPDATE_COMPLETED_SECONDS     = 4 * 60
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
+    _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
 
     # Omaha event types/results, from update_engine/omaha_request_action.h
     EVENT_TYPE_UNKNOWN           = 0
@@ -503,7 +523,7 @@ class autoupdate_EndToEndTest(test.test):
                         board, release, branch)
             except dev_server.DevServerException, e:
                 raise error.TestError(
-                        'failed to stage source test image: %s' % str(e))
+                        'failed to stage source test image: %s' % e)
         else:
             # TODO(garnold) chromium-os:33766: implement staging of MP-signed
             # images.
@@ -540,7 +560,7 @@ class autoupdate_EndToEndTest(test.test):
                             board, release, branch)
             except dev_server.DevServerException, e:
                 raise error.TestError(
-                        'failed to stage target test payload: %s' % str(e))
+                        'failed to stage target test payload: %s' % e)
         else:
             # TODO(garnold) chromium-os:33766: implement staging of MP-signed
             # images.
@@ -585,13 +605,21 @@ class autoupdate_EndToEndTest(test.test):
                 test_conf['update_type'] == 'delta',
                 test_conf['target_release'] == test_conf['source_release'])
 
+        # Get the devserver directory from autotest config.
+        devserver_dir = global_config.global_config.get_config_value(
+                'CROS', 'devserver_dir', default=None)
+        if devserver_dir is None:
+            raise error.TestError(
+                    'path to devserver source tree not provided; please define '
+                    'devserver_dir under [CROS] in your shadow_config.ini')
+
         # Launch Omaha/devserver.
         try:
             self._omaha_devserver = OmahaDevserver(
-                    omaha_host, host.ip,
+                    omaha_host, devserver_dir, host.ip,
                     test_conf.get('target_payload_lorry_url'))
         except error.TestError, e:
-            logging.error('failed to start omaha/devserver: %s', str(e))
+            logging.error('failed to start omaha/devserver: %s', e)
             raise
 
         try:
@@ -619,7 +647,9 @@ class autoupdate_EndToEndTest(test.test):
                     ['http', omaha_netloc, '/api/hostlog', 'ip=' + host.ip, ''])
             logging.info('polling update progress from omaha/devserver: %s',
                          omaha_hostlog_url)
-            log_verifier = UpdateEventLogVerifier(omaha_hostlog_url)
+            log_verifier = UpdateEventLogVerifier(
+                    omaha_hostlog_url,
+                    self._DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS)
 
             # Verify chain of events in a successful update process.
             chain = ExpectedUpdateEventChain(

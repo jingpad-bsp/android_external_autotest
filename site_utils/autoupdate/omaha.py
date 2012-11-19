@@ -48,7 +48,7 @@ def omaha_request(request_data, url_path='service/update2'):
         finally:
             conn.close()
     except IOError, e:
-        raise OmahaError('error talking to omaha: %s' % str(e))
+        raise OmahaError('error talking to omaha: %s' % e)
 
 
 def find_latest_release(hwid, appid, channel):

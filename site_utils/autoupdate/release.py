@@ -78,9 +78,9 @@ class ReleaseInfo(object):
                                    _CONF_NEXT_BRANCH_OPT)
         except IOError, e:
             raise ReleaseError('failed to open release config file (%s): %s' %
-                               (_RELEASE_CONFIG_FILE, str(e)))
+                               (_RELEASE_CONFIG_FILE, e))
         except ConfigParser.Error, e:
-            raise ReleaseError('failed to load release config: %s' % str(e))
+            raise ReleaseError('failed to load release config: %s' % e)
 
         # Infer chronologically sorted list of branchpoints.
         self._sorted_branchpoint_list = self._branchpoint_dict.items()

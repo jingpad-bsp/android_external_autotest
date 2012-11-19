@@ -13,9 +13,9 @@ import os
 import subprocess
 import sys
 
-import board
-import release
-import test_image
+import common
+from autotest_lib.frontend.afe import rpc_client_lib
+from autotest_lib.site_utils.autoupdate import board, release, test_image
 
 
 # Global reference objects.
@@ -25,6 +25,64 @@ _release_info = release.ReleaseInfo()
 
 class FullReleaseTestError(BaseException):
   pass
+
+
+class TestEnv(object):
+    """Contains and formats the environment arguments of a test."""
+
+    def __init__(self, args):
+        """Initial environment arguments object.
+
+        @param args: parsed program arguments, including test environment ones
+
+        """
+        self._env_args_str_local = None
+        self._env_args_str_afe = None
+
+        # Distill envionment arguments from all input arguments.
+        self._env_args = []
+        for key in ('servo_host', 'servo_port', 'omaha_host'):
+            val = vars(args).get(key)
+            if val is not None:
+                self._env_args.append((key, val))
+
+
+    def get_cmdline_args(self):
+        """Return formatted environment arguments for command-line invocation.
+
+        The formatted string is cached for repeated use.
+
+        """
+        if self._env_args_str_local is None:
+            self._env_args_str_local = ''
+            for key, val in self._env_args:
+                # Convert Booleans to 'yes' / 'no'.
+                if val is True:
+                    val = 'yes'
+                elif val is False:
+                    val = 'no'
+
+                self._env_args_str_local += ' %s=%s' % (key, val)
+
+        return self._env_args_str_local
+
+
+    def get_code_args(self):
+        """Return formatted environment arguments for inline assignment.
+
+        The formatted string is cached for repeated use.
+
+        """
+        if self._env_args_str_afe is None:
+            self._env_args_str_afe = ''
+            for key, val in self._env_args:
+                # Everything becomes a string, except for Booleans.
+                if type(val) is bool:
+                    self._env_args_str_afe += "%s = %s\n" % (key, val)
+                else:
+                    self._env_args_str_afe += "%s = '%s'\n" % (key, val)
+
+        return self._env_args_str_afe
 
 
 class TestConfig(object):
@@ -85,18 +143,29 @@ class TestConfig(object):
                           'target payload : %s' % self.target_payload_uri])
 
 
-    def get_config_args(self, assign='=', delim=' '):
-        return delim.join(['%s%s%s' % (key, assign, val) for key, val in [
-                ('board', self.board),
-                ('name', self.name),
-                ('image_type', self.get_image_type()),
-                ('update_type', self.get_update_type()),
-                ('source_release', self.source_release),
-                ('target_release', self.target_release),
-                ('source_branch', self.source_branch),
-                ('target_branch', self.target_branch),
-                ('source_image_uri', self.source_image_uri),
-                ('target_payload_uri', self.target_payload_uri)]])
+    def _get_args(self, assign, delim, is_quote_val):
+        template = "%s%s'%s'" if is_quote_val else "%s%s%s"
+        return delim.join([template % (key, assign, val)
+                           for key, val in [
+                               ('board', self.board),
+                               ('name', self.name),
+                               ('image_type', self.get_image_type()),
+                               ('update_type', self.get_update_type()),
+                               ('source_release', self.source_release),
+                               ('target_release', self.target_release),
+                               ('source_branch', self.source_branch),
+                               ('target_branch', self.target_branch),
+                               ('source_image_uri', self.source_image_uri),
+                               ('target_payload_uri',
+                                self.target_payload_uri)]])
+
+    def get_cmdline_args(self):
+        return self._get_args('=', ' ', False)
+
+
+    def get_code_args(self):
+        args = self._get_args(' = ', '\n', True)
+        return args + '\n' if args else ''
 
 
 def get_release_branch(release):
@@ -350,9 +419,66 @@ def generate_test_list(args):
     return test_list
 
 
+def get_usage(argument_names):
+    usage = 'Usage: %prog [options]'
+    if argument_names:
+        usage += ' ' + ' '.join(argument_names)
+    return usage
+
+
+def run_test_local(test, env, remote):
+    """Run an end-to-end update test locally.
+
+    @param test: the test configuration
+    @param env: environment arguments for the test
+    @param remote: remote DUT address
+
+    """
+    cmd = ['run_remote_tests.sh',
+           '--args=%s%s' % (test.get_cmdline_args(), env.get_cmdline_args()),
+           '--servo',
+           '--remote=%s' % remote,
+           '--allow_offline_remote',
+           '--use_emerged',
+           'autoupdate_EndToEndTest']
+    logging.debug('executing: %s', ' '.join(cmd))
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError, e:
+        raise FullReleaseTestError(
+                'command execution failed: %s' % e)
+
+
+def run_test_afe(test, env, control_code, afe_create_job_func):
+    """Run an end-to-end update test via AFE.
+
+    @param test: the test configuration
+    @param env: environment arguments for the test
+    @param control_code: content of the test control file
+    @param afe_create_job: AFE function for creating test job
+
+    @return The scheduled job ID.
+
+    """
+    # Parametrize the control script.
+    parametrized_control_code = (
+            test.get_code_args() + env.get_code_args() + control_code)
+
+    # Create the job.
+    job_id = afe_create_job_func(
+            test.name, 'Medium', parametrized_control_code, 'Server',
+            meta_hosts=['board:%s' % test.board], dependencies=['servo'])
+    return job_id
+
+
 def parse_args():
-    parser = optparse.OptionParser(
-            usage='Usage: %prog [options] RELEASE BOARD DUT_ADDR')
+    argument_names = ('RELEASE', 'BOARD')
+
+    desc = ('Schedule a set of update tests of Chrome OS version RELEASE for '
+            'BOARD.')
+
+    parser = optparse.OptionParser(usage=get_usage(argument_names),
+                                   description=desc)
 
     parser.add_option('--nmo', dest='test_nmo', action='store_true',
                       help='generate N-1 update tests')
@@ -362,13 +488,15 @@ def parse_args():
                       help='generate FSI update tests')
     parser.add_option('--servo_host', metavar='ADDR', default='localhost',
                       help='host running servod (default: %default)')
-    parser.add_option('--servo_port', metavar='PORT', default=None,
+    parser.add_option('--servo_port', metavar='PORT',
                       help='servod port (default: servod\'s default)')
     parser.add_option('--omaha_host', metavar='ADDR', default='localhost',
-                      help='host where omaha/devserver will be spawned '
+                      help='host where Omaha/devserver will be spawned '
                       '(default: %default)')
     parser.add_option('--mp_images', action='store_true',
                       help='use MP-signed images')
+    parser.add_option('--remote', metavar='ADDR',
+                      help='run test on given DUT via run_remote_tests')
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
                       help='verbosity level: normal (default), verbose, debug')
 
@@ -376,9 +504,9 @@ def parse_args():
     opts, args = parser.parse_args()
 
     # Get positional arguments, adding them as option values.
-    if len(args) != 3:
-        parser.error('missing arguments')
-    opts.tested_release, opts.tested_board, opts.dut_addr = args
+    if len(args) != len(argument_names):
+        parser.error('unexpected number of arguments')
+    opts.tested_release, opts.tested_board = args
 
     # Sanity check board.
     if opts.tested_board not in _board_info.get_board_names():
@@ -415,33 +543,36 @@ def main():
                 'no test configurations generated, nothing to do')
 
         # Construct environment argument, used for all tests.
-        test_env_args = ''
-        for key in ('servo_host', 'servo_port', 'omaha_host', 'dev_mode'):
-            val = vars(args).get(key)
-            if val is not None:
-                if val is True:
-                    val = 'yes'
-                elif val is False:
-                    val = 'no'
-                test_env_args += ' %s=%s' % (key, val)
+        env = TestEnv(args)
 
-        # Execute tests.
-        for i, test in enumerate(test_list):
-            logging.info('executing test %d/%d:\n%r', i + 1, len(test_list),
-                         test)
-            cmd = ['run_remote_tests.sh',
-                   '--args=%s%s' % (test.get_config_args(), test_env_args),
-                   '--servo',
-                   '--remote=%s' % args.dut_addr,
-                   '--allow_offline_remote',
-                   '--use_emerged',
-                   'autoupdate_EndToEndTest']
-            logging.debug('running: %s', ' '.join(cmd))
-            try:
-                subprocess.check_call(cmd)
-            except subprocess.CalledProcessError, e:
-                raise FullReleaseTestError('command execution failed: %s' %
-                                           str(e))
+        # Local or AFE invocation?
+        if args.remote:
+            # Running autoserv locally.
+            for i, test in enumerate(test_list):
+                logging.info('running test %d/%d:\n%r', i + 1, len(test_list),
+                             test)
+                run_test_local(test, env, args.remote)
+        else:
+            # Obtain the test control file content.
+            control_file = os.path.join(
+                    common.autotest_dir, 'server', 'site_tests',
+                    'autoupdate_EndToEndTest', 'control')
+            with open(control_file) as f:
+                control_code = f.read()
+
+            # Establish AFE RPC connection, obtain job creation RPC function.
+            afe_proxy = rpc_client_lib.get_proxy(
+                    'http://localhost/afe/server/noauth/rpc/')
+            afe_create_job_func = getattr(afe_proxy, 'create_job')
+
+            # Schedule jobs via AFE.
+            for i, test in enumerate(test_list):
+                logging.info('scheduling test %d/%d:\n%r', i + 1,
+                             len(test_list), test)
+                job_id = run_test_afe(test, env, control_code,
+                                      afe_create_job_func)
+                logging.info('job id: %s', job_id)
+
     except FullReleaseTestError, e:
         logging.fatal(str(e))
         sys.exit(1)

@@ -48,15 +48,15 @@ Other values pertaining to the test environment include:
 
   servo_host=HOST         host running servod (default: localhost)
   servo_port=PORT         servod's IP port (default: servod's default port)
-  omaha_host=HOST    host on which to spawn Omaha/devserver (default: localhost)
-  dev_mode=yes|no    Speed up dev-mode boot by simulating Ctrl-D (default: no)
+  omaha_host=HOST      host on which to spawn Omaha/devserver (default:
+                       localhost)
 
 """
 
 TEST_CONF_KEYS = (
     'board', 'name', 'image_type', 'update_type',
     'source_release', 'target_release', 'source_branch', 'target_branch',
-    'source_image_uri', 'target_payload_uri', 'omaha_host', 'dev_mode')
+    'source_image_uri', 'target_payload_uri', 'omaha_host')
 
 
 args_dict = utils.args_to_dict(args)

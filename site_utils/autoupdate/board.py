@@ -33,7 +33,7 @@ class BoardInfo(object):
             self._board_config.readfp(open(_BOARD_CONFIG_FILE))
         except IOError, e:
             raise BoardError('failed to load config file: %s' %
-                             (_BOARD_CONFIG_FILE, str(e)))
+                             (_BOARD_CONFIG_FILE, e))
 
 
     def _get_attr(self, board, attr):
