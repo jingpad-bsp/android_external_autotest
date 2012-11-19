@@ -58,7 +58,11 @@ the status cells are hyperlinks to details pages.
       {% if board in tpl_summary_data.irregular %}
       <a class="info" href="{{ netbook }}/{{ board }}/perf_index.html"
       {% else %}
-      <a class="info" href="{{ netbook }}/{{ board }}-{{ release }}/perf_index.html"
+        {% if "x86-" in board %}
+        <a class="info" href="eagle_eye/graphs/{{ release }}-{{ netbook }}.html"
+        {% else %}
+        <a class="info" href="eagle_eye/graphs/{{ release }}-{{ board }}.html"
+        {% endif %}
       {% endif %}
          onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
         perf
