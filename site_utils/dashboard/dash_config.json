@@ -58,10 +58,15 @@
         "    trigger: failed|result_changed|completed [default: 'failed']",
         "--------------------------------------------------------------------"],
     "resultmail": [
-        {"platforms": {"x86-alex": ["alex", "netbook_alex"],
-                       "lumpy": ["netbook_lumpy"],
+        {"platforms": {"butterfly": ["butterfly"],
+                       "daisy": ["snow"],
+                       "kiev": ["kiev"],
+                       "link": ["link"],
+                       "lumpy": ["lumpy", "netbook_lumpy"],
+                       "parrot": ["parrot"],
+                       "stout": ["stout"],
                        "stumpy": ["stumpy", "desktop_stumpy"],
-                       "tegra2-kaen": ["netbook_kaen"],
+                       "x86-alex": ["alex", "netbook_alex"],
                        "x86-mario": ["mario", "netbook_mario_mp"],
                        "x86-zgb": ["zgb", "netbook_acer_zgb"]},
          "filters": [
