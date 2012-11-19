@@ -15,6 +15,7 @@ import time
 import gtk.keysyms
 
 import common_util
+import firmware_constants
 import firmware_log
 import firmware_utils
 import fuzzy
@@ -31,23 +32,29 @@ import input_device
 
 # Include some constants
 from firmware_constants import MODE, OPTIONS
+from linux_input import KEY_D, KEY_M, KEY_X, KEY_ENTER, KEY_SPACE
 
 
-# Define the keys for test flow
-GTK_KEY_DISCARD = gtk.keysyms.d
-GTK_KEY_EXIT = gtk.keysyms.x
-GTK_KEY_MORE = gtk.keysyms.m
-GTK_KEY_SAVE = gtk.keysyms.Return
-GTK_KEY_SAVE2 = gtk.keysyms.space
+# Define the Test Flow Keypress (TFK) codes for test flow
+class _TFK(firmware_constants._Constant):
+    pass
+TFK = _TFK()
+TFK.DISCARD = KEY_D
+TFK.EXIT = KEY_X
+TFK.MORE = KEY_M
+TFK.SAVE = KEY_SPACE
+TFK.SAVE2 = KEY_ENTER
 
 
 class TestFlow:
     """Guide the user to perform gestures. Record and validate the gestures."""
 
-    def __init__(self, device_geometry, device, win, parser, output, options):
+    def __init__(self, device_geometry, device, keyboard, win, parser, output,
+                 options):
         self.device_geometry = device_geometry
         self.device = device
         self.device_node = self.device.device_node
+        self.keyboard = keyboard
         self.firmware_version = self.device.get_firmware_version()
         self.board = firmware_utils.get_board()
         self.output = output
@@ -373,34 +380,44 @@ class TestFlow:
         """Is parsing the gesture file done?"""
         return self.packets is not None
 
-    def user_choice_callback(self, widget, event):
+    def user_choice_callback(self, fd, condition):
         """A callback to handle the key pressed by the user.
 
         This is the primary GUI event-driven method handling the user input.
         """
-        choice = event.keyval
+        choice = self.keyboard.get_key_press_event(fd)
+        if choice:
+            self._handle_keyboard_event(choice)
+        return True
+
+    def _handle_keyboard_event(self, choice):
+        """Handle the keyboard event."""
         if self.robot_waiting:
-            if choice in (GTK_KEY_SAVE, GTK_KEY_SAVE2):
+            # The user wants the robot to start its action.
+            if choice in (TFK.SAVE, TFK.SAVE2):
                 self.robot_waiting = False
                 self._robot_action()
+            # The user wants to exit.
+            elif choice == TFK.EXIT:
+                self._handle_user_choice_exit_after_parsing()
         elif self._is_parsing_gesture_file_done():
             # Save this gesture file and go to next gesture.
-            if choice in (GTK_KEY_SAVE, GTK_KEY_SAVE2):
+            if choice in (TFK.SAVE, TFK.SAVE2):
                 self._handle_user_choice_save_after_parsing(next_gesture=True)
             # Save this file and perform the same gesture again.
-            elif choice == GTK_KEY_MORE:
+            elif choice == TFK.MORE:
                 self._handle_user_choice_save_after_parsing(next_gesture=False)
             # Discard this file and perform the gesture again.
-            elif choice == GTK_KEY_DISCARD:
+            elif choice == TFK.DISCARD:
                 self._handle_user_choice_discard_after_parsing()
             # The user wants to exit.
-            elif choice == GTK_KEY_EXIT:
+            elif choice == TFK.EXIT:
                 self._handle_user_choice_exit_after_parsing()
             # The user presses any wrong key.
             else:
                 self.win.set_prompt(self._get_prompt_next(), color='red')
         else:
-            if choice == GTK_KEY_EXIT:
+            if choice == TFK.EXIT:
                 self._handle_user_choice_exit_before_parsing()
             # The user presses any wrong key.
             else:
@@ -427,11 +444,9 @@ class TestFlow:
             self.gesture_continues_flag = False
             return True
         else:
-            self.win.set_input_focus()
             self._handle_user_choice_validate_before_parsing()
             self.win.remove_event_source(self.gesture_file_watch_tag)
-            self.win.set_input_focus()
-            self.win.create_key_press_event(GTK_KEY_SAVE)
+            self._handle_keyboard_event(TFK.SAVE)
             return False
 
     def gesture_file_watch_callback(self, fd, condition, evdev_device):
@@ -484,10 +499,6 @@ class TestFlow:
         self.gesture_file = open(self.gesture_file_name, 'w')
         self.record_proc = subprocess.Popen(self.record_cmd.split(),
                                             stdout=self.gesture_file)
-
-        # Set input focus to the firmware window rather than mtplot
-        time.sleep(0.2)
-        self.win.set_input_focus()
 
         # Watch if data come in to the monitored file.
         self.gesture_begins_flag = False

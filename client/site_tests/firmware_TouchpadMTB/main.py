@@ -20,6 +20,7 @@ import sys
 
 import firmware_utils
 import firmware_window
+import keyboard_device
 import mtb
 import test_conf as conf
 import test_flow
@@ -74,11 +75,13 @@ class firmware_TouchpadMTB:
     """Set up the system for touchpad firmware tests."""
 
     def __init__(self, options):
-        # Probe touchpad device node.
+        # Create the touchpad device.
         self.touchpad = touch_device.TouchpadDevice()
-        if self.touchpad.device_node is None:
-            logging.error('Cannot find touchpad device_node.')
-            exit(-1)
+        self._check_device(self.touchpad)
+
+        # Create the keyboard device.
+        self.keyboard = keyboard_device.KeyboardDevice()
+        self._check_device(self.keyboard)
 
         # Get the MTB parser.
         self.parser = mtb.MtbParser()
@@ -112,19 +115,31 @@ class firmware_TouchpadMTB:
         # Get the test_flow object which will guide through the gesture list.
         self.test_flow = test_flow.TestFlow(self.touchpad_window_geometry,
                                             self.touchpad,
+                                            self.keyboard,
                                             self.win,
                                             self.parser,
                                             self.output,
                                             options=options)
 
         # Register some callback functions for firmware window
-        self.win.register_callback('key_press_event',
-                                   self.test_flow.user_choice_callback)
         self.win.register_callback('expose_event',
                                    self.test_flow.init_gesture_setup_callback)
 
+        # Register a callback function to watch keyboard input events.
+        # This is required because the set_input_focus function of a window
+        # is flaky maybe due to problems of the window manager.
+        # Hence, we handle the keyboard input at a lower level.
+        self.win.register_io_add_watch(self.test_flow.user_choice_callback,
+                                       self.keyboard.system_device)
+
         # Stop power management so that the screen does not dim during tests
         firmware_utils.stop_power_management()
+
+    def _check_device(self, device):
+        """Check if a device has been created successfully."""
+        if device.device_node is None:
+            logging.error('Cannot find device_node.')
+            exit(-1)
 
     def _create_report_name(self):
         """Create the report names for both plain-text and html files.

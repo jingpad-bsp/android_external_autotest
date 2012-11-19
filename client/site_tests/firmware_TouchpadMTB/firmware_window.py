@@ -214,10 +214,13 @@ class FirmwareWindow(object):
         """Register a callback function for gobject.timeout_add."""
         return gobject.timeout_add(timeout, callback)
 
-    def register_io_add_watch(self, callback, fd, data,
+    def register_io_add_watch(self, callback, fd, data=None,
                               condition=gobject.IO_IN):
         """Register a callback function for gobject.io_add_watch."""
-        return gobject.io_add_watch(fd, condition, callback, data)
+        if data:
+            return gobject.io_add_watch(fd, condition, callback, data)
+        else:
+            return gobject.io_add_watch(fd, condition, callback)
 
     def create_key_press_event(self, keyval):
         """Create a key_press_event."""
