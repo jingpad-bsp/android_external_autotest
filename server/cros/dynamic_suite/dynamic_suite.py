@@ -300,7 +300,7 @@ class SuiteSpec(object):
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
                  skip_reimage=False, add_experimental=True, file_bugs=False,
-                 **dargs):
+                 max_runtime_mins=24*60, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -351,6 +351,7 @@ class SuiteSpec(object):
         self.add_experimental = add_experimental
         self.file_bugs = file_bugs
         self.dependencies = {'': []}
+        self.max_runtime_mins = max_runtime_mins
 
 
 def skip_reimage(g):
@@ -453,7 +454,8 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
             suite = Suite.create_from_name_and_blacklist(
                 spec.name, tests_to_skip, spec.build, spec.devserver,
                 afe=afe, tko=tko, pool=spec.pool,
-                results_dir=spec.job.resultdir)
+                results_dir=spec.job.resultdir,
+                max_runtime_mins=spec.max_runtime_mins)
 
             suite.run_and_wait(spec.job.record_entry, manager,
                                spec.add_experimental)

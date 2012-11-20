@@ -107,7 +107,8 @@ class Suite(object):
 
     @staticmethod
     def create_from_name(name, build, devserver, cf_getter=None, afe=None,
-                         tko=None, pool=None, results_dir=None):
+                         tko=None, pool=None, results_dir=None,
+                         max_runtime_mins=24*60):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -140,7 +141,8 @@ class Suite(object):
     @staticmethod
     def create_from_name_and_blacklist(name, blacklist, build, devserver,
                                        cf_getter=None, afe=None, tko=None,
-                                       pool=None, results_dir=None):
+                                       pool=None, results_dir=None,
+                                       max_runtime_mins=24*60):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -173,11 +175,12 @@ class Suite(object):
                     True not in [b.endswith(test.path) for b in blacklist])
 
         return Suite(in_tag_not_in_blacklist_predicate,
-                     name, build, cf_getter, afe, tko, pool, results_dir)
+                     name, build, cf_getter, afe, tko, pool, results_dir,
+                     max_runtime_mins)
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
-                 pool=None, results_dir=None):
+                 pool=None, results_dir=None, max_runtime_mins=24*60):
         """
         Constructor
 
@@ -211,6 +214,7 @@ class Suite(object):
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
                                                  self._predicate,
                                                  add_experimental=True)
+        self._max_runtime_mins = max_runtime_mins
 
 
     @property
@@ -259,7 +263,8 @@ class Suite(object):
             meta_hosts=[meta_hosts],
             dependencies=job_deps,
             keyvals={constants.JOB_BUILD_KEY: self._build,
-                     constants.JOB_SUITE_KEY: self._tag})
+                     constants.JOB_SUITE_KEY: self._tag},
+            max_runtime_mins=self._max_runtime_mins)
 
         setattr(test_obj, 'test_name', test.name)
 
