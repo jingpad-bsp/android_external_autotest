@@ -465,7 +465,8 @@ class TestFlow:
         else:
             self._handle_user_choice_validate_before_parsing()
             self.win.remove_event_source(self.gesture_file_watch_tag)
-            self._handle_keyboard_event(TFK.SAVE)
+            if self._is_robot_mode():
+                self._handle_keyboard_event(TFK.SAVE)
             return False
 
     def gesture_file_watch_callback(self, fd, condition, evdev_device):
