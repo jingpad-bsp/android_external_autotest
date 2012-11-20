@@ -13,9 +13,7 @@ from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros import cros_ui, cros_ui_test
 from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import httpd
-from autotest_lib.client.cros import power_rapl
-from autotest_lib.client.cros import power_status
-from autotest_lib.client.cros import power_utils
+from autotest_lib.client.cros import power_rapl, power_status, power_utils
 import flimflam  # Requires flimflam_test_path to be imported first.
 
 
@@ -44,23 +42,11 @@ class power_Consumption(cros_ui_test.UITest):
         # self.pyauto object
         import pyauto
         self._pyauto_module = pyauto
-        # Default brightness is set to be the same as for power_LoadTest
-        # see http://www.chromium.org/chromium-os/testing/power-testing
-        self._default_brightness = 0.4
 
         # Time to exclude from calculation after firing a task [seconds]
         self._stabilization_seconds = 5
         self._power_status = power_status.get_status()
-
-        # Non essential daemons that can spontaneously change power draw:
-        # powerd: dims backlights and suspends the device.
-        # powerm: power manager running as root
-        # update-engine: we don't want any updates downloaded during the test
-        # bluetoothd: bluetooth, scanning for devices can create a spike
-        self._daemons_to_stop = ['powerd', 'powerm', 'update-engine',
-                                 'bluetoothd']
-        # list of daemons stopped during power measurements
-        self._daemons_stopped = []
+        self._services = power_utils.ManageServices()
 
         # Verify that we are running on battery and the battery is
         # sufficiently charged
@@ -71,9 +57,7 @@ class power_Consumption(cros_ui_test.UITest):
         self.energy_full_design = batinfo.energy_full_design
         logging.info("energy_full_design = %0.3f Wh" % self.energy_full_design)
 
-        # Record the max backlight level
-        cmd = 'backlight-tool --get_max_brightness'
-        self._max_backlight = int(utils.system_output(cmd).rstrip())
+        self._backlight = power_utils.Backlight()
         self._do_xset()
 
         # Local data and web server settings. Tarballs with traditional names
@@ -102,19 +86,6 @@ class power_Consumption(cros_ui_test.UITest):
         cros_ui.xsystem('%s dpms force on' % XSET)
         # Save off X settings
         cros_ui.xsystem('%s q' % XSET)
-
-
-    def _set_backlight_level(self, brightness):
-        """Set backlight level to the given brightness (range [0-1])."""
-
-        cmd = 'backlight-tool --set_brightness %d ' % (
-              int(self._max_backlight * brightness))
-        os.system(cmd)
-
-        # record brightness level
-        cmd = 'backlight-tool --get_brightness'
-        level = int(utils.system_output(cmd).rstrip())
-        logging.info('backlight level is %d', level)
 
 
     def _download_test_data(self):
@@ -384,7 +355,7 @@ class power_Consumption(cros_ui_test.UITest):
         """WiFi sub-tests."""
 
         wifi_ap = 'GoogleGuest'
-        wifi_sec= 'none'
+        wifi_sec = 'none'
         wifi_pw = ''
 
         flim = flimflam.FlimFlam()
@@ -417,12 +388,12 @@ class power_Consumption(cros_ui_test.UITest):
 
     def _run_group_backlight(self):
         """Vary backlight brightness and record power at each setting."""
-        for i in [100, 0]:
-            self._set_backlight_level(i/100.)
+        for i in [100, 50, 0]:
+            self._backlight.set_percent(i)
             start_time = time.time() + self._stabilization_seconds
             time.sleep(30 * self._repeats)
             self._plog.checkpoint('backlight_%03d' % i, start_time)
-        self._set_backlight_level(self._default_brightness)
+        self._backlight.set_default()
 
 
     def _web_echo(self, msg):
@@ -475,17 +446,8 @@ class power_Consumption(cros_ui_test.UITest):
         # Let the login complete
         time.sleep(5)
 
-        # Turn off stuff that introduces noise
-        for daemon in self._daemons_to_stop:
-            try:
-                logging.info('Stopping %s.', daemon)
-                utils.system('stop %s' % daemon)
-                self._daemons_stopped.append(daemon)
-            except error.CmdError as e:
-                logging.warning('Error stopping daemon %s. %s',
-                                daemon, str(e))
-
-        self._set_backlight_level(self._default_brightness)
+        self._services.stop_services()
+        self._backlight.set_default()
 
         measurements = \
             [power_status.SystemPower(self._power_status.battery_path)]
@@ -528,7 +490,7 @@ class power_Consumption(cros_ui_test.UITest):
         weights[idle_name] = 1 - sum(weights.values())
 
         if set(weights).issubset(set(keyvals)):
-            p = sum(w * keyvals[k] for (k,w) in weights.items())
+            p = sum(w * keyvals[k] for (k, w) in weights.items())
             keyvals['w_Weighted_system_pwr'] = p
             keyvals['hours_battery_Weighted'] = self.energy_full_design / p
 
@@ -543,9 +505,9 @@ class power_Consumption(cros_ui_test.UITest):
         except AttributeError:
             logging.debug('test_server could not be stopped in cleanup')
 
-        self._set_backlight_level(self._default_brightness)
-
-        for daemon in self._daemons_stopped:
-            os.system('start %s' % daemon)
+        if self._backlight:
+            self._backlight.set_default()
+        if self._services:
+            self._services.restore_services()
 
         super(power_Consumption, self).cleanup()

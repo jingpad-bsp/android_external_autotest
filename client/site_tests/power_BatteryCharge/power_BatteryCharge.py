@@ -5,7 +5,7 @@
 import logging, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_status
+from autotest_lib.client.cros import power_status, power_utils
 
 
 class power_BatteryCharge(test.test):
@@ -36,6 +36,13 @@ class power_BatteryCharge(test.test):
         """
 
         time_to_sleep = 60
+        self._services = power_utils.ManageServices()
+        self._services.services_to_stop.append('ui')
+        self._services.stop_services()
+
+        self._backlight = power_utils.Backlight()
+        self._backlight.set_percent(0)
+
         self.remaining_time = self.max_run_time = max_run_time
 
         self.charge_full_design = self.status.battery[0].charge_full_design
@@ -104,6 +111,13 @@ class power_BatteryCharge(test.test):
                                           keyvals['ah_charge_capacity']
 
         self.write_perf_keyval(keyvals)
+
+
+    def cleanup(self):
+        if self._services:
+            self._services.restore_services()
+        if self._backlight:
+            self._backlight.restore()
 
 
     def on_ac(self):
