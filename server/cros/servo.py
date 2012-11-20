@@ -54,7 +54,7 @@ class Servo(object):
     # Servo-specific delays.
     MAX_SERVO_STARTUP_DELAY = 10
     SERVO_SEND_SIGNAL_DELAY = 0.5
-    SERVO_KEY_PRESS_DELAY = 0.3
+    SERVO_KEY_PRESS_DELAY = 0.1
 
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
