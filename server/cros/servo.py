@@ -126,7 +126,7 @@ class Servo(object):
         return None
 
 
-    def __init__(self, servo_host='localhost', target_host='local',
+    def __init__(self, servo_host='localhost', target_host=None,
                  servo_port=9999):
         """Sets up the servo communication infrastructure.
 
