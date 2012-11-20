@@ -10,16 +10,20 @@ from autotest_lib.client.common_lib import error
 
 _WAIT_DELAY = 5
 
-
 class platform_ExternalUSBStress(test.test):
     """Uses servo to repeatedly connect/remove USB devices."""
     version = 1
 
 
-    def run_once(self, host, client_autotest):
+    def run_once(self, host, client_autotest, suspends):
         autotest_client = autotest.Autotest(host)
         diff_list = []
         off_list = []
+        # The servo hubs come up as diffs in connected components.  These
+        # should be ignored for this test.  It is a list so when servo next
+        # is available it may have a differnet hub which can be appended.
+        servo_hardware_list = ['Standard Microsystems Corp.']
+        client_termination_file_path = '/tmp/simple_login_exit'
 
         def loggedin():
             """
@@ -40,8 +44,9 @@ class platform_ExternalUSBStress(test.test):
             named_list = []
             for item in items:
               columns = item.split(' ')
-              name = ' '.join(columns[6:len(columns)])
-              named_list.append(name)
+              name = ' '.join(columns[6:len(columns)]).strip()
+              if name not in servo_hardware_list:
+                  named_list.append(name)
             return named_list
 
 
@@ -82,11 +87,17 @@ class platform_ExternalUSBStress(test.test):
                                      'match the master list.\nMaster: %s\n'
                                      'Current: %s' % (diff_list, connected))
 
+
+        def exit_client():
+            host.run('touch %s' % client_termination_file_path)
+
+
         def stress_external_usb():
             if not loggedin():
                 return
 
-            #test_suspend(remove_while_suspended=True)
+            # Cannot run this test, blocked on https://crosbug.com/p/16310
+            # test_suspend(remove_while_suspended=True)
             test_hotplug()
             test_suspend()
 
@@ -94,13 +105,22 @@ class platform_ExternalUSBStress(test.test):
         host.servo.enable_usb_hub()
         host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
 
+        # There are some mice that need the data and power connection to both
+        # be removed, otherwise they won't come back up.  This means that the
+        # external devices should only use the usb connections labeled:
+        # USB_KEY and DUT_HUB1_USB.
         connected = set_hub_power(True)
         off_list = set_hub_power(False)
         diff_list = set(connected).difference(set(off_list))
+        if len(diff_list) == 0:
+            raise error.TestError('No connected devices were detected.  Make '
+                                  'sure the devices are connected to USB_KEY '
+                                  'and DUT_HUB1_USB on the servo board.')
         logging.info('Connected devices list: %s' % diff_list)
         set_hub_power(True)
 
-        stressor = stress.ControlledStressor(stress_external_usb)
-        stressor.start(start_condition=loggedin)
+        stressor = stress.CountedStressor(stress_external_usb,
+                                          on_exit=exit_client)
+        stressor.start(suspends, start_condition=loggedin)
         autotest_client.run_test(client_autotest)
-        stressor.stop()
+        stressor.wait()
