@@ -24,6 +24,7 @@ from autotest_lib.server import site_eap_certs
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_host_route
 from autotest_lib.server import site_linux_bridge_router
+from autotest_lib.server import site_linux_cros_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server import site_linux_system
@@ -148,6 +149,9 @@ class WiFiTest(object):
         if router['type'] == 'linux':
             if config['router']['addr'] == config['client']['addr']:
                 self.wifi = site_linux_vm_router.LinuxVMRouter(
+                    self.router, router, self.defssid)
+            elif site_linux_cros_router.isLinuxCrosRouter(self.router):
+                self.wifi = site_linux_cros_router.LinuxCrosRouter(
                     self.router, router, self.defssid)
             else:
                 self.wifi = site_linux_bridge_router.LinuxBridgeRouter(
@@ -274,11 +278,17 @@ class WiFiTest(object):
 
 
     def __must_be_installed(self, host, cmd):
-        if not self.__is_installed(host, cmd):
-            # TODO(sleffler): temporary debugging
-            host.run("ls -a /usr{/local,}/bin/%s" % cmd, ignore_status=True)
-            raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
-        return cmd
+        if self.__is_installed(host, cmd):
+            return cmd
+
+        # Hunt for the equivalent file in /usr/local.
+        cmd_base = os.path.basename(cmd)
+        local_paths = [ '/usr/local/bin', '/usr/local/sbin' ]
+        alternate_path = self.__get_install_path(host, cmd_base, local_paths)
+        if alternate_path:
+            return alternate_path
+
+        raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
 
 
     def __client_discover_commands(self, client):
@@ -1473,6 +1483,23 @@ class WiFiTest(object):
         result = host.run("ls %s" % filename, ignore_status=True)
         m = re.search(filename, result.stdout)
         return m is not None
+
+
+    def __get_install_path(self, host, filename, path):
+        if not path:
+            return None
+
+        # A single path entry is the same as testing __is_installed().
+        if len(path) == 1:
+            install_path = os.path.join(path, filename)
+            if self.__is_installed(host, install_path):
+                return install_path
+            return None
+
+        result = host.run("ls {%s}/%s" % (','.join(path), filename),
+                          ignore_status=True)
+        found_path = result.stdout.split('\n')[0]
+        return found_path or None
 
 
     def __firewall_open(self, proto, src):
