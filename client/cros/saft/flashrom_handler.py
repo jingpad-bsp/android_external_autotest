@@ -394,6 +394,14 @@ class FlashromHandler(object):
             raise FlashromHandlerError(e)
         return gbb_flags
 
+    def enable_write_protect(self):
+        """Enable write protect of the flash chip"""
+        self.fum.enable_write_protect()
+
+    def disable_write_protect(self):
+        """Disable write protect of the flash chip"""
+        self.fum.disable_write_protect()
+
     def get_section_sig_sha(self, section):
         """Retrieve SHA1 hash of a firmware vblock section"""
         return self.fv_sections[section].get_sig_sha()

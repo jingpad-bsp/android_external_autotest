@@ -704,25 +704,40 @@ class FAFTSequence(ServoTest):
         self.servo.set('fw_wp', 'on' if enable else 'off')
 
 
-    def set_EC_write_protect_and_reboot(self, enable):
+    def set_ec_write_protect_and_reboot(self, enable):
         """Set EC write protect status and reboot to take effect.
 
-        EC write protect is only activated if both hardware write protect pin
-        is asserted and software write protect flag is set. Also, a reboot is
-        required for write protect to take effect.
-
-        Since the software write protect flag cannot be unset if hardware write
-        protect pin is asserted, we need to deasserted the pin first if we are
-        deactivating write protect. Similarly, a reboot is required before we
-        can modify the software flag.
-
+        The write protect state is only activated if both hardware write
+        protect pin is asserted and software write protect flag is set.
         This method asserts/deasserts hardware write protect pin first, and
         set corresponding EC software write protect flag.
+
+        If the device uses non-Chrome EC, set the software write protect via
+        flashrom.
+
+        If the device uses Chrome EC, a reboot is required for write protect
+        to take effect. Since the software write protect flag cannot be unset
+        if hardware write protect pin is asserted, we need to deasserted the
+        pin first if we are deactivating write protect. Similarly, a reboot
+        is required before we can modify the software flag.
 
         Args:
           enable: True if activating EC write protect. Otherwise, False.
         """
         self.set_hardware_write_protect(enable)
+        if self.client_attr.chrome_ec:
+            self.set_chrome_ec_write_protect_and_reboot(enable)
+        else:
+            self.faft_client.set_EC_write_protect(enable)
+            self.sync_and_warm_reboot()
+
+
+    def set_chrome_ec_write_protect_and_reboot(self, enable):
+        """Set Chrome EC write protect status and reboot to take effect.
+
+        Args:
+          enable: True if activating EC write protect. Otherwise, False.
+        """
         if enable:
             # Set write protect flag and reboot to take effect.
             self.ec.set_flash_write_protect(enable)
@@ -752,7 +767,7 @@ class FAFTSequence(ServoTest):
             logging.info('The test required EC is %swrite-protected. Reboot '
                          'and flip the state.', '' if ec_wp else 'not ')
             self.run_faft_step({
-                'reboot_action': (self.set_EC_write_protect_and_reboot, ec_wp)
+                'reboot_action': (self.set_ec_write_protect_and_reboot, ec_wp)
             })
 
 
@@ -764,7 +779,7 @@ class FAFTSequence(ServoTest):
                 {'wpsw_boot': '1' if self._old_ec_wp else '0'}):
             logging.info('Restore the original EC write protection and reboot.')
             self.run_faft_step({
-                'reboot_action': (self.set_EC_write_protect_and_reboot,
+                'reboot_action': (self.set_ec_write_protect_and_reboot,
                                   self._old_ec_wp)
             })
 

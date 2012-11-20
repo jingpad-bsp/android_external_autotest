@@ -298,6 +298,16 @@ class flashrom_util(object):
         scraper = LayoutScraper(self.os_if)
         self.firmware_layout = scraper.get_layout(file_name)
 
+    def enable_write_protect(self):
+        """Enable the write pretection of the flash chip."""
+        cmd = 'flashrom %s --wp-enable' % self._target_command
+        self.os_if.run_shell_command(cmd)
+
+    def disable_write_protect(self):
+        """Disable the write pretection of the flash chip."""
+        cmd = 'flashrom %s --wp-disable' % self._target_command
+        self.os_if.run_shell_command(cmd)
+
     def read_whole(self):
         """
         Reads whole flash ROM data.

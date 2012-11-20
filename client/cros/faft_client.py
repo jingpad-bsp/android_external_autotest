@@ -675,6 +675,20 @@ class FAFTClient(object):
         self._ec_handler.dump_whole(ec_path)
 
 
+    def set_EC_write_protect(self, enable):
+        """Enable write protect of the EC flash chip.
+
+        Args:
+            enable: True if activating EC write protect. Otherwise, False.
+        """
+        self._chromeos_interface.log('Requesting set EC write protect to %s' %
+                                     ('enable' if enable else 'disable'))
+        if enable:
+            self._ec_handler.enable_write_protect()
+        else:
+            self._ec_handler.disable_write_protect()
+
+
     def run_cgpt_test_loop(self):
         """Run the CgptState test loop. The tst logic is handled in the client.
 

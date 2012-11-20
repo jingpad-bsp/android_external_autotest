@@ -36,7 +36,7 @@ class firmware_ECWriteProtect(FAFTSequence):
     def ensure_unprotected(self):
         if not self.checkers.crossystem_checker({'wpsw_boot': '0'}):
             self.run_faft_step({
-                'reboot_action': (self.set_EC_write_protect_and_reboot, False)
+                'reboot_action': (self.set_ec_write_protect_and_reboot, False)
             })
 
 
@@ -62,7 +62,7 @@ class firmware_ECWriteProtect(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, expected EC RO boot, enable WP and reboot EC.
                 'state_checker': (self.checkers.ro_normal_checker, 'A'),
-                'reboot_action': (self.set_EC_write_protect_and_reboot, True),
+                'reboot_action': (self.set_ec_write_protect_and_reboot, True),
             },
             {   # Step 2, expected EC RO boot, write protected. Disable RO flag
                 #         and reboot EC.
@@ -86,7 +86,7 @@ class firmware_ECWriteProtect(FAFTSequence):
                                   self.write_protect_checker],
                 'userspace_action': (self.faft_client.set_firmware_flags,
                                      ('a', vboot.PREAMBLE_USE_RO_NORMAL)),
-                'reboot_action': (self.set_EC_write_protect_and_reboot, False),
+                'reboot_action': (self.set_ec_write_protect_and_reboot, False),
             },
             {   # Step 5, expected EC RO boot.
                 'state_checker': (self.checkers.ro_normal_checker, 'A'),
