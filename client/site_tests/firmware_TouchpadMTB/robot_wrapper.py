@@ -161,17 +161,16 @@ class RobotWrapper:
 
         self._build_robot_script_paths()
 
-    def _is_robot_simulation_mode(self):
-        """Is it in robot simulation mode?
+    def _is_robot_action_mode(self):
+        """Is it in robot action mode?
 
-        In the robot simulation mode, it does not actually invoke the robot
-        control script. It only prints the command string for debugging purpose.
+        In the robot action mode, it actually invokes the robot control script.
         """
-        return self._mode == MODE.ROBOT_SIM
+        return self._mode in [MODE.ROBOT, MODE.ROBOT_INT]
 
     def _raise_error(self, msg):
-        """Only raise an error if it is not in the simulation mode."""
-        if not self._is_robot_simulation_mode():
+        """Only raise an error if it is in the robot action mode."""
+        if self._is_robot_action_mode():
             raise RobotWrapperError(msg)
 
     def _get_robot_script_dir(self):
@@ -301,7 +300,7 @@ class RobotWrapper:
     def _execute_control_command(self, control_cmd):
         """Execute a control command."""
         print 'Executing: "%s"' % control_cmd
-        if not self._is_robot_simulation_mode():
+        if self._is_robot_action_mode():
             common_util.simple_system(control_cmd)
 
     def control(self, gesture, variation):
