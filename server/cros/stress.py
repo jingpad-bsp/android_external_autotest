@@ -14,17 +14,19 @@ class BaseStressor(threading.Thread):
 
     @var stressor: callable which performs a single stress event.
     """
-    def __init__(self, stressor, escalate_exceptions=True):
+    def __init__(self, stressor, on_exit=None, escalate_exceptions=True):
         """
         Initialize the ControlledStressor.
 
         @param stressor: callable which performs a single stress event.
+        @param on_exit: callable which will be called when the thread finishes.
         @param escalate_exceptions: whether to escalate exceptions to the parent
             thread; defaults to True.
         """
         super(BaseStressor, self).__init__()
         self.daemon = True
         self.stressor = stressor
+        self.on_exit = on_exit
         self._escalate_exceptions = escalate_exceptions
         self._exc_info = None
 
@@ -59,6 +61,9 @@ class BaseStressor(threading.Thread):
             if self._escalate_exceptions:
                 self._exc_info = sys.exc_info()
             raise
+        finally:
+            if self.on_exit:
+              self.on_exit()
 
 
     def _loop_stressor(self):
@@ -88,16 +93,18 @@ class ControlledStressor(BaseStressor):
 
     Creates a new thread and calls |stressor| in a loop until stop() is called.
     """
-    def __init__(self, stressor, escalate_exceptions=True):
+    def __init__(self, stressor, on_exit=None, escalate_exceptions=True):
         """
         Initialize the ControlledStressor.
 
         @param stressor: callable which performs a single stress event.
+        @param on_exit: callable which will be called when the thread finishes.
         @param escalate_exceptions: whether to escalate exceptions to the parent
             thread; defaults to True.
         """
         self._complete = threading.Event()
-        super(ControlledStressor, self).__init__(stressor, escalate_exceptions)
+        super(ControlledStressor, self).__init__(stressor, on_exit,
+                                                 escalate_exceptions)
 
 
     def _loop_stressor(self):

@@ -36,6 +36,34 @@ class StressorTest(unittest.TestCase):
         self.assertTrue(event.is_set(), 'The stress event did not run')
 
 
+    def testOnExit(self):
+        def stress_event():
+            pass
+
+        event = threading.Event()
+        def on_exit():
+            event.set()
+
+        stressor = stress.CountedStressor(stress_event, on_exit=on_exit)
+        stressor.start(1)
+        stressor.wait()
+        self.assertTrue(event.is_set())
+
+
+    def testOnExitWithException(self):
+        def stress_event():
+            raise StopThreadForTesting
+
+        event = threading.Event()
+        def on_exit():
+            event.set()
+
+        stressor = stress.CountedStressor(stress_event, on_exit=on_exit)
+        stressor.start(1)
+        self.assertRaises(StopThreadForTesting, stressor.wait)
+        self.assertTrue(event.is_set())
+
+
     def testCountedStressorStartCondition(self):
         event = threading.Event()
 
