@@ -43,9 +43,42 @@ class Crossystem(object):
         return lambda : self.cros_system_data[name]
 
 
+def get_oldest_pid_by_name(name):
+    """
+    Return the oldest pid of a process whose name perfectly matches |name|.
+
+    name is an egrep expression, which will be matched against the entire name
+    of processes on the system.  For example:
+
+      get_oldest_pid_by_name('chrome')
+
+    on a system running
+      8600 ?        00:00:04 chrome
+      8601 ?        00:00:00 chrome
+      8602 ?        00:00:00 chrome-sandbox
+
+    would return 8600, as that's the oldest process that matches.
+    chrome-sandbox would not be matched.
+
+    Arguments:
+      name: egrep expression to match.  Will be anchored at the beginning and
+            end of the match string.
+
+    Returns:
+      pid as an integer, or None if one cannot be found.
+
+    Raises:
+      ValueError if pgrep returns something odd.
+    """
+    str_pid = utils.system_output(
+        'pgrep -o ^%s$' % name, ignore_status=True).rstrip()
+    if str_pid:
+        return int(str_pid)
+
+
 def nuke_process_by_name(name, with_prejudice=False):
     try:
-        pid = int(utils.system_output('pgrep -o ^%s$' % name).split()[0])
+        pid = get_oldest_pid_by_name(name)
     except Exception as e:
         logging.error(e)
         return

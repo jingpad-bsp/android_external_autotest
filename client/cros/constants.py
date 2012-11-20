@@ -56,6 +56,9 @@ CRYPTOHOME_DIRS_TO_RECOVER = ['crash', 'log']
 DISABLE_BROWSER_RESTART_MAGIC_FILE = '/var/run/disable_chrome_restart'
 DEFAULT_OWNERSHIP_TIMEOUT = 300  # Ownership is an inherently random process.
 
+ENABLE_BROWSER_HANG_DETECTION_FILE = \
+    '/var/run/session_manager/enable_hang_detection'
+
 FLIMFLAM_TEST_PATH = '/usr/lib/flimflam/test/'
 
 KEYGEN = 'keygen'
