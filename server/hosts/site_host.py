@@ -12,13 +12,30 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
-from autotest_lib.client.cros import constants as cros_constants
+from autotest_lib.client.cros import constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server.cros import servo
 from autotest_lib.server.hosts import remote
 from autotest_lib.site_utils.rpm_control_system import rpm_client
+
+# Importing frontend.afe.models requires a full Autotest
+# installation (with the Django modules), not just the source
+# repository.  Most developers won't have the full installation, so
+# the imports below will fail for them.
+#
+# The fix is to catch import exceptions, and set `models` to `None`
+# on failure.  This has the side effect that
+# SiteHost._get_board_from_afe() will fail:  That will manifest as
+# failures during Repair jobs leaving the DUT as "Repair Failed".
+# In practice, you can't test Repair jobs without a full
+# installation, so that kind of failure isn't expected.
+try:
+    from autotest_lib.frontend import setup_django_environment
+    from autotest_lib.frontend.afe import models
+except:
+    models = None
 
 
 def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
@@ -97,14 +114,18 @@ class SiteHost(remote.RemoteHost):
     REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
 
 
-    LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
-    RPM_HOSTNAME_REGEX = ('chromeos[0-9]+(-row[0-9]+)?-rack[0-9]+[a-z]*-'
-                          'host[0-9]+')
-    LIGHTSENSOR_FILES = ['in_illuminance0_input',
-                         'in_illuminance0_raw',
-                         'illuminance0_input']
-    LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
-    LABEL_FUNCTIONS = []
+    _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
+            'rpm_recovery_boards', type=str).split(',')
+
+    _MAX_POWER_CYCLE_ATTEMPTS = 6
+    _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
+    _RPM_HOSTNAME_REGEX = ('chromeos[0-9]+(-row[0-9]+)?-rack[0-9]+[a-z]*-'
+                           'host[0-9]+')
+    _LIGHTSENSOR_FILES = ['in_illuminance0_input',
+                          'in_illuminance0_raw',
+                          'illuminance0_input']
+    _LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
+    _LABEL_FUNCTIONS = []
 
 
     @staticmethod
@@ -171,7 +192,7 @@ class SiteHost(remote.RemoteHost):
             self.reboot(timeout=60, wait=True)
             # Touch the lab machine file to leave a marker that distinguishes
             # this image from other test images.
-            self.run('touch %s' % self.LAB_MACHINE_FILE)
+            self.run('touch %s' % self._LAB_MACHINE_FILE)
 
             # Following the reboot, verify the correct version.
             updater.check_version()
@@ -202,6 +223,82 @@ class SiteHost(remote.RemoteHost):
             self.run('rm -rf ' + path)
 
 
+    def _get_board_from_afe(self):
+        """Retrieve this host's board from its labels in the AFE.
+
+        Looks for a host label of the form "board:<board>", and
+        returns the "<board>" part of the label.  `None` is returned
+        if there is not a single, unique label matching the pattern.
+
+        @returns board from label, or `None`.
+        """
+        host_model = models.Host.objects.get(hostname=self.hostname)
+        board_labels = filter(lambda l: l.name.startswith('board:'),
+                              host_model.labels.all())
+        board_name = None
+        if len(board_labels) == 1:
+            board_name = board_labels[0].name.split(':', 1)[1]
+        elif len(board_labels) == 0:
+            logging.error('Host %s does not have a board label.',
+                          self.hostname)
+        else:
+            logging.error('Host %s has multiple board labels.',
+                          self.hostname)
+        return board_name
+
+
+    def _powercycle_to_repair(self):
+        """Utilize the RPM Infrastructure to bring the host back up.
+
+        If the host is not up/repaired after the first powercycle we utilize
+        auto fallback to the last good install by powercycling and rebooting the
+        host 6 times.
+        """
+        logging.info('Attempting repair via RPM powercycle.')
+        failed_cycles = 0
+        self.power_cycle()
+        while not self.wait_up(timeout=self.BOOT_TIMEOUT):
+            failed_cycles += 1
+            if failed_cycles >= self._MAX_POWER_CYCLE_ATTEMPTS:
+                raise error.AutoservError('Powercycled host %s %d times; '
+                                          'device did not come back online.' %
+                                            (self.hostname, failed_cycles))
+            self.power_cycle()
+        if failed_cycles == 0:
+            logging.info('Powercycling was successful first time.')
+        else:
+            logging.info('Powercycling was successful after %d failures.',
+                         failed_cycles)
+
+
+    def repair_full(self):
+        """Repair a host for repair level NO_PROTECTION.
+
+        This overrides the base class function for repair; it does
+        not call back to the parent class, but instead offers a
+        simplified implementation based on the capabilities in the
+        Chrome OS test lab.
+
+        Repair follows this sequence:
+          1. If the DUT passes `self.verify()`, do nothing.
+          2. If the DUT can be power-cycled via RPM, try to repair
+             by power-cycling.
+
+        As with the parent method, the last operation performed on
+        the DUT must be to call `self.verify()`; if that call fails,
+        the exception it raises is passed back to the caller.
+        """
+        try:
+            self.verify()
+        except:
+            host_board = self._get_board_from_afe()
+            if (host_board is None or not self.has_power() or
+                  host_board not in self._RPM_RECOVERY_BOARDS):
+                raise
+            self._powercycle_to_repair()
+            self.verify()
+
+
     def close(self):
         super(SiteHost, self).close()
         self.xmlrpc_disconnect_all()
@@ -209,7 +306,7 @@ class SiteHost(remote.RemoteHost):
 
     def cleanup(self):
         client_at = autotest.Autotest(self)
-        self.run('rm -f %s' % cros_constants.CLEANUP_LOGS_PAUSED_FILE)
+        self.run('rm -f %s' % constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
             client_at.run_static_method('autotest_lib.client.cros.cros_ui',
                                         '_clear_login_prompt_state')
@@ -533,7 +630,7 @@ class SiteHost(remote.RemoteHost):
                 for RPM powered DUT's in the lab. If it does follow the format,
                 it returns a regular expression MatchObject instead.
         """
-        return re.match(SiteHost.RPM_HOSTNAME_REGEX, hostname)
+        return re.match(SiteHost._RPM_HOSTNAME_REGEX, hostname)
 
 
     def has_power(self):
@@ -572,7 +669,7 @@ class SiteHost(remote.RemoteHost):
         return platform.replace('google_', '')
 
 
-    @add_function_to_list(LABEL_FUNCTIONS)
+    @add_function_to_list(_LABEL_FUNCTIONS)
     def get_board(self):
         """Determine the correct board label for this host.
 
@@ -589,7 +686,7 @@ class SiteHost(remote.RemoteHost):
         return 'board:%s' % '-'.join(board.split('-')[0:2])
 
 
-    @add_function_to_list(LABEL_FUNCTIONS)
+    @add_function_to_list(_LABEL_FUNCTIONS)
     def has_lightsensor(self):
         """Determine the correct board label for this host.
 
@@ -597,7 +694,7 @@ class SiteHost(remote.RemoteHost):
                  None if it does not.
         """
         search_cmd = "find -L %s -maxdepth 4 | egrep '%s'" % (
-                self.LIGHTSENSOR_SEARCH_DIR, '|'.join(self.LIGHTSENSOR_FILES))
+            self._LIGHTSENSOR_SEARCH_DIR, '|'.join(self._LIGHTSENSOR_FILES))
         try:
             # Run the search cmd following the symlinks. Stderr_tee is set to
             # None as there can be a symlink loop, but the command will still
@@ -610,7 +707,7 @@ class SiteHost(remote.RemoteHost):
             return None
 
 
-    @add_function_to_list(LABEL_FUNCTIONS)
+    @add_function_to_list(_LABEL_FUNCTIONS)
     def has_bluetooth(self):
         """Determine the correct board label for this host.
 
@@ -634,7 +731,7 @@ class SiteHost(remote.RemoteHost):
         as it will run through all the currently implemented label functions.
         """
         labels = []
-        for label_function in self.LABEL_FUNCTIONS:
+        for label_function in self._LABEL_FUNCTIONS:
             label = label_function(self)
             if label:
                 labels.append(label)
