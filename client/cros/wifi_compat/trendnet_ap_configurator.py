@@ -15,20 +15,26 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 
 class TrendnetAPConfigurator(ap_configurator.APConfigurator):
-    """Derived class to control the Trendnet TEW-639GR."""
+    """Derived class to control the Trendnet TEW-639GR/691GR."""
+
 
     def __init__(self, router_dict):
         super(TrendnetAPConfigurator, self).__init__(router_dict)
         # Overrides
         self.security_disabled = 'Disable'
-        self.security_wpapsk = 'WPA2-PSK'
+        self.security_wep = 'WEP-OPEN'
+        self.security_wpapsk = 'WPA-PSK'
+        self.security_wpa2psk = 'WPA2-PSK'
+
 
     def get_number_of_pages(self):
         return 2
 
+
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
                  'channels': range(1, 12)}]
+
 
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
@@ -36,8 +42,11 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
                            self.mode_b | self.mode_g,
                            self.mode_b | self.mode_g | self.mode_n]}]
 
+
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_disabled, self.security_wpapsk)
+        return security_mode in (self.security_disabled, self.security_wep,
+                                 self.security_wpapsk, self.security_wpa2psk)
+
 
     def navigate_to_page(self, page_number):
         # All settings are on the same page, so we always open the config page
@@ -56,6 +65,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
                                '%d, page value sent was %d' %
                                (self.get_number_of_pages(), page_number))
 
+
     def save_page(self, page_number):
         if page_number == 1:
             xpath = ('//input[@type="submit" and @value="Apply"]')
@@ -64,11 +74,9 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath(xpath)
         self.wait = WebDriverWait(self.driver, timeout=60)
         if self.short_name == 'TEW-691GR':
-          xpath = ('//input[@value="Reboot the Device"]')
-          button = self.wait_for_object_by_xpath(xpath)
-          button.click()
+          self.click_button_by_xpath('//input[@value="Reboot the Device"]')
           self.wait = WebDriverWait(self.driver, timeout=5)
-          # Give the trendnet up to 2 minutes.  The idea here is to end when the
+          # Give the trendnet up to 2 minutes. The idea here is to end when the
           # reboot is complete.
           for i in xrange(240):
               progress_value = self.wait_for_object_by_id('progressValue')
@@ -80,8 +88,10 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
               else:
                   return
 
+
     def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode,), 1, 100)
+
 
     def _set_mode(self, mode, band=None):
         # Different bands are not supported so we ignore.
@@ -100,23 +110,24 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_id(mode_name, 'wirelessmode',
                                           wait_for_xpath='id("wds_mode")')
 
-    def set_radio(self, enabled=True):
-        self.add_item_to_command_list(self._set_radio, (enabled,), 1, 100)
 
-    def _set_radio(self, enabled=True):
+    def set_radio(self, enabled=True):
         logging.info('Enabling/Disabling the radio is not supported on this '
-                     'router (%s).  Setting SSID visibility to %s.' %
-                     (self.get_router_name(), bool(enabled)))
-        self._set_visibility(visible=enabled)
+                     'router (%s).' % self.get_router_name())
+        return None
+
 
     def set_ssid(self, ssid):
         self.add_item_to_command_list(self._set_ssid, (ssid,), 1, 100)
 
+
     def _set_ssid(self, ssid):
         self.set_content_of_text_field_by_id(ssid, 'display_SSID1')
 
+
     def set_channel(self, channel):
         self.add_item_to_command_list(self._set_channel, (channel,), 1, 100)
+
 
     def _set_channel(self, channel):
         channel_choices = ['2412MHz (Channel 1)', '2417MHz (Channel 2)',
@@ -128,24 +139,40 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_id(channel_choices[channel - 1],
                                           'sz11gChannel')
 
+
     def set_band(self, band):
         return None
 
+
     def set_security_disabled(self):
         self.add_item_to_command_list(self._set_security_disabled, (), 2, 1000)
+
 
     def _set_security_disabled(self):
         self.wait_for_object_by_id('security_mode')
         self.select_item_from_popup_by_id(self.security_disabled,
                                           'security_mode')
 
+
     def set_security_wep(self, key_value, authentication):
-        logging.info('This router %s does not support wep authentication' %
-                     self.get_router_name)
+        self.add_item_to_command_list(self._set_security_wep,
+                                      (key_value, authentication), 2, 900)
+
+
+    def _set_security_wep(self, key_value, authentication):
+        text_field = 'id("WEP1")'
+        popup_id = 'security_mode'
+        self.wait_for_object_by_id(popup_id)
+        self.select_item_from_popup_by_id(self.security_wep,
+                                          popup_id, wait_for_xpath=text_field)
+        self.set_content_of_text_field_by_xpath(key_value, text_field,
+                                                abort_check=True)
+
 
     def set_security_wpapsk(self, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 2, 900)
+
 
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
         self.wait_for_object_by_id('security_mode')
@@ -156,13 +183,13 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         self.set_content_of_text_field_by_id(update_interval,
                                              'keyRenewalInterval')
 
+
     def set_visibility(self, visible=True):
         self.add_item_to_command_list(self._set_visibility, (visible,), 1, 100)
+
 
     def _set_visibility(self, visible=True):
         # value=1 is visible; value=0 is invisible
         int_value = int(visible)
         xpath = ('//input[@value="%d" and @name="broadcastssid"]' % int_value)
-        self.wait_for_object_by_xpath(xpath)
-        element = self.driver.find_element_by_xpath(xpath)
-        element.click()
+        self.click_button_by_xpath(xpath)

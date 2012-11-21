@@ -130,7 +130,6 @@ class Netgear3700APConfigurator(ap_configurator.APConfigurator):
         if self.current_band == self.band_5ghz:
             xpath = '//input[@maxlength="32" and @name="ssid_an"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=True)
-        print 'setting ssid = ', ssid
 
 
     def set_band(self, band):

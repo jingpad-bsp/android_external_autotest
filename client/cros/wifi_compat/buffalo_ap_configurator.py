@@ -167,14 +167,13 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         # Buffalo supports WEP with wireless network mode N.
         # No exception is thrown for N-mode with WEP security.
         popup = '//select[@name="ath0_security_mode"]'
+        text_field = '//input[@name="ath0_passphrase"]'
         self.wait_for_object_by_xpath(popup)
-        self.select_item_from_popup_by_xpath(self.security_wep, popup)
-        xpath = '//input[@name="ath0_passphrase"]'
-        text = self.driver.find_element_by_xpath(xpath)
-        text.clear()
-        text.send_keys(key_value)
-        xpath = '//input[@value="Generate"]'
-        self.click_button_by_xpath(xpath)
+        self.select_item_from_popup_by_xpath(self.security_wep, popup,
+                                             wait_for_xpath=text_field)
+        self.set_content_of_text_field_by_xpath(key_value, text_field,
+                                                abort_check=True)
+        self.click_button_by_xpath('//input[@value="Generate"]')
 
 
     def set_security_wpapsk(self, shared_key, update_interval=3600):
