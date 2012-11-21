@@ -19,6 +19,7 @@ class Error(Exception):
 
 
 TIMEOUT = 30
+SERVICE_TIMEOUT = 60
 
 
 def ConnectToCellular(flim, timeout=TIMEOUT):
@@ -361,8 +362,14 @@ class AutoConnectContext(object):
         changed = False
         self.PowerOnDevice(self.device)
 
+        # Use SERVICE_TIMEOUT*2 here because it may take SERVICE_TIMEOUT
+        # seconds for the modem to disconnect when the base emulator is taken
+        # offline for reconfiguration and then another SERVICE_TIMEOUT
+        # seconds for the modem to reconnect after the base emulator is
+        # brought back online.
+        #
         # TODO(jglasgow): generalize to use services associated with device
-        service = self.flim.FindCellularService(timeout=40)
+        service = self.flim.FindCellularService(timeout=SERVICE_TIMEOUT*2)
         if not service:
             raise error.TestFail('No cellular service available.')
 

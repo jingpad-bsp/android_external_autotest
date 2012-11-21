@@ -203,7 +203,8 @@ class network_3GModemControl(test.test):
         utils.poll_for_condition(
             lambda: not self.modem.IsConnectingOrDisconnecting(),
             error.TestFail('Timed out waiting for modem to finish connecting ' +
-                           'or disconnecting.'))
+                           'or disconnecting.'),
+            timeout=SERVICE_TIMEOUT)
 
     def EnsureDisabled(self):
         """
@@ -347,7 +348,6 @@ class network_3GModemControl(test.test):
             if config and technology:
                 bs, verifier = emulator_config.StartDefault(config, technology)
                 cell_tools.PrepareModemForTechnology('', technology)
-
 
             # Enabling flimflam debugging makes it easier to debug
             # problems.  Tags will be cleared when the Backchannel
