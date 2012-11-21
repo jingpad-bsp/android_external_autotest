@@ -374,14 +374,16 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.station['interface'] = interface
 
 
+    def local_server_address(self, index):
+        return '%d.%d.%d.%d' % (192, 168, index, 254)
+
     def start_local_server(self, interface):
         logging.info("Starting up local server...")
 
         if len(self.local_servers) >= 256:
             raise error.TestFail('Exhausted available local servers')
 
-        netblock = '%d.%d.%d.%d/24' % \
-            (192, 168, len(self.local_servers), 254)
+        netblock = '%s/24' % self.local_server_address(len(self.local_servers))
 
         params = {}
         params['netblock'] = netblock

@@ -185,8 +185,12 @@ class WiFiTest(object):
             self.server = hosts.SSHHost(server['addr'],
                                         port=int(server.get('port', 22)))
             self.server_at = autotest.Autotest(self.server)
-            # if not specified assume the same as the control address
-            self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
+            if self.wifi.force_local_server:
+                # Server WiFi IP is created using a local server address.
+                self.server_wifi_ip = self.wifi.local_server_address(0)
+            else:
+                # if not specified assume the same as the control address
+                self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
             self.__server_discover_commands(server)
         else:
             self.server = None
