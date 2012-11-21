@@ -113,12 +113,12 @@ class DBusProperties(dbus.service.Object):
             interface_name,
             property_name)
         val = self.GetAll(interface_name).get(property_name, None)
-        if not val:
-            raise MMPropertyError(
-                MMPropertyError.UNKNOWN_PROPERTY,
-                ("Property '%s' not implemented for "
-                 "interface '%s'.") %
+        if val is None:
+            message = ("Property '%s' not implemented for interface '%s'." %
                 (property_name, interface_name))
+            logging.info(message)
+            raise MMPropertyError(
+                MMPropertyError.UNKNOWN_PROPERTY, message)
         return val
 
     @dbus.service.method(mm1.I_PROPERTIES, in_signature='sss')
@@ -174,7 +174,7 @@ class DBusProperties(dbus.service.Object):
             self.path,
             interface_name)
         props = self._properties.get(interface_name, None)
-        if not props:
+        if props is None:
             raise MMPropertyError(
                 MMPropertyError.UNKNOWN_INTERFACE,
                 "Object does not implement interface '%s'." %

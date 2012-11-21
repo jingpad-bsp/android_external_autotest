@@ -329,7 +329,7 @@ MM_SMS_STORAGE_TA = 6
 class MMError(dbus.exceptions.DBusException):
     def __init__(self, errno, *args, **kwargs):
         super(MMError, self).__init__(self, args, kwargs)
-        self.include_traceback = True
+        self.include_traceback = False
         self._error_name_base = None
         self._error_name_map = None
         self._Setup()

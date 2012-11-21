@@ -7,6 +7,7 @@ Pseudomodem implementation of the org.freedesktop.ModemManager1.Modem interface.
 This class serves as the abstract base class of all fake modem implementations.
 """
 
+import bearer
 import dbus
 import dbus.types
 import dbus_std_ifaces
@@ -14,6 +15,16 @@ import gobject
 import logging
 import mm1
 import modem_simple
+
+ALLOWED_BEARER_PROPERTIES = [
+    'apn',
+    'ip-type',
+    'user',
+    'password',
+    'allow-roaming',
+    'rm-protocol',
+    'number'
+]
 
 class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
     # TODO(armansito): Implement something similar to a delegate interface
@@ -236,25 +247,61 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
     def ValidateBearerProperties(self, properties):
         """
-        Must be implemented by subclasses.
-
-        Returns:
-            True, if properties are valid for the given access technologies.
+        The default implementation makes sure that all keys in properties are
+        one of the allowed bearer properties. Subclasses can override this
+        method to provide CDMA/3GPP specific checks.
 
         Raises:
             MMCoreError, if one or more properties are invalid.
         """
-        raise NotImplementedError()
+        for key in properties.iterkeys():
+            if key not in ALLOWED_BEARER_PROPERTIES:
+                raise mm1.MMCoreError(mm1.INVALID_ARGS,
+                        'Invalid property "%s", not creating bearer.' % key)
 
     @dbus.service.method(mm1.I_MODEM, out_signature='ao')
     def ListBearers(self):
-        raise NotImplementedError()
+        logging.info('ListBearers')
+        return [dbus.types.ObjectPath(key) for key in self.bearers.iterkeys()]
 
     @dbus.service.method(mm1.I_MODEM,
                          in_signature='a{sv}',
                          out_signature='o')
     def CreateBearer(self, properties):
-        raise NotImplementedError()
+        logging.info('CreateBearer')
+        maxbearers = self.Get(mm1.I_MODEM, 'MaxBearers')
+        if len(self.bearers) == maxbearers:
+            raise mm1.MMCoreError(mm1.MMCoreError.TOO_MANY,
+                    ('Maximum number of bearers reached. Cannot create new '
+                     'bearer.'))
+        else:
+            self.ValidateBearerProperties(properties)
+            bearer_obj = bearer.Bearer(self.bus, properties)
+            logging.info('Created bearer with path "%s".' % bearer_obj.path)
+            self.bearers[bearer_obj.path] = bearer_obj
+            return bearer_obj.path
+
+    def ActivateBearer(self, bearer_path):
+        logging.info('ActivateBearer: %s', bearer_path)
+        bearer = self.bearers.get(bearer_path, None)
+        if bearer is None:
+            message = 'Could not find bearer with path "%s"' % bearer_path
+            logging.info(message)
+            raise mm1.MMCoreError(mm1.MMCoreError.NOT_FOUND, message)
+
+        max_active_bearers = self.Get(mm1.I_MODEM, 'MaxActiveBearers')
+        if len(self.active_bearers) >= max_active_bearers:
+            message = ('Cannot activate bearer: maximum active bearer count '
+                       'reached.')
+            logging.info(message)
+            raise mm1.MMCoreError(mm1.MMCoreError.TOO_MANY, message)
+        if bearer.IsActive():
+            message = 'Bearer with path "%s" already active.', bearer_path
+            logging.info(message)
+            raise mm1.MMCoreError(mm1.MMCoreError.CONNECTED, message)
+
+        self.active_bearers[bearer_path] = bearer
+        bearer.Connect()
 
     @dbus.service.method(mm1.I_MODEM, in_signature='o')
     def DeleteBearer(self, bearer):
@@ -282,7 +329,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                          in_signature='su',
                          out_signature='s')
     def Command(self, cmd, timeout):
-        raise NotImplementedError()
+        return 'Bananas are tasty and fresh.'
 
     @dbus.service.signal(mm1.I_MODEM, signature='iiu')
     def StateChanged(self, old, new, reason):

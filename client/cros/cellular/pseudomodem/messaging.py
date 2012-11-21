@@ -10,7 +10,7 @@ import mm1
 # and make Modems have a reference to an instance of Messaging
 # OR have Modem implement this
 
-class Messaging(dbus.service.Object):
+class Messaging(dbus.service.Interface):
     """
     Python binding for the org.freedesktop.ModemManager1.Modem.Messaging
     interface. The Messaging interfaces handles sending SMS messages and

@@ -5,6 +5,7 @@
 import dbus
 import dbus_std_ifaces
 import mm1
+import pseudomodem
 
 class Bearer(dbus_std_ifaces.DBusProperties):
     """
@@ -15,8 +16,35 @@ class Bearer(dbus_std_ifaces.DBusProperties):
 
     """
 
+    count = 0
+
+    def __init__(self, bus, properties, config=None):
+        self._active = False
+        self._bearer_props = properties
+        path = '%s/Bearers/%d' % (mm1.MM1, Bearer.count)
+        Bearer.count += 1
+        dbus_std_ifaces.DBusProperties.__init__(self, path, bus, config)
+
     def _InitializeProperties(self):
-        raise NotImplementedError()
+        props = {
+            'Interface': pseudomodem.IFACE_NAME,
+            'Connected': dbus.types.Boolean(False),
+            'Suspended': dbus.types.Boolean(False),
+            'Properties': self._bearer_props
+        }
+        return { mm1.I_BEARER: props }
+
+    def _AddProperty(self, property_key):
+        self._properties[mm1.I_BEARER][property_key] = None
+
+    def _RemoveProperty(self, property_key):
+        try:
+            self._properties[mm1.I_BEARER].pop(property_key)
+        except KeyError:
+            pass
+
+    def IsActive(self):
+        return self._active
 
     @dbus.service.method(mm1.I_BEARER)
     def Connect(self):
@@ -36,7 +64,19 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         these properties.
 
         """
-        raise NotImplementedError()
+        # Set the ip config property
+        ip_family = self._bearer_props.get('ip-type', None)
+        if ip_family and ip_family >= mm1.MM_BEARER_IP_FAMILY_IPV6:
+            config_prop = 'Ip6Config'
+        else:
+            config_prop = 'Ip4Config'
+
+        self._AddProperty('Ip4Config')
+        self.Set(mm1.I_BEARER, config_prop, {
+            'method': dbus.types.UInt32(mm1.MM_BEARER_IP_METHOD_DHCP)
+        })
+        self._active = True
+        self.Set(mm1.I_BEARER, 'Connected', dbus.types.Boolean(True))
 
     @dbus.service.method(mm1.I_BEARER)
     def Disconnect(self):
@@ -47,4 +87,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         implementation doesn't set the IP properties.
 
         """
-        raise NotImplementedError()
+        self._RemoveProperty('Ip4Config')
+        self._RemoveProperty('Ip6Config')
+        self._active = False
+        self.Set(mm1.I_BEARER, 'Connected', dbus.types.Boolean(False))

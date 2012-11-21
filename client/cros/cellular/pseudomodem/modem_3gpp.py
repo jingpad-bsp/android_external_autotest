@@ -238,7 +238,161 @@ class Modem3gpp(modem.Modem):
     def RegisterWithNetwork(self):
         Modem3gpp.RegisterStep(self).Step()
 
-    # TODO(armansito): implement ModemSimple
+    class ConnectStep(modem.Modem.StateMachine):
+        def __init__(self, modem, properties, return_cb, raise_cb):
+            super(Modem3gpp.ConnectStep, self).__init__(modem)
+            self.connect_props = properties
+            self.return_cb = return_cb
+            self.raise_cb = raise_cb
+            self.enable_initiated = False
+            self.register_initiated = False
+
+        def Step(self):
+            if self.cancelled:
+                self.modem.connect_step = None
+                return
+
+            state = self.modem.Get(mm1.I_MODEM, 'State')
+            if self.modem.connect_step:
+                if self.modem.connect_step != self:
+                    logging.info('There is an ongoing Connect oparation.')
+                    e = mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS,
+                        'Modem connect already in progress.')
+                    self.raise_cb(e)
+                    return
+            else:
+                if self.modem.IsPendingDisable():
+                    logging.info(('Modem is currently being disabled. '
+                                  'Ignoring connect.'))
+                    e = mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
+                        'Modem is currently being disabled. Ignoring connect.')
+                    self.raise_cb(e)
+                    return
+                if state == mm1.MM_MODEM_STATE_CONNECTED:
+                    logging.info('Modem is already connected.')
+                    e = mm1.MMCoreError(mm1.MMCoreError.CONNECTED,
+                        'Already connected.')
+                    self.raise_cb(e)
+                    return
+                elif state == mm1.MM_MODEM_STATE_DISCONNECTING:
+                    assert self.modem.IsPendingDisconnect()
+                    logging.info('Cannot connect while disconnecting.')
+                    e = mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
+                        'Cannot connect while disconnecting.')
+                    self.raise_cb(e)
+                    return
+
+                logging.info('Starting Connect.')
+                self.modem.connect_step = self
+
+            # TODO(armansito): If sim is locked, unlock it
+            reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+            if state == mm1.MM_MODEM_STATE_DISABLED:
+                logging.info('ConnectStep: Modem is DISABLED.')
+                assert not self.modem.IsPendingEnable()
+                if self.enable_initiated:
+                    logging.info('ConnectStep: Failed to enable modem.')
+                    self.Cancel()
+                    self.modem.connect_step = None
+                    e = mm1.MMCoreError(mm1.MMCoreError.FAILED,
+                        'Failed to enable modem.')
+                    self.raise_cb(e)
+                    return
+                else:
+                    logging.info('ConnectStep: Initiating Enable.')
+                    self.enable_initiated = True
+                    self.modem.Enable(True)
+
+                    # state machine will spin until modem gets enabled,
+                    # or if enable fails
+                    gobject.idle_add(Modem3gpp.ConnectStep.Step, self)
+            elif state == mm1.MM_MODEM_STATE_ENABLING:
+                logging.info('ConnectStep: Modem is ENABLING.')
+                assert self.modem.IsPendingEnable()
+                logging.info('ConnectStep: Waiting for enable.')
+                gobject.idle_add(Modem3gpp.ConnectStep.Step, self)
+            elif state == mm1.MM_MODEM_STATE_ENABLED:
+                logging.info('ConnectStep: Modem is ENABLED.')
+
+                # Check to see if a register is going on, if not,
+                # start register
+                if self.register_initiated:
+                    logging.info('ConnectStep: Register failed.')
+                    self.Cancel()
+                    self.modem.connect_step = None
+                    e = mm1.MMCoreError(mm1.MMCoreError.FAILED,
+                        'Failed to register to a network.')
+                    self.raise_cb(e)
+                    return
+                else:
+                    logging.info('ConnectStep: Waiting for Register.')
+                    if not self.modem.IsPendingRegister():
+                        try:
+                            self.RegisterWithNetwork()
+                        except Exception as e:
+                            self.raise_cb(e)
+                            return
+                    self.register_initiated = True
+                    gobject.idle_add(Modem3gpp.ConnectStep.Step, self)
+            elif state == mm1.MM_MODEM_STATE_SEARCHING:
+                logging.info('ConnectStep: Modem is SEARCHING.')
+                logging.info('ConnectStep: Waiting for modem to register.')
+                assert self.register_initiated
+                assert self.modem.IsPendingRegister()
+                gobject.idle_add(Modem3gpp.ConnectStep.Step, self)
+            elif state == mm1.MM_MODEM_STATE_REGISTERED:
+                logging.info('ConnectStep: Modem is REGISTERED.')
+                assert not self.modem.IsPendingDisconnect()
+                assert not self.modem.IsPendingEnable()
+                assert not self.modem.IsPendingDisable()
+                assert not self.modem.IsPendingRegister()
+                logging.info('ConnectStep: Setting state to CONNECTING.')
+                self.modem.ChangeState(mm1.MM_MODEM_STATE_CONNECTING, reason)
+                gobject.idle_add(Modem3gpp.ConnectStep.Step, self)
+            elif state == mm1.MM_MODEM_STATE_CONNECTING:
+                logging.info('ConnectStep: Modem is CONNECTING.')
+                assert not self.modem.IsPendingDisconnect()
+                assert not self.modem.IsPendingEnable()
+                assert not self.modem.IsPendingDisable()
+                assert not self.modem.IsPendingRegister()
+                try:
+                    # try to find a matching data bearer
+                    bearer = None
+                    bearer_path = None
+                    bearer_props = {}
+                    for p, b in self.modem.bearers.iteritems():
+                        # assemble bearer props
+                        for key, val in self.connect_props.iteritems():
+                            if key in modem.ALLOWED_BEARER_PROPERTIES:
+                                bearer_props[key] = val
+                        if (b.bearer_props == bearer_props):
+                            logging.info('ConnectStep: Found matching bearer.')
+                            bearer = b
+                            bearer_path = p
+                            break
+                    if bearer is None:
+                        assert bearer_path is None
+                        logging.info(('ConnectStep: No matching bearer found, '
+                            'creating brearer with properties: ' +
+                            str(self.connect_props)))
+                        bearer_path = self.modem.CreateBearer(bearer_props)
+                    self.modem.ActivateBearer(bearer_path)
+                    logging.info('ConnectStep: Setting state to CONNECTED.')
+                    self.modem.ChangeState(mm1.MM_MODEM_STATE_CONNECTED, reason)
+                    self.modem.connect_step = None
+                    logging.info('ConnectStep: Returning bearer path: %s',
+                        bearer_path)
+                    self.return_cb(bearer_path)
+                except Exception as e:
+                    logging.info('ConnectStep: Failed to connect: ' + str(e))
+                    self.raise_cb(e)
+                    self.modem.ChangeState(mm1.MM_MODEM_STATE_REGISTERED,
+                        mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+                    self.modem.connect_step = None
+
+    def Connect(self, properties, return_cb, raise_cb):
+        logging.info('Connect')
+        Modem3gpp.ConnectStep(self, properties, return_cb, raise_cb).Step()
     # TODO(armansito): implement
     # org.freedesktop.ModemManager1.Modem.Modem3gpp.Ussd, if needed
     # (in a separate class?)
