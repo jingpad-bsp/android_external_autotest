@@ -5,8 +5,10 @@
 import common
 import inspect, new, socket, sys
 
+from autotest_lib.client.bin import utils
 from autotest_lib.cli import topic_common, host
 from autotest_lib.server import hosts
+from autotest_lib.client.common_lib import error
 
 
 # In order for hosts to work correctly, some of its variables must be setup.
@@ -54,14 +56,18 @@ class site_host_create(site_host, host.host_create):
         self.host_info_map = {}
         for host in self.hosts:
             try:
-                ssh_host = hosts.create_host(host)
-                host_info = host_information(host,
-                                             ssh_host.get_platform(),
-                                             ssh_host.get_labels())
-            except socket.gaierror:
+                if utils.ping(host, tries=1, deadline=1) == 0:
+                    ssh_host = hosts.create_host(host)
+                    host_info = host_information(host,
+                                                 ssh_host.get_platform(),
+                                                 ssh_host.get_labels())
+                else:
+                    # Can't ping the host, use default information.
+                    host_info = host_information(host, None, [])
+            except (socket.gaierror, error.AutoservRunError,
+                    error.AutoservSSHTimeout):
                 # We may be adding a host that does not exist yet or we can't
-                # reach due to network issues. I.E. the labadmins are adding
-                # hosts not yet actually in the lab.
+                # reach due to hostname/address issues or if the host is down.
                 host_info = host_information(host, None, [])
             self.host_info_map[host] = host_info
         # We need to check if these labels & ACLs exist,
