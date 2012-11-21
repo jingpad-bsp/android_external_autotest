@@ -159,13 +159,15 @@ class firmware_FAFTSetup(FAFTSequence):
             self.press_ctrl_d()
             self.press_enter()
 
+        keys = self.client_attr.key_checker
+
         expected_output = [
-                ("keycode  29 press",
-                 "keycode  32 press"),
-                ("keycode  32 release",
-                 "keycode  29 release"),
-                "keycode  28 press",
-                "keycode  28 release"]
+                ("keycode  {0:x} {1}".format(keys[0][0], keys[0][1]),
+                 "keycode  {0:x} {1}".format(keys[1][0], keys[1][1])),
+                ("keycode  {0:x} {1}".format(keys[2][0], keys[2][1]),
+                 "keycode  {0:x} {1}".format(keys[3][0], keys[3][1])),
+                "keycode  {0:x} {1}".format(keys[4][0], keys[4][1]),
+                "keycode  {0:x} {1}".format(keys[5][0], keys[5][1])]
 
         return self.base_keyboard_checker(keypress, expected_output)
 
@@ -181,15 +183,9 @@ class firmware_FAFTSetup(FAFTSequence):
             self.servo.enter_key()
             self.servo.refresh_key()
 
-        expected_output = [
-                "keycode  29 press",
-                "keycode  29 release",
-                "keycode  32 press",
-                "keycode  32 release",
-                "keycode  28 press",
-                "keycode  28 release",
-                "keycode  61 press",
-                "keycode  61 release"]
+        keys = self.client_attr.key_checker_strict
+
+        expected_output = list("keycode  %x %s" % (k, p) for k, p in keys)
 
         return self.base_keyboard_checker(keypress, expected_output)
 

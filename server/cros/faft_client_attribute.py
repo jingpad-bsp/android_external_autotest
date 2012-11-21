@@ -19,6 +19,10 @@ class FAFTClientAttribute(object):
       wp_voltage: string, specifies write protect pin voltage.
       key_matrix_layout: int, specifies which keyboard layout needs to be used
             for testing.
+      key_checker: array of keycodes. Used by FAFTSetup test keyboard_checker
+            routine to verify the correct keystrokes.
+      key_checker_strict: array of keycodes. Used by FAFTSetup test
+            strict_keyboard_checker routine to verify the correct keystrokes.
     """
     version = 1
 
@@ -33,6 +37,20 @@ class FAFTClientAttribute(object):
     ec_capability = list()
     wp_voltage = 'pp1800'
     key_matrix_layout = 0
+    key_checker = [[0x29, 'press'],
+                   [0x32, 'press'],
+                   [0x32, 'release'],
+                   [0x29, 'release'],
+                   [0x28, 'press'],
+                   [0x28, 'release']]
+    key_checker_strict = [[0x29, 'press'],
+                          [0x29, 'release'],
+                          [0x32, 'press'],
+                          [0x32, 'release'],
+                          [0x28, 'press'],
+                          [0x28, 'release'],
+                          [0x61, 'press'],
+                          [0x61, 'release']]
 
     def __init__(self, platform):
         """Initialized. Set up platform-dependent attributes.
@@ -86,7 +104,11 @@ class FAFTClientAttribute(object):
         # Set 'key_matrix_layout'
         if platform == 'Parrot':
             self.key_matrix_layout = 1
+            self.key_checker[4] = [0x47, 'press']
+            self.key_checker[5] = [0x47, 'release']
 
         # Set 'key_matrix_layout'
         if platform == 'Stout':
             self.key_matrix_layout = 2
+            self.key_checker[4] = [0x43, 'press']
+            self.key_checker[5] = [0x43, 'release']
