@@ -1778,3 +1778,114 @@ def rdmsr(address, cpu=0):
     with open('/dev/cpu/%s/msr' % cpu, 'r', 0) as fd:
         fd.seek(address)
         return struct.unpack('=Q', fd.read(8))[0]
+
+
+def wait_for_value(func,
+                   expected_value=None,
+                   min_threshold=None,
+                   max_threshold=None,
+                   timeout_sec=10):
+    """
+    Returns the value of func().  If |expected_value|, |min_threshold|, and
+    |max_threshold| are not set, returns immediately.
+
+    If |expected_value| is set, polls the return value until |expected_value| is
+    reached, and returns that value.
+
+    If either |max_threshold| or |min_threshold| is set, this function will
+    will repeatedly call func() until the return value reaches or exceeds one of
+    these thresholds.
+
+    Polling will stop after |timeout_sec| regardless of these thresholds.
+
+    @param func: function whose return value is to be waited on.
+    @param expected_value: wait for func to return this value.
+    @param min_threshold: wait for func value to reach or fall below this value.
+    @param max_threshold: wait for func value to reach or rise above this value.
+    @param timeout_sec: Number of seconds to wait before giving up and
+                        returning whatever value func() last returned.
+
+    Return value:
+        The most recent return value of func().
+    """
+    value = None
+    start_time_sec = time.time()
+    while True:
+        value = func()
+        if (expected_value is None and \
+            min_threshold is None and \
+            max_threshold is None) or \
+           (expected_value is not None and value == expected_value) or \
+           (min_threshold is not None and value <= min_threshold) or \
+           (max_threshold is not None and value >= max_threshold):
+            break
+
+        if time.time() - start_time_sec >= timeout_sec:
+            break
+        time.sleep(0.1)
+
+    return value
+
+
+def call_xrandr(args_string=''):
+    """
+    Calls xrandr with the args given by args_string.
+    |args_string| is a single string containing all arguments.
+    e.g. call_xrandr('--output LVDS1 --off') will invoke:
+        'xrandr --output LVDS1 --off'
+
+    Return value: Output of xrandr
+    """
+
+    cmd = 'xrandr'
+    xauth = '/home/chronos/.Xauthority'
+    environment = 'DISPLAY=:0.0 XAUTHORITY=%s' % xauth
+    return system_output('%s %s %s' % (environment, cmd, args_string))
+
+
+def get_xrandr_output_state():
+    """
+    Retrieves the status of display outputs using Xrandr.
+
+    Return value: dictionary of display states.
+                  key = output name
+                  value = False if off, True if on
+    """
+
+    output = call_xrandr().split('\n')
+    xrandr_outputs = {}
+    current_output_name = ''
+
+    # Parse output of xrandr, line by line.
+    for line in output:
+        if line[0:5] == 'Screen':
+            continue
+        # If the line contains "connected", it is a connected display, as
+        # opposed to a disconnected output.
+        if line.find(' connected') != -1:
+            current_output_name = line.split()[0]
+            xrandr_outputs[current_output_name] = False
+            continue
+
+        # If "connected" was not found, this is a line that shows a display
+        # mode, e.g:    1920x1080      50.0     60.0     24.0
+        # Check if this has an asterisk indicating it's on.
+        if line.find('*') != -1 and current_output_name != '' :
+            xrandr_outputs[current_output_name] = True
+            # Reset the output name since this should not be set more than once.
+            current_output_name = ''
+
+    return xrandr_outputs
+
+
+def set_xrandr_output(output_name, enable):
+    """
+    Sets the output given by |output_name| on or off.
+
+    Parameters:
+        output_name       name of output, e.g. 'HDMI1', 'LVDS1', 'DP1'
+        enable            True or False, indicating whether to turn on or off
+    """
+
+    call_xrandr('--output %s --%s' % (output_name, 'auto' if enable else 'off'))
+

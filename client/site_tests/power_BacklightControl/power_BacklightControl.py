@@ -4,62 +4,8 @@
 
 import logging, os, time
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import base_utils, error
 from autotest_lib.client.cros import cros_ui, power_status
-
-
-# TODO(crosbug.com/36061): these funcs are taken from hardware_Xrandr test.
-# Move them into a common library.
-def call_xrandr(args_string=''):
-    """
-    Calls xrandr with the args given by args_string.
-
-    |args_string| is a single string containing all arguments.
-    e.g. call_xrandr('--output LVDS1 --off') will invoke:
-        'xrandr --output LVDS1 --off'
-
-    Return value: Output of xrandr
-    """
-
-    cmd = 'xrandr'
-    xauth = '/home/chronos/.Xauthority'
-    environment = 'DISPLAY=:0.0 XAUTHORITY=%s' % xauth
-    return utils.system_output('%s %s %s' % (environment, cmd, args_string))
-
-
-def get_xrandr_output_state():
-    """
-    Retrieves the status of display outputs using Xrandr.
-
-    Return value: dictionary of display states.
-                  key = output name
-                  value = False if off, True if on
-    """
-
-    output = call_xrandr().split('\n')
-    xrandr_outputs = {}
-    current_output_name = ''
-
-    # Parse output of xrandr, line by line.
-    for line in output:
-        if line.startswith('Screen'):
-            continue
-        # If the line contains "connected", it is a connected display, as
-        # opposed to a disconnected output.
-        if line.find(' connected') != -1:
-            current_output_name = line.split()[0]
-            xrandr_outputs[current_output_name] = False
-            continue
-
-        # If "connected" was not found, this is a line that shows a display
-        # mode, e.g:    1920x1080      50.0     60.0     24.0
-        # Check if this has an asterisk indicating it's on.
-        if line.find('*') != -1 and current_output_name != '' :
-            xrandr_outputs[current_output_name] = True
-            # Reset the output name since this should not be set more than once.
-            current_output_name = ''
-
-    return xrandr_outputs
 
 
 def get_num_outputs_on():
@@ -69,40 +15,9 @@ def get_num_outputs_on():
     Return value: integer value of number of connected outputs that are on.
     """
 
-    xrandr_state = get_xrandr_output_state()
+    xrandr_state = base_utils.get_xrandr_output_state()
     output_states = [xrandr_state[name] for name in xrandr_state]
     return sum([1 if is_enabled else 0 for is_enabled in output_states])
-
-
-def wait_for_value(func,
-                   min_threshold=None,
-                   max_threshold=None,
-                   timeout_sec=10):
-    """
-    Returns the value of func().  If |min_threshold| and |max_threshold| are
-    not set, returns immediately.  If either of them is set, this function
-    will repeatedly call func() until the return value reaches or exceeds one of
-    these thresholds.
-
-    Polling will stop after |timeout_sec| regardless of these thresholds.
-
-    Return value:
-        The most recent return value of func().
-    """
-    value = None
-    start_time_sec = time.time()
-    while True:
-        value = func()
-        if (min_threshold is None and max_threshold is None) or \
-           (min_threshold is not None and value <= min_threshold) or \
-           (max_threshold is not None and value >= max_threshold):
-            break
-
-        if time.time() - start_time_sec >= timeout_sec:
-            break
-        time.sleep(0.1)
-
-    return value
 
 
 class power_BacklightControl(test.test):
@@ -176,8 +91,8 @@ class power_BacklightControl(test.test):
         self._set_brightness_to_max()
 
         current_brightness = \
-            wait_for_value(self._get_current_brightness,
-                           max_threshold=self._max_brightness)
+            base_utils.wait_for_value(self._get_current_brightness,
+                                      max_threshold=self._max_brightness)
         if current_brightness != self._max_brightness:
             num_errors += 1
             logging.error(('Failed to increase brightness to max, ' + \
@@ -191,9 +106,9 @@ class power_BacklightControl(test.test):
         # min_threshold=0 to use the timeout to wait for the brightness to
         # settle.
         self._set_brightness_to_min()
-        current_brightness = \
-            wait_for_value(self._get_current_brightness,
-                           min_threshold=(self._max_brightness / 2 - 1))
+        current_brightness = base_utils.wait_for_value(
+            self._get_current_brightness,
+            min_threshold=(self._max_brightness / 2 - 1))
         if current_brightness >= self._max_brightness / 2 or \
            current_brightness == 0:
             num_errors += 1
@@ -206,16 +121,15 @@ class power_BacklightControl(test.test):
         # Turn off the screen by decreasing brightness one more time with
         # allow_off=True.
         self._decrease_brightness(True)
-        current_brightness = wait_for_value(self._get_current_brightness,
-                                            min_threshold=0)
+        current_brightness = base_utils.wait_for_value(
+            self._get_current_brightness, min_threshold=0)
         if current_brightness != 0:
             num_errors += 1
             logging.error('Brightness is %d, expecting 0.' % current_brightness)
 
         # Wait for screen to turn off.
-        num_outputs_on = \
-            wait_for_value(get_num_outputs_on,
-                           min_threshold=(starting_num_outputs_on - 1))
+        num_outputs_on = base_utils.wait_for_value(
+            get_num_outputs_on, min_threshold=(starting_num_outputs_on - 1))
         keyvals['outputs_on_after_screen_off'] = num_outputs_on
         if num_outputs_on >= starting_num_outputs_on:
             num_errors += 1
@@ -227,9 +141,8 @@ class power_BacklightControl(test.test):
 
         # Set brightness to max.
         self._set_brightness_to_max()
-        current_brightness = \
-            wait_for_value(self._get_current_brightness,
-                           max_threshold=self._max_brightness)
+        current_brightness = base_utils.wait_for_value(
+            self._get_current_brightness, max_threshold=self._max_brightness)
         if current_brightness != self._max_brightness:
             num_errors += 1
             logging.error(('Failed to increase brightness to max, ' + \
