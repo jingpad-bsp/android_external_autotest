@@ -6,3 +6,4 @@ sshd *:ssh
 shill 127.0.0.1:DYNAMIC
 # VNC server.
 x11vnc 127.0.0.1:5900
+x11vnc [::1]:5900
