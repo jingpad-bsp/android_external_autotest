@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import time
 import urlparse
@@ -67,7 +68,7 @@ class belkinAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b | self.mode_g, self.mode_n,
+                 'modes': [self.mode_g | self.mode_b, self.mode_n,
                            self.mode_b | self.mode_g | self.mode_n]}]
 
 
@@ -140,9 +141,16 @@ class belkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_mode(self, mode):
-        modes = ['802.11g&802.11b', '802.11n only', '802.11b&802.11g&802.11n']
+        mode_mapping = {self.mode_g | self.mode_b: '802.11g&802.11b',
+                        self.mode_n: '802.11n only',
+                        self.mode_b | self.mode_g | self.mode_n:
+                        '802.11b&802.11g&802.11n'}
+        mode_name = mode_mapping.get(mode)
+        if not mode_name:
+            raise RuntimeError('The mode %d not supported by router %s. ',
+                               hex(mode), self.get_router_name())
         xpath = '//select[@name="wl_gmode"]'
-        self.select_item_from_popup_by_xpath(modes[mode], xpath)
+        self.select_item_from_popup_by_xpath(mode_name, xpath)
 
 
     def set_ch_width(self, channel_width):

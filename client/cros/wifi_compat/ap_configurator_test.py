@@ -35,7 +35,7 @@ class ConfiguratorTest(unittest.TestCase):
                                    '..', '..', 'config', 'wifi_compat_config')
         factory = ap_configurator_factory.APConfiguratorFactory(config_path)
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('RT-N56U')
+        self.ap = factory.get_ap_configurator_by_short_name('dlinkwbr1310')
 
     def disabled_security_on_all_bands(self):
         for band in self.ap.get_supported_bands():
@@ -83,8 +83,18 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_ssid(self):
         """Test setting the SSID."""
-        self.ap.set_ssid('AP-automated-ssid')
-        self.ap.apply_settings()
+        bands_info = self.ap.get_supported_bands()
+        self.assertTrue(bands_info, msg='Invalid band sent.')
+        for bands in bands_info:
+            band = bands['band']
+            if band == self.ap.band_2ghz:
+                self.ap.set_band(band)
+                self.ap.set_ssid('ssid2')
+                self.ap.apply_settings()
+            if band == self.ap.band_5ghz:
+                self.ap.set_band(band)
+                self.ap.set_ssid('ssid5')
+                self.ap.apply_settings()
 
     def test_band(self):
         """Test switching the band."""
@@ -99,13 +109,14 @@ class ConfiguratorTest(unittest.TestCase):
         self.assertTrue(bands_info, msg='Invalid band sent.')
         bands_set = []
         for bands in bands_info:
-           bands_set.append(bands['band'])
+            bands_set.append(bands['band'])
         for band in bands_set:
-           self.ap.set_band(band)
-           self.ap.set_ssid('pqrstu')
-           self.ap.set_visibility(True)
-           if self.ap.is_security_mode_supported(self.ap.security_wep):
-              self.ap.set_security_wep('test2', self.ap.wep_authentication_open)
+            self.ap.set_band(band)
+            self.ap.set_ssid('pqrstu')
+            self.ap.set_visibility(True)
+            if self.ap.is_security_mode_supported(self.ap.security_wep):
+                self.ap.set_security_wep('test2',
+                                         self.ap.wep_authentication_open)
            self.ap.apply_settings()
 
     def test_invalid_security(self):
@@ -149,7 +160,7 @@ class ConfiguratorTest(unittest.TestCase):
         """Test that commands are run in the right priority."""
         self.ap.set_radio(enabled=False)
         self.ap.set_visibility(True)
-        self.ap.set_ssid('priority_test')
+        self.ap.set_ssid('prioritytest')
         self.ap.apply_settings()
 
     def test_security_and_general_settings(self):
@@ -162,7 +173,7 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_visibility(True)
         if self.ap.is_security_mode_supported(self.ap.security_wep):
             self.ap.set_security_wep('88888', self.ap.wep_authentication_open)
-        self.ap.set_ssid('sec&gen_test')
+        self.ap.set_ssid('secgentest')
         self.ap.apply_settings()
 
     def test_modes(self):
@@ -172,8 +183,8 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.apply_settings()
         modes_info = self.ap.get_supported_modes()
         self.assertTrue(modes_info,
-                         msg='Returned an invalid mode list.  Is this method'
-                         ' implemented?')
+                        msg='Returned an invalid mode list.  Is this method'
+                        ' implemented?')
         for band_modes in modes_info:
             for mode in band_modes['modes']:
                 self.ap.set_mode(mode)

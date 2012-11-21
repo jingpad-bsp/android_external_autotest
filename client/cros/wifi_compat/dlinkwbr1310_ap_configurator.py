@@ -50,8 +50,7 @@ class dlinkwbr1310APConfigurator(ap_configurator.APConfigurator):
                                                       abort_check=False)
               button = '//input[@name="login"]'
               self.click_button_by_xpath(button)
-        else:
-              self._wireless_settings()
+        self._wireless_settings()
 
 
     def _wireless_settings(self):
@@ -67,7 +66,7 @@ class dlinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz, 'modes': self.mode_g}]
+        return [{'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_b]}]
 
 
     def get_number_of_pages(self):
@@ -103,8 +102,9 @@ class dlinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
     def _set_mode(self, mode_enable=True):
         # For dlinkwbr1310, 802.11g is the only available mode.
-        xpath = '//input[@name="11gOnly"]'
-        self.set_check_box_selected_by_xpath(xpath, selected=False)
+        logging.info('This router (%s) does not support multiple modes.' %
+                     self.get_router_name())
+        return None
 
 
     def set_radio(self, enabled=True):
@@ -171,7 +171,7 @@ class dlinkwbr1310APConfigurator(ap_configurator.APConfigurator):
         self.wait_for_object_by_xpath(popup)
         key_field1 = '//input[@name="wpapsk1"]'
         key_field2 = '//input[@name="wpapsk2"]'
-        self.select_item_from_popup_by_xpath(self.security_wpapsk, popup,
+        self.select_item_from_popup_by_xpath(self.security_wpa2psk, popup,
                                              wait_for_xpath=key_field1)
         self.set_content_of_text_field_by_xpath(shared_key, key_field1,
                                                 abort_check=False)
