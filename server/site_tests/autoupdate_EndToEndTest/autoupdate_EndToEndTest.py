@@ -562,8 +562,10 @@ class autoupdate_EndToEndTest(test.test):
 
         """
         is_using_test_images = test_conf.get('image_type') != 'mp'
-        is_dev_mode = test_conf.get('dev_mode') == 'yes'
         omaha_host = test_conf.get('omaha_host')
+
+        # Check whether the DUT is in dev mode.
+        is_dev_mode = host.servo.get('dev_mode') == 'on'
 
         # Stage source images and update payloads on lorry/devserver. We use
         # the payload URI as argument for the lab's devserver load-balancing
