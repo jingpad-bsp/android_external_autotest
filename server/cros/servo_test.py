@@ -179,6 +179,24 @@ class ServoTest(test.test):
 
 
     def launch_client(self, info):
+        """Launch a remote XML RPC connection on client with retrials.
+
+        Args:
+          info: A dict of remote info, see the definition of self._remote_infos.
+        """
+        retry = 3
+        try:
+            self._launch_client_once(info)
+        except AssertionError:
+            if retry:
+                retry -= 1
+                logging.info('Retry again...')
+                time.sleep(5)
+            else:
+                raise
+
+
+    def _launch_client_once(self, info):
         """Launch a remote process on client and set up an xmlrpc connection.
 
         Args:
@@ -210,12 +228,6 @@ class ServoTest(test.test):
         setattr(self, info['ref_name'],
             xmlrpclib.ServerProxy(remote_url, allow_none=True))
         logging.info('Server proxy: %s', remote_url)
-
-        # We found that the following RPC call retrial doesn't work all the
-        # time and causes timeout error happened. So add this delay to wait
-        # the client RPC server start-up as a work-around.
-        # TODO(waihong@chromium.org): Find the root cause why retrial not work.
-        time.sleep(5)
 
         # Poll for client RPC server to come online.
         timeout = 20
