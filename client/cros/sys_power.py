@@ -8,7 +8,8 @@
 """Provides utility methods for controlling powerd in ChromiumOS.
 """
 
-import os, upstart, rtc
+import errno, os, upstart, rtc
+from autotest_lib.client.bin import utils
 
 
 SUSPEND_CMD='/usr/bin/powerd_suspend'
@@ -23,6 +24,8 @@ SUSPEND_RESUME_MESSAGES = {
                     'Resume caused by', 'post sleep, preparing to return'],
     'END_RESUME':['Restarting tasks'],
     }
+
+SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
 
 
 def set_state(state):
@@ -70,3 +73,33 @@ def request_suspend():
         upstart.ensure_running(service_name)
 
     os.system(REQUEST_SUSPEND_CMD)
+
+
+class ConcurrentWakeEventException(Exception):
+    """
+    The system wakeup count has changed from the value provided,
+    meaning saving the count has raced with a wake event.
+    """
+    pass
+
+
+def read_wakeup_count():
+    """
+    Retrieves the current value of /sys/power/wakeup_count.
+    """
+    wakeup_count = int(utils.read_file(SYSFS_WAKEUP_COUNT))
+    return wakeup_count
+
+
+def write_wakeup_count(wakeup_count):
+    """
+    Writes a value to /sys/power/wakeup_count.
+    """
+    try:
+        utils.open_write_close(SYSFS_WAKEUP_COUNT, str(wakeup_count))
+    except IOError as e:
+        if (e.errno == errno.EINVAL and
+                read_wakeup_count() != wakeup_count):
+            raise ConcurrentWakeEventException()
+        else:
+            raise

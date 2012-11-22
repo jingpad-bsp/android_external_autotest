@@ -10,7 +10,6 @@ from autotest_lib.client.common_lib import error
 SLEEP_TIME = 10
 
 SYSFS_CONSOLE_SUSPEND = '/sys/module/printk/parameters/console_suspend'
-SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
 
 class power_NoConsoleSuspend(test.test):
     """Test suspend/resume with no_console_suspend option set."""
@@ -27,12 +26,9 @@ class power_NoConsoleSuspend(test.test):
         # suspend completes, this forces the system to wake back up rather
         # than sleep forever ("suspend took too long" case below).
         try:
-            wakeup_count = utils.read_file(SYSFS_WAKEUP_COUNT)
-            utils.open_write_close(SYSFS_WAKEUP_COUNT, wakeup_count)
-        except IOError as e:
-            logging.exception('failed to write %s', SYSFS_WAKEUP_COUNT)
-            if e.errno != errno.EINVAL:
-                raise
+            wakeup_count = sys_power.read_wakeup_count()
+            sys_power.write_wakeup_count(wakeup_count)
+        except sys_power.ConcurrentWakeEventException:
             # Some wakeup source incremented wakeup_count. This could happen
             # due to unexpected input from the keyboard/touchpad/lid switch.
             raise error.TestError('spurious wake events')
