@@ -35,7 +35,7 @@ class ProcInterrupts(object):
 
             for line in lines:
                 fields = line.split()
-                count = sum(map(int, fields[1:num_cpus]))
+                count = sum(map(int, fields[1:1 + num_cpus]))
                 interrupt = fields[0].strip().split(':')[0]
                 if interrupt.isdigit():
                     self._int_count[fields[-1]] = count
