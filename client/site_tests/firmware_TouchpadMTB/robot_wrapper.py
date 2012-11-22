@@ -71,6 +71,7 @@ class RobotWrapper:
         # Each gesture maps to a get_contorol_command method
         self._method_of_control_command_dict = {
             conf.ONE_FINGER_TRACKING: self._get_control_command_line,
+            conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
             conf.ONE_FINGER_TAP: self._get_control_command_click,
             conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
@@ -88,14 +89,20 @@ class RobotWrapper:
         self._line_dict = {
             # These are the tracking lines that will go through the center.
             THROUGH_CENTER: {
-                GV.LR: (OFF_START, CENTER, OFF_END, CENTER),
-                GV.RL: (OFF_END, CENTER, OFF_START, CENTER),
-                GV.TB: (CENTER, OFF_START, CENTER, OFF_END),
-                GV.BT: (CENTER, OFF_END, CENTER, OFF_START),
+                GV.LR: (START, CENTER, END, CENTER),
+                GV.RL: (END, CENTER, START, CENTER),
+                GV.TB: (CENTER, START, CENTER, END),
+                GV.BT: (CENTER, END, CENTER, START),
                 GV.BLTR: (START, END, END, START),
                 GV.TRBL: (END, START, START, END),
                 GV.BRTL: (END, END, START, START),
                 GV.TLBR: (START, START, END, END),
+
+                # Overshoot for this one-finger gesture only: ONE_FINGER_TO_EDGE
+                GV.CL: (CENTER, CENTER, OFF_START, CENTER),
+                GV.CR: (CENTER, CENTER, OFF_END, CENTER),
+                GV.CT: (CENTER, CENTER, CENTER, OFF_START),
+                GV.CB: (CENTER, CENTER, CENTER, OFF_END),
             },
             # These are the tracking lines that will not go through the center.
             OFF_CENTER: {

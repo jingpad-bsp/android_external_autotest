@@ -63,6 +63,7 @@ gestures_sub_path = 'site-packages/gestures'
 
 # Define the gesture names
 ONE_FINGER_TRACKING = 'one_finger_tracking'
+ONE_FINGER_TO_EDGE = 'one_finger_to_edge'
 TWO_FINGER_TRACKING = 'two_finger_tracking'
 FINGER_CROSSING = 'finger_crossing'
 ONE_FINGER_SWIPE = 'one_finger_swipe'
@@ -90,6 +91,7 @@ DRUMROLL = 'drumroll'
 # Define the complete list
 gesture_names_complete = [
     ONE_FINGER_TRACKING,
+    ONE_FINGER_TO_EDGE,
     TWO_FINGER_TRACKING,
     FINGER_CROSSING,
     ONE_FINGER_SWIPE,
@@ -116,6 +118,7 @@ gesture_names_complete = [
 # Define the list of one-finger and two-finger gestures to test using the robot.
 gesture_names_robot = [
     ONE_FINGER_TRACKING,
+    ONE_FINGER_TO_EDGE,
     ONE_FINGER_SWIPE,
     ONE_FINGER_TAP,
     ONE_FINGER_PHYSICAL_CLICK,
@@ -193,14 +196,36 @@ def get_gesture_dict():
             ),
             prompt='Draw a {0} line {1} using a ruler in {2}.',
             subprompt={
-                GV.LR: ('horizontal', 'from left edge to right edge',),
-                GV.RL: ('horizontal', 'from right edge to left edge',),
-                GV.TB: ('vertical', 'from top edge to bottom edge',),
-                GV.BT: ('vertical', 'from bottom edge to top edge',),
+                GV.LR: ('horizontal', 'from left to right',),
+                GV.RL: ('horizontal', 'from right to left',),
+                GV.TB: ('vertical', 'from top to bottom',),
+                GV.BT: ('vertical', 'from bottom to top',),
                 GV.BLTR: ('diagonal', 'from bottom left to top right',),
                 GV.TRBL: ('diagonal', 'from top right to bottom left',),
                 GV.SLOW: ('3 seconds',),
                 GV.NORMAL: ('1 second',),
+            },
+            validators=(
+                CountTrackingIDValidator('== 1'),
+                LinearityValidator(linearity_criteria, slot=0),
+                NoGapValidator(no_gap_criteria, slot=0),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+            ),
+        ),
+
+        ONE_FINGER_TO_EDGE:
+        Gesture(
+            name=ONE_FINGER_TO_EDGE,
+            variations=((GV.CL, GV.CR, GV.CT, GV.CB),
+                        (GV.SLOW,),
+            ),
+            prompt='Draw a {0} line {1} in {2}.',
+            subprompt={
+                GV.CL: ('horizontal', 'from center to off left edge',),
+                GV.CR: ('horizontal', 'from center to off right edge',),
+                GV.CT: ('vertical', 'from center to off top edge',),
+                GV.CB: ('vertical', 'from center to off bottom edge',),
+                GV.SLOW: ('2 seconds',),
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
@@ -220,10 +245,10 @@ def get_gesture_dict():
             prompt='Use two fingers to draw {0} lines {1} using a ruler '
                    'in {2}.',
             subprompt={
-                GV.LR: ('horizontal', 'from left edge to right edge',),
-                GV.RL: ('horizontal', 'from right edge to left edge',),
-                GV.TB: ('vertical', 'from top edge to bottom edge',),
-                GV.BT: ('vertical', 'from bottom edge to top edge',),
+                GV.LR: ('horizontal', 'from left to right',),
+                GV.RL: ('horizontal', 'from right to left',),
+                GV.TB: ('vertical', 'from top to bottom',),
+                GV.BT: ('vertical', 'from bottom to top',),
                 GV.BLTR: ('diagonal', 'from bottom left to top right',),
                 GV.TRBL: ('diagonal', 'from top right to bottom left',),
                 GV.SLOW: ('3 seconds',),
@@ -604,11 +629,10 @@ class Gesture:
     TIMEOUT = int(1000/80*10)
 
     def __init__(self, name=None, variations=None, prompt=None, subprompt=None,
-                 validators=None, touchpad_edge=False, timeout=TIMEOUT):
+                 validators=None, timeout=TIMEOUT):
         self.name = name
         self.variations = variations
         self.prompt = prompt
         self.subprompt = subprompt
         self.validators = validators
-        self.touchpad_edge = touchpad_edge
         self.timeout = timeout

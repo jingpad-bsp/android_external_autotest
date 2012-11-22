@@ -284,20 +284,34 @@ class RangeValidator(BaseValidator):
         diff = map(lambda a, b: abs(a - b), actual_range, spec)
 
         if self.is_horizontal(variation):
-            diff_x = diff[0:2]
+            if GV.CL in variation:
+                diff_x = diff[0:1]
+                actual_range_axis = actual_range[0:1]
+            elif GV.CR in variation:
+                diff_x = diff[1:2]
+                actual_range_axis = actual_range[1:2]
+            else:
+                # For GV.LR and GV.RL, we check both min_x and max_x
+                diff_x = diff[0:2]
+                actual_range_axis = actual_range[0:2]
             ave_deviation = 1.0 * sum(diff_x) / len(diff_x) / spec_width
-            actual_range_axis = actual_range[0:2]
             spec_range_axis = spec[0:2]
         elif self.is_vertical(variation):
-            diff_y = diff[2:4]
+            if GV.CT in variation:
+                diff_y = diff[2:3]
+                actual_range_axis = actual_range[2:3]
+            elif GV.CB in variation:
+                diff_y = diff[3:4]
+                actual_range_axis = actual_range[3:4]
+            else:
+                # For GV.TB and GV.BT, we check both min_y and max_y
+                diff_y = diff[2:4]
+                actual_range_axis = actual_range[2:4]
             ave_deviation = 1.0 * sum(diff_y) / len(diff_y) / spec_height
-            actual_range_axis = actual_range[2:4]
             spec_range_axis = spec[2:4]
         elif self.is_diagonal(variation):
             # No need to check range on diagonal lines since we have
             # checked range on horizontal/vertical lines.
-            # It is also difficult to make two-finger tracking precisely from
-            # the very corner to the other corner.
             return None
         else:
             error_msg = 'A direction variation is missing in this gesture.'
