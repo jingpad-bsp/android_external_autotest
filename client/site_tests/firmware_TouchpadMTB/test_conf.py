@@ -37,7 +37,7 @@ linearity_criteria = '<= 0.8, ~ +2.4'
 linearity_curvy_criteria = '<= 1.5, ~ +3.0'
 no_gap_criteria = '<= 1.8, ~ +1.0'
 no_level_jump_criteria = '<= 10, ~ +30'
-no_reversed_motion_criteria = '== 0, ~ +20'
+no_reversed_motion_criteria = '<= 5, ~ +30'
 pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.05, ~ +0.05'
 stationary_finger_criteria = '<= 20, ~ +20'
@@ -398,9 +398,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 3'),
                 PhysicalClickValidator('== 1', fingers=3),
-                StationaryFingerValidator(stationary_finger_criteria, slot=0),
-                StationaryFingerValidator(stationary_finger_criteria, slot=1),
-                StationaryFingerValidator(stationary_finger_criteria, slot=2),
             ),
         ),
 
@@ -413,10 +410,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 4'),
                 PhysicalClickValidator('== 1', fingers=4),
-                StationaryFingerValidator(stationary_finger_criteria, slot=0),
-                StationaryFingerValidator(stationary_finger_criteria, slot=1),
-                StationaryFingerValidator(stationary_finger_criteria, slot=2),
-                StationaryFingerValidator(stationary_finger_criteria, slot=3),
             ),
         ),
 
@@ -429,11 +422,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 5'),
                 PhysicalClickValidator('== 1', fingers=5),
-                StationaryFingerValidator(stationary_finger_criteria, slot=0),
-                StationaryFingerValidator(stationary_finger_criteria, slot=1),
-                StationaryFingerValidator(stationary_finger_criteria, slot=2),
-                StationaryFingerValidator(stationary_finger_criteria, slot=3),
-                StationaryFingerValidator(stationary_finger_criteria, slot=4),
             ),
         ),
 
@@ -509,7 +497,9 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_criteria, slot=0),
+                LinearityValidator(linearity_curvy_criteria, slot=0),
+                LinearityValidator(linearity_curvy_criteria, slot=1),
+                NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
             ),
@@ -530,7 +520,7 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_criteria, slot=1),
+                LinearityValidator(linearity_curvy_criteria, slot=1),
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
@@ -572,7 +562,7 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 4'),
-                LinearityValidator(linearity_criteria, slot=0),
+                LinearityValidator(linearity_curvy_criteria, slot=1),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
             ),
