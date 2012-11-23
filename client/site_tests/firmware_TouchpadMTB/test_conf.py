@@ -235,8 +235,8 @@ def get_gesture_dict():
                 LinearityValidator(linearity_criteria, slot=1),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoGapValidator(no_gap_criteria, slot=1),
-                NoReversedMotionValidator(no_reversed_motion_criteria,
-                                          slots=(0, 1)),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
             ),
         ),
 
@@ -298,8 +298,8 @@ def get_gesture_dict():
                 CountPacketsValidator(count_packets_criteria, slot=0),
                 CountPacketsValidator(count_packets_criteria, slot=1),
                 CountTrackingIDValidator('== 2'),
-                NoReversedMotionValidator(no_reversed_motion_criteria,
-                                          slots=(0, 1)),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
             ),
         ),
 
