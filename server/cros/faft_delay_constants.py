@@ -27,7 +27,7 @@ class FAFTDelayConstants(object):
     # Delay for waiting client to return before sending EC reboot command
     ec_reboot_cmd = 1
     # Delay between EC boot and ChromeEC console functional
-    ec_boot_to_console = 0.5
+    ec_boot_to_console = 0.3
     # Delay between EC boot and pressing power button
     ec_boot_to_pwr_button = 0.5
     # Delay of EC software sync hash calculating time
