@@ -589,7 +589,7 @@ class FAFTSequence(ServoTest):
             # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
             if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
                 self.run_faft_step({
-                    'firmware_action': self.wait_fw_screen_and_ctrl_d,
+                    'firmware_action': self.wait_dev_screen_and_ctrl_d,
                 })
 
 
@@ -828,6 +828,12 @@ class FAFTSequence(ServoTest):
             self.servo.enter_key()
 
 
+    def wait_dev_screen_and_ctrl_d(self):
+        """Wait for firmware warning screen and press Ctrl-D."""
+        time.sleep(self.delay.dev_screen)
+        self.press_ctrl_d()
+
+
     def wait_fw_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
         time.sleep(self.delay.firmware_screen)
@@ -1032,7 +1038,7 @@ class FAFTSequence(ServoTest):
         """
         # Change the default firmware_action for dev mode passing the fw screen.
         self.register_faft_template({
-            'firmware_action': (self.wait_fw_screen_and_ctrl_d if dev_mode
+            'firmware_action': (self.wait_dev_screen_and_ctrl_d if dev_mode
                                 else None),
         })
         if dev_mode:

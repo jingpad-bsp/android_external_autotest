@@ -8,6 +8,8 @@ class FAFTDelayConstants(object):
 
     # Delay between power-on and firmware screen
     firmware_screen = 10
+    # Delay between power-on and dev screen
+    dev_screen = 7
     # Delay between keypresses in firmware screen
     confirm_screen = 3
     # Delay between passing firmware screen and text mode warning screen
@@ -21,7 +23,7 @@ class FAFTDelayConstants(object):
     # Delay between USB plug-out and plug-in
     between_usb_plug = 10
     # Delay after running the 'sync' command
-    sync = 5
+    sync = 2
     # Delay for waiting client to shutdown
     shutdown = 30
     # Delay for waiting client to return before sending EC reboot command
@@ -59,3 +61,4 @@ class FAFTDelayConstants(object):
 
         if platform == 'Link':
             self.firmware_screen = 7
+            self.dev_screen = 4

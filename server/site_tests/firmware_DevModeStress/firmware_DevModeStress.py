@@ -71,7 +71,7 @@ class firmware_DevModeStress(FAFTSequence):
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
-                'firmware_action': self.wait_fw_screen_and_ctrl_d,
+                'firmware_action': self.wait_dev_screen_and_ctrl_d,
             },
             {   # Step 2, verify dev mode after soft reboot
                 'state_checker': (self.checkers.crossystem_checker, {

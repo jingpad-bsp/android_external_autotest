@@ -32,7 +32,7 @@ class firmware_DevMode(FAFTSequence):
                 }),
                 'userspace_action': self.enable_dev_mode_and_reboot,
                 'reboot_action': None,
-                'firmware_action': self.wait_fw_screen_and_ctrl_d,
+                'firmware_action': self.wait_dev_screen_and_ctrl_d,
             },
             {   # Step 2, expected developer mode boot and enable normal mode
                 'state_checker': (self.checkers.crossystem_checker, {
