@@ -29,6 +29,27 @@ from firmware_constants import MODE, OPTIONS
 from report_html import ReportHtml
 
 
+def setup_http_data_dir():
+    """Set up the default http data dir for pyauto test.
+
+    When creating a test http server, it checks the default http data dir
+    no matter whether it is actually used. If the http data dir does not exist,
+    it throws out the testserver_base.OptionError.
+    """
+    autotest_dir = '/usr/local/autotest'
+    pyauto_test_dir = 'deps/pyauto_dep/test_src'
+    data_dir = 'chrome/test/data'
+    http_data_dir = os.path.join(autotest_dir, pyauto_test_dir, data_dir)
+    if not os.path.isdir(http_data_dir):
+        try:
+            os.makedirs(http_data_dir)
+            msg = 'http data directory created successfully: %s'
+            logging.info(msg % http_data_dir)
+        except os.error, e:
+            logging.error('Making the default http data dir: %s.' % e)
+            exit(-1)
+
+
 class DummyTest(pyauto.PyUITest):
     """This is a dummpy test class derived from PyUITest to use pyauto tool."""
     def test_navigate_to_url(self):
@@ -155,6 +176,7 @@ class firmware_TouchpadMTB:
         """A helper to enter gtk main loop."""
         fw.win.main()
         firmware_utils.start_power_management()
+        setup_http_data_dir()
         pyauto.Main()
 
 
