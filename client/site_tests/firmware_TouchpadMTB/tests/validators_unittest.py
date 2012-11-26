@@ -263,24 +263,27 @@ class LinearityValidatorTest(BaseValidatorTest):
     def test_simple_linear_regression0(self):
         device = self.mock_device[self.LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
+        validator.init_check()
         # A perfect line from bottom left to top right
-        list_x = [1, 2, 3, 4]
-        list_y = [20, 40, 60, 80]
+        list_x = [1, 2, 3, 4, 5, 6, 7, 8]
+        list_y = [20, 40, 60, 80, 100, 120, 140, 160]
         spmse = validator._simple_linear_regression(list_x, list_y)
         self.assertEqual(spmse, 0)
 
     def test_simple_linear_regression1(self):
         device = self.mock_device[self.LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
+        validator.init_check()
         # Another perfect line from top left to bottom right
-        list_x = [1, 2, 3, 4]
-        list_y = [80, 60, 40, 20]
+        list_x = [1, 2, 3, 4, 5, 6, 7, 8]
+        list_y = [160, 140, 120, 100, 80, 60, 40, 20]
         spmse = validator._simple_linear_regression(list_x, list_y)
         self.assertEqual(spmse, 0)
 
     def test_simple_linear_regression2(self):
         device = self.mock_device[self.LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
+        validator.init_check()
         # An outlier in y axis
         list_x = [1, 2, 3, 4, 5, 6, 7, 8]
         list_y = [20, 40, 60, 70, 100, 120, 140, 160]
@@ -290,9 +293,10 @@ class LinearityValidatorTest(BaseValidatorTest):
     def test_simple_linear_regression3(self):
         device = self.mock_device[self.LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
+        validator.init_check()
         # Repeated values in x axis
-        list_x = [1, 2, 2, 4]
-        list_y = [20, 40, 60, 80]
+        list_x = [1, 2, 2, 4, 5, 6, 7, 8]
+        list_y = [20, 40, 60, 80, 100, 120, 140, 160]
         spmse = validator._simple_linear_regression(list_x, list_y)
         self.assertTrue(spmse > 0)
 

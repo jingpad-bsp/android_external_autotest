@@ -145,3 +145,14 @@ RC.PER_GESTURE = 'per_gesture'
 # e.g., the FINGER_CROSSING gesture requires putting down and lifting up
 # a metal finger repeatedly per variation.
 RC.PER_VARIATION = 'per_variation'
+
+
+class _Validator(_Constant):
+    """Constants about validator."""
+    pass
+VAL = _Validator()
+VAL.BEGIN = 'Begin'
+VAL.MIDDLE = 'Middle'
+VAL.END = 'End'
+VAL.BOTH_ENDS = 'BothEnds'
+VAL.WHOLE = 'Whole'

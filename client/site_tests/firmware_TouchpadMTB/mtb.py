@@ -11,7 +11,7 @@ import os
 import re
 import sys
 
-from firmware_constants import AXIS, GV, MTB
+from firmware_constants import AXIS, GV, MTB, VAL
 sys.path.append('/usr/local/autotest/bin/input')
 from linux_input import *
 
@@ -658,6 +658,30 @@ class Mtb:
             displacements[tid][AXIS.Y] = self.calc_displacement(list_y)
 
         return displacements
+
+    def _get_segments(self, src_list, segment_flag, ratio):
+        """Get the segments based on segment_flag and ratio."""
+        end_size = int(round(len(src_list) * ratio))
+        if segment_flag == VAL.WHOLE:
+            return src_list
+        elif segment_flag == VAL.MIDDLE:
+            return src_list[end_size: -end_size]
+        elif segment_flag == VAL.BEGIN:
+            return src_list[: end_size]
+        elif segment_flag == VAL.END:
+            return src_list[-end_size:]
+        elif segment_flag == VAL.BOTH_ENDS:
+            bgn_segment = src_list[: end_size]
+            end_segment = src_list[-end_size:]
+            return bgn_segment + end_segment
+        else:
+            return None
+
+    def get_segments_x_and_y(self, ax, ay, segment_flag, ratio):
+        """Get the segments for both x and y axes."""
+        segment_x = self._get_segments(ax, segment_flag, ratio)
+        segment_y = self._get_segments(ay, segment_flag, ratio)
+        return (segment_x, segment_y)
 
     def get_reversed_motions(self, target_slot, direction):
         """Get the total reversed motions in the specified direction

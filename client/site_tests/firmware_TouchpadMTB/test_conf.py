@@ -6,7 +6,7 @@
 
 """This configuration file defines the gestures to perform."""
 
-from firmware_constants import MF, GV, RC
+from firmware_constants import MF, GV, RC, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -207,7 +207,10 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
-                LinearityValidator(linearity_criteria, slot=0),
+                LinearityValidator(linearity_criteria, slot=0,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(linearity_criteria, slot=0,
+                                   segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
             ),
@@ -229,7 +232,10 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
-                LinearityValidator(linearity_criteria, slot=0),
+                LinearityValidator(linearity_criteria, slot=0,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(linearity_criteria, slot=0,
+                                   segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 RangeValidator(range_criteria),
@@ -256,8 +262,14 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_criteria, slot=0),
-                LinearityValidator(linearity_criteria, slot=1),
+                LinearityValidator(linearity_criteria, slot=0,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(linearity_criteria, slot=0,
+                                   segments=VAL.BOTH_ENDS),
+                LinearityValidator(linearity_criteria, slot=1,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(linearity_criteria, slot=1,
+                                   segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),

@@ -62,8 +62,12 @@ import firmware_utils
 import fuzzy
 import mtb
 
-from firmware_constants import AXIS, GV, MTB
+from firmware_constants import AXIS, GV, MTB, VAL
 from touch_device import TouchpadDevice
+
+
+# Define the ratio of points taken at both ends of a line for edge tests.
+END_PERCENTAGE = 0.1
 
 
 def validate(packets, gesture, variation):
@@ -118,7 +122,7 @@ class BaseValidator(object):
             BaseValidator._device = TouchpadDevice()
         return BaseValidator._device
 
-    def init_check(self, packets):
+    def init_check(self, packets=None):
         """Initialization before check() is called."""
         self.packets = mtb.Mtb(packets)
         self.msg_list = []
@@ -185,14 +189,46 @@ class LinearityValidator(BaseValidator):
     # Define the partial group size for calculating Mean Squared Error
     MSE_PARTIAL_GROUP_SIZE = 1
 
-    def __init__(self, criteria_str, mf=None, device=None, slot=0):
-        name = self.__class__.__name__
-        super(LinearityValidator, self).__init__(criteria_str, mf, device, name)
+    def __init__(self, criteria_str, mf=None, device=None, slot=0,
+                 segments=VAL.WHOLE):
+        self._segments = segments
         self.slot = slot
+        name = 'Linearity%sValidator' % segments
+        super(LinearityValidator, self).__init__(criteria_str, mf, device, name)
 
     def _simple_linear_regression(self, ax, ay):
         """Calculate the simple linear regression and returns the
            sum of squared residuals.
+
+        It calculates the simple linear regression line for the points
+        in the middle segment of the line. This exclude the points at
+        both ends of the line which sometimes have wobbles. Then it
+        calculates the fitting errors of the points at the specified segments
+        against the computed simple linear regression line.
+        """
+        # Compute the simple linear regression line for the middle segment
+        # whose purpose is to avoid wobbles on both ends of the line.
+        mid_segment = self.packets.get_segments_x_and_y(ax, ay, VAL.MIDDLE,
+                                                        END_PERCENTAGE)
+        if not self._calc_simple_linear_regression_line(*mid_segment):
+            return 0
+
+        # Compute the fitting errors of the specified segments.
+        if self._segments == VAL.BOTH_ENDS:
+            bgn_segment = self.packets.get_segments_x_and_y(ax, ay, VAL.BEGIN,
+                                                            END_PERCENTAGE)
+            end_segment = self.packets.get_segments_x_and_y(ax, ay, VAL.END,
+                                                            END_PERCENTAGE)
+            bgn_error = self._calc_simple_linear_regression_error(*bgn_segment)
+            end_error = self._calc_simple_linear_regression_error(*end_segment)
+            return max(bgn_error, end_error)
+        else:
+            target_segment = self.packets.get_segments_x_and_y(ax, ay,
+                    self._segments, END_PERCENTAGE)
+            return self._calc_simple_linear_regression_error(*target_segment)
+
+    def _calc_simple_linear_regression_line(self, ax, ay):
+        """Calculate the simple linear regression line.
 
            ax: array x
            ay: array y
@@ -201,43 +237,53 @@ class LinearityValidator(BaseValidator):
            such that it has the least sum of squared residuals.
 
            Reference:
-             Simple linear regression:
-               http://en.wikipedia.org/wiki/Simple_linear_regression
-             Average absolute deviation (or mean absolute deviation) :
-               http://en.wikipedia.org/wiki/Average_absolute_deviation
+           - Simple linear regression:
+             http://en.wikipedia.org/wiki/Simple_linear_regression
+           - Average absolute deviation (or mean absolute deviation) :
+             http://en.wikipedia.org/wiki/Average_absolute_deviation
         """
-        # Convert the list to the array presentation
-        ax = 1.0 * n.array(ax)
-        ay = 1.0 * n.array(ay)
+        # Convert the int list to the float array
+        self._ax = 1.0 * n.array(ax)
+        self._ay = 1.0 * n.array(ay)
 
         # If there are less than 2 data points, it is not a line at all.
-        asize = ax.size
+        asize = self._ax.size
         if asize <= 2:
-            return 0
+            return False
 
-        Sx = ax.sum()
-        Sy = ay.sum()
-        Sxx = n.square(ax).sum()
-        Sxy = n.dot(ax, ay)
-        Syy = n.square(ay).sum()
+        Sx = self._ax.sum()
+        Sy = self._ay.sum()
+        Sxx = n.square(self._ax).sum()
+        Sxy = n.dot(self._ax, self._ay)
+        Syy = n.square(self._ay).sum()
         Sx2 = Sx * Sx
         Sy2 = Sy * Sy
 
         # compute Mean of x and y
-        Mx = ax.mean()
-        My = ay.mean()
+        Mx = self._ax.mean()
+        My = self._ay.mean()
 
         # Compute beta and alpha of the linear regression
-        beta = 1.0 * (asize * Sxy - Sx * Sy) / (asize * Sxx - Sx2)
-        alpha = My - beta * Mx
+        self._beta = 1.0 * (asize * Sxy - Sx * Sy) / (asize * Sxx - Sx2)
+        self._alpha = My - self._beta * Mx
+        return True
+
+    def _calc_simple_linear_regression_error(self, ax, ay):
+        """Calculate the fitting error based on the simple linear regression
+        line characterized by the equation parameters alpha and beta.
+        """
+        # Convert the int list to the float array
+        ax = 1.0 * n.array(ax)
+        ay = 1.0 * n.array(ay)
+
+        asize = ax.size
+        partial = min(asize, max(1, self.MSE_PARTIAL_GROUP_SIZE))
 
         # spmse: squared root of partial mean squared error
-        partial = min(asize, max(1, self.MSE_PARTIAL_GROUP_SIZE))
-        spmse = n.square(ay - alpha - beta * ax)
+        spmse = n.square(ay - self._alpha - self._beta * ax)
         spmse.sort()
         spmse = spmse[asize - partial : asize]
         spmse = n.sqrt(n.average(spmse))
-
         return spmse
 
     def check(self, packets, variation=None):
@@ -245,7 +291,7 @@ class LinearityValidator(BaseValidator):
         self.init_check(packets)
         resolution_x, resolution_y = self.device.get_resolutions()
         (list_x, list_y) = self.packets.get_x_y(self.slot)
-        # Compuate average distance (fitting error) in pixels, and
+        # Compute average distance (fitting error) in pixels, and
         # average deviation on touchpad in mm.
         if self.is_vertical(variation):
             ave_distance = self._simple_linear_regression(list_y, list_x)
