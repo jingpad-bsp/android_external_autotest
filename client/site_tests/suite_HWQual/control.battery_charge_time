@@ -11,14 +11,15 @@ TEST_TYPE = "client"
 
 DOC = """
 This test measures the battery charging time and enforces constraints. Before
-running this test the battery charge should be less than 5% and the device
-should be plugged into AC. Over the course of at most 94% of 4 hours the
-battery charge should increase by at least 94% of the maximum battery charge
-by design.
+running this test, the battery charge should be less than 5% and the device
+should be plugged into AC. Also, the battery capacity at test time must be
+at least 80% of design capacity (battery wear can be 20% at most). Over the
+course of 3 hours, the battery charge should  increase by at least 94% of the
+maximum battery charge.
 """
 
 # In the time limit account for the delta charge constraints
-max_hours = 4
+max_hours = 3
 percent_charge_delta = 94.0
 time_limit = max_hours * 60 * 60 * percent_charge_delta / 100.0
 # battery must be at least 80% of design capacity
