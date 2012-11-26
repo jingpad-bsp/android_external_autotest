@@ -126,7 +126,8 @@ class ControlData(object):
 
 
     def set_time(self, val):
-        self._set_option('time', val, ['short', 'medium', 'long'])
+        self._set_option('time', val,
+                         ['fast', 'short', 'medium', 'long', 'lengthy'])
 
 
     def set_test_class(self, val):
