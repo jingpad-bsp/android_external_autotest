@@ -33,22 +33,13 @@ class firmware_ECWriteProtect(FAFTSequence):
             return False
 
 
-    def ensure_unprotected(self):
-        if not self.checkers.crossystem_checker({'wpsw_boot': '0'}):
-            self.run_faft_step({
-                'reboot_action': (self.set_ec_write_protect_and_reboot, False)
-            })
-
-
     def setup(self, dev_mode=False):
-        super(firmware_ECWriteProtect, self).setup()
-        self.ensure_unprotected()
+        super(firmware_ECWriteProtect, self).setup(ec_wp=False)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
 
 
     def cleanup(self):
-        self.ensure_unprotected()
         self.restore_firmware()
         super(firmware_ECWriteProtect, self).cleanup()
 
