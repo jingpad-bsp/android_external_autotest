@@ -22,7 +22,7 @@ class platform_TrackpadStress(test.test):
             raise error.TestFail('Pre-check 1: Unable to locate trackpad '
                                  'logging string: %s' % check_string)
 
-        for line in log_reader.read_all_logs(start=log_reader._start_line):
+        for line in log_reader.read_all_logs():
             if line.find(check_string) != -1 and line.find('0x0/0x0') == 0:
                 # If 0x0/0x0 exists in the caps string, then this signals that
                 # the device is stuck in its bootloader

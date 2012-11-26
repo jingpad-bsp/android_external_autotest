@@ -23,6 +23,7 @@ SUSPEND_RESUME_MESSAGES = {
     'START_RESUME':['Back to C!', 'Low-level resume complete', 'Suspended for',
                     'Resume caused by', 'post sleep, preparing to return'],
     'END_RESUME':['Restarting tasks'],
+    'CPU_READY':['CPU[0-9]+ is up'],
     }
 
 SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
@@ -44,7 +45,7 @@ def suspend_to_ram(seconds=None):
         rtc.set_wake_alarm(now + seconds)
 
     if os.path.exists(SUSPEND_CMD):
-        os.system(SUSPEND_CMD + ' --test')
+        os.system(SUSPEND_CMD)
     else:
         set_power_state('mem')
 

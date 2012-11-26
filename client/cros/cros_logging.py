@@ -19,7 +19,7 @@ def extract_kernel_timestamp(msg):
         The timestamp as float in seconds since last boot.
     """
 
-    match = re.search(' \[\s*([0-9]+\.[0-9]+)\] ', msg)
+    match = re.search('\[\s*([0-9]+\.[0-9]+)\] ', msg)
     if match:
         return float(match.group(1))
     raise error.TestError('Could not extract timestamp from message: ' + msg)
@@ -39,7 +39,7 @@ class LogReader(object):
                                   CLEANUP_LOGS_PAUSED_FILE)
 
 
-    def read_all_logs(self, start=0):
+    def read_all_logs(self):
         """Read all content from log files.
 
         Generator function.
@@ -55,7 +55,7 @@ class LogReader(object):
         for log_file in log_files:
             f = open(log_file)
             for line in f:
-                if line_number >= start:
+                if line_number >= self._start_line:
                     yield line
                 line_number += 1
             f.close()
@@ -70,6 +70,7 @@ class LogReader(object):
         regexp_compiled = re.compile(regexp)
         starts = []
         line_number = 1
+        self._start_line = 1
         for line in self.read_all_logs():
             if regexp_compiled.match(line):
                 starts.append(line_number)
@@ -99,7 +100,7 @@ class LogReader(object):
                 to start the log after this line.
         """
         count = self._start_line + relative
-        for line in self.read_all_logs(start=self._start_line):
+        for line in self.read_all_logs():
             count += 1
         self._start_line = count
 
@@ -113,7 +114,7 @@ class LogReader(object):
         @return string of contents of file since start line.
         """
         logs = []
-        for line in self.read_all_logs(start=self._start_line):
+        for line in self.read_all_logs():
             logs.append(line)
         return ''.join(logs)
 
@@ -126,7 +127,7 @@ class LogReader(object):
         return string in self.get_logs()
 
 
-    def get_last_msg(self, patterns, retries=0, sleep_seconds=1):
+    def get_last_msg(self, patterns, retries=0, sleep_seconds=0.2):
         """Search the logs and return the latest occurrence of a message
         matching one of the patterns.
 
