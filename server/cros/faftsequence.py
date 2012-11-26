@@ -252,6 +252,8 @@ class FAFTSequence(ServoTest):
         # DUT may halt on a firmware screen. Try cold reboot.
         logging.info('Try cold reboot...')
         self.cold_reboot()
+        self.wait_for_client_offline()
+        self.wait_dev_screen_and_ctrl_d()
         try:
             self.wait_for_client()
             return
@@ -278,6 +280,7 @@ class FAFTSequence(ServoTest):
         self.faft_client.run_shell_command('chromeos-install --yes')
         self.sync_and_warm_reboot()
         self.wait_for_client_offline()
+        self.wait_dev_screen_and_ctrl_d()
         try:
             self.wait_for_client(install_deps=True)
             logging.info('Successfully restore OS image.')
@@ -1528,6 +1531,7 @@ class FAFTSequence(ServoTest):
         self.faft_client.write_firmware(os.path.join(remote_temp_dir, 'bios'))
         self.sync_and_warm_reboot()
         self.wait_for_client_offline()
+        self.wait_dev_screen_and_ctrl_d()
         self.wait_for_client()
 
         logging.info('Successfully restore firmware.')
