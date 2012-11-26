@@ -55,6 +55,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
 
         # Update firmware if needed
         if updater_path:
+            self.set_hardware_write_protect(enable=False)
             self.faft_client.run_factory_install()
             self.sync_and_warm_reboot()
             self.wait_for_client_offline()
