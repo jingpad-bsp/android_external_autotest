@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging, cros_ui_test
@@ -25,6 +26,11 @@ class logging_AsanCrash(cros_ui_test.UITest):
         logging.info('Initiate simulating memory bug to be caught by ASAN...')
         self.pyauto.SimulateAsanMemoryBug()
 
+        utils.poll_for_condition(
+            lambda: os.path.isfile(asan_log_name),
+            timeout=10,
+            exception=error.TestFail(
+                    'Found no asan log file %s during 10s' % asan_log_name))
         ui_log = cros_logging.LogReader(asan_log_name)
         ui_log.read_all_logs()
 
