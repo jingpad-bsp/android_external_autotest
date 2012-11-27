@@ -2,18 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json, logging, time
+import json, logging, re, time
 
 from autotest_lib.server import autotest, test
 from autotest_lib.server.cros import stress
 from autotest_lib.client.common_lib import error
 
 _WAIT_DELAY = 5
+_REQUEST_SUSPEND_CMD = ('/usr/bin/dbus-send --system / '
+                        'org.chromium.PowerManager.RequestSuspend')
 
 class platform_ExternalUSBStress(test.test):
     """Uses servo to repeatedly connect/remove USB devices."""
     version = 1
-
+    use_servo_for_suspend = True
+    first_login = True
 
     def run_once(self, host, client_autotest, suspends):
         autotest_client = autotest.Autotest(host)
@@ -25,17 +28,22 @@ class platform_ExternalUSBStress(test.test):
         servo_hardware_list = ['Standard Microsystems Corp.']
         client_termination_file_path = '/tmp/simple_login_exit'
 
-        def loggedin():
+        def logged_in():
             """
             Checks if the host has a logged in user.
 
             @return True if a user is logged in on the device.
             """
             try:
-                cmd_out = host.run('cryptohome --action=status').stdout.strip()
+                out = host.run('cryptohome --action=status').stdout.strip()
             except:
                 return False
-            status = json.loads(cmd_out)
+            try:
+                status = json.loads(out)
+            except ValueError:
+                logging.info('Cryptohome did not return a value, retrying.')
+                return False
+
             return any((mount['mounted'] for mount in status['mounts']))
 
 
@@ -61,11 +69,21 @@ class platform_ExternalUSBStress(test.test):
 
         def test_suspend(remove_while_suspended=False):
             set_hub_power(True)
-            host.servo.lid_close()
+
+            if self.use_servo_for_suspend:
+                host.servo.lid_close()
+            else:
+                host.run(_REQUEST_SUSPEND_CMD)
+
             time.sleep(_WAIT_DELAY)
             if remove_while_suspended:
                 set_hub_power(False)
-            host.servo.lid_open()
+
+            if self.use_servo_for_suspend:
+                host.servo.lid_open()
+            else:
+                host.servo.power_normal_press()
+
             time.sleep(_WAIT_DELAY)
             connected = strip_lsusb_output(host.run('lsusb').stdout.strip())
             if remove_while_suspended:
@@ -93,7 +111,7 @@ class platform_ExternalUSBStress(test.test):
 
 
         def stress_external_usb():
-            if not loggedin():
+            if not logged_in():
                 return
 
             # Cannot run this test, blocked on https://crosbug.com/p/16310
@@ -101,6 +119,16 @@ class platform_ExternalUSBStress(test.test):
             test_hotplug()
             test_suspend()
 
+
+        lsb_release = host.run('cat /etc/lsb-release').stdout.split('\n')
+        for line in lsb_release:
+            m = re.match(r'^CHROMEOS_RELEASE_BOARD=(.+)$', line)
+            # The Daisy EC does not support lid close,
+            # see http://crosbug.com/p/16369.
+            if m and m.group(1) == 'daisy':
+                self.use_servo_for_suspend = False
+                logging.info('Not using servo for suspend because board %s '
+                             'is not supported.' % m.group(1))
 
         host.servo.enable_usb_hub()
         host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
@@ -121,6 +149,6 @@ class platform_ExternalUSBStress(test.test):
 
         stressor = stress.CountedStressor(stress_external_usb,
                                           on_exit=exit_client)
-        stressor.start(suspends, start_condition=loggedin)
+        stressor.start(suspends, start_condition=logged_in)
         autotest_client.run_test(client_autotest)
         stressor.wait()
