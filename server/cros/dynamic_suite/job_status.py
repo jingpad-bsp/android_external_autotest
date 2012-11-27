@@ -3,12 +3,18 @@
 # found in the LICENSE file.
 
 import datetime, logging, time
-from autotest_lib.client.common_lib import base_job, log
+
+
+from autotest_lib.client.common_lib import base_job, error, global_config, log
 from autotest_lib.client.common_lib.host_queue_entry_states \
     import IntStatus as HqeIntStatus
 
 TIME_FMT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_POLL_INTERVAL_SECONDS = 10
+
+HQE_MAXIMUM_ABORT_RATE_FLOAT = global_config.global_config.get_config_value(
+            'SCHEDULER', 'hqe_maximum_abort_rate_float', type=float,
+            default=0.5)
 
 
 def view_is_relevant(view):
@@ -78,15 +84,79 @@ def gather_job_hostnames(afe, job):
     return hosts
 
 
-def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
+def check_job_abort_status(afe, jobs):
+    """
+    Checks the abort status of all the jobs in jobs and if any have too many
+    aborted HostQueueEntries, return True.
+
+    In the case that any job in jobs has too many aborted host queue entries,
+    it will raise an exception.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param jobs: an iterable of Running frontend.Jobs
+
+    @returns True if a job in job has too many host queue entries aborted.
+             False otherwise.
+    """
+    for job in jobs:
+        entries = afe.run('get_host_queue_entries', job=job.id)
+        num_aborted = 0
+        for hqe in entries:
+            if hqe['aborted']:
+                num_aborted = num_aborted + 1
+        if num_aborted > len(entries) * HQE_MAXIMUM_ABORT_RATE_FLOAT:
+            # This job was not successful, returning True.
+            logging.error('Too many host queue entries were aborted for job: '
+                          '%s.', job.id)
+            return True
+    return False
+
+
+def _abort_jobs_if_timedout(afe, jobs, start_time, timeout_mins):
+    """
+    Abort all of the jobs in jobs if the running time has past the timeout.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param jobs: an iterable of Running frontend.Jobs
+    @param start_time: Time to compare to the current time to see if a timeout
+                       has occurred.
+    @param timeout_mins: Time in minutes to wait before aborting the jobs we
+                         are waiting on.
+
+    @returns True if we there was a timeout, False if not.
+    """
+    if datetime.datetime.utcnow() < (start_time +
+                                     datetime.timedelta(minutes=timeout_mins)):
+        return False
+    for job in jobs:
+        logging.debug('Job: %s has timed out after %s minutes. Aborting job.',
+                      job.id, timeout_mins)
+        afe.run('abort_host_queue_entries', job=job.id)
+    return True
+
+
+def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS,
+                           start_time=None, wait_timeout_mins=None):
     """
     Wait for the job specified by |job.id| to start.
 
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param jobs: the jobs to poll on.
+    @param start_time: Time to compare to the current time to see if a timeout
+                       has occurred.
+    @param wait_timeout_mins: Time in minutes to wait before aborting the jobs
+                               we are waiting on.
+
+    @returns True if the jobs have started, False if they get aborted.
     """
+    if not start_time:
+        start_time = datetime.datetime.utcnow()
     job_ids = [j.id for j in jobs]
     while job_ids:
+        if wait_timeout_mins and _abort_jobs_if_timedout(afe, jobs, start_time,
+                    wait_timeout_mins):
+            # The timeout parameter is not None and we have indeed timed out.
+            return False
         for job_id in list(job_ids):
             if len(afe.get_jobs(id=job_id, not_yet_run=True)) > 0:
                 continue
@@ -95,6 +165,7 @@ def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
         if job_ids:
             logging.debug('Waiting %ds before polling again.', interval)
             time.sleep(interval)
+    return True
 
 
 def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
@@ -115,24 +186,9 @@ def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
             time.sleep(interval)
 
 
-def _check_jobs_aborted(afe, jobs):
-    """
-    Check through the AFE if all of the jobs in jobs have been aborted.
-
-    @param jobs: an iterable of Running frontend.Jobs
-
-    @returns True if all of jobs have been aborted, False if any are running.
-    """
-    for job in jobs:
-        entries = afe.run('get_host_queue_entries', job=job.id)
-        if not reduce(_collate_aborted, entries, False):
-            # One of the jobs we are polling has not aborted.
-            return False
-    return True
-
-
 def wait_for_and_lock_job_hosts(afe, jobs, manager,
-                                interval=DEFAULT_POLL_INTERVAL_SECONDS):
+                                interval=DEFAULT_POLL_INTERVAL_SECONDS,
+                                start_time=None, wait_timeout_mins=None):
     """
     Poll until devices have begun reimaging, locking them as we go.
 
@@ -145,6 +201,11 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
     @param jobs: an iterable of Running frontend.Jobs
     @param manager: a HostLockManager instance.  Hosts will be added to it
                     as they start Running, and it will be used to lock them.
+    @param start_time: Time to compare to the current time to see if a timeout
+                       has occurred.
+    @param wait_timeout_mins: Time in minutes to wait before aborting the jobs
+                              we are waiting on.
+
     @return iterable of the hosts that were locked or None if all the jobs in
             jobs have been aborted.
     """
@@ -154,15 +215,17 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
             all_hosts.extend(gather_job_hostnames(afe, job))
         return all_hosts
 
+    if not start_time:
+        start_time = datetime.datetime.utcnow()
     locked_hosts = set()
     expected_hosts = set(get_all_hosts(jobs))
     logging.debug('Initial expected hosts: %r', expected_hosts)
 
     while locked_hosts != expected_hosts:
-        if _check_jobs_aborted(afe, jobs):
-            logging.error('All the jobs we are waiting for hosts from have'
-                          ' aborted. Returning None.')
-            return None
+        if wait_timeout_mins and _abort_jobs_if_timedout(afe, jobs, start_time,
+                                                         wait_timeout_mins):
+            # The timeout parameter is not None and we have timed out.
+            return locked_hosts
         hosts_to_check = [e for e in expected_hosts if e]
         if hosts_to_check:
             logging.debug('Checking to see if %r are Running.', hosts_to_check)

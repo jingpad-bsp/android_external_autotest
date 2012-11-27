@@ -20,6 +20,9 @@ from autotest_lib.server.cros.dynamic_suite.fakes import FakeStatus
 from autotest_lib.server import frontend
 
 
+DEFAULT_WAITTIMEOUT_MINS = 60 * 4
+
+
 class StatusTest(mox.MoxTestBase):
     """Unit tests for job_status.Status.
     """
@@ -190,10 +193,7 @@ class StatusTest(mox.MoxTestBase):
         """Ensure we lock all running hosts as they're discovered."""
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
-        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
 
-        job_status._check_jobs_aborted(mox.IgnoreArg(),
-                mox.IgnoreArg()).MultipleTimes().AndReturn(False)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames=['host1', 'host0']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]
@@ -228,33 +228,100 @@ class StatusTest(mox.MoxTestBase):
                                                           manager)))
 
 
-    def testWaitForAndLockWithAbortedSubJobs(self):
+    def testWaitForAndLockWithTimeOutInStartJobs(self):
+        """If we experience a timeout, no locked hosts are returned"""
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
-        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
+        self.mox.StubOutWithMock(job_status, '_abort_jobs_if_timedout')
 
+        job_status._abort_jobs_if_timedout(mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(True)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames=['host1', 'host0']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]
         job = FakeJob(7, hostnames=[None, None])
         job_status.gather_job_hostnames(mox.IgnoreArg(),
                                         job).AndReturn(expected_hostnames)
-        job_status._check_jobs_aborted(mox.IgnoreArg(),
-                                       mox.IgnoreArg()).AndReturn(True)
         self.mox.ReplayAll()
-        self.assertEquals(None,
-                          job_status.wait_for_and_lock_job_hosts(self.afe,
-                                                                 [job],
-                                                                 manager))
+        self.assertFalse(job_status.wait_for_and_lock_job_hosts(self.afe,
+                [job], manager, wait_timeout_mins=DEFAULT_WAITTIMEOUT_MINS))
+
+
+    def testWaitForAndLockWithTimedOutSubJobs(self):
+        """If we experience a timeout, no locked hosts are returned"""
+        self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+        self.mox.StubOutWithMock(job_status, '_abort_jobs_if_timedout')
+
+        job_status._abort_jobs_if_timedout(mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(True)
+        manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
+        expected_hostnames=['host1', 'host0']
+        expected_hosts = [FakeHost(h) for h in expected_hostnames]
+        job = FakeJob(7, hostnames=[None, None])
+        job_status.gather_job_hostnames(mox.IgnoreArg(),
+                                        job).AndReturn(expected_hostnames)
+        self.mox.ReplayAll()
+        self.assertEquals(set(),
+                job_status.wait_for_and_lock_job_hosts(self.afe, [job],
+                manager, wait_timeout_mins=DEFAULT_WAITTIMEOUT_MINS))
+
+
+    def testWaitForSingleJobHostsWithTimeout(self):
+        """Discover a single host for this job then timeout."""
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+        self.mox.StubOutWithMock(job_status, '_abort_jobs_if_timedout')
+
+        manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
+        expected_hostnames=['host1', 'host0']
+        expected_hosts = [FakeHost(h) for h in expected_hostnames]
+        job = FakeJob(7, hostnames=[None, None])
+
+        time.sleep(mox.IgnoreArg()).MultipleTimes()
+        job_status._abort_jobs_if_timedout(mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(False)
+        self.expect_hosts_query_and_lock([job], manager, [], False)
+
+        # First, only one test in the job has had a host assigned at all.
+        # Since no hosts are running, expect no locking.
+        job_status._abort_jobs_if_timedout(mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(False)
+        job.hostnames = [None] + expected_hostnames[1:]
+        self.expect_hosts_query_and_lock([job], manager, [], False)
+
+        # Then, that host starts running, but no other tests have hosts.
+        job_status._abort_jobs_if_timedout(mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(False)
+        self.expect_hosts_query_and_lock([job], manager, expected_hosts[1:])
+
+        # The second test gets a host assigned, but it's not yet running.
+        # Since no new running hosts are found, no locking should happen.
+        job_status._abort_jobs_if_timedout(mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(False)
+        job.hostnames = expected_hostnames
+        self.expect_hosts_query_and_lock([job], manager, expected_hosts[1:],
+                                         False)
+
+        # A timeout occurs, and only the locked hosts should be returned.
+        job_status._abort_jobs_if_timedout(mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(True)
+
+        # The last loop update; doesn't impact behavior.
+        job_status.gather_job_hostnames(mox.IgnoreArg(),
+                                        job).AndReturn(expected_hostnames)
+        self.mox.ReplayAll()
+
+        # Because of the timeout only one host is returned.
+        expect_timeout_hostnames = ['host0']
+        self.assertEquals(sorted(expect_timeout_hostnames),sorted(
+                job_status.wait_for_and_lock_job_hosts(self.afe,
+                [job],manager, wait_timeout_mins=DEFAULT_WAITTIMEOUT_MINS)))
 
 
     def testWaitForSingleJobHostsToRunAndGetLockedSerially(self):
         """Lock running hosts as discovered, serially."""
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
-        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
 
-        job_status._check_jobs_aborted(mox.IgnoreArg(),
-                mox.IgnoreArg()).MultipleTimes().AndReturn(False)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames=['host1', 'host0']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]
@@ -293,10 +360,7 @@ class StatusTest(mox.MoxTestBase):
         """Ensure we lock all running hosts for all jobs as discovered."""
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
-        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
 
-        job_status._check_jobs_aborted(mox.IgnoreArg(),
-                mox.IgnoreArg()).MultipleTimes().AndReturn(False)
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames = ['host1', 'host0', 'host2']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]

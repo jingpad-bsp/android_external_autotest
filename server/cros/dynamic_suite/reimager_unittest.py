@@ -270,7 +270,8 @@ class ReimagerTest(mox.MoxTestBase):
 
 
     def expect_attempt(self, canary_job, statuses, ex=None, check_hosts=True,
-                       unsatisfiable_specs=[], doomed_specs=[]):
+                       unsatisfiable_specs=[], doomed_specs=[],
+                       tryjob_aborted=False):
         """Sets up |self.reimager| to expect an attempt().
 
         The return value of attempt() is dictated by the aggregate of the
@@ -297,7 +298,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(job_status, 'wait_for_jobs_to_finish')
         self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
         self.mox.StubOutWithMock(job_status, 'check_and_record_reimage_results')
-        self.mox.StubOutWithMock(job_status, '_check_jobs_aborted')
+        self.mox.StubOutWithMock(job_status, 'check_job_abort_status')
 
         self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
@@ -311,10 +312,18 @@ class ReimagerTest(mox.MoxTestBase):
             host_group,
             self.devserver).AndReturn(canary_job)
 
-        job_status.wait_for_jobs_to_start(self.afe, [canary_job])
-        job_status.wait_for_and_lock_job_hosts(
-            self.afe, [canary_job], self.manager).AndReturn(statuses.keys())
+        job_status.wait_for_jobs_to_start(self.afe, [canary_job],
+            start_time=mox.IgnoreArg(),
+            wait_timeout_mins=mox.IgnoreArg()).AndReturn(True)
 
+        job_status.wait_for_and_lock_job_hosts(
+            self.afe, [canary_job], self.manager, start_time=mox.IgnoreArg(),
+            wait_timeout_mins=mox.IgnoreArg()).AndReturn(statuses.keys())
+
+        job_status.check_job_abort_status(mox.IgnoreArg(), mox.IgnoreArg()
+            ).AndReturn(tryjob_aborted)
+        if tryjob_aborted:
+            return
         if ex:
             job_status.wait_for_jobs_to_finish(self.afe,
                                                [canary_job]).AndRaise(ex)
@@ -347,6 +356,27 @@ class ReimagerTest(mox.MoxTestBase):
                                               rjob.record_entry, True,
                                               self.manager, [],
                                               self._DEPENDENCIES))
+        self.reimager.clear_reimaged_host_state(self._BUILD)
+
+
+    def testTryJobAborted(self):
+        """Should attempt a reimage that aborts and record ABORT"""
+        canary = FakeJob()
+        statuses = {canary.hostnames[0]:
+                    job_status.Status('GOOD', canary.hostnames[0])}
+        self.expect_attempt(canary, statuses, tryjob_aborted=True)
+
+        rjob = self.mox.CreateMock(base_job.base_job)
+        rjob.record_entry(StatusContains.CreateFromStrings('START'))
+        rjob.record_entry(StatusContains.CreateFromStrings('ABORT'))
+        rjob.record_entry(StatusContains.CreateFromStrings('END ABORT'))
+
+        self.mox.ReplayAll()
+        self.assertFalse(self.reimager.attempt(self._BUILD, self._BOARD,
+                                               self._POOL, self.devserver,
+                                               rjob.record_entry, True,
+                                               self.manager, [],
+                                               self._DEPENDENCIES))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 

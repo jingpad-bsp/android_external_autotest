@@ -269,6 +269,9 @@ Step by step:
 """
 
 
+DEFAULT_TRY_JOB_TIMEOUT_MINS = global_config.global_config.get_config_value(
+            'SCHEDULER', 'try_job_timeout_mins', type=int, default=4*60)
+
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 class SuiteSpec(object):
@@ -300,7 +303,8 @@ class SuiteSpec(object):
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
                  skip_reimage=False, add_experimental=True, file_bugs=False,
-                 max_runtime_mins=24*60, **dargs):
+                 max_runtime_mins=24*60,
+                 try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -323,6 +327,10 @@ class SuiteSpec(object):
                              Default: False
         @param add_experimental: schedule experimental tests as well, or not.
                                  Default: True
+        @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
+                                 this suite will run.
+        @param try_job_timeout_mins: Max time in mins we allow a try job to run
+                                     before timing out.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -352,6 +360,7 @@ class SuiteSpec(object):
         self.file_bugs = file_bugs
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
+        self.try_job_timeout_mins = try_job_timeout_mins
 
 
 def skip_reimage(g):
@@ -433,13 +442,9 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
     with host_lock_manager.HostsLockedBy(manager):
         tests_to_skip = []
         if spec.skip_reimage or reimager.attempt(spec.build, spec.board,
-                                                 spec.pool, spec.devserver,
-                                                 spec.job.record_entry,
-                                                 spec.check_hosts,
-                                                 manager,
-                                                 tests_to_skip,
-                                                 spec.dependencies,
-                                                 num=spec.num):
+                spec.pool, spec.devserver, spec.job.record_entry,
+                spec.check_hosts, manager, tests_to_skip, spec.dependencies,
+                num=spec.num, timeout_mins=spec.try_job_timeout_mins):
             # Ensure that the image's artifacts have completed downloading.
             try:
                 spec.devserver.finish_download(spec.build)

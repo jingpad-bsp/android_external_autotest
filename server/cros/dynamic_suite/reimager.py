@@ -23,6 +23,10 @@ from autotest_lib.server import frontend
 from autotest_lib.frontend.afe.json_rpc import proxy
 
 
+DEFAULT_TRY_JOB_TIMEOUT_MINS = global_config.global_config.get_config_value(
+            'SCHEDULER', 'try_job_timeout_mins', type=int, default=4*60)
+
+
 class Reimager(object):
     """
     A class that can run jobs to reimage devices.
@@ -64,7 +68,8 @@ class Reimager(object):
 
 
     def attempt(self, build, board, pool, devserver, record, check_hosts,
-                manager, tests_to_skip, dependencies={'':[]}, num=None):
+                manager, tests_to_skip, dependencies={'':[]}, num=None,
+                timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
         """
         Synchronously attempt to reimage some machines.
 
@@ -112,6 +117,8 @@ class Reimager(object):
                              with builds that have no dependency information.
 
         @param num: the maximum number of devices to reimage.
+        @param timeout_mins: Amount of time in mins to wait before timing out
+                             this reimage attempt.
         @return True if all reimaging jobs succeed, false if they all fail or
                 atleast one is aborted.
         """
@@ -145,12 +152,16 @@ class Reimager(object):
             self._record_job_if_possible(Reimager.JOB_NAME, canary_job)
             logging.info('Created re-imaging job: %d', canary_job.id)
 
-            job_status.wait_for_jobs_to_start(self._afe, [canary_job])
+            start_time = datetime.datetime.utcnow()
+            if not job_status.wait_for_jobs_to_start(self._afe, [canary_job],
+                    start_time=start_time, wait_timeout_mins=timeout_mins):
+                raise error.ReimageAbortedException('Try job was aborted.')
             logging.debug('Re-imaging job running.')
 
             hosts = job_status.wait_for_and_lock_job_hosts(
-                self._afe, [canary_job], manager)
-            if not hosts:
+                    self._afe, [canary_job], manager, start_time=start_time,
+                    wait_timeout_mins=timeout_mins)
+            if job_status.check_job_abort_status(self._afe, [canary_job]):
                 raise error.ReimageAbortedException('Try job was aborted.')
             logging.info('%r locked for reimaging.', hosts)
 
