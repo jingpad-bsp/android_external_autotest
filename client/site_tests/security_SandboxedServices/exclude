@@ -7,9 +7,11 @@ chrome
 chrome-sandbox
 endpoint
 init
+login
 nacl_helper_boo
 ps
 ply-image
+python
 sh
 sleep
 sshd
