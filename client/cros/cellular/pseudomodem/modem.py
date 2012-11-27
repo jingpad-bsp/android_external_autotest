@@ -303,17 +303,35 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         self.active_bearers[bearer_path] = bearer
         bearer.Connect()
 
+    def DeactivateBearer(self, bearer_path):
+        logging.info('DeactivateBearer: %s' % bearer_path)
+        bearer = self.bearers.get(bearer_path, None)
+        if bearer is None:
+            raise mm1.MMCoreError(mm1.MMCoreError.NOT_FOUND,
+                'Could not find bearer with path "%s".' % bearer_path)
+        if not bearer.IsActive():
+            assert bearer_path not in self.active_bearers
+            raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
+                'Bearer with path "%s" is not active.' % bearer_path)
+        assert bearer_path in self.active_bearers
+        bearer.Disconnect()
+        self.active_bearers.pop(bearer_path)
+
     @dbus.service.method(mm1.I_MODEM, in_signature='o')
     def DeleteBearer(self, bearer):
-        raise NotImplementedError()
+        self.Disconnect(bearer)
+        if bearer in self.bearers:
+            self.bearers.pop(bearer)
 
     @dbus.service.method(mm1.I_MODEM)
     def Reset(self):
-        raise NotImplementedError()
+        self.Disconnect('/')
+        self.bearers.clear()
+        self._properties = self._InitializeProperties()
 
     @dbus.service.method(mm1.I_MODEM, in_signature='s')
     def FactoryReset(self, code):
-        raise NotImplementedError()
+        self.Reset()
 
     @dbus.service.method(mm1.I_MODEM, in_signature='uu')
     def SetAllowedModes(self, modes, preferred):

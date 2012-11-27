@@ -55,8 +55,9 @@ class ModemSimple(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM_SIMPLE, in_signature='o')
-    def Disconnect(self, bearer, *args):
+    @dbus.service.method(mm1.I_MODEM_SIMPLE, in_signature='o',
+        async_callbacks=('return_cb', 'raise_cb'))
+    def Disconnect(self, bearer, return_cb, raise_cb, *return_cb_args):
         """
         Disconnect an active packet data connection.
 
@@ -65,9 +66,14 @@ class ModemSimple(dbus.service.Interface):
                       path is "/" (i.e. no object given) this method will
                       disconnect all active packet data bearers.
 
-            *args -- Optional arguments can contain one callback to call
-                     when the Disconnect operation is completed, followed by
-                     the arguments to that function.
+            return_cb -- The callback to execute to send an asynchronous
+                         response for the initial Disconnect request.
+
+            raise_cb -- The callback to execute to send an asynchronous error
+                        in response to the initial Disconnect request.
+
+            *return_cb_args -- Optional arguments which will be supplied to
+                               return_cb.
         """
         raise NotImplementedError()
 
