@@ -687,49 +687,48 @@ class Mtb:
         """Get the total reversed motions in the specified direction
            in the target slot.
 
-        If direction is HORIZONTAL, consider only x axis.
-        If direction is VERTICAL, consider only y axis.
-        If direction is DIAGONAL, consider both x and y axes.
+        If direction is in HORIZONTAL_DIRECTIONS, consider only x axis.
+        If direction is in VERTICAL_DIRECTIONS, consider only y axis.
+        If direction is in DIAGONAL_DIRECTIONS, consider both x and y axes.
 
-        Assume that a list of displacement in some axis looks like
+        Assume that the displacement in GV.LR (moving from left to right)
+        in X axis is:
+
             [10, 12, 8, -9, -2, 6, 8, 11, 12, 5, 2]
 
-        The number of positive displacements, which is 9, is greater than
-        the number of negative displacements, which is 2. In this case
-        (-9) + (-2) = -11 is the total reversed motion in this list.
-
-        Should the number of positive items be equal to the number of negative
-        items, we assume that the one with smaller sum is the reversed motion.
-        Take this list [10, 22, -9, -2, -3, 10] for example. The numbers of
-        items for both positive/negative displacements are the same. However,
-        the sum of negative values is smaller. Hence, the reversed motion is
-        the sum of negative values.
+        Its total reversed motion = (-9) + (-2) = -11
         """
-        check_axes = {GV.HORIZONTAL: (AXIS.X,),
-                      GV.VERTICAL: (AXIS.Y,),
-                      GV.DIAGONAL: (AXIS.X, AXIS.Y)}
-        displacement_dict = self.get_displacement(target_slot)
+        # Define the axis moving directions dictionary
+        POSITIVE = 'positive'
+        NEGATIVE = 'negative'
+        AXIS_MOVING_DIRECTIONS = {
+            GV.LR: {AXIS.X: POSITIVE},
+            GV.RL: {AXIS.X: NEGATIVE},
+            GV.TB: {AXIS.Y: POSITIVE},
+            GV.BT: {AXIS.Y: NEGATIVE},
+            GV.CR: {AXIS.X: POSITIVE},
+            GV.CL: {AXIS.X: NEGATIVE},
+            GV.CB: {AXIS.Y: POSITIVE},
+            GV.CT: {AXIS.Y: NEGATIVE},
+            GV.BLTR: {AXIS.X: POSITIVE, AXIS.Y: NEGATIVE},
+            GV.BRTL: {AXIS.X: NEGATIVE, AXIS.Y: NEGATIVE},
+            GV.TRBL: {AXIS.X: NEGATIVE, AXIS.Y: POSITIVE},
+            GV.TLBR: {AXIS.X: POSITIVE, AXIS.Y: POSITIVE},
+        }
 
-        reversed_motions = {}
+        axis_moving_directions = AXIS_MOVING_DIRECTIONS.get(direction)
         func_positive = lambda n: n > 0
         func_negative = lambda n: n < 0
-        for axis in check_axes[direction]:
+        reversed_functions = {POSITIVE: func_negative, NEGATIVE: func_positive}
+        displacement_dict = self.get_displacement(target_slot)
+        reversed_motions = {}
+        for axis in AXIS.LIST:
+            axis_moving_direction = axis_moving_directions.get(axis)
+            if axis_moving_direction is None:
+                continue
             displacement = displacement_dict[axis]
-            list_positive = filter(func_positive, displacement)
-            list_negative = filter(func_negative, displacement)
-            num_positive = len(list_positive)
-            num_negative = len(list_negative)
-            sum_positive = sum(list_positive)
-            sum_negative = sum(list_negative)
-            if num_positive > num_negative:
-                reversed_motions[axis] = sum_negative
-            elif num_positive < num_negative:
-                reversed_motions[axis] = sum_positive
-            # Handle the very rare case below when num_positive == num_negative
-            elif sum_positive >= sum_negative:
-                reversed_motions[axis] = sum_negative
-            elif sum_positive < sum_negative:
-                reversed_motions[axis] = sum_positive
+            reversed_func = reversed_functions[axis_moving_direction]
+            reversed_motions[axis] = sum(filter(reversed_func, displacement))
         return reversed_motions
 
     def get_num_packets(self, target_slot):

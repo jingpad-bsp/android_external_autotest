@@ -159,6 +159,16 @@ class BaseValidator(object):
         elif self.is_diagonal(variation):
             return GV.DIAGONAL
 
+    def get_direction_in_variation(self, variation):
+        """Get the direction string from the variation list."""
+        if isinstance(variation, tuple):
+            for var in variation:
+                if var in GV.GESTURE_DIRECTIONS:
+                    return var
+        elif variation in GV.GESTURE_DIRECTIONS:
+            return variation
+        return None
+
     def log_name(self, msg):
         """Collect the validator name."""
         self.log.insert_name(msg)
@@ -462,7 +472,7 @@ class NoReversedMotionValidator(BaseValidator):
         """There should be no reversed motions in a slot."""
         self.init_check(packets)
         sum_reversed_motions = 0
-        direction = self.get_direction(variation)
+        direction = self.get_direction_in_variation(variation)
         for slot in self.slots:
             # Get the reversed motions if any
             reversed_motions = self.packets.get_reversed_motions(slot,
