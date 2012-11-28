@@ -51,7 +51,7 @@
                              (None, '+ready')  # Wait for the "current AP" (as
                           ] } ],              # read off the AP)
                                               # service to transition to "ready"
-    [ "client_ping",    { "count":"10" } ],
+    [ "client_ping",    { "count":"10", "ap":1 } ],
 
     # Verify that the client roamed to the 5GHz band.
     [ "client_check_frequency", [ "5240" ] ],

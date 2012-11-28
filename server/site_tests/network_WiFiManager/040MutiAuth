@@ -27,7 +27,7 @@
 
     # Connect to the WPA AP.
     [ "connect",        { "security":"wpa", "psk":"chromeos" } ],
-    [ "client_ping",    { "count":"10" } ],
+    [ "client_ping",    { "count":"10", "ap":1 } ],
 
     [ "destroy" ],
   ],

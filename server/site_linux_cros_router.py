@@ -39,13 +39,15 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
         self.router.run('stop wpasupplicant', ignore_status=True)
 
 
-    def start_dhcp_server(self):
-        if len(self.local_servers) > 1:
-            # for now, just bail if we have more than one interface.
-            raise NotImplementedError('multiple DHCP servers in CrOS router')
+    def start_dhcp_server(self, interface):
+        for server in self.local_servers:
+            if server['interface'] == interface:
+                params = server
+                break
         else:
-            params = self.local_servers[0]
+            raise RunTimeError('Could not find local server to match interface')
 
+        dhcpd_conf_file = '%s.%s' % (self.dhcpd_conf, interface)
         dhcp_conf = '\n'.join([
             'port=0',  # disables DNS server
             'bind-interfaces',
@@ -54,9 +56,8 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
             'interface=%s' % params['interface'],
             'dhcp-leasefile=%s' % self.dhcpd_leases])
         self.router.run('cat <<EOF >%s\n%s\nEOF\n' %
-            (self.dhcpd_conf, dhcp_conf))
-        self.router.run('pkill -f dnsmasq', ignore_status=True)
-        self.router.run('dnsmasq --conf-file=%s' % self.dhcpd_conf)
+            (dhcpd_conf_file, dhcp_conf))
+        self.router.run('dnsmasq --conf-file=%s' % dhcpd_conf_file)
 
         # Punch hole in firewall, to allow DHCP traffic. Avoid
         # creating duplicate iptable rule instances by deleting
@@ -66,3 +67,7 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
                         ignore_status=True)
         self.router.run('%s -A INPUT -i %s -p udp --dport bootps -j ACCEPT' %
                         (self.cmd_iptables, params['interface']))
+
+
+    def stop_dhcp_servers(self):
+        self.router.run('pkill -f dnsmasq', ignore_status=True)

@@ -41,8 +41,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.defssid = defssid
         self.hostapd = {
             'configured': False,
-            'file': "/tmp/hostapd-test.conf",
-            'log': "/tmp/hostapd-test.log",
+            'config_file': "/tmp/hostapd-test-%d.conf",
+            'log_file': "/tmp/hostapd-test-%d.log",
             'log_count': 0,
             'driver': "nl80211",
             'conf': {
@@ -59,14 +59,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 'ssid': defssid,
             },
         }
-        self.default_interface = None
         self.local_servers = []
+        self.hostapd_instances = []
         self.force_local_server = "force_local_server" in params
         self.dhcp_low = 1
         self.dhcp_high = 128
 
-        # Kill hostapd if already running.
+        # Kill hostapd and dhcp server if already running.
         self.kill_hostapd()
+        self.stop_dhcp_servers()
 
         # Place us in the US by default
         self.router.run("%s reg set US" % self.cmd_iw)
@@ -117,6 +118,34 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """ Clean up any resources in use """
         # For linux, this is a no-op
         pass
+
+    def start_hostapd(self, conf, params):
+        idx = len(self.hostapd_instances)
+        conf_file = self.hostapd['config_file'] % idx
+        log_file = self.hostapd['log_file'] % idx
+
+        # Figure out the correct interface.
+        conf['interface'] = self._get_wlanif(self.hostapd['frequency'],
+                                             self.phytype,
+                                             mode=conf.get('hw_mode', 'b'))
+
+        # Generate hostapd.conf.
+        self._pre_config_hook(conf)
+        self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
+            (conf_file, '\n'.join(
+            "%s=%s" % kv for kv in conf.iteritems())))
+
+        # Run hostapd.
+        logging.info("Starting hostapd...")
+        self._pre_start_hook(params)
+        self.router.run("%s -dd %s &> %s &" %
+            (self.cmd_hostapd, conf_file, log_file))
+
+        self.hostapd_instances.append({
+            'conf_file': conf_file,
+            'log_file': log_file,
+            'interface': conf['interface']
+        })
 
     def kill_hostapd(self):
         """
@@ -267,27 +296,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['ieee80211n'] = 1
             conf['ht_capab'] = ''.join(htcaps)
 
-        # Figure out the correct interface.
-        conf['interface'] = self._get_wlanif(self.hostapd['frequency'],
-                                             self.phytype,
-                                             mode=conf.get('hw_mode', 'b'))
-
-        # Generate hostapd.conf.
-        self._pre_config_hook(conf)
-        self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
-            (self.hostapd['file'], '\n'.join(
-            "%s=%s" % kv for kv in conf.iteritems())))
-
-        self._pre_start_hook(orig_params)
-
-        # Run hostapd.
-        logging.info("Starting hostapd...")
-
-        self.router.run("%s -dd %s &> %s &" %
-            (self.cmd_hostapd, self.hostapd['file'], self.hostapd['log']))
-
-        if not multi_interface:
-            self.default_interface = conf['interface']
+        self.start_hostapd(conf, orig_params)
 
         # Configure transmit power
         tx_power_params['interface'] = conf['interface']
@@ -406,9 +415,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_ip, params['ip_params']))
         self.router.run("%s link set %s up" %
                         (self.cmd_ip, interface))
-        self.start_dhcp_server()
+        self.start_dhcp_server(interface)
 
-    def start_dhcp_server(self):
+    def start_dhcp_server(self, interface):
         dhcp_conf = '\n'.join(map(
             lambda server_conf: \
                 "subnet %(subnet)s netmask %(netmask)s {\n" \
@@ -423,6 +432,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run("pkill dhcpd >/dev/null 2>&1", ignore_status=True)
         self.router.run("%s -q -cf %s -lf %s" %
                         (self.cmd_dhcpd, self.dhcpd_conf, self.dhcpd_leases))
+
+
+    def stop_dhcp_servers(self):
+        self.router.run("pkill dhcpd >/dev/null 2>&1", ignore_status=True)
 
 
     def config(self, params):
@@ -454,12 +467,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 self._remove_interfaces()
 
             self.kill_hostapd()
-#           self.router.run("rm -f %s" % self.hostapd['file'])
-            self.router.get_file(self.hostapd['log'],
-                                 'debug/hostapd_router_%d.log' %
-                                 self.hostapd['log_count'])
+            for instance in self.hostapd_instances:
+                self.router.get_file(instance['log_file'],
+                                     'debug/hostapd_router_%d_%s.log' %
+                                     (self.hostapd['log_count'],
+                                      instance['interface']))
+                self._release_wlanif(instance['interface'])
+#               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
             self.hostapd['log_count'] += 1
-            self._release_wlanif(self.hostapd['conf']['interface'])
+            self.hostapd_instances = []
         if self.station['configured']:
             if self.station['type'] == 'ibss':
                 self.router.run("%s dev %s ibss leave" %
@@ -471,8 +487,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                                      self.station['interface']))
 
         if self.local_servers:
-            self.router.run("pkill dhcpd >/dev/null 2>&1",
-                            ignore_status=True)
+            self.stop_dhcp_servers()
             for server in self.local_servers:
                 self.router.run("%s addr del %s" %
                                 (self.cmd_ip, server['ip_params']))
@@ -487,10 +502,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def set_txpower(self, params):
+        interface = params.get('interface',
+                               self.hostapd_instances[0]['interface'])
+        power = params.get('power', 'auto')
         self.router.run("%s dev %s set txpower %s" %
-                        (self.cmd_iw, params.get('interface',
-                                                 self.default_interface),
-                         params.get('power', 'auto')))
+                        (self.cmd_iw, interface, power))
 
 
     def deauth(self, params):

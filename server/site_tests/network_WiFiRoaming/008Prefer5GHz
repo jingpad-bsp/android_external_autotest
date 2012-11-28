@@ -18,7 +18,7 @@
 
     [ "connect",        { "security":"none" } ],
 
-    [ "client_ping",    { "count":"5" } ],
+    [ "client_ping",    { "count":"5", "ap":1 } ],
 
     # Verify that the client chose the 5GHz band.
     [ "client_check_frequency", [ "5240" ] ],
