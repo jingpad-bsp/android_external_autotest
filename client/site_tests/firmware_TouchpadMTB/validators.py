@@ -455,18 +455,26 @@ class NoGapValidator(BaseValidator):
 
 
 class NoReversedMotionValidator(BaseValidator):
-    """Validator to measure the reversed motions in specified slots.
+    """Validator to measure the reversed motions in the specified slots.
 
     Example:
         To measure the reversed motions in slot 0:
           NoReversedMotionValidator('== 0, ~ +20', slots=0)
     """
-
-    def __init__(self, criteria_str, mf=None, device=None, slots=(0,)):
-        name = self.__class__.__name__
-        super(NoReversedMotionValidator, self).__init__(criteria_str, mf,
-                                                        device, name)
+    def __init__(self, criteria_str, mf=None, device=None, slots=(0,),
+                 segments=VAL.MIDDLE):
+        self._segments = segments
+        name = 'NoReversedMotion%sValidator' % segments
         self.slots = (slots,) if isinstance(slots, int) else slots
+        parent = super(NoReversedMotionValidator, self)
+        parent.__init__(criteria_str, mf, device, name)
+
+    def _get_reversed_motions(self, slot, direction):
+        """Get the reversed motions opposed to the direction in the slot."""
+        return self.packets.get_reversed_motions(slot,
+                                                 direction,
+                                                 segment_flag=self._segments,
+                                                 ratio=END_PERCENTAGE)
 
     def check(self, packets, variation=None):
         """There should be no reversed motions in a slot."""
@@ -474,9 +482,8 @@ class NoReversedMotionValidator(BaseValidator):
         sum_reversed_motions = 0
         direction = self.get_direction_in_variation(variation)
         for slot in self.slots:
-            # Get the reversed motions if any
-            reversed_motions = self.packets.get_reversed_motions(slot,
-                                                                 direction)
+            # Get the reversed motions.
+            reversed_motions = self._get_reversed_motions(slot, direction)
             msg = 'Reversed motions slot%d: %s px'
             self.log_details(msg % (slot, reversed_motions))
             sum_reversed_motions += sum(map(abs, reversed_motions.values()))

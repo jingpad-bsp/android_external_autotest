@@ -14,7 +14,7 @@ import fuzzy
 import mtb
 import test_conf as conf
 
-from firmware_constants import AXIS, GV, MTB
+from firmware_constants import AXIS, GV, MTB, VAL
 
 
 def get_mtb_packets(gesture_filename):
@@ -56,19 +56,19 @@ class MtbTest(unittest.TestCase):
     def _call_get_reversed_motions(self, list_x, list_y, expected_x,
                                    expected_y, direction):
         mtb = FakeMtb(list_x, list_y)
-        displacement = mtb.get_reversed_motions(0, direction)
+        displacement = mtb.get_reversed_motions(0, direction, ratio=0.1)
         self.assertEqual(displacement[AXIS.X], expected_x)
         self.assertEqual(displacement[AXIS.Y], expected_y)
 
     def test_get_reversed_motions_no_reversed(self):
         list_x = (10, 22 ,36, 54, 100)
         list_y = (1, 2 ,6, 10, 22)
-        self._call_get_reversed_motions(list_x, list_y, 0, 0, GV.DIAGONAL)
+        self._call_get_reversed_motions(list_x, list_y, 0, 0, GV.TLBR)
 
     def test_get_reversed_motions_reversed_x_y(self):
         list_x = (10, 22 ,36, 154, 100)
         list_y = (1, 2 ,6, 30, 22)
-        self._call_get_reversed_motions(list_x, list_y, -54, -8, GV.DIAGONAL)
+        self._call_get_reversed_motions(list_x, list_y, -54, -8, GV.TLBR)
 
     def _test_get_x_y(self, filename, slot, expected_value):
         gesture_filename = self._get_filepath(filename)

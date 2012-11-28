@@ -212,7 +212,10 @@ def get_gesture_dict():
                 LinearityValidator(linearity_criteria, slot=0,
                                    segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
-                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
+                                          segments=VAL.MIDDLE),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
+                                          segments=VAL.BOTH_ENDS),
             ),
         ),
 

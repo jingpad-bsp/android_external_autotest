@@ -683,16 +683,28 @@ class Mtb:
         segment_y = self._get_segments(ay, segment_flag, ratio)
         return (segment_x, segment_y)
 
-    def get_reversed_motions(self, target_slot, direction):
+    def get_reversed_motions(self, target_slot, direction,
+                             segment_flag=VAL.WHOLE, ratio=None):
         """Get the total reversed motions in the specified direction
            in the target slot.
+
+        Only the reversed motions specified by the segment_flag are taken.
+        The segment_flag could be
+          VAL.BEGIN: the begin segment
+          VAL.MIDDLE : the middle segment
+          VAL.END : the end segment
+          VAL.BOTH_ENDS : the segments at both ends
+          VAL.WHOLE: the whole line
+
+        The ratio represents the ratio of the BEGIN or END segment to the whole
+        segment.
 
         If direction is in HORIZONTAL_DIRECTIONS, consider only x axis.
         If direction is in VERTICAL_DIRECTIONS, consider only y axis.
         If direction is in DIAGONAL_DIRECTIONS, consider both x and y axes.
 
-        Assume that the displacement in GV.LR (moving from left to right)
-        in X axis is:
+        Assume that the displacements in GV.LR (moving from left to right)
+        in the X axis are:
 
             [10, 12, 8, -9, -2, 6, 8, 11, 12, 5, 2]
 
@@ -727,8 +739,11 @@ class Mtb:
             if axis_moving_direction is None:
                 continue
             displacement = displacement_dict[axis]
+            displacement_segment = self._get_segments(displacement,
+                                                      segment_flag, ratio)
             reversed_func = reversed_functions[axis_moving_direction]
-            reversed_motions[axis] = sum(filter(reversed_func, displacement))
+            reversed_motions[axis] = sum(filter(reversed_func,
+                                                displacement_segment))
         return reversed_motions
 
     def get_num_packets(self, target_slot):
