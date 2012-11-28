@@ -57,6 +57,13 @@ class factory_AudioLoop(test.test):
                 for settings in [self._mute_left_mixer_settings,
                                  self._mute_right_mixer_settings]:
                     for idev in self._input_devices:
+                        # Skip blacklisted test combination.
+                        channel = 'left'
+                        if settings == self._mute_left_mixer_settings:
+                            channel = 'right'
+                        if self.in_blacklist_combinations(channel, idev):
+                            continue
+
                         self._ah.set_mixer_controls(settings)
                         if self._mute_device_mixer_settings:
                             self._ah.set_mixer_controls(
@@ -69,6 +76,9 @@ class factory_AudioLoop(test.test):
         else:
             self.audio_loopback()
         return True
+
+    def in_blacklist_combinations(self, channel, idev):
+        return (channel, idev) in self._blacklist_combinations
 
     def run_audiofuntest(self, idev, odev, dur):
         '''
@@ -166,6 +176,7 @@ class factory_AudioLoop(test.test):
             factory.console.info('Got frequency %d' % freq)
 
     def run_once(self, audiofuntest=True, audiofuntest_duration=10,
+            blacklist_combinations = [],
             duration=_DEFAULT_DURATION_SEC,
             input_devices=['hw:0,0'], output_devices=['hw:0,0'],
             mixer_controls=None, device_to_mute=None,
@@ -176,6 +187,7 @@ class factory_AudioLoop(test.test):
 
         self._audiofuntest = audiofuntest
         self._audiofuntest_duration = audiofuntest_duration
+        self._blacklist_combinations = blacklist_combinations
         self._duration = duration
         self._freq = _DEFAULT_FREQ_HZ
         self._input_devices = input_devices
