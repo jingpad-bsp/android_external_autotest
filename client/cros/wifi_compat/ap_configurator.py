@@ -7,9 +7,9 @@ import copy
 import logging
 import os
 import sys
+import xmlrpclib
 
 import web_driver_core_helpers
-import web_power_outlet
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
                              'chrome_test', 'test_src', 'third_party',
@@ -31,6 +31,10 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
     def __init__(self, router_dict):
         super(APConfigurator, self).__init__()
+        self.rpm_client = xmlrpclib.ServerProxy(
+            'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
+            verbose=False)
+
         # Possible bands
         self.band_2ghz = '2.4GHz'
         self.band_5ghz = '5GHz'
@@ -55,12 +59,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.admin_interface_url = router_dict['admin_url']
         self.class_name = router_dict['class_name']
         self.short_name = router_dict['short_name']
-        self.serial_number = router_dict['serial_number']
         self.mac_address = router_dict['mac_address']
-        self.power_outlet = web_power_outlet.WebPowerOutlet(
-            router_dict['power_outlet_ip'], router_dict['power_outlet_number'],
-            router_dict['power_outlet_admin_name'],
-            router_dict['power_outlet_password'])
+        self.device_name = router_dict['device_name']
 
         self._command_list = []
 
@@ -174,19 +174,18 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
     def power_cycle_router_up(self):
         """Turns the ap off and then back on again."""
-        self.power_down_router()
-        self.power_up_router()
+        self.rpm_client.queue_request(self.device_name, 'CYCLE')
 
     def power_down_router(self):
         """Turns off the power to the ap via the power strip."""
-        self.power_outlet.turn_off_outlet()
+        self.rpm_client.queue_request(self.device_name, 'OFF')
 
     def power_up_router(self):
         """Turns on the power to the ap via the power strip.
 
         This method returns once it can navigate to a web page of the ap UI.
         """
-        self.power_outlet.turn_on_outlet()
+        self.rpm_client.queue_request(self.device_name, 'ON')
         self.establish_driver_connection()
         self.wait = WebDriverWait(self.driver, timeout=5)
         # With the 5 second timeout give the router up to 2 minutes
