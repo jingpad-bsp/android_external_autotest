@@ -15,7 +15,8 @@ from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 # Number of seconds we wait for the cellular service to perform an action.
-SERVICE_TIMEOUT=60
+DEVICE_TIMEOUT=45
+SERVICE_TIMEOUT=75
 
 class ModemManagerContext:
     def __init__(self, start_pseudo_manager):
@@ -116,11 +117,11 @@ class DeviceCommands():
         return service
 
     def Enable(self):
-        self.device.Enable()
+        self.device.Enable(timeout=DEVICE_TIMEOUT)
 
     def Disable(self):
         self.service = None
-        self.device.Disable()
+        self.device.Disable(timeout=DEVICE_TIMEOUT)
 
     def Connect(self, **kwargs):
         self.GetService().Connect()
