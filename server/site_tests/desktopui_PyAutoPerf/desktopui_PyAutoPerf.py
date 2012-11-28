@@ -4,6 +4,7 @@
 
 import logging
 import os
+import shutil
 import subprocess
 
 from autotest_lib.client.common_lib import error, utils
@@ -21,6 +22,26 @@ class desktopui_PyAutoPerf(test.test):
         self.server_test = 'desktopui_PyAutoPerf'
         client_at = autotest.Autotest(self.client)
         client_at.run_test(self.client_test, *args)
+
+        # In the client results directory are a 'keyval' file, and
+        # various raw pyauto perf data files.  First promote the client
+        # test 'keyval' as our own.
+        logging.info('PyAutoPerf: gathering client results.')
+        client_results_dir = os.path.join(
+            self.outputdir, self.client_test, 'results')
+        src = os.path.join(client_results_dir, 'keyval')
+        dst = os.path.join(self.resultsdir, 'keyval')
+        if os.path.exists(src):
+            client_results = open(src, 'r')
+            server_results = open(dst, 'a')
+            shutil.copyfileobj(client_results, server_results)
+            server_results.close()
+            client_results.close()
+        else:
+            raise error.TestError('Unable to locate client test keyval file: '
+                                  '%s.' % src)
+
+        # Attempt to upload the perf results to google storage.
         if not self.job.label:
             logging.debug('Job has no label, therefore not uploading perf'
                           ' results to google storage.')
