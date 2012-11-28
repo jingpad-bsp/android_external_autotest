@@ -4,7 +4,7 @@
 
 NAME = 'kernel_Bootcache'
 AUTHOR = 'The Chromium OS Authors'
-SUITE = "regression"
+SUITE = 'kernel_per-build_regression'
 TIME = 'SHORT'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Functional'
