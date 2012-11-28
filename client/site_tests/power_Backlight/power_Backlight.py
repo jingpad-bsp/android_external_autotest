@@ -2,18 +2,32 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, power_status
+from autotest_lib.client.cros import cros_ui, power_status, power_utils
 
 class power_Backlight(test.test):
     version = 1
 
 
+    def initialize(self):
+        """Perform necessary initialization prior to test run.
+
+        Private Attributes:
+          _backlight: power_utils.Backlight object
+          _services: power_utils.ManageServicres object
+        """
+        super(power_Backlight, self).initialize()
+        self._backlight = None
+        self._services = None
+
+
     def run_once(self, delay=60, seconds=10, tries=20):
-        # disable powerd
-        os.system('stop powerd')
+        self._backlight = power_utils.Backlight()
+
+        self._services = power_utils.ManageServices()
+        self._services.stop_services()
 
         # disable screen blanking. Stopping screen-locker isn't
         # synchronous :(. Add a sleep for now, till powerd comes around
@@ -25,11 +39,9 @@ class power_Backlight(test.test):
         cros_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset -dpms')
 
         status = power_status.get_status()
-        if status.linepower[0].online:
-            raise error.TestFail('Machine must be unplugged')
+        status.assert_battery_state(5)
 
-        cmd = 'backlight-tool --get_max_brightness'
-        max_brightness = int(utils.system_output(cmd).rstrip())
+        max_brightness = self._backlight.get_max_level()
         if max_brightness < 4:
             raise error.TestFail('Must have at least 5 backlight levels')
         sysfs_max = self._get_highest_sysfs_max_brightness()
@@ -40,12 +52,12 @@ class power_Backlight(test.test):
         keyvals = {}
         rates = []
 
-        levels = [0, int(0.5*max_brightness), max_brightness]
+        levels = [0, 50, 100]
         for i in levels:
-            utils.system('backlight-tool --set_brightness %d' % i)
+            self._backlight.set_percent(i)
             time.sleep(delay)
             this_rate = []
-            for j in range(tries):
+            for _ in range(tries):
                 time.sleep(seconds)
                 status.refresh()
                 this_rate.append(status.battery[0].energy_rate)
@@ -60,8 +72,11 @@ class power_Backlight(test.test):
 
 
     def cleanup(self):
-        # Re-enable screen locker and powerd. This also re-enables dpms.
-        os.system('start powerd')
+        if self._backlight:
+            self._backlight.restore()
+        if self._services:
+            self._services.restore_services()
+        super(power_Backlight, self).cleanup()
 
 
     def _get_highest_sysfs_max_brightness(self):

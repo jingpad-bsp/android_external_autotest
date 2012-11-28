@@ -37,6 +37,8 @@ class power_Consumption(cros_ui_test.UITest):
 
     def initialize(self, creds='$default'):
         super(power_Consumption, self).initialize(creds=creds)
+        self._backlight = None
+        self._services = None
 
         # Some things from pyauto module are not accessible from
         # self.pyauto object
@@ -46,8 +48,6 @@ class power_Consumption(cros_ui_test.UITest):
         # Time to exclude from calculation after firing a task [seconds]
         self._stabilization_seconds = 5
         self._power_status = power_status.get_status()
-        self._services = power_utils.ManageServices()
-
         # Verify that we are running on battery and the battery is
         # sufficiently charged
         self._power_status.assert_battery_state(30)
@@ -57,7 +57,6 @@ class power_Consumption(cros_ui_test.UITest):
         self.energy_full_design = batinfo.energy_full_design
         logging.info("energy_full_design = %0.3f Wh" % self.energy_full_design)
 
-        self._backlight = power_utils.Backlight()
         self._do_xset()
 
         # Local data and web server settings. Tarballs with traditional names
@@ -446,7 +445,10 @@ class power_Consumption(cros_ui_test.UITest):
         # Let the login complete
         time.sleep(5)
 
+        self._services = power_utils.ManageServices()
         self._services.stop_services()
+
+        self._backlight = power_utils.Backlight()
         self._backlight.set_default()
 
         measurements = \
@@ -506,7 +508,7 @@ class power_Consumption(cros_ui_test.UITest):
             logging.debug('test_server could not be stopped in cleanup')
 
         if self._backlight:
-            self._backlight.set_default()
+            self._backlight.restore()
         if self._services:
             self._services.restore_services()
 

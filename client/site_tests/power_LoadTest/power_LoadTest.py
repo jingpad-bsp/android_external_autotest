@@ -71,6 +71,7 @@ class power_LoadTest(cros_ui_test.UITest):
         sys_low_batt_s: seconds battery at which power manager will
             shut-down the device
         """
+        self._backlight = None
         self._loop_time = loop_time
         self._loop_count = loop_count
         self._mseconds = self._loop_time * 1000
@@ -130,9 +131,9 @@ class power_LoadTest(cros_ui_test.UITest):
         self._audio_helper = audio_helper.AudioHelper(None)
 
         # record the max backlight level
-        cmd = 'backlight-tool --get_max_brightness'
-        self._max_backlight = int(utils.system_output(cmd).rstrip())
-        self._tmp_keyvals['level_backlight_max'] = self._max_backlight
+        self._backlight = power_utils.Backlight()
+        self._tmp_keyvals['level_backlight_max'] = \
+            self._backlight.get_max_level()
 
         # fix up file perms for the power test extension so that chrome
         # can access it
@@ -192,7 +193,7 @@ class power_LoadTest(cros_ui_test.UITest):
             ext_id = self.pyauto.InstallExtension(ext_path)
 
             # stop powerd
-            os.system('stop powerd')
+            utils.system('stop powerd', ignore_status=True)
 
             # reset X settings since X gets restarted upon login
             self._do_xset()
@@ -322,7 +323,10 @@ class power_LoadTest(cros_ui_test.UITest):
 
     def cleanup(self):
         # re-enable powerd
-        os.system('start powerd')
+        utils.system('start powerd', ignore_status=True)
+
+        if self._backlight:
+            self._backlight.restore()
         # cleanup backchannel interface
         if self._backchannel:
             self._backchannel.teardown()
@@ -402,16 +406,10 @@ class power_LoadTest(cros_ui_test.UITest):
 
 
     def _set_backlight_level(self):
-        # set backlight level to 40% of max
-        cmd = 'backlight-tool --set_brightness %d ' % (
-              int(self._max_backlight * 0.4))
-        os.system(cmd)
-
+        self._backlight.set_default()
         # record brightness level
-        cmd = 'backlight-tool --get_brightness'
-        level = int(utils.system_output(cmd).rstrip())
-        logging.info('backlight level is %d' % level)
-        self._tmp_keyvals['level_backlight_current'] = level
+        self._tmp_keyvals['level_backlight_current'] = \
+            self._backlight.get_level()
 
 
     def _set_lightbar_level(self, level='off'):

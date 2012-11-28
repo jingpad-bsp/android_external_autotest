@@ -3,29 +3,36 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test
-from autotest_lib.client.cros import power_rapl
-from autotest_lib.client.cros import power_status
-from autotest_lib.client.cros import power_utils
+from autotest_lib.client.cros import power_rapl, power_status, power_utils
 
 
 class power_Idle(cros_ui_test.UITest):
     version = 1
+
+    def initialize(self):
+        """Perform necessary initialization prior to test run.
+
+        Private Attributes:
+          _backlight: power_utils.Backlight object
+          _services: power_utils.ManageServicres object
+        """
+        super(power_Idle, self).initialize()
+        self._backlight = None
+        self._services = None
+
 
     def warmup(self, warmup_time=60):
         time.sleep(warmup_time)
 
 
     def run_once(self, idle_time=120, sleep=10):
-        # If powerd is running, stop it, so that it cannot interfere with the
-        # backlight adjustments in this test.
-        if utils.system_output('status powerd').find('start/running') != -1:
-            powerd_running = True
-            utils.system_output('stop powerd')
-        else:
-            powerd_running = False
+
+        self._services = power_utils.ManageServices()
+        self._services.stop_services()
+
+        self._backlight = power_utils.Backlight()
+        self._backlight.set_default()
 
         self._start_time = time.time()
         self.status = power_status.get_status()
@@ -45,15 +52,12 @@ class power_Idle(cros_ui_test.UITest):
                                               seconds_period=sleep)
         self._plog.start()
 
-        for i in range(0, idle_time, sleep):
+        for _ in xrange(0, idle_time, sleep):
             time.sleep(sleep)
             self.status.refresh()
         self.status.refresh()
         self._plog.checkpoint('power_Idle', self._start_time)
 
-        # Restore powerd if it was originally running.
-        if powerd_running:
-            utils.system_output('start powerd');
 
     def postprocess_iteration(self):
         keyvals = {}
@@ -75,13 +79,9 @@ class power_Idle(cros_ui_test.UITest):
             keyvals['percent_cpufreq_%s_time' % freq] = cpufreq_stats[freq]
 
         # record the current and max backlight levels
-        cmd = 'backlight-tool --get_max_brightness'
-        keyvals['level_backlight_max'] = int(
-                                         utils.system_output(cmd).rstrip())
-
-        cmd = 'backlight-tool --get_brightness'
-        keyvals['level_backlight_current'] = int(
-                                             utils.system_output(cmd).rstrip())
+        self._backlight = power_utils.Backlight()
+        keyvals['level_backlight_max'] = self._backlight.get_max_level()
+        keyvals['level_backlight_current'] = self._backlight.get_level()
 
         # record battery stats if not on AC
         if self.status.linepower[0].online:
@@ -104,3 +104,11 @@ class power_Idle(cros_ui_test.UITest):
         keyvals.update(self._plog.calc())
 
         self.write_perf_keyval(keyvals)
+
+
+    def cleanup(self):
+        if self._backlight:
+            self._backlight.restore()
+        if self._services:
+            self._services.restore_services()
+        super(power_Idle, self).cleanup()

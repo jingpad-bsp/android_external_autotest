@@ -80,6 +80,10 @@ class ManageServices(object):
         """Turn off services that introduce power variance."""
 
         for service in self.services_to_stop:
+            cmd = 'status %s' % service
+            is_stopped = utils.system_output(cmd).find('stop/waiting') != -1
+            if is_stopped:
+                continue
             try:
                 utils.system('stop %s' % service)
                 self._services_stopped.append(service)
@@ -92,6 +96,7 @@ class ManageServices(object):
         """Restore services that were stopped for power investigations."""
         for service in reversed(self._services_stopped):
             utils.system('start %s' % service, ignore_status=True)
+        self._services_stopped = []
 
 
 class BacklightException(Exception):
@@ -121,8 +126,15 @@ class Backlight(object):
         """Set backlight level to the given brightness.
         Args:
           level: integer of brightness to set
+
+        Raises:
+          error.TestFail: if 'cmd' returns non-zero exist status
         """
-        utils.system('%s --set_brightness %d' % (self.bl_cmd, level))
+        cmd = '%s --set_brightness %d' % (self.bl_cmd, level)
+        try:
+            utils.system(cmd)
+        except error.CmdError:
+            raise error.TestFail('Setting level with backlight-tool')
 
 
     def set_percent(self, percent):
@@ -130,33 +142,51 @@ class Backlight(object):
 
         Args:
           percent: float between 0 and 100
+
+        Raises:
+          error.TestFail: if 'cmd' returns non-zero exist status
         """
-        utils.system('%s --set_brightness_percent %f' % (self.bl_cmd, percent))
+        cmd = '%s --set_brightness_percent %f' % (self.bl_cmd, percent)
+        try:
+            utils.system(cmd)
+        except error.CmdError:
+            raise error.TestFail('Setting percent with backlight-tool')
 
 
     def set_default(self):
         """Set backlight to CrOS default.
         """
-        utils.system('%s --set_brightness_percent %f' %
-                     (self.bl_cmd, self.default_brightness_percent))
+        self.set_percent(self.default_brightness_percent)
 
 
     def get_level(self):
         """Get backlight level currently.
 
         Returns integer of current backlight level.
+
+        Raises:
+          error.TestFail: if 'cmd' returns non-zero exist status
         """
         cmd = '%s --get_brightness' % self.bl_cmd
-        return int(utils.system_output(cmd).rstrip())
+        try:
+            return int(utils.system_output(cmd).rstrip())
+        except error.CmdError:
+            raise error.TestFail('Getting level with backlight-tool')
 
 
     def get_max_level(self):
         """Get maximum backight level.
 
         Returns integer of maximum backlight level.
+
+        Raises:
+          error.TestFail: if 'cmd' returns non-zero exist status
         """
-        cmd = 'backlight-tool --get_max_brightness'
-        return int(utils.system_output(cmd).rstrip())
+        cmd = '%s --get_max_brightness' % self.bl_cmd
+        try:
+            return int(utils.system_output(cmd).rstrip())
+        except error.CmdError:
+            raise error.TestFail('Getting max level with backlight-tool')
 
 
     def restore(self):

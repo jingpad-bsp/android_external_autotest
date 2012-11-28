@@ -5,7 +5,7 @@
 import logging, os, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import base_utils, error
-from autotest_lib.client.cros import cros_ui, power_status
+from autotest_lib.client.cros import power_status, power_utils
 
 
 def get_num_outputs_on():
@@ -32,11 +32,21 @@ class power_BacklightControl(test.test):
     # (max -> min, min-> off)
     _energy_rate_change_threshold_percent = 5
 
+
+    def initialize(self):
+        """Perform necessary initialization prior to test run.
+
+        Private Attributes:
+          _backlight: power_utils.Backlight object
+        """
+        super(power_BacklightControl, self).initialize()
+        self._backlight = None
+
+
     def run_once(self):
-        # Require that this test be run on battery so we can measure power draw.
+        # Require that this test be run on battery with at least 5% charge
         status = power_status.get_status()
-        if status.linepower[0].online:
-            raise error.TestFail('Machine must be unplugged')
+        status.assert_battery_state(5)
 
         # Start powerd if not started.  Set timeouts to delay idle events.
         # Save old prefs in a backup directory.
@@ -77,13 +87,13 @@ class power_BacklightControl(test.test):
             raise error.TestFail('At least one display output must be on.')
         keyvals['starting_num_outputs_on'] = starting_num_outputs_on
 
-        self._max_brightness = self._get_max_brightness()
-        keyvals['max_brightness'] = self._max_brightness
-        if self._max_brightness <= self._min_num_steps:
+        self._backlight = power_utils.Backlight()
+        keyvals['max_brightness'] = self._backlight.get_max_level()
+        if keyvals['max_brightness'] <= self._min_num_steps:
             raise error.TestFail('Must have at least %d backlight levels' %
                                  (self._min_num_steps + 1))
 
-        keyvals['initial_brightness'] = self._get_current_brightness()
+        keyvals['initial_brightness'] = self._backlight.get_level()
 
         self._wait_for_stable_energy_rate()
         keyvals['initial_power_w'] = self._get_current_energy_rate()
@@ -91,9 +101,9 @@ class power_BacklightControl(test.test):
         self._set_brightness_to_max()
 
         current_brightness = \
-            base_utils.wait_for_value(self._get_current_brightness,
-                                      max_threshold=self._max_brightness)
-        if current_brightness != self._max_brightness:
+            base_utils.wait_for_value(self._backlight.get_level,
+                                      max_threshold=keyvals['max_brightness'])
+        if current_brightness != keyvals['max_brightness']:
             num_errors += 1
             logging.error(('Failed to increase brightness to max, ' + \
                            'brightness is %d.') % current_brightness)
@@ -107,9 +117,9 @@ class power_BacklightControl(test.test):
         # settle.
         self._set_brightness_to_min()
         current_brightness = base_utils.wait_for_value(
-            self._get_current_brightness,
-            min_threshold=(self._max_brightness / 2 - 1))
-        if current_brightness >= self._max_brightness / 2 or \
+            self._backlight.get_level,
+            min_threshold=(keyvals['max_brightness'] / 2 - 1))
+        if current_brightness >= keyvals['max_brightness'] / 2 or \
            current_brightness == 0:
             num_errors += 1
             logging.error('Brightness is not at minimum non-zero level: %d' %
@@ -122,7 +132,7 @@ class power_BacklightControl(test.test):
         # allow_off=True.
         self._decrease_brightness(True)
         current_brightness = base_utils.wait_for_value(
-            self._get_current_brightness, min_threshold=0)
+            self._backlight.get_level, min_threshold=0)
         if current_brightness != 0:
             num_errors += 1
             logging.error('Brightness is %d, expecting 0.' % current_brightness)
@@ -142,8 +152,8 @@ class power_BacklightControl(test.test):
         # Set brightness to max.
         self._set_brightness_to_max()
         current_brightness = base_utils.wait_for_value(
-            self._get_current_brightness, max_threshold=self._max_brightness)
-        if current_brightness != self._max_brightness:
+            self._backlight.get_level, max_threshold=keyvals['max_brightness'])
+        if current_brightness != keyvals['max_brightness']:
             num_errors += 1
             logging.error(('Failed to increase brightness to max, ' + \
                            'brightness is %d.') % current_brightness)
@@ -198,6 +208,9 @@ class power_BacklightControl(test.test):
         os.system('mv %s/* %s' % (self._backup_path, pref_path))
         os.system('rmdir %s' % self._backup_path)
         os.system('restart powerd')
+        if self._backlight:
+            self._backlight.restore()
+        super(power_BacklightControl, self).cleanup()
 
 
     def _call_powerd_dbus_method(self, method_name, args=''):
@@ -244,18 +257,8 @@ class power_BacklightControl(test.test):
             num_steps_taken += 1
 
 
-    def _get_max_brightness(self):
-        cmd = 'backlight-tool --get_max_brightness'
-        return int(utils.system_output(cmd).rstrip())
-
-
-    def _get_current_brightness(self):
-        cmd = 'backlight-tool --get_brightness'
-        return int(utils.system_output(cmd).rstrip())
-
-
     def _get_current_energy_rate(self):
-        return power_status.get_status().battery[0].energy_rate;
+        return power_status.get_status().battery[0].energy_rate
 
 
     def _wait_for_stable_energy_rate(self,
