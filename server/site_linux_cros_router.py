@@ -59,7 +59,7 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
             (dhcpd_conf_file, dhcp_conf))
         self.router.run('dnsmasq --conf-file=%s' % dhcpd_conf_file)
 
-        # Punch hole in firewall, to allow DHCP traffic. Avoid
+        # Punch hole in firewall, to allow DHCP and iperf traffic. Avoid
         # creating duplicate iptable rule instances by deleting
         # (possibly) existing instance first.
         self.router.run('%s -D INPUT -i %s -p udp --dport bootps -j ACCEPT' %
@@ -67,6 +67,16 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
                         ignore_status=True)
         self.router.run('%s -A INPUT -i %s -p udp --dport bootps -j ACCEPT' %
                         (self.cmd_iptables, params['interface']))
+
+        # Punch a hole to allow iperf traffic (port used in site_wifitest.py)
+        # TODO(tgao): remove rules below when Stumpy AP boots w/ properly
+        #             configured firewall. See crosbug.com/36757
+        for port in ['udp', 'tcp']:
+            self.router.run('%s -D INPUT -i %s -p %s --dport 12866 -j ACCEPT' %
+                            (self.cmd_iptables, params['interface'], port),
+                            ignore_status=True)
+            self.router.run('%s -A INPUT -i %s -p %s --dport 12866 -j ACCEPT' %
+                            (self.cmd_iptables, params['interface'], port))
 
 
     def stop_dhcp_servers(self):

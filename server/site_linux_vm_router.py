@@ -16,7 +16,8 @@ class LinuxVMRouter(site_linux_cros_router.LinuxCrosRouter):
         host.run("rmmod mac80211_hwsim", ignore_status=True)
         host.run("modprobe mac80211_hwsim radios=3")
 
-        site_linux_router.LinuxCrosRouter.__init__(self, host, params, defssid)
+        site_linux_cros_router.LinuxCrosRouter.__init__(
+            self, host, params, defssid)
 
         # Override LinuxSystem's phy assignment.
         self.phys_for_frequency = {}

@@ -18,6 +18,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
+from autotest_lib.server import site_attenuator
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_cisco_router
 from autotest_lib.server import site_eap_certs
@@ -165,6 +166,13 @@ class WiFiTest(object):
             self.router = self.wifi.get_proxy()
         else:
             raise error.TestFail('Unsupported router')
+
+        attenuator = config.get('attenuator', dict())
+        # NB: Attenuator must be reachable on the control network
+        if attenuator.get('addr', None):
+            attenuator_host = hosts.SSHHost(attenuator['addr'],
+                                            port=int(attenuator.get('port',22)))
+            self.attenuator = site_attenuator.Attenuator(attenuator_host)
 
         #
         # The client machine must be reachable from the control machine.
@@ -514,6 +522,9 @@ class WiFiTest(object):
                 func = getattr(self.wifi, method, None)
             if func is None:
                 func = getattr(self.hosting_server, method, None)
+            if func is None and self.attenuator:  # Must be an Attenuator method
+                func = getattr(self.attenuator, method, None)
+
             if func is not None:
                 try:
                     func(params)
@@ -1387,13 +1398,14 @@ class WiFiTest(object):
             # Open up access from the server into our DUT
             ip_rules.append(self.__firewall_open('tcp', self.server_wifi_ip))
             ip_rules.append(self.__firewall_open('udp', self.server_wifi_ip))
-        else:
+        else:  # mode == 'client'
             server = { 'host': self.server, 'cmd': self.server_cmd_iperf }
             client = { 'host': self.client, 'cmd': self.client_cmd_iperf,
                        'target': self.server_wifi_ip }
 
         iperf_thread = HelperThread(server['host'],
             "%s -s %s" % (server['cmd'], iperf_args))
+        # TODO(tgao): figure out how to capture throughput reported by server.
         iperf_thread.start()
         # NB: block to allow server time to startup
         time.sleep(self.defwaittime)
@@ -2306,7 +2318,9 @@ def run_test_dir(test_name, job, args, machine):
     # convert autoserv args to something usable
     opts = dict([[k, v] for (k, e, v) in [x.partition('=') for x in args]])
 
+    # config file located under third_party/autotest/files/client/config/
     config_file = opts.get('config_file', 'wifi_testbed_config')
+
     test_pat = opts.get('test_pat', '[0-9]*')
     if utils.host_is_in_lab_zone(machine):
         # If we are in the lab use the names for the server, AKA rspro,
@@ -2327,10 +2341,12 @@ def run_test_dir(test_name, job, args, machine):
         server_addr = server_addr)
     server = config['server']
     router = config['router']
+    attenuator = config.get('attenuator', dict())
     config['run_options'] = run_options
 
-    logging.info("Client %s, Server %s, AP %s" % \
-        (machine, server.get('addr', 'N/A'), router['addr']))
+    logging.info("Client %s, Server %s, AP %s, Attenuator %s" % \
+        (machine, server.get('addr', 'N/A'), router['addr'],
+         attenuator.get('addr', 'N/A')))
 
     test_dir = os.path.join(job.serverdir, "site_tests", test_name)
 
