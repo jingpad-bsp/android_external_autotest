@@ -19,7 +19,7 @@ class SuspendFailure(error.TestFail):
 
 class FirmwareError(SuspendFailure):
     """String 'ERROR' found in firmware log after resume."""
-    pass
+    WHITELIST = [r'PNP: 002e\.4 70 irq size: 0x0000000001 not assigned']
 
 
 class KernelError(SuspendFailure):
@@ -215,12 +215,16 @@ class Suspender(object):
 
             # look for errors
             if os.path.exists('/sys/firmware/log'):
-                firmware_errors = re.findall(r'^.*ERROR.*$',
-                        utils.read_file('/sys/firmware/log'), re.M)
-                if firmware_errors:
-                    raise FirmwareError(', '.join(firmware_errors))
+                for msg in re.findall(r'^.*ERROR.*$',
+                        utils.read_file('/sys/firmware/log'), re.M):
+                    for pattern in FirmwareError.WHITELIST:
+                        if re.search(pattern, msg):
+                            logging.info('Whitelisted firmware error: ' + msg)
+                            break
+                    else:
+                        raise FirmwareError(msg.strip('\r\n '))
 
-            regex = re.compile(r'\bBUG\b|WARNING|CRC.*error')
+            regex = re.compile(r' kernel: \[.*(BUG:|WARNING:|CRC.*error)')
             for line in self._log_reader.read_all_logs():
                 if regex.search(line):
                     raise KernelError(line)
