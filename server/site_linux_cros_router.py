@@ -24,7 +24,12 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
             'cmd_ip': '/usr/local/sbin/ip',
             'cmd_hostapd': '/usr/local/sbin/hostapd',
             'cmd_hostapd_cli': '/usr/local/bin/hostapd_cli',
-            'force_local_server': None })
+            'cmd_tcpdump': '/usr/local/sbin/tcpdump',
+            'force_local_server': None,
+            'phy_bus_preference': {
+                'monitor': 'usb',
+                'managed': 'pci'
+            }})
         site_linux_router.LinuxRouter.__init__(self, host, cros_params, defssid)
         self.cmd_iptables = params.get('cmd_iptables', '/sbin/iptables')
 

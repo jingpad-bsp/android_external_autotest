@@ -231,6 +231,14 @@ class WiFiTest(object):
                 self.iterated_steps[step_name] = 0
 
         self.run_options = config['run_options']
+        if (config['router']['addr'] == config['server']['addr'] and
+            'server_capture_all' in self.run_options):
+            # Do not perform capture on the server if it is the same host
+            # as the router.  Instead, use the 'router_capture_all' option
+            # so the router instance can mediate phy usage.
+            self.run_options.remove('server_capture_all')
+            if 'router_capture_all' not in self.run_options:
+                self.run_options.append('router_capture_all')
 
         self.command_hooks = {}
 
@@ -393,7 +401,7 @@ class WiFiTest(object):
 
         # Find out if this device supports 5GHz
         system = site_linux_system.LinuxSystem(self.client, {}, '')
-        if [freq for freq in system.phy_for_frequency.keys() if freq > 5000]:
+        if [freq for freq in system.phys_for_frequency.keys() if freq > 5000]:
             caps.append(WiFiTest._capability_5ghz)
         logging.info("Client system capabilities: %s" % repr(caps))
         return caps

@@ -18,7 +18,12 @@ class LinuxSystem(object):
         self.cmd_iw = params.get("cmd_iw", "/usr/sbin/iw")
         self.cmd_ip = params.get("cmd_ip", "/usr/sbin/ip")
         self.cmd_dhcpd = params.get("cmd_dhcpd", "/usr/sbin/dhcpd")
+        self.cmd_readlink = params.get("cmd_readlink", "/bin/ls -l")
         self.cmd_tcpdump = params.get("cmd_tcpdump", "/usr/sbin/tcpdump")
+
+        self.phy_bus_preference = params.get('phy_bus_preference', {})
+        self.phydev2 = params.get('phydev2', None)
+        self.phydev5 = params.get('phydev5', None)
 
         self.capture_file = "/tmp/dump.pcap"
         self.capture_logfile = "/tmp/dump.log"
@@ -32,29 +37,52 @@ class LinuxSystem(object):
         setattr(self, '%s_start_capture' % role, self.start_capture)
         setattr(self, '%s_stop_capture' % role, self.stop_capture)
 
-        # Network interfaces.
-        self.phy_for_frequency = {}
+        self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
+        self.wlanifs_in_use = []
 
-        # Parse the output of 'iw phy' and find a device for each frequency
-        output = host.run("%s list" % self.cmd_iw).stdout
+
+    def _get_phy_info(self):
+        """ Parse the output of 'iw list' and find out device support for
+            each frequency.  Also return the bus type of each phy device.
+        """
+        output = self.host.run("%s list" % self.cmd_iw).stdout
         re_wiphy = re.compile("Wiphy (.*)")
         re_mhz = re.compile("(\d+) MHz")
         in_phy = False
+        phy_list = []
+        phys_for_frequency = {}
         for line in output.splitlines():
             match_wiphy = re_wiphy.match(line)
             if match_wiphy:
                 in_phy = True
                 wiphyname = match_wiphy.group(1)
+                phy_list.append(wiphyname)
             elif in_phy:
                 if line[0] == '\t':
                     match_mhz = re_mhz.search(line)
                     if match_mhz:
                         mhz = int(match_mhz.group(1))
-                        self.phy_for_frequency[mhz] = wiphyname
+                        if mhz not in phys_for_frequency:
+                            phys_for_frequency[mhz] = [wiphyname]
+                        else:
+                            phys_for_frequency[mhz].append(wiphyname)
                 else:
                     in_phy = False
-        self.phydev2 = params.get('phydev2', None)
-        self.phydev5 = params.get('phydev5', None)
+
+        phy_bus_type = {}
+        for phy in phy_list:
+            phybus = 'unknown'
+            command = "%s /sys/class/ieee80211/%s" % (self.cmd_readlink, phy)
+            devpath = self.host.run(command).stdout
+            if '/usb' in devpath:
+                phybus = 'usb'
+            elif '/mmc' in devpath:
+                phybus = 'sdio'
+            elif '/pci' in devpath:
+                phybus = 'pci'
+            phy_bus_type[phy] = phybus
+
+        return phys_for_frequency, phy_bus_type
 
 
     def _remove_interfaces(self):
@@ -114,6 +142,28 @@ class LinuxSystem(object):
                              (self.role, self.capture_count))
         self.capture_count += 1
         self.capture_running = False
+        self._release_wlanif(self.capture_interface)
+
+
+    def _get_phy_for_frequency(self, frequency, phytype):
+        """ Return the most appropriate phy interface for operating on
+            the frequency |frequency| in the role indicated by |phytype|.
+            Prefer idle phys to busy phys if any exist.  Secondarily,
+            show affinity for phys that use the bus type associated with
+            this phy type.
+        """
+        phys = self.phys_for_frequency[frequency]
+
+        busy_phys = set(phy for phy, wlanif, phytype in self.wlanifs_in_use)
+        idle_phys = [phy for phy in phys if phy not in busy_phys]
+        phys = idle_phys or phys
+
+        preferred_bus = self.phy_bus_preference.get(phytype)
+        preferred_phys = [phy for phy in phys
+                          if self.phy_bus_type[phy] == preferred_bus]
+        phys = preferred_phys or phys
+
+        return phys[0]
 
 
     def _get_wlanif(self, frequency, phytype, mode = None):
@@ -129,8 +179,8 @@ class LinuxSystem(object):
             phy = self.phydev2
         elif mode == 'a' and self.phydev5 is not None:
             phy = self.phydev5
-        elif frequency in self.phy_for_frequency:
-            phy = self.phy_for_frequency[frequency]
+        elif frequency in self.phys_for_frequency:
+            phy = self._get_phy_for_frequency(frequency, phytype)
         else:
             raise error.TestFail("Unable to find phy for frequency %d mode %s" %
                                  (frequency, mode))
@@ -151,4 +201,12 @@ class LinuxSystem(object):
         self.host.run("%s phy %s interface add %s type %s" %
             (self.cmd_iw, phy, wlanif, phytype))
 
+        self.wlanifs_in_use.append((phy, wlanif, phytype))
+
         return wlanif
+
+
+    def _release_wlanif(self, wlanif):
+        for phy, wlanif_i, phytype in self.wlanifs_in_use:
+            if wlanif_i == wlanif:
+                 self.wlanifs_in_use.remove((phy, wlanif, phytype))

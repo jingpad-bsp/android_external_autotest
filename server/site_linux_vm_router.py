@@ -19,7 +19,7 @@ class LinuxVMRouter(site_linux_cros_router.LinuxCrosRouter):
         site_linux_router.LinuxCrosRouter.__init__(self, host, params, defssid)
 
         # Override LinuxSystem's phy assignment.
-        self.phy_for_frequency = {}
+        self.phys_for_frequency = {}
         phy_infos = host.run("%s list" % self.cmd_iw).stdout.splitlines()
         phy_list = \
             [phy_info.split()[1] for phy_info in phy_infos \

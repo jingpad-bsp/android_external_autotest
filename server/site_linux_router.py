@@ -459,6 +459,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                  'debug/hostapd_router_%d.log' %
                                  self.hostapd['log_count'])
             self.hostapd['log_count'] += 1
+            self._release_wlanif(self.hostapd['conf']['interface'])
         if self.station['configured']:
             if self.station['type'] == 'ibss':
                 self.router.run("%s dev %s ibss leave" %
