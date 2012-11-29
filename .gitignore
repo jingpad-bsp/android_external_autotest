@@ -41,3 +41,6 @@ results*
 server/tmp
 tko/parsers/test/site_scenarios
 ExternalSource
+/frontend/client/www/
+/shadow_config.ini
+/site-packages/
