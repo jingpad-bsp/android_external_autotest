@@ -33,7 +33,7 @@ class graphics_VTSwitch(cros_ui_test.UITest):
     # TODO(crosbug.com/36417): Need to handle more than one display screen.
 
     def run_once(self,
-                 num_iterations=10,
+                 num_iterations=2,
                  similarity_percent_threshold=95,
                  difference_percent_threshold=5):
         self._num_errors = 0

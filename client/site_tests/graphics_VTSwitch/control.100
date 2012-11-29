@@ -13,13 +13,10 @@ Test fails if any of the following happen:
 - VT2 does not remain the same between VT switches.
 - Cannot login after repeated VT switching.
 """
-TIME = "FAST"
+TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
-
-SUITE = "graphics"
-EXPERIMENTAL = "True"
 
 DOC = """
 Switches between VT1 and VT2 repeatedly and logs in/out of Chrome to make sure
@@ -28,4 +25,4 @@ sure each VT remains the same between VT switches, and that VT1 and VT2 are
 sufficiently different.
 """
 
-job.run_test("graphics_VTSwitch")
+job.run_test("graphics_VTSwitch", num_iterations=100)
