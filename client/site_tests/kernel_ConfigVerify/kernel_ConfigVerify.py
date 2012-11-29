@@ -237,6 +237,12 @@ class kernel_ConfigVerify(test.test):
             self.has_builtin('DEBUG_RODATA')
             self.has_builtin('DEBUG_SET_MODULE_RONX')
 
+        # Kernel: make sure port 0xED is the one used for I/O delay
+        if not self._arch.startswith('arm'):
+            self.has_builtin('IO_DELAY_0XED')
+            needed = self._config.get('CONFIG_IO_DELAY_TYPE_0XED', None)
+            self.has_value('DEFAULT_IO_DELAY_TYPE', [needed])
+
         # Raise a failure if anything unexpected was seen.
         if len(self._failures):
             raise error.TestFail((", ".join(self._failures)))
