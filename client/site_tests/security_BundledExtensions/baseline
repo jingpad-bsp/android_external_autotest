@@ -37,7 +37,7 @@
         "api_permissions": []
       },
       { "crx_file": "gbchcmhmhahfdphkhkmpfmihenigjmpp.crx",
-        "name": "Chrome Remote Desktop BETA",
+        "name": "Chrome Remote Desktop",
         "effective_host_permissions": ["https://accounts.google.com/*",
                                        "https://relay.google.com/*",
                                        "https://*.talkgadget.google.com/*",
@@ -75,10 +75,9 @@
         "api_permissions": []
       },
       { "crx_file": "gbkeegbaiigmenfmjfclcdgdpimamgkj.crx",
-        "name": "Quickoffice Viewer",
+        "name": "Chrome Office Viewer",
         "effective_host_permissions": [],
-        "api_permissions": ["experimental",
-                            "fileBrowserHandler",
+        "api_permissions": ["fileBrowserHandler",
                             "fileBrowserHandlerInternal",
                             "unlimitedStorage"
                            ]
@@ -101,10 +100,11 @@
       { "crx_file": "mmimngoggfoobjdlefbcabngfnmieonb.crx",
         "name": "Google Play Books",
         "effective_host_permissions": [],
-        "api_permissions": ["unlimitedStorage"]
+        "api_permissions": ["clipboardWrite",
+                            "unlimitedStorage"]
       },
       { "crx_file": "aohghmighlieiainnegkcijnfilokake.crx",
-        "name": "Docs",
+        "name": "Google Docs",
         "effective_host_permissions": [],
         "api_permissions": []
       },
@@ -116,12 +116,12 @@
                             "app.window"]
       },
       { "crx_file": "felcaaldnbdncclmgdcncolpebgiejap.crx",
-        "name": "Sheets",
+        "name": "Google Sheets",
         "effective_host_permissions": [],
         "api_permissions": []
       },
       { "crx_file": "aapocclcgogkmnckokdopfmhonfmgoek.crx",
-        "name": "Slides",
+        "name": "Google Slides",
         "effective_host_permissions": [],
         "api_permissions": []
       },
