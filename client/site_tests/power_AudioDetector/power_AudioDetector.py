@@ -19,27 +19,39 @@ class power_AudioDetector(cros_ui_test.UITest):
     version = 1
     _pref_path = '/var/lib/power_manager'
     _backup_path = '/tmp/var_lib_power_manager_backup'
-    _audio_loop_time_sec = 10
 
     def run_once(self, run_time_sec=60):
+        if run_time_sec < 10:
+            raise error.TestFail('Must run for at least 10 seconds')
+
         # Start powerd if not started.  Set timeouts for quick idle events.
         # Save old prefs in a backup directory.
         # TODO(crosbug.com/36382): make this a library function.
         pref_path = self._pref_path
         os.system('mkdir %s' % self._backup_path)
         os.system('mv %s/* %s' % (pref_path, self._backup_path))
+        run_time_ms = run_time_sec * 1000
+        react_ms = min(10000, run_time_ms / 10)
+        gap_ms = run_time_ms / 4
+        dim_ms = min(10000, gap_ms)
+        off_ms = min(20000, gap_ms * 2)
+        suspend_ms = min(30000, gap_ms * 3)
         prefs = { 'disable_idle_suspend' : 0,
-                  'react_ms'             : 10000,
-                  'plugged_dim_ms'       : 10000,
-                  'plugged_off_ms'       : 20000,
-                  'plugged_suspend_ms'   : 30000,
-                  'unplugged_dim_ms'     : 10000,
-                  'unplugged_off_ms'     : 20000,
-                  'unplugged_suspend_ms' : 30000 }
+                  'react_ms'             : react_ms,
+                  'plugged_dim_ms'       : dim_ms,
+                  'plugged_off_ms'       : off_ms,
+                  'plugged_suspend_ms'   : suspend_ms,
+                  'unplugged_dim_ms'     : dim_ms,
+                  'unplugged_off_ms'     : off_ms,
+                  'unplugged_suspend_ms' : suspend_ms }
         for name in prefs:
             os.system('echo %d > %s/%s' % (prefs[name], pref_path, name))
 
         restart_process('powerd')
+
+        # Audio loop time should be significantly shorter than |run_time_sec|
+        # time, so that the total playback time doesn't exceed it by much.
+        audio_loop_time_sec = (react_ms + 500) / 1000
 
         self.login()
 
@@ -48,7 +60,8 @@ class power_AudioDetector(cros_ui_test.UITest):
 
         # Start playing audio file.
         self._enable_audio_playback = True
-        thread = threading.Thread(target=self._play_audio)
+        thread = threading.Thread(target=self._play_audio,
+                                  args=(audio_loop_time_sec,))
         thread.start()
 
         # Set an alarm to wake up the system in case the audio detector fails
@@ -63,7 +76,7 @@ class power_AudioDetector(cros_ui_test.UITest):
 
         # Stop audio and wait for the audio thread to terminate.
         self._enable_audio_playback = False
-        thread.join(timeout=(self._audio_loop_time_sec * 2))
+        thread.join(timeout=(audio_loop_time_sec * 2))
         if thread.is_alive():
             logging.error('Audio thread did not terminate at end of test.')
 
@@ -93,7 +106,7 @@ class power_AudioDetector(cros_ui_test.UITest):
         restart_process('powerd')
 
 
-    def _play_audio(self):
+    def _play_audio(self, loop_time):
         """
         Repeatedly plays audio until self._audio_playback_enabled == False.
         """
@@ -101,5 +114,5 @@ class power_AudioDetector(cros_ui_test.UITest):
         # simulate delays in loading the next song.
         audio = audio_helper.AudioHelper(None)
         while self._enable_audio_playback:
-            audio.play_sound(duration_seconds=self._audio_loop_time_sec)
+            audio.play_sound(duration_seconds=loop_time)
         logging.info('Done playing audio.')
