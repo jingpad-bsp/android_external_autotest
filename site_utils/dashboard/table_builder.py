@@ -125,9 +125,13 @@ class TableBuilder(object):
               attr_value = t['attr'].get(attr_key, default)
               if attr_value:
                 host_info.append((popup_header, attr_value))
+            test_status = test_status[0].upper()
+            # Treat TEST_NA as WARNING.
+            if test_status == 'T':
+              test_status = 'W'
             if (not cell_content) or (current_fail and failed_tests == 1):
               cell_content = [test_name, t['hostname'], host_info, query,
-                              test_status[0]]
+                              test_status]
           if cell_content:
             test_summaries = [passed_tests, total_tests]
             test_summaries.extend(
