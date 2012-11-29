@@ -194,6 +194,7 @@ class FAFTSequence(ServoTest):
             'firmware_action': (None)
         })
         self.install_test_image(self._install_image_path, self._firmware_update)
+        self.record_system_info()
         self.setup_gbb_flags()
         self.setup_ec_write_protect(ec_wp)
 
@@ -204,6 +205,18 @@ class FAFTSequence(ServoTest):
         self._faft_sequence = ()
         self._faft_template = {}
         super(FAFTSequence, self).cleanup()
+
+
+    def record_system_info(self):
+        """Record some critical system info to the attr keyval.
+
+        This info is used by generate_test_report and local_dash later.
+        """
+        self.write_attr_keyval({
+            'fw_version': self.faft_client.get_EC_version(),
+            'hwid': self.faft_client.get_crossystem_value('hwid'),
+            'fwid': self.faft_client.get_crossystem_value('fwid'),
+        })
 
 
     def invalidate_firmware_setup(self):

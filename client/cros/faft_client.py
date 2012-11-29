@@ -217,6 +217,17 @@ class FAFTClient(object):
                 'crossystem %s' % key)[0]
 
 
+    def get_EC_version(self):
+        """Get EC version via mosys.
+
+        Returns:
+            A string of the EC version.
+        """
+        self._chromeos_interface.log('Requesting get EC version')
+        return self._chromeos_interface.run_shell_command_get_output(
+                'mosys ec info | sed "s/.*| //"')[0]
+
+
     def get_root_dev(self):
         """Get the name of root device without partition number.
 
