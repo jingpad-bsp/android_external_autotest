@@ -11,16 +11,24 @@ import selenium.common.exceptions
 
 
 class NetgearAPConfigurator(ap_configurator.APConfigurator):
+    """Derived class to control Netgear WNDR4500, R6200 and
+       WNDR3700V3 routers."""
+
+
     def __init__(self, router_dict):
         super(NetgearAPConfigurator, self).__init__(router_dict)
         self.mode_54 = 'Up to 54 Mbps'
         self.mode_217 = 'Up to 217 Mbps'
         self.mode_450 = 'Up to 450 Mbps'
+        self.mode_173 = 'Up to 173 Mbps'
+        self.mode_400 = 'Up to 400 Mbps'
+        self.mode_867 = 'Up to 867 Mbps'
         self.security_disabled = 'None'
         self.security_wep = 'WEP'
         self.security_wpapsk = 'WPA-PSK [TKIP]'
         self.security_wpa2psk = 'WPA2-PSK [AES]'
         self.current_band = self.band_2ghz
+
 
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and
@@ -33,12 +41,19 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
         if 'WPA-PSK [TKIP] ONLY operates at \"Up to 54Mbps\"' in text:
            alert.accept()
            raise RuntimeError('Wrong mode selected. %s' % text)
+        elif '2.4G and 5G have the same SSID' in text:
+           alert.accept()
+           raise RuntimeError('%s. Please change the SSID of one band' % text)
+        elif 'do not want any wireless security on your network?' in text:
+           alert.accept()
         else:
            alert.accept()
            raise RuntimeError('We have an unhandled alert: %s' % text)
 
+
     def get_number_of_pages(self):
         return 1
+
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
@@ -48,16 +63,24 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
                  'channels': ['Auto', '36', '40', '44', '48', '149', '153',
                               '157', '161', '165']}]
 
+
     def get_supported_modes(self):
+        mode_2.4Ghz = mode_5Ghz = [self.mode_54, self.mode_217, self.mode_450]
+        if self.short_name == 'WNDR3700V3':
+            mode_2.4Ghz = mode_5Ghz = [self.mode_54]
+        if self.short_name == 'R6200':
+            mode_5Ghz = [self.mode_173, self.mode_400, self.mode_867]
         return [{'band': self.band_5ghz,
-                 'modes': [self.mode_54, self.mode_217, self.mode_450]},
+                 'modes': mode_5Ghz},
                 {'band': self.band_2ghz,
-                 'modes': [self.mode_54, self.mode_217, self.mode_450]}]
+                 'modes': mode_2.4Ghz}]
+
 
     def is_security_mode_supported(self, security_mode):
         return security_mode in (self.security_disabled,
                                  self.security_wpapsk,
                                  self.security_wep)
+
 
     def navigate_to_page(self, page_number):
         if page_number != 1:
@@ -69,12 +92,15 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
         self.driver.get(page_url)
         self.wait_for_object_by_xpath('//input[@name="ssid" and @type="text"]')
 
+
     def save_page(self, page_number):
         self.click_button_by_xpath('//button[@name="Apply" and @type="SUBMIT"]',
                                    alert_handler=self._alert_handler)
 
+
     def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode, band), 1, 900)
+
 
     def _set_mode(self, mode, band=None):
         mode_list = [self.mode_54, self.mode_217, self.mode_450]
@@ -87,12 +113,15 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
                                ' %s.', hex(mode), self.get_router_name())
         self.select_item_from_popup_by_xpath(mode, xpath)
 
+
     def set_radio(self, enabled=True):
         #  We cannot turn off the radio in Netgear
         return None
 
+
     def set_ssid(self, ssid):
         self.add_item_to_command_list(self._set_ssid, (ssid,), 1, 900)
+
 
     def _set_ssid(self, ssid):
         xpath = '//input[@name="ssid"]'
@@ -100,8 +129,10 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
            xpath = '//input[@name="ssid_an"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
 
+
     def set_channel(self, channel):
         self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
+
 
     def _set_channel(self, channel):
         channel_choices = ['Auto', '01', '02', '03', '04', '05', '06', '07',
@@ -114,8 +145,10 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_xpath(channel_choices[channel - 1],
                                              xpath)
 
+
     def set_band(self, band):
         self.add_item_to_command_list(self._set_band, (band,), 1, 900)
+
 
     def _set_band(self, band):
         if band == self.band_5ghz:
@@ -125,8 +158,10 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
         else:
            raise RuntimeError('Invalid band sent %s' % band)
 
+
     def set_security_disabled(self):
         self.add_item_to_command_list(self._set_security_disabled, (), 1, 900)
+
 
     def _set_security_disabled(self):
         xpath = '//input[@name="security_type" and @value="Disable" and\
@@ -136,9 +171,15 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
                     @type="radio"]'
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
+
     def set_security_wep(self, key_value, authentication):
+        if self.short_name == 'R6200' and self.current_band == self.band_5ghz:
+            logging.info('Cannot set WEP security for 5GHz band in Netgear \
+                          R6200 router.')
+            return None
         self.add_item_to_command_list(self._set_security_wep,
                                       (key_value, authentication), 1, 900)
+
 
     def _set_security_wep(self, key_value, authentication):
         xpath = '//input[@name="security_type" and @value="WEP" and\
@@ -154,33 +195,42 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
             self.wait_for_object_by_xpath(xpath)
             self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
         except Exception, e:
-            raise RuntimeError('We got an exception %s. The mode should be'
-                               ' \'Up to  54 Mbps\'.' % str(e))
+            raise RuntimeError('We got an exception: "%s". Check the mode. '
+                               'It should be \'Up to 54 Mbps\'.' % str(e))
         self.wait_for_object_by_xpath(text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
         self.click_button_by_xpath(button, alert_handler=self._alert_handler)
 
+
     def set_security_wpapsk(self, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 1, 900)
 
+
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
-        xpath = '//input[@name="security_type" and @value="WPA-PSK" and\
-                 @type="radio"]'
+        value = 'WPA-PSK'
+        xpath = '//input[@name="security_type" and @value="%s" and\
+                 @type="radio"]' % value
         key_field = '//input[@name="passphrase"]'
         if self.current_band == self.band_5ghz:
-           xpath = '//input[@name="security_type_an" and @value="WPA-PSK" and\
-                    @type="radio"]'
-           key_field = '//input[@name="passphrase_an"]'
+            if self.short_name == 'R6200':
+                value = 'WPA2-PSK'
+                logging.info('We set WP2-PSK[AES] since that is the first \
+                              option available.')
+            xpath = '//input[@name="security_type_an" and @value="%s" and\
+                     @type="radio"]' % value
+            key_field = '//input[@name="passphrase_an"]'
         self.wait_for_object_by_xpath(xpath)
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
         self.wait_for_object_by_xpath(key_field)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
                                                 abort_check=True)
 
+
     def set_visibility(self, visible=True):
         self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
+
 
     def _set_visibility(self, visible=True):
         xpath = '//input[@name="ssid_bc" and @type="checkbox"]'

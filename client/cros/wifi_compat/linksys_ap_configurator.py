@@ -11,6 +11,7 @@ import selenium.common.exceptions
 
 
 class LinksysAPConfigurator(ap_configurator.APConfigurator):
+    """Derived class to control Linksys WRT54G2 router."""
 
     def __init__(self, router_dict):
         super(LinksysAPConfigurator, self).__init__(router_dict)
@@ -21,28 +22,38 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         self.security_wpa2psk = 'WPA2 Personal'
         self.security_wpa8021x = 'WPA Enterprise'
         self.security_wpa28021x = 'WPA2 Enterprise'
+        self.mode_disabled = 'Disabled'
+
 
     def get_number_of_pages(self):
         return 2
 
+
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
                  'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
+
 
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
                  'modes': [self.mode_b, self.mode_g, self.mode_b |
                            self.mode_g]}]
 
+
     def is_security_mode_supported(self, security_mode):
         return security_mode in (self.security_disabled,
                                  self.security_wpapsk,
                                  self.security_wep)
 
+
     def navigate_to_page(self, page_number):
         if page_number == 1:
             url = urlparse.urljoin(self.admin_interface_url, 'wireless.htm')
             self.driver.get(url)
+            xpath = '//input[@name="wsc_smode" and @value=1]'
+            button = self.driver.find_element_by_xpath(xpath)
+            if not button.is_selected():
+                self.click_button_by_xpath(xpath)
         elif page_number == 2:
             url = urlparse.urljoin(self.admin_interface_url, 'WSecurity.htm')
             self.driver.get(url)
@@ -51,32 +62,35 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
                                '%d, page value sent was %d' %
                                (self.get_number_of_pages(), page_number))
 
+
     def save_page(self, page_number):
         self.wait_for_object_by_id('divBT1')
-        button = self.driver.find_element_by_xpath('id("divBT1")')
-        button.click()
+        self.click_button_by_xpath('id("divBT1")')
         # Wait for the continue button
         continue_xpath = '//input[@value="Continue" and @type="button"]'
         self.wait_for_object_by_xpath(continue_xpath)
-        button = self.driver.find_element_by_xpath(continue_xpath)
-        button.click()
+        self.click_button_by_xpath(continue_xpath)
+
 
     def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode,), 1, 900)
+
 
     def _set_mode(self, mode):
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
         mode_mapping = {self.mode_b: 'B-Only', self.mode_g: 'G-Only',
-                        self.mode_b | self.mode_g: 'Mixed'}
-        mode_name = ''
-        if mode in mode_mapping.keys():
-            mode_name = mode_mapping[mode]
-        else:
+                        self.mode_b | self.mode_g: 'Mixed',
+                        self.mode_disabled: 'Disabled'}
+        mode_name = mode_mapping.get(mode)
+        if not mode_name:
             raise RuntimeError('The mode selected %d is not supported by router'
                                ' %s.', hex(mode), self.get_router_name())
         xpath = ('//select[@onchange="SelWL()" and @name="Mode"]')
+        if self.short_name == 'WRT54G2_1.5':
+            xpath = ('//select[@name="wl_net_mode"]')
         self.select_item_from_popup_by_xpath(mode_name, xpath)
+
 
     def set_radio(self, enabled=True):
         # If we are enabling we are activating all other UI components, do it
@@ -84,25 +98,29 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         weight = 1 if enabled else 1000
         self.add_item_to_command_list(self._set_radio, (enabled,), 1, weight)
 
+
     def _set_radio(self, enabled=True):
         xpath = ('//select[@onchange="SelWL()" and @name="Mode"]')
         # To turn off we pick disabled, to turn on we set to G
         if not enabled:
-            setting = 'Disabled'
+            self._set_mode(self.mode_disabled)
         else:
-            setting = 'G-Only'
-        self.select_item_from_popup_by_xpath(setting, xpath)
+            self._set_mode(self.mode_g)
+
 
     def set_ssid(self, ssid):
         self.add_item_to_command_list(self._set_ssid, (ssid,), 1, 900)
+
 
     def _set_ssid(self, ssid):
         self._set_radio(enabled=True)
         xpath = ('//input[@maxlength="32" and @name="SSID"]')
         self.set_content_of_text_field_by_xpath(ssid, xpath)
 
+
     def set_channel(self, channel):
         self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
+
 
     def _set_channel(self, channel):
         self._set_radio(enabled=True)
@@ -114,19 +132,24 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_xpath(channel_choices[channel - 1],
                                              xpath)
 
+
     def set_band(self, band):
         return None
 
+
     def set_security_disabled(self):
         self.add_item_to_command_list(self._set_security_disabled, (), 2, 1000)
+
 
     def _set_security_disabled(self):
         xpath = ('//select[@name="SecurityMode"]')
         self.select_item_from_popup_by_xpath(self.security_disabled, xpath)
 
+
     def set_security_wep(self, key_value, authentication):
         self.add_item_to_command_list(self._set_security_wep,
                                       (key_value, authentication), 2, 1000)
+
 
     def _set_security_wep(self, key_value, authentication):
         logging.info('This router %s does not support WEP authentication type:'
@@ -138,12 +161,13 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
                                              wait_for_xpath=text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
-        button = self.driver.find_element_by_xpath('//input[@value="Generate"]')
-        button.click()
+        self.click_button_by_xpath('//input[@value="Generate"]')
+
 
     def set_security_wpapsk(self, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 2, 900)
+
 
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
         popup = '//select[@name="SecurityMode"]'
@@ -157,13 +181,14 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         self.set_content_of_text_field_by_xpath(str(update_interval),
                                                 interval_field)
 
+
     def set_visibility(self, visible=True):
         self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
+
 
     def _set_visibility(self, visible=True):
         self._set_radio(enabled=True)
         # value=1 is visible; value=0 is invisible
         int_value = int(visible)
         xpath = ('//input[@value="%d" and @name="wl_closed"]' % int_value)
-        element = self.driver.find_element_by_xpath(xpath)
-        element.click()
+        self.click_button_by_xpath(xpath)

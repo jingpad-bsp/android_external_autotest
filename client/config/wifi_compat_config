@@ -5,13 +5,13 @@
 # This file contains a dictonary describing the wireless access point
 # information used in the building 2000 wifi lab.
 [
-#  {
-#    'class_name': 'LinksysAPConfigurator',
-#    'short_name': 'WRT54G2',
-#    'device_name' : 'chromeos3-row1-rack1-host6',
-#    'admin_url': 'http://chromeos3-row1-rack1-host6.cros',
-#    'mac_address': '98:FC:11:47:21:31',
-#  },
+  {
+    'class_name': 'LinksysAPConfigurator',
+    'short_name': 'WRT54G2',
+    'device_name' : 'chromeos3-row1-rack1-host6',
+    'admin_url': 'http://chromeos3-row1-rack1-host6.cros',
+    'mac_address': '98:FC:11:47:21:31',
+  },
   {
     'class_name': 'TrendnetAPConfigurator',
     'short_name': 'TEW-639GR',
@@ -54,13 +54,13 @@
     'admin_url': 'http://chromeos3-row1-rack1-host7.cros',
     'mac_address': '58:6D:8F:FF:18:71',
   },
-#  {
-#    'class_name': 'linksyse2000APConfigurator',
-#    'short_name': 'linksyse2000',
-#    'device_name' : 'chromeos3-row1-rack1-host5',
-#    'admin_url': 'http://chromeos3-row1-rack1-host5.cros:8080',
-#    'mac_address': 'C0:C1:C0:42:E5:7D',
-#  },
+  {
+    'class_name': 'linksyse2000APConfigurator',
+    'short_name': 'linksyse2000',
+    'device_name' : 'chromeos3-row1-rack1-host5',
+    'admin_url': 'http://chromeos3-row1-rack1-host5.cros',
+    'mac_address': 'C0:C1:C0:42:E5:7D',
+  },
   {
     'class_name': 'Netgear4500APConfigurator',
     'short_name': 'WNDR4500',
@@ -68,13 +68,13 @@
     'admin_url': 'https://chromeos3-row1-rack2-host13.cros:8080',
     'mac_address': '84:1B:5E:F9:19:F3',
   },
-#  {
-#    'class_name': 'belkinAPConfigurator',
-#    'short_name': 'belkin',
-#    'device_name' : 'chromeos3-row2-rack1-host11',
-#    'admin_url': 'http://chromeos3-row2-rack1-host11.cros',
-#    'mac_address': '00:22:75:A2:3B:08',
-#  },
+  {
+    'class_name': 'belkinAPConfigurator',
+    'short_name': 'belkin',
+    'device_name' : 'chromeos3-row2-rack1-host11',
+    'admin_url': 'http://chromeos3-row2-rack1-host11.cros',
+    'mac_address': '00:22:75:A2:3B:08',
+  },
   {
     'class_name': 'TrendnetAPConfigurator',
     'short_name': 'TEW-691GR',
@@ -95,5 +95,40 @@
     'device_name' : 'chromeos3-row2-rack1-host4',
     'admin_url': 'http://chromeos3-row2-rack1-host4.cros',
     'mac_address': '00:24:01:6c:ec:56',
+  },
+  {
+    'class_name': 'LinksysAPConfigurator',
+    'short_name': 'WRT54G2_1.5',
+    'device_name' : 'chromeos3-row1-rack1-host4',
+    'admin_url': 'http://chromeos3-row1-rack1-host4.cros',
+    'mac_address': '00:23:69:7E:BC:D2',
+  },
+  {
+    'class_name': 'Netgear614APConfigurator',
+    'short_name': 'WNR1000V3',
+    'device_name' : 'chromeos3-row1-rack2-host4',
+    'admin_url': 'http://chromeos3-row1-rack2-host4.cros:8080',
+    'mac_address': '84:1B:5E:F5:AC:51',
+  },
+  {
+    'class_name': 'Netgear4500APConfigurator',
+    'short_name': 'WNDR3700V3',
+    'device_name' : 'chromeos3-row1-rack2-host12',
+    'admin_url': 'http://chromeos3-row1-rack2-host12.cros:8080',
+    'mac_address': '84:1B:5E:E9:74:EF',
+  },
+  {
+    'class_name': 'Netgear4500APConfigurator',
+    'short_name': 'WNDR4500_2',
+    'device_name' : 'chromeos3-row1-rack2-host14',
+    'admin_url': 'https://chromeos3-row1-rack2-host14.cros:8080',
+    'mac_address': '2C:B0:5D:25:3C:57',
+  },
+  {
+    'class_name': 'Netgear4500APConfigurator',
+    'short_name': 'R6200',
+    'device_name' : 'chromeos3-row1-rack2-host11',
+    'admin_url': 'https://chromeos3-row1-rack2-host11.cros:8080',
+    'mac_address': '84:1B:5E:E2:D6:C9',
   },
 ]

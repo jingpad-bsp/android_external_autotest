@@ -12,7 +12,7 @@ from selenium.common.exceptions import TimeoutException as \
 from selenium.common.exceptions import WebDriverException
 
 class NetgearAPConfigurator(ap_configurator.APConfigurator):
-    """Derived class to control Netgear wgr614-v9 router."""
+    """Derived class to control Netgear wgr614-v9 and WNR1000V3 router."""
 
     security_disabled = 'Disabled'
     security_wep = 'WEP'

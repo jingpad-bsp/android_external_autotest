@@ -86,9 +86,9 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
     def get_router_name(self):
         """Returns a string to describe the router."""
-        return ('Router name: %s, Controller class: %s, Serial: %s, MAC '
+        return ('Router name: %s, Controller class: %s, MAC '
                 'Address: %s' % (self.short_name, self.class_name,
-                                 self.serial_number, self.mac_address))
+                                 self.mac_address))
 
     def get_router_short_name(self):
         """Returns a short string to describe the router."""
