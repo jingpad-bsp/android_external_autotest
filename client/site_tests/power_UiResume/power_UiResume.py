@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import random, time
+import logging, random, time
 
 from autotest_lib.client.cros import cros_ui_test, power_suspend
 
@@ -18,9 +18,16 @@ class power_UiResume(cros_ui_test.UITest):
 
 
     def run_once(self):
-        # Some idle time before initiating suspend-to-ram
-        time.sleep(random.randint(3, 7))
-
-        results = self._suspender.suspend(random.randint(5, 11))
+        for _ in xrange(10):
+            try:
+                # Some idle time before initiating suspend-to-ram
+                time.sleep(random.randint(3, 7))
+                results = self._suspender.suspend(random.randint(5, 11))
+                break
+            except power_suspend.HwClockError:
+                if not power_suspend.HwClockError.is_affected(): raise
+                logging.warn('Known RTC interrupt bug on this board, retrying')
+        else:
+            raise power_suspend.HwClockError('RTC kept failing for 10 retries')
 
         self.write_perf_keyval(results)

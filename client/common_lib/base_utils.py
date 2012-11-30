@@ -1247,15 +1247,17 @@ class SystemLoad(object):
 def get_arch(run_function=run):
     """
     Get the hardware architecture of the machine.
-    run_function is used to execute the commands. It defaults to
-    utils.run() but a custom method (if provided) should be of the
-    same schema as utils.run. It should return a CmdResult object and
-    throw a CmdError exception.
     """
-    arch = run_function('/bin/uname -m').stdout.rstrip()
-    if re.match(r'i\d86$', arch):
-        arch = 'i386'
-    return arch
+    return re.sub(r'i\d86$', 'i386', os.uname()[4])
+
+
+def get_board():
+    """
+    Get the board name from crossystem. Cached for the lifetime of this script.
+    """
+    if not hasattr(get_board, '_cached'):
+        get_board._cached = system_output('crossystem hwid').split()[0]
+    return get_board._cached
 
 
 def get_num_logical_cpus_per_socket(run_function=run):

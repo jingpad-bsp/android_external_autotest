@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import power_suspend
 
@@ -15,7 +17,15 @@ class power_Resume(test.test):
 
 
     def run_once(self, max_devs_returned=10):
-        (results, device_times) = self._suspender.suspend(5)
+        for _ in xrange(10):
+            try:
+                (results, device_times) = self._suspender.suspend(5)
+                break
+            except power_suspend.HwClockError:
+                if not power_suspend.HwClockError.is_affected(): raise
+                logging.warn('Known RTC interrupt bug on this board, retrying')
+        else:
+            raise power_suspend.HwClockError('RTC kept failing for 10 retries')
 
         # return as keyvals the slowest n devices
         slowest_devs = sorted(
