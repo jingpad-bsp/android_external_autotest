@@ -107,10 +107,11 @@ class WiFiTest(object):
         self.test_requirements = (requirements + self.__get_step_requirements())
         self.perf_keyvals = {}
 
-        self.cur_frequency = None
-        self.cur_phymode   = None
-        self.cur_security  = None
-        self.vpn_kind      = None
+        self.cur_frequency   = None
+        self.cur_phymode     = None
+        self.cur_security    = None
+        self.cur_attenuation = None
+        self.vpn_kind        = None
 
         router = config['router']
         #
@@ -1425,6 +1426,7 @@ class WiFiTest(object):
             self.__firewall_close(rule)
 
         self.write_perf({
+            'attenuation': self.cur_attenuation or 'unknown',
             'frequency'  : self.cur_frequency,
             'phymode'    : self.cur_phymode,
             'security'   : self.cur_security,
@@ -1501,6 +1503,11 @@ class WiFiTest(object):
             self.__unreachable("server_iperf")
             return
         self.__run_iperf('server', params)
+
+
+    def set_attenuation(self, params):
+        """ Record current attenuation value """
+        self.cur_attenuation = self.attenuator.set_attenuation(params)
 
 
     def __is_installed(self, host, filename):

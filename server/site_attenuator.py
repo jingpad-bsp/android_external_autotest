@@ -79,8 +79,7 @@ class Attenuator(object):
         init_script = self._copy_script('attenuator_init.py',
                                         'attenuator_util.py',
                                         'constants.py')
-        result = self.host.run('python "%s" -p %d' %
-                               (init_script, port_num))
+        self.host.run('python "%s" -p %d' % (init_script, port_num))
 
 
     def get_attenuation(self, params):
@@ -93,14 +92,14 @@ class Attenuator(object):
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
-        result = self.host.run('python "%s" -p %d' %
-                               (attenuator_script, port_num))
+        self.host.run('python "%s" -p %d' % (attenuator_script, port_num))
 
     def set_attenuation(self, params):
         """
         Sets desired attenuation level in dB.
 
         @param params: a Python dictionary.
+        @returns total_db: an integer, total attenuation in dB.
         """
         port_num = self._get_intval(VA_PORT, params)
         fixed_db = self._get_intval(FIXED_DB, params)
@@ -109,9 +108,9 @@ class Attenuator(object):
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
-        result = self.host.run(
-            'python "%s" -p %d -f %d -t %d' %
-            (attenuator_script, port_num, fixed_db, total_db))
+        self.host.run('python "%s" -p %d -f %d -t %d' %
+                      (attenuator_script, port_num, fixed_db, total_db))
+        return total_db
 
 
     # TODO(tgao): refactor & merge this w/ site_linux.router.install_script()
