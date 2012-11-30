@@ -27,7 +27,9 @@ class graphics_WebGLConformance(graphics_ui_test.GraphicsUITest):
           'conformance/glsl/functions/glsl-function-atan-xy.html' : 1,
           'conformance/glsl/functions/glsl-function-cos.html' : 4,
           'conformance/glsl/functions/glsl-function-sin.html' : 4,
-          'conformance/glsl/functions/glsl-function-smoothstep-gentype.html' : 1,
+          'conformance/glsl/functions/glsl-function-smoothstep-gentype.html' : 4,
+          'conformance/glsl/functions/glsl-function-smoothstep-float.html' : 4,
+          'conformance/glsl/misc/glsl-long-variable-names.html' : 2,
           'conformance/glsl/variables/gl-frontfacing.html' : 16,
           # SNB only crosbug.com/27085:
           'conformance/glsl/variables/gl-pointcoord.html' : 48,
@@ -49,6 +51,10 @@ class graphics_WebGLConformance(graphics_ui_test.GraphicsUITest):
           'conformance/textures/texture-mips.html' : 2,
           'conformance/textures/texture-npot.html' : 1,
           'conformance/textures/texture-size.html' : 6,
+          'conformance/textures/texture-npot-video.html' : 8,
+          'conformance/textures/tex-image-and-sub-image-2d-with-video.html' : 8,
+          'conformance/buffers/index-validation.html' : 1,
+          'conformance/canvas/drawingbuffer-static-canvas-test.html' : 1,
       }
 
     def initialize(self, creds='$default'):
