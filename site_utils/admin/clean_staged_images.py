@@ -49,9 +49,14 @@ def validate_and_parse_build_milestone(build_name):
     Example build name: R21-4555.2.3 or R21-2368.0.0-rc30
     @param  build_name: The name of the build.
     @returns the milestone of the build if it is valid.
+
+    >>> validate_and_parse_build_milestone('R21-4555.2.3')
+    'R21'
+    >>> validate_and_parse_build_milestone('R21-2368.0.0-rc30')
+    'R21'
     """
-    pattern = '(R\d+)-(\d+\.\d+\.\d+(-rc\d+|$))'
-    match = re.match(pattern, build_name)
+    pattern = '(R\d+)-(\d+\.\d+\.\d+)'
+    match = re.search(pattern, build_name)
     if match:
         return match.group(1)
 
