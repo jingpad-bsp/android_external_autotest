@@ -14,23 +14,62 @@ class security_StatefulPermissions(test.test):
 
     # Note that chronos permissions in /home are covered in greater detail
     # by 'security_ProfilePermissions'.
-    _masks_byuser = {"chronos": ["/home",
-                                 "/var/lib/timezone",
-                                 "/var/lib/power_manager",
-                                 "/var/lib/Synaptics/chronos.1000",
-                                 "/var/lib/opencryptoki",
-                                 "/var/log/window_manager",
-                                 "/var/log/power_manager",
-                                 "/var/log/metrics",
-                                 "/var/log/chrome",
-                                 "/var/minidumps"],
+    _masks_byuser = {"adm": [],
+                     "avfs": [],
+                     "bin": [],
+                     "bluetooth": ["/encrypted/var/lib/bluetooth"],
+                     "chaps": [],
+                     "chronos": ["/encrypted/chronos",
+                                 "/encrypted/var/cache/app_pack",
+                                 "/encrypted/var/cache/echo",
+                                 "/encrypted/var/lib/timezone",
+                                 "/encrypted/var/lib/power_manager",
+                                 "/encrypted/var/lib/Synaptics/chronos.1000",
+                                 "/encrypted/var/lib/opencryptoki",
+                                 "/encrypted/var/log/connectivity.log",
+                                 "/encrypted/var/log/connectivity.bak",
+                                 "/encrypted/var/log/window_manager",
+                                 "/encrypted/var/log/power_manager",
+                                 "/encrypted/var/log/metrics",
+                                 "/encrypted/var/log/chrome",
+                                 "/encrypted/var/minidumps",
+                                 "/home/user"],
+                     "chronos-access": [],
+                     "cras": [],
+                     "cromo": [],
+                     "cros-disks": [],
+                     "daemon": [],
+                     "debugd": [],
+                     "dhcp": ["/encrypted/var/lib/dhcpcd"],
+                     "halt": ["/home/root"],
+                     "input": [],
+                     "ipsec": [],
+                     "lp": [],
+                     "messagebus": [],
+                     "mtp": [],
+                     "news": [],
                      "nobody": [],
-                     "polkituser": ["/var/lib/misc/PolicyKit.reload",
-                                    "/var/lib/PolicyKit",
-                                    "/var/lib/PolicyKit-public",
-                                    "/var/run/PolicyKit"],
+                     "ntfs-3g": [],
+                     "ntp": [],
+                     "openvpn": [],
+                     "operator": ["/home/root"],
+                     "polkituser": [],
+                     "portage": [],
+                     "pkcs11": [],
+                     "proxystate": [],
+                     "qdlservice": [],
                      "root": None,
-                     "tss": ["/var/lib/tpm"]}
+                     "shutdown": ["/home/root"],
+                     "sshd": [],
+                     "sync": ["/home/root"],
+                     "syslog": ["/encrypted/var/log"],
+                     "tcpdump": [],
+                     "tor": [],
+                     "tpmd": [],
+                     "tss": ["/var/lib/tpm"],
+                     "uucp": [],
+                     "wpa": [],
+                    }
 
     def generate_find(self, user, prunelist):
         if prunelist is None:
@@ -38,17 +77,18 @@ class security_StatefulPermissions(test.test):
 
         # Cover-up crosbug.com/14947 by masking out uma-events in all tests
         # TODO(jimhebert) remove this when 14947 is resolved.
-        prunelist.append("/var/log/metrics/uma-events")
+        prunelist.append("/encrypted/var/log/metrics/uma-events")
 
         # Cover-up autotest noise.
         prunelist.append("/dev_image")
+        prunelist.append("/var_overlay")
 
         cmd = "find STATEFUL_ROOT"
         for p in prunelist:
             cmd += " -path STATEFUL_ROOT%s -prune -o " % p
         # Note that we don't "prune" all of /var/tmp's contents, just mask
         # the dir itself. Any contents are still interesting.
-        cmd += " -path STATEFUL_ROOT/var/tmp -o "
+        cmd += " -path STATEFUL_ROOT/encrypted/var/tmp -o "
         cmd += " -writable -ls -o -user %s -ls 2>/dev/null" % user
         return cmd
 
