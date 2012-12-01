@@ -22,6 +22,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
+import Queue
 
 from optparse import OptionParser
 
@@ -101,12 +103,14 @@ def get_cmd_list(dir_entry, relative_path):
             dest_path]
 
 
-def offload_hosts_sub_dir():
+def offload_hosts_sub_dir(queue):
   """
   Loop over the hosts/ sub directory and offload all the Cleanup, Verify and
   Repair Jobs.
 
   This will delete the job folders inside each host directory.
+
+  @param queue The work queue to place uploading tasks onto.
   """
   logging.debug('Offloading Cleanup, Verify and Repair jobs from'
                 'results/hosts/')
@@ -128,7 +132,7 @@ def offload_hosts_sub_dir():
                       dir_path)
         continue
       logging.debug('Processing %s', dir_path)
-      offload_dir(dir_path, dir_path)
+      queue.put(lambda: offload_dir(dir_path, dir_path))
 
 
 def offload_dir(dir_entry, dest_path=''):
@@ -185,7 +189,24 @@ def offload_dir(dir_entry, dest_path=''):
     stderr_file.close()
 
 
-def offload_files(results_dir, process_all, process_hosts_only):
+def worker_thread(queue):
+  """
+  Thread that continuously pulls callables from the queue and runs them.
+
+  @param queue A thread-safe queue of callables.
+  @return NEVER!
+  """
+  # One could cause all threads to exit by putting |thread.exit| onto the queue
+  # so that each thread will get killed when it runs it.
+  while True:
+    try:
+      work = queue.get()
+      work()
+    except Exception as e:
+      logging.debug(str(e))
+
+
+def offload_files(results_dir, process_all, process_hosts_only, threads):
   """
   Offload files to Google Storage or the RSYNC_HOST_PATH host if USE_RSYNC is
   True.
@@ -200,6 +221,7 @@ def offload_files(results_dir, process_all, process_hosts_only):
                       files in results or just the larger test job files.
   @param process_hosts_only: Indicates whether we only want to process files
                              in the hosts subdirectory.
+  @param threads The number of uploading threads to kick off.
   """
   # Nice our process (carried to subprocesses) so we don't kill the system.
   os.nice(NICENESS)
@@ -211,16 +233,28 @@ def offload_files(results_dir, process_all, process_hosts_only):
   # Only pick up directories of the form <job #>-<job user>.
   job_matcher = re.compile('^\d+-\w+')
   signal.signal(signal.SIGALRM, timeout_handler)
+
+  # Create a work queue with a buffers space equal to the number of threads.
+  # This is done so that emptying out the queue won't take long for a graceful
+  # exit, and so that if we have many results, we don't consume huge amounts of
+  # memory.
+  queue = Queue.Queue(maxsize=threads)
+  threadpool = []
+  for i in range(0, threads):
+    thread = threading.Thread(target=worker_thread, args=(queue,))
+    thread.start()
+    threadpool.append(thread)
+
   while True:
     if process_hosts_only:
       # Only offload the hosts/ sub directory.
-      offload_hosts_sub_dir()
+      offload_hosts_sub_dir(queue)
       continue
     # Iterate over all directories in results_dir.
     for dir_entry in os.listdir('.'):
       logging.debug('Processing %s', dir_entry)
       if dir_entry == HOSTS_SUB_DIR and process_all:
-        offload_hosts_sub_dir()
+        offload_hosts_sub_dir(queue)
         continue
       if not job_matcher.match(dir_entry):
         logging.debug('Skipping dir %s', dir_entry)
@@ -239,7 +273,7 @@ def offload_files(results_dir, process_all, process_hosts_only):
         # os.system(CLEAN_CMD % dir_entry)
         # TODO(scottz): Monitor offloading and make sure chrome logs are
         # no longer an issue.
-        offload_dir(dir_entry)
+        queue.put(lambda: offload_dir(dir_entry))
 
 
 def parse_options():
@@ -256,6 +290,8 @@ def parse_options():
                     action='store_true',
                     help='Offload only the special tasks result files located'
                          'in the results/hosts subdirectory')
+  parser.add_option('-t', '--threads', dest='threads', type='int',
+                    default=1, help='Number of threads to use.')
   options = parser.parse_args()[0]
   if options.process_all and options.process_hosts_only:
     parser.print_help()
@@ -270,7 +306,8 @@ def main():
   log_filename = time.strftime(LOG_FILENAME_FORMAT)
   logging.basicConfig(filename=log_filename, level=logging.DEBUG,
                       format=LOGGING_FORMAT)
-  offload_files(RESULTS_DIR, options.process_all, options.process_hosts_only)
+  offload_files(RESULTS_DIR, options.process_all, options.process_hosts_only,
+                options.threads)
 
 
 if __name__ == '__main__':
