@@ -19,7 +19,8 @@ class power_Resume(test.test):
     def run_once(self, max_devs_returned=10):
         for _ in xrange(10):
             try:
-                (results, device_times) = self._suspender.suspend(5)
+                # TODO: smaller delay, but device specific minimums in Suspender
+                (results, device_times) = self._suspender.suspend(10)
                 break
             except power_suspend.HwClockError:
                 if not power_suspend.HwClockError.is_affected(): raise
