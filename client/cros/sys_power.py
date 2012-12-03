@@ -15,17 +15,6 @@ from autotest_lib.client.bin import utils
 SUSPEND_CMD='/usr/bin/powerd_suspend'
 REQUEST_SUSPEND_CMD = ('/usr/bin/dbus-send --system / '
                        'org.chromium.PowerManager.RequestSuspend')
-
-SUSPEND_RESUME_MESSAGES = {
-    'START_SUSPEND':['Freezing user space'],
-    'END_SUSPEND':['Back to C!', 'Low-level resume complete',
-                   'Entering suspend state', 'sleep: irq wakeup masks:'],
-    'START_RESUME':['Back to C!', 'Low-level resume complete', 'Suspended for',
-                    'Resume caused by', 'post sleep, preparing to return'],
-    'END_RESUME':['Restarting tasks'],
-    'CPU_READY':['CPU[0-9]+ is up'],
-    }
-
 SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
 
 

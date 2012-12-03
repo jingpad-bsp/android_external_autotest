@@ -61,7 +61,7 @@ class Suspender(object):
         __del__: Restore tlsdated (must run eventually, but GC delay no problem)
         _set_pm_print_times: Enable/disable kernel device suspend timing output.
         _check_failure_log: Check /sys/.../suspend_stats for new failures.
-        _ts: Returns a timestamp from _log_reader for a sys_power pattern.
+        _ts: Returns a timestamp from /var/run/power_manager/last_resume_timings
         _hwclock_ts: Read RTC timestamp left on resume in hwclock-on-resume
         _device_resume_time: Read seconds overall device resume took from logs.
         _individual_device_times: Reads individual device suspend/resume times.
@@ -143,15 +143,21 @@ class Suspender(object):
         return self._logged_failures > old
 
 
-    def _ts(self, name, retries=3):
+    def _ts(self, name, retries=50, sleep_seconds=0.2):
         """Searches logs for last timestamp with a given suspend message."""
         # Occasionally need to retry due to races from process wakeup order
-        line = self._log_reader.get_last_msg(
-                sys_power.SUSPEND_RESUME_MESSAGES[name], retries=retries)
-        if line:
-            return cros_logging.extract_kernel_timestamp(line)
-        else:
-            raise error.TestError('Could not find a %s message.' % name)
+        for retry in xrange(retries + 1):
+            try:
+                f = open('/var/run/power_manager/last_resume_timings')
+                for line in f:
+                    words = line.split('=')
+                    if name == words[0]:
+                        return float(words[1]);
+            except IOError:
+                pass
+            time.sleep(sleep_seconds)
+
+        raise error.TestError('Could not find %s entry.' % name)
 
 
     def _hwclock_ts(self, not_before, retries=3):
@@ -225,6 +231,11 @@ class Suspender(object):
         """
         iteration = len(self.failures) + len(self.successes) + 1
         self._log_reader.set_start_by_current()
+        # Remove previous last_run_timings file to prevent races
+        try:
+            os.remove('/var/run/power_manager/last_resume_timings')
+        except OSError:
+            pass
         try:
             # set the RTC alarm
             alarm_time = int(rtc.get_seconds() + duration)
@@ -262,15 +273,16 @@ class Suspender(object):
                 raise SuspendFailure('Unidentified suspend failure.')
 
             # calculate general measurements
-            start_resume = self._ts('START_RESUME')
-            kernel_down = self._ts('END_SUSPEND') - self._ts('START_SUSPEND')
-            kernel_up = self._ts('END_RESUME') - start_resume
+            start_resume = self._ts('start_resume_time')
+            kernel_down = (self._ts('end_suspend_time') -
+                           self._ts('start_suspend_time'))
+            kernel_up = self._ts('end_resume_time') - start_resume
             devices_up = self._device_resume_time()
             total_up = self._hwclock_ts(alarm_time) - alarm_time
             firmware_up = self._firmware_resume_time()
             board_up = total_up - kernel_up - firmware_up
             try:
-                cpu_up = self._ts('CPU_READY', 0) - start_resume
+                cpu_up = self._ts('cpu_ready_time', 0) - start_resume
             except error.TestError:
                 # can be missing on non-SMP machines
                 cpu_up = None
