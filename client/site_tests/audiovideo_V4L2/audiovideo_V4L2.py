@@ -40,15 +40,22 @@ class audiovideo_V4L2(test.test):
                 self.run_v4l2_default_capture_test(device, time)
 
 
+    def is_v4l2_capture_device(self, device):
+        executable = os.path.join(self.bindir, "media_v4l2_is_capture_device")
+        cmd = "%s %s" % (executable, device)
+        logging.info("Running %s" % cmd)
+        return (utils.system(cmd, ignore_status=True) == 0)
+
+
     def find_video_capture_devices(self):
         self.v4l2_devices = []
-        # TODO(jiesun): is this correct way to find video capture devices?
         for device in glob.glob("/dev/video*"):
             statinfo = os.stat(device)
             if (stat.S_ISCHR(statinfo.st_mode) and
                 os.major(statinfo.st_rdev) == self.v4l2_major_dev_num and
                 os.minor(statinfo.st_rdev) >= self.v4l2_minor_dev_num_min and
-                os.minor(statinfo.st_rdev) < self.v4l2_minor_dev_num_max):
+                os.minor(statinfo.st_rdev) < self.v4l2_minor_dev_num_max and
+                self.is_v4l2_capture_device(device)):
                 self.v4l2_devices.append(device)
         logging.info("Detected devices: %s\n" % self.v4l2_devices)
         if not self.v4l2_devices:
