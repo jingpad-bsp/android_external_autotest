@@ -46,6 +46,10 @@ class Bearer(dbus_std_ifaces.DBusProperties):
     def IsActive(self):
         return self._active
 
+    @property
+    def bearer_properties(self):
+        return self._bearer_props
+
     @dbus.service.method(mm1.I_BEARER)
     def Connect(self):
         """

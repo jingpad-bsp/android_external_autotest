@@ -101,7 +101,7 @@ class Modem3gpp(modem.Modem):
                     self.modem.register_step = self
                 else:
                     message = ('Cannot initiate register while in state %d, '
-                               'state needs to be ENABLED.') % state.
+                               'state needs to be ENABLED.') % state
                     raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message)
 
             reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
@@ -235,6 +235,16 @@ class Modem3gpp(modem.Modem):
     def RegisterWithNetwork(self):
         Modem3gpp.RegisterStep(self).Step()
 
+    def UnregisterWithNetwork(self):
+        logging.info('Modem3gpp.UnregisterWithHomeNetwork')
+        logging.info('Setting registration state to IDLE.')
+        self.SetRegistrationState(mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
+        logging.info('Setting state to ENABLED.')
+        self.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
+            mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
+        self.Set(mm1.I_MODEM_3GPP, 'OperatorName', '')
+        self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', '')
+
     class ConnectStep(modem.Modem.StateMachine):
         def __init__(self, modem, properties, return_cb, raise_cb):
             super(Modem3gpp.ConnectStep, self).__init__(modem)
@@ -362,7 +372,7 @@ class Modem3gpp(modem.Modem):
                         for key, val in self.connect_props.iteritems():
                             if key in modem.ALLOWED_BEARER_PROPERTIES:
                                 bearer_props[key] = val
-                        if (b.bearer_props == bearer_props):
+                        if (b.bearer_properties == bearer_props):
                             logging.info('ConnectStep: Found matching bearer.')
                             bearer = b
                             bearer_path = p
@@ -409,8 +419,9 @@ class Modem3gpp(modem.Modem):
 
             # If there is an ongoing disconnect that is not managed by this
             # instance, then return error.
-            if self.modem.disconnect_step != self:
-                message = 'There is an ongoing Disconnect operation.')
+            if (self.modem.disconnect_step and
+                self.modem.disconnect_step != self):
+                message = 'There is an ongoing Disconnect operation.'
                 logging.info(message)
                 self.raise_cb(mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS,
                     message))
@@ -449,7 +460,7 @@ class Modem3gpp(modem.Modem):
 
                 assert not self.modem.IsPendingConnect()
                 assert not self.modem.IsPendingEnable()
-                assert not self.modem.IsPendingRegister
+                assert not self.modem.IsPendingRegister()
 
                 logging.info('Starting Disconnect.')
                 self.modem.disconnect_step = self
@@ -507,7 +518,7 @@ class Modem3gpp(modem.Modem):
             retval['signal-quality'] = modem_props['SignalQuality'][0]
             retval['bands'] = modem_props['Bands']
             retval['access-technology'] = self.sim.access_technology
-            retval['m3gpp-registration-state'] =
+            retval['m3gpp-registration-state'] = \
                 m3gpp_props['RegistrationState']
             retval['m3gpp-operator-code'] = m3gpp_props['OperatorCode']
             retval['m3gpp-operator-name'] = m3gpp_props['OperatorName']
