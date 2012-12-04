@@ -595,7 +595,7 @@ class FAFTSequence(ServoTest):
           clear_mask: A mask of flags to be cleared.
           set_mask: A mask of flags to be set.
         """
-        gbb_flags = self.faft_client.system.get_gbb_flags()
+        gbb_flags = self.faft_client.bios.get_gbb_flags()
         new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
 
         if (gbb_flags != new_flags):

@@ -153,11 +153,13 @@ class FAFTClient(object):
                 func = getattr(self, method)
         except AttributeError:
             raise Exception('method "%s" is not supported' % method)
+
+        if is_str:
+            return str(func)
         else:
-            if is_str:
-                return str(func)
-            else:
-                return func(*params)
+            self._chromeos_interface.log('Dispatching method %s with args %s' %
+                    (str(func), str(params)))
+            return func(*params)
 
 
     def _system_is_available(self):
@@ -175,7 +177,6 @@ class FAFTClient(object):
         Args:
             command: A shell command to be run.
         """
-        self._chromeos_interface.log('Requesting run shell command')
         self._chromeos_interface.run_shell_command(command)
 
 
@@ -188,14 +189,11 @@ class FAFTClient(object):
         Returns:
             A list of strings stripped of the newline characters.
         """
-        self._chromeos_interface.log(
-                'Requesting run shell command and get its console output')
         return self._chromeos_interface.run_shell_command_get_output(command)
 
 
     def _system_software_reboot(self):
         """Request software reboot."""
-        self._chromeos_interface.log('Requesting software reboot')
         self._chromeos_interface.run_shell_command('reboot')
 
 
@@ -205,7 +203,6 @@ class FAFTClient(object):
         Returns:
             A string of the platform name.
         """
-        self._chromeos_interface.log('Requesting get platform name')
         # 'mosys platform name' sometimes fails. Let's get the verbose output.
         lines = self._chromeos_interface.run_shell_command_get_output(
                 '(mosys -vvv platform name 2>&1) || echo Failed')
@@ -223,20 +220,8 @@ class FAFTClient(object):
         Returns:
             A string of the requested crossystem value.
         """
-        self._chromeos_interface.log('Requesting get crossystem value')
         return self._chromeos_interface.run_shell_command_get_output(
                 'crossystem %s' % key)[0]
-
-
-    def _ec_get_version(self):
-        """Get EC version via mosys.
-
-        Returns:
-            A string of the EC version.
-        """
-        self._chromeos_interface.log('Requesting get EC version')
-        return self._chromeos_interface.run_shell_command_get_output(
-                'mosys ec info | sed "s/.*| //"')[0]
 
 
     def _system_get_root_dev(self):
@@ -245,7 +230,6 @@ class FAFTClient(object):
         Returns:
             A string of the root device without partition number.
         """
-        self._chromeos_interface.log('Requesting get root device')
         return self._chromeos_interface.get_root_dev()
 
 
@@ -255,19 +239,16 @@ class FAFTClient(object):
         Returns:
             A string of the root device with partition number.
         """
-        self._chromeos_interface.log('Requesting get root part')
         return self._chromeos_interface.get_root_part()
 
 
     def _system_set_try_fw_b(self):
         """Set 'Try Frimware B' flag in crossystem."""
-        self._chromeos_interface.log('Requesting restart with firmware B')
         self._chromeos_interface.cs.fwb_tries = 1
 
 
     def _system_request_recovery_boot(self):
         """Request running in recovery mode on the restart."""
-        self._chromeos_interface.log('Requesting restart in recovery mode')
         self._chromeos_interface.cs.request_recovery()
 
 
@@ -277,7 +258,6 @@ class FAFTClient(object):
         Returns:
           True if enable, False if disable.
         """
-        self._chromeos_interface.log('Getting dev_boot_usb')
         return self._chromeos_interface.cs.dev_boot_usb == '1'
 
 
@@ -287,17 +267,36 @@ class FAFTClient(object):
         Args:
           value: True to enable, False to disable.
         """
-        self._chromeos_interface.log('Setting dev_boot_usb to %s' % str(value))
         self._chromeos_interface.cs.dev_boot_usb = 1 if value else 0
 
 
-    def _system_get_gbb_flags(self):
+    def _system_is_removable_device_boot(self):
+        """Check the current boot device is removable.
+
+        Returns:
+            True: if a removable device boots.
+            False: if a non-removable device boots.
+        """
+        root_part = self._chromeos_interface.get_root_part()
+        return self._chromeos_interface.is_removable_device(root_part)
+
+
+    def _system_create_temp_dir(self, prefix='backup_'):
+        """Create a temporary directory and return the path."""
+        return tempfile.mkdtemp(prefix=prefix)
+
+
+    def _bios_reload(self):
+        """Reload the firmware image that may be changed."""
+        self._bios_handler.reload()
+
+
+    def _bios_get_gbb_flags(self):
         """Get the GBB flags.
 
         Returns:
             An integer of the GBB flags.
         """
-        self._chromeos_interface.log('Getting GBB flags')
         return self._bios_handler.get_gbb_flags()
 
 
@@ -310,8 +309,6 @@ class FAFTClient(object):
         Returns:
             An integer of the preamble flags.
         """
-        self._chromeos_interface.log('Getting preamble flags of firmware %s' %
-                                     section)
         return self._bios_handler.get_section_flags(section)
 
 
@@ -322,8 +319,6 @@ class FAFTClient(object):
             section: A firmware section, either 'a' or 'b'.
             flags: An integer of preamble flags.
         """
-        self._chromeos_interface.log(
-            'Setting preamble flags of firmware %s to %s' % (section, flags))
         version = self._bios_get_version(section)
         self._bios_handler.set_section_version(section, version, flags,
                                                write_through=True)
@@ -344,64 +339,6 @@ class FAFTClient(object):
         return self._bios_handler.get_section_sig_sha(section)
 
 
-    def _ec_get_firmware_sha(self):
-        """Get SHA1 hash of EC RW firmware section."""
-        return self._ec_handler.get_section_sha('rw')
-
-
-    def _bios_reload(self):
-        """Reload the firmware image that may be changed."""
-        self._bios_handler.reload()
-
-
-    @allow_multiple_section_input
-    def _ec_corrupt_sig(self, section):
-        """Corrupt the requested EC section signature.
-
-        Args:
-            section: A EC section, either 'a' or 'b'.
-        """
-        self._chromeos_interface.log('Corrupting EC signature %s' %
-                                     section)
-        self._ec_handler.corrupt_firmware(section, corrupt_all=True)
-
-
-    @allow_multiple_section_input
-    def _ec_corrupt_body(self, section):
-        """Corrupt the requested EC section body.
-
-        Args:
-            section: An EC section, either 'a' or 'b'.
-        """
-        self._chromeos_interface.log('Corrupting EC body %s' %
-                                     section)
-        self._ec_handler.corrupt_firmware_body(section, corrupt_all=True)
-
-
-    @allow_multiple_section_input
-    def _ec_restore_sig(self, section):
-        """Restore the previously corrupted EC section signature.
-
-        Args:
-            section: An EC section, either 'a' or 'b'.
-        """
-        self._chromeos_interface.log('Restoring EC signature %s' %
-                                     section)
-        self._ec_handler.restore_firmware(section, restore_all=True)
-
-
-    @allow_multiple_section_input
-    def _ec_restore_body(self, section):
-        """Restore the previously corrupted EC section body.
-
-        Args:
-            section: An EC section, either 'a' or 'b'.
-        """
-        self._chromeos_interface.log('Restoring EC body %s' %
-                                     section)
-        self._ec_handler.restore_firmware_body(section, restore_all=True)
-
-
     @allow_multiple_section_input
     def _bios_corrupt_sig(self, section):
         """Corrupt the requested firmware section signature.
@@ -409,21 +346,7 @@ class FAFTClient(object):
         Args:
             section: A firmware section, either 'a' or 'b'.
         """
-        self._chromeos_interface.log('Corrupting firmware signature %s' %
-                                     section)
         self._bios_handler.corrupt_firmware(section)
-
-
-    @allow_multiple_section_input
-    def _bios_corrupt_body(self, section):
-        """Corrupt the requested firmware section body.
-
-        Args:
-            section: A firmware section, either 'a' or 'b'.
-        """
-        self._chromeos_interface.log('Corrupting firmware body %s' %
-                                     section)
-        self._bios_handler.corrupt_firmware_body(section)
 
 
     @allow_multiple_section_input
@@ -433,9 +356,17 @@ class FAFTClient(object):
         Args:
             section: A firmware section, either 'a' or 'b'.
         """
-        self._chromeos_interface.log('Restoring firmware signature %s' %
-                                     section)
         self._bios_handler.restore_firmware(section)
+
+
+    @allow_multiple_section_input
+    def _bios_corrupt_body(self, section):
+        """Corrupt the requested firmware section body.
+
+        Args:
+            section: A firmware section, either 'a' or 'b'.
+        """
+        self._bios_handler.corrupt_firmware_body(section)
 
 
     @allow_multiple_section_input
@@ -445,19 +376,7 @@ class FAFTClient(object):
         Args:
             section: A firmware section, either 'a' or 'b'.
         """
-        self._chromeos_interface.log('Restoring firmware body %s' %
-                                     section)
         self._bios_handler.restore_firmware_body(section)
-
-
-    def _bios_get_version(self, section):
-        """Retrieve firmware version of a section."""
-        return self._bios_handler.get_section_version(section)
-
-
-    def _tpm_get_firmware_version(self):
-        """Retrieve tpm firmware body version."""
-        return self._tpm_handler.get_fw_version()
 
 
     def __bios_modify_version(self, section, delta):
@@ -475,6 +394,7 @@ class FAFTClient(object):
         self._bios_handler.set_section_version(section, new_version, flags,
                                                write_through=True)
 
+
     @allow_multiple_section_input
     def _bios_move_version_backward(self, section):
         """Decrement firmware version for the requested section."""
@@ -486,104 +406,20 @@ class FAFTClient(object):
         """Increase firmware version for the requested section."""
         self.__bios_modify_version(section, 1)
 
+
+    def _bios_get_version(self, section):
+        """Retrieve firmware version of a section."""
+        return self._bios_handler.get_section_version(section)
+
+
     def _bios_get_datakey_version(self, section):
         """Return firmware data key version."""
         return self._bios_handler.get_section_datakey_version(section)
 
-    def _tpm_get_firmware_datakey_version(self):
-        """Retrieve tpm firmware data key version."""
-        return self._tpm_handler.get_fw_body_version()
 
     def _bios_get_kernel_subkey_version(self,section):
         """Return kernel subkey version."""
         return self._bios_handler.get_section_kernel_subkey_version(section)
-
-    @allow_multiple_section_input
-    def _kernel_corrupt_sig(self, section):
-        """Corrupt the requested kernel section.
-
-        Args:
-            section: A kernel section, either 'a' or 'b'.
-        """
-        self._chromeos_interface.log('Corrupting kernel %s' % section)
-        self._kernel_handler.corrupt_kernel(section)
-
-
-    @allow_multiple_section_input
-    def _kernel_restore_sig(self, section):
-        """Restore the requested kernel section (previously corrupted).
-
-        Args:
-            section: A kernel section, either 'a' or 'b'.
-        """
-        self._kernel_handler.restore_kernel(section)
-
-
-    def __kernel_modify_version(self, section, delta):
-        """Modify kernel version for the requested section, by adding delta.
-
-        The passed in delta, a positive or a negative number, is added to the
-        original kernel version.
-        """
-        original_version = self._kernel_handler.get_version(section)
-        new_version = original_version + delta
-        self._chromeos_interface.log(
-                'Setting kernel section %s version from %d to %d' % (
-                section, original_version, new_version))
-        self._kernel_handler.set_version(section, new_version)
-
-
-    @allow_multiple_section_input
-    def _kernel_move_version_backward(self, section):
-        """Decrement kernel version for the requested section."""
-        self.__kernel_modify_version(section, -1)
-
-
-    @allow_multiple_section_input
-    def _kernel_move_version_forward(self, section):
-        """Increase kernel version for the requested section."""
-        self.__kernel_modify_version(section, 1)
-
-
-    def _kernel_get_version(self, section):
-        """Return kernel version."""
-        return self._kernel_handler.get_version(section)
-
-
-    def _kernel_get_datakey_version(self, section):
-        """Return kernel datakey version."""
-        return self._kernel_handler.get_datakey_version(section)
-
-
-    def _kernel_diff_a_b(self):
-        """Compare kernel A with B.
-
-        Returns:
-            True: if kernel A is different with B.
-            False: if kernel A is the same as B.
-        """
-        rootdev = self._chromeos_interface.get_root_dev()
-        kernel_a = self._chromeos_interface.join_part(rootdev, '3')
-        kernel_b = self._chromeos_interface.join_part(rootdev, '5')
-
-        # The signature (some kind of hash) for the kernel body is stored in
-        # the beginning. So compare the first 64KB (including header, preamble,
-        # and signature) should be enough to check them identical.
-        header_a = self._chromeos_interface.read_partition(kernel_a, 0x10000)
-        header_b = self._chromeos_interface.read_partition(kernel_b, 0x10000)
-
-        return header_a != header_b
-
-
-    def _system_is_removable_device_boot(self):
-        """Check the current boot device is removable.
-
-        Returns:
-            True: if a removable device boots.
-            False: if a non-removable device boots.
-        """
-        root_part = self._chromeos_interface.get_root_part()
-        return self._chromeos_interface.is_removable_device(root_part)
 
 
     def _bios_setup_EC_image(self, ec_path):
@@ -693,6 +529,61 @@ class FAFTClient(object):
                                             write_through=True)
 
 
+    def _ec_get_version(self):
+        """Get EC version via mosys.
+
+        Returns:
+            A string of the EC version.
+        """
+        return self._chromeos_interface.run_shell_command_get_output(
+                'mosys ec info | sed "s/.*| //"')[0]
+
+
+    def _ec_get_firmware_sha(self):
+        """Get SHA1 hash of EC RW firmware section."""
+        return self._ec_handler.get_section_sha('rw')
+
+
+    @allow_multiple_section_input
+    def _ec_corrupt_sig(self, section):
+        """Corrupt the requested EC section signature.
+
+        Args:
+            section: A EC section, either 'a' or 'b'.
+        """
+        self._ec_handler.corrupt_firmware(section, corrupt_all=True)
+
+
+    @allow_multiple_section_input
+    def _ec_restore_sig(self, section):
+        """Restore the previously corrupted EC section signature.
+
+        Args:
+            section: An EC section, either 'a' or 'b'.
+        """
+        self._ec_handler.restore_firmware(section, restore_all=True)
+
+
+    @allow_multiple_section_input
+    def _ec_corrupt_body(self, section):
+        """Corrupt the requested EC section body.
+
+        Args:
+            section: An EC section, either 'a' or 'b'.
+        """
+        self._ec_handler.corrupt_firmware_body(section, corrupt_all=True)
+
+
+    @allow_multiple_section_input
+    def _ec_restore_body(self, section):
+        """Restore the previously corrupted EC section body.
+
+        Args:
+            section: An EC section, either 'a' or 'b'.
+        """
+        self._ec_handler.restore_firmware_body(section, restore_all=True)
+
+
     def _ec_dump_firmware(self, ec_path):
         """Dump the current EC firmware to a file, specified by ec_path.
 
@@ -708,12 +599,101 @@ class FAFTClient(object):
         Args:
             enable: True if activating EC write protect. Otherwise, False.
         """
-        self._chromeos_interface.log('Requesting set EC write protect to %s' %
-                                     ('enable' if enable else 'disable'))
         if enable:
             self._ec_handler.enable_write_protect()
         else:
             self._ec_handler.disable_write_protect()
+
+
+    @allow_multiple_section_input
+    def _kernel_corrupt_sig(self, section):
+        """Corrupt the requested kernel section.
+
+        Args:
+            section: A kernel section, either 'a' or 'b'.
+        """
+        self._kernel_handler.corrupt_kernel(section)
+
+
+    @allow_multiple_section_input
+    def _kernel_restore_sig(self, section):
+        """Restore the requested kernel section (previously corrupted).
+
+        Args:
+            section: A kernel section, either 'a' or 'b'.
+        """
+        self._kernel_handler.restore_kernel(section)
+
+
+    def __kernel_modify_version(self, section, delta):
+        """Modify kernel version for the requested section, by adding delta.
+
+        The passed in delta, a positive or a negative number, is added to the
+        original kernel version.
+        """
+        original_version = self._kernel_handler.get_version(section)
+        new_version = original_version + delta
+        self._chromeos_interface.log(
+                'Setting kernel section %s version from %d to %d' % (
+                section, original_version, new_version))
+        self._kernel_handler.set_version(section, new_version)
+
+
+    @allow_multiple_section_input
+    def _kernel_move_version_backward(self, section):
+        """Decrement kernel version for the requested section."""
+        self.__kernel_modify_version(section, -1)
+
+
+    @allow_multiple_section_input
+    def _kernel_move_version_forward(self, section):
+        """Increase kernel version for the requested section."""
+        self.__kernel_modify_version(section, 1)
+
+
+    def _kernel_get_version(self, section):
+        """Return kernel version."""
+        return self._kernel_handler.get_version(section)
+
+
+    def _kernel_get_datakey_version(self, section):
+        """Return kernel datakey version."""
+        return self._kernel_handler.get_datakey_version(section)
+
+
+    def _kernel_diff_a_b(self):
+        """Compare kernel A with B.
+
+        Returns:
+            True: if kernel A is different with B.
+            False: if kernel A is the same as B.
+        """
+        rootdev = self._chromeos_interface.get_root_dev()
+        kernel_a = self._chromeos_interface.join_part(rootdev, '3')
+        kernel_b = self._chromeos_interface.join_part(rootdev, '5')
+
+        # The signature (some kind of hash) for the kernel body is stored in
+        # the beginning. So compare the first 64KB (including header, preamble,
+        # and signature) should be enough to check them identical.
+        header_a = self._chromeos_interface.read_partition(kernel_a, 0x10000)
+        header_b = self._chromeos_interface.read_partition(kernel_b, 0x10000)
+
+        return header_a != header_b
+
+
+    def _kernel_resign_with_keys(self, section, key_path=None):
+        """Resign kernel with temporary key."""
+        self._kernel_handler.resign_kernel(section, key_path)
+
+
+    def _tpm_get_firmware_version(self):
+        """Retrieve tpm firmware body version."""
+        return self._tpm_handler.get_fw_version()
+
+
+    def _tpm_get_firmware_datakey_version(self):
+        """Retrieve tpm firmware data key version."""
+        return self._tpm_handler.get_fw_body_version()
 
 
     def _cgpt_run_test_loop(self):
@@ -744,17 +724,6 @@ class FAFTClient(object):
         return self._cgpt_state.get_step()
 
 
-    def _kernel_resign_with_keys(self, section, key_path=None):
-        """Resign kernel with temporary key."""
-        self._kernel_handler.resign_kernel(section, key_path)
-
-
-    def _system_create_temp_dir(self, prefix='backup_'):
-        """Create a temporary directory and return the path."""
-        return tempfile.mkdtemp(prefix=prefix)
-
-
-    # for updater
     def _updater_setup(self, shellball=None):
         """Setup the updater.
 
