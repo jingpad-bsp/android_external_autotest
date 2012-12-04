@@ -132,7 +132,7 @@ def offload_hosts_sub_dir(queue):
                       dir_path)
         continue
       logging.debug('Processing %s', dir_path)
-      queue.put(lambda: offload_dir(dir_path, dir_path))
+      queue.put((dir_path, dir_path))
 
 
 def offload_dir(dir_entry, dest_path=''):
@@ -189,19 +189,18 @@ def offload_dir(dir_entry, dest_path=''):
     stderr_file.close()
 
 
-def worker_thread(queue):
+def offloading_thread(queue):
   """
-  Thread that continuously pulls callables from the queue and runs them.
+  Thread that continuously pulls arguments to |offload_dir| from the queue
+  and calls |offload_dir| with them.
 
-  @param queue A thread-safe queue of callables.
+  @param queue A thread-safe queue of arguments to |offload_dir|.
   @return NEVER!
   """
-  # One could cause all threads to exit by putting |thread.exit| onto the queue
-  # so that each thread will get killed when it runs it.
   while True:
     try:
-      work = queue.get()
-      work()
+      args = queue.get()
+      offload_dir(*args)
     except Exception as e:
       logging.debug(str(e))
 
@@ -241,7 +240,7 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
   queue = Queue.Queue(maxsize=threads)
   threadpool = []
   for i in range(0, threads):
-    thread = threading.Thread(target=worker_thread, args=(queue,))
+    thread = threading.Thread(target=offloading_thread, args=(queue,))
     thread.start()
     threadpool.append(thread)
 
@@ -273,7 +272,7 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
         # os.system(CLEAN_CMD % dir_entry)
         # TODO(scottz): Monitor offloading and make sure chrome logs are
         # no longer an issue.
-        queue.put(lambda: offload_dir(dir_entry))
+        queue.put((dir_entry,))
 
 
 def parse_options():
