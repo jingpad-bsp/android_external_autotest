@@ -13,10 +13,10 @@ from autotest_lib.client.common_lib import error
 
 # Port of variable attenuator.
 VA_PORT = 'va_port'
-# Fixed path loss in dB.
-FIXED_DB = 'fixed_db'
-# Total path loss in dB.
-TOTAL_DB = 'total_db'
+# Fixed attenuation in dB.
+FIXED_ATTEN = 'fixed_atten'
+# Total attenuation in dB.
+TOTAL_ATTEN = 'total_atten'
 
 
 class ScriptNotFound(Exception):
@@ -53,33 +53,20 @@ class Attenuator(object):
         pass
 
 
-    def _get_intval(self, key, params):
-        """
-        Reads integer value of key from params.
-
-        @param key: a string.
-        @param params: a Python dictionary.
-        @raises TestFail: if params does not contain key.
-        """
-        if key not in params:
-            raise error.TestFail("Unable to find %r in %r" % (key, params))
-        return int(params[key], 10)
-
-
     def init_va(self, params):
         """
         Initializes attenuator port.
 
         @param params: a Python dictionary.
         """
-        port_num = self._get_intval(VA_PORT, params)
+        port_num = params.get(VA_PORT, 0)
 
         # Install Python scripts on attenuator
         # TODO(tgao): bundle these scripts as part of a test image?
         init_script = self._copy_script('attenuator_init.py',
                                         'attenuator_util.py',
                                         'constants.py')
-        self.host.run('python "%s" -p %d' % (init_script, port_num))
+        self.host.run('python "%s" -p %s' % (init_script, port_num))
 
 
     def get_attenuation(self, params):
@@ -88,7 +75,7 @@ class Attenuator(object):
 
         @param params: a Python dictionary.
         """
-        port_num = self._get_intval(VA_PORT, params)
+        port_num = params.get(VA_PORT, 0)
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
@@ -99,18 +86,18 @@ class Attenuator(object):
         Sets desired attenuation level in dB.
 
         @param params: a Python dictionary.
-        @returns total_db: an integer, total attenuation in dB.
+        @returns total_atten: an integer, total attenuation in dB.
         """
-        port_num = self._get_intval(VA_PORT, params)
-        fixed_db = self._get_intval(FIXED_DB, params)
-        total_db = self._get_intval(TOTAL_DB, params)
+        port_num = params.get(VA_PORT, 0)
+        fixed_atten = params.get(FIXED_ATTEN, None)
+        total_atten = params.get(TOTAL_ATTEN, None)
 
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
         self.host.run('python "%s" -p %d -f %d -t %d' %
-                      (attenuator_script, port_num, fixed_db, total_db))
-        return total_db
+                      (attenuator_script, port_num, fixed_atten, total_atten))
+        return total_atten
 
 
     # TODO(tgao): refactor & merge this w/ site_linux.router.install_script()

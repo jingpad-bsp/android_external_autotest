@@ -106,7 +106,8 @@ class InitAttenuator(object):
         @param gpio_pin: a GpioPin tuple, defined in constants.py.
         """
         pin_offset, export_file = attenuator_util.get_gpio_data(
-            gpio_pin, c.EXPORT_FILE)
+            gpio_pin, c.EXPORT_FILE, use_pin_offset=False)
+
         # Open up the pin
         try:
             with open(export_file, 'w') as f:
@@ -114,6 +115,8 @@ class InitAttenuator(object):
         except IOError as e:
             if e.errno == errno.EBUSY:
                 self.logger.warning('GPIO pin %s already enabled', pin_offset)
+            else:
+                raise e  # Re-raise
         else:
             self.logger.info('GPIO pin %s enabled', pin_offset)
 
@@ -132,7 +135,7 @@ class InitAttenuator(object):
         @param gpio_pin: a GpioPin tuple, defined in constants.py.
         """
         pin_offset, unexport_file = attenuator_util.get_gpio_data(
-            gpio_pin, c.UNEXPORT_FILE)
+            gpio_pin, c.UNEXPORT_FILE, use_pin_offset=False)
         try:
             with open(unexport_file, 'w') as f:
                 f.write(pin_offset)

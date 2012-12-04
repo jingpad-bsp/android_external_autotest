@@ -1358,6 +1358,11 @@ class WiFiTest(object):
 
 
     def __run_iperf(self, mode, params):
+        """ Executes iperf w/ user-specified command-line options
+
+        Caller is responsible for passing in correct options. Otherwise a test
+        error would be raised.
+        """
         iperf_args = ""
         if 'udp' in params:
             iperf_args += " -u"
@@ -1370,10 +1375,14 @@ class WiFiTest(object):
         if 'window' in params:
             iperf_args += " -w %s" % params['window']
             self.write_perf({'window':params['window']})
+        if 'bufsize' in params:  # Set buffer size in bytes
+            iperf_args += " -l %s" % params['bufsize']
+            self.write_perf({'bufsize':params['bufsize']})
         iperf_args += " -p %s" % self.defiperfport
 
         # Assemble client-specific arguments
-        client_args = iperf_args + " -f m -t %s" % params.get('test_time', 15)
+        test_time = params.get('test_time', 15)
+        client_args = iperf_args + " -f m -t %s" % test_time
         if 'bandwidth' in params:
             client_args += " -b %s" % params['bandwidth']
             self.write_perf({'bandwidth':params['bandwidth']})
@@ -1409,15 +1418,16 @@ class WiFiTest(object):
 
         iperf_thread = HelperThread(server['host'],
             "%s -s %s" % (server['cmd'], iperf_args))
-        # TODO(tgao): figure out how to capture throughput reported by server.
         iperf_thread.start()
         # NB: block to allow server time to startup
         time.sleep(self.defwaittime)
 
         # Run iperf command and receive command results
         t0 = time.time()
+        # Set timeout to be twice the test_time
         results = client['host'].run("%s -c %s%s" % \
-            (client['cmd'], client['target'], client_args))
+            (client['cmd'], client['target'], client_args),
+            timeout=2*int(test_time))
         actual_time = time.time() - t0
         logging.info('actual_time: %f', actual_time)
 
@@ -1511,6 +1521,75 @@ class WiFiTest(object):
     def set_attenuation(self, params):
         """ Record current attenuation value """
         self.cur_attenuation = self.attenuator.set_attenuation(params)
+
+    def _parse_attenuation(self, params):
+        """ Sanity check attenuation values and make simple corrections """
+        # Attenuations are measured in units of dB
+        fixed_atten = params.get('fixed_atten', None)
+        start_atten = params.get('start_atten', fixed_atten)
+        end_atten = params.get('end_atten', None)
+
+        if ((fixed_atten is None) or (start_atten is None) or
+            (end_atten is None)):
+            err = ('Please specify all attenuation values for this test: '
+                   'fixed_atten, start_atten, end_atten.')
+            raise error.TestFail(err)
+
+        fixed_atten = int(fixed_atten)
+        start_atten = int(start_atten)
+        end_atten = int(end_atten)
+
+        if start_atten < fixed_atten:
+            logging.warning('start_atten (%d) reset to fixed_atten (%d)',
+                            start_atten, fixed_atten)
+            start_atten = fixed_atten
+        if end_atten < start_atten:
+            logging.warning('end_atten (%d) reset to start_atten (%d)',
+                            end_atten, start_atten)
+            end_atten = start_atten
+        return fixed_atten, start_atten, end_atten
+
+
+    def _parse_iperf_options(self, params):
+        """ Parse iperf options and set reasonable defaults """
+        proto = params.get('proto', 'udp')
+        iperf_params = {
+            proto: None,
+            'test_time': params.get('test_time', '60'),
+            'bufsize': params.get('bufsize', '1500'),
+            }
+        if proto == 'udp':
+            iperf_params['bandwidth'] = params.get('bandwidth', '150M')
+        else:
+            iperf_params['window'] = params.get('window', '512K')
+        return proto, iperf_params
+
+
+    def rvr_test(self, params):
+        """ Run rate vs. range tests using a variable attenuator """
+        if self.attenuator is None:
+            raise error.TestFail(
+                'No variable attenuator specified for this test.')
+
+        fixed_atten, start_atten, end_atten = self._parse_attenuation(params)
+        proto, iperf_params = self._parse_iperf_options(params)
+
+        atten_step = params.get('atten_step', 2)
+        # Pad 1 to end_atten to ensure it's not excluded by range(), e.g.
+        #   input: start_atten = 60, end_atten = 70, atten_step = 2
+        #   output with padding = [60, 62, 64, 66, 68, 70]  (desired)
+        #   output without padding = [60, 62, 64, 66, 68]  (probabaly undesired)
+        atten_sequence = range(start_atten, end_atten+1, atten_step)
+        for step_number, atten in enumerate(atten_sequence):
+            for port in [0, 1]:  # Grover testbed uses ports 0 and 1
+                self.set_attenuation(dict(va_port=port, fixed_atten=fixed_atten,
+                                          total_atten=atten))
+            iperf_params['attenuation'] = self.cur_attenuation
+            self.sleep(dict(time='5'))  # Wait 5 seconds for config to propagate
+
+            # Set iteration prefix for write_perf() to use
+            self.prefix = 'rvr_%s_%d' % (proto, step_number)
+            self.server_iperf(iperf_params)
 
 
     def __is_installed(self, host, filename):
