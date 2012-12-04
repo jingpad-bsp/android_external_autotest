@@ -2,7 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, random, subprocess, time
+import dbus
+import logging
+import random
+import subprocess
+import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -11,37 +15,16 @@ from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import emulator_config
 from autotest_lib.client.cros.cellular import mm
 
+# TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
+# cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
+from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
+
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 # Number of seconds we wait for the cellular service to perform an action.
 DEVICE_TIMEOUT=45
 SERVICE_TIMEOUT=75
-
-class ModemManagerContext:
-    def __init__(self, start_pseudo_manager):
-        self.process = None
-        self.start_pseudo_manager = start_pseudo_manager
-
-    def __enter__(self):
-        if self.start_pseudo_manager:
-            subprocess.call(['/sbin/stop', 'modemmanager'])
-            subprocess.call(['/sbin/stop', 'cromo'])
-            self.fp = open('/var/log/pseudo_modem.log', 'a')
-            self.process = subprocess.Popen(
-                ['/usr/local/autotest/cros/cellular/pseudo_modem.py'],
-                stdout=self.fp,
-                stderr=self.fp)
-            print 'Process pseudo_modem: started: %s' % self.process.pid
-        return self
-
-    def __exit__(self, exception, value, traceback):
-        if self.process:
-            print 'Process pseudo_modem: terminate: %s' % self.process.pid
-            self.process.terminate()
-            self.fp.close()
-            subprocess.call(['/sbin/start', 'cromo'])
-            subprocess.call(['/sbin/start', 'modemmanager'])
 
 
 class TechnologyCommands():
@@ -188,6 +171,10 @@ class network_3GModemControl(test.test):
 
     def CompareServiceState(self, service, expected_states):
         """Compare the flimflam service state to a set of expected states."""
+        if not service:
+            logging.info('Service not found.')
+            return False
+
         service_properties = service.GetProperties(utf8_strings=True);
         state = service_properties['State']
         logging.info('Service State = %s' % state)
@@ -243,13 +230,12 @@ class network_3GModemControl(test.test):
             lambda: self.CompareDevicePowerState(self.device, True),
             error.TestFail('Device failed to enter state Powered=True.'),
             timeout=30)
-        # wait for service to appear
-        service = self.flim.FindCellularService(timeout=SERVICE_TIMEOUT)
-        if not service:
-            raise error.TestFail('Service failed to appear for enabled modem.')
+
         if check_idle:
             utils.poll_for_condition(
-                lambda: self.CompareServiceState(service, ['idle']),
+                lambda: self.CompareServiceState(
+                    self.flim.FindCellularService(timeout=SERVICE_TIMEOUT),
+                    ['idle']),
                 error.TestFail('Service failed to enter idle state.'),
                 timeout=SERVICE_TIMEOUT)
 
@@ -261,9 +247,8 @@ class network_3GModemControl(test.test):
             error.TestFail if the states are not consistent.
         """
         self.EnsureEnabled(check_idle=False)
-        service = self.flim.FindCellularService()
         utils.poll_for_condition(
-            lambda: self.CompareServiceState(service,
+            lambda: self.CompareServiceState(self.flim.FindCellularService(),
                                              ['ready', 'portal', 'online']),
             error.TestFail('Service failed to connect.'),
             timeout=SERVICE_TIMEOUT)
@@ -344,19 +329,25 @@ class network_3GModemControl(test.test):
         # state even if this test fails.
         with backchannel.Backchannel():
             self.autoconnect = autoconnect
-            self.flim = flimflam.FlimFlam()
 
             if config and technology:
                 bs, verifier = emulator_config.StartDefault(config, technology)
                 cell_tools.PrepareModemForTechnology('', technology)
 
-            # Enabling flimflam debugging makes it easier to debug
-            # problems.  Tags will be cleared when the Backchannel
-            # context exits and flimflam is restarted.
-            self.flim.SetDebugTags(
-                'dbus+service+device+modem+cellular+portal+network+manager')
+            fake_sim = sim.SIM(sim.SIM.Carrier('att'),
+                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+            with pseudomodem.TestModemManagerContext(pseudo_modem,
+                                                     ['cromo', 'modemmanager'],
+                                                     fake_sim):
+                self.flim = flimflam.FlimFlam()
 
-            with ModemManagerContext(pseudo_modem):
+                # Enabling flimflam debugging makes it easier to debug
+                # problems.  Tags will be cleared when the Backchannel
+                # context exits and flimflam is restarted.
+                self.flim.SetDebugTags(
+                    'dbus+service+device+modem+cellular+portal+network+'
+                    'manager+dhcp')
+
                 self.device = self.flim.FindCellularDevice()
                 if not self.device:
                     raise error.TestFail('Failed to find a cellular device.')

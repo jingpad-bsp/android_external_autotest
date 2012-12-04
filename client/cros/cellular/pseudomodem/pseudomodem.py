@@ -73,6 +73,7 @@ class TestModemManagerContext(object):
             self.pseudo_modem_manager = \
                 PseudoModemManager(modem=self.pseudo_modem, sim=self.sim)
             self.pseudo_modem_manager.Start()
+        return self
 
     def __exit__(self, *args):
         if self.use_pseudomodem:
@@ -201,6 +202,7 @@ class PseudoModemManager(object):
 
     def __enter__(self):
         self.Start()
+        return self
 
     def __exit__(self, *args):
         self.Stop()
@@ -215,7 +217,7 @@ class PseudoModemManager(object):
             if self.child == 0:
                 self._Run()
             else:
-                time.sleep(PARENT_SLEEP_TIME_INTERVAL)
+                time.sleep(PARENT_SLEEP_TIMEOUT)
         else:
             self._Run()
 

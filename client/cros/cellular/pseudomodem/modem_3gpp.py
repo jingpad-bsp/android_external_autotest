@@ -8,6 +8,7 @@ import gobject
 import logging
 import mm1
 import modem
+import pseudomodem
 
 class Modem3gpp(modem.Modem):
     """
@@ -384,6 +385,8 @@ class Modem3gpp(modem.Modem):
                             str(self.connect_props)))
                         bearer_path = self.modem.CreateBearer(bearer_props)
                     self.modem.ActivateBearer(bearer_path)
+                    logging.info('ConnectStep: Restarting DHCP server.')
+                    pseudomodem.virtual_ethernet_interface.RestartDHCPServer()
                     logging.info('ConnectStep: Setting state to CONNECTED.')
                     self.modem.ChangeState(mm1.MM_MODEM_STATE_CONNECTED, reason)
                     self.modem.connect_step = None

@@ -5,6 +5,7 @@
 """
 Pseudomodem implementation of the org.freedesktop.ModemManager1.Modem interface.
 This class serves as the abstract base class of all fake modem implementations.
+
 """
 
 import bearer
