@@ -185,15 +185,17 @@ class ServoTest(test.test):
           info: A dict of remote info, see the definition of self._remote_infos.
         """
         retry = 3
-        try:
-            self._launch_client_once(info)
-        except AssertionError:
-            if retry:
+        while retry:
+            try:
+                self._launch_client_once(info)
+                break
+            except AssertionError:
                 retry -= 1
-                logging.info('Retry again...')
-                time.sleep(5)
-            else:
-                raise
+                if retry:
+                    logging.info('Retry again...')
+                    time.sleep(5)
+                else:
+                    raise
 
 
     def _launch_client_once(self, info):
