@@ -168,25 +168,23 @@ class platform_ToolchainOptions(test.test):
                                                   gold_whitelist,
                                                   gold_find_options))
 
-        # ARM arch doesn't have RELRO or NOW (crosbug.com/35925).
-        if utils.get_cpu_arch() != "arm":
-            # Verify non-static binaries have BIND_NOW in dynamic section.
-            now_cmd = ("(%s {} | grep -q statically) ||"
-                       "%s -d {} 2>&1 | "
-                       "egrep -q \"BIND_NOW\"" % (FILE_CMD, readelf_cmd))
-            now_whitelist = os.path.join(self.bindir, "now_whitelist")
-            option_sets.append(self.create_and_filter("-Wl,-z,now",
-                                                      now_cmd,
-                                                      now_whitelist))
+        # Verify non-static binaries have BIND_NOW in dynamic section.
+        now_cmd = ("(%s {} | grep -q statically) ||"
+                   "%s -d {} 2>&1 | "
+                   "egrep -q \"BIND_NOW\"" % (FILE_CMD, readelf_cmd))
+        now_whitelist = os.path.join(self.bindir, "now_whitelist")
+        option_sets.append(self.create_and_filter("-Wl,-z,now",
+                                                  now_cmd,
+                                                  now_whitelist))
 
-            # Verify non-static binaries have RELRO program header.
-            relro_cmd = ("(%s {} | grep -q statically) ||"
-                         "%s -l {} 2>&1 | "
-                         "egrep -q \"GNU_RELRO\"" % (FILE_CMD, readelf_cmd))
-            relro_whitelist = os.path.join(self.bindir, "relro_whitelist")
-            option_sets.append(self.create_and_filter("-Wl,-z,relro",
-                                                      relro_cmd,
-                                                      relro_whitelist))
+        # Verify non-static binaries have RELRO program header.
+        relro_cmd = ("(%s {} | grep -q statically) ||"
+                     "%s -l {} 2>&1 | "
+                     "egrep -q \"GNU_RELRO\"" % (FILE_CMD, readelf_cmd))
+        relro_whitelist = os.path.join(self.bindir, "relro_whitelist")
+        option_sets.append(self.create_and_filter("-Wl,-z,relro",
+                                                  relro_cmd,
+                                                  relro_whitelist))
 
         # Verify non-static binaries are dynamic (built PIE).
         pie_cmd = ("(%s {} | grep -q statically) ||"

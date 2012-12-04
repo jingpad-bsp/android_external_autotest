@@ -53,6 +53,8 @@
 /usr/lib/opengl/xorg-x11/extensions/libdri2.so
 /usr/lib/opengl/xorg-x11/extensions/libdri.so
 /usr/lib/opengl/xorg-x11/extensions/libglx.so
+/usr/lib/xorg/modules/drivers/fbdev_drv.so
+/usr/lib/xorg/modules/drivers/armsoc_drv.so
 /usr/lib/xorg/modules/drivers/ati_drv.so
 /usr/lib/xorg/modules/drivers/intel_drv.so
 /usr/lib/xorg/modules/drivers/nouveau_drv.so
