@@ -166,7 +166,7 @@ def SetFirmwareForTechnologyFamily(manager, modem_path, family):
 # Generated with "base64 < prl"
 
 TEST_PRL_3333 = (
-    'ADENBQMAAMAAAYADAgmABgIKDQsEAYAKDUBAAQKWAAIAQGAJApYAAgAw8BAAAAD/Uw=='.
+    'ADENBQMAAMAAAYADAgmABgIKDQsEAYAKDUBAAQKWAAICQGAJApYAAgIw8BAAAQDhWA=='.
     decode('base64_codec'))
 
 
