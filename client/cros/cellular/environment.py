@@ -68,13 +68,6 @@ class EmulatedEnvironment(object):
       """Disconnect from cellular and check that we're disconnected."""
 
       self.flim.DisconnectService(service)
-      # This is racy: The modem is free to report itself as
-      # disconnected before it actually finishes tearing down its RF
-      # connection.
-      self.verifier.AssertDataStatusIn([
-            cellular.UeGenericDataStatus.DISCONNECTING,
-            cellular.UeGenericDataStatus.REGISTERED,
-            cellular.UeGenericDataStatus.NONE,])
 
       def _ModemIsFullyDisconnected():
           return self.verifier.IsDataStatusIn([
