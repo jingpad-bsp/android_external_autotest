@@ -13,7 +13,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
 
 
-_DEFAULT_CARD = '0'
 _DEFAULT_VOLUME_LEVEL = 100
 _DEFAULT_CAPTURE_GAIN = 2500
 
@@ -24,20 +23,16 @@ class audiovideo_LoopbackLatency(test.test):
     version = 1
 
     def initialize(self,
-                   card=_DEFAULT_CARD,
                    default_volume_level=_DEFAULT_VOLUME_LEVEL,
                    default_capture_gain=_DEFAULT_CAPTURE_GAIN):
         '''Setup the deps for the test.
 
         Args:
-            card: The index of the sound card to use.
             default_volume_level: The default volume level.
             defalut_capture_gain: The default capture gain.
 
         Raises: error.TestError if the deps can't be run
         '''
-        self._card = card
-
         self._volume_level = default_volume_level
         self._capture_gain = default_capture_gain
 
@@ -50,6 +45,10 @@ class audiovideo_LoopbackLatency(test.test):
         self._ah.set_volume_levels(self._volume_level, self._capture_gain)
         success = False
 
+        # Run loopback latency check once, which takes at most 1 sec to
+        # complete and parse the latency values measured in loopback path
+        # and reported by system.  Assert the difference is within
+        # acceptable range.
         result = self._ah.loopback_latency_check(n=_NOISE_THRESHOLD)
         if result:
             diff = abs(result[0] - result[1])
@@ -58,13 +57,15 @@ class audiovideo_LoopbackLatency(test.test):
                          (_NOISE_THRESHOLD, result[0], result[1], diff))
 
             # Difference between measured and reported latency should
-            # within 3 ms.
+            # within _LATENCY_DIFF_LIMIT_US.
             if diff < _LATENCY_DIFF_LIMIT_US:
                 success = True
         else:
+            # Raise error if audio is not detected at all in the loopback path.
             raise error.TestError('Audio not detected at threshold %d' %
                                   _NOISE_THRESHOLD)
 
         if not success:
-            raise error.TestError('Latency difference too much, diff limit'
-                                  '%d us' % _LATENCY_DIFF_LIMIT_US)
+            # Test fails when latency difference is greater then the limit.
+            raise error.TestFail('Latency difference too much, diff limit'
+                                 '%d us' % _LATENCY_DIFF_LIMIT_US)
