@@ -5,10 +5,13 @@
 """Utilities for cellular tests."""
 import copy, dbus, logging, os, string, tempfile
 
+# TODO(thieule): Consider renaming mm.py, mm1.py, modem.py, etc to be more
+# descriptive (crosbug.com/37060).
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.cellular import mm
+from autotest_lib.client.cros.cellular import modem
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -240,6 +243,21 @@ def PrepareModemForTechnology(modem_path, target_technology):
 
     if target_family == cellular.TechnologyFamily.CDMA:
         modem_path = PrepareCdmaModem(manager, modem_path)
+
+    # When testing EVDO, we need to force the modem to register with EVDO
+    # directly (bypassing CDMA 1x RTT) else the modem will not register
+    # properly because it looks for CDMA 1x RTT first but can't find it
+    # because the call box can only emulate one technology at a time (EVDO).
+    try:
+        if target_technology == cellular.Technology.EVDO_1X:
+            network_preference = modem.Modem.NETWORK_PREFERENCE_EVDO_1X
+        else:
+            network_preference = modem.Modem.NETWORK_PREFERENCE_AUTOMATIC
+        gobi = manager.GetModem(modem_path).GobiModem()
+        gobi.SetNetworkPreference(network_preference)
+    except AttributeError:
+        # Not a Gobi modem
+        pass
 
     return modem_path
 
