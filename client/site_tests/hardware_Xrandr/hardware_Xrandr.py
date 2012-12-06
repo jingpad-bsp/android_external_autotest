@@ -40,8 +40,15 @@ class hardware_Xrandr(test.test):
                 end_time = time.time();
 
                 output_state_string = 'on' if output_state else 'off'
-                keyvals['set_%s_%s_time_s' % (output, output_state_string)] = \
-                    end_time - start_time
+                xrandr_time_s = end_time - start_time
+
+                if self._is_internal(output):
+                    keyvals['internal_output_name'] = output
+                    keyvals['s_internal_%s_time' % (output_state_string)] = \
+                            xrandr_time_s
+                else:
+                    keyvals['s_%s_%s_time' % (output, output_state_string)] = \
+                            xrandr_time_s
 
                 new_xrandr_state = base_utils.get_xrandr_output_state()
                 if new_xrandr_state[output] != output_state:
@@ -59,7 +66,26 @@ class hardware_Xrandr(test.test):
             raise error.TestFail('Failed with %d errors, see log for details' %
                                  num_errors)
 
+
     def cleanup(self):
         # Reset the UI, which may have been adjusted by Chrome when outputs were
         # turned on and off.
-        utils.system_output('restart ui');
+        if utils.system_output('status ui').find('start/running') !=-1:
+            utils.system_output('restart ui')
+        else:
+            utils.system_output('start ui')
+
+
+    def _is_internal(self, output):
+        """
+        Determines if the given output is an internal output.  Internal outputs
+        are identified by name -- either eDP or LVDS.
+
+        Args:
+          output:     name of output to check
+        Return value:
+          True if |output| is eDP or LVDS, False otherwise.
+        """
+        internal_types = ['edp', 'lvds']
+        matches = [output.lower().startswith(type) for type in internal_types]
+        return True in matches
