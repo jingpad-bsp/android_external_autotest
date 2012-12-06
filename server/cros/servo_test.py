@@ -4,14 +4,13 @@
 
 import logging
 import os
-import re
 import socket
 import subprocess
 import time
 import xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import autotest, site_host_attributes, test
+from autotest_lib.server import autotest, test
 from autotest_lib.server.cros import servo
 
 class ServoTest(test.test):
@@ -69,53 +68,21 @@ class ServoTest(test.test):
         },
     }
 
-    def _init_servo(self, host, cmdline_args):
+    def _init_servo(self, host):
         """Initialize `self.servo`.
 
         If the host has an attached servo object, use that.
         Otherwise assume that there's a locally attached servo
-        device, and start servod on localhost.
+        device, and use it.
 
         """
         if host.servo:
             self.servo = host.servo
-            self._servo_is_local = False
-            return
-
-        # Assign default arguments for servo invocation.
-        args = {
-            'servo_host': 'localhost', 'servo_port': 9999,
-            'xml_config': [], 'servo_vid': None, 'servo_pid': None,
-            'servo_serial': None, 'use_pyauto': False}
-
-        # Parse arguments from AFE and override servo defaults above.
-        client_attributes = site_host_attributes.HostAttributes(host.hostname)
-        if hasattr(site_host_attributes, 'servo_serial'):
-            args['servo_serial'] = client_attributes.servo_serial
-
-        # Parse arguments from command line and override previous AFE or servo
-        # defaults
-        for arg in cmdline_args:
-            match = re.search("^(\w+)=(.+)", arg)
-            if match:
-                key = match.group(1)
-                val = match.group(2)
-                # Support multiple xml_config by appending it to a list.
-                if key == 'xml_config':
-                    args[key].append(val)
-                else:
-                    args[key] = val
-
-        self.servo = servo.Servo()
-        self._servo_is_local = True
+        else:
+            self.servo = servo.Servo()
 
 
-    def _release_servo(self):
-        """Clean up `self.servo` if it is locally attached."""
-        self._servo_is_local = False
-
-
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
+    def initialize(self, host, _, use_pyauto=False, use_faft=False):
         """Create a Servo object and install the dependency.
 
         If use_pyauto/use_faft is True the PyAuto/FAFTClient dependency is
@@ -127,7 +94,7 @@ class ServoTest(test.test):
         self._remote_infos['pyauto']['used'] = use_pyauto
         self._remote_infos['faft']['used'] = use_faft
 
-        self._init_servo(host, cmdline_args)
+        self._init_servo(host)
 
         # Initializes dut, may raise AssertionError if pre-defined gpio
         # sequence to set GPIO's fail.  Autotest does not handle exception
@@ -135,7 +102,6 @@ class ServoTest(test.test):
         try:
             self.servo.initialize_dut()
         except (AssertionError, xmlrpclib.Fault) as e:
-            self._release_servo()
             raise error.TestFail(e)
 
         # Install PyAuto/FAFTClient dependency.
@@ -321,7 +287,6 @@ class ServoTest(test.test):
 
     def cleanup(self):
         """Delete the Servo object, call remote cleanup, and kill ssh."""
-        self._release_servo()
         self.kill_remote()
 
 
