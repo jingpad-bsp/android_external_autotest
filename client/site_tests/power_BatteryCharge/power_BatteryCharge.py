@@ -96,6 +96,10 @@ class power_BatteryCharge(test.test):
             current_charge = new_charge
             logging.info('current_charge: %f' % current_charge)
 
+            if self.status.battery[0].status == 'Full':
+                logging.info('Battery full, aborting!')
+                break
+
 
     def postprocess_iteration(self):
         keyvals = {}

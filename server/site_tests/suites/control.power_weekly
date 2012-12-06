@@ -37,13 +37,29 @@ def _run_client_test(machine):
 
     # 50% charge should be ample for 12hr Standby test
     client_at.run_test('power_BatteryCharge', percent_target_charge=50,
-                     max_run_time=60*60*3, tag='CHARGE_50')
+                       max_run_time=60*60*3, tag='CHARGE_50')
 
     client.power_off()
     try:
         client_at.run_test('power_Standby', test_hours=12.0, sample_hours=1.0,
                            constraints=['milliwatts_standby_power <= 500.0'],
                            max_milliwatts_standby=500.0)
+    finally:
+        client.power_on()
+
+    # Run the full 60/20/10/10 load test, draining a full battery
+    client_at.run_test('power_BatteryCharge', percent_target_charge=100,
+                       max_run_time=60*60*6, tag='CHARGE_100')
+    client.power_off()
+    try:
+        if hasattr(client_attributes, 'wifi'):
+            ap, sec, pw = client_attributes.wifi.split(',')
+            client_at.run_test('power_LoadTest', loop_count=12, loop_time=3600,
+                               force_wifi=True, wifi_ap=ap, wifi_sec=sec,
+                               wifi_pw=pw, tag='WIFI_full')
+        else:
+            client_at.run_test('power_LoadTest', loop_count=12, loop_time=3600,
+                               check_network=False, tag='WIRED_full')
     finally:
         client.power_on()
 

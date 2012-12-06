@@ -171,6 +171,7 @@ class BatteryStat(DevStat):
     """
 
     battery_fields = {
+        'status':               ['status', str],
         'charge_full':          ['charge_full', float],
         'charge_full_design':   ['charge_full_design', float],
         'charge_now':           ['charge_now', float],
