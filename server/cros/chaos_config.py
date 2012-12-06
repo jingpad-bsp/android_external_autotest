@@ -10,9 +10,15 @@ import xmlrpclib
 
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
+TIMEOUT = 100
+
 class APPowerException(Exception):
+    """ Exception raised when AP fails to power on. """
     pass
 
+class APSectionError(Exception):
+    """ Exception raised when AP instance does not exist in the config. """
+    pass
 
 class ChaosAP(object):
     """ An instance of an ap defined in the chaos config file.
@@ -54,6 +60,8 @@ class ChaosAP(object):
 
 
     def __init__(self, bss, config):
+        if not config.has_section(bss):
+            raise APSectionError('BSS (%s) not defined.' % bss)
         self.bss = bss
         self.ap_config = config
 
@@ -131,7 +139,7 @@ class ChaosAP(object):
         # Hard coded timer for now to wait for the AP to come alive
         # before trying to use it.  We need scanning code
         # to scan until the AP becomes available (crosbug.com/36710).
-        time.sleep(60)
+        time.sleep(TIMEOUT)
 
 
 class ChaosAPList(object):
