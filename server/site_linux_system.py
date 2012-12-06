@@ -85,6 +85,23 @@ class LinuxSystem(object):
         return phys_for_frequency, phy_bus_type
 
 
+    def _remove_interface(self, interface, remove_monitor):
+        self.host.run("%s link set %s down" % (self.cmd_ip, interface))
+        self.host.run("%s dev %s del" % (self.cmd_iw, interface))
+        if remove_monitor:
+            # Some old hostap implementations create a "mon.<interface>" to
+            # handle management frame transmit/receive.
+            self.host.run("%s link set mon.%s down" % (self.cmd_ip, interface),
+                          ignore_status=True)
+            self.host.run("%s dev mon.%s del" % (self.cmd_iw, interface),
+                      ignore_status=True)
+        for phytype in self.wlanifs:
+            for phy in self.wlanifs[phytype]:
+                if self.wlanifs[phytype][phy] == interface:
+                    self.wlanifs[phytype].pop(phy)
+                    break
+
+
     def _remove_interfaces(self):
         self.wlanifs = {}
         # Remove all wifi devices.
@@ -93,9 +110,7 @@ class LinuxSystem(object):
         for line in output.splitlines():
             m = test.match(line)
             if m:
-                device = m.group(1)
-                self.host.run("%s link set %s down" % (self.cmd_ip, device))
-                self.host.run("%s dev %s del" % (self.cmd_iw, device))
+                self._remove_interface(m.group(1), False)
 
 
     def start_capture(self, params):

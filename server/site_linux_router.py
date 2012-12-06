@@ -147,7 +147,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             'interface': conf['interface']
         })
 
-    def kill_hostapd(self):
+    def kill_hostapd_instance(self, instance):
         """
         Kills the hostapd process.  Makes sure hostapd exits before
         continuing since it sets the interface back to station mode in its
@@ -155,10 +155,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         previous instance exits, the interface station mode will overwrite the
         ap mode.
         """
-        self.router.run("pkill hostapd >/dev/null 2>&1 && "
-                        "while pgrep hostapd &> /dev/null; do sleep 1; done",
+        if instance:
+            search_arg = '-f "hostapd.*%s"' % instance['conf_file']
+        else:
+            search_arg = 'hostapd'
+
+        self.router.run("pkill %s >/dev/null 2>&1 && "
+                        "while pgrep %s &> /dev/null; "
+                        "do sleep 1; done" % (search_arg, search_arg),
                         timeout=30,
                         ignore_status=True)
+
+    def kill_hostapd(self):
+        self.kill_hostapd_instance(None)
 
     def hostap_config(self, params):
         """ Configure the AP per test requirements """
@@ -459,15 +468,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if not self.hostapd['configured'] and not self.station['configured']:
             return
 
-        # Taking down hostapd takes wlan0 and mon.wlan0 down.
         if self.hostapd['configured']:
-            if 'silent' in params:
-                # Deconfigure without notifying DUT.  Remove the monitor
-                # interface hostapd uses to send beacon and DEAUTH packets
-                self._remove_interfaces()
+            if 'instance' in params:
+                instances = [ self.hostapd_instances.pop(params['instance']) ]
+            else:
+                instances = self.hostapd_instances
+                self.hostapd_instances = []
 
-            self.kill_hostapd()
-            for instance in self.hostapd_instances:
+            for instance in instances:
+                if 'silent' in params:
+                    # Deconfigure without notifying DUT.  Remove the interface
+                    # hostapd uses to send beacon and DEAUTH packets.
+                    self._remove_interface(instance['interface'], True)
+
+                self.kill_hostapd_instance(instance)
                 self.router.get_file(instance['log_file'],
                                      'debug/hostapd_router_%d_%s.log' %
                                      (self.hostapd['log_count'],
@@ -475,7 +489,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 self._release_wlanif(instance['interface'])
 #               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
             self.hostapd['log_count'] += 1
-            self.hostapd_instances = []
         if self.station['configured']:
             if self.station['type'] == 'ibss':
                 self.router.run("%s dev %s ibss leave" %
@@ -490,7 +503,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.stop_dhcp_servers()
             for server in self.local_servers:
                 self.router.run("%s addr del %s" %
-                                (self.cmd_ip, server['ip_params']))
+                                (self.cmd_ip, server['ip_params']),
+                                ignore_status=True)
             self.local_servers = []
 
         self.hostapd['configured'] = False
