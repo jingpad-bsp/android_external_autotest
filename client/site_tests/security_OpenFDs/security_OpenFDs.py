@@ -144,9 +144,10 @@ class security_OpenFDs(test.test):
         filters = [r'0700 anon_inode:\[event.*\]',
                    r'0[35]00 pipe:.*',
                    r'0[57]00 socket:.*',
-                   r'0[57]00 /dev/null',
+                   r'0500 /dev/null',
                    r'0[57]00 /dev/urandom',
                    r'0300 /var/log/chrome/chrome_.*',
+                   r'0[37]00 /var/log/ui/ui.*',
                   ]
 
         # Whitelist fd-type check, suitable for Chrome processes.
