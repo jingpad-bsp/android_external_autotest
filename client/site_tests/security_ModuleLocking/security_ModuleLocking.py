@@ -72,6 +72,21 @@ class security_ModuleLocking(test.test):
             return True
         return False
 
+    def module_loads_old_api(self, module):
+        # Start from a clean slate.
+        self.rmmod(module)
+
+        # Use --force-modversion to trigger the old API.
+        rc = utils.system("modprobe --force-modversion %s" % (module),
+                          ignore_status=True)
+
+        # Clean up.
+        self.rmmod(module)
+
+        if rc == 0:
+            return True
+        return False
+
     def run_once(self):
         # Empty failure list means test passes.
         self._failures = []
@@ -89,6 +104,10 @@ class security_ModuleLocking(test.test):
         loaded = self.module_loads_outside_rootfs(module)
         self.check(loaded == False, "cannot load %s from /tmp" % (module))
 
+        # Check old API fails when enforcement enabled.
+        loaded = self.module_loads_old_api(module)
+        self.check(loaded == False, "cannot load %s with old API" % (module))
+
         # If the sysctl exists, verify that it will disable the restriction.
         if os.path.exists(sysctl):
             # Disable restriction.
@@ -98,6 +117,10 @@ class security_ModuleLocking(test.test):
             # Check enforcement is disabled.
             loaded = self.module_loads_outside_rootfs(module)
             self.check(loaded == True, "can load %s from /tmp" % (module))
+
+            # Check old API works when enforcement disabled.
+            loaded = self.module_loads_old_api(module)
+            self.check(loaded == True, "can load %s with old API" % (module))
 
             # Clean up.
             open(sysctl, "w").write("1\n")
