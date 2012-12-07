@@ -11,8 +11,12 @@ import dlink_ap_configurator
 import dlink_dir655_ap_configurator
 import dlinkwbr1310_ap_configurator
 import linksys_ap_configurator
+import linksyse900_ap_configurator
 import linksyse2000_ap_configurator
-import linksysE4200_ap_configurator
+import linksyse2100_ap_configurator
+import linksyse2700_ap_configurator
+import linksyse3500_ap_configurator
+import linksyse4200_ap_configurator
 import Netgear3700_ap_configurator
 import netgear4500_ap_configurator
 import trendnet_ap_configurator
@@ -59,8 +63,8 @@ class APConfiguratorFactory(object):
             'Netgear3700APConfigurator',
             Netgear3700_ap_configurator.Netgear3700APConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'LinksysE4200APConfigurator',
-            linksysE4200_ap_configurator.LinksysAPConfigurator)
+            'linksyse4200APConfigurator',
+            linksyse4200_ap_configurator.linksyse4200APConfigurator)
         self._build_all_instances_of_configurator(config_list,
             'linksyse2000APConfigurator',
             linksyse2000_ap_configurator.linksyse2000APConfigurator)
@@ -76,6 +80,18 @@ class APConfiguratorFactory(object):
         self._build_all_instances_of_configurator(config_list,
             'dlinkwbr1310APConfigurator',
             dlinkwbr1310_ap_configurator.dlinkwbr1310APConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'linksyse3500APConfigurator',
+            linksyse3500_ap_configurator.linksyse3500APConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'linksyse2100APConfigurator',
+            linksyse2100_ap_configurator.linksyse2100APConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'linksyse2700APConfigurator',
+            linksyse2700_ap_configurator.linksyse2700APConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'linksyse900APConfigurator',
+            linksyse900_ap_configurator.linksyse900APConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):

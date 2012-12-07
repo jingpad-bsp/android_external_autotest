@@ -35,7 +35,7 @@ class ConfiguratorTest(unittest.TestCase):
                                    '..', '..', 'config', 'wifi_compat_config')
         factory = ap_configurator_factory.APConfiguratorFactory(config_path)
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('dlinkwbr1310')
+        self.ap = factory.get_ap_configurator_by_short_name('e2700')
 
     def disabled_security_on_all_bands(self):
         for band in self.ap.get_supported_bands():
@@ -117,7 +117,7 @@ class ConfiguratorTest(unittest.TestCase):
             if self.ap.is_security_mode_supported(self.ap.security_wep):
                 self.ap.set_security_wep('test2',
                                          self.ap.wep_authentication_open)
-           self.ap.apply_settings()
+            self.ap.apply_settings()
 
     def test_invalid_security(self):
         """Test an exception is thrown for an invalid configuration."""

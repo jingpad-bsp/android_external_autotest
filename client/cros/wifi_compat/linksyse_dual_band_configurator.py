@@ -7,15 +7,15 @@ import os
 import urlparse
 
 import ap_configurator
-import selenium.common.exceptions
 
 
-class LinksysAPConfigurator(ap_configurator.APConfigurator):
-    """Derived class to control Linksys E4200 router."""
+class linksyse_dual_bandAPConfigurator(ap_configurator.APConfigurator):
+    """Base class for objects to configure Linksys dual band access points
+       using webdriver."""
+
 
     def __init__(self, router_dict):
-        super(LinksysAPConfigurator, self).__init__(router_dict)
-        # Overrides
+        super(linksyse_dual_bandAPConfigurator, self).__init__(router_dict)
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
         self.security_wpapsk = 'WPA Personal'
@@ -49,6 +49,10 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         elif 'wireless security mode is not compatible' in text:
             alert.accept()
             raise RuntimeError('Security modes are not compatible. %s' % text)
+        elif 'The wifi interface is current busy.' in text:
+            alert.accept()
+            self.click_button_by_xpath('//a[text()="Save Settings"]',
+                                       alert_handler=self._alert_handler)
         else:
             alert.accept()
             raise RuntimeError('We have an unhandled alert: %s' % text)
@@ -106,7 +110,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
     def save_page(self, page_number):
         self.click_button_by_xpath('//a[text()="Save Settings"]',
-                                    alert_handler=self._alert_handler)
+                                   alert_handler=self._alert_handler)
         continue_xpath = '//input[@value="Continue" and @type="button"]'
         self.wait_for_object_by_xpath(continue_xpath)
         self.click_button_by_xpath(continue_xpath)
@@ -149,7 +153,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('set_radio is not supported in linksys E4200.')
+        logging.info('set_radio is not supported in Linksys dual band AP.')
         return None
 
 
@@ -250,12 +254,5 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_visibility(self, visible=True):
-        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
-
-
-    def _set_visibility(self, visible=True):
-        value = 0 if visible else 1
-        xpath = '//input[@name="wl0_closed" and @value="%s"]' % value
-        if self.current_band == self.band_5ghz:
-            xpath = '//input[@name="wl1_closed" and @value="%s"]' % value
-        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
+        logging.info('Visibility is not supported for Linksys dual band AP')
+        return None
