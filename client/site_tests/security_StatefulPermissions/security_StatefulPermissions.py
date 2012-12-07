@@ -24,12 +24,14 @@ class security_StatefulPermissions(test.test):
                                  "/encrypted/var/cache/echo",
                                  "/encrypted/var/lib/cromo",
                                  "/encrypted/var/lib/timezone",
+                                 # TODO(derat) power_manager crosbug.com/36510
                                  "/encrypted/var/lib/power_manager",
                                  "/encrypted/var/lib/Synaptics/chronos.1000",
                                  "/encrypted/var/lib/opencryptoki",
                                  "/encrypted/var/log/connectivity.log",
                                  "/encrypted/var/log/connectivity.bak",
                                  "/encrypted/var/log/window_manager",
+                                 # TODO(derat) power_manager crosbug.com/36510
                                  "/encrypted/var/log/power_manager",
                                  "/encrypted/var/log/metrics",
                                  "/encrypted/var/log/chrome",
@@ -56,6 +58,8 @@ class security_StatefulPermissions(test.test):
                      "operator": ["/home/root"],
                      "polkituser": [],
                      "portage": [],
+                     "power": ["/encrypted/var/lib/power_manager",
+                               "/encrypted/var/log/power_manager"],
                      "pkcs11": [],
                      "proxystate": [],
                      "qdlservice": [],
