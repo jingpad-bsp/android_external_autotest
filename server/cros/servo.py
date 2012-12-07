@@ -5,9 +5,13 @@
 # Expects to be run in an environment with sudo and no interactive password
 # prompt, such as within the Chromium OS development chroot.
 
+import os
+
 import logging, re, time, xmlrpclib
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
+from autotest_lib.server.cros import programmer
 
 class Servo(object):
     """Manages control of a Servo board.
@@ -141,6 +145,19 @@ class Servo(object):
         self._is_localhost = (servo_host == 'localhost')
         self._target_host = target_host
 
+        # Commands on the servo host must be run by the superuser. Our account
+        # on Beaglebone is root, but locally we might be running as a
+        # different user. If so - `sudo ' will have to be added to the
+        # commands.
+        if self._is_localhost:
+            self._sudo_required = utils.system_output('id -u') != '0'
+            self._ssh_prefix = ''
+        else:
+            common_options = '-o PasswordAuthentication=no'
+            self._sudo_required = False
+            self._ssh_prefix = 'ssh %s root@%s ' % (common_options, servo_host)
+            self._scp_cmd_template = 'scp %s ' % common_options
+            self._scp_cmd_template += '%s ' + 'root@' + servo_host + ':%s'
 
     def get_target_hostname(self):
         """Retrieves target (DUT) hostname."""
@@ -608,3 +625,46 @@ class Servo(object):
         except:
             logging.error('Connection to servod failed')
             raise
+
+
+    def _scp_image(self, image_path):
+        """Copy image to the servo host.
+
+        When programming a firmware image on the DUT, the image must be
+        located on the host to which the servo device is connected. Sometimes
+        servo is controlled by a remote host, in this case the image needs to
+        be transferred to the remote host.
+
+        @param image_path: a string, name of the firmware image file to be
+               transferred.
+        @return: a string, full path name of the copied file on the remote.
+        """
+
+        dest_path = os.path.join('/tmp', os.path.basename(image_path))
+        scp_cmd = self._scp_cmd_template % (image_path, dest_path)
+        utils.system(scp_cmd)
+        return dest_path
+
+
+    def system_on_servo(self, command):
+        """Execute the passed in command on the servod host."""
+        if self._sudo_required:
+            command = 'sudo -n %s' % command
+        if self._ssh_prefix:
+            command = "%s '%s'" % (self._ssh_prefix, command)
+        logging.info('Will execute on servo host: %s' % command)
+        utils.system(command)
+
+
+    def program_ec(self, board, image):
+        """Program EC on a given board using given image."""
+        if not self.is_localhost():
+            image = self._scp_image(image)
+        programmer.program_ec(board, self, image)
+
+
+    def program_bootprom(self, board, image):
+        """Program bootprom on a given board using given image."""
+        if not self.is_localhost():
+            image = self._scp_image(image)
+        programmer.program_bootprom(board, self, image)
