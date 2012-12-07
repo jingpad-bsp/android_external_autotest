@@ -22,6 +22,7 @@ class security_StatefulPermissions(test.test):
                      "chronos": ["/encrypted/chronos",
                                  "/encrypted/var/cache/app_pack",
                                  "/encrypted/var/cache/echo",
+                                 "/encrypted/var/lib/cromo",
                                  "/encrypted/var/lib/timezone",
                                  "/encrypted/var/lib/power_manager",
                                  "/encrypted/var/lib/Synaptics/chronos.1000",
