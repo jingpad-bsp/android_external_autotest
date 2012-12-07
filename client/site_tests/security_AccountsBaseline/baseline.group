@@ -51,6 +51,7 @@ tpmd:x:225:
 mtp:x:226:
 proxystate:x:227:
 power:x:228:
+watchdog:x:229:
 ntfs-3g:x:300:
 avfs:x:301:
 daemon-store:x:400:
