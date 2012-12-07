@@ -163,12 +163,11 @@
       },
       { "name": "Wallpaper Picker",
         "effective_host_permissions": ["https://storage.googleapis.com/*",
-                                       "https://commondatastorage.googleapis.com/*",
-                                       "http://lh5.ggpht.com/*"],
-        "api_permissions": ["tabs",
-                            "wallpaperPrivate",
-                            "webRequest",
-                            "webRequestInternal"]
+                                       "https://commondatastorage.googleapis.com/*"],
+        "api_permissions": ["app.currentWindowInternal",
+                            "app.runtime",
+                            "app.window",
+                            "wallpaperPrivate"]
       },
       { "name": "Mobile Activation",
         "effective_host_permissions": [],
