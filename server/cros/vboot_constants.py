@@ -18,8 +18,8 @@ RECOVERY_REASON = {
     'RO_INVALID_RW':      '3',   # 0x03
     # S3 resume failed
     'RO_S3_RESUME':       '4',   # 0x04
-    # TPM error in read-only firmware
-    'RO_TPM_ERROR':       '5',   # 0x05
+    # TPM error in read-only firmware (deprecated)
+    'DEP_RO_TPM_ERROR':   '5',   # 0x05
     # Shared data error in read-only firmware
     'RO_SHARED_DATA':     '6',   # 0x06
     # Test error from S3Resume()
@@ -55,8 +55,8 @@ RECOVERY_REASON = {
     'EC_SOFTWARE_SYNC':   '34',  # 0x22
     # EC software sync - unable to determine active EC image
     'EC_UNKNOWN_IMAGE':   '35',  # 0x23
-    # EC software sync - error obtaining EC image hash
-    'EC_HASH':            '36',  # 0x24
+    # EC software sync - error obtaining EC image hash (deprecated)
+    'DEP_EC_HASH':        '36',  # 0x24
     # EC software sync - error obtaining expected EC image
     'EC_EXPECTED_IMAGE':  '37',  # 0x25
     # EC software sync - error updating EC
@@ -74,16 +74,42 @@ RECOVERY_REASON = {
     'RW_NO_OS':           '66',  # 0x42
     # OS kernel failed signature check
     'RW_INVALID_OS':      '67',  # 0x43
-    # TPM error in rewritable firmware
-    'RW_TPM_ERROR':       '68',  # 0x44
+    # TPM error in rewritable firmware (deprecated)
+    'DEP_RW_TPM_ERROR':   '68',  # 0x44
     # RW firmware in dev mode, but dev switch is off.
     'RW_DEV_MISMATCH':    '69',  # 0x45
     # Shared data error in rewritable firmware
     'RW_SHARED_DATA':     '70',  # 0x46
     # Test error from LoadKernel()
     'RW_TEST_LK':         '71',  # 0x47
-    # No bootable disk found
-    'RW_NO_DISK':         '72',  # 0x48
+    # No bootable disk found (deprecated)
+    'DEP_RW_NO_DISK':     '72',  # 0x48
+    # Rebooting did not correct TPM_E_FAIL or TPM_E_FAILEDSELFTEST
+    'TPM_E_FAIL':         '73',  # 0x49
+    # TPM setup error in read-only firmware
+    'RO_TPM_S_ERROR':     '80',  # 0x50
+    # TPM write error in read-only firmware
+    'RO_TPM_W_ERROR':     '81',  # 0x51
+    # TPM lock error in read-only firmware
+    'RO_TPM_L_ERROR':     '82',  # 0x52
+    # TPM update error in read-only firmware
+    'RO_TPM_U_ERROR':     '83',  # 0x53
+    # TPM read error in rewritable firmware
+    'RW_TPM_R_ERROR':     '84',  # 0x54
+    # TPM write error in rewritable firmware
+    'RW_TPM_W_ERROR':     '85',  # 0x55
+    # TPM lock error in rewritable firmware
+    'RW_TPM_L_ERROR':     '86',  # 0x56
+    # EC software sync unable to get EC image hash
+    'EC_HASH_FAILED':     '87',  # 0x57
+    # EC software sync invalid image hash size
+    'EC_HASH_SIZE':       '88',  # 0x58
+    # Unspecified error while trying to load kernel
+    'LK_UNSPECIFIED':     '89',  # 0x59
+    # No bootable storage device in system
+    'RW_NO_DISK':         '90',  # 0x5A
+    # No bootable kernel found on disk
+    'RW_NO_KERNEL':       '91',  # 0x5B
     # Unspecified/unknown error in rewritable firmware
     'RW_UNSPECIFIED':     '127', # 0x7F
     # DM-verity error

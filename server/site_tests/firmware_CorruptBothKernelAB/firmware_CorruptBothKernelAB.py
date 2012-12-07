@@ -55,7 +55,8 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         elif platform in ('Aebl', 'Kaen'):
             recovery_reason = vboot.RECOVERY_REASON['RW_INVALID_OS']
         else:
-            recovery_reason = vboot.RECOVERY_REASON['RW_NO_DISK']
+            recovery_reason = (vboot.RECOVERY_REASON['DEP_RW_NO_DISK'],
+                               vboot.RECOVERY_REASON['RW_NO_KERNEL'])
 
         self.register_faft_sequence((
             {   # Step 1, corrupt kernel A and B

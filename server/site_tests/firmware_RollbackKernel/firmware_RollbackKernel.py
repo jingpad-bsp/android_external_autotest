@@ -54,9 +54,8 @@ class firmware_RollbackKernel(FAFTSequence):
                 'Mario', 'Alex', 'ZGB'):
             recovery_reason = vboot.RECOVERY_REASON['RW_NO_OS']
         else:
-            # TODO(waihong): Should be RW_INVALID_OS but the current vboot
-            # implementation overwrites it with RW_NO_DISK.
-            recovery_reason = vboot.RECOVERY_REASON['RW_NO_DISK']
+            recovery_reason = (vboot.RECOVERY_REASON['DEP_RW_NO_DISK'],
+                               vboot.RECOVERY_REASON['RW_NO_KERNEL'])
 
         if dev_mode:
             faft_sequence = (
