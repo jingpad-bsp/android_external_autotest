@@ -70,11 +70,11 @@ class platform_ExternalUSBBootStress(test.test):
         logging.info('Connected devices list: %s' % diff_list)
         set_hub_power(True)
 
-        stressor = stress.ControlledStressor(stress_hotplug)
         logging.info('Rebooting the device %d time(s)' % reboots)
         for i in xrange(reboots):
             # We want fast boot past the dev screen
             host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0x01')
+            stressor = stress.ControlledStressor(stress_hotplug)
             stressor.start()
             logging.info('Reboot iteration %d of %d' % (i + 1, reboots))
             self.client.reboot()
