@@ -1,12 +1,14 @@
 # Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import json
 import logging
 import os
 import re
 import signal
 import socket
 import time
+import urllib
 
 from autotest_lib.client.common_lib import base_utils, error, global_config
 
@@ -16,7 +18,9 @@ CHECK_PID_IS_ALIVE_TIMEOUT = 6
 
 
 
-_LOCAL_HOST_LIST = ['localhost', '127.0.0.1']
+_LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
+
+LAB_GOOD_STATES = ('open', 'throttled')
 
 
 def ping(host, deadline=None, tries=None, timeout=60):
@@ -183,3 +187,53 @@ def externalize_host(host):
 
     """
     return socket.gethostname() if host in _LOCAL_HOST_LIST else host
+
+
+def get_lab_status():
+      """Grabs the current lab status and message.
+
+      @returns a dict with keys 'lab_is_up' and 'message'. lab_is_up points
+               to a boolean and message points to a string.
+      """
+      result = {'lab_is_up' : True, 'message' : ''}
+      status_url = global_config.global_config.get_config_value('CROS',
+              'lab_status_url')
+      max_attempts = 5
+      retry_waittime = 1
+      for _ in range(max_attempts):
+          try:
+              response = urllib.urlopen(status_url)
+          except IOError as e:
+              logging.debug('Error occured when grabbing the lab status: %s.',
+                            e)
+              time.sleep(retry_waittime)
+              continue
+          # Check for successful response code.
+          if response.getcode() == 200:
+              data = json.load(response)
+              result['lab_is_up'] = data['general_state'] in LAB_GOOD_STATES
+              result['message'] = data['message']
+              return result
+          time.sleep(retry_waittime)
+      # We go ahead and say the lab is open if we can't get the status.
+      logging.warn('Could not get a status from %s', status_url)
+      return result
+
+
+def check_lab_status():
+    """Check if the lab is up and if we can schedule suites to run.
+
+    @raises error.LabIsDownException if the lab is not up.
+    """
+    # Ensure we are trying to schedule on the actual lab.
+    if not (global_config.global_config.get_config_value('SERVER',
+            'hostname').startswith('cautotest')):
+        return
+
+    # TODO (sbasi): crosbug.com/37346 - Currently just check's the lab status.
+    # Will be expanded to check status for individual platforms as well.
+    lab_status = get_lab_status()
+    if not lab_status['lab_is_up']:
+        raise error.LabIsDownException('Chromium OS Lab is currently not up: '
+                                       '%s.' % lab_status['message'])
+    return

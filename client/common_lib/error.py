@@ -560,6 +560,11 @@ class ReimageAbortedException(CrosDynamicSuiteException):
     pass
 
 
+class LabIsDownException(Exception):
+    """Raised when the Lab is Down"""
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

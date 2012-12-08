@@ -19,13 +19,18 @@ from datetime import datetime
 
 import common
 
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import global_config, error, utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
 
 CONFIG = global_config.global_config
+
+# Return code that will be sent back to autotest_rpc_server.py
+OK = 0
+ERROR = 1
+WARNING = 2
 
 
 def setup_logging(logfile=None):
@@ -319,6 +324,14 @@ def main():
         return
     setup_logging(logfile=log_name)
 
+    try:
+        utils.check_lab_status()
+    except error.LabIsDownException as e:
+        # Lab is not up, return WARNING.
+        logging.debug('Lab is not up. Error message: %s', e)
+        print str(e)
+        return WARNING
+
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
 
@@ -334,11 +347,8 @@ def main():
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)
-    # Return code that will be sent back to autotest_rpc_server.py
-    # 0 = OK
-    # 1 = ERROR
-    # 2 = WARNING
-    code = 0
+
+    code = OK
     while wait and True:
         if not afe.get_jobs(id=job_id, finished=True):
             time.sleep(1)
@@ -374,16 +384,16 @@ def main():
                 if view['status'] == 'TEST_NA':
                     # Didn't run; nothing to do here!
                     continue
-                if code == 1:
+                if code == ERROR:
                     # Failed already, no need to worry further.
                     continue
                 if (view['status'] == 'WARN' or
                     (is_fail_status(view['status']) and experimental)):
                     # Failures that produce a warning. Either a test with WARN
                     # status or any experimental test failure.
-                    code = 2
+                    code = WARNING
                 else:
-                    code = 1
+                    code = ERROR
         logging.info(timings)
         logging.info('\n'
                      'Links to test logs:')
