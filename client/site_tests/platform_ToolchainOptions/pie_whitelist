@@ -11,7 +11,5 @@
 /usr/sbin/nscd
 /usr/sbin/rpcinfo
 /usr/sbin/vpd
-# crosbug.com/35931
-/usr/sbin/stm32mon
 # chrome-os-partner:15814
 /opt/google/talkplugin/GoogleTalkPlugin
