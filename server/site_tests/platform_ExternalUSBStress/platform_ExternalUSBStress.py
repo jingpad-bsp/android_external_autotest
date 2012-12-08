@@ -50,11 +50,17 @@ class platform_ExternalUSBStress(test.test):
         def strip_lsusb_output(lsusb_output):
             items = lsusb_output.split('\n')
             named_list = []
+            unnamed_device_count = 0
             for item in items:
-              columns = item.split(' ')
-              name = ' '.join(columns[6:len(columns)]).strip()
-              if name not in servo_hardware_list:
-                  named_list.append(name)
+                columns = item.split(' ')
+                if len(columns) == 6:
+                    logging.info('Unnamed device located, adding generic name.')
+                    name = 'Unnamed device %d' % unnamed_device_count
+                    unnamed_device_count += 1
+                else:
+                    name = ' '.join(columns[6:]).strip()
+                if name not in servo_hardware_list:
+                    named_list.append(name)
             return named_list
 
 
