@@ -15,8 +15,8 @@ class firmware_SoftwareSync(FAFTSequence):
     version = 1
 
 
-    def setup(self, dev_mode=False):
-        super(firmware_SoftwareSync, self).setup()
+    def setup(self, dev_mode=False, ec_wp=None):
+        super(firmware_SoftwareSync, self).setup(ec_wp=ec_wp)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
