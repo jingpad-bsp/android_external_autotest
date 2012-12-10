@@ -37,7 +37,7 @@ class platform_CryptohomeChangePassword(test.test):
           raise error.TestFail('Cryptohome could not remove the test user.')
 
         # Mount the test user account
-        cmd = ('/usr/sbin/cryptohome --action=mount --user=' + test_user
+        cmd = ('/usr/sbin/cryptohome --async --action=mount --user=' + test_user
                + ' --password=' + test_password + ' --create')
         self.__run_cmd(cmd)
         # Ensure that the user directory exists
@@ -58,13 +58,13 @@ class platform_CryptohomeChangePassword(test.test):
 
         # Try to migrate the password
         new_password = 'this_is_a_new_password'
-        cmd = ('/usr/sbin/cryptohome --action=migrate_key --user=' + test_user
-               + ' --password=' + new_password + ' --old_password='
+        cmd = ('/usr/sbin/cryptohome --async --action=migrate_key --user='
+               + test_user + ' --password=' + new_password + ' --old_password='
                + test_password)
         self.__run_cmd(cmd)
 
         # Mount the test user account with the new password
-        cmd = ('/usr/sbin/cryptohome --action=mount --user=' + test_user
+        cmd = ('/usr/sbin/cryptohome --async --action=mount --user=' + test_user
                + ' --password=' + new_password)
         self.__run_cmd(cmd)
         # Ensure that the user directory is mounted
@@ -82,7 +82,7 @@ class platform_CryptohomeChangePassword(test.test):
           raise error.TestFail('Cryptohome did not unmount the user.')
 
         # Ensure the old password doesn't work
-        cmd = ('/usr/sbin/cryptohome --action=mount --user=' + test_user
+        cmd = ('/usr/sbin/cryptohome --async --action=mount --user=' + test_user
                + ' --password=' + test_password)
         self.__run_cmd(cmd)
         # Ensure that the user directory is not mounted
