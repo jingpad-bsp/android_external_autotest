@@ -39,5 +39,6 @@ mtp:*:226:226::/dev/null:/bin/false
 proxystate:*:227:227::/dev/null:/bin/false
 power:*:228:228::/dev/null:/bin/false
 watchdog:*:229:229::/dev/null:/bin/false
+devbroker:*:230:230::/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
