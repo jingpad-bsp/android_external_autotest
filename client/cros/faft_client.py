@@ -456,7 +456,7 @@ class FAFTClient(object):
         blob = self._ec_image.get_section_body('rw')
         self._bios_handler.set_section_ecbin(section, blob,
                                              write_through=True)
-        self.set_firmware_flags(section, flags)
+        self._bios_set_preamble_flags(section, flags)
 
 
     def _bios_dump_whole(self, bios_path):

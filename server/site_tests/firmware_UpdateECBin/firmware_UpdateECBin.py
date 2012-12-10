@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-import logging, os
+import logging, os, time
 
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server.cros import vboot_constants as vboot
@@ -84,12 +84,22 @@ class firmware_UpdateECBin(FAFTSequence):
         self.faft_client.bios.set_preamble_flags('a', 0)
 
 
-    def new_ec_checker(self):
-        return (self.checkers.ro_normal_checker('A', twostop=True) and
-               (self.faft_client.bios.get_EC_firmware_sha() == self.new_ec_sha))
+    def ec_checker(self, use_new_ec):
+        ro_normal_checker = self.checkers.ro_normal_checker('A', twostop=True)
+        sha_now = self.faft_client.ec.get_firmware_sha()
+        if use_new_ec:
+            sha_checker = (sha_now == self.new_ec_sha)
+        else:
+            sha_checker = (sha_now != self.new_ec_sha)
+        return (ro_normal_checker and sha_checker)
 
 
-    def run_once(self):
+    def software_sync_and_ctrl_d(self):
+        time.sleep(self.delay.software_sync)
+        self.wait_dev_screen_and_ctrl_d()
+
+
+    def run_once(self, dev_mode=False):
         if not self.check_ec_capability():
             return
 
@@ -103,9 +113,11 @@ class firmware_UpdateECBin(FAFTSequence):
                 'state_checker': (self.checkers.ro_normal_checker, 'A'),
                 'userspace_action': self.do_ronormal_update,
                 'reboot_action': self.sync_and_warm_reboot,
+                'firmware_action': self.software_sync_and_ctrl_d if dev_mode
+                                   else None
             },
             {   # Step 2, expected new EC and RW boot, restore the original BIOS
-                'state_checker': self.new_ec_checker,
+                'state_checker': (self.ec_checker, True),
                 'userspace_action': self.do_twostop_update,
                 # We use warm reboot here to test the following EC behavior:
                 #   If EC is already into RW before powering on the AP, the AP
@@ -113,9 +125,11 @@ class firmware_UpdateECBin(FAFTSequence):
                 #   telling the EC to wait for the AP to shut down, reboot
                 #   into RO, then power on the AP automatically.
                 'reboot_action': self.sync_and_warm_reboot,
+                'firmware_action': self.software_sync_and_ctrl_d if dev_mode
+                                   else None
             },
             {   # Step 3, expected different EC and RW boot, enable RO flag
-                'state_checker': self.new_ec_checker,
+                'state_checker': (self.ec_checker, False),
                 'userspace_action': (self.faft_client.bios.set_preamble_flags,
                                      ('a', flags)),
                 'reboot_action': self.sync_and_warm_reboot,
