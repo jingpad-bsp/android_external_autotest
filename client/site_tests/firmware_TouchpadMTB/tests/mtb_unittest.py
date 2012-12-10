@@ -103,6 +103,29 @@ class MtbTest(unittest.TestCase):
             self.assertEqual(list_x[slot], expected_list_x[slot])
             self.assertEqual(list_y[slot], expected_list_y[slot])
 
+    def test_get_x_y_multiple_slots2(self):
+        """Test slot state machine.
+
+        When the last slot in the previous packet is slot 0, and the first
+        slot in the current packet is also slot 0, the slot 0 will not be
+        displayed explicitly. This test ensures that the slot stat machine
+        is tracked properly.
+        """
+        filename = 'pinch_to_zoom.zoom_in.dat'
+        filepath = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(filepath)
+        slots = (0, 1)
+        list_x, list_y = mtb_packets.get_x_y_multiple_slots(slots)
+        expected_final_x = {}
+        expected_final_y = {}
+        expected_final_x[0] = 1318
+        expected_final_y[0] = 255
+        expected_final_x[1] = 522
+        expected_final_y[1] = 1232
+        for slot in slots:
+            self.assertEqual(list_x[slot][-1], expected_final_x[slot])
+            self.assertEqual(list_y[slot][-1], expected_final_y[slot])
+
     def _test_get_points_for_every_tracking_id(self, filename, expected_values):
         gesture_filename = self._get_filepath(filename)
         mtb_packets = get_mtb_packets(gesture_filename)

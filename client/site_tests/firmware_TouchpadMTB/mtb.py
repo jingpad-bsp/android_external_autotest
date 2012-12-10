@@ -434,9 +434,9 @@ class Mtb:
             #   packet, cmt driver constructs and passes hwstate to gestures.
             if (all(slot_exists.values()) and all(x.values()) and
                 all(y.values())):
-                for slot in target_slots:
-                    list_x[slot].append(x[slot])
-                    list_y[slot].append(y[slot])
+                for s in target_slots:
+                    list_x[s].append(x[s])
+                    list_y[s].append(y[s])
 
         return (list_x, list_y)
 
