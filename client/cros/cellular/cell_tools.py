@@ -243,6 +243,9 @@ def PrepareModemForTechnology(modem_path, target_technology):
 
     if target_family == cellular.TechnologyFamily.CDMA:
         modem_path = PrepareCdmaModem(manager, modem_path)
+        # Force the modem to report that is has been activated since we
+        # use a custom PRL and have already manually activated it.
+        manager.GetModem(modem_path).GobiModem().ForceModemActivatedStatus()
 
     # When testing EVDO, we need to force the modem to register with EVDO
     # directly (bypassing CDMA 1x RTT) else the modem will not register
