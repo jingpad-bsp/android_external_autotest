@@ -10,15 +10,17 @@ If Xrandr cannot turn the screen on/off, the test will fail.
 If the Xrandr time takes more than one second, the test will fail.
 """
 SUITE = "hwqual"
-TIME = "FAST"
+TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "hardware"
 TEST_TYPE = "client"
 
 DOC = """
-Call "xrandr --output [OUTPUT] --auto/--on" to turn screen off/on, respectively.
+Call "xrandr --output [OUTPUT] --auto/--on" to turn screen off/on 500 times.
 """
 
+# TODO(crosbug.com/p/15219): Fix xrandr so that we can run it 500x.
 job.run_test('hardware_Xrandr',
-             constraints=['s_max_internal_off_time <= 1.0',
-                          's_max_internal_on_time <= 1.0'])
+             num_iterations=500,
+             constraints=['s_internal_off_max_time <= 1.0',
+                          's_internal_on_max_time <= 1.0'])
