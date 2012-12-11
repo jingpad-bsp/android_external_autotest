@@ -17,6 +17,11 @@ class SuspendFailure(error.TestFail):
     pass
 
 
+class SuspendAbort(SuspendFailure):
+    """Suspend took too long, got wakeup event (RTC tick) before it was done."""
+    pass
+
+
 class HwClockError(SuspendFailure):
     """Known bug with firmware messing up RTC interrupts (crosbug.com/36004)"""
     AFFECTED_BOARDS = ['LUMPY', 'STUMPY', 'KIEV']
@@ -32,7 +37,7 @@ class FirmwareError(SuspendFailure):
 
 
 class KernelError(SuspendFailure):
-    """Kernel BUG or WARNING during suspend/resume."""
+    """Kernel WARN_ON() hit during suspend/resume."""
     pass
 
 
@@ -50,7 +55,6 @@ class Suspender(object):
 
     Private attributes:
         _log_reader: LogReader that is set to start right before suspending.
-        _logged_failures: Last read amount of suspend failures since boot.
         _use_dbus: Set to use asynchronous DBus method for suspending.
         _throw: Set to have SuspendFailure exceptions raised to the caller.
         _reset_pm_print_times: Set to deactivate pm_print_times after the test.
@@ -76,8 +80,6 @@ class Suspender(object):
         self._reset_pm_print_times = False
         self._restart_tlsdated = False
         self._log_reader = cros_logging.LogReader()
-        self._logged_failures = 0
-        self._check_failure_log()
         if device_times:
             self.device_times = []
 
@@ -135,14 +137,6 @@ class Suspender(object):
             logging.info('Device resume times set to %s' % bool(on))
 
 
-    def _check_failure_log(self):
-        """Returns True iff there was a new suspend failure since last call."""
-        old = self._logged_failures
-        self._logged_failures = int(re.search(r'^fail: (\d+)$', utils.read_file(
-                '/sys/kernel/debug/suspend_stats'), re.M).group(1))
-        return self._logged_failures > old
-
-
     def _ts(self, name, retries=50, sleep_seconds=0.2):
         """Searches logs for last timestamp with a given suspend message."""
         # Occasionally need to retry due to races from process wakeup order
@@ -174,7 +168,7 @@ class Suspender(object):
                     return seconds
             time.sleep(0.2)
         logging.debug('HwClock failure, dumping nvram:\n' +
-                utils.system_output('mosys nvram dump'))
+                utils.system_output('mosys nvram dump', ignore_status=True))
         raise HwClockError('RTC timestamp broken:' + utils.read_file(path))
 
 
@@ -243,7 +237,9 @@ class Suspender(object):
                           (iteration, duration, alarm_time))
             rtc.set_wake_alarm(alarm_time)
             if len(rtc.get_rtc_devices()) > 1:
-                rtc.set_wake_alarm(alarm_time + 15, 'rtc1')
+                backup_wake = rtc.get_seconds(rtc_device='rtc1') + duration + 30
+                logging.debug('Priming backup RTC at %d' % backup_wake)
+                rtc.set_wake_alarm(backup_wake, rtc_device='rtc1')
 
             # do the actual suspend
             if self._use_dbus:
@@ -252,6 +248,7 @@ class Suspender(object):
                 # TODO: replace sleep with listening for DBus resume message
                 time.sleep(3)
             else:
+                sys_power.write_wakeup_count(sys_power.read_wakeup_count())
                 sys_power.suspend_to_ram()
 
             # look for errors
@@ -265,12 +262,17 @@ class Suspender(object):
                     else:
                         raise FirmwareError(msg.strip('\r\n '))
 
-            regex = re.compile(r' kernel: \[.*(BUG:|WARNING:|CRC.*error)')
+            warning_regex = re.compile(r' kernel: \[.*WARNING:')
+            abort_regex = re.compile(r' kernel: \[.*Freezing of tasks aborted|'
+                    r'powerd_suspend\[.*Aborting suspend, wake event received')
+            unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
             for line in self._log_reader.read_all_logs():
-                if regex.search(line):
+                if warning_regex.search(line):
                     raise KernelError(line)
-            if self._check_failure_log():
-                raise SuspendFailure('Unidentified suspend failure.')
+                if abort_regex.search(line):
+                    raise SuspendAbort(line)
+                if unknown_regex.search(line):
+                    raise SuspendFailure('Unidentified suspend failure.')
 
             # calculate general measurements
             start_resume = self._ts('start_resume_time')
