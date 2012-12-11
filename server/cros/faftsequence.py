@@ -964,12 +964,13 @@ class FAFTSequence(ServoTest):
         if self.client_attr.chrome_ec:
             # Reset twice to emulate a long recovery-key-combo hold.
             cold_reset_num = 2 if self.client_attr.long_rec_combo else 1
-            for _ in range(cold_reset_num):
+            for i in range(cold_reset_num):
+                if i:
+                    time.sleep(self.delay.ec_boot_to_console)
                 # Cold reset to clear EC_IN_RW signal
                 self.servo.set('cold_reset', 'on')
                 time.sleep(self.delay.hold_cold_reset)
                 self.servo.set('cold_reset', 'off')
-                time.sleep(self.delay.ec_boot_to_console)
             self.ec.reboot("ap-off")
             time.sleep(self.delay.ec_boot_to_console)
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
