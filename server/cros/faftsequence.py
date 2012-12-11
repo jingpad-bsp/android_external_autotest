@@ -1441,7 +1441,7 @@ class FAFTSequence(ServoTest):
                 else:
                     self.wait_for_client()
             except AssertionError:
-                logging.info('wait_for_client() timed out.')
+                logging.error('wait_for_client() timed out.')
                 self._restore_routine_from_timeout(next_step)
 
 
