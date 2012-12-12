@@ -1216,7 +1216,8 @@ class FAFTSequence(ServoTest):
     def full_power_off_and_on(self):
         """Shutdown the device by pressing power button and power on again."""
         # Press power button to trigger Chrome OS normal shutdown process.
-        self.servo.power_normal_press()
+        # We use a customized delay since the normal-press 1.2s is not enough.
+        self.servo.power_key(self.delay.hold_pwr_button)
         time.sleep(self.delay.shutdown)
         # Short press power button to boot DUT again.
         self.servo.power_short_press()

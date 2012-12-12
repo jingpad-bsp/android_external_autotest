@@ -36,6 +36,8 @@ class FAFTDelayConstants(object):
     software_sync = 6
     # Duration of holding cold_reset to reset device
     hold_cold_reset = 0.1
+    # Duration of holding power button to shutdown DUT normally
+    hold_pwr_button = 2
     # devserver startup time
     devserver = 10
     # Delay of waiting factory install shim to reset TPM
