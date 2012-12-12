@@ -75,28 +75,31 @@ class FAFTCheckers(object):
         Returns:
           True if the crossystem value matched; otherwise, False.
         """
+        succeed = True
         lines = self.faft_client.system.run_shell_command_get_output(
                 'crossystem')
         got_dict = self._parse_crossystem_output(lines)
         for key in expected_dict:
             if key not in got_dict:
                 logging.info('Expected key "%s" not in crossystem result', key)
-                return False
+                succeed = False
+                continue
             if isinstance(expected_dict[key], str):
                 if got_dict[key] != expected_dict[key]:
                     logging.info("Expected '%s' value '%s' but got '%s'",
                                  key, expected_dict[key], got_dict[key])
-                    return False
+                    succeed = False
             elif isinstance(expected_dict[key], tuple):
                 # Expected value is a tuple of possible actual values.
                 if got_dict[key] not in expected_dict[key]:
                     logging.info("Expected '%s' values %s but got '%s'",
                                  key, str(expected_dict[key]), got_dict[key])
-                    return False
+                    succeed = False
             else:
-                logging.info("The expected_dict is neither a str nor a dict.")
-                return False
-        return True
+                logging.info("The expected value of %s is neither a str nor a "
+                             "dict: %s", key, str(expected_dict[key]))
+                succeed = False
+        return succeed
 
 
     def vdat_flags_checker(self, mask, value):
@@ -140,10 +143,13 @@ class FAFTCheckers(object):
         if self.faftsequence.check_ec_capability(suppress_warning=True):
             crossystem_dict['ecfw_act'] = ('RW' if twostop else 'RO')
 
-        return (self.vdat_flags_checker(
-                    vboot.VDAT_FLAG_LF_USE_RO_NORMAL,
-                    0 if twostop else vboot.VDAT_FLAG_LF_USE_RO_NORMAL) and
-                self.crossystem_checker(crossystem_dict))
+        succeed = True
+        if not self.vdat_flags_checker(vboot.VDAT_FLAG_LF_USE_RO_NORMAL,
+                0 if twostop else vboot.VDAT_FLAG_LF_USE_RO_NORMAL):
+            succeed = False
+        if not self.crossystem_checker(crossystem_dict):
+            succeed = False
+        return succeed
 
 
     def dev_boot_usb_checker(self, dev_boot_usb=True):
