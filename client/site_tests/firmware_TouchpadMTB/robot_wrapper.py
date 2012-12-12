@@ -194,10 +194,8 @@ class RobotWrapper:
         """Determine whether the gesture is a basic tracking or a swipe."""
         if SWIPE in gesture:
             return SWIPE
-        elif TRACKING in gesture or CROSSING in gesture or MOVE in gesture:
-            return BASIC
         else:
-            return None
+            return BASIC
 
     def _get_tap_or_click(self, gesture):
         """Determine whether the gesture is a tap or a click."""
