@@ -156,3 +156,11 @@ VAL.MIDDLE = 'Middle'
 VAL.END = 'End'
 VAL.BOTH_ENDS = 'BothEnds'
 VAL.WHOLE = 'Whole'
+
+
+class _Vlog(_Constant):
+    """Constants about validator logs."""
+    pass
+VLOG = _Vlog()
+VLOG.DICT = 'vlog_dict'
+VLOG.GV_LIST = 'gv_list'

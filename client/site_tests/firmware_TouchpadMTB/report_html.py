@@ -4,6 +4,7 @@
 
 """Touchpad firmware test report in html format."""
 
+import json
 import os
 import re
 import sys
@@ -14,6 +15,7 @@ import common_util
 import firmware_log
 import test_conf as conf
 
+from firmware_constants import VLOG
 from string import Template
 
 
@@ -138,6 +140,9 @@ class ReportHtml:
         self.doc = TemplateHtml(self.image_width, self.image_height,
                                 score_colors)
         self._reset_content()
+        self.log_dict = {}
+        self.log_dict[VLOG.DICT] = {}
+        self.log_dict[VLOG.GV_LIST] = []
 
     def __del__(self):
         self.stop()
@@ -151,6 +156,12 @@ class ReportHtml:
                                 os.path.basename(self.html_filename))
         copy_cmd = 'cp %s %s' % (self.html_filename, tmp_copy)
         common_util.simple_system(copy_cmd)
+
+        # Dump the logs to a json file
+        log_file_root = os.path.splitext(self.html_filename)[0]
+        log_file_name = os.extsep.join([log_file_root, 'log'])
+        with open(log_file_name, 'w') as log_file:
+            json.dump(self.log_dict, log_file)
 
     def _reset_content(self):
         self.glog = firmware_log.GestureLog()
@@ -173,6 +184,16 @@ class ReportHtml:
         for vlog in self.vlogs:
             vlog.reset()
 
+    def _insert_log_dict(self, glog, vlogs):
+        """Insert the glog and vlogs key value pair into the log dictionary."""
+        vlogs_scores = []
+        for vlog in vlogs:
+            vlog_score = {vlog.get_name(): vlog.get_score()}
+            vlogs_scores.append(vlog_score)
+        glog_key = str([glog.get_name(), glog.get_variation()])
+        self.log_dict[VLOG.DICT][glog_key] = vlogs_scores
+        self.log_dict[VLOG.GV_LIST].append(glog_key)
+
     def flush(self):
         """Flush the current gesture including gesture log, image and
         validator logs.
@@ -180,6 +201,7 @@ class ReportHtml:
         content = self._get_content()
         if all(content):
             self.doc.insert_gesture(*content)
+            self._insert_log_dict(self.glog, self.vlogs)
             self.reset_logs()
             self._reset_content()
 
