@@ -987,7 +987,7 @@ class FAFTSequence(ServoTest):
         else:
             self.servo.enable_recovery_mode()
             self.cold_reboot()
-            time.sleep(self.delay.ec_reboot_cmd)
+            time.sleep(self.delay.ec_boot_to_console)
             self.servo.disable_recovery_mode()
 
 
@@ -1190,7 +1190,7 @@ class FAFTSequence(ServoTest):
         self.faft_client.system.run_shell_command('sync')
         time.sleep(self.delay.sync)
         self.ec.reboot(flags)
-        time.sleep(self.delay.ec_reboot_cmd)
+        time.sleep(self.delay.ec_boot_to_console)
         self.check_lid_and_power_on()
 
 

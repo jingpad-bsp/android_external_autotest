@@ -26,8 +26,6 @@ class FAFTDelayConstants(object):
     sync = 2
     # Delay for waiting client to shutdown
     shutdown = 30
-    # Delay for waiting client to return before sending EC reboot command
-    ec_reboot_cmd = 1.8
     # Delay between EC boot and ChromeEC console functional
     ec_boot_to_console = 1.2
     # Delay between EC boot and pressing power button
@@ -66,5 +64,4 @@ class FAFTDelayConstants(object):
             self.dev_screen = 4
 
         if platform == 'Snow':
-            self.ec_reboot_cmd = 1
             self.ec_boot_to_console = 0.4
