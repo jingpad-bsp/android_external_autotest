@@ -192,10 +192,12 @@
   "official_components": [
       { "name": "Help",
         "effective_host_permissions": [
+            "https://gweb-gettingstartedguide.appspot.com/*",
             "http://support.google.com/chromeos/*",
             "https://support.google.com/*",
             "https://support.google.com/chromeos/*"],
         "api_permissions": ["chromeosInfoPrivate",
+                            "management",
                             "tabs"]
       }
   ]
