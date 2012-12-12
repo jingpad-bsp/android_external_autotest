@@ -1346,7 +1346,7 @@ class FAFTSequence(ServoTest):
 
 
     def run_shutdown_process(self, shutdown_action, pre_power_action=None,
-            post_power_action=None):
+            post_power_action=None, shutdown_timeout=None):
         """Run shutdown_action(), which makes DUT shutdown, and power it on.
 
         Args:
@@ -1354,6 +1354,7 @@ class FAFTSequence(ServoTest):
                            power key.
           pre_power_action: a function which is called before next power on.
           post_power_action: a function which is called after next power on.
+          shutdown_timeout: a timeout to confirm DUT shutdown.
 
         Raises:
           error.TestFail: if the shutdown_action() failed to turn DUT off.
@@ -1361,7 +1362,9 @@ class FAFTSequence(ServoTest):
         self._call_action(shutdown_action)
         logging.info('Wait to ensure DUT shut down...')
         try:
-            self.wait_for_client()
+            if shutdown_timeout is None:
+                shutdown_timeout = self.delay.shutdown_timeout
+            self.wait_for_client(timeout=shutdown_timeout)
             raise error.TestFail(
                     'Should shut the device down after calling %s.' %
                     str(shutdown_action))

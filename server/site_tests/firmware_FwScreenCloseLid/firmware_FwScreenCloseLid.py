@@ -89,7 +89,8 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 'firmware_action': (self.run_shutdown_process,
                                     (self.wait_second_screen_and_close_lid,
                                      self.servo.lid_open,
-                                     self.wait_fw_screen_and_ctrl_d)),
+                                     self.wait_fw_screen_and_ctrl_d,
+                                     0)),
             },
             {   # Step 3, request recovery boot. When the RECOVERY INSERT
                 # screen shows, close lid to make DUT shutdown.
@@ -102,7 +103,8 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 'firmware_action': (self.run_shutdown_process,
                                     (self.wait_longer_fw_screen_and_close_lid,
                                      self.servo.lid_open,
-                                     self.wait_fw_screen_and_ctrl_d)),
+                                     self.wait_fw_screen_and_ctrl_d,
+                                     0)),
             },
             {   # Step 4, request recovery boot again. When the recovery
                 # insert screen shows, insert a corrupted USB and trigger
@@ -116,7 +118,8 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 'firmware_action': (self.run_shutdown_process,
                                     (self.wait_yuck_screen_and_close_lid,
                                      self.servo.lid_open,
-                                     self.wait_fw_screen_and_ctrl_d)),
+                                     self.wait_fw_screen_and_ctrl_d,
+                                     0)),
             },
             {   # Step 5, switch back to normal mode.
                 'state_checker': (self.checkers.crossystem_checker, {
@@ -138,7 +141,8 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 'firmware_action': (self.run_shutdown_process,
                                     (self.wait_longer_fw_screen_and_close_lid,
                                      self.servo.lid_open,
-                                     None)),
+                                     None,
+                                     0)),
             },
             {   # Step 7, done.
                 'state_checker': (self.checkers.crossystem_checker, {

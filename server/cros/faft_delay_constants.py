@@ -26,6 +26,8 @@ class FAFTDelayConstants(object):
     sync = 2
     # Delay for waiting client to shutdown
     shutdown = 30
+    # Timeout of confirming DUT shutdown
+    shutdown_timeout = 60
     # Delay between EC boot and ChromeEC console functional
     ec_boot_to_console = 1.2
     # Delay between EC boot and pressing power button
