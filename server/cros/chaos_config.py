@@ -20,6 +20,8 @@ class ChaosAP(object):
     This object is a wrapper that can be used to retrieve information
     about an AP in the chaos lab, and control its power.
     """
+
+
     # Keys used in the config file.
     CONF_SSID = 'ssid'
     CONF_BRAND = 'brand'
@@ -31,6 +33,21 @@ class ChaosAP(object):
     CONF_SECURITY = 'security'
     CONF_PSK = 'psk'
     CONF_FREQUENCY = 'frequency'
+    CONF_BAND = 'band'
+    CONF_CHANNEL = 'channel'
+
+    # Frequency to channel conversion table
+    CHANNEL_TABLE = {'2412': '1', '2417': '2', '2422': '3',
+                     '2427': '4', '2432': '5', '2437': '6',
+                     '2442': '7', '2447': '8', '2452': '9',
+                     '2457': '10', '2462': '11', '2467': '12',
+                     '2472': '13', '2484': '14', '5180': '36',
+                     '5200': '40', '5220': '44', '5240': '48',
+                     '5745': '149', '5765': '153', '5785': '157',
+                     '5805': '161', '5825': '165'}
+    # Needed for ap_configurator interoperability
+    BAND_2GHZ = '2.4GHz'
+    BAND_5GHZ = '5GHz'
 
 
     def __init__(self, bss, config):
@@ -51,7 +68,7 @@ class ChaosAP(object):
 
 
     def get_wan_mac(self):
-        return self.ap_config.get(self.bss, self.CONF_WAN_HOST)
+        return self.ap_config.get(self.bss, self.CONF_WAN_MAC)
 
 
     def get_wan_host(self):
@@ -76,6 +93,17 @@ class ChaosAP(object):
 
     def get_frequency(self):
         return self.ap_config.get(self.bss, self.CONF_FREQUENCY)
+
+
+    def get_channel(self):
+        return self.CHANNEL_TABLE[self.get_frequency()]
+
+
+    def get_band(self):
+        if int(frequency) < 4915:
+            return self.BAND_2GHZ
+        else:
+            return self.BAND_5GHZ
 
 
     def power_off(self):
