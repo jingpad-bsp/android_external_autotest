@@ -29,12 +29,15 @@ class ChaosAP(object):
     CONF_WAN_MAC = 'wan mac'
     CONF_WAN_HOST = 'wan_hostname'
     CONF_BSS = 'bss'
+    CONF_BSS5 = 'bss5'
     CONF_BANDWIDTH = 'bandwidth'
     CONF_SECURITY = 'security'
     CONF_PSK = 'psk'
     CONF_FREQUENCY = 'frequency'
     CONF_BAND = 'band'
     CONF_CHANNEL = 'channel'
+    CONF_CLASS = 'class_name'
+    CONF_ADMIN = 'admin_url'
 
     # Frequency to channel conversion table
     CHANNEL_TABLE = {'2412': '1', '2417': '2', '2422': '3',
@@ -79,6 +82,10 @@ class ChaosAP(object):
         return self.ap_config.get(self.bss, self.CONF_BSS)
 
 
+    def get_bss5(self):
+        return self.ap_config.get(self.bss, self.CONF_BSS5)
+
+
     def get_bandwidth(self):
         return self.ap_config.get(self.bss, self.CONF_BANDWIDTH)
 
@@ -106,6 +113,14 @@ class ChaosAP(object):
             return self.BAND_5GHZ
 
 
+    def get_class(self):
+        return self.ap_config.get(self.bss, self.CONF_CLASS)
+
+
+    def get_admin(self):
+        return self.ap_config.get(self.bss, self.CONF_ADMIN)
+
+
     def power_off(self):
         rpm_client.set_power(self.get_wan_host(), 'OFF')
 
@@ -122,13 +137,18 @@ class ChaosAP(object):
 class ChaosAPList(object):
     """ Object containing information about all AP's in the chaos lab. """
 
-    AP_CONFIG_FILE = 'wifi_interop_ap_list.conf'
+    DYNAMIC_AP_CONFIG_FILE = 'chaos_dynamic_ap_list.conf'
+    STATIC_AP_CONFIG_FILE = 'chaos_static_ap_list.conf'
 
 
-    def __init__(self):
+    def __init__(self, static_config=True):
         self.ap_config = ConfigParser.RawConfigParser()
+        if static_config:
+            config_file = self.STATIC_AP_CONFIG_FILE
+        else:
+            config_file = self.DYNAMIC_AP_CONFIG_FILE
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            self.AP_CONFIG_FILE)
+                            config_file)
 
         logging.debug('Reading config from "%s"', path)
         self.ap_config.read(path)
