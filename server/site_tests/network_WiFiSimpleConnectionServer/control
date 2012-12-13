@@ -17,7 +17,7 @@ in the AP compatibility lab.
 
 def wifi_ssid_compat(machine):
     host = hosts.create_host(machine)
-    job.run_test('network_WiFiSimpleConnectionServer', host=host, iterations=1,
+    job.run_test('network_WiFiSimpleConnectionServer', host=host, tries=2,
                  disable_sysinfo=True)
 
 parallel_simple(wifi_ssid_compat, machines)
