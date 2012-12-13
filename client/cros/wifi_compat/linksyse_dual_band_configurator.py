@@ -9,13 +9,13 @@ import urlparse
 import ap_configurator
 
 
-class linksyse_dual_bandAPConfigurator(ap_configurator.APConfigurator):
+class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
     """Base class for objects to configure Linksys dual band access points
        using webdriver."""
 
 
     def __init__(self, router_dict):
-        super(linksyse_dual_bandAPConfigurator, self).__init__(router_dict)
+        super(LinksyseDualBandAPConfigurator, self).__init__(router_dict)
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
         self.security_wpapsk = 'WPA Personal'

@@ -8,11 +8,11 @@ import urlparse
 
 import ap_configurator
 
-class linksyse2000APConfigurator(ap_configurator.APConfigurator):
+class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def __init__(self, router_dict):
-        super(linksyse2000APConfigurator, self).__init__(router_dict)
+        super(Linksyse2000APConfigurator, self).__init__(router_dict)
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
         self.security_wpapsk = 'WPA Personal'

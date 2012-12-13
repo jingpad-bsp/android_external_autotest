@@ -11,11 +11,11 @@ import ap_configurator
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 
-class dlinkwbr1310APConfigurator(ap_configurator.APConfigurator):
+class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
 
     def __init__(self, router_dict):
-        super(dlinkwbr1310APConfigurator, self).__init__(router_dict)
+        super(DLinkwbr1310APConfigurator, self).__init__(router_dict)
         self.security_disabled = 'Disable Wireless Security (not recommended)'
         self.security_wep = 'Enable WEP Wireless Security (basic)'
         self.security_wpapsk = 'Enable WPA-Personal Wireless Security \

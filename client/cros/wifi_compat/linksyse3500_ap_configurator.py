@@ -5,6 +5,6 @@
 import linksyse_dual_band_configurator
 
 
-class linksyse3500APConfigurator(linksyse_dual_band_configurator.
-                                 linksyse_dual_bandAPConfigurator):
+class Linksyse3500APConfigurator(linksyse_dual_band_configurator.
+                                 LinksyseDualBandAPConfigurator):
     """Derived class to control Linksys E3500 router."""

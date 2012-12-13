@@ -11,13 +11,13 @@ import ap_configurator
 from selenium.common.exceptions import WebDriverException
 
 
-class linksyse_single_bandAPConfigurator(ap_configurator.APConfigurator):
+class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
     """Base class for objects to configure Linksys single band access points
        using webdriver."""
 
 
     def __init__(self, router_dict):
-        super(linksyse_single_bandAPConfigurator, self).__init__(router_dict)
+        super(LinksyseSingleBandAPConfigurator, self).__init__(router_dict)
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
         self.security_wpapsk = 'WPA Personal'

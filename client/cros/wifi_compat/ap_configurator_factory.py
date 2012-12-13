@@ -17,7 +17,7 @@ import linksyse2100_ap_configurator
 import linksyse2700_ap_configurator
 import linksyse3500_ap_configurator
 import linksyse4200_ap_configurator
-import Netgear3700_ap_configurator
+import netgear3700_ap_configurator
 import netgear4500_ap_configurator
 import trendnet_ap_configurator
 import netgear614_ap_configurator
@@ -61,37 +61,37 @@ class APConfiguratorFactory(object):
             asus_ap_configurator.AsusAPConfigurator)
         self._build_all_instances_of_configurator(config_list,
             'Netgear3700APConfigurator',
-            Netgear3700_ap_configurator.Netgear3700APConfigurator)
+            netgear3700_ap_configurator.Netgear3700APConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'linksyse4200APConfigurator',
-            linksyse4200_ap_configurator.linksyse4200APConfigurator)
+            'Linksyse4200APConfigurator',
+            linksyse4200_ap_configurator.Linksyse4200APConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'linksyse2000APConfigurator',
-            linksyse2000_ap_configurator.linksyse2000APConfigurator)
+            'Linksyse2000APConfigurator',
+            linksyse2000_ap_configurator.Linksyse2000APConfigurator)
         self._build_all_instances_of_configurator(config_list,
             'Netgear4500APConfigurator',
             netgear4500_ap_configurator.NetgearAPConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'belkinAPConfigurator',
-            belkin_ap_configurator.belkinAPConfigurator)
+            'BelkinAPConfigurator',
+            belkin_ap_configurator.BelkinAPConfigurator)
         self._build_all_instances_of_configurator(config_list,
             'Netgear614APConfigurator',
             netgear614_ap_configurator.NetgearAPConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'dlinkwbr1310APConfigurator',
-            dlinkwbr1310_ap_configurator.dlinkwbr1310APConfigurator)
+            'DLinkwbr1310APConfigurator',
+            dlinkwbr1310_ap_configurator.DLinkwbr1310APConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'linksyse3500APConfigurator',
-            linksyse3500_ap_configurator.linksyse3500APConfigurator)
+            'Linksyse3500APConfigurator',
+            linksyse3500_ap_configurator.Linksyse3500APConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'linksyse2100APConfigurator',
-            linksyse2100_ap_configurator.linksyse2100APConfigurator)
+            'Linksyse2100APConfigurator',
+            linksyse2100_ap_configurator.Linksyse2100APConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'linksyse2700APConfigurator',
-            linksyse2700_ap_configurator.linksyse2700APConfigurator)
+            'Linksyse2700APConfigurator',
+            linksyse2700_ap_configurator.Linksyse2700APConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'linksyse900APConfigurator',
-            linksyse900_ap_configurator.linksyse900APConfigurator)
+            'Linksyse900APConfigurator',
+            linksyse900_ap_configurator.Linksyse900APConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):

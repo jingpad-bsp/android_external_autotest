@@ -65,15 +65,15 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        mode_2.4Ghz = mode_5Ghz = [self.mode_54, self.mode_217, self.mode_450]
+        mode_2Ghz = mode_5Ghz = [self.mode_54, self.mode_217, self.mode_450]
         if self.short_name == 'WNDR3700V3':
-            mode_2.4Ghz = mode_5Ghz = [self.mode_54]
+            mode_2Ghz = mode_5Ghz = [self.mode_54]
         if self.short_name == 'R6200':
             mode_5Ghz = [self.mode_173, self.mode_400, self.mode_867]
         return [{'band': self.band_5ghz,
                  'modes': mode_5Ghz},
                 {'band': self.band_2ghz,
-                 'modes': mode_2.4Ghz}]
+                 'modes': mode_2Ghz}]
 
 
     def is_security_mode_supported(self, security_mode):

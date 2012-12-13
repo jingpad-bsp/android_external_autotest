@@ -5,6 +5,6 @@
 import linksyse_dual_band_configurator
 
 
-class linksyse4200APConfigurator(linksyse_dual_band_configurator.
-                                 linksyse_dual_bandAPConfigurator):
+class Linksyse4200APConfigurator(linksyse_dual_band_configurator.
+                                 LinksyseDualBandAPConfigurator):
     """Derived class to control Linksys e4200 router."""

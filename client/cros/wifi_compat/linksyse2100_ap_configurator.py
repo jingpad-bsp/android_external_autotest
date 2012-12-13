@@ -5,8 +5,8 @@
 import linksyse_single_band_configurator
 
 
-class linksyse2100APConfigurator(linksyse_single_band_configurator.
-                                 linksyse_single_bandAPConfigurator):
+class Linksyse2100APConfigurator(linksyse_single_band_configurator.
+                                 LinksyseSingleBandAPConfigurator):
     """Derived class to control Linksys E2100 router."""
 
 

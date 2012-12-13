@@ -5,6 +5,6 @@
 import linksyse_single_band_configurator
 
 
-class linksyse900APConfigurator(linksyse_single_band_configurator.
-                                linksyse_single_bandAPConfigurator):
+class Linksyse900APConfigurator(linksyse_single_band_configurator.
+                                LinksyseSingleBandAPConfigurator):
     """Derived class to control Linksys E900 router."""

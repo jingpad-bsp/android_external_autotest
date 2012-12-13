@@ -11,11 +11,11 @@ import ap_configurator
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 
-class belkinAPConfigurator(ap_configurator.APConfigurator):
+class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def __init__(self, router_dict):
-        super(belkinAPConfigurator, self).__init__(router_dict)
+        super(BelkinAPConfigurator, self).__init__(router_dict)
         self.security_disabled = 'Disabled'
         self.security_wep = '64bit WEP'
         self.security_wpapsk = 'WPA-PSK(no server)'
