@@ -76,10 +76,20 @@ class platform_ExternalUSBBootStress(test.test):
         logging.info('Connected devices list: %s' % diff_list)
         set_hub_power(True)
 
+        lsb_release = host.run('cat /etc/lsb-release').stdout.split('\n')
+        unsupported_gbb_boards = ['x86-mario', 'x86-alex', 'x86-zgb']
+        skip_gbb = False
+        for line in lsb_release:
+            m = re.match(r'^CHROMEOS_RELEASE_BOARD=(.+)$', line)
+            if m and m.group(1) in unsupported_gbb_boards:
+                skip_gbb = True
+                break
+
         logging.info('Rebooting the device %d time(s)' % reboots)
         for i in xrange(reboots):
             # We want fast boot past the dev screen
-            host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0x01')
+            if not skip_gbb:
+                host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0x01')
             stressor = stress.ControlledStressor(stress_hotplug)
             stressor.start()
             logging.info('Reboot iteration %d of %d' % (i + 1, reboots))
