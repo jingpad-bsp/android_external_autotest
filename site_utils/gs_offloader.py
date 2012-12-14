@@ -46,6 +46,9 @@ NICENESS = 10
 # Setting timeout to 3 hours.
 TIMEOUT = 3 * 60 * 60
 
+# Sleep time per loop.
+SLEEP_TIME_SECS = 5
+
 # Location of Autotest results on disk.
 RESULTS_DIR = '/usr/local/autotest/results'
 
@@ -273,6 +276,7 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
         # TODO(scottz): Monitor offloading and make sure chrome logs are
         # no longer an issue.
         queue.put((dir_entry,))
+    time.sleep(SLEEP_TIME_SECS)
 
 
 def parse_options():
