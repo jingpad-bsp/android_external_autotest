@@ -124,6 +124,15 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
+    def _get_channel_popup_position(self, channel):
+        """Internal method that converts a channel value to a popup position."""
+        supported_bands = self.get_supported_bands()
+        for band in supported_bands:
+            if band['band'] == self.current_band:
+                return band['channels'].index(channel)
+        raise RuntimeError('The channel passed %d to the band %s is not '
+                           'supported.' % (channel, band))
+
     def get_supported_modes(self):
         """Returns a list of dictionaries describing the supported modes.
 

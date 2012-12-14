@@ -35,7 +35,7 @@ class ConfiguratorTest(unittest.TestCase):
                                    '..', '..', 'config', 'wifi_compat_config')
         factory = ap_configurator_factory.APConfiguratorFactory(config_path)
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('e2700')
+        self.ap = factory.get_ap_configurator_by_short_name('RT-N56U')
 
     def disabled_security_on_all_bands(self):
         for band in self.ap.get_supported_bands():
@@ -70,9 +70,11 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_channel(self):
         """Test adjusting the channel."""
-        self.ap.set_radio(enabled=True)
-        self.ap.set_channel(4)
-        self.ap.apply_settings()
+        supported_bands = self.ap.get_supported_bands()
+        for band in supported_bands:
+            self.ap.set_band(band['band'])
+            # Set to the second available channel
+            self.ap.set_channel(band['channels'][1])
 
     def test_visibility(self):
         """Test adjusting the visibility."""

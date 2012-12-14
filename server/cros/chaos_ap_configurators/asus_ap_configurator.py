@@ -146,13 +146,14 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         channel_choices = range(1, 11)
         xpath = '//select[@name="rt_channel"]'
         if self.current_band == self.band_5ghz:
             xpath = '//select[@name="wl_channel"]'
             channel_choices = ['36', '40', '44', '48', '149', '153',
                                '157', '161']
-        self.select_item_from_popup_by_xpath(str(channel_choices[channel - 1]),
+        self.select_item_from_popup_by_xpath(str(channel_choices[position]),
                                              xpath)
 
     def set_band(self, band):
