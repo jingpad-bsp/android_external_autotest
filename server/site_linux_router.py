@@ -470,6 +470,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             raise error.TestFail("No IP address assigned")
 
 
+    def get_hostapd_mac(self, ap_num):
+        instance = self.hostapd_instances[ap_num]
+        interface = instance['interface']
+        result = self.router.run('%s addr show %s' % (self.cmd_ip, interface))
+        # Example response:
+        #   1: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 UP qlen 1000
+        #   link/ether 99:88:77:66:55:44 brd ff:ff:ff:ff:ff:ff
+        #   inet 10.0.0.1/8 brd 10.255.255.255 scope global eth0
+        #   inet6 fe80::6a7f:74ff:fe66:5544/64 scope link
+        # we want the MAC address after the "link/ether" above.
+        parts = result.stdout.split(' ')
+        return parts[parts.index('link/ether') + 1]
+
+
     def deconfig(self, params):
         """ De-configure the AP (will also bring wlan down) """
 
@@ -523,6 +537,13 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         self.hostapd['configured'] = False
         self.station['configured'] = False
+
+
+    def verify_pmksa_auth(self, params):
+        instance_num = params.get('instance', 0)
+        instance = self.hostapd_instances[instance_num]
+        pmksa_match = 'PMK from PMKSA cache - skip IEEE 802.1X.EAP'
+        self.router.run('grep -q "%s" %s' % (pmksa_match, instance['log_file']))
 
 
     def get_ssid(self):

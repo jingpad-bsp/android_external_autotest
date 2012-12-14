@@ -333,6 +333,7 @@ class WiFiTest(object):
                                                   '/usr/local/lib/flimflam')
         self.client_cmd_ping = client.get('cmd_ping', 'ping')
         self.client_cmd_ping6 = client.get('cmd_ping6', 'ping6')
+        self.client_cmd_wpa_cli = client.get('cmd_wpa_cli', 'wpa_cli')
 
     def __get_wlan_devs(self, host):
         ret = []
@@ -2327,6 +2328,15 @@ class WiFiTest(object):
             args += ' %s %s' % (var, val)
         self.client.run('%s/test/configure-service %s %s' %
                         (self.client_cmd_flimflam_lib, guid, args))
+
+    def client_roam(self, params):
+        instance = params.get('instance', 0)
+        wifi_mac = self.wifi.get_hostapd_mac(instance)
+        # The "wpa_cli" command can only be run as the "wpa" user.  That
+        # user does not have a valid shell, so without specifying one, the
+        # "su" command will fail.
+        self.client.run('su wpa -s /bin/bash -c "%s roam %s"' %
+                        (self.client_cmd_wpa_cli, wifi_mac))
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
