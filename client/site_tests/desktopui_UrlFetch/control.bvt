@@ -8,7 +8,6 @@ PURPOSE = "Verify URL loads and cookies are stored in Chrome."
 CRITERIA = """
 This test will fail if the URL fails to load or the cookie is not saved.
 """
-SUITE = "bvt, kaen_bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
