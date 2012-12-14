@@ -55,10 +55,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
-                 'channels': ['1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
-                              '4 - 2.427 GHz', '5 - 2.432 GHz', '6 - 2.437 GHz',
-                              '7 - 2.442 GHz', '8 - 2.447 GHz', '9 - 2.452 GHz',
-                              '10 - 2.457 GHz', '11 - 2.462 GHz']}]
+                 'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def is_security_mode_supported(self, security_mode):
@@ -136,12 +133,13 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         xpath = '//select[@name="_wl0_channel"]'
         channels = ['1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
                     '4 - 2.427 GHz', '5 - 2.432 GHz', '6 - 2.437 GHz',
                     '7 - 2.442 GHz', '8 - 2.447 GHz', '9 - 2.452 GHz',
                     '10 - 2.457 GHz', '11 - 2.462 GHz']
-        self.select_item_from_popup_by_xpath(channels[channel], xpath)
+        self.select_item_from_popup_by_xpath(channels[position], xpath)
 
 
     def set_channel_width(self, channel_wid):

@@ -180,9 +180,10 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
         self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         self._set_radio(enabled=True)
         self.set_check_box_selected_by_id('autochann', selected=False)
-        self.select_item_from_popup_by_id(str(channel), 'channel_g')
+        self.select_item_from_popup_by_id(str(position), 'channel_g')
 
     # Experimental
     def get_band(self):

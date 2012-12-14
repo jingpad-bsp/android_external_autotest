@@ -49,9 +49,9 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
-                 'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
+                 'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
                 {'band': self.band_5ghz,
-                 'channels': [36, 40, 44, 48, 149, 153, 157, 161]}]
+                 'channels': ['Auto', 36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def is_security_mode_supported(self, security_mode):
@@ -148,6 +148,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         xpath = '//select[@name="wl_schannel"]'
         channels=['Auto', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                   '10', '11']
@@ -155,7 +156,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
             xpath = '//select[@name="wl_schannel"]'
             channels = ['Auto', '36', '40', '44', '48', '149', '153',
                         '157', '161']
-        self.select_item_from_popup_by_xpath(channels[channel], xpath)
+        self.select_item_from_popup_by_xpath(channels[position], xpath)
 
 
     def set_ch_width(self, channel_wid):

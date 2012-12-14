@@ -62,8 +62,7 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
-                 'channels': ['Auto', '01', '02', '03', '04', '05', '06',
-                              '07', '08', '09', '10', '11']}]
+                 'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def get_supported_modes(self):
@@ -130,10 +129,11 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = _get_channel_popup_position(channel)
         channel_choices = ['Auto', '1', '2', '3', '4', '5', '6', '7', '8',
                            '9', '10', '11']
         xpath = '//select[@name="wl_channel"]'
-        self.select_item_from_popup_by_xpath(channel_choices[channel], xpath)
+        self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
 
 
     def set_mode(self, mode):

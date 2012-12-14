@@ -181,6 +181,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         self._set_radio(enabled=True)
         channel_choices = ['2.412 GHz - CH 1 ', '2.417 GHz - CH 2',
                            '2.422 GHz - CH 3', '2.427 GHz - CH 4',
@@ -191,7 +192,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
         channel_popup = self.driver.find_element_by_id('sel_wlan0_channel')
         if channel_popup.get_attribute('disabled') == 'true':
             self.set_check_box_selected_by_id('auto_channel', selected=False)
-        self.select_item_from_popup_by_id(channel_choices[channel - 1],
+        self.select_item_from_popup_by_id(channel_choices[position],
                                           'sel_wlan0_channel')
 
 

@@ -123,13 +123,14 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         self._set_radio(enabled=True)
         channel_choices = ['1 - 2.412GHz', '2 - 2.417GHz', '3 - 2.422GHz',
                            '4 - 2.427GHz', '5 - 2.432GHz', '6 - 2.437GHz',
                            '7 - 2.442GHz', '8 - 2.447GHz', '9 - 2.452GHz',
                            '10 - 2.457GHz', '11 - 2.462GHz']
         xpath = ('//select[@onfocus="check_action(this,0)" and @name="Freq"]')
-        self.select_item_from_popup_by_xpath(channel_choices[channel - 1],
+        self.select_item_from_popup_by_xpath(channel_choices[position],
                                              xpath)
 
 

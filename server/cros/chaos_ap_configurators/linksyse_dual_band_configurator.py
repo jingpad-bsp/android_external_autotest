@@ -64,15 +64,9 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
-                 'channels': ['1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
-                              '4 - 2.427 GHz', '5 - 2.432 GHz', '6 - 2.437 GHz',
-                              '7 - 2.442 GHz', '8 - 2.447 GHz', '9 - 2.452 GHz',
-                              '10 - 2.457 GHz', '11 - 2.462 GHz']},
+                 'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10 , 11]},
                 {'band': self.band_5ghz,
-                 'channels': ['36 - 5.180 GHz', '40 - 5.200 GHz',
-                              '44 - 5.220 GHz', '48 - 5.240 GHz',
-                              '149 - 5.745 GHz', '153 - 5.765 GHz',
-                              '157 - 5.785 GHz', '161 - 5.805 GHz']}]
+                 'channels': [36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def get_supported_modes(self):
@@ -173,6 +167,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         channel_choices = ['1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
                            '4 - 2.427 GHz', '5 - 2.432 GHz', '6 - 2.437 GHz',
                            '7 - 2.442 GHz', '8 - 2.447 GHz', '9 - 2.452 GHz',
@@ -184,7 +179,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
                                '44 - 5.220 GHz', '48 - 5.240 GHz',
                                '149 - 5.745 GHz', '153 - 5.765 GHz',
                                '157 - 5.785 GHz', '161 - 5.805 GHz']
-        self.select_item_from_popup_by_xpath(channel_choices[channel - 1],
+        self.select_item_from_popup_by_xpath(channel_choices[position],
                                              xpath)
 
 

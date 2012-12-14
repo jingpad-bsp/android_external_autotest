@@ -109,12 +109,13 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = _get_channel_popup_position(channel)
         channel_choices = ['1 - 2412 MHz', '2 - 2417 MHz', '3 - 2422 MHz',
                            '4 - 2427 MHz', '5 - 2432 MHz', '6 - 2437 MHz',
                            '7 - 2442 MHz', '8 - 2447 MHz', '9 - 2452 MHz',
                            '10 - 2457 MHz', '11 - 2462 MHz']
         xpath = '//select[@name="ath0_channel"]'
-        self.select_item_from_popup_by_xpath(channel_choices[channel], xpath)
+        self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
 
 
     def set_ch_width(self, channel_wid):
