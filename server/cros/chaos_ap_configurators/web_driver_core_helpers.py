@@ -5,9 +5,9 @@
 import os
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
-                             'pyauto_dep', 'test_src', 'third_party',
-                             'webdriver', 'pylib'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..',
+                             'client', 'deps', 'pyauto_dep', 'test_src',
+                             'third_party', 'webdriver', 'pylib'))
 
 try:
   from selenium import webdriver

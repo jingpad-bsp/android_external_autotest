@@ -31,11 +31,9 @@ class ConfiguratorTest(unittest.TestCase):
                       '(outside-chroot) <path to chroot tmp directory>/'
                       '%s./chromedriver',
                       download_chromium_prebuilt.DOWNLOAD_PATH)
-        config_path = os.path.join(os.path.dirname(__file__),
-                                   '..', '..', 'config', 'wifi_compat_config')
-        factory = ap_configurator_factory.APConfiguratorFactory(config_path)
+        factory = ap_configurator_factory.APConfiguratorFactory()
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('RT-N56U')
+        self.ap = factory.get_ap_configurator_by_short_name('rt n56u')
 
     def disabled_security_on_all_bands(self):
         for band in self.ap.get_supported_bands():

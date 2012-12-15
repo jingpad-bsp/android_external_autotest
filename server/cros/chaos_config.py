@@ -6,9 +6,7 @@ import ConfigParser
 import logging
 import os
 import time
-import xmlrpclib
 
-from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 TIMEOUT = 100
 
@@ -130,10 +128,16 @@ class ChaosAP(object):
 
 
     def power_off(self):
+        # TODO.  Move this import back to the top of file once dynamic and
+        # static AP are complete.
+        from autotest_lib.site_utils.rpm_control_system import rpm_client
         rpm_client.set_power(self.get_wan_host(), 'OFF')
 
 
     def power_on(self):
+        # TODO.  Move this import back to the top of file once dynamic and
+        # static AP are complete.
+        from autotest_lib.site_utils.rpm_control_system import rpm_client
         rpm_client.set_power(self.get_wan_host(), 'ON')
 
         # Hard coded timer for now to wait for the AP to come alive

@@ -29,7 +29,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     """Base class for objects to configure access points using webdriver."""
 
-    def __init__(self, router_dict):
+    def __init__(self, ap):
         super(APConfigurator, self).__init__()
         self.rpm_client = xmlrpclib.ServerProxy(
             'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
@@ -56,11 +56,11 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.wep_authentication_open = 'Open'
         self.wep_authentication_shared = 'Shared Key'
 
-        self.admin_interface_url = router_dict['admin_url']
-        self.class_name = router_dict['class_name']
-        self.short_name = router_dict['short_name']
-        self.mac_address = router_dict['mac_address']
-        self.device_name = router_dict['device_name']
+        self.admin_interface_url = ap.get_admin()
+        self.class_name = ap.get_class()
+        self.short_name = ap.get_model()
+        self.mac_address = ap.get_wan_mac()
+        self.device_name = '%s %s' % (ap.get_brand(), ap.get_model())
 
         self._command_list = []
 
