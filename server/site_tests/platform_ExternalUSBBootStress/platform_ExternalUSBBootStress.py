@@ -91,9 +91,19 @@ class platform_ExternalUSBBootStress(test.test):
             if not skip_gbb:
                 host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0x01')
             stressor = stress.ControlledStressor(stress_hotplug)
-            stressor.start()
             logging.info('Reboot iteration %d of %d' % (i + 1, reboots))
-            self.client.reboot()
+            if skip_gbb:
+                # For devices that do not support gbb we have servo
+                # accelerate booting through dev mode.
+                host.servo.cold_reset()
+                host.servo.power_short_press()
+                time.sleep(Servo.BOOT_DELAY)
+                host.servo.ctrl_d()
+                stressor.start()
+                host.wait_up(timeout=120)
+            else:
+                stressor.start()
+                self.client.reboot()
             logging.info('Reboot complete, shutting down stressor.')
             stressor.stop()
             connected_now = set_hub_power(check_host_detection=True)
