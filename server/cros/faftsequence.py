@@ -84,6 +84,8 @@ class FAFTSequence(ServoTest):
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
 
+    _ROOTFS_PARTITION_NUMBER = 3
+
     _HTTP_PREFIX = 'http://'
     _DEVSERVER_PORT = '8090'
 
@@ -366,29 +368,6 @@ class FAFTSequence(ServoTest):
             raise error.TestFail('Timed out waiting for DUT reboot')
 
 
-    def assert_test_image_in_path(self, image_path, install_shim=False):
-        """Assert the image of image_path be a Chrome OS test image.
-
-        Args:
-          image_path: A path on the host to the test image.
-          install_shim: True to verify an install shim instead of a test image.
-
-        Raises:
-          error.TestError: if the image is not a test (install shim) image.
-        """
-        try:
-            build_ver, build_hash = lab_test.VerifyImageAndGetId(
-                    os.environ['CROS_WORKON_SRCROOT'],
-                    image_path,
-                    install_shim=install_shim)
-            logging.info('Build of image: %s %s', build_ver, build_hash)
-        except ChromeOSTestError:
-            raise error.TestError(
-                    'An USB disk containning a %s image should be plugged '
-                    'in the servo board.' %
-                    ('install shim' if install_shim else 'test'))
-
-
     def assert_test_image_in_usb_disk(self, usb_dev=None, install_shim=False):
         """Assert an USB disk plugged-in on servo and a test image inside.
 
@@ -403,15 +382,6 @@ class FAFTSequence(ServoTest):
         """
         if self.check_setup_done('usb_check'):
             return
-
-        # TODO(waihong@chromium.org): We skip the check when servod runs in
-        # a different host since no easy way to access the servo host so far.
-        # Should find a way to work-around it.
-        if not self.servo.is_localhost():
-            logging.info('Skip checking Chrome OS test image in USB as servod '
-                         'runs in a different host.')
-            return
-
         if usb_dev:
             assert self.servo.get('usb_mux_sel1') == 'servo_sees_usbkey'
         else:
@@ -420,7 +390,29 @@ class FAFTSequence(ServoTest):
             if not usb_dev:
                 raise error.TestError(
                         'An USB disk should be plugged in the servo board.')
-        self.assert_test_image_in_path(usb_dev, install_shim=install_shim)
+
+        rootfs = '%s%s' % (usb_dev, self._ROOTFS_PARTITION_NUMBER)
+        logging.info('usb dev is %s', usb_dev)
+        tmpd = self.servo.system_output('mktemp -d -t usbcheck.XXXX')
+        self.servo.system('mount -o ro %s %s' % (rootfs, tmpd))
+
+        if install_shim:
+            dir_list = self.servo.system_output('ls -a %s' %
+                                                os.path.join(tmpd, 'root'))
+            check_passed = '.factory_installer' in dir_list
+        else:
+            check_passed = self.servo.system_output(
+                'grep -i "CHROMEOS_RELEASE_DESCRIPTION=.*test" %s' %
+                os.path.join(tmpd, 'etc/lsb-release'),
+                ignore_status=True)
+        for cmd in ('umount %s' % rootfs, 'sync', 'rm -rf %s' % tmpd):
+            self.servo.system(cmd)
+
+        if not check_passed:
+            raise error.TestError(
+                'No Chrome OS %s found on the USB flash plugged into servo' %
+                'install shim' if install_shim else 'test')
+
         self.mark_setup_done('usb_check')
 
 
@@ -500,13 +492,11 @@ class FAFTSequence(ServoTest):
             devserver = None
             image_url = image_path
         elif self.servo.is_localhost():
-            self.assert_test_image_in_path(image_path)
             # If servod is localhost, i.e. both servod and FAFT see the same
             # file system, do nothing.
             devserver = None
             image_url = image_path
         else:
-            self.assert_test_image_in_path(image_path)
             image_dir, image_base = os.path.split(image_path)
             logging.info('Starting devserver to serve the image...')
             # The following stdout and stderr arguments should not be None,
@@ -534,6 +524,8 @@ class FAFTSequence(ServoTest):
 
         logging.info('Ask Servo to install the image from %s', image_url)
         self.servo.image_to_servo_usb(image_url)
+
+        self.assert_test_image_in_usb_disk()
 
         if devserver and devserver.poll() is None:
             logging.info('Shutting down devserver...')

@@ -180,15 +180,13 @@ class ServoTest(test.test):
         # Launch RPC server remotely.
         self._kill_remote_process(info)
         logging.info('Client command: %s', info['remote_command'])
-        if 'remote_log_file' in info:
-            log_file = info['remote_log_file']
-        else:
-            log_file = '/dev/null'
+        log_file = info.get('remote_log_file', '/dev/null')
         logging.info("Logging to %s", log_file)
-        info['remote_process'] = subprocess.Popen([
-            'ssh -n -q %s root@%s \'%s &> %s\'' % (info['ssh_config'],
-            self._client.ip, info['remote_command'], log_file)],
-            shell=True)
+        full_cmd = ['ssh -n -q %s root@%s \'%s &> %s\'' % (
+                info['ssh_config'],
+                self._client.ip, info['remote_command'], log_file)]
+        logging.info('Starting process %s', ' '.join(full_cmd))
+        info['remote_process'] = subprocess.Popen(full_cmd, shell=True)
 
         # Connect to RPC object.
         logging.info('Connecting to client RPC server...')
@@ -209,6 +207,7 @@ class ServoTest(test.test):
                 polling_rpc()
                 succeed = True
             except (socket.error, xmlrpclib.ProtocolError) as e:
+                logging.info('caught exception %s', e)
                 # The client RPC server may not come online fast enough. Retry.
                 timeout -= 1
                 rpc_error = e

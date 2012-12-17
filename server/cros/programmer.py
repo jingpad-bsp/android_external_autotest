@@ -45,8 +45,8 @@ class _BaseProgrammer(object):
         self._program_command = ''
         # These will fail if the utilities are not available, we want the
         # failure happen before run_once() is invoked.
-        servo.system_on_servo('which openocd')
-        servo.system_on_servo('which flashrom')
+        servo.system('which openocd')
+        servo.system('which flashrom')
 
 
     def _set_servo_state(self):
@@ -66,7 +66,7 @@ class _BaseProgrammer(object):
         """Program the firmware as configured by a subclass."""
         self._set_servo_state()
         try:
-            self._servo.system_on_servo(self._program_command)
+            self._servo.system(self._program_command)
         finally:
             self._restore_servo_state()
 

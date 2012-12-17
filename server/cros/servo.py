@@ -490,8 +490,6 @@ class Servo(object):
         It tries to switch the USB mux to make the host unable to see the
         USB disk and compares the result difference.
 
-        This only works if the servo is attached to the local host.
-
         Returns:
           A string of USB disk path, like '/dev/sdb', or None if not existed.
         """
@@ -502,12 +500,12 @@ class Servo(object):
         if original_value != 'dut_sees_usbkey':
             self.set('usb_mux_sel1', 'dut_sees_usbkey')
             time.sleep(self.USB_DETECTION_DELAY)
-        no_usb_set = set(utils.system_output(cmd, ignore_status=True).split())
+        no_usb_set = set(self.system_output(cmd, ignore_status=True).split())
 
         # Make the host able to see the USB disk.
         self.set('usb_mux_sel1', 'servo_sees_usbkey')
         time.sleep(self.USB_DETECTION_DELAY)
-        has_usb_set = set(utils.system_output(cmd, ignore_status=True).split())
+        has_usb_set = set(self.system_output(cmd, ignore_status=True).split())
 
         # Back to its original value.
         if original_value != 'servo_sees_usbkey':
@@ -646,14 +644,37 @@ class Servo(object):
         return dest_path
 
 
-    def system_on_servo(self, command):
+    def system(self, command, timeout=None):
         """Execute the passed in command on the servod host."""
         if self._sudo_required:
             command = 'sudo -n %s' % command
         if self._ssh_prefix:
             command = "%s '%s'" % (self._ssh_prefix, command)
-        logging.info('Will execute on servo host: %s' % command)
-        utils.system(command)
+        logging.info('Will execute on servo host: %s', command)
+        utils.system(command, timeout=timeout)
+
+
+    def system_output(self, command, timeout=None,
+                      ignore_status=False, args=()):
+        """Execute the passed in command on the servod host, return stdout.
+
+        @param command, a string, the command to execute
+        @param timeout, an int, max number of seconds to wait til command
+               execution completes
+        @ignore_status, a Boolean, if true - ignore command's nonzero exit
+               status, otherwise an exception will be thrown
+        @param args, a tuple of strings, each becoming a separate command line
+               parameter for the command
+        @return: command's stdout as a string.
+        """
+        if self._sudo_required:
+            command = 'sudo -n %s' % command
+        if self._ssh_prefix:
+            command = "%s '%s'" % (self._ssh_prefix, command)
+        logging.info('Will execute and collect output on servo host: %s %s',
+                     command, ' '.join("'%s'" % x for x in args))
+        return utils.system_output(command, timeout=timeout,
+                                   ignore_status=ignore_status, args=args)
 
 
     def program_ec(self, board, image):
