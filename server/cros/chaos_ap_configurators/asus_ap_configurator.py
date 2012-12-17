@@ -147,7 +147,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
-        channel_choices = range(1, 11)
+        channel_choices = range(1, 12)
         xpath = '//select[@name="rt_channel"]'
         if self.current_band == self.band_5ghz:
             xpath = '//select[@name="wl_channel"]'

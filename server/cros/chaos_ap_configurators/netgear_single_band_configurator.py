@@ -11,8 +11,8 @@ from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 from selenium.common.exceptions import WebDriverException
 
-class NetgearAPConfigurator(ap_configurator.APConfigurator):
-    """Derived class to control Netgear wgr614-v9 and WNR1000V3 router."""
+class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
+    """Derived class to control Netgear single band routers."""
 
     security_disabled = 'Disabled'
     security_wep = 'WEP'
@@ -27,8 +27,7 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
-                 'channels': ['Auto', '01', '02', '03', '04', '05', '06',
-                              '07', '08', '09', '10', '11']}]
+                 'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9 , 10, 11]}]
 
 
     def get_supported_modes(self):
@@ -75,10 +74,11 @@ class NetgearAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         channel_choices = ['Auto', '01', '02', '03', '04', '05', '06',
                            '07', '08', '09', '10', '11']
         xpath = '//select[@name="w_channel"]'
-        self.select_item_from_popup_by_xpath(channel_choices[channel], xpath)
+        self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
 
 
     def set_mode(self, mode):

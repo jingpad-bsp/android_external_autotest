@@ -32,8 +32,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
-                 'channels': range(1, 12)}]
+        return [{'band': self.band_2ghz, 'channels': range(1, 12)}]
 
 
     def get_supported_modes(self):
@@ -130,13 +129,14 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
         channel_choices = ['2412MHz (Channel 1)', '2417MHz (Channel 2)',
                            '2422MHz (Channel 3)', '2427MHz (Channel 4)',
                            '2432MHz (Channel 5)', '2437MHz (Channel 6)',
                            '2442MHz (Channel 7)', '2447MHz (Channel 8)',
                            '2452MHz (Channel 9)', '2457MHz (Channel 10)',
                            '2462MHz (Channel 11)']
-        self.select_item_from_popup_by_id(channel_choices[channel - 1],
+        self.select_item_from_popup_by_id(channel_choices[position],
                                           'sz11gChannel')
 
 

@@ -14,16 +14,15 @@ import dlink_ap_configurator
 import dlink_dir655_ap_configurator
 import dlinkwbr1310_ap_configurator
 import linksys_ap_configurator
-import linksyse900_ap_configurator
+import linksyse_dual_band_configurator
+import linksyse_single_band_configurator
 import linksyse2000_ap_configurator
 import linksyse2100_ap_configurator
-import linksyse2700_ap_configurator
-import linksyse3500_ap_configurator
-import linksyse4200_ap_configurator
 import netgear3700_ap_configurator
-import netgear4500_ap_configurator
+import netgearR6200_ap_configurator
+import netgear_WNDR_dual_band_configurator
+import netgear_single_band_configurator
 import trendnet_ap_configurator
-import netgear614_ap_configurator
 
 
 class APConfiguratorFactory(object):
@@ -34,7 +33,7 @@ class APConfiguratorFactory(object):
             linksys_ap_configurator.LinksysAPConfigurator,
         'DLinkAPConfigurator':
             dlink_ap_configurator.DLinkAPConfigurator,
-        'TrendnetAPConfigurator' :
+        'TrendnetAPConfigurator':
             trendnet_ap_configurator.TrendnetAPConfigurator,
         'DLinkDIR655APConfigurator':
             dlink_dir655_ap_configurator.DLinkDIR655APConfigurator,
@@ -44,26 +43,24 @@ class APConfiguratorFactory(object):
             asus_ap_configurator.AsusAPConfigurator,
         'Netgear3700APConfigurator':
             netgear3700_ap_configurator.Netgear3700APConfigurator,
-        'Linksyse4200APConfigurator':
-            linksyse4200_ap_configurator.Linksyse4200APConfigurator,
+        'NetgearR6200APConfigurator':
+            netgearR6200_ap_configurator.NetgearR6200APConfigurator,
+        'LinksyseDualBandAPConfigurator':
+            linksyse_dual_band_configurator.LinksyseDualBandAPConfigurator,
         'Linksyse2000APConfigurator':
             linksyse2000_ap_configurator.Linksyse2000APConfigurator,
-        'Netgear4500APConfigurator':
-            netgear4500_ap_configurator.NetgearAPConfigurator,
+        'NetgearDualBandAPConfigurator':
+            netgear_WNDR_dual_band_configurator.NetgearDualBandAPConfigurator,
         'BelkinAPConfigurator':
             belkin_ap_configurator.BelkinAPConfigurator,
-        'Netgear614APConfigurator':
-            netgear614_ap_configurator.NetgearAPConfigurator,
+        'NetgearSingleBandAPConfigurator':
+            netgear_single_band_configurator.NetgearSingleBandAPConfigurator,
         'DLinkwbr1310APConfigurator':
             dlinkwbr1310_ap_configurator.DLinkwbr1310APConfigurator,
-        'Linksyse3500APConfigurator':
-            linksyse3500_ap_configurator.Linksyse3500APConfigurator,
         'Linksyse2100APConfigurator':
             linksyse2100_ap_configurator.Linksyse2100APConfigurator,
-        'Linksyse2700APConfigurator':
-            linksyse2700_ap_configurator.Linksyse2700APConfigurator,
-        'Linksyse900APConfigurator':
-            linksyse900_ap_configurator.Linksyse900APConfigurator,
+        'LinksyseSingleBandAPConfigurator':
+            linksyse_single_band_configurator.LinksyseSingleBandAPConfigurator,
     }
 
     def __init__(self):

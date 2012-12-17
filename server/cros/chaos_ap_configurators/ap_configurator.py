@@ -60,7 +60,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.class_name = ap.get_class()
         self.short_name = ap.get_model()
         self.mac_address = ap.get_wan_mac()
-        self.device_name = '%s %s' % (ap.get_brand(), ap.get_model())
+        self.host_name = ap.get_wan_host()
 
         self._command_list = []
 
@@ -183,18 +183,18 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
     def power_cycle_router_up(self):
         """Turns the ap off and then back on again."""
-        self.rpm_client.queue_request(self.device_name, 'CYCLE')
+        self.rpm_client.queue_request(self.host_name, 'CYCLE')
 
     def power_down_router(self):
         """Turns off the power to the ap via the power strip."""
-        self.rpm_client.queue_request(self.device_name, 'OFF')
+        self.rpm_client.queue_request(self.host_name, 'OFF')
 
     def power_up_router(self):
         """Turns on the power to the ap via the power strip.
 
         This method returns once it can navigate to a web page of the ap UI.
         """
-        self.rpm_client.queue_request(self.device_name, 'ON')
+        self.rpm_client.queue_request(self.host_name, 'ON')
         self.establish_driver_connection()
         self.wait = WebDriverWait(self.driver, timeout=5)
         # With the 5 second timeout give the router up to 2 minutes
