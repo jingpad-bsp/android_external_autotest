@@ -58,23 +58,33 @@ def do_suspend(seconds=None, method='powerd_suspend'):
     elif method == 'powerd_suspend':
         os.system('/usr/bin/powerd_suspend -w %d' % wakeup_count)
     elif method == 'kernel':
+        logging.debug('Saving wakeup count: %d', wakeup_count)
         write_wakeup_count(wakeup_count)
         try:
+            logging.info('Suspending at %d', rtc.get_seconds())
             with open(SYSFS_POWER_STATE, 'w') as sysfs_file:
                 sysfs_file.write('mem')
         except IOError as e:
+            logging.exception('Writing to %s failed' % SYSFS_POWER_STATE)
             if e.errno == errno.EBUSY and rtc.get_seconds() >= alarm:
-                raise SuspendAbort('Suspend took too long, RTC fired early')
+                # The kernel returns EBUSY if it has to abort because
+                # the RTC alarm fires before we've reached suspend.
+                raise SuspendAbort('Suspend took too long, RTC alarm fired')
             else:
-                logging.exception('Writing to %s failed' % SYSFS_POWER_STATE)
-                raise KernelError('Unidentified kernel error, see dmesg')
+                # Some driver probably failed to suspend properly.
+                # A hint as to what failed is in errno.
+                raise KernelError('Suspend failed: %s' % e.strerror)
+        else:
+            logging.info('Woke from suspend at %d', rtc.get_seconds())
+        logging.debug('New wakeup count: %d', read_wakeup_count())
     else:
         raise ValueError('%s is not a valid suspend method' % method)
 
     if seconds:
         now = rtc.get_seconds()
         if now < alarm:
-            raise EarlyWakeupError('Woke up early at %d' % now)
+            logging.error('Woke up early at %d', now)
+            raise EarlyWakeupError('Woke from suspend early')
         return alarm
 
 

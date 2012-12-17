@@ -15,4 +15,5 @@ DOC = """
 Sets the no_console_suspend kernel option via sysfs, then suspends the system.
 """
 
+job.add_sysinfo_logfile('/sys/kernel/debug/suspend_stats', on_every_test=True)
 job.run_test('power_NoConsoleSuspend')
