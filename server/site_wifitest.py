@@ -783,6 +783,9 @@ class WiFiTest(object):
         result_times = re.match('OK ([0-9\.]*) ([0-9\.]*) ([0-9\.]*) '
                                 '([0-9\.]*) ([0-9]+) (\S+) (\w+) .*',
                                 result)
+        if not result_times:
+            raise error.TestFail('Connect succeeded but result not parsed: ' +
+                                 result)
 
         self.write_perf({'acquire_s'    : result_times.group(1),
                          'select_s'     : result_times.group(2),

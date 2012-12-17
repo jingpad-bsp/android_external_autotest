@@ -310,6 +310,8 @@ def main(argv):
     wpa_select_time = 0.0
   if config_start:
     config_time = end - config_start
+    if config_time < 0.0:
+      config_time = 0.0
     assoc_time = config_start - assoc_start
     if assoc_time < 0.0:
       assoc_time = 0.0
