@@ -553,7 +553,7 @@ class FlashromHandler(object):
 
         #  Pad the new signature.
         new_sig = open(sig_name, 'a')
-        pad = ('%c' % 0xff) * (sig_size - os.path.getsize(sig_name))
+        pad = ('%c' % 0) * (sig_size - os.path.getsize(sig_name))
         new_sig.write(pad)
         new_sig.close()
 
