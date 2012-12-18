@@ -4,8 +4,7 @@
 
 import os
 import sys
-sys.path.append('../')
-from chaos_config import ChaosAPList
+from autotest_lib.server.cros.chaos_config import ChaosAPList
 
 import asus_ap_configurator
 import belkin_ap_configurator

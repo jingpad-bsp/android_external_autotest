@@ -3,7 +3,13 @@
 # found in the LICENSE file.
 
 import os
+import sys
 import unittest
+
+# Define autotest_lib MAGIC!
+sys.path.append(os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
+from utils import common
 
 import ap_configurator_factory
 import download_chromium_prebuilt
