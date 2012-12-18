@@ -33,7 +33,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             params.get("cmd_hostapd", "/usr/sbin/hostapd"))
         self.cmd_hostapd_cli = \
             params.get("cmd_hostapd_cli", "/usr/sbin/hostapd_cli")
-        self.dhcpd_conf = "/tmp/dhcpd.conf"
+        self.dhcpd_conf = "/tmp/dhcpd.%s.conf"
         self.dhcpd_leases = "/tmp/dhcpd.leases"
 
         # hostapd configuration persists throughout the test, subsequent
@@ -41,8 +41,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.defssid = defssid
         self.hostapd = {
             'configured': False,
-            'config_file': "/tmp/hostapd-test-%d.conf",
-            'log_file': "/tmp/hostapd-test-%d.log",
+            'config_file': "/tmp/hostapd-test-%s.conf",
+            'log_file': "/tmp/hostapd-test-%s.log",
             'log_count': 0,
             'driver': "nl80211",
             'conf': {
@@ -120,14 +120,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         pass
 
     def start_hostapd(self, conf, params):
-        idx = len(self.hostapd_instances)
-        conf_file = self.hostapd['config_file'] % idx
-        log_file = self.hostapd['log_file'] % idx
-
         # Figure out the correct interface.
-        conf['interface'] = self._get_wlanif(self.hostapd['frequency'],
-                                             self.phytype,
-                                             mode=conf.get('hw_mode', 'b'))
+        interface = self._get_wlanif(self.hostapd['frequency'],
+                                     self.phytype,
+                                     mode=conf.get('hw_mode', 'b'))
+
+        conf_file = self.hostapd['config_file'] % interface
+        log_file = self.hostapd['log_file'] % interface
+        conf['interface'] = interface
 
         # Generate hostapd.conf.
         self._pre_config_hook(conf)
@@ -144,27 +144,31 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.hostapd_instances.append({
             'conf_file': conf_file,
             'log_file': log_file,
-            'interface': conf['interface']
+            'interface': interface
         })
 
-    def kill_hostapd_instance(self, instance):
+    def _kill_process_instance(self, process, instance=None, wait=0):
         """
-        Kills the hostapd process.  Makes sure hostapd exits before
-        continuing since it sets the interface back to station mode in its
-        cleanup path.  If we start another instance of hostapd before the
-        previous instance exits, the interface station mode will overwrite the
-        ap mode.
+        Kills program named |process|, optionally only a specific
+        |instance|.  If |wait| is specified, we makes sure |process| exits
+        before returning.
         """
         if instance:
-            search_arg = '-f "hostapd.*%s"' % instance['conf_file']
+            search_arg = '-f "%s.*%s"' % (process, instance)
         else:
-            search_arg = 'hostapd'
+            search_arg = process
 
-        self.router.run("pkill %s >/dev/null 2>&1 && "
-                        "while pgrep %s &> /dev/null; "
-                        "do sleep 1; done" % (search_arg, search_arg),
-                        timeout=30,
-                        ignore_status=True)
+        cmd = "pkill %s >/dev/null 2>&1" % search_arg
+
+        if wait:
+            cmd += (" && while pgrep %s &> /dev/null; do sleep 1; done" %
+                    search_arg)
+            self.router.run(cmd, timeout=wait, ignore_status=True)
+        else:
+            self.router.run(cmd, ignore_status=True)
+
+    def kill_hostapd_instance(self, instance):
+        self._kill_process_instance('hostapd', instance, 30)
 
     def kill_hostapd(self):
         self.kill_hostapd_instance(None)
@@ -427,6 +431,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.start_dhcp_server(interface)
 
     def start_dhcp_server(self, interface):
+        conf_file = self.dhcpd_conf % interface
         dhcp_conf = '\n'.join(map(
             lambda server_conf: \
                 "subnet %(subnet)s netmask %(netmask)s {\n" \
@@ -434,17 +439,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 "}" % server_conf,
             self.local_servers))
         self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
-            (self.dhcpd_conf,
+            (conf_file,
              '\n'.join(('ddns-update-style none;', dhcp_conf))))
         self.router.run("touch %s" % self.dhcpd_leases)
 
         self.router.run("pkill dhcpd >/dev/null 2>&1", ignore_status=True)
         self.router.run("%s -q -cf %s -lf %s" %
-                        (self.cmd_dhcpd, self.dhcpd_conf, self.dhcpd_leases))
+                        (self.cmd_dhcpd, conf_file, self.dhcpd_leases))
 
+
+    def stop_dhcp_server(self, instance=None):
+        self._kill_process_instance('dhcpd', instance, 0)
 
     def stop_dhcp_servers(self):
-        self.router.run("pkill dhcpd >/dev/null 2>&1", ignore_status=True)
+        self.stop_dhcp_server(None)
 
 
     def config(self, params):
@@ -469,11 +477,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             return
 
         if self.hostapd['configured']:
+            local_servers = []
             if 'instance' in params:
                 instances = [ self.hostapd_instances.pop(params['instance']) ]
+                for server in self.local_servers:
+                    if server['interface'] == instances[0]['interface']:
+                        local_servers = [server]
+                        self.local_servers.remove(server)
+                        break
             else:
                 instances = self.hostapd_instances
                 self.hostapd_instances = []
+                local_servers = self.local_servers
+                self.local_servers = []
 
             for instance in instances:
                 if 'silent' in params:
@@ -481,7 +497,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                     # hostapd uses to send beacon and DEAUTH packets.
                     self._remove_interface(instance['interface'], True)
 
-                self.kill_hostapd_instance(instance)
+                self.kill_hostapd_instance(instance['conf_file'])
                 self.router.get_file(instance['log_file'],
                                      'debug/hostapd_router_%d_%s.log' %
                                      (self.hostapd['log_count'],
@@ -499,13 +515,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.router.run("%s link set %s down" % (self.cmd_ip,
                                                      self.station['interface']))
 
-        if self.local_servers:
-            self.stop_dhcp_servers()
-            for server in self.local_servers:
-                self.router.run("%s addr del %s" %
-                                (self.cmd_ip, server['ip_params']),
-                                ignore_status=True)
-            self.local_servers = []
+        for server in local_servers:
+            self.stop_dhcp_server(server['interface'])
+            self.router.run("%s addr del %s" %
+                            (self.cmd_ip, server['ip_params']),
+                             ignore_status=True)
 
         self.hostapd['configured'] = False
         self.station['configured'] = False

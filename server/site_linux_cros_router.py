@@ -47,7 +47,7 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
         else:
             raise RunTimeError('Could not find local server to match interface')
 
-        dhcpd_conf_file = '%s.%s' % (self.dhcpd_conf, interface)
+        dhcpd_conf_file = self.dhcpd_conf % interface
         dhcp_conf = '\n'.join([
             'port=0',  # disables DNS server
             'bind-interfaces',
@@ -79,5 +79,5 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
                             (self.cmd_iptables, params['interface'], port))
 
 
-    def stop_dhcp_servers(self):
-        self.router.run('pkill -f dnsmasq', ignore_status=True)
+    def stop_dhcp_server(self, instance):
+        self._kill_process_instance('dnsmasq', instance, 0)
