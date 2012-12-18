@@ -182,7 +182,8 @@
       { "name": "Chrome OS ECHO Extension",
         "effective_host_permissions": ["https://*/*"],
         "api_permissions": ["cookies",
-                            "echoPrivate"]
+                            "echoPrivate",
+                            "experimental"]
       },
       { "name": "Chrome",
         "effective_host_permissions": [],
