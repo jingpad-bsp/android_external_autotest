@@ -90,8 +90,10 @@ class graphics_GLBench(test.test):
                            'mvtx_sec_attribute_fetch_shader_2_attr',
                            'mvtx_sec_attribute_fetch_shader_4_attr',
                            'mvtx_sec_attribute_fetch_shader_8_attr',
-                           'us_swap_swap',
-                           'us_swap_swap_glsimple'])
+                           'us_context_glsimple',
+                           'us_context_nogl',
+                           'us_swap_glsimple',
+                           'us_swap_nogl', ])
 
   def setup(self):
     self.job.setup_dep(['glbench'])
