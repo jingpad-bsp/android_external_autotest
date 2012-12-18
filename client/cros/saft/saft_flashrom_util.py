@@ -269,7 +269,16 @@ class flashrom_util(object):
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
             raise TestError('INTERNAL ERROR: invalid layout map: %s.' %
                             section_name)
-        return base_image[pos[0] : pos[1] + 1]
+        blob = base_image[pos[0] : pos[1] + 1]
+        # Trim down the main firmware body to its actual size since the
+        # signing utility uses the size of the input file as the size of
+        # the data to sign. Make it the same way as firmware creation.
+        if section_name in ('FVMAIN', 'FVMAINB'):
+            align = 4
+            pad = blob[-1]
+            blob = blob.rstrip(pad)
+            blob = blob + ((align - 1) - (len(blob) - 1) % align) * pad
+        return blob
 
     def put_section(self, base_image, section_name, data):
         """
@@ -281,7 +290,13 @@ class flashrom_util(object):
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
             raise TestError('INTERNAL ERROR: invalid layout map.')
         if len(data) != pos[1] - pos[0] + 1:
-            raise TestError('INTERNAL ERROR: unmatched data size.')
+            # Pad the main firmware body since we trimed it down before.
+            if (len(data) < pos[1] - pos[0] + 1 and
+                    section_name in ('FVMAIN', 'FVMAINB')):
+                pad = base_image[pos[1]]
+                data = data + pad * (pos[1] - pos[0] + 1 - len(data))
+            else:
+                raise TestError('INTERNAL ERROR: unmatched data size.')
         return base_image[0 : pos[0]] + data + base_image[pos[1] + 1 :]
 
     def get_size(self):
