@@ -23,12 +23,11 @@ servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    if 'suspends' in args_dict:
-        suspends = int(args_dict['suspends'])
-    else:
-        suspends = 1000
+    suspends = int(args_dict.get('suspends', 1000))
+    network_debug = bool(args_dict.get('network_debug', True))
 
     job.run_test("platform_ExternalUSBStress", host=host, disable_sysinfo=True,
-                 client_autotest='desktopui_SimpleLogin', suspends=suspends)
+                 client_autotest='desktopui_SimpleLogin', suspends=suspends,
+                 network_debug=network_debug)
 
 parallel_simple(run, machines)

@@ -16,9 +16,8 @@ class platform_ExternalUSBStress(test.test):
     """Uses servo to repeatedly connect/remove USB devices."""
     version = 1
     use_servo_for_suspend = True
-    first_login = True
 
-    def run_once(self, host, client_autotest, suspends):
+    def run_once(self, host, client_autotest, suspends, network_debug):
         autotest_client = autotest.Autotest(host)
         diff_list = []
         off_list = []
@@ -125,6 +124,11 @@ class platform_ExternalUSBStress(test.test):
             test_hotplug()
             test_suspend()
 
+
+        if network_debug:
+            logging.info('Network debugging enabled.')
+            host.run('ff_debug +dhcp')
+            host.run('ff_debug --level -2')
 
         lsb_release = host.run('cat /etc/lsb-release').stdout.split('\n')
         for line in lsb_release:
