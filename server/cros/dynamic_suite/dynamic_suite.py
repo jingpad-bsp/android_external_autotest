@@ -460,8 +460,7 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
                 spec.name, tests_to_skip, spec.build, spec.devserver,
                 afe=afe, tko=tko, pool=spec.pool,
                 results_dir=spec.job.resultdir,
-                max_runtime_mins=spec.max_runtime_mins,
-                file_bugs=spec.file_bugs)
+                max_runtime_mins=spec.max_runtime_mins)
 
             suite.run_and_wait(spec.job.record_entry, manager,
                                spec.add_experimental)
