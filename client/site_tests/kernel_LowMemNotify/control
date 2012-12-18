@@ -4,10 +4,11 @@
 
 AUTHOR = "Chrome OS Team"
 DOC = """
-Runs a C program with two threads, with one thread allocating memory
-at a fast (but throttled) rate, the other thread waiting for a low-memory
-notification by polling /dev/chromeos-low-mem, and then freeing some memory.
-Checks that the behavior of the threads is as expected.
+Verify that we can get low memory notification from /dev/chromeos-low-mem
+when we consume a lot of memory.
+Verify we no longer get it when some of the memory is freed.
+
+Run the platform_CompressedSwap test with the just_checking_lowmem flag.
 """
 NAME = "kernel_LowMemNotify"
 PURPOSE = "Checks that /dev/chromeos-low-mem reports low-memory conditions."
@@ -19,4 +20,4 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "kernel"
 TEST_TYPE = "client"
 
-job.run_test('kernel_LowMemNotify')
+job.run_test('platform_CompressedSwap', just_checking_lowmem=True)

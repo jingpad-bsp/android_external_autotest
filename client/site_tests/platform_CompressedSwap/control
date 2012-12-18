@@ -20,9 +20,11 @@ MemFree
 SwapTotal
 SwapFree
 
-A memory hog is started to allocate and touch pages to consume free memory.
+Memory hogs are started to allocate and touch pages to consume free memory.
 As free memory approaches 0, swap space starts to be used.
 Verify we can consume most of swap without hitting any oom conditions.
+Verify we get low memory notification.
+Verify low memory notification goes away after some memory is freed.
 """
 
 job.run_test('platform_CompressedSwap')
