@@ -2,12 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
-import socket
-import subprocess
-import time
-import xmlrpclib
+import httplib, logging, os, socket, subprocess, sys, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, test
@@ -172,13 +167,15 @@ class ServoTest(test.test):
         """
         assert info['used'], \
             'Remote %s dependency not installed.' % info['ref_name']
-        if not info['ssh_tunnel'] or info['ssh_tunnel'].poll() is not None:
-            self._launch_ssh_tunnel(info)
-        assert info['ssh_tunnel'] and info['ssh_tunnel'].poll() is None, \
-            'The SSH tunnel is not up.'
+
+        if info['ssh_tunnel']:
+            info['ssh_tunnel'].terminate()
+            info['ssh_tunnel'] = None
 
         # Launch RPC server remotely.
         self._kill_remote_process(info)
+        self._launch_ssh_tunnel(info)
+
         logging.info('Client command: %s', info['remote_command'])
         log_file = info.get('remote_log_file', '/dev/null')
         logging.info("Logging to %s", log_file)
@@ -206,11 +203,16 @@ class ServoTest(test.test):
                 polling_rpc = getattr(remote_object, info['polling_rpc'])
                 polling_rpc()
                 succeed = True
-            except (socket.error, xmlrpclib.ProtocolError) as e:
+            except (socket.error,
+                    xmlrpclib.ProtocolError,
+                    httplib.BadStatusLine) as e:
                 logging.info('caught exception %s', e)
                 # The client RPC server may not come online fast enough. Retry.
                 timeout -= 1
                 rpc_error = e
+            except:
+                logging.error('Unexpected error: %s', sys.exc_info()[0])
+                raise
 
         if not succeed:
             if isinstance(rpc_error, xmlrpclib.ProtocolError):
@@ -300,6 +302,8 @@ class ServoTest(test.test):
                 'ssh -N -n -q %s -L %s:localhost:%s root@%s' %
                 (info['ssh_config'], info['port'], info['port'],
                 self._client.ip)], shell=True)
+            assert info['ssh_tunnel'].poll() is None, \
+                'The SSH tunnel on port %d is not up.' % info['port']
 
 
     def _kill_remote_process(self, info):
@@ -322,3 +326,4 @@ class ServoTest(test.test):
             if info['ssh_tunnel'] and info['ssh_tunnel'].poll() is None:
                 info['ssh_tunnel'].terminate()
             self._kill_remote_process(info)
+            info['ssh_tunnel'] = None
