@@ -12,35 +12,6 @@ from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 
-class SuspendFailure(error.TestFail):
-    """Base class for a failure during a single suspend/resume cycle."""
-    pass
-
-
-class SuspendAbort(SuspendFailure):
-    """Suspend took too long, got wakeup event (RTC tick) before it was done."""
-    pass
-
-
-class HwClockError(SuspendFailure):
-    """Known bug with firmware messing up RTC interrupts (crosbug.com/36004)"""
-    AFFECTED_BOARDS = ['LUMPY', 'STUMPY', 'KIEV']
-    @staticmethod
-    def is_affected():
-        """Returns True iff the current board is known to be affected."""
-        return utils.get_board() in HwClockError.AFFECTED_BOARDS
-
-
-class FirmwareError(SuspendFailure):
-    """String 'ERROR' found in firmware log after resume."""
-    WHITELIST = [r'PNP: 002e\.4 70 irq size: 0x0000000001 not assigned']
-
-
-class KernelError(SuspendFailure):
-    """Kernel WARN_ON() hit during suspend/resume."""
-    pass
-
-
 class Suspender(object):
     """Class for suspend/resume measurements.
 
@@ -55,7 +26,7 @@ class Suspender(object):
 
     Private attributes:
         _log_reader: LogReader that is set to start right before suspending.
-        _use_dbus: Set to use asynchronous DBus method for suspending.
+        _method: Set to the sys_power.do_suspend method to use.
         _throw: Set to have SuspendFailure exceptions raised to the caller.
         _reset_pm_print_times: Set to deactivate pm_print_times after the test.
         _restart_tlsdated: Set to restart tlsdated after the test.
@@ -70,12 +41,16 @@ class Suspender(object):
         _device_resume_time: Read seconds overall device resume took from logs.
         _individual_device_times: Reads individual device suspend/resume times.
     """
+
+    # alarm/not_before value guaranteed to raise EarlyWakeup in _hwclock_ts
+    _EARLY_WAKEUP = 2147483647
+
     def __init__(self, use_dbus=False, throw=False, device_times=False):
         """Prepare environment for suspending."""
         self.disconnect_3G_time = 0
         self.successes = []
         self.failures = []
-        self._use_dbus = use_dbus
+        self._method = 'dbus' if use_dbus else 'powerd_suspend'
         self._throw = throw
         self._reset_pm_print_times = False
         self._restart_tlsdated = False
@@ -146,7 +121,7 @@ class Suspender(object):
                 for line in f:
                     words = line.split('=')
                     if name == words[0]:
-                        return float(words[1]);
+                        return float(words[1])
             except IOError:
                 pass
             time.sleep(sleep_seconds)
@@ -163,13 +138,19 @@ class Suspender(object):
                                   utils.read_file(path), re.DOTALL)
                 if match:
                     seconds = int(match.group(1)) + float(match.group(2))
-                    if seconds < not_before: continue
+                    # Lucas's RTC seems a little flaky, can trigger a second off
+                    if seconds < not_before:
+                        continue
                     logging.debug('RTC resume timestamp read: %f' % seconds)
                     return seconds
             time.sleep(0.2)
-        logging.debug('HwClock failure, dumping nvram:\n' +
-                utils.system_output('mosys nvram dump', ignore_status=True))
-        raise HwClockError('RTC timestamp broken:' + utils.read_file(path))
+        if utils.get_board() in ['LUMPY', 'STUMPY', 'KIEV']:
+            logging.debug('RTC read failure (crosbug/36004), dumping nvram:\n' +
+                    utils.system_output('mosys nvram dump', ignore_status=True))
+            return None
+        if seconds < not_before:
+            raise sys_power.EarlyWakeupError('Woke up at %f' % seconds)
+        raise error.TestError('Broken RTC timestamp: ' + utils.read_file(path))
 
 
     def _firmware_resume_time(self):
@@ -223,56 +204,48 @@ class Suspender(object):
         measurements, or a tuple (general_measurements, individual_device_times)
         when _device_times is set.
         """
-        iteration = len(self.failures) + len(self.successes) + 1
-        self._log_reader.set_start_by_current()
-        # Remove previous last_run_timings file to prevent races
         try:
-            os.remove('/var/run/power_manager/last_resume_timings')
-        except OSError:
-            pass
-        try:
-            # set the RTC alarm
-            alarm_time = int(rtc.get_seconds() + duration)
-            logging.debug('Trying suspend %d for %d seconds... wakealarm = %d' %
-                          (iteration, duration, alarm_time))
-            rtc.set_wake_alarm(alarm_time)
-            if len(rtc.get_rtc_devices()) > 1:
-                backup_wake = rtc.get_seconds(rtc_device='rtc1') + duration + 30
-                logging.debug('Priming backup RTC at %d' % backup_wake)
-                rtc.set_wake_alarm(backup_wake, rtc_device='rtc1')
+            iteration = len(self.failures) + len(self.successes) + 1
 
-            # do the actual suspend
-            if self._use_dbus:
-                # asynch suspend, need to wait a while for it to happen...
-                sys_power.request_suspend()
-                # TODO: replace sleep with listening for DBus resume message
-                time.sleep(3)
+            # Retry suspend until we get clear HwClock reading on buggy boards
+            for _ in xrange(10):
+                self._log_reader.set_start_by_current()
+                try:
+                    alarm = sys_power.do_suspend(duration, self._method)
+                except sys_power.EarlyWakeupError:
+                    # might be a SuspendAbort... we check for it ourselves below
+                    alarm = self._EARLY_WAKEUP
+
+                # look for errors
+                if os.path.exists('/sys/firmware/log'):
+                    for msg in re.findall(r'^.*ERROR.*$',
+                            utils.read_file('/sys/firmware/log'), re.M):
+                        for pattern in sys_power.FirmwareError.WHITELIST:
+                            if re.search(pattern, msg):
+                                logging.info('Whitelisted FW error: ' + msg)
+                                break
+                        else:
+                            raise sys_power.FirmwareError(msg.strip('\r\n '))
+
+                warning_regex = re.compile(r' kernel: \[.*WARNING:')
+                abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
+                        r'|powerd_suspend\[.*Aborting suspend, wake event rec')
+                unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
+                for line in self._log_reader.read_all_logs():
+                    if warning_regex.search(line):
+                        raise sys_power.KernelError(
+                                cros_logging.strip_timestamp(line))
+                    if abort_regex.search(line):
+                        raise sys_power.SuspendAbort(
+                                cros_logging.strip_timestamp(line))
+                    if unknown_regex.search(line):
+                        raise sys_power.SuspendFailure('Unidentified problem.')
+
+                hwclock_ts = self._hwclock_ts(alarm)
+                if hwclock_ts:
+                    break
             else:
-                sys_power.write_wakeup_count(sys_power.read_wakeup_count())
-                sys_power.suspend_to_ram()
-
-            # look for errors
-            if os.path.exists('/sys/firmware/log'):
-                for msg in re.findall(r'^.*ERROR.*$',
-                        utils.read_file('/sys/firmware/log'), re.M):
-                    for pattern in FirmwareError.WHITELIST:
-                        if re.search(pattern, msg):
-                            logging.info('Whitelisted firmware error: ' + msg)
-                            break
-                    else:
-                        raise FirmwareError(msg.strip('\r\n '))
-
-            warning_regex = re.compile(r' kernel: \[.*WARNING:')
-            abort_regex = re.compile(r' kernel: \[.*Freezing of tasks aborted|'
-                    r'powerd_suspend\[.*Aborting suspend, wake event received')
-            unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
-            for line in self._log_reader.read_all_logs():
-                if warning_regex.search(line):
-                    raise KernelError(line)
-                if abort_regex.search(line):
-                    raise SuspendAbort(line)
-                if unknown_regex.search(line):
-                    raise SuspendFailure('Unidentified suspend failure.')
+                raise error.TestError('Could not read RTC after 10 retries.')
 
             # calculate general measurements
             start_resume = self._ts('start_resume_time')
@@ -280,7 +253,7 @@ class Suspender(object):
                            self._ts('start_suspend_time'))
             kernel_up = self._ts('end_resume_time') - start_resume
             devices_up = self._device_resume_time()
-            total_up = self._hwclock_ts(alarm_time) - alarm_time
+            total_up = hwclock_ts - alarm
             firmware_up = self._firmware_resume_time()
             board_up = total_up - kernel_up - firmware_up
             try:
@@ -288,8 +261,6 @@ class Suspender(object):
             except error.TestError:
                 # can be missing on non-SMP machines
                 cpu_up = None
-            if total_up > 15:
-                raise SuspendFailure('Duration too short, backup RTC fired!')
 
             logging.debug('Success(%d): %g down, %g up, %g board, %g firmware, '
                           '%g kernel, %g cpu, %g devices' %
@@ -312,8 +283,10 @@ class Suspender(object):
             else:
                 return self.successes[-1]
 
-        except SuspendFailure as ex:
-            logging.error('%s(%d): %s' % (type(ex).__name__, iteration, ex))
+        except sys_power.SuspendFailure as ex:
+            message = '%s(%d): %s' % (type(ex).__name__, iteration, ex)
+            logging.error(message)
             self.failures.append(ex)
-            if self._throw: raise
+            if self._throw:
+                raise error.TestFail(message)
             return None

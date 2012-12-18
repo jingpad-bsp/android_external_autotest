@@ -89,15 +89,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
         return self.get_powered(device) == enable
 
     def suspend_resume(self, duration=10):
-        alarm_time = rtc.get_seconds() + duration
-        logging.info('Suspending machine for: %d.\n' % duration)
-        rtc.set_wake_alarm(alarm_time)
-        sys_power.request_suspend()
-        # it is expected that the following sleep starts before the
-        # suspend, because the request_suspend interface is NOT
-        # synchronous.  This means the sleep should wake immediately
-        # after resume.
-        time.sleep(duration)
+        sys_power.do_suspend(duration, 'dbus')
         logging.info('Machine resumed')
 
         # Race condition hack alert: Before we added this sleep, this

@@ -76,15 +76,8 @@ class hardware_TPMCheckS3(test.test):
 
         # Can tweek time_to_sleep if necessary, but should
         #     be at least 10 seconds or more.
-        time_to_sleep = 10
-
-        # Set the alarm
-        alarm_time = rtc.get_seconds() + time_to_sleep
-        logging.debug('alarm_time = %d', alarm_time)
-        rtc.set_wake_alarm(alarm_time)
-
         # Suspend the system to RAM
-        sys_power.suspend_to_ram()
+        sys_power.do_suspend(10)
 
         # Check for current state of the TPM after Resume from RAM.
         check_tpm_volatile_states()

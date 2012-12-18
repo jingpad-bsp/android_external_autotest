@@ -10,6 +10,24 @@ from autotest_lib.client.common_lib import error
 from constants import CLEANUP_LOGS_PAUSED_FILE
 
 
+def strip_timestamp(msg):
+    """
+    Strips timestamps and PIDs from a syslog message to facilitate
+    failure reason aggregation when this message is used as an autotest
+    exception text.
+    """
+    kernel = re.search(r' kernel: \[ *\d+.\d+\] (.*)$', msg)
+    if kernel:
+        return 'kernel: ' + kernel.group(1)
+
+    user = re.match(r'[^a-z]+ [^ ]* ([^\[ ]+)(?:\[.*\])?(: .*)$', msg)
+    if user:
+        return user.group(1) + user.group(2)
+
+    logging.warning('Could not parse syslog message: ' + msg)
+    return msg
+
+
 def extract_kernel_timestamp(msg):
     """Extract a timestmap that appears in kernel log messages and looks
     like this:

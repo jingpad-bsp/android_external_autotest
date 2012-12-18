@@ -56,10 +56,7 @@ class network_WiFiResume(test.test):
 
 def suspend_to_ram(secs_to_suspend=5):
     logging.info('Scheduling wakeup in %d seconds\n', secs_to_suspend)
-    now = rtc.get_seconds()
-    logging.info('Suspending at %d', now)
-    rtc.set_wake_alarm(now + secs_to_suspend)
-    sys_power.suspend_to_ram()
+    sys_power.do_suspend(secs_to_suspend)
     logging.info('Woke up at %d', rtc.get_seconds())
 
 

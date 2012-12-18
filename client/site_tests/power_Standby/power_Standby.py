@@ -40,17 +40,8 @@ class power_Standby(test.test):
 
         while elapsed_hours < test_hours:
             charge_before = power_stats.battery[0].charge_now
-            # Set RTC for wakeup
             before_suspend_secs = rtc.get_seconds()
-            alarm_secs =  before_suspend_secs + int(sample_hours * 3600)
-
-            # flush RTC as it may not work subsequently if wake was not RTC
-            rtc.set_wake_alarm(0)
-
-            rtc.set_wake_alarm(alarm_secs)
-
-            sys_power.suspend_to_ram()
-
+            sys_power.do_suspend(sample_hours * 3600)
             after_suspend_secs = rtc.get_seconds()
 
             power_stats.refresh()

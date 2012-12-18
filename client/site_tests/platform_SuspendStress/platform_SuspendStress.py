@@ -28,17 +28,7 @@ class platform_SuspendStress(test.test):
         """Suspends for N seconds."""
         sleep_seconds = min(seconds, MIN_SLEEP_INTERVAL)
         suspend_time = rtc.get_seconds()
-        alarm_time = suspend_time + sleep_seconds
-        logging.debug('alarm_time = %d', alarm_time)
-        logging.debug('setting wake alarm at %d for +%ds', suspend_time,
-                      seconds)
-        try:
-            rtc.set_wake_alarm(alarm_time)
-        except IOError:
-            logging.warning('setting wake alarm failed, re-trying.')
-            rtc.set_wake_alarm(0)
-            rtc.set_wake_alarm(alarm_time)
-        sys_power.suspend_to_ram()
+        sys_power.do_suspend(sleep_seconds)
         logging.debug('and we\'re back... %ds elapsed.',
                       rtc.get_seconds() - suspend_time)
 
