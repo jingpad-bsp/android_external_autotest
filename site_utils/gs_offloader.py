@@ -172,9 +172,8 @@ def offload_dir(dir_entry, dest_path=''):
       stdout_file.seek(0)
       stderr_file.seek(0)
       stderr = stderr_file.read()
-      logging.error('Stdout:\n%s \nStderr:\n%s', stdout_file.read(),
-                    stderr)
-      # The second to last line of stderr has the error message we're
+
+      # The second to last line of stderr has the main error message we're
       # interested in.
       try:
         error_msg = stderr.split('\n')[-2]
@@ -187,6 +186,9 @@ def offload_dir(dir_entry, dest_path=''):
       email_msg = ERROR_EMAIL_MSG_FORMAT % (dir_entry, error_msg)
       email_manager.manager.send_email(NOTIFY_ADDRESS, email_subject,
                                        email_msg)
+      logging.error(email_msg)
+      logging.error('Stdout:\n%s \nStderr:\n%s', stdout_file.read(),
+                    stderr)
 
     stdout_file.close()
     stderr_file.close()
