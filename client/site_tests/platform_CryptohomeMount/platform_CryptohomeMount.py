@@ -37,7 +37,7 @@ class platform_CryptohomeMount(test.test):
           raise error.TestFail('Cryptohome could not remove the test user.')
 
         # Mount the test user account
-        cmd = ('/usr/sbin/cryptohome --action=mount --user=' + test_user
+        cmd = ('/usr/sbin/cryptohome --async --action=mount --user=' + test_user
                + ' --password=' + test_password + ' --create')
         self.__run_cmd(cmd)
         # Ensure that the user directory exists
@@ -58,7 +58,7 @@ class platform_CryptohomeMount(test.test):
 
         # Make sure that an incorrect password fails
         incorrect_password = 'this_is_an_incorrect_password'
-        cmd = ('/usr/sbin/cryptohome --action=mount --user=' + test_user
+        cmd = ('/usr/sbin/cryptohome --async --action=mount --user=' + test_user
                + ' --password=' + incorrect_password)
         self.__run_cmd(cmd)
         # Ensure that the user directory is not mounted
