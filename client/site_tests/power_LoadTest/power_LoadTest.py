@@ -312,9 +312,9 @@ class power_LoadTest(cros_ui_test.UITest):
             keyvals['minutes_battery_life'] -= self._sys_low_batt_s / 60
 
         keyvals['a_current_rate'] = keyvals['ah_charge_used'] * 60 / \
-                                    keyvals['minutes_battery_life']
+                                    keyvals['minutes_battery_life_tested']
         keyvals['w_energy_rate'] = keyvals['wh_energy_used'] * 60 / \
-                                   keyvals['minutes_battery_life']
+                                   keyvals['minutes_battery_life_tested']
         keyvals['mc_min_temp'] = self._power_status.min_temp
         keyvals['mc_max_temp'] = self._power_status.max_temp
 
