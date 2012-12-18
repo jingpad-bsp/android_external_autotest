@@ -45,9 +45,11 @@ class StateMachine(object):
         if self._done:
             return
 
-        if not self._started and not self._ShouldStartStateMachine():
-            logging.info('StateMachine cannot start.')
-            return
+        if not self._started:
+            if not self._ShouldStartStateMachine():
+                logging.info('StateMachine cannot start.')
+                return
+            self._started = True
 
         state = self._modem.Get(mm1.I_MODEM, 'State')
         func = self._trans_func_map.get(state, None)
@@ -78,9 +80,12 @@ class StateMachine(object):
     def _ShouldStartStateMachine(self):
         """
         This method will be called when the state machine is in a starting
-        state. This function should return True, if the state machine can
+        state. This method should return True, if the state machine can
         successfully begin its state transitions, False if it should not
-        proceed.
+        proceed. This method can also raise an exception in the failure case.
+
+        In the success case, this method should also execute any necessary
+        initialization steps.
 
         This method must be implemented by a subclass. Subclasses can
         further override this method to provide custom functionality.
