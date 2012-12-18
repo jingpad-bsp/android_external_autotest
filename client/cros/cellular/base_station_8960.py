@@ -43,6 +43,10 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
   def _Reset(self):
     self.c.Reset()
     self.Stop()
+    # Perform a partial reset to workaround a problem with the 8960
+    # failing to accept CDMA connections after switching from a
+    # GSM technology.
+    self.c.SendStanza(['SYSTEM:PRESet3'])
 
   def Close(self):
     self.c.Close()
