@@ -198,7 +198,6 @@
             "https://support.google.com/*",
             "https://support.google.com/chromeos/*"],
         "api_permissions": ["chromeosInfoPrivate",
-                            "management",
                             "tabs"]
       }
   ]
