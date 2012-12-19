@@ -16,7 +16,6 @@
 /usr/bin/ntfs-3g
 /usr/bin/sudo
 /usr/bin/sudoedit
-/usr/bin/Xorg
 /usr/libexec/dbus-daemon-launch-helper
 /usr/sbin/pppd
 /usr/sbin/traceroute6
