@@ -30,7 +30,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
     def wait_yuck_screen_and_close_lid(self):
         """Wait and trigger yuck screen and clod lid."""
         # Insert a corrupted USB stick. A yuck screen is expected.
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.servo.switch_usbkey('dut')
         time.sleep(self.delay.load_usb)
         self.wait_longer_fw_screen_and_close_lid()
 
@@ -40,7 +40,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
         if self.client_attr.has_lid:
             self.assert_test_image_in_usb_disk()
             self.setup_dev_mode(dev_mode=True)
-            self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.servo.switch_usbkey('host')
             usb_dev = self.servo.probe_host_usb_dev()
             # Corrupt the kernel of USB stick. It is needed for triggering a
             # yuck screen later.
@@ -49,7 +49,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
 
     def cleanup(self):
         if self.client_attr.has_lid:
-            self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.servo.switch_usbkey('host')
             usb_dev = self.servo.probe_host_usb_dev()
             # Restore the kernel of USB stick which is corrupted on setup phase.
             self.restore_usb_kernel(usb_dev)

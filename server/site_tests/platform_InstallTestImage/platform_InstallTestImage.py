@@ -21,7 +21,7 @@ class platform_InstallTestImage(test.test):
         host.run('chromeos-install --yes',
                  timeout=self._INSTALL_TIMEOUT)
         host.servo.power_long_press()
-        host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        host.servo.switch_usbkey('host')
         host.servo.power_short_press()
         if not host.wait_up(timeout=host.BOOT_TIMEOUT):
             raise error.TestFail('DUT failed to reboot installed test image'

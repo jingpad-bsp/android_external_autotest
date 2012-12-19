@@ -239,10 +239,10 @@ class FAFTSequence(ServoTest):
         """
         recovery_reason = 0
         logging.info('Try to retrieve recovery reason...')
-        if self.servo.get('usb_mux_sel1') == 'dut_sees_usbkey':
+        if self.servo.get_usbkey_direction() == 'dut':
             self.wait_fw_screen_and_plug_usb()
         else:
-            self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+            self.servo.switch_usbkey('dut')
 
         try:
             self.wait_for_client(install_deps=True)
@@ -316,7 +316,7 @@ class FAFTSequence(ServoTest):
                 return
 
         logging.info('Try boot into USB image...')
-        self.servo.enable_usb_hub(host=True)
+        self.servo.switch_usbkey('host')
         self.enable_rec_mode_and_reboot()
         self.wait_fw_screen_and_plug_usb()
         try:
@@ -383,9 +383,9 @@ class FAFTSequence(ServoTest):
         if self.check_setup_done('usb_check'):
             return
         if usb_dev:
-            assert self.servo.get('usb_mux_sel1') == 'servo_sees_usbkey'
+            assert self.servo.get_usbkey_direction() == 'host'
         else:
-            self.servo.enable_usb_hub(host=True)
+            self.servo.switch_usbkey('host')
             usb_dev = self.servo.probe_host_usb_dev()
             if not usb_dev:
                 raise error.TestError(
@@ -436,9 +436,9 @@ class FAFTSequence(ServoTest):
             host = True
 
         if host is True:
-            self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.servo.switch_usbkey('host')
         elif host is False:
-            self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+            self.servo.switch_usbkey('dut')
 
 
     def get_server_address(self):
@@ -535,7 +535,7 @@ class FAFTSequence(ServoTest):
         # Now turn it on.
         self.servo.power_short_press()
         self.wait_for_client()
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.servo.switch_usbkey('dut')
 
         install_cmd = 'chromeos-install --yes'
         if firmware_update:
@@ -574,7 +574,7 @@ class FAFTSequence(ServoTest):
             self.clear_saved_firmware()
 
         # 'Unplug' any USB keys in the servo from the dut.
-        self.servo.enable_usb_hub(host=True)
+        self.servo.switch_usbkey('host')
         # Mark usb_check done so it won't check a test image in USB anymore.
         self.mark_setup_done('usb_check')
         self.mark_setup_done('reimage')
@@ -871,14 +871,14 @@ class FAFTSequence(ServoTest):
     def wait_fw_screen_and_unplug_usb(self):
         """Wait for firmware warning screen and then unplug the servo USB."""
         time.sleep(self.delay.load_usb)
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.servo.switch_usbkey('host')
         time.sleep(self.delay.between_usb_plug)
 
 
     def wait_fw_screen_and_plug_usb(self):
         """Wait for firmware warning screen and then unplug and plug the USB."""
         self.wait_fw_screen_and_unplug_usb()
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.servo.switch_usbkey('dut')
 
 
     def wait_fw_screen_and_press_power(self):
@@ -1021,7 +1021,7 @@ class FAFTSequence(ServoTest):
     def enable_keyboard_dev_mode(self):
         logging.info("Enabling keyboard controlled developer mode")
         # Plug out USB disk for preventing recovery boot without warning
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.servo.switch_usbkey('host')
         # Rebooting EC with rec mode on. Should power on AP.
         self.enable_rec_mode_and_reboot()
         self.wait_for_client_offline()
@@ -1200,7 +1200,7 @@ class FAFTSequence(ServoTest):
         shim to reset TPM values.
         """
         # Unplug USB first to avoid the complicated USB autoboot cases.
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.servo.switch_usbkey('host')
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
             self.enable_dev_mode_and_reboot()

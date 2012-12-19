@@ -62,6 +62,8 @@ class Servo(object):
 
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
+    # Time to keep USB power off before and after USB mux direction is changed
+    USB_POWEROFF_DELAY = 2
 
     KEY_MATRIX_ALT_0 = {
         'ctrl_refresh':  ['0', '0', '0', '1'],
@@ -144,6 +146,13 @@ class Servo(object):
         self._connect_servod(servo_host, servo_port)
         self._is_localhost = (servo_host == 'localhost')
         self._target_host = target_host
+
+        # a string, showing what interface (host or dut) the USB device is
+        # connected to.
+        self._usb_position = None
+        self.set('dut_hub_pwren', 'on')
+        self.set('usb_mux_oe1', 'on')
+        self.switch_usbkey('host')
 
         # Commands on the servo host must be run by the superuser. Our account
         # on Beaglebone is root, but locally we might be running as a
@@ -361,35 +370,6 @@ class Servo(object):
         """Disable development mode on device."""
         self.set('dev_mode', 'off')
 
-    def enable_usb_hub(self, host=False):
-        """Enable Servo's USB/ethernet hub.
-
-        This is equivalent to plugging in the USB devices attached to Servo to
-        the host (if |host| is True) or dut (if |host| is False).
-        For host=False, requires that the USB out on the servo board is
-        connected to a USB in port on the target device. Servo's USB ports are
-        labeled DUT_HUB_USB1 and DUT_HUB_USB2. Servo's ethernet port is also
-        connected to this hub. Servo's USB port DUT_HUB_IN is the output of the
-        hub.
-        """
-        self.set('dut_hub_pwren', 'on')
-        if host:
-            self.set('usb_mux_oe1', 'on')
-            self.set('usb_mux_sel1', 'servo_sees_usbkey')
-        else:
-            self.set('dut_hub_sel', 'dut_sees_hub')
-
-        self.set('dut_hub_on', 'yes')
-
-
-    def disable_usb_hub(self):
-        """Disable Servo's USB/ethernet hub.
-
-        This is equivalent to unplugging the USB devices attached to Servo.
-        """
-        self.set('dut_hub_on', 'no')
-
-
     def boot_devmode(self):
         """Boot a dev-mode device that is powered off."""
         self.power_short_press()
@@ -500,22 +480,22 @@ class Servo(object):
           A string of USB disk path, like '/dev/sdb', or None if not existed.
         """
         cmd = 'ls /dev/sd[a-z]'
-        original_value = self.get('usb_mux_sel1')
+        original_value = self.get_usbkey_direction()
 
         # Make the host unable to see the USB disk.
-        if original_value != 'dut_sees_usbkey':
-            self.set('usb_mux_sel1', 'dut_sees_usbkey')
+        if original_value != 'dut':
+            self.switch_usbkey('dut')
             time.sleep(self.USB_DETECTION_DELAY)
         no_usb_set = set(self.system_output(cmd, ignore_status=True).split())
 
         # Make the host able to see the USB disk.
-        self.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.switch_usbkey('host')
         time.sleep(self.USB_DETECTION_DELAY)
         has_usb_set = set(self.system_output(cmd, ignore_status=True).split())
 
         # Back to its original value.
-        if original_value != 'servo_sees_usbkey':
-            self.set('usb_mux_sel1', original_value)
+        if original_value != self.get_usbkey_direction():
+            self.switch_usbkey(original_value)
             time.sleep(self.USB_DETECTION_DELAY)
 
         diff_set = has_usb_set - no_usb_set
@@ -547,7 +527,7 @@ class Servo(object):
 
         # Set up Servo's usb mux.
         self.set('prtctl4_pwren', 'on')
-        self.enable_usb_hub(host=True)
+        self.switch_usbkey('host')
         if image_path:
             logging.info('Searching for usb device and copying image to it. '
                          'Please wait a few minutes...')
@@ -591,7 +571,7 @@ class Servo(object):
             self.enable_recovery_mode()
             self.power_short_press()
             time.sleep(Servo.RECOVERY_BOOT_DELAY)
-            self.set('usb_mux_sel1', 'dut_sees_usbkey')
+            self.switch_usbkey('dut')
             self.disable_recovery_mode()
 
             if host:
@@ -607,7 +587,7 @@ class Servo(object):
                     logging.error('Host failed to come back up in the allotted '
                                   'time: %d seconds.', wait_timeout)
                 logging.info('Removing the usb key from the DUT.')
-                self.disable_usb_hub()
+                self.switch_usbkey('host')
         except:
             # In case anything went wrong we want to make sure to do a clean
             # reset.
@@ -695,3 +675,51 @@ class Servo(object):
         if not self.is_localhost():
             image = self._scp_image(image)
         programmer.program_bootprom(board, self, image)
+
+    def switch_usbkey(self, side):
+        """Connect USB flash stick to either host or DUT.
+
+        This function switches the servo multiplexer to provide electrical
+        connection between the USB port J3 and either host or DUT side.
+
+        Switching is accompanied by powercycling of the USB stick, because it
+        sometimes gets wedged if the mux is switched while the stick power is
+        on.
+
+        @param side: a string, either 'dut' or 'host' - indicates which side
+                   the USB flash device is required to be connected to.
+
+        @raise: error.TestError in case the parameter is neither 'dut' not
+                   'host'
+        """
+
+        if self._usb_position == side:
+            return
+
+        if side == 'host':
+            mux_direction = 'servo_sees_usbkey'
+        elif side == 'dut':
+            mux_direction = 'dut_sees_usbkey'
+        else:
+            raise error.TestError('unknown USB mux setting: %s' % side)
+
+        self.set('prtctl4_pwren', 'off')
+        time.sleep(self.USB_POWEROFF_DELAY)
+        self.set('usb_mux_sel1', mux_direction)
+        time.sleep(self.USB_POWEROFF_DELAY)
+        self.set('prtctl4_pwren', 'on')
+
+        self._usb_position = side
+
+
+    def get_usbkey_direction(self):
+        """Get name of the side the USB device is connected to.
+
+        @return a string, either 'dut' or 'host'
+        """
+        if not self._usb_position:
+            if self.get('usb_mux_sel1').starstwith('dut'):
+                self._usb_position = 'dut'
+            else:
+                self._usb_position = 'host'
+        return self._usb_position

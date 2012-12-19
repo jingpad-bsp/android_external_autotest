@@ -28,7 +28,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
     def wait_yuck_screen_and_press_power(self):
         """Insert corrupted USB for yuck screen and press power button."""
         # This USB stick will be removed in cleanup phase.
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.servo.switch_usbkey('dut')
         time.sleep(self.delay.load_usb)
         self.wait_longer_fw_screen_and_press_power()
 
@@ -37,7 +37,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
         super(firmware_FwScreenPressPower, self).setup()
         self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode=True)
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.servo.switch_usbkey('host')
         usb_dev = self.servo.probe_host_usb_dev()
         # Corrupt the kernel of USB stick. It is needed for triggering a
         # yuck screen later.
@@ -45,7 +45,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
 
 
     def cleanup(self):
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.servo.switch_usbkey('host')
         usb_dev = self.servo.probe_host_usb_dev()
         # Restore the kernel of USB stick which is corrupted on setup phase.
         self.restore_usb_kernel(usb_dev)

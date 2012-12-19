@@ -395,16 +395,17 @@ class autoupdate_EndToEndTest(test.test):
 
 
     def _servo_dut_reboot(self, host, is_dev_mode, is_using_test_images,
-                          is_disable_usb_hub=False):
+                          disconnect_usbkey=False):
         """Reboots a DUT.
 
         @param host: a host object
         @param is_dev_mode: whether or not the DUT is in dev mode
         @param is_using_test_images: whether or not a test image should be
                assumed
-        @param is_disable_usb_hub: disabled the servo USB hub in between power
-               off/on cycles; this is useful when (for example) a USB booted
-               device need not see the attached USB key after the reboot.
+        @param disconnect_usbkey: detach USB flash device from the DUT before
+               powering it back up; this is useful when (for example) a USB
+               booted device need not see the attached USB key after the
+               reboot.
 
         @raise error.TestFail if DUT fails to reboot.
 
@@ -412,8 +413,8 @@ class autoupdate_EndToEndTest(test.test):
         logging.info('rebooting dut')
         host.servo.power_long_press()
         _wait(self._WAIT_AFTER_SHUTDOWN_SECONDS, 'after shutdown')
-        if is_disable_usb_hub:
-            host.servo.disable_usb_hub()
+        if disconnect_usbkey:
+            host.servo.switch_usbkey('host')
         self._servo_dut_power_up(host, is_dev_mode)
         if is_using_test_images:
             if not host.wait_up(timeout=host.BOOT_TIMEOUT):
@@ -444,7 +445,7 @@ class autoupdate_EndToEndTest(test.test):
 
         # Reboot the DUT after installation.
         self._servo_dut_reboot(host, is_dev_mode, False,
-                               is_disable_usb_hub=True)
+                               disconnect_usbkey=True)
 
 
     def _install_test_image(self, host, lorry_image_url, is_dev_mode):
@@ -480,7 +481,7 @@ class autoupdate_EndToEndTest(test.test):
 
         # Reboot the DUT after installation.
         self._servo_dut_reboot(host, is_dev_mode, True,
-                               is_disable_usb_hub=True)
+                               disconnect_usbkey=True)
 
 
     def _trigger_test_update(self, host, omaha_netloc):
