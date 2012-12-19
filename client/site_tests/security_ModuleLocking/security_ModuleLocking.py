@@ -97,10 +97,7 @@ class security_ModuleLocking(test.test):
             self.check(open(sysctl).read() == '1\n', "%s enabled" % (sysctl))
 
         # Check the enforced state is to deny non-rootfs module loads.
-        # Use the crc7 module since it seems to not normally be loaded.
-        # TODO(keescook): add a testing-only "hello world" module for this
-        # test's exclusive use.
-        module = "crc7"
+        module = "test_module"
         loaded = self.module_loads_outside_rootfs(module)
         self.check(loaded == False, "cannot load %s from /tmp" % (module))
 
