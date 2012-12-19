@@ -3,23 +3,21 @@
 # found in the LICENSE file.
 
 
-import compiler, datetime, hashlib, itertools, logging, os
+import datetime, hashlib, logging, os
 
 import common
 
-from autotest_lib.client.common_lib import control_data, global_config
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager, host_spec
+from autotest_lib.server.cros.dynamic_suite import host_spec
 from autotest_lib.server.cros.dynamic_suite import job_status, tools
 from autotest_lib.server.cros.dynamic_suite.host_spec import ExplicitHostGroup
 from autotest_lib.server.cros.dynamic_suite.host_spec import HostSpec
 from autotest_lib.server.cros.dynamic_suite.host_spec import MetaHostGroup
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
-from autotest_lib.server import frontend
 from autotest_lib.frontend.afe.json_rpc import proxy
 
 
@@ -67,6 +65,10 @@ class Reimager(object):
                             This must be set if you want the 'name_job-id' tuple
                             of each per-device reimaging job listed in the
                             parent reimaging job's keyvals.
+        @param canary_job: The reimage job that will get kicked off by the
+                           |schedule| method.
+        @param to_reimage: The list of machines that the reimage job will
+                           attempt to reimage.
         """
         self._board_label = board_label
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
@@ -81,10 +83,155 @@ class Reimager(object):
             [os.path.join(autotest_dir, 'server/site_tests')])
         self._version_prefix = None
         self._control_file = None
+        self._url_pattern = None
+        self._canary_job = None
+        self._to_reimage = None
 
 
-    def attempt(self, build, pool, devserver, record, check_hosts, manager,
+    def attempt(self, build, pool, devserver, record, check_hosts,
                 tests_to_skip, dependencies={'':[]}, num=None,
+                timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
+        """
+        Synchronously attempt to reimage some machines.
+
+        See |schedule| and |wait| for more details.
+
+        @param build: the build to install e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
+        @param devserver: an instance of a devserver to use to complete this
+                  call.
+        @param record: callable that records job status.
+               prototype:
+                 record(base_job.status_log_entry)
+        @param check_hosts: require appropriate hosts to be available now.
+        @param tests_to_skip: a list output parameter.  After execution, this
+                              contains a list of control files not to run.
+        @param dependencies: test-name-indexed dict of labels, e.g.
+                             {'test1': ['label1', 'label2']}
+                             Defaults to trivial set of dependencies, to cope
+                             with builds that have no dependency information.
+
+        @param num: the maximum number of devices to reimage.
+        @param timeout_mins: Amount of time in mins to wait before timing out
+                             this reimage attempt.
+        @return True if all reimaging jobs succeed, false if they all fail or
+                atleast one is aborted.
+        """
+        # This method still exists for unittesting convenience.
+        if self.schedule(build, pool,
+              devserver, record, check_hosts, tests_to_skip,
+              dependencies, num):
+            return self.wait(build, pool, record, check_hosts,
+                      tests_to_skip,
+                      dependencies, timeout_mins)
+
+        return False
+
+
+    def schedule(self, build, pool, devserver, record, check_hosts,
+                 tests_to_skip, dependencies={'':[]}, num=None):
+        """
+        Asynchronously attempt to reimage some machines.
+
+        Fire off attempts to reimage |num| machines of type |board|, using an
+        image at |url| called |build|.
+
+        Unfortunately, we can't rely on the scheduler to pick hosts for
+        us when using dependencies.  The problem is that the scheduler
+        treats all host queue entries as independent, and isn't capable
+        of looking across a set of entries to make intelligent decisions
+        about which hosts to use.  Consider a testbed that has only one
+        'bluetooth'-labeled device, and a set of tests in which some
+        require bluetooth and some could run on any machine.  If we
+        schedule two reimaging jobs, one of which states that it should
+        run on a bluetooth-having machine, the scheduler may choose to
+        run the _other_ reimaging job (which has fewer constraints)
+        on the DUT with the 'bluetooth' label -- thus starving the first
+        reimaging job.  We can't schedule a single job with heterogeneous
+        dependencies, either, as that is unsupported and devolves to the
+        same problem: the scheduler is not designed to make decisions
+        across multiple host queue entries.
+
+        Given this, we'll grab lists of hosts on our own and make our
+        own scheduling decisions.
+
+        @param build: the build to install e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
+        @param devserver: an instance of a devserver to use to complete this
+                  call.
+        @param record: callable that records job status.
+               prototype:
+                 record(base_job.status_log_entry)
+        @param check_hosts: require appropriate hosts to be available now.
+        @param tests_to_skip: a list output parameter.  After execution, this
+                              contains a list of control files not to run.
+        @param dependencies: test-name-indexed dict of labels, e.g.
+                             {'test1': ['label1', 'label2']}
+                             Defaults to trivial set of dependencies, to cope
+                             with builds that have no dependency information.
+
+        @param num: the maximum number of devices to reimage.
+        @return True if we succeed to kick off reimage jos, false if we can't.
+        """
+
+        if not num:
+            num = tools.sharding_factor()
+
+        begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
+        logging.debug("scheduling reimaging across at most %d machines", num)
+
+        self._ensure_version_label(self._version_prefix + build)
+
+        try:
+            # Figure out what kind of hosts we need to grab.
+            per_test_specs = self._build_host_specs_from_dependencies(
+                self._board_label, pool, dependencies)
+
+            # Pick hosts to use, make sure we have enough (if needed).
+            self._to_reimage = self._build_host_group(
+                set(per_test_specs.values()), num, check_hosts)
+
+            # Determine which, if any, tests can't be run on the hosts we found.
+            tests_to_skip.extend(
+                self._discover_unrunnable_tests(per_test_specs,
+                        self._to_reimage.unsatisfied_specs))
+            for test_name in tests_to_skip:
+                Status('TEST_NA', test_name, 'Unsatisfiable DEPENDENCIES',
+                       begin_time_str=begin_time_str).record_all(record)
+
+            # Schedule job and record job metadata.
+            self._canary_job = self._schedule_reimage_job(
+                {'image_name':build}, self._to_reimage, devserver)
+
+            self._record_job_if_possible(Reimager.JOB_NAME, self._canary_job)
+            logging.info('Created re-imaging job: %d', self._canary_job.id)
+
+            return True
+
+        except error.InadequateHostsException as e:
+            logging.warning(e)
+            Status('WARN', Reimager.JOB_NAME, str(e),
+                   begin_time_str=begin_time_str).record_all(record)
+            return False
+
+        except Exception as e:
+            # catch Exception so we record the job as terminated no matter what.
+            import traceback
+            logging.error(traceback.format_exc())
+            logging.error(e)
+
+            Status('ERROR', Reimager.JOB_NAME, str(e),
+                   begin_time_str=begin_time_str).record_all(record)
+            return False
+
+
+    def wait(self, build, pool, record, check_hosts,
+                tests_to_skip,
+                dependencies={'':[]},
                 timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
         """
         Synchronously attempt to reimage some machines.
@@ -116,83 +263,36 @@ class Reimager(object):
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
-        @param devserver: an instance of a devserver to use to complete this
-                  call.
         @param record: callable that records job status.
                prototype:
                  record(base_job.status_log_entry)
         @param check_hosts: require appropriate hosts to be available now.
-        @param manager: an as-yet-unused HostLockManager instance to handle
-                        locking DUTs that we decide to reimage.
-        @param tests_to_skip: a list output parameter.  After execution, this
-                              contains a list of control files not to run.
         @param dependencies: test-name-indexed dict of labels, e.g.
                              {'test1': ['label1', 'label2']}
                              Defaults to trivial set of dependencies, to cope
                              with builds that have no dependency information.
-
-        @param num: the maximum number of devices to reimage.
         @param timeout_mins: Amount of time in mins to wait before timing out
                              this reimage attempt.
         @return True if all reimaging jobs succeed, false if they all fail or
                 atleast one is aborted.
         """
-        if not num:
-            num = tools.sharding_factor()
-        logging.debug("scheduling reimaging across at most %d machines", num)
         begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
         try:
-            self._ensure_version_label(self._version_prefix + build)
-            # Figure out what kind of hosts we need to grab.
-            per_test_specs = self._build_host_specs_from_dependencies(
-                self._board_label, pool, dependencies)
-
-            # Pick hosts to use, make sure we have enough (if needed).
-            to_reimage = self._build_host_group(set(per_test_specs.values()),
-                                                num, check_hosts)
-
-            # Determine which, if any, tests can't be run on the hosts we found.
-            tests_to_skip.extend(
-                self._discover_unrunnable_tests(per_test_specs,
-                                                to_reimage.unsatisfied_specs))
-            for test_name in tests_to_skip:
-                Status('TEST_NA', test_name, 'Unsatisfiable DEPENDENCIES',
-                       begin_time_str=begin_time_str).record_all(record)
-
-            # Schedule job and record job metadata.
-            canary_job = self._schedule_reimage_job(
-                {'image_name': build}, to_reimage, devserver)
-
-            self._record_job_if_possible(Reimager.JOB_NAME, canary_job)
-            logging.info('Created re-imaging job: %d', canary_job.id)
-
             start_time = datetime.datetime.utcnow()
-            if not job_status.wait_for_jobs_to_start(self._afe, [canary_job],
-                    start_time=start_time, wait_timeout_mins=timeout_mins):
+            if not job_status.wait_for_jobs_to_start(self._afe,
+                    [self._canary_job], start_time=start_time,
+                    wait_timeout_mins=timeout_mins):
                 raise error.ReimageAbortedException('Try job was aborted.')
             logging.debug('Re-imaging job running.')
 
-            hosts = job_status.wait_for_and_lock_job_hosts(
-                    self._afe, [canary_job], manager, start_time=start_time,
-                    wait_timeout_mins=timeout_mins)
-            if job_status.check_job_abort_status(self._afe, [canary_job]):
-                raise error.ReimageAbortedException('Try job was aborted.')
-            logging.info('%r locked for reimaging.', hosts)
-
-            job_status.wait_for_jobs_to_finish(self._afe, [canary_job])
+            job_status.wait_for_jobs_to_finish(self._afe, [self._canary_job])
             logging.debug('Re-imaging job finished.')
 
             results = job_status.gather_per_host_results(self._afe,
                                                          self._tko,
-                                                         [canary_job],
+                                                         [self._canary_job],
                                                          Reimager.JOB_NAME+'-')
             self._reimaged_hosts[build] = results.keys()
-
-        except error.InadequateHostsException as e:
-            logging.warning(e)
-            Status('WARN', Reimager.JOB_NAME, str(e),
-                   begin_time_str=begin_time_str).record_all(record)
-            return False
 
         except error.ReimageAbortedException as e:
             logging.error('Try job aborted, recording ABORT and exiting.')
@@ -211,18 +311,28 @@ class Reimager(object):
             return False
 
         should_continue = job_status.check_and_record_reimage_results(
-            results, to_reimage, record)
+            results, self._to_reimage, record)
 
         # Currently, this leads to us skipping even tests with no DEPENDENCIES
         # in certain cases: http://crosbug.com/34635
+        per_test_specs = self._build_host_specs_from_dependencies(
+            self._board_label, pool, dependencies)
         doomed_tests = self._discover_unrunnable_tests(per_test_specs,
-                                                       to_reimage.doomed_specs)
+            self._to_reimage.doomed_specs)
         for test_name in doomed_tests:
             Status('ERROR', test_name,
                    'Failed to reimage machine with appropriate labels.',
                    begin_time_str=begin_time_str).record_all(record)
         tests_to_skip.extend(doomed_tests)
         return should_continue
+
+
+    def abort(self):
+        """
+        Abort all scheduled reimage jobs.
+        """
+        if self._canary_job:
+            self._afe.run('abort_host_queue_entries', job=self._canary_job.id)
 
 
     @property
@@ -360,7 +470,7 @@ class Reimager(object):
                           be excluded.
         @return iterable of test names that are associated with bad_specs.
         """
-        return [n for n,s in per_test_specs.iteritems() if s in bad_specs]
+        return [n for n, s in per_test_specs.iteritems() if s in bad_specs]
 
 
     def clear_reimaged_host_state(self, build):
@@ -450,6 +560,26 @@ class Reimager(object):
                                      control_type='Server',
                                      priority='Low',
                                      **host_group.as_args())
+
+
+    def _schedule_reimage_job(self, params, host_group, devserver):
+        """
+        This is meant to be overridden by a subclass to do whatever special
+        setup work is required before calling into _schedule_reimage_job_base.
+
+        @param params: a dictionary where keys and values are strings, to be
+                  injected into the reimaging job control file as variable
+                  assignments. By the time this function is invoked the
+                  dictionary contains one element, the name of the build to
+                  use for reimaging.
+        @param host_group: the HostGroup to be used for this reimaging job.
+        @param devserver: an instance of devserver that DUTs should use to get
+                  build artifacts from.
+
+        @return a frontend.Job object for the scheduled reimaging job.
+        """
+        raise NotImplementedError()
+
 
 class OsReimager(Reimager):
     """

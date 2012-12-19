@@ -6,19 +6,15 @@
 
 """Unit tests for server/cros/dynamic_suite/reimager.py."""
 
-import logging
 import mox
-import unittest
 
-from autotest_lib.client.common_lib import base_job, control_data, error
+from autotest_lib.client.common_lib import base_job, error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe.json_rpc import proxy
-from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager, host_spec
+from autotest_lib.server.cros.dynamic_suite import host_spec
 from autotest_lib.server.cros.dynamic_suite import job_status, tools
-from autotest_lib.server.cros.dynamic_suite.comparitors import AllInHostList
 from autotest_lib.server.cros.dynamic_suite.comparitors import StatusContains
 from autotest_lib.server.cros.dynamic_suite.host_spec import ExplicitHostGroup
 from autotest_lib.server.cros.dynamic_suite.host_spec import HostGroup
@@ -55,7 +51,6 @@ class ReimagerTest(mox.MoxTestBase):
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
         self.devserver = dev_server.ImageServer(self._DEVSERVER_URL)
-        self.manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         self.reimager = OsReimager('', self._BOARD, afe=self.afe, tko=self.tko)
         # Having these ordered by complexity is important!
         host_spec_list = [HostSpec([self._BOARD, self._POOL])]
@@ -267,8 +262,7 @@ class ReimagerTest(mox.MoxTestBase):
 
 
     def expect_attempt(self, canary_job, statuses, ex=None, check_hosts=True,
-                       unsatisfiable_specs=[], doomed_specs=[],
-                       tryjob_aborted=False):
+                       unsatisfiable_specs=[], doomed_specs=[]):
         """Sets up |self.reimager| to expect an attempt().
 
         The return value of attempt() is dictated by the aggregate of the
@@ -313,14 +307,6 @@ class ReimagerTest(mox.MoxTestBase):
             start_time=mox.IgnoreArg(),
             wait_timeout_mins=mox.IgnoreArg()).AndReturn(True)
 
-        job_status.wait_for_and_lock_job_hosts(
-            self.afe, [canary_job], self.manager, start_time=mox.IgnoreArg(),
-            wait_timeout_mins=mox.IgnoreArg()).AndReturn(statuses.keys())
-
-        job_status.check_job_abort_status(mox.IgnoreArg(), mox.IgnoreArg()
-            ).AndReturn(tryjob_aborted)
-        if tryjob_aborted:
-            return
         if ex:
             job_status.wait_for_jobs_to_finish(self.afe,
                                                [canary_job]).AndRaise(ex)
@@ -352,29 +338,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertTrue(self.reimager.attempt(self._BUILD, self._POOL,
                                               self.devserver,
                                               rjob.record_entry, True,
-                                              self.manager, [],
-                                              self._DEPENDENCIES))
-        self.reimager.clear_reimaged_host_state(self._BUILD)
-
-
-    def testTryJobAborted(self):
-        """Should attempt a reimage that aborts and record ABORT"""
-        canary = FakeJob()
-        statuses = {canary.hostnames[0]:
-                    job_status.Status('GOOD', canary.hostnames[0])}
-        self.expect_attempt(canary, statuses, tryjob_aborted=True)
-
-        rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record_entry(StatusContains.CreateFromStrings('START'))
-        rjob.record_entry(StatusContains.CreateFromStrings('ABORT'))
-        rjob.record_entry(StatusContains.CreateFromStrings('END ABORT'))
-
-        self.mox.ReplayAll()
-        self.assertFalse(self.reimager.attempt(self._BUILD, self._POOL,
-                                               self.devserver,
-                                               rjob.record_entry, True,
-                                               self.manager, [],
-                                               self._DEPENDENCIES))
+                                              [], self._DEPENDENCIES))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -390,8 +354,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertTrue(self.reimager.attempt(self._BUILD, self._POOL,
                                               self.devserver,
-                                              rjob.record_entry, True,
-                                              self.manager, []))
+                                              rjob.record_entry, True, []))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -411,8 +374,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertTrue(self.reimager.attempt(self._BUILD, None,
                                               self.devserver,
-                                              rjob.record_entry, True,
-                                              self.manager, []))
+                                              rjob.record_entry, True, []))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -435,7 +397,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertTrue(self.reimager.attempt(self._BUILD, self._POOL,
                                               self.devserver,
                                               rjob.record_entry, True,
-                                              self.manager, tests_to_skip,
+                                              tests_to_skip,
                                               self._DEPENDENCIES))
         self.reimager.clear_reimaged_host_state(self._BUILD)
         self.assertTrue(bad_test in tests_to_skip)
@@ -465,7 +427,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertTrue(self.reimager.attempt(self._BUILD, self._POOL,
                                               self.devserver,
                                               rjob.record_entry, True,
-                                              self.manager, tests_to_skip,
+                                              tests_to_skip,
                                               self._DEPENDENCIES))
         self.reimager.clear_reimaged_host_state(self._BUILD)
         self.assertTrue(bad_test in tests_to_skip)
@@ -484,8 +446,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertFalse(self.reimager.attempt(self._BUILD, self._POOL,
                                                self.devserver,
                                                rjob.record_entry, True,
-                                               self.manager, [],
-                                               self._DEPENDENCIES))
+                                               [], self._DEPENDENCIES))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -498,7 +459,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob = self.mox.CreateMock(base_job.base_job)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._POOL, self.devserver,
-                              rjob.record_entry, True, self.manager, [],
+                              rjob.record_entry, True, [],
                               self._DEPENDENCIES)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
@@ -517,8 +478,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record_entry(StatusContains.CreateFromStrings('END ERROR'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._POOL, self.devserver,
-                              rjob.record_entry, True, self.manager, [],
-                              self._DEPENDENCIES)
+                              rjob.record_entry, True, [], self._DEPENDENCIES)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -536,8 +496,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertTrue(self.reimager.attempt(self._BUILD, self._POOL,
                                               self.devserver,
                                               rjob.record_entry, False,
-                                              self.manager, [],
-                                              self._DEPENDENCIES))
+                                              [], self._DEPENDENCIES))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -563,8 +522,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record_entry(StatusContains.CreateFromStrings('END WARN'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._POOL, self.devserver,
-                              rjob.record_entry, True, self.manager, [],
-                              self._DEPENDENCIES)
+                              rjob.record_entry, True, [], self._DEPENDENCIES)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -591,6 +549,5 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record_entry(StatusContains.CreateFromStrings('END ERROR'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._POOL, self.devserver,
-                              rjob.record_entry, True, self.manager, [],
-                              self._DEPENDENCIES)
+                              rjob.record_entry, True, [], self._DEPENDENCIES)
         self.reimager.clear_reimaged_host_state(self._BUILD)

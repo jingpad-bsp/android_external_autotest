@@ -7,23 +7,19 @@
 
 """Unit tests for server/cros/dynamic_suite/dynamic_suite.py."""
 
-import logging
 import mox
 import shutil
 import tempfile
-import unittest
 
 from autotest_lib.client.common_lib import base_job, control_data
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
-from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.comparitors import StatusContains
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
-from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost, FakeJob
-from autotest_lib.server.cros.dynamic_suite.fakes import FakeLabel
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeJob
 from autotest_lib.server import frontend
 
 
@@ -46,7 +42,6 @@ class SuiteTest(mox.MoxTestBase):
 
         self.tmpdir = tempfile.mkdtemp(suffix=type(self).__name__)
 
-        self.manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         self.getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
         self.devserver = dev_server.ImageServer(self._DEVSERVER_HOST)
 
@@ -165,12 +160,17 @@ class SuiteTest(mox.MoxTestBase):
             add_experimental=True).AndReturn(self.files.values())
 
 
-    def expect_job_scheduling(self, add_experimental, tests_to_skip=[]):
+    def expect_job_scheduling(self, recorder, add_experimental,
+                              tests_to_skip=[]):
         """Expect jobs to be scheduled for 'tests' in |self.files|.
 
         @param add_experimental: expect jobs for experimental tests as well.
+        @param recorder: object with a record_entry to be used to record test
+                         results.
         @param tests_to_skip: [list, of, test, names] that we expect to skip.
         """
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
         for test in self.files.values():
             if not add_experimental and test.experimental:
                 continue
@@ -197,25 +197,27 @@ class SuiteTest(mox.MoxTestBase):
                                        afe=self.afe, tko=self.tko,
                                        results_dir=self.tmpdir)
         self.mox.ResetAll()
-        self.expect_job_scheduling(add_experimental=True)
+        recorder = self.mox.CreateMock(base_job.base_job)
+        self.expect_job_scheduling(recorder, add_experimental=True)
         self.mox.StubOutWithMock(suite, '_remember_scheduled_job_ids')
         suite._remember_scheduled_job_ids()
         self.mox.ReplayAll()
-        suite.schedule()
+        suite.schedule(recorder.record_entry, True)
         for job in suite._jobs:
-          self.assertTrue(hasattr(job, 'test_name'))
+            self.assertTrue(hasattr(job, 'test_name'))
 
 
     def testScheduleStableTests(self):
         """Should schedule only stable tests with the AFE."""
         self.mock_control_file_parsing()
-        self.expect_job_scheduling(add_experimental=False)
+        recorder = self.mox.CreateMock(base_job.base_job)
+        self.expect_job_scheduling(recorder, add_experimental=False)
 
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
-        suite.schedule(add_experimental=False)
+        suite.schedule(recorder.record_entry, add_experimental=False)
 
 
     def _createSuiteWithMockedTestsAndControlFiles(self):
@@ -235,8 +237,7 @@ class SuiteTest(mox.MoxTestBase):
 
     def schedule_and_expect_these_results(self, suite, results, recorder):
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(True)
-        self.manager.unlock()
+        suite.schedule(recorder.record_entry, True)
         for result in results:
             status = result[0]
             test_name = result[1]
@@ -256,14 +257,12 @@ class SuiteTest(mox.MoxTestBase):
         suite = self._createSuiteWithMockedTestsAndControlFiles()
 
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record_entry(
-            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
 
         results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
         self.schedule_and_expect_these_results(suite, results, recorder)
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record_entry, self.manager, True)
+        suite.schedule_and_wait(recorder.record_entry, True)
 
 
     def testRunAndWaitFailure(self):
@@ -272,13 +271,10 @@ class SuiteTest(mox.MoxTestBase):
 
         recorder = self.mox.CreateMock(base_job.base_job)
         recorder.record_entry(
-            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
-        recorder.record_entry(
             StatusContains.CreateFromStrings('FAIL', self._TAG, 'waiting'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(True)
-        self.manager.unlock()
+        suite.schedule(recorder.record_entry, True)
         self.mox.StubOutWithMock(job_status, 'wait_for_results')
         job_status.wait_for_results(mox.IgnoreArg(),
                                     mox.IgnoreArg(),
@@ -286,7 +282,7 @@ class SuiteTest(mox.MoxTestBase):
                                             Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record_entry, self.manager, True)
+        suite.schedule_and_wait(recorder.record_entry, True)
 
 
     def testRunAndWaitScheduleFailure(self):
@@ -296,11 +292,13 @@ class SuiteTest(mox.MoxTestBase):
         recorder = self.mox.CreateMock(base_job.base_job)
         recorder.record_entry(
             StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+
         recorder.record_entry(
             StatusContains.CreateFromStrings('FAIL', self._TAG, 'scheduling'))
 
-        self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(True).AndRaise(Exception('Expected during test.'))
+        self.mox.StubOutWithMock(suite, '_create_job')
+        suite._create_job(mox.IgnoreArg()).AndRaise(
+            Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record_entry, self.manager, True)
+        suite.schedule_and_wait(recorder.record_entry, True)

@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
+from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.reimager import FwReimager
 from autotest_lib.server.cros.dynamic_suite.reimager import OsReimager
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
@@ -59,13 +59,13 @@ e.g.
 Implementation details
 
 In addition to the create_suite_job() RPC defined in the autotest frontend,
-there are two main classes defined here: Suite and Reimager.
+there are two main classes defined here: Suite and {Os,Fw}Reimager.
 
 A Suite instance represents a single test suite, defined by some predicate
 run over all known control files.  The simplest example is creating a Suite
 by 'name'.
 
-The Reimager class provides support for reimaging a heterogenous set
+The Reimager classes provides support for reimaging a heterogenous set
 of devices with an appropriate build, in preparation for a test run.
 One could use a single Reimager, followed by the instantiation and use
 of multiple Suite objects.
@@ -107,16 +107,25 @@ uses it to create the suite job with the autotest frontend.
                                                           V
                                                       Suite Job (hostless)
 
-- The Reimaging process
-In short, the Reimager schedules and waits for a number of autoupdate 'test'
-jobs that perform image installation and make sure the device comes back up.
-It labels the machines that it reimages with the newly-installed CrOS version,
-so that later steps in the can refer to the machines by version and board,
-instead of having to keep track of hostnames or some such.  Furthermore, these
-machines are 'Locked' in the AFE as soon as they have started to go through
-reimaging.  They will be unlocked as soon as the suite's actual test jobs
-have been scheduled against them.  This is to avoid races between different
-suites trying to grab machines at the same time.
+- Reimage and Run
+The overall process followed by the suite is to schedule the reimage job,
+schedule all the tests, wait for the reimage job, and then wait for the tests
+to complete. This is advantageous because it allows for the tests to start
+running as soon as one of the reimage jobs complete. We still need to
+synchronously wait for the reimaging to complete so that we can
+ a) enforce a reimaging timeout
+ b) fail tests that, because of DEPENDENCIES, require a specific machine
+    that failed to reimage properly.
+After this, we can sit around and wait for the suite run to finish.
+
+- The Reimaging Process
+In short, the Reimager can schedule and wait for a number of update 'test' jobs
+that perform image or firmware installation and make sure the device comes back
+up.  It labels the machines that it reimages with the newly-installed version,
+so that later steps of running tests can refer to the machines by version and
+board, instead of having to keep track of hostnames or some such.  As soon as
+the machines finish reimaging, they will be available for tests to be run on
+them.
 
 The number of machines to use is called the 'sharding_factor', and the default
 is defined in the [CROS] section of global_config.ini.  This can be overridden
@@ -144,7 +153,7 @@ schedule those machines for reimaging.  If not, the suite will fail.
 If a suite has no DEPENDENCIES info, we just do the standard meta_host-based
 scheduling.
 
-
+- Scheduling Reimaging
 Step by step:
 0) Fetch DEPENDENCIES info for the suite to be run.
 1) Process the DEPENDENCIES with whatever board and device 'pool' are
@@ -162,19 +171,15 @@ Step by step:
     to install, and the URL to get said build from.
   - This is the _TOT_ version of the autoupdate test; it must be able to run
     successfully on all currently supported branches at all times.
-4) Wait for this job to get kicked off.
-5) As each host is chosen by the scheduler and begins reimaging, lock it.
-6) Wait for all reimaging to run to completion.
-7) Label successfully reimaged devices with a 'cros-version' label
+4) Label successfully reimaged devices with a 'cros-version' label
   - This is actually done by the autoupdate 'test' control file.
-8) Add a host attribute ('job_repo_url') to each reimaged host indicating
+5) Add a host attribute ('job_repo_url') to each reimaged host indicating
    the URL where packages should be downloaded for subsequent tests
   - This is actually done by the autoupdate 'test' control file
   - This information is consumed in server/site_autotest.py
   - job_repo_url points to some location on the dev server, where build
     artifacts are staged -- including autotest packages.
-9) Return success if at least one device successfully reimaged, or failure
-   otherwise.
+6) Return success if the reimage job has been kicked off successfully.
 
           +------------+                       +--------------------------+
           |            |                       |                          |
@@ -197,7 +202,7 @@ To sum up, after re-imaging, we have the following assumptions:
   packages can be downloaded for test runs.
 
 
-- Running Suites
+- Scheduling Suites
 A Suite instance uses the labels created by the Reimager to schedule test jobs
 across all the hosts that were just reimaged.  It then waits for all these jobs.
 As an optimization, the Dev server stages the payloads necessary to run a suite
@@ -207,7 +212,7 @@ server and blocks until it's completed staging all build artifacts needed to
 run test suites.
 
 Step by step:
-1) At instantiation time, find all appropriate control files for this suite
+0) At instantiation time, find all appropriate control files for this suite
    that were included in the build to be tested.  To do this, we consult the
    Dev Server, where all these control files are staged.
 
@@ -217,7 +222,7 @@ Step by step:
           |            |---------------------->|       [Suite Job]        |
           +------------+    control files!     +--------------------------+
 
-2) Now that the Suite instance exists, it schedules jobs for every control
+1) Now that the Suite instance exists, it schedules jobs for every control
    file it deemed appropriate, to be run on the hosts that were labeled
    by the Reimager.  We stuff keyvals into these jobs, indicating what
    build they were testing and which suite they were for.
@@ -234,12 +239,23 @@ Step by step:
         {'build': build/name,
          'suite': suite_name}
 
-3) Now that all jobs are scheduled, they'll be doled out as labeled hosts
+2) Now that all jobs are scheduled, they'll be doled out as labeled hosts
    finish their assigned work and become available again.
-4) As we clean up each job, we check to see if any crashes occurred.  If they
-   did, we look at the 'build' keyval in the job to see which build's debug
+
+- Waiting on Reimaging
+0) Wait for the reimage job to get assigned hosts and kicked off.
+1) If we don't get enough hosts by a certain time, fail the rest of the hosts.
+2) Wait for all reimaging to run to completion.
+3) If we can no longer fulfill the DEPENDENCIES requirements of some tests
+   because reimaging hosts fulfilling those HostSpecs failed, then fail the
+   tests.
+
+- Waiting on Suites
+0) As we clean up each test job, we check to see if any crashes occurred.  If
+   they did, we look at the 'build' keyval in the job to see which build's debug
    symbols we'll need to symbolicate the crash dump we just found.
-5) Using this info, we tell a special Crash Server to stage the required debug
+
+1) Using this info, we tell a special Crash Server to stage the required debug
    symbols. Once that's done, we ask the Crash Server to use those symbols to
    symbolicate the crash dump in question.
 
@@ -257,10 +273,10 @@ Step by step:
       |            |-------------------------->|                          |
       +------------+    symbolicated dump      +--------------------------+
 
-6) As jobs finish, we record their success or failure in the status of the suite
+2) As jobs finish, we record their success or failure in the status of the suite
    job.  We also record a 'job keyval' in the suite job for each test, noting
    the job ID and job owner.  This can be used to refer to test logs later.
-7) Once all jobs are complete, status is recorded for the suite job, and the
+3) Once all jobs are complete, status is recorded for the suite job, and the
    job_repo_url host attribute is removed from all hosts used by the suite.
 
 """
@@ -305,7 +321,7 @@ class SuiteSpec(object):
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
                  skip_reimage=False, add_experimental=True, file_bugs=False,
-                 max_runtime_mins=24*60,
+                 max_runtime_mins=24*60, firmware_reimage=False,
                  try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
                  suite_dependencies=None, **dargs):
         """
@@ -332,6 +348,8 @@ class SuiteSpec(object):
                                  Default: True
         @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
                                  this suite will run.
+        @param firmware_reimage: True if we should use the FwReimager,
+                                 False if we should use OsReimager.
         @param try_job_timeout_mins: Max time in mins we allow a try job to run
                                      before timing out.
         @param suite_dependencies: A string with a comma separated list of suite
@@ -367,6 +385,7 @@ class SuiteSpec(object):
         self.file_bugs = file_bugs
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
+        self.firmware_reimage = firmware_reimage
         self.try_job_timeout_mins = try_job_timeout_mins
         self.suite_dependencies = suite_dependencies
 
@@ -421,8 +440,8 @@ def reimage_and_run(**dargs):
                                         user=suite_spec.job.user, debug=False)
     tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
-    manager = host_lock_manager.HostLockManager(afe=afe)
-    if dargs.get('firmware_reimage'):
+
+    if suite_spec.firmware_reimage:
         reimager_class = FwReimager
     else:
         reimager_class = OsReimager
@@ -430,7 +449,7 @@ def reimage_and_run(**dargs):
     reimager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
                               tko, results_dir=suite_spec.job.resultdir)
 
-    _perform_reimage_and_run(suite_spec, afe, tko, reimager, manager)
+    _perform_reimage_and_run(suite_spec, afe, tko, reimager)
 
     reimager.clear_reimaged_host_state(suite_spec.build)
 
@@ -461,7 +480,7 @@ def _gatherAndParseDependencies(suite_spec):
                        'build artifacts.') % suite_spec.build
         logging.error(message)
         raise error.MalformedDependenciesException(message)
-    except (IndentationError, ValueError) as e:
+    except ValueError as e:
         message = '%s has malformed DEPENDENCIES info: %r' % (suite_spec.build,
                                                               e)
         logging.error(message)
@@ -483,7 +502,8 @@ def _gatherAndParseDependencies(suite_spec):
 
     return dep_dict
 
-def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
+
+def _perform_reimage_and_run(spec, afe, tko, reimager):
     """
     Do the work of reimaging hosts and running tests.
 
@@ -491,32 +511,63 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param tko: an instance of TKO as defined in server/frontend.py.
     @param reimager: the Reimager to use to reimage DUTs.
-    @param manager: the HostLockManager to use to lock/unlock DUTs during
-                    reimaging/test scheduling.
     """
-    with host_lock_manager.HostsLockedBy(manager):
-        tests_to_skip = []
-        if spec.skip_reimage or reimager.attempt(spec.build, spec.pool,
-                spec.devserver, spec.job.record_entry, spec.check_hosts,
-                manager, tests_to_skip, spec.dependencies, num=spec.num,
-                timeout_mins=spec.try_job_timeout_mins):
-            # Ensure that the image's artifacts have completed downloading.
-            try:
-                spec.devserver.finish_download(spec.build)
-            except dev_server.DevServerException as e:
-                raise error.AsynchronousBuildFailure(e)
+    # Kicking off the reimage job is now async, so we immeditely continue on.
+    tests_to_skip = []
+    if not spec.skip_reimage:
+        if not reimager.schedule(spec.build, spec.pool, spec.devserver,
+                spec.job.record_entry, spec.check_hosts, tests_to_skip,
+                spec.dependencies, num=spec.num):
+            # Tryjob will be marked with WARN or ABORT by the reimager if it
+            # fails to launch the reimaging.
+            return
 
-            timestamp = datetime.datetime.now().strftime(job_status.TIME_FMT)
-            utils.write_keyval(
-                spec.job.resultdir,
-                {constants.ARTIFACT_FINISHED_TIME: timestamp})
+    # However, we can't do anything else until the devserver has finished
+    # downloading all of the artifacts (primarily autotest.tar).
+    try:
+        spec.devserver.finish_download(spec.build)
+    except dev_server.DevServerException as e:
+        # If we can't run the suite, there's no point in reimaging machines.
+        reimager.abort()
+        raise error.AsynchronousBuildFailure(e)
 
-            suite = Suite.create_from_name_and_blacklist(
-                spec.name, tests_to_skip, spec.build, spec.devserver,
-                afe=afe, tko=tko, pool=spec.pool,
-                results_dir=spec.job.resultdir,
-                max_runtime_mins=spec.max_runtime_mins,
-                version_prefix=reimager.version_prefix)
+    timestamp = datetime.datetime.now().strftime(job_status.TIME_FMT)
+    utils.write_keyval(
+        spec.job.resultdir,
+        {constants.ARTIFACT_FINISHED_TIME: timestamp})
 
-            suite.run_and_wait(spec.job.record_entry, manager,
-                               spec.add_experimental)
+    # We need to do suite creation after devserver finishes downloading,
+    # as this is going to go poke at the control files which are
+    # only available after |finish_download| completes.
+    suite = Suite.create_from_name_and_blacklist(
+        spec.name, tests_to_skip, spec.build, spec.devserver,
+        afe=afe, tko=tko, pool=spec.pool,
+        results_dir=spec.job.resultdir,
+        max_runtime_mins=spec.max_runtime_mins,
+        version_prefix=reimager.version_prefix)
+
+    # Now we get to asychronously schedule tests.
+    suite.schedule(spec.job.record_entry, spec.add_experimental)
+
+    # Unfortunately, due to having to be able to invalidate tests with
+    # DEPENDENCIES if the corresponding host fails to reimage, we do still
+    # need to synchronously wait for the reimage job to finish (or get killed).
+    if not spec.skip_reimage:
+        # It's also worthwhile to note that sbasi's tryjob timeout code is
+        # still in here, so if a HQE isn't fulfilled within a certain time,
+        # we will kill everything.
+        # This could lead to some weird interaction where we start running some
+        # tests because a machine becomes available, but then abort the suite
+        # because not enough machines became available.
+        reimage_successful = reimager.wait(
+            spec.build, spec.pool, spec.job.record_entry,
+            spec.check_hosts, tests_to_skip, spec.dependencies,
+            timeout_mins=spec.try_job_timeout_mins)
+    else:
+        reimage_successful = True
+
+    # Sit around and wait for some test results.
+    if reimage_successful:
+        suite.wait(spec.job.record_entry)
+    else:
+        suite.abort()

@@ -2,19 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import compiler, hashlib, logging, os, re, traceback, signal
+import hashlib, logging, os, re, traceback
 
 import common
 
-from autotest_lib.client.common_lib import base_job, control_data
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
+from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
-from autotest_lib.server import frontend
 
 
 class Suite(object):
@@ -141,7 +139,7 @@ class Suite(object):
 
         return Suite(Suite.name_in_tag_predicate(name),
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     version_prefix=version_prefix)
+                     max_runtime_mins, version_prefix)
 
 
     @staticmethod
@@ -285,9 +283,11 @@ class Suite(object):
         return test_obj
 
 
-    def run_and_wait(self, record, manager, add_experimental=True):
+    def schedule_and_wait(self, record, add_experimental=True):
         """
         Synchronously run tests in |self.tests|.
+
+        See |schedule| and |wait| for more information.
 
         Schedules tests against a device running image |self._build|, and
         then polls for status, using |record| to print status when each
@@ -303,34 +303,12 @@ class Suite(object):
                         unlocking DUTs that we already reimaged.
         @param add_experimental: schedule experimental tests as well, or not.
         """
-        logging.debug('Discovered %d stable tests.', len(self.stable_tests()))
-        logging.debug('Discovered %d unstable tests.',
-                      len(self.unstable_tests()))
-        try:
-            Status('INFO', 'Start %s' % self._tag).record_result(record)
-            self.schedule(add_experimental)
-            # Unlock all hosts, so test jobs can be run on them.
-            manager.unlock()
-            try:
-                for result in job_status.wait_for_results(self._afe,
-                                                          self._tko,
-                                                          self._jobs):
-                    result.record_all(record)
-                    if (self._results_dir and
-                        job_status.is_for_infrastructure_fail(result)):
-                        self._remember_provided_job_id(result)
-
-            except Exception as e:
-                logging.error(traceback.format_exc())
-                Status('FAIL', self._tag,
-                       'Exception waiting for results').record_result(record)
-        except Exception as e:
-            logging.error(traceback.format_exc())
-            Status('FAIL', self._tag,
-                   'Exception while scheduling suite').record_result(record)
+        # This method still exists for unittesting convenience.
+        self.schedule(record, add_experimental)
+        self.wait(record)
 
 
-    def schedule(self, add_experimental=True):
+    def schedule(self, record, add_experimental=True):
         """
         Schedule jobs using |self._afe|.
 
@@ -339,17 +317,60 @@ class Suite(object):
 
         @param add_experimental: schedule experimental tests as well, or not.
         """
-        for test in self.stable_tests():
-            logging.debug('Scheduling %s', test.name)
-            self._jobs.append(self._create_job(test))
+        logging.debug('Discovered %d stable tests.', len(self.stable_tests()))
+        logging.debug('Discovered %d unstable tests.',
+                      len(self.unstable_tests()))
 
-        if add_experimental:
-            for test in self.unstable_tests():
-                logging.debug('Scheduling experimental %s', test.name)
-                test.name = constants.EXPERIMENTAL_PREFIX + test.name
+        Status('INFO', 'Start %s' % self._tag).record_result(record)
+        try:
+            for test in self.stable_tests():
+                logging.debug('Scheduling %s', test.name)
                 self._jobs.append(self._create_job(test))
-        if self._results_dir:
-            self._remember_scheduled_job_ids()
+
+            if add_experimental:
+                for test in self.unstable_tests():
+                    logging.debug('Scheduling experimental %s', test.name)
+                    test.name = constants.EXPERIMENTAL_PREFIX + test.name
+                    self._jobs.append(self._create_job(test))
+
+            if self._results_dir:
+                self._remember_scheduled_job_ids()
+        except Exception:  # pylint: disable=W0703
+            logging.error(traceback.format_exc())
+            Status('FAIL', self._tag,
+                   'Exception while scheduling suite').record_result(record)
+
+
+    def wait(self, record):
+        """
+        Polls for the job statuses, using |record| to print status when each
+        completes.
+
+        @param record: callable that records job status.
+                 prototype:
+                   record(base_job.status_log_entry)
+        """
+        try:
+            for result in job_status.wait_for_results(self._afe,
+                                                      self._tko,
+                                                      self._jobs):
+                result.record_all(record)
+                if (self._results_dir and
+                    job_status.is_for_infrastructure_fail(result)):
+                    self._remember_provided_job_id(result)
+        except Exception:  # pylint: disable=W0703
+            logging.error(traceback.format_exc())
+            Status('FAIL', self._tag,
+                   'Exception waiting for results').record_result(record)
+
+
+    def abort(self):
+        """
+        Abort all scheduled test jobs.
+        """
+        if self._jobs:
+            job_ids = [job.id for job in self._jobs]
+            self._afe.run('abort_host_queue_entries', job__id__in=job_ids)
 
 
     def _remember_scheduled_job_ids(self):

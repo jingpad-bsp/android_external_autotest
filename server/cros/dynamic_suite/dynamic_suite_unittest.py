@@ -13,7 +13,6 @@ import signal
 from autotest_lib.client.common_lib import base_job, error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager
 
 
 class DynamicSuiteTest(mox.MoxTestBase):
@@ -169,19 +168,11 @@ class DynamicSuiteTest(mox.MoxTestBase):
         spec.devserver = self.mox.CreateMock(dev_server.ImageServer)
         spec.devserver.finish_download(spec.build).WithSideEffects(suicide)
 
-        manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
-        # This unlock occurrs in the signal handler, autoserv would be
-        # terminated at this point
-        manager.unlock()
-        # However, since we're throwing an exception, we "gracefully" exit the
-        # context manager, so this unlock comes from the |__exit__| call.
-        manager.unlock()
-
         self.mox.ReplayAll()
 
         self.assertRaises(UnhandledSIGTERM,
                           dynamic_suite._perform_reimage_and_run,
-                          spec, None, None, None, manager)
+                          spec, None, None, None)
 
 
     def testDependencies(self):
