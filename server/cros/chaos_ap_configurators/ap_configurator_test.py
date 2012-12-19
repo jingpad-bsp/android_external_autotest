@@ -21,8 +21,8 @@ class ConfiguratorTest(unittest.TestCase):
     This class provides a fast way to test without having to run_remote_test
     because chances are you don't need a ChromeOS device.  You will need to run
     this like:
-    $ PYTHONPATH=../../deps/pyauto_dep/test_src/third_party/webdriver/pylib/
-      python ap_configurator_test.py
+    $ PYTHONPATH=../../../client/deps/pyauto_dep/test_src/third_party/ \
+      webdriver/pylib/ python ap_configurator_test.py
     """
 
     def setUp(self):

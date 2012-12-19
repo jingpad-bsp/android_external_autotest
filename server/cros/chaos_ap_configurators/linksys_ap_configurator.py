@@ -87,8 +87,6 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
             raise RuntimeError('The mode selected %d is not supported by router'
                                ' %s.', hex(mode), self.get_router_name())
         xpath = ('//select[@onchange="SelWL()" and @name="Mode"]')
-        if self.short_name == 'WRT54G2_1.5':
-            xpath = ('//select[@name="wl_net_mode"]')
         self.select_item_from_popup_by_xpath(mode_name, xpath)
 
 

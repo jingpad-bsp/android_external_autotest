@@ -62,6 +62,9 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.mac_address = ap.get_wan_mac()
         self.host_name = ap.get_wan_host()
 
+        # Set a default band, this can be overriden by the subclasses
+        self.current_band = self.band_2ghz
+
         self._command_list = []
 
     def __del__(self):
@@ -202,6 +205,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             try:
                 self.navigate_to_page(1)
                 logging.debug('Page navigation complete')
+                self.driver.close()
                 return
             # Navigate to page may throw a Selemium error or its own
             # RuntimeError depending on the implementation.  Either way we are
@@ -210,6 +214,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 self.driver.refresh()
                 logging.info('Waiting for router %s to come back up.' %
                              self.get_router_name())
+        self.driver.close()
         raise RuntimeError('Unable to load admin page after powering on the '
                            'router: %s' % self.get_router_name)
 

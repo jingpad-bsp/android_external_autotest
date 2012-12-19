@@ -14,6 +14,7 @@ import dlink_ap_configurator
 import dlink_dir655_ap_configurator
 import dlinkwbr1310_ap_configurator
 import linksys_ap_configurator
+import linksys_ap_15_configurator
 import linksyse_dual_band_configurator
 import linksyse_single_band_configurator
 import linksyse2000_ap_configurator
@@ -31,6 +32,8 @@ class APConfiguratorFactory(object):
     configurator_map = {
         'LinksysAPConfigurator':
             linksys_ap_configurator.LinksysAPConfigurator,
+        'LinksysAP15Configurator':
+            linksys_ap_15_configurator.LinksysAP15Configurator,
         'DLinkAPConfigurator':
             dlink_ap_configurator.DLinkAPConfigurator,
         'TrendnetAPConfigurator':
