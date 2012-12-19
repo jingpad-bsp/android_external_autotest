@@ -12,6 +12,7 @@ import bearer
 import dbus
 import dbus.types
 import dbus_std_ifaces
+import disable_machine
 import enable_machine
 import gobject
 import logging
@@ -43,120 +44,6 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
         def Cancel(self):
             self.cancelled = True
-
-    class DisableStep(StateMachine):
-        """
-        Handles the modem disable state transitions.
-
-        """
-        def Step(self):
-            if self.cancelled:
-                self.modem.disable_step = None
-                return
-
-            state = self.modem.Get(mm1.I_MODEM, 'State')
-            reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-
-            if self.modem.disable_step:
-                if self.modem.disable_step != self:
-                    logging.info('There is an ongoing Disable operation.')
-                    # A new disable request has been received,
-                    # raise the appropriate error.
-                    message = 'Modem disable already in progress.'
-                    raise mm1.MMCoreError(
-                            mm1.MMCoreError.IN_PROGRESS, message)
-            else:
-                if state == mm1.MM_MODEM_STATE_DISABLED:
-                    # The reason we're not raising an error here is that
-                    # shill will make multiple successive calls to disable
-                    # but WON'T check for raised errors, which causes
-                    # problems. Treat this particular case as success.
-                    logging.info('Already in a disabled state. Ignoring.')
-                    return
-                invalid_states = [
-                    mm1.MM_MODEM_STATE_FAILED,
-                    mm1.MM_MODEM_STATE_UNKNOWN,
-                    mm1.MM_MODEM_STATE_INITIALIZING,
-                    mm1.MM_MODEM_STATE_LOCKED
-                ]
-                if state in invalid_states:
-                    raise mm1.MMCoreError(
-                            mm1.MMCoreError.WRONG_STATE,
-                            ('Modem disable cannot be initiated while in state'
-                             ' %u.') % state)
-                if self.modem.enable_step:
-                    logging.info('There is an ongoing Enable, cancelling it.')
-                    self.modem.enable_step.Cancel()
-                    if state == mm1.MM_MODEM_STATE_ENABLING:
-                        self.modem.ChangeState(
-                            mm1.MM_MODEM_STATE_DISABLED, reason)
-
-                logging.info('Starting Disable.')
-                self.modem.disable_step = self
-
-            # State should not be enabling because any enable operation
-            # should have been canceled at this point.
-            assert state != mm1.MM_MODEM_STATE_ENABLING
-
-            if state == mm1.MM_MODEM_STATE_CONNECTED:
-                logging.info('DisableStep: Modem is CONNECTED.')
-                assert self.modem.connect_step is None
-                logging.info('DisableStep: Starting Disconnect.')
-                # TODO(armansito): Pass a different raise_cb here to handle
-                # disconnect failure
-                self.modem.Disconnect(mm1.ROOT_PATH, Modem.DisableStep.Step,
-                    Modem.DisableStep.Step, self)
-            elif state == mm1.MM_MODEM_STATE_CONNECTING:
-                logging.info('DisableStep: Modem is CONNECTING.')
-                assert self.modem.connect_step
-                logging.info('DisableStep: Canceling connect.')
-                self.modem.connect_step.Cancel()
-                # when Cancel exits, the modem should be in the registered
-                # state
-                gobject.idle_add(Modem.DisableStep.Step, self)
-            elif state == mm1.MM_MODEM_STATE_DISCONNECTING:
-                logging.info('DisableStep: Modem is DISCONNECTING.')
-                assert self.modem.disconnect_step
-                logging.info('DisableStep: Waiting for disconnect.')
-                # wait until disconnect ends
-                gobject.idle_add(Modem.DisableStep.Step, self)
-            elif state == mm1.MM_MODEM_STATE_REGISTERED:
-                logging.info('DisableStep: Modem is REGISTERED.')
-                assert not self.modem.IsPendingRegister()
-                assert not self.modem.IsPendingEnable()
-                assert not self.modem.IsPendingConnect()
-                assert not self.modem.IsPendingDisconnect()
-                self.modem.UnregisterWithNetwork()
-                logging.info('DisableStep: Setting state to DISABLING.')
-                self.modem.ChangeState(mm1.MM_MODEM_STATE_DISABLING, reason)
-                gobject.idle_add(Modem.DisableStep.Step, self)
-            elif state == mm1.MM_MODEM_STATE_SEARCHING:
-                logging.info('DisableStep: Modem is SEARCHING.')
-                assert self.modem.register_step
-                assert not self.modem.IsPendingEnable()
-                assert not self.modem.IsPendingConnect()
-                logging.info('DisableStep: Canceling register.')
-                self.modem.register_step.Cancel()
-                logging.info('DisableStep: Setting state to ENABLED.')
-                self.modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED, reason)
-                gobject.idle_add(Modem.DisableStep.Step, self)
-            elif state == mm1.MM_MODEM_STATE_ENABLED:
-                logging.info('DisableStep: Modem is ENABLED.')
-                assert not self.modem.IsPendingRegister()
-                assert not self.modem.IsPendingEnable()
-                assert not self.modem.IsPendingConnect()
-                logging.info('DisableStep: Setting state to DISABLING.')
-                self.modem.ChangeState(mm1.MM_MODEM_STATE_DISABLING, reason)
-                gobject.idle_add(Modem.DisableStep.Step, self)
-            elif state == mm1.MM_MODEM_STATE_DISABLING:
-                logging.info('DisableStep: Modem is DISABLING.')
-                assert not self.modem.IsPendingRegister()
-                assert not self.modem.IsPendingEnable()
-                assert not self.modem.IsPendingConnect()
-                assert not self.modem.IsPendingDisconnect()
-                logging.info('DisableStep: Setting state to DISABLED.')
-                self.modem.ChangeState(mm1.MM_MODEM_STATE_DISABLED, reason)
-                self.modem.disable_step = None
 
     def __init__(self, bus=None,
                  device='pseudomodem0',
@@ -273,7 +160,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             enable_machine.EnableMachine(self).Step()
         else:
             logging.info('Modem disable')
-            Modem.DisableStep(self).Step()
+            disable_machine.DisableMachine(self).Step()
 
     def RegisterWithNetwork(self):
         """
