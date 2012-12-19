@@ -1,0 +1,26 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "sque"
+NAME = "graphics_KernelMemory"
+PURPOSE = 'Verify that kernel exports graphics memory info through sysfs.'
+CRITERIA = """
+Test fails if any of the following happen:
+- Unable to read memory sysfs field.
+- Unable to read gem objects sysfs field.
+- Read invalid values (e.g. 0 memory).
+"""
+TIME = "FAST"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "graphics"
+TEST_TYPE = "client"
+
+SUITE = "kernel_per-build_regression"
+EXPERIMENTAL = "True"
+
+DOC = """
+Reads from sysfs to determine kernel gem objects and memory info.
+"""
+
+job.run_test("graphics_KernelMemory")
