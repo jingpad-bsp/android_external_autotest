@@ -110,7 +110,8 @@ class LinkEcProgrammer(_BaseProgrammer):
     # TODO(vbendeb): clean the paths up once the Beaglebone directory
     # structure/maintenance is formalized. (see http://crosbug.com/35988 for
     # details).
-    OPENOCD_SCRIPTS_CHROOT_PATH = 'src/platform/ec/chip/lm4/openocd'
+    OPENOCD_SCRIPTS_LOCAL_PATH = os.path.join(os.path.dirname(
+            __file__), 'openocd_scripts')
     OPENOCD_SCRIPTS_SERVO_PATH = '/home/chromeos-test/ec/chip/lm4/openocd'
     OPENOCD_CONFIG_SCRIPT = 'servo_v2_slower.cfg'
     OPENOCD_WRITE_COMMAND = """
@@ -136,8 +137,7 @@ init; reset halt; flash write_image erase %s 0; reset; shutdown;"""
                image.
         """
         if self._servo.is_localhost():
-            scripts_path = os.path.join(
-                os.environ['CHROMEOS_ROOT'], self.OPENOCD_SCRIPTS_CHROOT_PATH)
+            scripts_path = self.OPENOCD_SCRIPTS_LOCAL_PATH
         else:
             scripts_path = self.OPENOCD_SCRIPTS_SERVO_PATH
 

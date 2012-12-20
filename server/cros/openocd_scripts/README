@@ -1,0 +1,11 @@
+This directory includes openocd scripts copied from
+git://git.chromium.org/git/chromiumos/platform/ec:chip/lm4/openocd (sha1
+52440ef8). The scripts are necessary for programming Chrome OS EC on x86
+platforms.
+
+These scripts are not likely to change often - mostly with major openocd
+changes or adding some new hardware. There is a chance that this directory
+will get out of sync with the source.
+
+A tracking issue (http://crosbug.com/37572) was created to highlight this
+problem and attempt to resolve it.
