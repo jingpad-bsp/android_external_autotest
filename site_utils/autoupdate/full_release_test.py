@@ -498,6 +498,7 @@ def parse_args():
     parser.add_option('--remote', metavar='ADDR',
                       help='run test on given DUT via run_remote_tests')
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
+                      default='normal',
                       help='verbosity level: normal (default), verbose, debug')
 
     # Parse arguments.
