@@ -40,13 +40,18 @@ class ReleaseInfo(object):
 
       next_branch: the name of the current (unforked) branch (e.g. R24)
 
+    It is also worth noting that a branch point X.Y.Z (alternatively, W.X.Y.Z)
+    of some branch R denotes the build number X (repsectively, W) that
+    constitutes the said branch. Therefore, it is only from build X+1 (W+1) and
+    onward that releases will be tagged with R+1.
+
     """
     def __init__(self):
         self._release_config = None
         self._branchpoint_dict = None
         self._next_branch = None
         self._sorted_branchpoint_list = None
-        self._sorted_branchpoint_release_key_list = None
+        self._sorted_shifted_branchpoint_rel_key_list = None
 
     def initialize(self):
         """Read release config and initialize lookup data structures."""
@@ -89,9 +94,35 @@ class ReleaseInfo(object):
                 key=lambda (branch, release): self._release_key(release))
 
         # Also store a sorted list of branchpoint release keys, for easy lookup.
-        self._sorted_branchpoint_release_key_list = (
-                [self._release_key(release)
-                 for (branch, release) in self._sorted_branchpoint_list])
+        self._sorted_shifted_branchpoint_rel_key_list = [
+                self._release_key(self._next_build_number_release(release))
+                for (branch, release) in self._sorted_branchpoint_list]
+
+
+    def _next_build_number_release(self, release):
+        """Returns the release of the next build following a given release.
+
+        Given a release number 'X.Y.Z' (new scheme) or '0.X.Y.Z' (old scheme)
+        it will return 'X+1.0.0' or '0.X+1.0.0', respectively.
+
+        @param release: the release number in dotted notation (string)
+
+        @return The release number of the next build.
+
+        @raise ReleaseError if the release is malformed.
+
+        """
+        release_components = release.split('.')
+        if len(release_components) == 4 and release_components[0] == '0':
+            prepend = '0.'
+            x = int(release_components[1])
+        elif len(release_components) != 3:
+            raise ReleaseError('invalid release number: %s' % release)
+        else:
+            prepend = ''
+            x = int(release_components[0])
+
+        return '%s%s.0.0' % (prepend, x + 1)
 
 
     def _release_key(self, release):
@@ -125,7 +156,7 @@ class ReleaseInfo(object):
 
     def get_branch(self, release):
         """Returns the branch name of a given release version. """
-        i = bisect.bisect_left(self._sorted_branchpoint_release_key_list,
+        i = bisect.bisect_left(self._sorted_shifted_branchpoint_rel_key_list,
                                self._release_key(release))
         return self._sorted_branchpoint_list[i][0] if i else None
 
