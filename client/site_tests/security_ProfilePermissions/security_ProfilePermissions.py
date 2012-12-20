@@ -62,11 +62,10 @@ class security_ProfilePermissions(cros_ui_test.UITest):
              ' -path "%s/Downloads" -prune -o '
              ' -path "%s/flimflam" -prune -o '
              ' -path "%s/shill" -prune -o '
-             ' -path "%s/.tpm" -prune -o '
              ' -path "%s/.chaps" -prune -o '
              ' \\( -perm /022 -o \\! -user chronos \\) -ls') %
             (homepath, homepath, user_mountpt, user_mountpt, user_mountpt,
-            user_mountpt, user_mountpt),
+            user_mountpt),
             # /home/chronos/user and /home/chronos/user/Downloads are owned by
             # the chronos-access group and with a group execute permission.
             'find -L "%s" -maxdepth 0 \\( \\! -perm 710 '
@@ -85,9 +84,6 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             'find -L "%s/.chaps -name auth_data_salt -a '
             '\\( \\! -user root -o -perm /077 \\) -ls' %
             user_mountpt,
-            # TODO(jimhebert) Uncomment after crosbug.com/16425 is fixed.
-            #('find -L "%s/.tpm" \\( -perm /007 -o \\! -user chronos '
-            # ' -o \\! -group pkcs11 \\) -ls') % user_mountpt,
         ]
 
         for cmd in cmds:
