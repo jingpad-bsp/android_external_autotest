@@ -407,9 +407,20 @@ def reimage_and_run(**dargs):
     try:
         all_dependencies = ast.literal_eval(
             suite_spec.devserver.get_dependencies_file(suite_spec.build))
-    except ValueError as e:
-        raise error.MalformedDependenciesException(
-            '%s has malformed DEPENDENCIES info: %r', suite_spec.build, e)
+    except SyntaxError as e:
+        if e.text:
+            message = '%s has bad syntax in DEPENDENCIES info: %r' % (
+                suite_spec.build, e)
+        else:
+            message = ('%s has a 0 byte DEPENDENCIES info file. Check the '
+                       'build artifacts.') % suite_spec.build
+        logging.error(message)
+        raise error.MalformedDependenciesException(message)
+    except (IndentationError, ValueError) as e:
+        message = '%s has malformed DEPENDENCIES info: %r' % (suite_spec.build,
+                                                              e)
+        logging.error(message)
+        raise error.MalformedDependenciesException(message)
     except dev_server.DevServerException:
         # Not all builds have dependency info at this time, which is OK.
         logging.info('Proceeding without DEPENDENCIES information.')
