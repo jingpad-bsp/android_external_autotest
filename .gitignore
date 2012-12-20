@@ -44,3 +44,4 @@ ExternalSource
 /frontend/client/www/
 /shadow_config.ini
 /site-packages/
+monitor_db.pid
