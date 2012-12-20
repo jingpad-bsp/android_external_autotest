@@ -22,6 +22,7 @@ class security_StatefulPermissions(test.test):
                      "chronos": ["/encrypted/chronos",
                                  "/encrypted/var/cache/app_pack",
                                  "/encrypted/var/cache/echo",
+                                 "/encrypted/var/cache/touch_trial/selection",
                                  "/encrypted/var/lib/cromo",
                                  "/encrypted/var/lib/timezone",
                                  # TODO(derat) power_manager crosbug.com/36510
