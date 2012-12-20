@@ -58,3 +58,4 @@ avfs:x:301:
 daemon-store:x:400:
 serial:x:402:chronos,uucp
 devbroker-access:x:403:chronos
+i2c:x:404:power
