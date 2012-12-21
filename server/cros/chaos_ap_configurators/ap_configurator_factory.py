@@ -18,6 +18,7 @@ import linksyse_dual_band_configurator
 import linksyse_single_band_configurator
 import linksyse2000_ap_configurator
 import linksyse2100_ap_configurator
+import linksyse2500_ap_configurator
 import netgear3700_ap_configurator
 import netgear4300_ap_configurator
 import netgearR6200_ap_configurator
@@ -69,6 +70,8 @@ class APConfiguratorFactory(object):
             linksyse2100_ap_configurator.Linksyse2100APConfigurator,
         'LinksyseSingleBandAPConfigurator':
             linksyse_single_band_configurator.LinksyseSingleBandAPConfigurator,
+        'Linksyse2500APConfigurator':
+            linksyse2500_ap_configurator.Linksyse2500APConfigurator
     }
 
     def __init__(self):
