@@ -38,6 +38,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         # Possible bands
         self.band_2ghz = '2.4GHz'
         self.band_5ghz = '5GHz'
+        self.current_band = self.band_2ghz
 
         # Possible modes
         self.mode_a = 0x0001

@@ -12,13 +12,24 @@ from selenium.common.exceptions import TimeoutException as \
 from selenium.common.exceptions import WebDriverException
 
 class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
-    """Derived class to control Netgear single band routers."""
+    """Baseclass to control Netgear single band routers."""
 
     security_disabled = 'Disabled'
     security_wep = 'WEP'
     security_wpapsk = 'WPA-PSK[TKIP]'
     security_wpa2psk = 'WPA2-PSK[AES]'
     security_wpa8021x = 'WPA-PSK[TKIP]+WPA2-PSK[AES]'
+
+
+    def _alert_handler(self, alert):
+        """Checks for any modal dialogs which popup to alert the user and
+        either raises a RuntimeError or ignores the alert.
+
+        Args:
+          alert: The modal dialog's contents.
+        """
+        text = alert.text
+        raise RuntimeError('We have an unhandeled alert. %s' % text)
 
 
     def get_number_of_pages(self):
@@ -52,11 +63,12 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def save_page(self, page_number):
-        self.click_button_by_xpath('//input[@name="Apply"]')
+        self.click_button_by_xpath('//input[@name="Apply"]',
+                                   alert_handler=self._alert_handler)
 
 
     def set_radio(self, enabled=True):
-        logging.info('set_radio is not supported in netgear614 router.')
+        logging.info('set_radio is not supported in this router.')
         return None
 
 
@@ -91,7 +103,7 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        logging.info('set_band is not supported in netgear614 router.')
+        logging.info('The router has just one band.')
         return None
 
 
@@ -101,7 +113,7 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         xpath = '//input[@name="security_type" and @value="Disable"]'
-        self.click_button_by_xpath(xpath)
+        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
 
     def set_security_wep(self, value, authentication):
@@ -111,11 +123,15 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wep(self, value, authentication):
         xpath = '//input[@name="security_type" and @value="WEP"]'
-        self.click_button_by_xpath(xpath)
+        try:
+            self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
+        except Exception, e:
+            raise RuntimeError('We got an exception: "%s". Check the mode. '
+                               'It should be \'Up to 54 Mbps\'.' % str(e))
         xpath = '//input[@name="passphraseStr"]'
         self.set_content_of_text_field_by_xpath(value, xpath, abort_check=True)
         xpath = '//input[@value="Generate"]'
-        self.click_button_by_xpath(xpath)
+        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
 
     def set_security_wpapsk(self, key):
@@ -124,11 +140,11 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpapsk(self, key):
         xpath = '//input[@name="security_type" and @value="WPA-PSK"]'
-        self.click_button_by_xpath(xpath)
+        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
         xpath = '//input[@name="passphrase"]'
         self.set_content_of_text_field_by_xpath(key, xpath, abort_check=True)
 
 
     def set_visibility(self, visible=True):
-        logging.info('set_visibility is not supported in netgear614 router.')
+        logging.info('set_visibility is not supported in this router.')
         return None

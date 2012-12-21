@@ -24,7 +24,6 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
         self.security_wpapsk = 'WPA-PSK [TKIP]'
-        self.current_band = self.band_2ghz
 
 
     def _alert_handler(self, alert):
@@ -36,16 +35,17 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
         """
         text = alert.text
         if 'WPA-PSK [TKIP] ONLY operates at \"Up to 54Mbps\"' in text:
-           alert.accept()
-           raise RuntimeError('Wrong mode selected. %s' % text)
+            alert.accept()
+            raise RuntimeError('Wrong mode selected. %s' % text)
         elif '2.4G and 5G have the same SSID' in text:
-           alert.accept()
-           raise RuntimeError('%s. Please change the SSID of one band' % text)
+            alert.accept()
+            raise RuntimeError('%s. Please change the SSID of one band' % text)
         elif 'do not want any wireless security on your network?' in text:
-           alert.accept()
+            logging.info('Alert message:', text)
+            alert.accept()
         else:
-           alert.accept()
-           raise RuntimeError('We have an unhandled alert: %s' % text)
+            alert.accept()
+            raise RuntimeError('We have an unhandled alert: %s' % text)
 
 
     def get_number_of_pages(self):
@@ -74,9 +74,9 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def navigate_to_page(self, page_number):
         if page_number != 1:
-           raise RuntimeError('Invalid page number passed.  Number of pages '
-                              '%d, page value sent was %d' %
-                              (self.get_number_of_pages(), page_number))
+            raise RuntimeError('Invalid page number passed.  Number of pages '
+                               '%d, page value sent was %d' %
+                               (self.get_number_of_pages(), page_number))
         page_url = urlparse.urljoin(self.admin_interface_url,
                                     'WLG_wireless_dual_band.htm')
         self.driver.get(page_url)
@@ -125,9 +125,9 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
                            '08', '09', '10', '11']
         xpath = '//select[@name="w_channel"]'
         if self.current_band == self.band_5ghz:
-           xpath = '//select[@name="w_channel_an"]'
-           channel_choices = ['Auto', '36', '40', '44', '48', '149', '153',
-                              '157', '161', '165']
+            xpath = '//select[@name="w_channel_an"]'
+            channel_choices = ['Auto', '36', '40', '44', '48', '149', '153',
+                               '157', '161', '165']
         self.select_item_from_popup_by_xpath(channel_choices[position],
                                              xpath)
 
@@ -138,11 +138,11 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_band(self, band):
         if band == self.band_5ghz:
-           self.current_band = self.band_5ghz
+            self.current_band = self.band_5ghz
         elif band == self.band_2ghz:
-           self.current_band = self.band_2ghz
+            self.current_band = self.band_2ghz
         else:
-           raise RuntimeError('Invalid band sent %s' % band)
+            raise RuntimeError('Invalid band sent %s' % band)
 
 
     def set_security_disabled(self):
@@ -157,10 +157,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_security_wep(self, key_value, authentication):
-        if self.short_name == 'R6200' and self.current_band == self.band_5ghz:
-            logging.info('Cannot set WEP security for 5GHz band in Netgear \
-                          R6200 router.')
-            return None
+        # The button name seems to differ in various Netgear routers
         self.add_item_to_command_list(self._set_security_wep,
                                       (key_value, authentication), 1, 900)
 
@@ -214,7 +211,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
     def _set_visibility(self, visible=True):
         xpath = '//input[@name="ssid_bc" and @type="checkbox"]'
         if self.current_band == self.band_5ghz:
-           xpath = '//input[@name="ssid_bc_an" and @type="checkbox"]'
+            xpath = '//input[@name="ssid_bc_an" and @type="checkbox"]'
         self.set_check_box_selected_by_xpath(xpath, selected=visible,
                                              wait_for_xpath=None,
                                              alert_handler=self._alert_handler)

@@ -19,7 +19,9 @@ import linksyse_single_band_configurator
 import linksyse2000_ap_configurator
 import linksyse2100_ap_configurator
 import netgear3700_ap_configurator
+import netgear4300_ap_configurator
 import netgearR6200_ap_configurator
+import netgear2000_ap_configurator
 import netgear_WNDR_dual_band_configurator
 import netgear_single_band_configurator
 import trendnet_ap_configurator
@@ -47,6 +49,10 @@ class APConfiguratorFactory(object):
             netgear3700_ap_configurator.Netgear3700APConfigurator,
         'NetgearR6200APConfigurator':
             netgearR6200_ap_configurator.NetgearR6200APConfigurator,
+        'Netgear2000APConfigurator':
+            netgear2000_ap_configurator.Netgear2000APConfigurator,
+        'Netgear4300APConfigurator':
+            netgear4300_ap_configurator.Netgear4300APConfigurator,
         'LinksyseDualBandAPConfigurator':
             linksyse_dual_band_configurator.LinksyseDualBandAPConfigurator,
         'Linksyse2000APConfigurator':
