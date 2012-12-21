@@ -4,7 +4,6 @@
 
 AUTHOR = "Chrome OS Perf/jrbarnette"
 NAME = "BootPerfBVT"
-SUITE = "bvt"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "platform"
