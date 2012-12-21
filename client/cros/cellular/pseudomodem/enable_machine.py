@@ -45,7 +45,7 @@ class EnableMachine(state_machine.StateMachine):
         state = self._modem.Get(mm1.I_MODEM, 'State')
         if self._modem.enable_step and self._modem.enable_step != self:
             # There is already an enable operation in progress.
-            logging.info('There is already an ongoing enable operation')
+            logging.error('There is already an ongoing enable operation')
             if state == mm1.MM_MODEM_STATE_ENABLING:
                 message = 'Modem enable already in progress.'
             else:
@@ -57,7 +57,7 @@ class EnableMachine(state_machine.StateMachine):
             if state != mm1.MM_MODEM_STATE_DISABLED:
                 message = 'Modem cannot be enabled if not in the DISABLED' \
                           ' state.'
-                logging.info(message)
+                logging.error(message)
                 raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message)
             logging.info('Starting Enable')
             self._modem.enable_step = self

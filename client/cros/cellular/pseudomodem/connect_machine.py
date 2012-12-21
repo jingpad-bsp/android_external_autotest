@@ -27,7 +27,7 @@ class ConnectMachine(state_machine.StateMachine):
         assert not self._modem.IsPendingEnable()
         if self.enable_initiated:
             message = 'ConnectMachine: Failed to enable modem.'
-            logging.info(message)
+            logging.error(message)
             self.Cancel()
             self._modem.connect_step = None
             self.raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED, message))
@@ -54,7 +54,7 @@ class ConnectMachine(state_machine.StateMachine):
         # start register
         if self.register_initiated:
             message = 'ConnectMachine: Failed to register.'
-            logging.info(message)
+            logging.error(message)
             self.Cancel()
             self._modem.connect_step = None
             self.raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED, message))
@@ -104,7 +104,7 @@ class ConnectMachine(state_machine.StateMachine):
                 break
         if bearer is None:
             assert bearer_path is None
-            logging.info(('ConnectMachine: No matching bearer found, '
+            logging.error(('ConnectMachine: No matching bearer found, '
                 'creating brearer with properties: ' +
                 str(self.connect_props)))
             bearer_path = self._modem.CreateBearer(bearer_props)
@@ -129,7 +129,7 @@ class ConnectMachine(state_machine.StateMachine):
                 'ConnectMachine: Returning bearer path: %s', bearer_path)
             self.return_cb(bearer_path)
         except (mm1.MMError, subprocess.CalledProcessError) as e:
-            logging.info('ConnectMachine: Failed to connect: ' + str(e))
+            logging.error('ConnectMachine: Failed to connect: ' + str(e))
             self.raise_cb(e)
             self._modem.ChangeState(mm1.MM_MODEM_STATE_REGISTERED,
                 mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
@@ -151,7 +151,7 @@ class ConnectMachine(state_machine.StateMachine):
         if self._modem.connect_step and self._modem.connect_step != self:
             # There is already a connect operation in progress.
             message = 'There is already an ongoing connect operation.'
-            logging.info(message)
+            logging.error(message)
             self.raise_cb(mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS, message))
             return False
         elif self._modem.connect_step is None:
@@ -159,21 +159,21 @@ class ConnectMachine(state_machine.StateMachine):
             if self._modem.IsPendingDisable():
                 message = 'Modem is currently being disabled. Ignoring ' \
                           'connect.'
-                logging.info(message)
+                logging.error(message)
                 self.raise_cb(
                     mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message))
                 return False
             state = self._modem.Get(mm1.I_MODEM, 'State')
             if state == mm1.MM_MODEM_STATE_CONNECTED:
                 message = 'Modem is already connected.'
-                logging.info(message)
+                logging.error(message)
                 self.raise_cb(
                     mm1.MMCoreError(mm1.MMCoreError.CONNECTED, message))
                 return False
             if state == mm1.MM_MODEM_STATE_DISCONNECTING:
                 assert self._modem.IsPendingDisconnect()
                 message = 'Cannot connect while disconnecting.'
-                logging.info(message)
+                logging.error(message)
                 self.raise_cb(
                     mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message))
                 return False
