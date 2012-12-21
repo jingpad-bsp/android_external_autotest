@@ -11,6 +11,7 @@ import logging
 import mm1
 import modem
 import pseudomodem
+import register_machine
 
 class Modem3gpp(modem.Modem):
     """
@@ -87,82 +88,6 @@ class Modem3gpp(modem.Modem):
         self.SetUInt32(
             mm1.I_MODEM_3GPP, 'RegistrationState', dbus.types.UInt32(state))
 
-    class RegisterStep(modem.Modem.StateMachine):
-        def Step(self, *args):
-            if self.cancelled:
-                self.modem.register_step = None
-                return
-
-            state = self.modem.Get(mm1.I_MODEM, 'State')
-            if self.modem.register_step and self.modem.register_step != self:
-                logging.info('There is an ongoing Register operation.')
-                raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS,
-                        'Register operation already in progress.')
-            elif not self.modem.register_step:
-                if state == mm1.MM_MODEM_STATE_ENABLED:
-                    logging.info('Starting Register.')
-                    self.modem.register_step = self
-                else:
-                    message = ('Cannot initiate register while in state %d, '
-                               'state needs to be ENABLED.') % state
-                    raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message)
-
-            reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-
-            if state == mm1.MM_MODEM_STATE_ENABLED:
-                logging.info('RegisterStep: Modem is ENABLED.')
-                logging.info('RegisterStep: Setting registration state '
-                             'to SEARCHING.')
-                self.modem.SetRegistrationState(
-                    mm1.MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING)
-                logging.info('RegisterStep: Setting state to SEARCHING.')
-                self.modem.ChangeState(mm1.MM_MODEM_STATE_SEARCHING, reason)
-                logging.info('RegisterStep: Starting network scan.')
-                try:
-                    networks = self.modem.Scan()
-                except:
-                    self.modem.register_step = None
-                    logging.info('An error occurred during Scan.')
-                    self.modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
-                        mm1.MODEM_STATE_CHANGE_REASON_UNKNOWN)
-                    raise
-                logging.info('RegisterStep: Found networks: ' + str(networks))
-                gobject.idle_add(Modem3gpp.RegisterStep.Step, self, networks)
-            elif state == mm1.MM_MODEM_STATE_SEARCHING:
-                logging.info('RegisterStep: Modem is SEARCHING.')
-                assert len(args) == 1
-                networks = args[0]
-                if not networks:
-                    logging.info('RegisterStep: Scan returned no networks.')
-                    logging.info('RegisterStep: Setting state to ENABLED.')
-                    self.modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
-                        mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
-                    # TODO(armansito): Figure out the correct registration
-                    # state to transition to when no network is present.
-                    logging.info(('RegisterStep: Setting registration state '
-                                  'to IDLE.'))
-                    self.modem.SetRegistrationState(
-                        mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
-                    self.modem.register_step = None
-                    raise mm1.MMMobileEquipmentError(
-                        mm1.MMMobileEquipmentError.NO_NETWORK,
-                        'No networks were found to register.')
-                else:
-                    # For now pick the first network in the list.
-                    # Roaming networks will come before the home
-                    # network, so if the test provided any roaming
-                    # networks, we will register with the first one.
-                    # TODO(armansito): Could the operator-code not be
-                    # present or unknown?
-                    logging.info(('RegisterStep: Registering to network: ' +
-                        str(networks[0])))
-                    self.modem.Register(networks[0]['operator-code'],
-                        networks[0]['operator-long'])
-
-                    # Modem3gpp.Register() should have set the state to
-                    # REGISTERED.
-                    self.modem.register_step = None
-
     @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s')
     def Register(self, operator_id, *args):
         """
@@ -236,7 +161,7 @@ class Modem3gpp(modem.Modem):
         return scanned
 
     def RegisterWithNetwork(self):
-        Modem3gpp.RegisterStep(self).Step()
+        register_machine.RegisterMachine(self).Step()
 
     def UnregisterWithNetwork(self):
         logging.info('Modem3gpp.UnregisterWithHomeNetwork')
