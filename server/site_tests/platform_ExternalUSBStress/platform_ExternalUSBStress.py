@@ -140,7 +140,7 @@ class platform_ExternalUSBStress(test.test):
                 logging.info('Not using servo for suspend because board %s '
                              'is not supported.' % m.group(1))
 
-        host.servo.enable_usb_hub()
+        host.servo.switch_usbkey('dut')
         host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
 
         # There are some mice that need the data and power connection to both

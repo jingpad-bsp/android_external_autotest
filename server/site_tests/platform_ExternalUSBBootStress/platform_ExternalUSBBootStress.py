@@ -59,7 +59,7 @@ class platform_ExternalUSBBootStress(test.test):
             connected = set_hub_power()
 
 
-        host.servo.enable_usb_hub()
+        host.servo.switch_usbkey('dut')
         host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
 
         # There are some mice that need the data and power connection to both
@@ -97,7 +97,7 @@ class platform_ExternalUSBBootStress(test.test):
                 # accelerate booting through dev mode.
                 host.servo.cold_reset()
                 host.servo.power_short_press()
-                time.sleep(Servo.BOOT_DELAY)
+                time.sleep(host.servo.BOOT_DELAY)
                 host.servo.ctrl_d()
                 stressor.start()
                 host.wait_up(timeout=120)
