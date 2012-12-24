@@ -52,3 +52,7 @@ class logging_AsanCrash(cros_ui_test.UITest):
         except:
             logging.debug('ASAN log content: ' + ui_log.get_logs())
             raise
+
+        # The cbuildbot logic will look for asan logs and process them.
+        # Remove the simulated log file to avoid that.
+        os.remove(asan_log_name)
