@@ -46,7 +46,7 @@ class security_EnableChromeTesting(test.test):
 
         # Try DBus call and make sure it fails.
         try:
-            session_manager.EnableChromeTesting()
+            session_manager.EnableChromeTesting(True, [])
         except dbus.exceptions.DBusException:
             pass
         else:
