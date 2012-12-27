@@ -24,6 +24,7 @@ from validators import (CountPacketsValidator,
                         PhysicalClickValidator,
                         PinchValidator,
                         RangeValidator,
+                        SampleRateValidator,
                         StationaryFingerValidator,
 )
 
@@ -435,6 +436,33 @@ class NoLevelJumpValidatorTest(BaseValidatorTest):
         device = self.mock_device[self.LUMPY]
         for filename in filenames:
             self.assertTrue(self._get_score(filename, device) == 1.0)
+
+
+class SampleRateValidatorTest(BaseValidatorTest):
+    """Unit tests for SampleRateValidator class."""
+    def setUp(self):
+        super(SampleRateValidatorTest, self).setUp()
+        self.criteria = conf.sample_rate_criteria
+
+    def _get_score(self, filename, device):
+        validator = SampleRateValidator(self.criteria, device=device)
+        packets = parse_tests_data(filename)
+        vlog = validator.check(packets)
+        score = vlog.get_score()
+        return score
+
+    def test_level_jumps(self):
+        """Test files with level jumps."""
+        lumpy = self.mock_device[self.LUMPY]
+
+        filename = '2f_scroll_diagonal.dat'
+        self.assertTrue(self._get_score(filename, device=lumpy) <= 0.5)
+
+        filename = 'one_finger_with_slot_0.dat'
+        self.assertTrue(self._get_score(filename, device=lumpy) >= 0.9)
+
+        filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
+        self.assertTrue(self._get_score(filename, device=lumpy) <= 0.5)
 
 
 if __name__ == '__main__':

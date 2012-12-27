@@ -340,6 +340,24 @@ class MtbTest(unittest.TestCase):
                                    else largest_level_jumps[filename][axis])
                 self.assertTrue(jump == expected_jump)
 
+    def _test_get_sample_rate(self, filename, value):
+        """Test get_sample_rate."""
+        gesture_filename = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(gesture_filename)
+        sample_rate = round(mtb_packets.get_sample_rate(), 2)
+        self.assertAlmostEqual(sample_rate, value)
+
+    def test_get_sample_rate(self):
+        """Test get_sample_rate."""
+        filename = '2f_scroll_diagonal.dat'
+        self._test_get_sample_rate('2f_scroll_diagonal.dat', 40.31)
+
+        filename = 'one_finger_with_slot_0.dat'
+        self._test_get_sample_rate(filename, 148.65)
+
+        filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
+        self._test_get_sample_rate(filename, 53.12)
+
 
 if __name__ == '__main__':
   unittest.main()

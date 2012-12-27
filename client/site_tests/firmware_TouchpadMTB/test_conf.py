@@ -17,6 +17,7 @@ from validators import (CountPacketsValidator,
                         PhysicalClickValidator,
                         PinchValidator,
                         RangeValidator,
+                        SampleRateValidator,
                         StationaryFingerValidator,
 )
 
@@ -40,6 +41,7 @@ no_level_jump_criteria = '<= 10, ~ +30'
 no_reversed_motion_criteria = '<= 5, ~ +30'
 pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.05, ~ +0.05'
+sample_rate_criteria = '>= 60'
 stationary_finger_criteria = '<= 20, ~ +20'
 
 
@@ -216,6 +218,7 @@ def get_gesture_dict():
                                           segments=VAL.MIDDLE),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
                                           segments=VAL.BOTH_ENDS),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -242,6 +245,7 @@ def get_gesture_dict():
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 RangeValidator(range_criteria),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -277,6 +281,7 @@ def get_gesture_dict():
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -305,6 +310,7 @@ def get_gesture_dict():
                 CountTrackingIDValidator('== 2'),
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -322,6 +328,7 @@ def get_gesture_dict():
                 CountPacketsValidator(count_packets_criteria, slot=0),
                 CountTrackingIDValidator('== 1'),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -340,6 +347,7 @@ def get_gesture_dict():
                 CountTrackingIDValidator('== 2'),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -354,7 +362,8 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                PinchValidator(pinch_criteria)
+                PinchValidator(pinch_criteria),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -379,6 +388,7 @@ def get_gesture_dict():
                 CountTrackingIDValidator('== 1'),
                 PhysicalClickValidator('== 0', fingers=1),
                 PhysicalClickValidator('== 0', fingers=2),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -397,6 +407,7 @@ def get_gesture_dict():
                 CountTrackingIDValidator('== 2'),
                 PhysicalClickValidator('== 0', fingers=1),
                 PhysicalClickValidator('== 0', fingers=2),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
                 StationaryFingerValidator(stationary_finger_criteria, slot=1),
             ),
@@ -411,6 +422,7 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 1'),
                 PhysicalClickValidator('== 1', fingers=1),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -424,6 +436,7 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 2'),
                 PhysicalClickValidator('== 1', fingers=2),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
                 StationaryFingerValidator(stationary_finger_criteria, slot=1),
             ),
@@ -438,6 +451,7 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 3'),
                 PhysicalClickValidator('== 1', fingers=3),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -450,6 +464,7 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 4'),
                 PhysicalClickValidator('== 1', fingers=4),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -462,6 +477,7 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 5'),
                 PhysicalClickValidator('== 1', fingers=5),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -474,6 +490,7 @@ def get_gesture_dict():
             subprompt=None,
             validators=(
                 CountTrackingIDValidator('>= 2'),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -496,6 +513,7 @@ def get_gesture_dict():
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoLevelJumpValidator(no_level_jump_criteria, slots=[1,]),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -520,6 +538,7 @@ def get_gesture_dict():
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -545,6 +564,7 @@ def get_gesture_dict():
                 NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -566,6 +586,7 @@ def get_gesture_dict():
                 LinearityValidator(linearity_curvy_criteria, slot=1),
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+                SampleRateValidator(sample_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -595,6 +616,7 @@ def get_gesture_dict():
                 NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
@@ -614,6 +636,7 @@ def get_gesture_dict():
                 LinearityValidator(linearity_curvy_criteria, slot=1),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
+                SampleRateValidator(sample_rate_criteria),
             ),
         ),
 
