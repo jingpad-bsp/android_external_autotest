@@ -349,6 +349,32 @@ class ENASCPI(AgilentSCPI):
             state = 'STATE%02d.STA' % state
         self.Send(':MMEM:LOAD %s' % self.Quote(state))
 
+    def SaveScreen(self, filename):
+        '''
+        Saves the current screen to a portable network graphics (PNG) file.
+        The default store path in E5071C is under disk D.
+        '''
+        self.Send([':MMEMory:STORe:IMAGe "%s.png"' % filename])
+
+    def SetMarker(self, channel, marker_num, marker_freq):
+        '''
+        Saves the marker at channel.
+        Usage:
+        Set marker 5 to 600MHz on channel 1.
+
+        SetMarker(1, 5, 600*1e6)
+        '''
+        # TODO(itspeter): understand why channel doesn't make a difference.
+
+        # http://ena.tm.agilent.com/e5061b/manuals/webhelp/eng/
+        # programming/command_reference/calculate/scpi_calculate
+        # _ch_selected_marker_mk_x.htm#Syntax
+
+        #:CALCulate{[1]-4}[:SELected]:MARKer{[1]-10}:X <numeric>
+        buffer_str = ':CALCulate%d:SELected:MARKer%d:X %f' % (
+            channel, marker_num, float(marker_freq))
+        self.Send([buffer_str])
+
     def SetLinearSweep(self, min_freq, max_freq):
         '''
         Sets the range to be a linear sweep between min_freq and max_freq.
