@@ -44,7 +44,7 @@ openvpn:x:217:
 bluetooth:x:218:
 wpa:x:219:root
 cras:x:220:chronos,power
-input:x:222:cras
+input:x:222:cras,power
 chaps:x:223:
 dhcp:x:224:
 tpmd:x:225:
