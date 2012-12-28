@@ -16,6 +16,10 @@ def image_url_pattern():
     return _CONFIG.get_config_value('CROS', 'image_url_pattern', type=str)
 
 
+def firmware_url_pattern():
+    return _CONFIG.get_config_value('CROS', 'firmware_url_pattern', type=str)
+
+
 def sharding_factor():
     return _CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
 

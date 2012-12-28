@@ -8,9 +8,10 @@ JOB_BUILD_KEY = 'build'
 JOB_SUITE_KEY = 'suite'
 
 # Job attribute and label names
+EXPERIMENTAL_PREFIX = 'experimental_'
+FW_VERSION_PREFIX = 'fw-version:'
 JOB_REPO_URL = 'job_repo_url'
 VERSION_PREFIX = 'cros-version:'
-EXPERIMENTAL_PREFIX = 'experimental_'
 
 # Timings
 ARTIFACT_FINISHED_TIME = 'artifact_finished_time'

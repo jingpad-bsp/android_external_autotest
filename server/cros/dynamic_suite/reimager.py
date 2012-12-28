@@ -29,25 +29,38 @@ DEFAULT_TRY_JOB_TIMEOUT_MINS = global_config.global_config.get_config_value(
 
 class Reimager(object):
     """
-    A class that can run jobs to reimage devices.
+    A base class that can run jobs to reimage devices.
 
+    Is subclassed to create reimagers for Chrome OS and firmware, which use
+    different autotests to perform the action.
+
+    @var _board: a string, name of the board type to reimage
     @var _afe: a frontend.AFE instance used to talk to autotest.
     @var _tko: a frontend.TKO instance used to query the autotest results db.
     @var _results_dir: The directory where the job can write results to.
                        This must be set if you want the 'name_job-id' tuple
                        of each per-device reimaging job listed in the
                        parent reimaging job's keyvals.
-    @var _cf_getter: a ControlFileGetter used to get the AU control file.
+    @var _cf_getter: a ControlFileGetter used to get the appropriate autotest
+                       control file.
+    @var _version_prefix: a string, prefix for storing the build version in the
+                       afe database. Set by the derived classes constructors.
+    @var _control_file: a string, name of the file controlling the appropriate
+                       reimaging autotest
+    @var _url_pattern: a string, format used to generate url of the image on
+                       the devserver
     """
 
     JOB_NAME = 'try_new_image'
 
 
-    def __init__(self, autotest_dir, afe=None, tko=None, results_dir=None):
+    def __init__(self, autotest_dir, board_label, afe=None, tko=None,
+                 results_dir=None):
         """
         Constructor
 
         @param autotest_dir: the place to find autotests.
+        @param board_label: a string, label of the board type to reimage
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param results_dir: The directory where the job can write results to.
@@ -55,6 +68,7 @@ class Reimager(object):
                             of each per-device reimaging job listed in the
                             parent reimaging job's keyvals.
         """
+        self._board_label = board_label
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
@@ -65,10 +79,12 @@ class Reimager(object):
         self._reimaged_hosts = {}
         self._cf_getter = control_file_getter.FileSystemGetter(
             [os.path.join(autotest_dir, 'server/site_tests')])
+        self._version_prefix = None
+        self._control_file = None
 
 
-    def attempt(self, build, board, pool, devserver, record, check_hosts,
-                manager, tests_to_skip, dependencies={'':[]}, num=None,
+    def attempt(self, build, pool, devserver, record, check_hosts, manager,
+                tests_to_skip, dependencies={'':[]}, num=None,
                 timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
         """
         Synchronously attempt to reimage some machines.
@@ -98,7 +114,6 @@ class Reimager(object):
 
         @param build: the build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
-        @param board: which kind of devices to reimage.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
         @param devserver: an instance of a devserver to use to complete this
@@ -127,11 +142,10 @@ class Reimager(object):
         logging.debug("scheduling reimaging across at most %d machines", num)
         begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
         try:
-            self._ensure_version_label(constants.VERSION_PREFIX + build)
-
+            self._ensure_version_label(self._version_prefix + build)
             # Figure out what kind of hosts we need to grab.
             per_test_specs = self._build_host_specs_from_dependencies(
-                board, pool, dependencies)
+                self._board_label, pool, dependencies)
 
             # Pick hosts to use, make sure we have enough (if needed).
             to_reimage = self._build_host_group(set(per_test_specs.values()),
@@ -146,8 +160,8 @@ class Reimager(object):
                        begin_time_str=begin_time_str).record_all(record)
 
             # Schedule job and record job metadata.
-            canary_job = self._schedule_reimage_job(build, to_reimage,
-                                                    devserver)
+            canary_job = self._schedule_reimage_job(
+                {'image_name': build}, to_reimage, devserver)
 
             self._record_job_if_possible(Reimager.JOB_NAME, canary_job)
             logging.info('Created re-imaging job: %d', canary_job.id)
@@ -209,6 +223,12 @@ class Reimager(object):
                    begin_time_str=begin_time_str).record_all(record)
         tests_to_skip.extend(doomed_tests)
         return should_continue
+
+
+    @property
+    def version_prefix(self):
+        """Report version prefix associated with this reimaging job."""
+        return self._version_prefix
 
 
     def _build_host_specs_from_dependencies(self, board, pool, deps):
@@ -387,9 +407,9 @@ class Reimager(object):
 
     def _ensure_version_label(self, name):
         """
-        Ensure that a label called |name| exists in the autotest DB.
+        Ensure that a label called exists in the autotest DB.
 
-        @param name: the label to check for/create.
+        @param name:the label to check for/create.
         """
         try:
             self._afe.create_label(name=name)
@@ -401,28 +421,122 @@ class Reimager(object):
                 raise ve
 
 
-    def _schedule_reimage_job(self, build, host_group, devserver):
+    def _schedule_reimage_job_base(self, host_group, params):
         """
-        Schedules the reimaging of |num_machines| |board| devices with |image|.
+        Schedules the reimaging of hosts in a host group.
 
         Sends an RPC to the autotest frontend to enqueue reimaging jobs on
         |num_machines| devices of type |board|.
 
-        @param build: the build to install (must be unique).
-        @param host_group: the HostGroup to be used for this reimaging job.
-        @param devserver: an instance of devserver that DUTs should use to get
-                          build artifacts from.
+        @param: host_group, a HostGroup object representing the set of hosts
+                to be reimaged.
 
+        @param params: a dictionary where keys and values are strings to be
+                injected as assignments into the scheduling autotest control
+                file. The dictionary contains reimaging type specific
+                information.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
-        image_url = tools.image_url_pattern() % (devserver.url(), build)
+        params['image_url'] = self._url_pattern % (
+            params['devserver_url'], params['image_name'])
+
         control_file = tools.inject_vars(
-            dict(image_url=image_url, image_name=build,
-                 devserver_url=devserver.url()),
-            self._cf_getter.get_control_file_contents_by_name('autoupdate'))
+            params,
+            self._cf_getter.get_control_file_contents_by_name(
+                self._control_file))
 
         return self._afe.create_job(control_file=control_file,
-                                     name=build + '-try',
+                                     name=params['image_name'] + '-try',
                                      control_type='Server',
                                      priority='Low',
                                      **host_group.as_args())
+
+class OsReimager(Reimager):
+    """
+    A class that can run jobs to reimage Chrome OS on devices.
+
+    See attributes' description in the parent class docstring.
+    """
+
+    def __init__(self, autotest_dir, board, afe=None, tko=None,
+                 results_dir=None):
+        """Constructor
+
+        See parameters' description in the parent class constructor docstring.
+        """
+
+        super(OsReimager, self).__init__(autotest_dir, board, afe=afe, tko=tko,
+                                         results_dir=results_dir)
+        self._version_prefix = constants.VERSION_PREFIX
+        self._control_file = 'autoupdate'
+        self._url_pattern = tools.image_url_pattern()
+
+    def _schedule_reimage_job(self, params, host_group, devserver):
+        """Schedules the reimaging of a group of hosts with a Chrome OS image.
+
+        Adds a parameter to the params dictionary and invokes the base class
+        reimaging function, which sends an RPC to the autotest frontend to
+        enqueue reimaging jobs on hosts in the host_group.
+
+        @param params: a dictionary where keys and values are strings, to be
+                  injected into the reimaging job control file as variable
+                  assignments. By the time this function is invoked the
+                  dictionary contains one element, the name of the build to
+                  use for reimaging.
+        @param host_group: the HostGroup to be used for this reimaging job.
+        @param devserver: an instance of devserver that DUTs should use to get
+                  build artifacts from.
+
+        @return a frontend.Job object for the scheduled reimaging job.
+
+        """
+        params['devserver_url'] = devserver.url()
+        return self._schedule_reimage_job_base(host_group, params)
+
+
+
+class FwReimager(Reimager):
+    """
+    A class that can run jobs to reimage firmware on devices.
+
+    See attributes' description in the parent class docstring.
+    """
+
+    def __init__(self, autotest_dir, board, afe=None, tko=None,
+                 results_dir=None):
+        """Constructor
+
+        See parameters' description in the parent class constructor docstring.
+        """
+
+        super(FwReimager, self).__init__(autotest_dir, board, afe=afe, tko=tko,
+                                         results_dir=results_dir)
+        self._version_prefix = constants.FW_VERSION_PREFIX
+        self._control_file = 'fwupdate'
+        self._url_pattern = tools.firmware_url_pattern()
+
+    def _schedule_reimage_job(self, params, host_group, devserver):
+        """Schedules the reimaging of a group of hosts with a Chrome OS image.
+
+        Makes sure that the artifacts download has been completed (firmware
+        tarball is downloaded asynchronously), then a few parameters to the
+        params dictionary and invokes the base class reimaging function, which
+        sends an RPC to the autotest frontend to enqueue reimaging jobs on
+        hosts in the host_group.
+
+        @param params: a dictionary where keys and values are strings, to be
+                  injected into the reimaging job control file as variable
+                  assignments. By the time this function is invoked the
+                  dictionary contains one element, the name of the build to
+                  use for reimaging.
+        @param host_group: the HostGroup to be used for this reimaging job.
+        @param devserver: an instance of devserver that DUTs should use to get
+                  build artifacts from.
+
+        @return a frontend.Job object for the scheduled reimaging job.
+
+        """
+        devserver.finish_download(params['image_name'])
+        params['devserver_url'] = devserver.url()
+        params['board'] = self._board_label.split(':')[-1]
+        return self._schedule_reimage_job_base(host_group, params)

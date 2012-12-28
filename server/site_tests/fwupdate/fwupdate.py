@@ -14,14 +14,18 @@ class fwupdate(test.test):
 
     def initialize(self, servo, board, fwurl):
         self.tmpd = autotemp.tempdir(unique_id='fwimage')
-        tarball = os.path.basename(fwurl)
-        utils.system('gsutil cp %s %s' % (fwurl, self.tmpd.name))
+        local_tarball = os.path.join(self.tmpd.name,
+                                     os.path.basename(fwurl))
+        if fwurl.startswith('gs://'):
+            utils.system('gsutil cp %s %s' % (fwurl, local_tarball))
+        else:
+            utils.system('wget -O %s %s' % (local_tarball, fwurl))
         self._ap_image = 'image-%s.bin' % board
         self._ec_image = 'ec.bin'
         self._board = board
         self._servo = servo
         utils.system('tar xf %s -C %s %s %s' % (
-                os.path.join(self.tmpd.name, tarball), self.tmpd.name,
+                local_tarball, self.tmpd.name,
                 self._ap_image, self._ec_image), timeout=60)
 
     def cleanup(self):

@@ -18,7 +18,7 @@ from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost
 from autotest_lib.server.cros.dynamic_suite.host_spec import HostSpec
 from autotest_lib.server.cros.dynamic_suite import host_spec
 from autotest_lib.server.cros.dynamic_suite import tools
-from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
+from autotest_lib.server.cros.dynamic_suite.reimager import OsReimager
 from autotest_lib.server import frontend
 
 
@@ -36,7 +36,7 @@ class DynamicSuiteToolsTest(mox.MoxTestBase):
         super(DynamicSuiteToolsTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
-        self.reimager = Reimager('', afe=self.afe, tko=self.tko)
+        self.reimager = OsReimager('', self._BOARD, afe=self.afe, tko=self.tko)
         # Having these ordered by complexity is important!
         host_spec_list = [HostSpec([self._BOARD, self._POOL])]
         for dep_list in self._DEPENDENCIES.itervalues():

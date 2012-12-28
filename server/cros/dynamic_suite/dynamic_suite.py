@@ -15,7 +15,8 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
-from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
+from autotest_lib.server.cros.dynamic_suite.reimager import FwReimager
+from autotest_lib.server.cros.dynamic_suite.reimager import OsReimager
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server import frontend
 
@@ -431,8 +432,13 @@ def reimage_and_run(**dargs):
     tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
     manager = host_lock_manager.HostLockManager(afe=afe)
-    reimager = Reimager(suite_spec.job.autodir, afe, tko,
-                        results_dir=suite_spec.job.resultdir)
+    if dargs.get('firmware_reimage'):
+        reimager_class = FwReimager
+    else:
+        reimager_class = OsReimager
+
+    reimager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
+                              tko, results_dir=suite_spec.job.resultdir)
 
     _perform_reimage_and_run(suite_spec, afe, tko, reimager, manager)
 
@@ -452,10 +458,10 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
     """
     with host_lock_manager.HostsLockedBy(manager):
         tests_to_skip = []
-        if spec.skip_reimage or reimager.attempt(spec.build, spec.board,
-                spec.pool, spec.devserver, spec.job.record_entry,
-                spec.check_hosts, manager, tests_to_skip, spec.dependencies,
-                num=spec.num, timeout_mins=spec.try_job_timeout_mins):
+        if spec.skip_reimage or reimager.attempt(spec.build, spec.pool,
+                spec.devserver, spec.job.record_entry, spec.check_hosts,
+                manager, tests_to_skip, spec.dependencies, num=spec.num,
+                timeout_mins=spec.try_job_timeout_mins):
             # Ensure that the image's artifacts have completed downloading.
             try:
                 spec.devserver.finish_download(spec.build)
@@ -471,7 +477,8 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
                 spec.name, tests_to_skip, spec.build, spec.devserver,
                 afe=afe, tko=tko, pool=spec.pool,
                 results_dir=spec.job.resultdir,
-                max_runtime_mins=spec.max_runtime_mins)
+                max_runtime_mins=spec.max_runtime_mins,
+                version_prefix=reimager.version_prefix)
 
             suite.run_and_wait(spec.job.record_entry, manager,
                                spec.add_experimental)

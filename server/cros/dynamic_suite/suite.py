@@ -108,7 +108,8 @@ class Suite(object):
     @staticmethod
     def create_from_name(name, build, devserver, cf_getter=None, afe=None,
                          tko=None, pool=None, results_dir=None,
-                         max_runtime_mins=24*60):
+                         max_runtime_mins=24*60,
+                         version_prefix=constants.VERSION_PREFIX):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -129,20 +130,26 @@ class Suite(object):
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
+        @param version_prefix: a string, a prefix to be concatenated with the
+                               build name to form a label which the DUT needs
+                               to be labeled with to be eligible to run this
+                               test.
         @return a Suite instance.
         """
         if cf_getter is None:
             cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite(Suite.name_in_tag_predicate(name),
-                     name, build, cf_getter, afe, tko, pool, results_dir)
+                     name, build, cf_getter, afe, tko, pool, results_dir,
+                     version_prefix=version_prefix)
 
 
     @staticmethod
     def create_from_name_and_blacklist(name, blacklist, build, devserver,
                                        cf_getter=None, afe=None, tko=None,
                                        pool=None, results_dir=None,
-                                       max_runtime_mins=24*60):
+                                       max_runtime_mins=24*60,
+                                       version_prefix=constants.VERSION_PREFIX):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -164,6 +171,10 @@ class Suite(object):
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
+        @param version_prefix: a string, a prefix to be concatenated with the
+                               build name to form a label which the DUT needs
+                               to be labeled with to be eligible to run this
+                               test.
         @return a Suite instance.
         """
         if cf_getter is None:
@@ -176,11 +187,12 @@ class Suite(object):
 
         return Suite(in_tag_not_in_blacklist_predicate,
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins)
+                     max_runtime_mins, version_prefix)
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
-                 pool=None, results_dir=None, max_runtime_mins=24*60):
+                 pool=None, results_dir=None, max_runtime_mins=24*60,
+                 version_prefix=constants.VERSION_PREFIX):
         """
         Constructor
 
@@ -197,6 +209,8 @@ class Suite(object):
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
+        @param version_prefix: a string, prefix for the database label
+                               associated with the build
         """
         self._predicate = predicate
         self._tag = tag
@@ -215,7 +229,7 @@ class Suite(object):
                                                  self._predicate,
                                                  add_experimental=True)
         self._max_runtime_mins = max_runtime_mins
-
+        self._version_prefix = version_prefix
 
     @property
     def tests(self):
@@ -251,11 +265,11 @@ class Suite(object):
         job_deps = list(test.dependencies)
         if self._pool:
             meta_hosts = self._pool
-            cros_label = constants.VERSION_PREFIX + self._build
+            cros_label = self._version_prefix + self._build
             job_deps.append(cros_label)
         else:
             # No pool specified use any machines with the following label.
-            meta_hosts = constants.VERSION_PREFIX + self._build
+            meta_hosts = self._version_prefix + self._build
         test_obj = self._afe.create_job(
             control_file=test.text,
             name='/'.join([self._build, self._tag, test.name]),
