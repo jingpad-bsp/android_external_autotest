@@ -37,7 +37,8 @@ from dash_strings import UNKNOWN_TIME_STR
 
 
 GTEST_SUFFIXES = ["audio", "browsertests", "enterprise", "pagecycler", "pyauto",
-                  "pyauto_basic", "pyauto_endurance", "pyauto_perf", "sync"]
+                  "pyauto_basic", "pyauto_endurance", "pyauto_perf", "sync",
+                  "video"]
 SUFFIXES_TO_SHOW = ["bvt", "flaky", "hwqual", "regression",
                     KERNELTEST_TAG] + GTEST_SUFFIXES
 SERVER_JOB = "SERVER_JOB"

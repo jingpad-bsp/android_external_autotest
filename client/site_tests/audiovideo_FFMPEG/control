@@ -9,6 +9,8 @@ CRITERIA = """
 This test is a benchmark. Failure criteria may be added by constraints in the
 suite control file.
 """
+
+SUITE = 'video'
 TIME='LONG'
 TEST_CATEGORY = 'FFMPEG'
 TEST_CLASS = "audiovideo"
