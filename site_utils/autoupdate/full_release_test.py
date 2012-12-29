@@ -497,6 +497,8 @@ def parse_args():
                       help='use MP-signed images')
     parser.add_option('--remote', metavar='ADDR',
                       help='run test on given DUT via run_remote_tests')
+    parser.add_option('-n', '--dry_run', action='store_true',
+                      help='do not invoke actual test runs')
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
                       default='normal',
                       help='verbosity level: normal (default), verbose, debug')
@@ -552,7 +554,8 @@ def main():
             for i, test in enumerate(test_list):
                 logging.info('running test %d/%d:\n%r', i + 1, len(test_list),
                              test)
-                run_test_local(test, env, args.remote)
+                if not args.dry_run:
+                    run_test_local(test, env, args.remote)
         else:
             # Obtain the test control file content.
             control_file = os.path.join(
@@ -570,9 +573,10 @@ def main():
             for i, test in enumerate(test_list):
                 logging.info('scheduling test %d/%d:\n%r', i + 1,
                              len(test_list), test)
-                job_id = run_test_afe(test, env, control_code,
-                                      afe_create_job_func)
-                logging.info('job id: %s', job_id)
+                if not args.dry_run:
+                    job_id = run_test_afe(test, env, control_code,
+                                          afe_create_job_func)
+                    logging.info('job id: %s', job_id)
 
     except FullReleaseTestError, e:
         logging.fatal(str(e))
