@@ -91,15 +91,15 @@ class TestConfig(object):
     Stores and generates arguments for running autotest_EndToEndTest.
 
     """
-    def __init__(self, board, name, mp_images, delta_update,
+    def __init__(self, board, name, use_mp_images, is_delta_update,
                  source_release, target_release, source_branch, target_branch,
                  source_image_uri, target_payload_uri):
         """Initialize a test configuration.
 
         @param board: the board being tested (e.g. 'x86-alex')
         @param name: a descriptive name of the test
-        @param mp_images: whether or not we're using test images (Boolean)
-        @param delta_update: whether this is a delta update test (Boolean)
+        @param use_mp_images: whether or not we're using test images (Boolean)
+        @param is_delta_update: whether this is a delta update test (Boolean)
         @param source_release: the source image version (e.g. '2672.0.0')
         @param target_release: the target image version (e.g. '2673.0.0')
         @param source_branch: the source release branch (e.g. 'R22')
@@ -110,8 +110,8 @@ class TestConfig(object):
         """
         self.board = board
         self.name = name
-        self.mp_images = mp_images
-        self.delta_update = delta_update
+        self.use_mp_images = use_mp_images
+        self.is_delta_update = is_delta_update
         self.source_release = source_release
         self.target_release = target_release
         self.source_branch = source_branch
@@ -121,11 +121,11 @@ class TestConfig(object):
 
 
     def get_image_type(self):
-        return 'mp' if self.mp_images else 'test'
+        return 'mp' if self.use_mp_images else 'test'
 
 
     def get_update_type(self):
-        return 'delta' if self.delta_update else 'full'
+        return 'delta' if self.is_delta_update else 'full'
 
 
     def __str__(self):
@@ -172,7 +172,68 @@ def get_release_branch(release):
     return _release_info.get_branch(release)
 
 
-def generate_test_image_config(board, name, mp_images, delta_update,
+def generate_mp_image_npo_nmo_list(board, tested_release, test_nmo, test_npo):
+    """Generates N+1/N-1 test configurations with MP-signed images.
+
+    Computes a list of N+1 (npo) and/or N-1 (nmo) test configurations for a
+    given tested release and board.
+
+    @param logging: a logging object
+    @param board: the board under test
+    @param tested_release: the tested release version
+    @param test_nmo: whether we should infer N-1 tests
+    @param test_npo: whether we should infer N+1 tests
+
+    @return A pair of TestConfig objects corresponding to the N+1 and N-1
+            tests.
+
+    @raise FullReleaseTestError if something went wrong
+
+    """
+    # TODO(garnold) generate N+/-1 configurations for MP-signed images.
+    raise NotImplementedError(
+            'generation of mp-signed test configs not implemented')
+
+
+def generate_mp_image_fsi_list(board, tested_release):
+    """Generates FSI test configurations with MP-signed images.
+
+    Returns a list of test configurations from FSI releases to the given
+    tested release and board.
+
+    @param board: the board under test
+    @param tested_release: the tested release version
+
+    @return List of TestConfig objects corresponding to the FSI tests for the
+            given board.
+
+    """
+    # TODO(garnold) configure FSI-to-N delta tests for MP-signed images.
+    raise NotImplementedError(
+        'generation of mp-signed test configs not implemented')
+
+
+def generate_mp_image_specific_list(board, tested_release,
+                                    specific_source_releases):
+    """Generates specific test configurations with MP-signed images.
+
+    Returns a list of test configurations from a given list of source releases
+    to the given tested release and board.
+
+    @param board: the board under test
+    @param tested_release: the tested release version
+    @param specific_source_releases: list of source releases to test
+
+    @return List of TestConfig objects corresponding to the given source
+            releases.
+
+    """
+    # TODO(garnold) configure FSI-to-N delta tests for MP-signed images.
+    raise NotImplementedError(
+        'generation of mp-signed test configs not implemented')
+
+
+def generate_test_image_config(board, name, use_mp_images, is_delta_update,
                                source_release, target_release, payload_uri):
     """Constructs a single test config with given arguments.
 
@@ -181,8 +242,8 @@ def generate_test_image_config(board, name, mp_images, delta_update,
 
     @param board: the board name on which the test executes (e.g. 'x86-alex')
     @param name: a descriptive name for the test
-    @param mp_images: whether the test uses MP-signed images
-    @param delta_update: whether we're testing a delta update
+    @param use_mp_images: whether the test uses MP-signed images
+    @param is_delta_update: whether we're testing a delta update
     @param source_release: the version of the source image (before update)
     @param target_release: the version of the target image (after update)
     @param payload_uri: URI of the update payload.
@@ -197,9 +258,9 @@ def generate_test_image_config(board, name, mp_images, delta_update,
                                                  source_branch)
     # If found, return test configuration.
     if source_image_uri:
-        return TestConfig(board, name, mp_images, delta_update, source_release,
-                          target_release, source_branch, target_branch,
-                          source_image_uri, payload_uri)
+        return TestConfig(board, name, use_mp_images, is_delta_update,
+                          source_release, target_release, source_branch,
+                          target_branch, source_image_uri, payload_uri)
     else:
         logging.warning('cannot find source image for %s, %s', board,
                         source_release)
@@ -265,56 +326,43 @@ def generate_test_image_npo_nmo_list(board, tested_release, test_nmo,
     return test_list
 
 
-def generate_mp_image_npo_nmo_list(board, tested_release, test_nmo, test_npo):
-    """Generates N+1/N-1 test configurations with MP-signed images.
+def generate_test_image_full_update_list(board, tested_release,
+                                         source_releases, name):
+    """Generates test configurations of full updates with test images.
 
-    Computes a list of N+1 (npo) and/or N-1 (nmo) test configurations for a
-    given tested release and board.
+    Returns a list of test configurations from a given list of source releases
+    to the given tested release and board.
 
-    @param logging: a logging object
     @param board: the board under test
     @param tested_release: the tested release version
-    @param test_nmo: whether we should infer N-1 tests
-    @param test_npo: whether we should infer N+1 tests
+    @param sources_releases: list of source release versions
+    @param name: name for generated test configurations
 
-    @return A pair of TestConfig objects corresponding to the N+1 and N-1
-            tests.
-
-    @raise FullReleaseTestError if something went wrong
+    @return List of TestConfig objects corresponding to the source/target pairs
+            for the given board.
 
     """
-    # TODO(garnold) generate N+/-1 configurations for MP-signed images.
-    raise NotImplementedError(
-            'generation of mp-signed test configs not implemented')
+    # First, find the full payload for the tested (target) release, since
+    # we do not have delta payloads from FSIs.
+    tested_payload_uri = test_image.find_payload_uri(
+            board, tested_release, get_release_branch(tested_release),
+            single=True)
+    if not tested_payload_uri:
+        logging.warning("cannot find full payload for %s, %s; no '%s' tests "
+                        "generated",
+                        board, tested_release, name)
+        return []
 
+    # Construct test list.
+    test_list = []
+    for source_release in source_releases:
+        test_config = generate_test_image_config(
+                board, name, False, False,
+                source_release, tested_release, tested_payload_uri)
+        if test_config:
+            test_list.append(test_config)
 
-def generate_npo_nmo_list(board, tested_release, mp_images, test_nmo,
-                          test_npo):
-    """Generates N+1/N-1 test configurations.
-
-    Computes a list of N+1 (npo) and/or N-1 (nmo) test configurations for a
-    given tested release and board.
-
-    @param logging: a logging object
-    @param board: the board under test
-    @param tested_release: the tested release version
-    @param mp_images: whether or not we're using MP-signed images
-    @param test_nmo: whether we should infer N-1 tests
-    @param test_npo: whether we should infer N+1 tests
-
-    @return List of TestConfig objects corresponding to the requested test
-            types.
-
-    @raise FullReleaseTestError if something went wrong
-
-    """
-    # Return N+1/N-1 test configurations.
-    if mp_images:
-        return generate_mp_image_npo_nmo_list(board, tested_release, test_nmo,
-                                              test_npo)
-    else:
-        return generate_test_image_npo_nmo_list(board, tested_release,
-                                                test_nmo, test_npo)
+    return test_list
 
 
 def generate_test_image_fsi_list(board, tested_release):
@@ -330,66 +378,106 @@ def generate_test_image_fsi_list(board, tested_release):
             given board.
 
     """
-    test_list = []
-
-    # First, find the full payload for the tested (target) release, since
-    # we do not have delta payloads from FSIs.
-    tested_payload_uri = test_image.find_payload_uri(
-            board, tested_release, get_release_branch(tested_release),
-            single=True)
-    if not tested_payload_uri:
-        logging.warning('cannot find full payload for %s, %s; no fsi tests',
-                        board, tested_release)
-        return []
-
-    # Find as many FSI releases as are available, construct test list.
-    fsi_releases = _board_info.get_fsi_releases(board)
-    for fsi_source_release in fsi_releases:
-        test_config = generate_test_image_config(
-                board, 'fsi', False, False,
-                fsi_source_release, tested_release, tested_payload_uri)
-        if test_config:
-            test_list.append(test_config)
-
-    return test_list
+    return generate_test_image_full_update_list(
+            board, tested_release, _board_info.get_fsi_releases(board), 'fsi')
 
 
-def generate_mp_image_fsi_list(board, tested_release):
-    """Generates FSI test configurations with MP-signed images.
+def generate_test_image_specific_list(board, tested_release,
+                                      specific_source_releases):
+    """Generates specific test configurations with test images.
 
-    Returns a list of test configurations from FSI releases to the given
-    tested release and board.
+    Returns a list of test configurations from a given list of source releases
+    to the given tested release and board.
 
     @param board: the board under test
     @param tested_release: the tested release version
+    @param specific_source_releases: list of source releases to test
 
-    @return List of TestConfig objects corresponding to the FSI tests for the
-            given board.
+    @return List of TestConfig objects corresponding to the given source
+            releases.
 
     """
-    # TODO(garnold) configure FSI-to-N delta tests for MP-signed images.
-    raise NotImplementedError(
-        'generation of mp-signed test configs not implemented')
+    return generate_test_image_full_update_list(
+            board, tested_release, specific_source_releases, 'specific')
 
 
-def generate_fsi_list(board, tested_release, mp_images):
+def generate_npo_nmo_list(use_mp_images, board, tested_release, test_nmo,
+                          test_npo):
+    """Generates N+1/N-1 test configurations.
+
+    Computes a list of N+1 (npo) and/or N-1 (nmo) test configurations for a
+    given tested release and board.
+
+    @param use_mp_images: whether or not we're using MP-signed images
+    @param logging: a logging object
+    @param board: the board under test
+    @param tested_release: the tested release version
+    @param test_nmo: whether we should infer N-1 tests
+    @param test_npo: whether we should infer N+1 tests
+
+    @return List of TestConfig objects corresponding to the requested test
+            types.
+
+    @raise FullReleaseTestError if something went wrong
+
+    """
+    # Return N+1/N-1 test configurations.
+    if use_mp_images:
+        return generate_mp_image_npo_nmo_list(board, tested_release, test_nmo,
+                                              test_npo)
+    else:
+        return generate_test_image_npo_nmo_list(board, tested_release,
+                                                test_nmo, test_npo)
+
+
+def generate_fsi_list(use_mp_images, board, tested_release):
     """Generates FSI test configurations.
 
     Returns a list of test configurations from FSI releases to the given
     tested release and board.
 
+    @param use_mp_images: whether or not we're using MP-signed images
     @param board: the board under test
     @param tested_release: the tested release version
-    @param mp_images: whether or not we're using MP-signed images
 
     @return List of TestConfig objects corresponding to the FSI tests for the
             given board.
 
     """
-    if mp_images:
+    if use_mp_images:
         return generate_mp_image_fsi_list(board, tested_release)
     else:
         return generate_test_image_fsi_list(board, tested_release)
+
+
+def generate_specific_list(use_mp_images, board, tested_release,
+                           specific_source_releases, generated_tests):
+    """Generates test configurations for a list of specific source releases.
+
+    Returns a list of test configurations from a given list of releases to the
+    given tested release and board. Cares to exclude test configurations that
+    were already generated elsewhere (e.g. N-1/N+1, FSI).
+
+    @param use_mp_images: whether or not we're using MP-signed images
+    @param board: the board under test
+    @param tested_release: the tested release version
+    @param specific_source_releases: list of source release to test
+    @param generated_tests: already generated test configuration
+
+    @return List of TestConfig objects corresponding to the specific source
+            releases, minus those that were already generated elsewhere.
+
+    """
+    generated_source_releases = [
+            test_config.source_release for test_config in generated_tests]
+    filtered_source_releases = [rel for rel in specific_source_releases
+                                if rel not in generated_source_releases]
+    if use_mp_images:
+        return generate_mp_image_specific_list(
+                board, tested_release, filtered_source_releases)
+    else:
+        return generate_test_image_specific_list(
+                board, tested_release, filtered_source_releases)
 
 
 def generate_test_list(args):
@@ -408,13 +496,19 @@ def generate_test_list(args):
     # Configure N-1-to-N and N-to-N+1 tests.
     if args.test_nmo or args.test_npo:
         test_list += generate_npo_nmo_list(
-                args.tested_board, args.tested_release, args.mp_images,
+                args.use_mp_images, args.tested_board, args.tested_release,
                 args.test_nmo, args.test_npo)
 
     # Configure FSI tests.
     if args.test_fsi:
         test_list += generate_fsi_list(
-                args.tested_board, args.tested_release, args.mp_images)
+                args.use_mp_images, args.tested_board, args.tested_release)
+
+    # Add list of specifically provided source releases.
+    if args.specific:
+        test_list += generate_specific_list(
+                args.use_mp_images, args.tested_board, args.tested_release,
+                args.specific, test_list)
 
     return test_list
 
@@ -465,9 +559,13 @@ def run_test_afe(test, env, control_code, afe_create_job_func):
             test.get_code_args() + env.get_code_args() + control_code)
 
     # Create the job.
+    meta_hosts = ['board:%s' % test.board]
+    dependencies = ['servo']
+    logging.debug('scheduling afe test: meta_hosts=%s dependencies=%s',
+                  meta_hosts, dependencies)
     job_id = afe_create_job_func(
             test.name, 'Medium', parametrized_control_code, 'Server',
-            meta_hosts=['board:%s' % test.board], dependencies=['servo'])
+            meta_hosts=meta_hosts, dependencies=dependencies)
     return job_id
 
 
@@ -486,14 +584,17 @@ def parse_args():
                       help='generate N+1 update tests')
     parser.add_option('--fsi', dest='test_fsi', action='store_true',
                       help='generate FSI update tests')
+    parser.add_option('--specific', metavar='LIST',
+                      help='comma-separated list of source releases to '
+                           'generate test configurations from')
     parser.add_option('--servo_host', metavar='ADDR', default='localhost',
-                      help='host running servod (default: %default)')
+                      help='host running servod [%default]')
     parser.add_option('--servo_port', metavar='PORT',
-                      help='servod port (default: servod\'s default)')
+                      help='servod port [use servod default]')
     parser.add_option('--omaha_host', metavar='ADDR', default='localhost',
                       help='host where Omaha/devserver will be spawned '
-                      '(default: %default)')
-    parser.add_option('--mp_images', action='store_true',
+                      '[%default]')
+    parser.add_option('--mp_images', dest='use_mp_images', action='store_true',
                       help='use MP-signed images')
     parser.add_option('--remote', metavar='ADDR',
                       help='run test on given DUT via run_remote_tests')
@@ -501,7 +602,7 @@ def parse_args():
                       help='do not invoke actual test runs')
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
                       default='normal',
-                      help='verbosity level: normal (default), verbose, debug')
+                      help='verbosity level: [normal], verbose, debug')
 
     # Parse arguments.
     opts, args = parser.parse_args()
@@ -518,6 +619,9 @@ def parse_args():
     # Sanity check log level.
     if opts.log_level not in ('normal', 'verbose', 'debug'):
         parser.error('invalid log level (%s)' % opts.log_level)
+
+    # Process list of specific source releases.
+    opts.specific = opts.specific.split(',') if opts.specific else []
 
     return opts
 
