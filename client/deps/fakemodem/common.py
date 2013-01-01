@@ -6,7 +6,7 @@ import os, sys
 import setup_modules
 
 dirname = os.path.dirname(sys.modules[__name__].__file__)
-client_dir = os.path.abspath(os.path.join(dirname, "../../"))
+client_dir = os.path.abspath(os.path.join(dirname, "..", ".."))
 sys.path.insert(0, client_dir)
 sys.path.pop(0)
 setup_modules.setup(base_path=client_dir,
