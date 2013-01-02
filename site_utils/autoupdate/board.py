@@ -9,7 +9,8 @@ import ConfigParser
 import os
 
 
-_BOARD_CONFIG_FILE = os.path.join(os.getcwd(), 'board_config.ini')
+_BOARD_CONFIG_FILE = os.path.join(os.path.dirname(__file__),
+                                  'board_config.ini')
 
 
 class BoardError(BaseException):

@@ -10,7 +10,8 @@ import bisect
 import os
 
 
-_RELEASE_CONFIG_FILE = os.path.join(os.getcwd(), 'release_config.ini')
+_RELEASE_CONFIG_FILE = os.path.join(os.path.dirname(__file__),
+                                    'release_config.ini')
 
 # Prefix for brachpoint definitions in the config file.
 _CONF_BRANCH_SECTION = 'BRANCH'
