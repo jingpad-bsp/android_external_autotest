@@ -7,6 +7,16 @@ import mm1
 import state_machine
 
 class EnableMachine(state_machine.StateMachine):
+    def Cancel(self):
+        logging.info('EnableMachine: Canceling enable.')
+        super(EnableMachine, self).Cancel()
+        state = self._modem.Get(mm1.I_MODEM, 'State')
+        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        if state == mm1.MM_MODEM_STATE_ENABLING:
+            logging.info('EnableMachine: Setting state to DISABLED.')
+            self._modem.ChangeState(mm1.MM_MODEM_STATE_DISABLED, reason)
+        self._modem.enable_step = None
+
     def _HandleDisabledState(self):
         assert self._modem.disable_step is None
         assert self._modem.connect_step is None

@@ -19,7 +19,13 @@ class ConnectMachine(state_machine.StateMachine):
         self.register_initiated = False
 
     def Cancel(self):
+        logging.info('ConnectMachine: Canceling connect.')
         super(ConnectMachine, self).Cancel()
+        state = self._modem.Get(mm1.I_MODEM, 'State')
+        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        if state == mm1.MM_MODEM_STATE_CONNECTING:
+            logging.info('ConnectMachine: Setting state to REGISTERED.')
+            self._modem.ChangeState(mm1.MM_MODEM_STATE_REGISTERED, reason)
         self._modem.connect_step = None
 
     def _HandleDisabledState(self):

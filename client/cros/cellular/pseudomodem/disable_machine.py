@@ -22,8 +22,6 @@ class DisableMachine(state_machine.StateMachine):
         assert self._modem.connect_step
         logging.info('DisableMachine: Canceling connect.')
         self._modem.connect_step.Cancel()
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        self._modem.ChangeState(mm1.MM_MODEM_STATE_REGISTERED, reason)
         return True
 
     def _HandleDisconnectingState(self):
@@ -52,9 +50,6 @@ class DisableMachine(state_machine.StateMachine):
         assert not self._modem.IsPendingConnect()
         logging.info('DisableMachine: Canceling register.')
         self._modem.register_step.Cancel()
-        logging.info('DisableMachine: Setting state to ENABLED.')
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED, reason)
         return True
 
     def _HandleEnabledState(self):
@@ -127,10 +122,6 @@ class DisableMachine(state_machine.StateMachine):
                 # transitions yet would not be detected in a state handler.
                 logging.info('There is an ongoing Enable, canceling it.')
                 self._modem.enable_step.Cancel()
-                reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-                if state == mm1.MM_MODEM_STATE_ENABLING:
-                    self._modem.ChangeState(
-                        mm1.MM_MODEM_STATE_DISABLED, reason)
             if self._modem.connect_step:
                 logging.info('There is an ongoing Connect, canceling it.')
                 self._modem.connect_step.Cancel()

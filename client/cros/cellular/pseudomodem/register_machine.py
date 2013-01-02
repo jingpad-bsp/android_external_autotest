@@ -11,6 +11,16 @@ class RegisterMachine(state_machine.StateMachine):
         super(RegisterMachine, self).__init__(modem)
         self._networks = None
 
+    def Cancel(self):
+        logging.info('RegisterMachine: Canceling register.')
+        super(RegisterMachine, self).Cancel()
+        state = self._modem.Get(mm1.I_MODEM, 'State')
+        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        if state == mm1.MM_MODEM_STATE_SEARCHING:
+            logging.info('RegisterMachine: Setting state to ENABLED.')
+            self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED, reason)
+        self._modem.register_step = None
+
     def _HandleEnabledState(self):
         logging.info('RegisterMachine: Modem is ENABLED.')
         logging.info('RegisterMachine: Setting registration state '
