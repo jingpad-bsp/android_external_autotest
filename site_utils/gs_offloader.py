@@ -106,21 +106,6 @@ def get_cmd_list(dir_entry, relative_path):
             dest_path]
 
 
-def check_and_lock_dir(dir_path):
-  """
-  Check if the folder is currently locked for offloading and if not lock it.
-
-  @param dir_path: Directory we wish to check if locked and lock if possible.
-  @returns True if the directory was unlocked and now locked. False if it was
-           already locked.
-  """
-  lockfile_path = os.path.join(dir_path, '.locked_for_offloading')
-  if os.path.isfile(lockfile_path):
-    return False
-  open(lockfile_path, 'w').close()
-  return True
-
-
 def offload_hosts_sub_dir(queue):
   """
   Loop over the hosts/ sub directory and offload all the Cleanup, Verify and
@@ -149,9 +134,8 @@ def offload_hosts_sub_dir(queue):
         logging.debug('Special Task %s is not yet complete; skipping.',
                       dir_path)
         continue
-      if check_and_lock_dir(dir_path):
-        logging.debug('Processing %s', dir_path)
-        queue.put((dir_path, dir_path))
+      logging.debug('Processing %s', dir_path)
+      queue.put((dir_path, dir_path))
 
 
 def offload_dir(dir_entry, dest_path=''):
@@ -224,6 +208,8 @@ def offloading_thread(queue):
       offload_dir(*args)
     except Exception as e:
       logging.debug(str(e))
+    finally:
+      queue.task_done()
 
 
 def offload_files(results_dir, process_all, process_hosts_only, threads):
@@ -293,8 +279,8 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
         # os.system(CLEAN_CMD % dir_entry)
         # TODO(scottz): Monitor offloading and make sure chrome logs are
         # no longer an issue.
-        if check_and_lock_dir(dir_entry):
-          queue.put((dir_entry,))
+        queue.put((dir_entry,))
+    queue.join()
     time.sleep(SLEEP_TIME_SECS)
 
 
