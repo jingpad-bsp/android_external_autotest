@@ -33,9 +33,9 @@ count_packets_criteria = '>= 3, ~ -3'
 drumroll_criteria = '<= 20, ~ +30'
 # linearity_criteria is used for strictly straight line drawn with a ruler.
 linearity_criteria = '<= 0.8, ~ +2.4'
-# linearity_curvy_criteria is used for lines drawn with thumb edge or
+# relaxed_linearity_criteria is used for lines drawn with thumb edge or
 # fat fingers which are allowed to be curvy to some extent.
-linearity_curvy_criteria = '<= 1.5, ~ +3.0'
+relaxed_linearity_criteria = '<= 1.5, ~ +3.0'
 no_gap_criteria = '<= 1.8, ~ +1.0'
 no_level_jump_criteria = '<= 10, ~ +30'
 no_reversed_motion_criteria = '<= 5, ~ +30'
@@ -43,6 +43,7 @@ pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.05, ~ +0.05'
 sample_rate_criteria = '>= 60'
 stationary_finger_criteria = '<= 20, ~ +20'
+relaxed_stationary_finger_criteria = '<= 100, ~ +100'
 
 
 # Define filename and path for html report
@@ -416,9 +417,14 @@ def get_gesture_dict():
         ONE_FINGER_PHYSICAL_CLICK:
         Gesture(
             name=ONE_FINGER_PHYSICAL_CLICK,
-            variations=None,
+            variations=(GV.CENTER, GV.BL, GV.BS, GV.BR),
             prompt='Use one finger to make 1 physical click.',
-            subprompt=None,
+            subprompt={
+                GV.CENTER: ('center',),
+                GV.BL: ('bottom left corner',),
+                GV.BS: ('bottom side',),
+                GV.BR: ('bottom right corner',),
+            },
             validators=(
                 CountTrackingIDValidator('== 1'),
                 PhysicalClickValidator('== 1', fingers=1),
@@ -437,8 +443,10 @@ def get_gesture_dict():
                 CountTrackingIDValidator('== 2'),
                 PhysicalClickValidator('== 1', fingers=2),
                 SampleRateValidator(sample_rate_criteria),
-                StationaryFingerValidator(stationary_finger_criteria, slot=0),
-                StationaryFingerValidator(stationary_finger_criteria, slot=1),
+                StationaryFingerValidator(relaxed_stationary_finger_criteria,
+                                          slot=0),
+                StationaryFingerValidator(relaxed_stationary_finger_criteria,
+                                          slot=1),
             ),
         ),
 
@@ -509,7 +517,10 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_curvy_criteria, slot=1),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoLevelJumpValidator(no_level_jump_criteria, slots=[1,]),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
@@ -531,9 +542,9 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
-                LinearityValidator(linearity_curvy_criteria, slot=0,
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
                                    segments=VAL.MIDDLE),
-                LinearityValidator(linearity_curvy_criteria, slot=0,
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
                                    segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
@@ -559,8 +570,14 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_curvy_criteria, slot=0),
-                LinearityValidator(linearity_curvy_criteria, slot=1),
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
+                                   segments=VAL.BOTH_ENDS),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.BOTH_ENDS),
                 NoLevelJumpValidator(no_level_jump_criteria, slots=[0,]),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
@@ -583,7 +600,10 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_curvy_criteria, slot=1),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
                 SampleRateValidator(sample_rate_criteria),
@@ -603,13 +623,13 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                LinearityValidator(linearity_curvy_criteria, slot=0,
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
                                    segments=VAL.MIDDLE),
-                LinearityValidator(linearity_curvy_criteria, slot=0,
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
                                    segments=VAL.BOTH_ENDS),
-                LinearityValidator(linearity_curvy_criteria, slot=1,
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
                                    segments=VAL.MIDDLE),
-                LinearityValidator(linearity_curvy_criteria, slot=1,
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
                                    segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoGapValidator(no_gap_criteria, slot=1),
@@ -633,7 +653,10 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 4'),
-                LinearityValidator(linearity_curvy_criteria, slot=1),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.MIDDLE),
+                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                                   segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 SampleRateValidator(sample_rate_criteria),
