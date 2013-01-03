@@ -51,8 +51,9 @@ class network_WiFiInteropChaos(test.test):
                     capture_file = os.path.join(self.outputdir,
                                                 'connect_fail_%s.trc' % bss)
                     self.capturer.get_capture_file(capture_file)
-                    msg = ('Device failed to connect to AP %s %s. Reason: %s' %
-                          (ap.get_brand(), ap.get_model(), str(e)))
+                    msg = ('DUT failed to connect to "%s %s" on attempt %d. '
+                           'Reason: %s' % (ap.get_brand(), ap.get_model(), i+1,
+                                           str(e)))
                     raise error.TestFail(msg)
                 except error.CmdError as e:
                     raise error.TestError(e)
