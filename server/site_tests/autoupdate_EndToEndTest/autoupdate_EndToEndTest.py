@@ -503,6 +503,20 @@ class autoupdate_EndToEndTest(test.test):
         updater.trigger_update()
 
 
+    def _get_rootdev(self, host):
+        """Returns the partition device containing the rootfs on a host.
+
+        @param host: a host object
+
+        @return The rootfs partition device (string).
+
+        @raise AutotestHostRunError if command failed to run on host.
+
+        """
+        # This command should return immediately, hence the short timeout.
+        return host.run('rootdev -s', timeout=10).stdout.strip()
+
+
     def stage_image(self, lorry_devserver, image_uri, board, release, branch,
                     is_using_test_images):
         """Stage a Chrome OS image on Lorry/devserver.
@@ -633,6 +647,13 @@ class autoupdate_EndToEndTest(test.test):
                 self._install_mp_image(test_conf['source_image_lorry_url'],
                                        is_dev_mode)
 
+            # On test images, record the active root partition.
+            source_rootfs_partition = None
+            if is_using_test_images:
+                source_rootfs_partition = self._get_rootdev(host)
+                logging.info('source image rootfs partition: %s',
+                             source_rootfs_partition)
+
             omaha_netloc = self._omaha_devserver.get_netloc()
 
             # Trigger an update (test vs MP).
@@ -691,19 +712,29 @@ class autoupdate_EndToEndTest(test.test):
                 pass
 
             # Observe post-reboot update check, which should indicate that the
-            # image version has been updated.  Note that the previous version
-            # is currently not reported by AU, as one may have expected; had it
-            # been reported, we should have included
-            # expect_previous_version=test_conf['source_release'] as well.
+            # image version has been updated.
             chain = ExpectedUpdateEventChain(
                     (self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
                      ExpectedUpdateEvent(
                          event_type=self.EVENT_TYPE_UPDATE_COMPLETE,
                          event_result=self.EVENT_RESULT_SUCCESS_REBOOT,
-                         version=test_conf['target_release'])))
+                         version=test_conf['target_release'],
+                         previous_version=test_conf['source_release'])))
             if not log_verifier.verify_expected_event_chain(chain):
                 raise error.TestFail('could not verify that machine rebooted '
                                      'after update')
+
+            # On test images, make sure we're using a different partition after
+            # the update.
+            if is_using_test_images:
+                target_rootfs_partition = self._get_rootdev(host)
+                if target_rootfs_partition == source_rootfs_partition:
+                    raise error.TestFail(
+                            'rootfs partition did not change (%s)' %
+                            target_rootfs_partition)
+                logging.info('target image rootfs partition: %s',
+                             target_rootfs_partition)
+
 
         except error.TestFail:
             raise
