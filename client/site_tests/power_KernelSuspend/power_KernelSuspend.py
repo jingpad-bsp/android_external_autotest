@@ -5,8 +5,6 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import sys_power
 
-SUSPEND_SECONDS = 10
-
 class power_KernelSuspend(test.test):
     """Suspend the system."""
 
@@ -14,4 +12,4 @@ class power_KernelSuspend(test.test):
 
     def run_once(self):
         # go to suspend
-        sys_power.do_suspend(SUSPEND_SECONDS)
+        sys_power.do_suspend(seconds=10, method='kernel')
