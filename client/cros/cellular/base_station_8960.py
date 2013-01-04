@@ -216,92 +216,21 @@ CALL:APPLication:SESSion DPAPlication
 CALL:CELL:APPLication:ATDPackets 100
 """)
 
-  # /home/rochberg/Downloads/USB306PA 14-6-MaxRateHSPA+-1.xml
-  CAT_14 = _Parse("""
-# Need to figure out whether to remove these lines
-system:log:ui:clear
-system:log:ui:gpib:state on
-
-call:oper:mode OFF
-call:pow:ampl -50;stat ON
-call:ms:pow:targ -25
+  CAT_10 = _Parse("""
+call:pow:stat ON
+call:ms:pow:targ 0
 call:cell:rlc:rees OFF
-call:hsdp:ms:hsds:cat:cont:auto ON
-call:pich:ccode:code 2
-call:aich:ccode:code 3
-call:ccpchannel:secondary:connected:config:state off
-call:ccpchannel:secondary:ccode:code 2
-call:dpchannel:ksps15:code:hsdpa 14
-call:dpchannel:ksps30:code:hsdpa 4
-call:ehichannel:ccode:code 6
-call:eagchannel:ccode:code 15
-call:hsscchannel1:config:state on
-call:hsscchannel2:config:state on
-call:hsscchannel3:config:state off
-call:hsscchannel4:config:state off
-call:hsscchannel1:ccode:code 2
-call:hsscchannel2:ccode:code 3
-call:hsdpa:service:rbtest:hspdschannel:ccode:code 1
-call:hsdpa:service:psdata:hspdschannel:ccode:code 1
-call:ocnsource:config:state:hsdpa 1,0,0,0,0,0
-call:ocnsource:ccode:code:hsdpa 5,123,124,125,126,127
-call:connected:cpichannel:hsdpa -10
-call:connected:ccpchannel:primary:state:hsdpa off
-call:connected:pichannel:state:hsdpa off
-call:connected:dpchannel:hsdpa -20
-call:connected:hsscchannel1 -10
-call:connected:hsscchannel2 -20
-call:connected:hspdschannel -1.5
-call:connected:ccpchannel:primary:state:hspa off
-call:connected:pichannel:state:hspa off
-call:connected:eagchannel -30
-call:connected:hsscchannel2:hspa -20
-call:connected:hspdschannel:hspa -1.8
-call:dpch:ksps15:code 14
-call:dpch:ksps30:code 7
-call:serv:rbt:rab HSDP12
-call:hsdp:serv:rbt:hsds:conf UDEF
-call:hsdpa:service:rbtest:udefined:hsdschannel:mac ehspeed
-call:hsdpa:service:rbtest:udefined:qam64:state on
-call:hsdpa:service:rbtest:udefined:hspdschannel:count 15
-call:hsdpa:service:rbtest:udefined:tbsize:index 62
-call:hsdpa:service:rbtest:udefined:modulation qam64
-call:hsdpa:service:rbtest:udefined:macehs:rlc:sdu 656
-call:hsdpa:service:rbtest:udefined:itti 1
-call:hsdpa:service:rbtest:udefined:harq:process:count 6
-call:hsdpa:service:psdata:hsdschannel:mac ehspeed
-call:hsdpa:service:psdata:qam64:state on
-call:hsdpa:service:psdata:rlc:downlink:mode flexible
-call:hsdpa:service:psdata:rlc:down:max:pdu:psize 1503
-call:hsdpa:service:psdata:hsdschannel:config udefined
-call:hsdpa:service:psdata:udefined:hspdschannel:count 15
-call:hsdpa:service:psdata:udefined:tbsize:index 62
-call:hsdpa:service:psdata:udefined:modulation qam64
-call:hsdpa:service:psdata:macd:pdusize:control manual
-call:hsdpa:service:psdata:macd:pdusize:manual 4816
-call:hsdp:serv:psd:cqi 30
+call:hsdpa:ms:hsdschannel:cat:control:auto off
+call:hsdpa:ms:hsdschannel:cat:man 10
 call:serv:gprs:rab PHSP
-call:conn:cpic:lev:hspa -15;:call:conn:cpic:stat:hspa ON
-call:conn:ccpc:sec:lev:hspa -20;:call:conn:ccpc:sec:stat:hspa OFF
-call:conn:ccpc:prim:lev:hspa -15;:call:conn:ccpc:prim:stat:hspa ON
-call:conn:pich:lev:hspa -15.00;:call:conn:pich:stat:hspa ON
-call:conn:dpch:lev:hspa -15;:call:conn:dpch:stat:hspa ON
-call:conn:hssc1:lev:hspa -15;:call:conn:hssc1:stat:hspa ON
-call:conn:hssc2:lev:hspa -20;:call:conn:hssc2:stat:hspa ON
-call:conn:hssc3:lev:hspa -15;:call:conn:hssc3:stat:hspa OFF
-call:conn:hssc4:lev:hspa -15;:call:conn:hssc4:stat:hspa OFF
-call:conn:hspd:lev:hspa -1.0;:call:conn:hspd:stat:hspa ON
-call:conn:ergc:lev:hspa -20.00;:call:conn:ergc:stat:hspa ON
+call:serv:rbt:rab HSDP12
+call:hsdpa:service:psdata:hsdschannel:config cqiv
+call:hsdpa:service:psdata:cqi 22
 call:serv:psd:srb:mapp UEDD
 call:hsup:serv:psd:edpd:ccod:max T2T4
 call:hsup:edch:tti MS2
 call:hsup:serv:psd:ergc:inf:stat Off
-call:oper:mode CALL
-CALL:SMS:HTTP:INPUT ON;OUTPUT OFF
-CALL:SMS:PTP:MOR:QUE ON
-call:hsdpa:service:psdata:hsdschannel:config cqivalue
 """)
-
 
 class ConfigDictionaries(object):
   TECHNOLOGY_TO_FORMAT_RAW = {
@@ -328,7 +257,7 @@ class ConfigDictionaries(object):
       cellular.Technology.CDMA_2000: ConfigStanzas.CDMA_2000_MAX,
       cellular.Technology.EVDO_1X: ConfigStanzas.EVDO_1X_MAX,
       cellular.Technology.WCDMA: ConfigStanzas.WCDMA_MAX,
-      cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_14,
+      cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_10,
       }
 
 # http://wireless.agilent.com/rfcomms/refdocs/gsmgprs/prog_synch_callstategprs.html#CHDDFBAJ
