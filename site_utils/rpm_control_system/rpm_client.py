@@ -23,6 +23,6 @@ def set_power(hostname, new_state):
     client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI, verbose=False)
     if not client.queue_request(hostname, new_state):
         error_msg = ('Failed to change outlet status for host: %s to '
-                     'state: %s.' % (self.hostname, new_state))
+                     'state: %s.' % (hostname, new_state))
         logging.error(error_msg)
         raise RemotePowerException(error_msg)
