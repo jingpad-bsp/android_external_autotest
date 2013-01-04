@@ -313,6 +313,11 @@ def generate_test_image_npo_nmo_list(board, tested_release, test_nmo,
 
         # Determine delta type, make sure it was not already discovered.
         delta_type = 'npo' if source_release == target_release else 'nmo'
+        # Only add test configs we were asked to test.
+        if (delta_type == 'npo' and not test_npo) or (delta_type == 'nmo' and
+                                                      not test_nmo):
+          continue
+
         if delta_type in found:
             raise FullReleaseTestError('more than one %s deltas found (%s, %s)',
                                        delta_type, board, tested_release)
