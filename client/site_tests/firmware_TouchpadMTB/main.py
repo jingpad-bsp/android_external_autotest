@@ -102,8 +102,10 @@ class firmware_TouchpadMTB:
 
         # Create the HTML report object and the output object to print messages
         # on the window and to print the results in the report.
-        self.log_dir = firmware_utils.create_log_dir()
-        self._create_report_name()
+        firmware_version = self.touchpad.get_firmware_version()
+        mode = options[OPTIONS.MODE]
+        self.log_dir = firmware_utils.create_log_dir(firmware_version, mode)
+        self._create_report_name(mode)
         self.report_html = ReportHtml(self.report_html_name,
                                       self.screen_size,
                                       self.touchpad_window_size,
@@ -141,7 +143,7 @@ class firmware_TouchpadMTB:
             logging.error('Cannot find device_node.')
             exit(-1)
 
-    def _create_report_name(self):
+    def _create_report_name(self, mode):
         """Create the report names for both plain-text and html files.
 
         A typical html file name looks like:
@@ -150,8 +152,11 @@ class firmware_TouchpadMTB:
         firmware_str = 'fw_' + self.touchpad.get_firmware_version()
         board = firmware_utils.get_board()
         curr_time = firmware_utils.get_current_time_str()
-        sep = conf.filename.sep
-        fname = sep.join([conf.report_basename, board, firmware_str, curr_time])
+        fname = conf.filename.sep.join([conf.report_basename,
+                                        board,
+                                        firmware_str,
+                                        mode,
+                                        curr_time])
         self.report_name = os.path.join(self.log_dir, fname)
         self.report_html_name = self.report_name + conf.html_ext
         # Pass the report_html_name to DummyTest as an environment variable.

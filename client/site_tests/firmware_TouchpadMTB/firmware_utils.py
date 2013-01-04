@@ -45,10 +45,13 @@ def get_board():
     return board
 
 
-def create_log_dir():
+def create_log_dir(firmware_version, mode):
     """Create a directory to save the report and device event files."""
+    dir_basename = conf.filename.sep.join([get_current_time_str(),
+                                           'fw_' + firmware_version,
+                                           mode])
     log_root_dir = '/var/tmp/touchpad_firmware_test'
-    log_dir = os.path.join(log_root_dir, get_current_time_str())
+    log_dir = os.path.join(log_root_dir, dir_basename)
     latest_symlink = os.path.join(log_root_dir, 'latest')
 
     # Create the log directory.

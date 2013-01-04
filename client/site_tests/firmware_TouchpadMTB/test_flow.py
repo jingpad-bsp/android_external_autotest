@@ -298,6 +298,7 @@ class TestFlow:
                 gesture_name,
                 firmware_utils.get_board(),
                 'fw_' + self.firmware_version,
+                self.mode,
                 firmware_utils.get_current_time_str()])
         filename = '.'.join([basename, conf.filename.ext])
         return filename
