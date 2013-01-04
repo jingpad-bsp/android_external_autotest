@@ -91,6 +91,8 @@ class TestFlow:
                 return conf.gesture_names_robot
             else:
                 return conf.gesture_names_robot_interaction
+        elif self.mode == MODE.MANUAL:
+            return conf.gesture_names_manual
         else:
             return conf.gesture_names_complete
 

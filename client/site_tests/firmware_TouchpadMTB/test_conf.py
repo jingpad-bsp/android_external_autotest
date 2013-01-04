@@ -140,6 +140,11 @@ gesture_names_robot_interaction = gesture_names_robot + [
 ]
 
 
+# Define the manual list which is gesture_names_complete - gesture_names_robot
+gesture_names_manual = [gesture for gesture in gesture_names_complete
+                                if gesture not in gesture_names_robot]
+
+
 # Define those gestures that the robot needs to pause so the user
 # could adjust the robot or do finger interaction.
 msg_step1 = 'Step 1: Place a metal finger on the %s of the touchpad now.'
