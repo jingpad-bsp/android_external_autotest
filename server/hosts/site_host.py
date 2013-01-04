@@ -181,6 +181,10 @@ class SiteHost(remote.RemoteHost):
             raise autoupdater.ChromiumOSError(
                 'Update failed. No update URL provided.')
 
+        # In case the system is in a bad state, we always reboot the machine
+        # before machine_install.
+        self.reboot(timeout=60, wait=True)
+
         # Attempt to update the system.
         updater = autoupdater.ChromiumOSUpdater(update_url, host=self,
                                                 local_devserver=local_devserver)
@@ -378,7 +382,7 @@ class SiteHost(remote.RemoteHost):
         if self.has_power():
             try:
                 self.power_on()
-            except RemotePowerException:
+            except rpm_client.RemotePowerException:
                 # If cleanup has completed but there was an issue with the RPM
                 # Infrastructure, log an error message rather than fail cleanup
                 logging.error('Failed to turn Power On for this host after '
