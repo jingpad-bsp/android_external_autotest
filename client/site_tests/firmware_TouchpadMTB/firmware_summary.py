@@ -175,8 +175,8 @@ class FirmwareSummary:
                     # Keep the sum, count, and average
                     self.validator_sum[fw][validator][gesture] = sum(scores)
                     self.validator_count[fw][validator][gesture] = len(scores)
-                    ave = float(self.validator_sum[fw][validator][gesture] /
-                                self.validator_count[fw][validator][gesture])
+                    ave = (float(self.validator_sum[fw][validator][gesture]) /
+                                 self.validator_count[fw][validator][gesture])
                     self.validator_average[fw][validator][gesture] = ave
 
     def _combine_gestures(self):

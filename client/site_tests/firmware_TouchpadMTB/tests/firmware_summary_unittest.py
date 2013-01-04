@@ -20,6 +20,7 @@ class FirmwareSummaryTest(unittest.TestCase):
         summary = firmware_summary.FirmwareSummary(log_dir=self._log_dir)
         self._validator_average = summary.validator_average
         self._validator_summary_score = summary.validator_summary_score
+        self.fws = ['fw_11.26', 'fw_11.23']
 
     def _get_score(self, fw, validator, gesture):
         """Score = sum / count, rounded to the 4th digit."""
@@ -27,7 +28,6 @@ class FirmwareSummaryTest(unittest.TestCase):
 
     def test_combine_rounds_NoGapValidator(self):
         validator = 'NoGapValidator'
-        fws = ['fw_11.26', 'fw_11.23']
         gestures = [
             'one_finger_tracking',
             'two_finger_tracking',
@@ -50,20 +50,46 @@ class FirmwareSummaryTest(unittest.TestCase):
             }
         }
         for gesture in gestures:
-            for fw in fws:
+            for fw in self.fws:
                 actual_score = self._get_score(fw, validator, gesture)
                 expected_score = expected_scores[fw][gesture]
                 self.assertAlmostEqual(actual_score, expected_score)
 
     def test_combine_gestures_NoGapValidator(self):
         validator = 'NoGapValidator'
-        fws = ['fw_11.26', 'fw_11.23']
         # The following expected_scores were calculated by hand.
         expected_scores = {
             'fw_11.26': 0.8821,
             'fw_11.23': 0.5674,
         }
-        for fw in fws:
+        for fw in self.fws:
+            actual_score_original = self._validator_summary_score[validator][fw]
+            actual_score = round(actual_score_original, 4)
+            expected_score = expected_scores[fw]
+            self.assertAlmostEqual(actual_score, expected_score)
+
+    def test_combine_rounds_CountTrackingIDValidator(self):
+        validator = 'CountTrackingIDValidator'
+        gestures = ['one_finger_tracking',]
+        # The following expected_scores were calculated by hand.
+        expected_scores = {
+            'fw_11.26': {'one_finger_tracking': 1.0,},
+            'fw_11.23': {'one_finger_tracking': 0.75,},
+        }
+        for gesture in gestures:
+            for fw in self.fws:
+                actual_score = self._get_score(fw, validator, gesture)
+                expected_score = expected_scores[fw][gesture]
+                self.assertAlmostEqual(actual_score, expected_score)
+
+    def test_combine_gestures_CountTrackingIDValidator(self):
+        validator = 'CountTrackingIDValidator'
+        # The following expected_scores were calculated by hand.
+        expected_scores = {
+            'fw_11.26': 1.0,
+            'fw_11.23': 0.9583,
+        }
+        for fw in self.fws:
             actual_score_original = self._validator_summary_score[validator][fw]
             actual_score = round(actual_score_original, 4)
             expected_score = expected_scores[fw]
