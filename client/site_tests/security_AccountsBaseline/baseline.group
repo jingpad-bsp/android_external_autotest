@@ -3,7 +3,7 @@ bin::1:root,bin,daemon
 daemon::2:root,bin,daemon
 sys::3:root,bin,adm
 adm::4:root,adm,daemon
-tty::5:
+tty::5:power
 disk::6:root,adm
 lp::7:lp
 mem::8:
