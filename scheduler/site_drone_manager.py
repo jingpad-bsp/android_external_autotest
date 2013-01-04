@@ -4,7 +4,7 @@
 import logging
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.scheduler import scheduler_config
+from autotest_lib.scheduler import drones, scheduler_config
 
 HOSTS_JOB_SUBDIR = 'hosts/'
 PARSE_LOG = '.parse.log'
@@ -48,3 +48,24 @@ class SiteDroneManager(object):
         logging.info('killing %s', process)
         drone = self._get_drone_for_process(process)
         drone.queue_kill_process(process)
+
+
+    def _add_drone(self, hostname):
+        """
+        Forked from drone_manager.py
+
+        Catches AutoservRunError if the drone fails initialization and does not
+        add it to the list of usable drones.
+
+        @param hostname: Hostname of the drone we are trying to add.
+        """
+        logging.info('Adding drone %s' % hostname)
+        drone = drones.get_drone(hostname)
+        if drone:
+            try:
+                drone.call('initialize', self.absolute_path(''))
+            except error.AutoservRunError as e:
+                logging.error('Failed to initialize drone %s with error: %s',
+                              hostname, e)
+                return
+            self._drones[drone.hostname] = drone
