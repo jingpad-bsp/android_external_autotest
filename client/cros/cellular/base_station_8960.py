@@ -216,6 +216,22 @@ CALL:APPLication:SESSion DPAPlication
 CALL:CELL:APPLication:ATDPackets 100
 """)
 
+  CAT_08 = _Parse("""
+call:pow:stat ON
+call:ms:pow:targ 0
+call:cell:rlc:rees OFF
+call:hsdpa:ms:hsdschannel:cat:control:auto off
+call:hsdpa:ms:hsdschannel:cat:man 8
+call:hsdpa:service:psdata:hsdschannel:config cqiv
+call:hsdpa:service:psdata:cqi 22
+call:serv:gprs:rab PHSP
+call:serv:rbt:rab HSDP12
+call:serv:psd:srb:mapp UEDD
+call:hsup:serv:psd:edpd:ccod:max T2T4
+call:hsup:edch:tti MS10
+call:hsup:serv:psd:ergc:inf:stat Off
+""")
+
   CAT_10 = _Parse("""
 call:pow:stat ON
 call:ms:pow:targ 0
@@ -257,6 +273,9 @@ class ConfigDictionaries(object):
       cellular.Technology.CDMA_2000: ConfigStanzas.CDMA_2000_MAX,
       cellular.Technology.EVDO_1X: ConfigStanzas.EVDO_1X_MAX,
       cellular.Technology.WCDMA: ConfigStanzas.WCDMA_MAX,
+      cellular.Technology.HSDPA: ConfigStanzas.CAT_08,
+      cellular.Technology.HSUPA: ConfigStanzas.CAT_08,
+      cellular.Technology.HSDUPA: ConfigStanzas.CAT_08,
       cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_10,
       }
 
