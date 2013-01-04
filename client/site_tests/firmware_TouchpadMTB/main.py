@@ -207,12 +207,12 @@ def _usage():
     print '  -h, --%s: show this help' % OPTIONS.HELP
     print '  -m, --%s: gesture playing mode' % OPTIONS.MODE
     print '            could be one of the following options'
-    print '            COMPLETE: all gestures including those in ' \
+    print '            complete: all gestures including those in ' \
                                 'both MANUAL mode and ROBOT mode'
-    print '            MANUAL: all gestures - gestures in ROBOT mode'
-    print '            ROBOT: using robot to perform gestures automatically'
-    print '            ROBOT_INT: using robot with finger interaction'
-    print '            ROBOT_SIM: robot simulation, for developer only'
+    print '            manual: all gestures - gestures in ROBOT mode'
+    print '            robot: using robot to perform gestures automatically'
+    print '            robot_int: using robot with finger interaction'
+    print '            robot_sim: robot simulation, for developer only'
     print '  -s, --%s: Use one variation per gesture' % OPTIONS.SIMPLIFIED
     print
 
@@ -249,6 +249,7 @@ def _parse_options():
             _usage()
             sys.exit(1)
         elif opt in ('-m', '--%s' % OPTIONS.MODE):
+            arg = arg.lower()
             if arg in MODE.GESTURE_PLAY_MODE:
                 options[OPTIONS.MODE] = arg
             else:

@@ -95,12 +95,12 @@ class _Mode(_Constant):
     """Constants about gesture playing mode."""
     pass
 MODE = _Mode()
-MODE.COMPLETE = 'COMPLETE'
-MODE.MANUAL = 'MANUAL'
-MODE.REPLAY = 'REPLAY'
-MODE.ROBOT = 'ROBOT'
-MODE.ROBOT_INT = 'ROBOT_INT'
-MODE.ROBOT_SIM = 'ROBOT_SIM'
+MODE.COMPLETE = 'complete'
+MODE.MANUAL = 'manual'
+MODE.REPLAY = 'replay'
+MODE.ROBOT = 'robot'
+MODE.ROBOT_INT = 'robot_int'
+MODE.ROBOT_SIM = 'robot_sim'
 MODE.GESTURE_PLAY_MODE = [
     MODE.COMPLETE,
     MODE.MANUAL,
