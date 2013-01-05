@@ -248,6 +248,9 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
   threadpool = []
   for i in range(0, threads):
     thread = threading.Thread(target=offloading_thread, args=(queue,))
+    # Setting worker threads as daemons means that the program will exit if
+    # the main thread exits.
+    thread.daemon = True
     thread.start()
     threadpool.append(thread)
 
