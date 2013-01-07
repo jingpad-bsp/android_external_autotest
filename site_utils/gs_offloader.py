@@ -138,6 +138,45 @@ def offload_hosts_sub_dir(queue):
       queue.put((dir_path, dir_path))
 
 
+def offload_job_results(queue, process_all):
+  """
+  Loop over all of the job directories and offload them.
+
+  This will delete the job result folders within the results/ directory.
+
+  @param queue The work queue to place uploading tasks onto.
+  @param process_all True if we should process both job and hosts folders.
+                     False if we should process only job folders.
+  """
+  # Only pick up directories of the form <job #>-<job user>.
+  job_matcher = re.compile('^\d+-\w+')
+
+  # Iterate over all directories in results_dir.
+  for dir_entry in os.listdir('.'):
+    logging.debug('Processing %s', dir_entry)
+    if dir_entry == HOSTS_SUB_DIR and process_all:
+      offload_hosts_sub_dir(queue)
+      continue
+    if not job_matcher.match(dir_entry):
+      logging.debug('Skipping dir %s', dir_entry)
+      continue
+    # Directory names are in the format of <job #>-<job user>. We want just
+    # the job # to see if it has completed.
+    job_id = os.path.basename(dir_entry).split('-')[0]
+    if not is_job_complete.is_job_complete(job_id):
+      logging.debug('Job %s is not yet complete; skipping.', dir_entry)
+      continue
+    if (job_matcher.match(dir_entry) and os.path.isdir(dir_entry)):
+      # The way we collect results currently is naive and results in a lot
+      # of extra data collection. Clear these for now until we can be more
+      # exact about what logs we care about. crosbug.com/26784.
+      # logging.debug('Cleaning %s of extra data.', dir_entry)
+      # os.system(CLEAN_CMD % dir_entry)
+      # TODO(scottz): Monitor offloading and make sure chrome logs are
+      # no longer an issue.
+      queue.put((dir_entry,))
+
+
 def offload_dir(dir_entry, dest_path=''):
   """
   Offload the specified directory entry to the Google storage or the RSYNC host,
@@ -236,8 +275,6 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
   # an os.path.join on each loop.
   os.chdir(results_dir)
   logging.debug('Looking for Autotest results in %s', results_dir)
-  # Only pick up directories of the form <job #>-<job user>.
-  job_matcher = re.compile('^\d+-\w+')
   signal.signal(signal.SIGALRM, timeout_handler)
 
   # Create a work queue with a buffers space equal to the number of threads.
@@ -258,31 +295,8 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
     if process_hosts_only:
       # Only offload the hosts/ sub directory.
       offload_hosts_sub_dir(queue)
-      continue
-    # Iterate over all directories in results_dir.
-    for dir_entry in os.listdir('.'):
-      logging.debug('Processing %s', dir_entry)
-      if dir_entry == HOSTS_SUB_DIR and process_all:
-        offload_hosts_sub_dir(queue)
-        continue
-      if not job_matcher.match(dir_entry):
-        logging.debug('Skipping dir %s', dir_entry)
-        continue
-      # Directory names are in the format of <job #>-<job user>. We want just
-      # the job # to see if it has completed.
-      job_id = os.path.basename(dir_entry).split('-')[0]
-      if not is_job_complete.is_job_complete(job_id):
-        logging.debug('Job %s is not yet complete; skipping.', dir_entry)
-        continue
-      if (job_matcher.match(dir_entry) and os.path.isdir(dir_entry)):
-        # The way we collect results currently is naive and results in a lot
-        # of extra data collection. Clear these for now until we can be more
-        # exact about what logs we care about. crosbug.com/26784.
-        # logging.debug('Cleaning %s of extra data.', dir_entry)
-        # os.system(CLEAN_CMD % dir_entry)
-        # TODO(scottz): Monitor offloading and make sure chrome logs are
-        # no longer an issue.
-        queue.put((dir_entry,))
+    else:
+      offload_job_results(queue, process_all)
     queue.join()
     time.sleep(SLEEP_TIME_SECS)
 
