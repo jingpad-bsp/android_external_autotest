@@ -35,17 +35,8 @@ def _run_client_test(machine):
     else:
         raise error.TestNAError("No power switch configured")
 
-    # 50% charge should be ample for 12hr Standby test
-    client_at.run_test('power_BatteryCharge', percent_target_charge=50,
-                       max_run_time=60*60*3, tag='CHARGE_50')
-
-    client.power_off()
-    try:
-        client_at.run_test('power_Standby', test_hours=12.0, sample_hours=1.0,
-                           constraints=['milliwatts_standby_power <= 500.0'],
-                           max_milliwatts_standby=500.0)
-    finally:
-        client.power_on()
+    # TODO(tbroch): Add power_Standby here once there's a mechanism to postpone
+    # autotest server from checking that DUT is still alive via network
 
     # Run the full 60/20/10/10 load test, draining a full battery
     client_at.run_test('power_BatteryCharge', percent_target_charge=100,
@@ -62,5 +53,24 @@ def _run_client_test(machine):
                                check_network=False, tag='WIRED_full')
     finally:
         client.power_on()
+
+    # From client/site_tests/suite_HWQual/control.battery_charge_time
+    max_hours = 3
+    percent_charge_delta = 94.0
+    time_limit = max_hours * 60 * 60 * percent_charge_delta / 100.0
+    # battery must be at least 80% of design capacity
+    percent_battery_wear_allowed = .20
+
+    client_at.run_test('power_BatteryCharge',
+                 max_run_time=time_limit,
+                 percent_charge_to_add=100,
+                 percent_initial_charge_max=5,
+                 use_design_charge_capacity=False,
+                 constraints=[
+                     '1.0 - ah_charge_full / ah_charge_full_design <= %f' %
+                         percent_battery_wear_allowed,
+                     'percent_final_charge - percent_initial_charge >= %f' %
+                         percent_charge_delta,
+                 ])
 
 job.parallel_on_machines(_run_client_test, machines)
