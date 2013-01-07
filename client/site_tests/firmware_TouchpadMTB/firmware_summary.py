@@ -198,16 +198,42 @@ class FirmwareSummary:
 
     def _print_summary_title(self, summary_title_str):
         """Print the summary of the test results by gesture."""
-        column_title_format = '{0:<37}: {1:>8}  {2:>8}  {3:>8}'
-        title_list = [summary_title_str,] + self.fws + ['count',]
+        # Create a flexible column title format according to the number of
+        # firmware versions which could be 1, 2, or more.
+        # For a typical case with 2 firmware versions, the format looks like
+        #     '{0:<37}:  {1:>10}{2:>6}  {3:>10}{4:>6}'
+        column_title_format_list = ['{0:<37}:',]
+        score_count_format = '{%d:>10}{%d:>6}'
+        for i in range(len(self.fws)):
+            column_title_format_list.append(
+                    score_count_format % (i * 2 + 1, i * 2 + 2))
+        column_title_format = '  '.join(column_title_format_list)
+
+        # Create the list of title columns.
+        # A typical title list with two firmware versions looks like
+        #   ['Test Summary (by gesture)', 'fw_2.4', 'count', 'fw_2.5', 'count']
+        title_list = [summary_title_str,]
+        for i in range(len(self.fws)):
+            title_list.append(self.fws[i])
+            title_list.append('count')
+
+        # Print the title.
         column_title = column_title_format.format(*title_list)
         print '\n\n', column_title
         print '-' * len(column_title)
 
-    def _print_scores_and_count(self, scores_and_count):
-        """Print the scores and the count."""
-        scores_count_format = '  {0:<35}: {1:>8.2f}  {2:>8.2f}  {3:>8d}'
-        print scores_count_format.format(*tuple(scores_and_count))
+    def _print_scores_and_counts(self, scores_and_counts):
+        """Print the scores and the counts."""
+        # Create a flexible format to print scores and counts according to
+        # the number of firmware versions which could be 1, 2, or more.
+        # For a typical case with 2 firmware versions, the format looks like
+        #     '  {0:<35}:  {1:>10.2f}{2:>6}  {3:>10.2f}{4:>6}'
+        scores_counts_format_list = ['  {0:<35}:',]
+        for i in range(len(self.fws)):
+            scores_counts_format_list.append(
+                    '{%d:>10.2f}{%d:>6}' % (i * 2 + 1, i * 2 + 2))
+        scores_counts_format = '  '.join(scores_counts_format_list)
+        print scores_counts_format.format(*tuple(scores_and_counts))
 
     def _print_result_summary_by_gesture(self):
         """Print the summary of the test results by gesture."""
@@ -219,30 +245,31 @@ class FirmwareSummary:
             validators = self.validator_sum[fw].keys()
             validators.sort()
             for validator in validators:
-                scores_and_count = [validator,]
+                scores_and_counts = [validator,]
                 for fw in self.fws:
                     average = self.validator_average[fw][validator].get(gesture)
                     # Append this validator only if it is used in this gesture.
                     if average is not None:
-                        scores_and_count.append(average)
+                        scores_and_counts.append(average)
+                        # Add counts of every fw
+                        count = self.validator_count[fw][validator].get(gesture)
+                        scores_and_counts.append(count)
                 if average is not None:
-                    # Assume the counts of every fw are the same for fairness.
-                    count = self.validator_count[fw][validator].get(gesture)
-                    scores_and_count.append(count)
-                    self._print_scores_and_count(scores_and_count)
+                    self._print_scores_and_counts(scores_and_counts)
 
     def _print_result_summary_by_validator(self):
         """Print the summary of the test results by validator."""
         fw = self.fws[0]
         self._print_summary_title('Test Summary (by validator)')
         for validator in self.validators:
-            scores_and_count = [validator,]
+            scores_and_counts = [validator,]
             for fw in self.fws:
                 average = self.validator_summary_score[validator][fw]
-                scores_and_count.append(average)
-            # Assume the counts of every fw are the same for fairness.
-            scores_and_count.append(self.validator_summary_count[validator][fw])
-            self._print_scores_and_count(scores_and_count)
+                scores_and_counts.append(average)
+                # Add counts of every fw
+                count = self.validator_summary_count[validator][fw]
+                scores_and_counts.append(count)
+            self._print_scores_and_counts(scores_and_counts)
 
     def print_result_summary(self):
         """Print the summary of the test results."""
