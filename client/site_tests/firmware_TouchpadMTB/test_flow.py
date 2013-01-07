@@ -66,6 +66,8 @@ class TestFlow:
         self.prefix_space = self.output.get_prefix_space()
         self.scores = []
         self.mode = options[OPTIONS.MODE]
+        self.iterations = options[OPTIONS.ITERATIONS]
+        self.gv_count = float('infinity')
         gesture_names = self._get_gesture_names()
         self.gesture_list = GestureList(gesture_names).get_gesture_list()
         self._get_all_gesture_variations(options[OPTIONS.SIMPLIFIED])
@@ -131,7 +133,8 @@ class TestFlow:
         """Prompt for robot pause."""
         # Check if the robot needs to pause for this gesture.
         pause = conf.gesture_names_robot_pause.get(self.gesture.name)
-        if not pause:
+        # No need to pause if this is not the first iteration.
+        if not pause or self.gv_count > 1:
             return None
 
         # If the pause is per gesture, pause only at the first variation.
@@ -499,10 +502,14 @@ class TestFlow:
     def _pre_setup_this_gesture_variation(self, next_gesture=True):
         """Get gesture, variation, filename, prompt, etc."""
         if next_gesture:
-            gesture_variation = next(self.gesture_variations, None)
-            if gesture_variation is None:
-                return False
-            self.gesture, self.variation = gesture_variation
+            if self.gv_count < self.iterations:
+                self.gv_count += 1
+            else:
+                self.gv_count = 1
+                gesture_variation = next(self.gesture_variations, None)
+                if gesture_variation is None:
+                    return False
+                self.gesture, self.variation = gesture_variation
 
         self.gesture_file_name = os.path.join(self.output.log_dir,
                 self._create_gesture_file_name(self.gesture, self.variation))

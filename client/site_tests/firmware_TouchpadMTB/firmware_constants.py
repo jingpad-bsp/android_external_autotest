@@ -101,14 +101,8 @@ MODE.REPLAY = 'replay'
 MODE.ROBOT = 'robot'
 MODE.ROBOT_INT = 'robot_int'
 MODE.ROBOT_SIM = 'robot_sim'
-MODE.GESTURE_PLAY_MODE = [
-    MODE.COMPLETE,
-    MODE.MANUAL,
-    MODE.REPLAY,
-    MODE.ROBOT,
-    MODE.ROBOT_INT,
-    MODE.ROBOT_SIM
-]
+# GESTURE_PLAY_MODE is a list of all attributes above
+MODE.GESTURE_PLAY_MODE = list(MODE.__dict__.values())
 
 
 class _MTB(_Constant):
@@ -129,6 +123,7 @@ class _Options(_Constant):
     pass
 OPTIONS = _Options()
 OPTIONS.HELP = 'help'
+OPTIONS.ITERATIONS = 'iterations'
 OPTIONS.MODE = 'mode'
 OPTIONS.SIMPLIFIED = 'simplified'
 

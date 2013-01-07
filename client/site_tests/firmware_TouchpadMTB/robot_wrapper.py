@@ -15,6 +15,7 @@ from firmware_constants import GV, MODE
 # Define the robot control script names.
 SCRIPT_LINE = 'line.py'
 SCRIPT_CLICK = 'click.py'
+SCRIPT_REPLAY = 'run_program.py'
 
 # Define constants for coordinates.
 # Normally, a gesture is performed within [START, END].
@@ -61,11 +62,13 @@ class RobotWrapper:
         self._board = board
         self._mode = mode
         self._robot_script_dir = self._get_robot_script_dir()
+        self._gesture_variation = None
 
         # Each get_contorol_command method maps to a script name.
         self._robot_script_name_dict = {
             self._get_control_command_line: SCRIPT_LINE,
             self._get_control_command_click: SCRIPT_CLICK,
+            self._get_control_command_replay: SCRIPT_REPLAY,
         }
 
         # Each gesture maps to a get_contorol_command method
@@ -264,6 +267,11 @@ class RobotWrapper:
         control_cmd = 'python %s %s %s %s' % para
         return control_cmd
 
+    def _get_control_command_replay(self, robot_script, gesture, variation):
+        """Get robot control command for replaying the existent gestures."""
+        control_cmd = 'python %s' % robot_script
+        return control_cmd
+
     def _build_robot_script_paths(self):
         """Build the robot script paths."""
         # Check if the robot script dir could be found.
@@ -288,12 +296,18 @@ class RobotWrapper:
 
     def _get_control_command(self, gesture, variation):
         """Get robot control command based on the gesture and variation."""
-        # Check if there exists a method to derive the robot script command
-        # for this gesture.
-        script_method = self._method_of_control_command_dict.get(gesture)
-        if not script_method:
-            msg = 'Cannot find "%s" gesture in _method_of_control_command_dict.'
-            self._raise_error(msg % gesture)
+        # If the (gesture, variation) is the same as the previous one, use
+        # the replay script (run_program.py)
+        if self._gesture_variation == (gesture, variation):
+            script_method = self._get_control_command_replay
+        else:
+            # Check if there exists a method to derive the robot script command
+            # for this gesture.
+            script_method = self._method_of_control_command_dict.get(gesture)
+            if not script_method:
+                self._raise_error('Cannot find "%s" gesture in '
+                                  '_method_of_control_command_dict.' % gesture)
+            self._gesture_variation = (gesture, variation)
 
         robot_script = self._robot_script_dict.get(script_method)
         if not robot_script:

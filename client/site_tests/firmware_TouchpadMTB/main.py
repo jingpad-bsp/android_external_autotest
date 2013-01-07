@@ -200,11 +200,12 @@ class firmware_TouchpadMTB:
         pyauto.Main()
 
 
-def _usage():
+def _usage_and_exit():
     """Print the usage of this program."""
     print 'Usage: $ %s [options]\n' % sys.argv[0]
     print 'options:'
     print '  -h, --%s: show this help' % OPTIONS.HELP
+    print '  -i, --%s: iterations' % OPTIONS.ITERATIONS
     print '  -m, --%s: gesture playing mode' % OPTIONS.MODE
     print '            could be one of the following options'
     print '            complete: all gestures including those in ' \
@@ -215,13 +216,13 @@ def _usage():
     print '            robot_sim: robot simulation, for developer only'
     print '  -s, --%s: Use one variation per gesture' % OPTIONS.SIMPLIFIED
     print
+    sys.exit(1)
 
 
 def _parsing_error(msg):
     """Print the usage and exit when encountering parsing error."""
     print 'Error: %s' % msg
-    _usage()
-    sys.exit(1)
+    _usage_and_exit()
 
 
 def _parse_options():
@@ -230,24 +231,33 @@ def _parse_options():
     Note that the options are specified with environment variable OPTIONS,
     because pyauto seems not compatible with command line options.
     """
-    # Initialize and get the environment OPTIONS
-    options = {OPTIONS.MODE: MODE.MANUAL, OPTIONS.SIMPLIFIED: False}
+    # Set the default values of options.
+    options = {OPTIONS.ITERATIONS: 1,
+               OPTIONS.MODE: MODE.MANUAL,
+               OPTIONS.SIMPLIFIED: False}
+
+    # Get the environment OPTIONS
     options_str = os.environ.get('OPTIONS')
     if not options_str:
         return options
 
     options_list = options_str.split()
     try:
-        short_opt = 'hm:s'
-        long_opt = [OPTIONS.HELP, OPTIONS.MODE, OPTIONS.SIMPLIFIED]
+        short_opt = 'hi:m:s'
+        long_opt = [OPTIONS.HELP, OPTIONS.ITERATIONS, OPTIONS.MODE,
+                    OPTIONS.SIMPLIFIED]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
         _parsing_error(str(err))
 
     for opt, arg in opts:
         if opt in ('-h', '--%s' % OPTIONS.HELP):
-            _usage()
-            sys.exit(1)
+            _usage_and_exit()
+        elif opt in ('-i', '--%s' % OPTIONS.ITERATIONS):
+            if arg.isdigit():
+                options[OPTIONS.ITERATIONS] = int(arg)
+            else:
+                _usage_and_exit()
         elif opt in ('-m', '--%s' % OPTIONS.MODE):
             arg = arg.lower()
             if arg in MODE.GESTURE_PLAY_MODE:
