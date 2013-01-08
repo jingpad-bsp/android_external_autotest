@@ -48,7 +48,7 @@ class graphics_GpuReset(graphics_ui_test.GraphicsUITest):
 
     # Run the gpureset test in a loop to stress the recovery.
     for i in range(1, self.loops + 1):
-      summary += 'graphics_GLBench iteration %d of %d\n' % (i, self.loops)
+      summary += 'graphics_GpuReset iteration %d of %d\n' % (i, self.loops)
       if need_restart_ui:
         summary += 'initctl stop ui\n'
         utils.system('initctl stop ui', ignore_status=True)
