@@ -64,7 +64,7 @@ def remote_devserver_call(method):
     This decorator converts urllib2.HTTPErrors into DevServerExceptions with
     any embedded error info converted into plain text.
     """
-    @retry.retry(urllib2.URLError)
+    @retry.retry(urllib2.URLError, timeout_min=30)
     def wrapper(*args, **kwargs):
         """This wrapper actually catches the HTTPError."""
         try:
