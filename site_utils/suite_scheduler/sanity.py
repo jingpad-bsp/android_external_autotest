@@ -67,7 +67,7 @@ def CheckDependencies(tasks):
     for suitename, control_deps in test_deps.items():
         if not suitename:
             continue
-        imager = reimager.Reimager(common.autotest_dir)
+        imager = reimager.OsReimager(common.autotest_dir, 'none')
 
         # Figure out what kind of hosts we need to grab.
         per_test_specs = imager._build_host_specs_from_dependencies(
