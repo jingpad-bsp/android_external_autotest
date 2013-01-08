@@ -404,7 +404,7 @@ def main(argv):
                          options.step_timeout, options.svc_timeout,
                          options.debug)
 
-  logs = OpenLogs('/var/log/messages')
+  logs = OpenLogs('/var/log/messages', '/var/log/net.log')
   if handler.NextState():
     handler.RunLoop()
 

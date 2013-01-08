@@ -233,7 +233,7 @@ def main(argv):
   (options, args) = parser.parse_args(argv[1:])
 
   if len(argv) <= 4:
-    parser.error('Required arguments: ssid security psk assoc_timeount '
+    parser.error('Required arguments: ssid security psk assoc_timeout '
                  'config_timeout')
 
   ssid           = args[0]
@@ -262,7 +262,7 @@ def main(argv):
 
   global logs
   global handler
-  logs = OpenLogs('/var/log/messages')
+  logs = OpenLogs('/var/log/messages', '/var/log/net.log')
 
   assoc_start = time.time()
   handler = ConnectStateHandler(bus, connection_settings, options.hidden,
