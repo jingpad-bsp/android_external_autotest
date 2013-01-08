@@ -1,9 +1,9 @@
 # Copyright 2007 Google Inc. Released under the GPL v2
 
-import re, os, sys, traceback, subprocess, time, pickle, glob, tempfile
-import logging, getpass
+import re, os, sys, traceback, time, glob, tempfile
+import logging
 from autotest_lib.server import installable_object, prebuild, utils
-from autotest_lib.client.common_lib import base_job, log, error, autotemp
+from autotest_lib.client.common_lib import base_job, error, autotemp
 from autotest_lib.client.common_lib import global_config, packages
 from autotest_lib.client.common_lib import utils as client_utils
 
@@ -575,10 +575,33 @@ class _BaseRun(object):
         return bool(re.match(r'^\t*GOOD\t----\treboot\.start.*$', last_line))
 
 
-    def log_unexpected_abort(self, stderr_redirector):
+    def log_unexpected_abort(self, stderr_redirector, old_boot_id=None):
+        """
+        Logs that something unexpected happened, then tries to
+        diagnose the failure.
+
+        @param stderr_redirector: log stream.
+        @param old_boot_id: boot id used to infer if a reboot occured.
+        """
         stderr_redirector.flush_all_buffers()
-        msg = "Autotest client terminated unexpectedly"
-        self.host.job.record("END ABORT", None, None, msg)
+        msg = 'Autotest client terminated unexpectedly \n'
+        if utils.ping(self.host.hostname, tries=1, deadline=1) != 0:
+            msg += 'DUT is no longer pingable, it may have rebooted or hung. \n'
+            self.host.job.record('END ABORT', None, None, msg)
+            return
+
+        if old_boot_id:
+            try:
+                new_boot_id = self.host.get_boot_id(timeout=60)
+            except Exception:
+                msg += ('DUT is pingable but not SSHable, it most likely'
+                        ' sporadically rebooted during testing.\n')
+            else:
+                if new_boot_id != old_boot_id:
+                    msg += 'DUT rebooted during the test run.\n'
+                else:
+                    msg += 'connection was lost during the test.\n'
+        self.host.job.record('END ABORT', None, None, msg)
 
 
     def _execute_in_background(self, section, timeout):
@@ -764,7 +787,7 @@ class _BaseRun(object):
                     continue
 
                 # if we reach here, something unexpected happened
-                self.log_unexpected_abort(logger)
+                self.log_unexpected_abort(logger, boot_id)
 
                 # give the client machine a chance to recover from a crash
                 self.host.wait_up(self.host.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
