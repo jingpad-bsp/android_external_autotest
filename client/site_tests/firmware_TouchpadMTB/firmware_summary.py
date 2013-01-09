@@ -49,6 +49,7 @@ Test Summary (by validator)          :   fw_2.4  fw_2.4.a     count
 
 import glob
 import json
+import numpy as n
 import os
 import sys
 
@@ -166,92 +167,138 @@ class FirmwareSummary:
 
         self.validators.sort()
 
+    def _calc_sample_standard_deviation(self, sample):
+        """Calculate the sample standard deviation from a given sample.
+
+        To compute a sample standard deviation, the following formula is used:
+            sqrt(sum((x_i - x_average)^2) / N-1)
+
+        Note that N-1 is used in the denominator for sample standard deviation,
+        where N-1 is the degree of freedom. We need to set ddof=1 below;
+        otherwise, N would be used in the denominator as ddof's default value
+        is 0.
+
+        Reference:
+            http://en.wikipedia.org/wiki/Standard_deviation
+        """
+        return n.std(n.array(sample), ddof=1)
+
     def _combine_rounds(self):
         """Combine the test results of multiple rounds of the same
         firmware version.
         """
-        self.validator_sum = {}
-        self.validator_count = {}
+        self.validator_all_scores = {}
         self.validator_average = {}
+        self.validator_ssd = {}
+        self.validator_count = {}
         for gesture in self.g_scores:
             for fw in self.fws:
-                if fw not in self.validator_sum:
-                    self.validator_sum[fw] = {}
-                    self.validator_count[fw] = {}
+                if fw not in self.validator_all_scores:
+                    self.validator_all_scores[fw] = {}
                     self.validator_average[fw] = {}
+                    self.validator_ssd[fw] = {}
+                    self.validator_count[fw] = {}
                 for validator in self.g_scores[gesture][fw]:
-                    if validator not in self.validator_sum[fw]:
-                        self.validator_sum[fw][validator] = {}
-                        self.validator_count[fw][validator] = {}
+                    if validator not in self.validator_all_scores[fw]:
+                        self.validator_all_scores[fw][validator] = []
                         self.validator_average[fw][validator] = {}
+                        self.validator_ssd[fw][validator] = {}
+                        self.validator_count[fw][validator] = {}
 
                     scores = self.g_scores[gesture][fw][validator]
-                    for score in scores:
-                        format_str = '%d' if isinstance(score, int) else '%.2f'
-                        format_str += ','
-
-                    # Keep the sum, count, and average
-                    self.validator_sum[fw][validator][gesture] = sum(scores)
+                    self.validator_all_scores[fw][validator] += scores
+                    # Compute the sum, count, average, and
+                    # sample standard deviation (ssd)
+                    average = n.average(n.array(scores))
+                    self.validator_average[fw][validator][gesture] = average
+                    ssd = self._calc_sample_standard_deviation(scores)
+                    self.validator_ssd[fw][validator][gesture] = ssd
                     self.validator_count[fw][validator][gesture] = len(scores)
-                    ave = (float(self.validator_sum[fw][validator][gesture]) /
-                                 self.validator_count[fw][validator][gesture])
-                    self.validator_average[fw][validator][gesture] = ave
 
     def _combine_gestures(self):
         """Combine the test results of the gestures of the same firmware version
         for every validator.
         """
         self.validator_summary_score = {}
+        self.validator_summary_ssd = {}
         self.validator_summary_count= {}
         for validator in self.validators:
             self.validator_summary_score[validator] = {}
+            self.validator_summary_ssd[validator] = {}
             self.validator_summary_count[validator] = {}
             for fw in self.fws:
-                validator_sum = sum(self.validator_sum[fw][validator].values())
+                all_scores = self.validator_all_scores[fw][validator]
+                ssd = self._calc_sample_standard_deviation(all_scores)
                 count = sum(self.validator_count[fw][validator].values())
                 # TODO(josephsih): a weighted average is desirable
-                average = float(validator_sum) / count
+                average = n.average(n.array(all_scores))
                 self.validator_summary_score[validator][fw] = average
+                self.validator_summary_ssd[validator][fw] = ssd
                 self.validator_summary_count[validator][fw] = count
 
     def _print_summary_title(self, summary_title_str):
         """Print the summary of the test results by gesture."""
         # Create a flexible column title format according to the number of
         # firmware versions which could be 1, 2, or more.
-        # For a typical case with 2 firmware versions, the format looks like
-        #     '{0:<37}:  {1:>10}{2:>6}  {3:>10}{4:>6}'
-        column_title_format_list = ['{0:<37}:',]
-        score_count_format = '{%d:>10}{%d:>6}'
+        #
+        # A typical summary title looks like
+        # Test Summary ()          :    fw_11.26             fw_11.23
+        #                               mean  ssd  count     mean ssd count
+        # ----------------------------------------------------------------------
+        #
+        # The 1st line above is called title_fw.
+        # The 2nd line above is called title_statistics.
+        #
+        # As an example for 2 firmwares, title_fw_format looks like:
+        #     '{0:<37}:  {1:>12}  {2:>21}'
+        title_fw_format_list = ['{0:<37}:',]
         for i in range(len(self.fws)):
-            column_title_format_list.append(
-                    score_count_format % (i * 2 + 1, i * 2 + 2))
-        column_title_format = '  '.join(column_title_format_list)
+            format_space = 12 if i == 0 else (12 + 9)
+            title_fw_format_list.append('{%d:>%d}' % (i + 1, format_space))
+        title_fw_format = ' '.join(title_fw_format_list)
 
-        # Create the list of title columns.
-        # A typical title list with two firmware versions looks like
-        #   ['Test Summary (by gesture)', 'fw_2.4', 'count', 'fw_2.5', 'count']
-        title_list = [summary_title_str,]
+        # As an example for 2 firmwares, title_statistics_format looks like:
+        #     '{0:>47} {1:>6} {2:>5} {3:>8} {4:>6} {5:>5}'
+        title_statistics_format_list = []
         for i in range(len(self.fws)):
-            title_list.append(self.fws[i])
-            title_list.append('count')
+            format_space = (12 + 35) if i == 0 else 8
+            title_statistics_format_list.append('{%d:>%d}' % (3 * i,
+                                                              format_space))
+            title_statistics_format_list.append('{%d:>%d}' % (3 * i + 1 , 6))
+            title_statistics_format_list.append('{%d:>%d}' % (3 * i + 2 , 5))
+        title_statistics_format = ' '.join(title_statistics_format_list)
+
+        # Create title_fw_list
+        # As an example for two firmware versions, it looks like
+        #   ['Test Summary (by gesture)', 'fw_2.4', 'fw_2.5']
+        title_fw_list = [summary_title_str,] + self.fws
+
+        # Create title_statistics_list
+        # As an example for two firmware versions, it looks like
+        #   ['mean', 'ssd', 'count', 'mean', 'ssd', 'count', ]
+        title_statistics_list = ['mean', 'ssd', 'count'] * len(self.fws)
 
         # Print the title.
-        column_title = column_title_format.format(*title_list)
-        print '\n\n', column_title
-        print '-' * len(column_title)
+        title_fw = title_fw_format.format(*title_fw_list)
+        title_statistics = title_statistics_format.format(
+                *title_statistics_list)
+        print '\n\n', title_fw
+        print title_statistics
+        print '-' * len(title_statistics)
 
-    def _print_scores_and_counts(self, scores_and_counts):
-        """Print the scores and the counts."""
-        # Create a flexible format to print scores and counts according to
+    def _print_statistics(self, statistics):
+        """Print the statistics including average scores, ssd, and counts."""
+        # Create a flexible format to print scores, ssd, and counts according to
         # the number of firmware versions which could be 1, 2, or more.
-        # For a typical case with 2 firmware versions, the format looks like
-        #     '  {0:<35}:  {1:>10.2f}{2:>6}  {3:>10.2f}{4:>6}'
-        scores_counts_format_list = ['  {0:<35}:',]
+        # As an example with 2 firmware versions, the format looks like
+        #   '  {0:<35}:  {1:>8.2f} {2:>6.2f} {3:>5} {4:>8.2f} {5:>6.2f} {6:>5}'
+        statistics_format_list = ['  {0:<35}:',]
+        score_ssd_count_format = '{%d:>8.2f} {%d:>6.2f} {%d:>5}'
         for i in range(len(self.fws)):
-            scores_counts_format_list.append(
-                    '{%d:>10.2f}{%d:>6}' % (i * 2 + 1, i * 2 + 2))
-        scores_counts_format = '  '.join(scores_counts_format_list)
-        print scores_counts_format.format(*tuple(scores_and_counts))
+            statistics_format_list.append(
+                    score_ssd_count_format % (i * 3 + 1, i * 3 + 2, i * 3 + 3))
+        statistics_format = ' '.join(statistics_format_list)
+        print statistics_format.format(*tuple(statistics))
 
     def _print_result_summary_by_gesture(self):
         """Print the summary of the test results by gesture."""
@@ -259,35 +306,32 @@ class FirmwareSummary:
         self._print_summary_title('Test Summary (by gesture)')
         for gesture in self.gestures:
             print gesture
-            # for validator in self.validator_sum[fw]:
-            validators = self.validator_sum[fw].keys()
+            validators = self.validator_all_scores[fw].keys()
             validators.sort()
             for validator in validators:
-                scores_and_counts = [validator,]
+                statistics = [validator,]
                 for fw in self.fws:
                     average = self.validator_average[fw][validator].get(gesture)
+                    ssd = self.validator_ssd[fw][validator].get(gesture)
+                    count = self.validator_count[fw][validator].get(gesture)
                     # Append this validator only if it is used in this gesture.
                     if average is not None:
-                        scores_and_counts.append(average)
-                        # Add counts of every fw
-                        count = self.validator_count[fw][validator].get(gesture)
-                        scores_and_counts.append(count)
+                        statistics += [average, ssd, count]
                 if average is not None:
-                    self._print_scores_and_counts(scores_and_counts)
+                    self._print_statistics(statistics)
 
     def _print_result_summary_by_validator(self):
         """Print the summary of the test results by validator."""
         fw = self.fws[0]
         self._print_summary_title('Test Summary (by validator)')
         for validator in self.validators:
-            scores_and_counts = [validator,]
+            statistics = [validator,]
             for fw in self.fws:
                 average = self.validator_summary_score[validator][fw]
-                scores_and_counts.append(average)
-                # Add counts of every fw
+                ssd = self.validator_summary_ssd[validator][fw]
                 count = self.validator_summary_count[validator][fw]
-                scores_and_counts.append(count)
-            self._print_scores_and_counts(scores_and_counts)
+                statistics += [average, ssd, count]
+            self._print_statistics(statistics)
 
     def print_result_summary(self):
         """Print the summary of the test results."""
