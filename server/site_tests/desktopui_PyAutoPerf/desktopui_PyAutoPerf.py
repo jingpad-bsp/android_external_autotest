@@ -38,8 +38,8 @@ class desktopui_PyAutoPerf(test.test):
             server_results.close()
             client_results.close()
         else:
-            raise error.TestError('Unable to locate client test keyval file: '
-                                  '%s.' % src)
+            logging.error('Unable to locate client test keyval file: %s.', src)
+            return
 
         # Attempt to upload the perf results to google storage.
         if not self.job.label:
