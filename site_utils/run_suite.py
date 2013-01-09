@@ -325,10 +325,9 @@ def main():
     setup_logging(logfile=log_name)
 
     try:
-        utils.check_lab_status()
-    except error.LabIsDownException as e:
-        # Lab is not up, return WARNING.
-        logging.debug('Lab is not up. Error message: %s', e)
+        utils.check_lab_status(options.board)
+    except (error.LabIsDownException, error.BoardIsDisabledException) as e:
+        logging.debug('Error Message: %s', e)
         print str(e)
         return WARNING
 

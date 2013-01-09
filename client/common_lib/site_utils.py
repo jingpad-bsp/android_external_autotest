@@ -220,20 +220,39 @@ def get_lab_status():
       return result
 
 
-def check_lab_status():
+def check_lab_status(board=None):
     """Check if the lab is up and if we can schedule suites to run.
 
+    Also checks if the lab is disabled for that particular board, and if so
+    will raise an error to prevent new suites from being scheduled for that
+    board.
+
+    @param board: board name that we want to check the status of.
+
     @raises error.LabIsDownException if the lab is not up.
+    @raises error.BoardIsDisabledException if the desired board is currently
+                                           disabled.
     """
     # Ensure we are trying to schedule on the actual lab.
     if not (global_config.global_config.get_config_value('SERVER',
             'hostname').startswith('cautotest')):
         return
 
-    # TODO (sbasi): crosbug.com/37346 - Currently just check's the lab status.
-    # Will be expanded to check status for individual platforms as well.
+    # First check if the lab is up.
     lab_status = get_lab_status()
     if not lab_status['lab_is_up']:
         raise error.LabIsDownException('Chromium OS Lab is currently not up: '
                                        '%s.' % lab_status['message'])
+
+    # Check if the board we wish to use is disabled.
+    # Lab messages should be in the format of:
+    # Lab is 'status' [boards not to be ran] (comment). Example:
+    # Lab is Open [stumpy, kiev, x86-alex] (power_resume rtc causing duts to go
+    # down)
+    boards_are_disabled = re.search('\[(.*)\]', lab_status['message'])
+    if board and boards_are_disabled:
+        if board in boards_are_disabled.group(1):
+            raise error.BoardIsDisabledException('Chromium OS Lab is '
+                    'currently not allowing suites to be scheduled on board '
+                    '%s: %s' % (board, lab_status['message']))
     return
