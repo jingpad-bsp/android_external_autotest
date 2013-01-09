@@ -26,7 +26,7 @@ class graphics_KernelMemory(test.test):
         'memory'      : ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
     arch_fields = {
-        'armv'   : arm_fields,
+        'arm'    : arm_fields,
         'i386'   : x86_fields,
         'x86_64' : x86_fields,
     }
