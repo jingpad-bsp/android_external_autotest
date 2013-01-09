@@ -129,7 +129,7 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_channel(self, channel):
-        position = _get_channel_popup_position(channel)
+        position = self._get_channel_popup_position(channel)
         channel_choices = ['Auto', '1', '2', '3', '4', '5', '6', '7', '8',
                            '9', '10', '11']
         xpath = '//select[@name="wl_channel"]'

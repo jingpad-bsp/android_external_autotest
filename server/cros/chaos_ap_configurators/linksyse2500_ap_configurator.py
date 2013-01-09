@@ -6,7 +6,7 @@ import linksyse_dual_band_configurator
 
 
 class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
-                                 linksyse_dual_bandAPConfigurator):
+                                 LinksyseDualBandAPConfigurator):
     """Derived class to control Linksys E2500 router."""
 
 

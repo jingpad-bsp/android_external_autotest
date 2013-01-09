@@ -7,6 +7,8 @@ import sys
 from autotest_lib.server.cros.chaos_config import ChaosAPList
 
 import asus_ap_configurator
+import asus_ac66r_ap_configurator
+import asus_qis_ap_configurator
 import belkin_ap_configurator
 import buffalo_ap_configurator
 import dlink_ap_configurator
@@ -46,6 +48,10 @@ class APConfiguratorFactory(object):
             buffalo_ap_configurator.BuffaloAPConfigurator,
         'AsusAPConfigurator':
             asus_ap_configurator.AsusAPConfigurator,
+        'AsusQISAPConfigurator':
+            asus_qis_ap_configurator.AsusQISAPConfigurator,
+        'Asus66RAPConfigurator':
+            asus_ac66r_ap_configurator.Asus66RAPConfigurator,
         'Netgear3700APConfigurator':
             netgear3700_ap_configurator.Netgear3700APConfigurator,
         'NetgearR6200APConfigurator':
