@@ -51,7 +51,7 @@ class platform_ExternalUSBStress(test.test):
             unnamed_device_count = 0
             for item in items:
                 columns = item.split(' ')
-                if len(columns) == 6:
+                if len(columns) == 6 or len(' '.join(columns[6:]).strip()) == 0:
                     logging.info('Unnamed device located, adding generic name.')
                     name = 'Unnamed device %d' % unnamed_device_count
                     unnamed_device_count += 1
