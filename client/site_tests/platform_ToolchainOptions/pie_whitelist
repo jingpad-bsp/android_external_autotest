@@ -11,5 +11,3 @@
 /usr/sbin/nscd
 /usr/sbin/rpcinfo
 /usr/sbin/vpd
-# chrome-os-partner:15814
-/opt/google/talkplugin/GoogleTalkPlugin
