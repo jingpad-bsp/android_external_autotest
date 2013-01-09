@@ -142,5 +142,5 @@ class power_BacklightServer(test.test):
                 num_failed += 1
 
         if num_failed > 0:
-            raise error.TestFail('Failed to preserve backlight over %d ' +
-                                 'transition event(s).' % num_failed)
+            raise error.TestFail(('Failed to preserve backlight over %d ' +
+                                  'transition event(s).') % num_failed)
