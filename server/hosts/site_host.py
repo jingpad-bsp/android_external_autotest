@@ -407,15 +407,14 @@ class SiteHost(remote.RemoteHost):
 
 
     def verify_software(self):
-        """Ensure the stateful partition has space for Autotest and updates.
+        """Verify working software on a Chrome OS system.
 
-        Similar to what is done by AbstractSSH, except instead of checking the
-        Autotest installation path, just check the stateful partition.
+        Tests for the following conditions:
+         1. All conditions tested by the parent version of this
+            function.
+         2. Sufficient space in /mnt/stateful_partition.
+         3. update_engine answers a simple status request over DBus.
 
-        Checking the stateful partition is preferable in case it has been wiped,
-        resulting in an Autotest installation path which doesn't exist and isn't
-        writable. We still want to pass verify in this state since the partition
-        will be recovered with the next install.
         """
         super(SiteHost, self).verify_software()
         self.check_diskspace(
@@ -423,6 +422,7 @@ class SiteHost(remote.RemoteHost):
             global_config.global_config.get_config_value(
                 'SERVER', 'gb_diskspace_required', type=int,
                 default=20))
+        self.run('update_engine_client --status')
 
 
     def xmlrpc_connect(self, command, port, cleanup=None):
