@@ -19,6 +19,8 @@ Calls cros-disks to mount supported filesystems
 """
 
 job.run_test('platform_CrosDisksFilesystem', timeout_s=10,
+             config_file='exfat_tests', tag='exfat')
+job.run_test('platform_CrosDisksFilesystem', timeout_s=10,
              config_file='ext2_tests', tag='ext2')
 job.run_test('platform_CrosDisksFilesystem', timeout_s=10,
              config_file='ext3_tests', tag='ext3')
