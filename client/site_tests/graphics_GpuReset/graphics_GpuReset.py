@@ -5,6 +5,7 @@
 import logging
 import os
 import pprint
+import time
 import urllib2
 
 from autotest_lib.client.bin import test
@@ -21,7 +22,7 @@ from autotest_lib.client.cros import graphics_ui_test
 class graphics_GpuReset(graphics_ui_test.GraphicsUITest):
   version = 1
   preserve_srcdir = True
-  loops = 5
+  loops = 1
 
   def setup(self):
     os.chdir(self.srcdir)
@@ -95,3 +96,6 @@ class graphics_GpuReset(graphics_ui_test.GraphicsUITest):
       failed_msg = 'Test failed with incomplete output. System hung? '
       failed_msg += '(pass_count=%d of %d)' % (pass_count, self.loops)
       raise error.TestFail(failed_msg)
+
+    # We need to wait a bit for X to come back after the 'start ui'.
+    time.sleep(5)
