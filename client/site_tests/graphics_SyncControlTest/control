@@ -1,0 +1,38 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'graphics_SyncControlTest'
+AUTHOR = 'rharrison'
+PURPOSE = """
+Verify that sync control extensions allow us to track when vsyncs occur.
+"""
+CRITERIA = """
+This test will fail if the reported interval between vsyncs differs from the
+expected values by more then 200 uS. The expected value is derived from the
+refresh rate, Hz, of the screen.
+"""
+DOC = """
+This test in a loop sets up the screen to draw a single colour, records current
+sync values, calls swap buffers, and then sleeps for maxium expected time for a
+vsync. On waking up the sync values will be queried again. The two different
+sync values are used to determine how much time the extension is reporting
+between vsync.
+
+This test will fail if the reported interval between vsyncs differs from the
+expected values by more then 200 uS. The expected value is derived from the
+refresh rate, Hz, of the screen.
+
+Currently this test only executes on EGL devices, daisy, since this is the
+situation where we have written new prototype code. The GLX side currently is a
+no-op that will always succeed.
+"""
+EXPERIMENTAL='True'
+SYNC_COUNT='1'
+TIME='FAST'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'graphics'
+TEST_TYPE = 'client'
+SUITE = 'graphicsGLES'
+
+job.run_test('graphics_SyncControlTest')
