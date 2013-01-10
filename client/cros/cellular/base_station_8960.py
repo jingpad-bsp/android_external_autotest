@@ -121,6 +121,9 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
     self.technology = technology
 
     self.c.SimpleVerify('SYSTem:APPLication:FORMat', self.format)
+    # Setting the format will start the call box, we need to stop it so we
+    # can configure the new format.
+    self.Stop()
     self.c.SendStanza(
         ConfigDictionaries.TECHNOLOGY_TO_CONFIG_STANZA.get(technology, []))
 
@@ -216,6 +219,27 @@ CALL:APPLication:SESSion DPAPlication
 CALL:CELL:APPLication:ATDPackets 100
 """)
 
+  GPRS_MAX = _Parse("""
+call:bch:scel gprs
+call:pdtch:mslot:config d1u1
+call:cell:tbflow:t3192 ms1500
+""")
+
+  EGPRS_MAX = _Parse("""
+call:ms:pattach on
+call:pdtch:window:size:auto wmax
+call:bch:scel egprs
+call:pdtch:mslot:config d4u1
+call:pdtch:ms:txlevel:burst 10
+call:pdtch:ms:txlevel:burs2 10
+call:pdtch:ms:txlevel:burs3 10
+call:pdtch:ms:txlevel:burs4 10
+call:pdtc:mcsc mcs9, mcs9
+call:function:data:block:polling:interval:auto 32
+call:pdtch:tbflow:downlink:delayed:duration 5
+call:cell:tbflow:t3192 ms1500
+""")
+
   CAT_08 = _Parse("""
 call:pow:stat ON
 call:ms:pow:targ 0
@@ -272,6 +296,8 @@ class ConfigDictionaries(object):
   TECHNOLOGY_TO_CONFIG_STANZA = {
       cellular.Technology.CDMA_2000: ConfigStanzas.CDMA_2000_MAX,
       cellular.Technology.EVDO_1X: ConfigStanzas.EVDO_1X_MAX,
+      cellular.Technology.GPRS: ConfigStanzas.GPRS_MAX,
+      cellular.Technology.EGPRS: ConfigStanzas.EGPRS_MAX,
       cellular.Technology.WCDMA: ConfigStanzas.WCDMA_MAX,
       cellular.Technology.HSDPA: ConfigStanzas.CAT_08,
       cellular.Technology.HSUPA: ConfigStanzas.CAT_08,
