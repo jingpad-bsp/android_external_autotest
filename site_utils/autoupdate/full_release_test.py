@@ -498,31 +498,25 @@ def generate_test_list(args):
     # Initialize test list.
     test_list = []
 
-    # Configure N-1-to-N and N-to-N+1 tests.
-    if args.test_nmo or args.test_npo:
-        test_list += generate_npo_nmo_list(
-                args.use_mp_images, args.tested_board, args.tested_release,
-                args.test_nmo, args.test_npo)
+    for board in args.tested_board_list:
+        # Configure N-1-to-N and N-to-N+1 tests.
+        if args.test_nmo or args.test_npo:
+            test_list += generate_npo_nmo_list(
+                    args.use_mp_images, board, args.tested_release,
+                    args.test_nmo, args.test_npo)
 
-    # Configure FSI tests.
-    if args.test_fsi:
-        test_list += generate_fsi_list(
-                args.use_mp_images, args.tested_board, args.tested_release)
+        # Configure FSI tests.
+        if args.test_fsi:
+            test_list += generate_fsi_list(
+                    args.use_mp_images, board, args.tested_release)
 
-    # Add list of specifically provided source releases.
-    if args.specific:
-        test_list += generate_specific_list(
-                args.use_mp_images, args.tested_board, args.tested_release,
-                args.specific, test_list)
+        # Add list of specifically provided source releases.
+        if args.specific:
+            test_list += generate_specific_list(
+                    args.use_mp_images, board, args.tested_release,
+                    args.specific, test_list)
 
     return test_list
-
-
-def get_usage(argument_names):
-    usage = 'Usage: %prog [options]'
-    if argument_names:
-        usage += ' ' + ' '.join(argument_names)
-    return usage
 
 
 def run_test_local(test, env, remote):
@@ -575,13 +569,10 @@ def run_test_afe(test, env, control_code, afe_create_job_func):
 
 
 def parse_args():
-    argument_names = ('RELEASE', 'BOARD')
-
-    desc = ('Schedule a set of update tests of Chrome OS version RELEASE for '
-            'BOARD.')
-
-    parser = optparse.OptionParser(usage=get_usage(argument_names),
-                                   description=desc)
+    parser = optparse.OptionParser(
+            usage='Usage: %prog [options] RELEASE BOARD...',
+            description='Schedule Chrome OS release update tests on given '
+                        'board(s).')
 
     parser.add_option('--nmo', dest='test_nmo', action='store_true',
                       help='generate N-1 update tests')
@@ -613,13 +604,15 @@ def parse_args():
     opts, args = parser.parse_args()
 
     # Get positional arguments, adding them as option values.
-    if len(args) != len(argument_names):
-        parser.error('unexpected number of arguments')
-    opts.tested_release, opts.tested_board = args
+    if len(args) < 2:
+        parser.error('missing arguments')
+    opts.tested_release = args[0]
+    opts.tested_board_list = args[1:]
 
     # Sanity check board.
-    if opts.tested_board not in _board_info.get_board_names():
-        parser.error('invalid board (%s)' % opts.tested_board)
+    for board in opts.tested_board_list:
+        if board not in _board_info.get_board_names():
+            parser.error('unknown board (%s)' % board)
 
     # Sanity check log level.
     if opts.log_level not in ('normal', 'verbose', 'debug'):
