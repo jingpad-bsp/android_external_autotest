@@ -12,6 +12,7 @@ successful copy, the local results directory is deleted.
 
 __author__ = 'dalecurtis@google.com (Dale Curtis)'
 
+import functools
 import logging
 import os
 import re
@@ -135,7 +136,7 @@ def offload_hosts_sub_dir(queue):
                       dir_path)
         continue
       logging.debug('Processing %s', dir_path)
-      queue.put((dir_path, dir_path))
+      queue.put(functools.partial(offload_dir, dir_path, dir_path))
 
 
 def offload_job_results(queue, process_all):
@@ -174,7 +175,7 @@ def offload_job_results(queue, process_all):
       # os.system(CLEAN_CMD % dir_entry)
       # TODO(scottz): Monitor offloading and make sure chrome logs are
       # no longer an issue.
-      queue.put((dir_entry,))
+      queue.put(functools.partial(offload_dir, dir_entry))
 
 
 def offload_dir(dir_entry, dest_path=''):
@@ -243,8 +244,8 @@ def offloading_thread(queue):
   """
   while True:
     try:
-      args = queue.get()
-      offload_dir(*args)
+      work = queue.get()
+      work()
     except Exception as e:
       logging.debug(str(e))
     finally:
