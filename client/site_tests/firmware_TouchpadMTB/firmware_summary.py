@@ -52,19 +52,32 @@ import json
 import os
 import sys
 
+from common_util import Debug
 from firmware_constants import VLOG
+
+
+def _setup_debug(debug_flag):
+    """Set up the global debug_print function."""
+    if 'debug_print' not in globals():
+        global debug_print
+        debug = Debug(debug_flag)
+        debug_print = debug.print_msg
 
 
 class FirmwareSummary:
     """Summary for touchpad firmware tests."""
 
-    def __init__(self, log_dir='/var/tmp/touchpad_firmware_test'):
+    def __init__(self, log_dir='/var/tmp/touchpad_firmware_test',
+                 debug_flag=False):
         if os.path.isdir(log_dir):
             self.log_dir = log_dir
         else:
             error_msg = 'Error: The test result directory does not exist: %s'
             print error_msg % log_dir
             sys.exit(-1)
+
+        # Set up the global debug_print function.
+        _setup_debug(debug_flag)
 
         self.logs = self._get_result_logs()
         if not self.logs:
@@ -113,14 +126,17 @@ class FirmwareSummary:
         self.g_scores = {}
 
         for fw in self.logs:
+            debug_print('firmware: %s' % fw)
             # Build the firmware list
             if fw not in self.fws:
                 self.fws.append(fw)
 
             # Iterate through every round
             for round_log in self.logs[fw]:
+                debug_print('  A new log file:')
                 # Iterate through every gesture_variation of the round
                 for gv in round_log[VLOG.GV_LIST]:
+                    debug_print('    gv: %s' % gv)
                     # Build the gesture list
                     gesture = eval(gv)[0]
                     if gesture not in self.gestures:
@@ -142,6 +158,8 @@ class FirmwareSummary:
                         # Build the score of the validator
                         score = validator_score_pair[validator]
                         self.g_scores[gesture][fw][validator].append(score)
+
+                        debug_print('      %s: %6.4f' % (validator, score))
 
                         if validator not in self.validators:
                             self.validators.append(validator)
@@ -277,10 +295,26 @@ class FirmwareSummary:
         self._print_result_summary_by_validator()
 
 
+def _usage_and_exit():
+    """Print the usage message and exit."""
+    print 'Usage: python %s log_directory [-d]' % sys.argv[0]
+    print '       -d: enable debug flag'
+    sys.exit(-1)
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print 'Usage: python %s log_directory' % sys.argv[0]
-        sys.exit(-1)
+    # Parse the command options
+    debug_flag = False
+    argc = len(sys.argv)
+    if argc < 2 or argc > 3:
+        _usage_and_exit()
+    elif argc == 3:
+        if sys.argv[2] == '-d':
+            debug_flag = True
+        else:
+            _usage_and_exit()
     log_dir = sys.argv[1]
-    summary = FirmwareSummary(log_dir=log_dir)
+
+    # Calculate and print the summary.
+    summary = FirmwareSummary(log_dir=log_dir, debug_flag=debug_flag)
     summary.print_result_summary()

@@ -58,3 +58,14 @@ def getch():
 def program_exists(program):
     """Check if an executable program exists."""
     return os.system('which %s > /dev/null 2>&1' % program) == 0
+
+
+class Debug:
+    """A simple class to print the debug message."""
+    def __init__(self, debug_flag=False):
+        self._debug_flag = debug_flag
+
+    def print_msg(self, msg):
+        """Print the message if _debug_flag is True."""
+        if self._debug_flag:
+            print msg
