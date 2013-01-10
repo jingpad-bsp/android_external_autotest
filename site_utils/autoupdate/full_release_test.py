@@ -347,8 +347,14 @@ def generate_test_image_full_update_list(board, tested_release,
             for the given board.
 
     """
-    # First, find the full payload for the tested (target) release, since
-    # we do not have delta payloads from FSIs.
+    # If there are no source releases, there's nothing to do.
+    if not source_releases:
+        logging.warning("no '%s' source release provided for %s, %s; no tests "
+                        "generated",
+                        name, board, tested_release)
+        return []
+
+    # Find the full payload for the target release.
     tested_payload_uri = test_image.find_payload_uri(
             board, tested_release, get_release_branch(tested_release),
             single=True)
