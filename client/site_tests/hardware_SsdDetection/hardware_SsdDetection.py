@@ -10,6 +10,8 @@ from autotest_lib.client.common_lib import error
 
 class hardware_SsdDetection(test.test):
     version = 1
+    # Keep a list of boards that are expected to ship with hard drive.
+    boards_with_hdd = ['BUTTERFLY', 'KIEV', 'PARROT', 'STOUT']
 
     def setup(self):
         # create a empty srcdir to prevent the error that checks .version file
@@ -49,6 +51,8 @@ class hardware_SsdDetection(test.test):
                           hdparm.stdout, re.MULTILINE)
         if match and match.group(1):
             if match.group(1) != 'Solid State Device':
+                if utils.get_board() in self.boards_with_hdd:
+                    return
                 raise error.TestFail('The main disk is not a SSD, '
                     'Rotation Rate: %s' % match.group(1))
         else:
