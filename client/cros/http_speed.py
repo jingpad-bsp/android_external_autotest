@@ -8,7 +8,7 @@ import logging, random, time, urllib2
 
 import numpy.random
 
-TIMEOUT = 30
+TIMEOUT = 90
 
 
 class Error(Exception):
