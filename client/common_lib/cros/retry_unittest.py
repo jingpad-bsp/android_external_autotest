@@ -8,6 +8,7 @@ import logging
 import mox
 import time
 import unittest
+import signal
 
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib import error
@@ -88,3 +89,85 @@ class RetryTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.ReplayAll()
         self.assertRaises(proxy.ValidationError, fail)
+
+
+    def testRetryDecoratorFailsWithTimeout(self):
+        """Tests that a wrapped function retries til the timeout, then fails."""
+        @retry.retry(Exception, timeout_min=0.02, delay_sec=0.1)
+        def fail():
+            time.sleep(2)
+            return True
+
+        self.mox.ReplayAll()
+        #self.assertEquals(None, fail())
+        self.assertRaises(retry.TimeoutException, fail)
+
+    def testRetryDecoratorSucceedsBeforeTimeout(self):
+        """Tests that a wrapped function succeeds before the timeout."""
+        @retry.retry(Exception, timeout_min=0.02, delay_sec=0.1)
+        def succeed():
+            time.sleep(0.1)
+            return True
+
+        self.mox.ReplayAll()
+        self.assertTrue(succeed())
+
+
+    def testRetryDecoratorSucceedsWithExistingSignal(self):
+        """Tests that a wrapped function succeeds before the timeout and
+        previous signal being restored."""
+        class TestTimeoutException(Exception):
+            pass
+
+        def testFunc():
+            @retry.retry(Exception, timeout_min=0.05, delay_sec=0.1)
+            def succeed():
+                time.sleep(0.1)
+                return True
+
+            succeed()
+            # Wait for 1.5 second for previous signal to be raised
+            time.sleep(1.5)
+
+        def testHandler(signum, frame):
+            """
+            Register a handler for the timeout.
+            """
+            raise TestTimeoutException('Expected timed out.')
+
+        signal.signal(signal.SIGALRM, testHandler)
+        signal.alarm(1)
+        self.mox.ReplayAll()
+        self.assertRaises(TestTimeoutException, testFunc)
+
+
+    def testRetryDecoratorWithNoAlarmLeak(self):
+        """Tests that a wrapped function throws exception before the timeout
+        and no signal is leaked."""
+        def testFunc():
+            @retry.retry(Exception, timeout_min=0.06, delay_sec=0.1)
+            def fail():
+                time.sleep(0.1)
+                raise Exception()
+
+
+            def testHandler(signum, frame):
+                """
+                Register a handler for the timeout.
+                """
+                self.alarm_leaked = True
+
+
+            # Set handler for signal.SIGALRM to catch any leaked alarm.
+            self.alarm_leaked = False
+            signal.signal(signal.SIGALRM, testHandler)
+            try:
+                fail()
+            except Exception:
+                pass
+            # Wait for 2 seconds to check if any alarm is leaked
+            time.sleep(2)
+            return self.alarm_leaked
+
+        self.mox.ReplayAll()
+        self.assertFalse(testFunc())

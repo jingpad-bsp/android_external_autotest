@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 
-def retry_mock(ExceptionToCheck):
+def retry_mock(ExceptionToCheck, timeout_min):
   """A mock retry decorator to use in place of the actual one for testing."""
   def inner_retry(func):
     return func
