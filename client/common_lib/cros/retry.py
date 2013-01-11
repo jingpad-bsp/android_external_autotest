@@ -43,10 +43,10 @@ def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
     # In case the timeout is rounded to 0, force to set it to default value.
     if timeout_sec_n == 0:
         timeout_sec_n = 60
-    old_alarm_sec = signal.alarm(timeout_sec_n)
-    if old_alarm_sec > 0:
-        old_timeout_time = time.time() + old_alarm_sec
     try:
+        old_alarm_sec = signal.alarm(timeout_sec_n)
+        if old_alarm_sec > 0:
+            old_timeout_time = time.time() + old_alarm_sec
         default_result = func(*args, **kwargs)
         return False, default_result
     except TimeoutException:
