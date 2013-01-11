@@ -129,7 +129,15 @@ class TestFlow:
                   "      'x'   to discard this file and exit.")
         return prompt
 
-
+    def _get_prompt_abnormal_gestures(self, warn_msg):
+        """Prompt for next gesture."""
+        prompt = '\n'.join(
+                ["It is very likely that you perform a WRONG gesture!",
+                 warn_msg,
+                 "Press 'd'   to delete this file and try again (recommended),",
+                 "      SPACE to save this file if you are sure it's correct,",
+                 "      'x'   to discard this file and exit."])
+        return prompt
 
     def _get_prompt_robot_pause(self):
         """Prompt for robot pause."""
@@ -376,6 +384,28 @@ class TestFlow:
         self.output.report_html.stop()
         self.win.stop()
 
+    def check_for_wrong_number_of_fingers(self, details):
+        flag_found = False
+        try:
+            position = details.index('CountTrackingIDValidator')
+        except ValueError as e:
+            return None
+
+        # An example of the count of tracking IDs:
+        #     '    count of trackid IDs: 1'
+        number_tracking_ids = int(details[position + 1].split()[-1])
+        # An example of the criteria_str looks like:
+        #     '    criteria_str: == 2'
+        criteria = int(details[position + 2].split()[-1])
+        if number_tracking_ids < criteria:
+            print '  CountTrackingIDValidator: '
+            print '  number_tracking_ids: ', number_tracking_ids
+            print '  criteria: ', criteria
+            print '  number_tracking_ids should be larger!'
+            msg = 'Number of Tracking IDs should be %d instead of %d'
+            return msg % (criteria, number_tracking_ids)
+        return None
+
     def _handle_user_choice_validate_before_parsing(self):
         """Handle user choice for validating before gesture file is parsed."""
         # Parse the device events. Make sure there are events.
@@ -384,12 +414,23 @@ class TestFlow:
             # Validate this gesture and get the results.
             (self.new_scores, msg_list, vlogs) = validators.validate(
                     self.packets, self.gesture, self.variation)
+
+            # If the number of tracking IDs is less than the expected value,
+            # the user probably made a wrong gesture.
+            error = self.check_for_wrong_number_of_fingers(msg_list)
+            if error:
+                prompt = self._get_prompt_abnormal_gestures(error)
+                color = 'red'
+            else:
+                prompt = self._get_prompt_next()
+                color = 'black'
+
             self.output.print_window(msg_list)
             self.output.buffer_report(msg_list)
             self.output.report_html.insert_validator_logs(vlogs)
             self.gesture_file.close()
-            self.win.set_prompt(self._get_prompt_next())
-            print self._get_prompt_next()
+            self.win.set_prompt(prompt, color=color)
+            print prompt
             self._stop_record_and_post_image()
         else:
             self.win.set_prompt(self._get_prompt_no_data(), color='red')
