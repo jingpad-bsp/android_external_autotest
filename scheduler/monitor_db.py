@@ -118,9 +118,9 @@ def main_without_exception_handling():
         scheduler_config.CONFIG_SECTION, 'enable_scheduler', type=bool)
 
     if not scheduler_enabled:
-        msg = ("Scheduler not enabled, set enable_scheduler to true in the "
-               "global_config's SCHEDULER section to enabled it. Exiting.")
-        logging.error(msg)
+        logging.error("Scheduler not enabled, set enable_scheduler to true in "
+                      "the global_config's SCHEDULER section to enable it. "
+                      "Exiting.")
         sys.exit(1)
 
     global RESULTS_DIR
