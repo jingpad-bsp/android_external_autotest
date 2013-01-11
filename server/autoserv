@@ -37,8 +37,7 @@ from autotest_lib.client.common_lib import pidfile, logging_manager
 
 def log_alarm(signum, frame):
     logging.error("Received SIGALARM. Ignoring and continuing on.")
-    # TODO(milleral): Uncomment sys.exit once SIGALARM bug has been found.
-    #sys.exit(1)
+    sys.exit(1)
 
 def run_autoserv(pid_file_manager, results, parser):
     # send stdin to /dev/null
