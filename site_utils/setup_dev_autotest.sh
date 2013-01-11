@@ -190,6 +190,8 @@ sudo a2dissite default
 sudo a2ensite autotest-server
 # Enable rewrite module
 sudo a2enmod rewrite
+# Enable mod-python
+sudo a2enmod python
 # Setup permissions so that Apache web user can read the proper files.
 chmod -R o+r "${AT_DIR}"
 find "${AT_DIR}"/ -type d | xargs chmod o+x
