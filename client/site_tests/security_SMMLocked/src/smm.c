@@ -55,6 +55,10 @@ int guess_offset(struct pci_dev *northbridge)
         printf("Detected Pineview Mobile\n");
         offset = 0x9d;
         break;
+    case 0x0100:
+        printf("Detected Sandybridge Desktop\n");
+        offset = 0x88;
+        break;
     case 0x0104:
         printf("Detected Sandybridge Mobile\n");
         offset = 0x88;
