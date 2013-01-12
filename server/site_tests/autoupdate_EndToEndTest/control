@@ -41,15 +41,16 @@ Values pertaining to the test case include:
   target_release=REL      target image release version (e.g. 2673.0.0)
   source_branch=BR        source image release branch (e.g. R22)
   target_branch=BR        target image release branch (e.g. R22)
-  source_image_uri=URI    URI of the source image
+  source_image_uri=URI    URI of the source image / payload. Image must be used
+                          if use_servo specified.
   target_payload_uri=URI  URI of the target payload
 
 Other values pertaining to the test environment include:
 
-  servo_host=HOST         host running servod (default: localhost)
+  servo_host=HOST         host running servod (if not set, servo won't be used)
   servo_port=PORT         servod's IP port (default: servod's default port)
-  omaha_host=HOST      host on which to spawn Omaha/devserver (default:
-                       localhost)
+  omaha_host=HOST         host on which to spawn Omaha/devserver (default:
+                          localhost)
 
 """
 
@@ -60,7 +61,10 @@ TEST_CONF_KEYS = (
 
 
 args_dict = utils.args_to_dict(args)
-servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+use_servo = args_dict.get('servo_host', False)
+servo_args = None
+if use_servo:
+    servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 
 # Create test configuration based on command-line arguments (higher precedence,
 # for run_remote_tests.sh invocation) and local variables (lower precedence,
@@ -78,8 +82,7 @@ def run_test(machine):
             tag='%s_%s_%s_%s' % (
                 test_conf['board'], test_conf['name'],
                 test_conf['image_type'], test_conf['update_type']),
-            host=host,
-            test_conf=test_conf)
+            host=host, test_conf=test_conf, use_servo=use_servo)
 
 
 # Invoke parallel tests.
