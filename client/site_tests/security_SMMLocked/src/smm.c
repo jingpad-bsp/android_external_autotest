@@ -37,7 +37,7 @@ int check_smram(struct pci_dev *northbridge, int offset)
     if (smram_value & D_LCK) {
         printf("ok: D_LCK is set\n");
     } else {
-        printf("FAIL: D_LCK is set\n");
+        printf("FAIL: D_LCK is unset\n");
         code = EXIT_FAILURE;
     }
 
