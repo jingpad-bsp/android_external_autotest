@@ -442,19 +442,28 @@ class FlashromHandler(object):
         """Return the offset of EC binary from the given firmware blob"""
         # The RW firmware is concatenated from u-boot, dtb, and ecbin.
         # Search the magic of dtb to locate the dtb bloc.
-        dtb_offset = blob.index("\xD0\x0D\xFE\xED\x00")
-        # The dtb size is a 32-bit integer which follows the magic.
-        _, dtb_size = struct.unpack_from(">2L", blob, dtb_offset)
-        # The ecbin part is aligned to 4-byte.
-        ecbin_offset = (dtb_offset + dtb_size + 3) & ~3
-        return ecbin_offset
+        dtb_offset = blob.find("\xD0\x0D\xFE\xED\x00")
+        # If the device tree was found, use it. Otherwise assume an index
+        # structure.
+        if dtb_offset != -1:
+            # The dtb size is a 32-bit integer which follows the magic.
+            _, dtb_size = struct.unpack_from(">2L", blob, dtb_offset)
+            # The ecbin part is aligned to 4-byte.
+            return (dtb_offset + dtb_size + 3) & ~3
+        else:
+            # The index will have a count, an offset and size for the system
+            # firmware, and then an offset and size for the EC binary.
+            return struct.unpack_from("<I", blob, 3 * 4)[0]
 
     def _find_ecbin_size_offset_on_dtb(self, blob):
         """Return the offset of EC binary size on the DTB blob"""
         # We now temporarily use this hack to find the offset.
         # TODO(waihong@chromium.org): Should use fdtget to get the field and
         # fdtput to change it.
-        dtb_offset = blob.index("\xD0\x0D\xFE\xED\x00")
+        dtb_offset = blob.find("\xD0\x0D\xFE\xED\x00")
+        # If the device tree wasn't found, give up and return an error.
+        if dtb_offset == -1:
+            return -1
         prop_offset = blob.index("blob boot,dtb,ecbin", dtb_offset) + 0x18
         ecbin_size_offset = blob.index("ecbin", prop_offset) + 0x18
         return ecbin_size_offset
@@ -510,8 +519,16 @@ class FlashromHandler(object):
 
         # Modify the ecbin size on dtb.
         size_offset = self._find_ecbin_size_offset_on_dtb(new_blob)
-        new_blob = (new_blob[0 : size_offset] + struct.pack('>L', ecbin_size) +
-                    new_blob[size_offset + 4 :])
+        if size_offset != -1:
+            new_blob = (new_blob[0 : size_offset] +
+                        struct.pack('>L', ecbin_size) +
+                        new_blob[size_offset + 4 :])
+        else:
+            # The index will have a count, an offset and size for the system
+            # firmware, and then an offset and size for the EC binary.
+            new_blob = (new_blob[0 : 4 * 4] +
+                        struct.pack('<I', ecbin_size) +
+                        new_blob[5 * 4 :])
 
         self.set_section_body(section, new_blob)
         if write_through:
