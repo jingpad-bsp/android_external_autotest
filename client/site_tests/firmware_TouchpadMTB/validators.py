@@ -638,7 +638,7 @@ class NoLevelJumpValidator(BaseValidator):
                 self.log_details(msg % (slot, axis, jump))
 
         # Get the largest accumulated level jump
-        max_jump = max(jumps)
+        max_jump = max(jumps) if jumps else 0
         msg = 'Max accu jump: %d px'
         self.log_details(msg % (max_jump))
         self.log_score(self.fc.mf.grade(max_jump))
