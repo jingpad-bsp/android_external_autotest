@@ -131,7 +131,7 @@ class Suspender(object):
 
     def _hwclock_ts(self, not_before, retries=3):
         """Read the RTC resume timestamp saved by powerd_suspend."""
-        path = '/var/run/power_manager/root/hwclock-on-resume'
+        path = '/var/run/power_manager/hwclock-on-resume'
         for _ in xrange(retries + 1):
             if os.path.exists(path):
                 match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
