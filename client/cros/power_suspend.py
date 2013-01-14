@@ -45,6 +45,13 @@ class Suspender(object):
     # alarm/not_before value guaranteed to raise EarlyWakeup in _hwclock_ts
     _EARLY_WAKEUP = 2147483647
 
+    # File written by powerd_suspend containing the hwclock time at resume.
+    _HWCLOCK_FILE = '/var/run/power_manager/root/hwclock-on-resume'
+
+    # File written by send_metrics_on_resume containing timing information about
+    # the last resume.
+    _TIMINGS_FILE = '/var/run/power_manager/root/last_resume_timings'
+
     def __init__(self, use_dbus=False, throw=False, device_times=False):
         """Prepare environment for suspending."""
         self.disconnect_3G_time = 0
@@ -64,7 +71,7 @@ class Suspender(object):
             self._restart_tlsdated = True
 
         # prime powerd_suspend RTC timestamp saving and make sure hwclock works
-        utils.open_write_close('/var/run/power_manager/hwclock-on-resume', '')
+        utils.open_write_close(self._HWCLOCK_FILE, '')
         hwclock_output = utils.system_output('hwclock -r --debug --utc',
                                              ignore_status=True)
         if hwclock_output.find('Using /dev interface') == -1:
@@ -94,7 +101,7 @@ class Suspender(object):
 
     def __del__(self):
         """Restore normal environment (not turning 3G back on for now...)"""
-        os.remove('/var/run/power_manager/hwclock-on-resume')
+        os.remove(self._HWCLOCK_FILE)
         if self._restart_tlsdated:
             utils.system('initctl start tlsdated')
         if self._reset_pm_print_times:
@@ -117,7 +124,7 @@ class Suspender(object):
         # Occasionally need to retry due to races from process wakeup order
         for retry in xrange(retries + 1):
             try:
-                f = open('/var/run/power_manager/last_resume_timings')
+                f = open(self._TIMINGS_FILE)
                 for line in f:
                     words = line.split('=')
                     if name == words[0]:
@@ -131,12 +138,12 @@ class Suspender(object):
 
     def _hwclock_ts(self, not_before, retries=3):
         """Read the RTC resume timestamp saved by powerd_suspend."""
-        path = '/var/run/power_manager/hwclock-on-resume'
         early_wakeup = False
         for _ in xrange(retries + 1):
-            if os.path.exists(path):
+            if os.path.exists(self._HWCLOCK_FILE):
                 match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
-                                  utils.read_file(path), re.DOTALL)
+                                  utils.read_file(self._HWCLOCK_FILE),
+                                  re.DOTALL)
                 if match:
                     seconds = int(match.group(1)) + float(match.group(2))
                     # Lucas's RTC seems a little flaky, can trigger a second off
