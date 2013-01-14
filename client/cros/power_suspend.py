@@ -132,6 +132,7 @@ class Suspender(object):
     def _hwclock_ts(self, not_before, retries=3):
         """Read the RTC resume timestamp saved by powerd_suspend."""
         path = '/var/run/power_manager/hwclock-on-resume'
+        early_wakeup = False
         for _ in xrange(retries + 1):
             if os.path.exists(path):
                 match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
@@ -140,6 +141,7 @@ class Suspender(object):
                     seconds = int(match.group(1)) + float(match.group(2))
                     # Lucas's RTC seems a little flaky, can trigger a second off
                     if seconds < not_before:
+                        early_wakeup = True
                         continue
                     logging.debug('RTC resume timestamp read: %f' % seconds)
                     return seconds
@@ -148,7 +150,7 @@ class Suspender(object):
             logging.debug('RTC read failure (crosbug/36004), dumping nvram:\n' +
                     utils.system_output('mosys nvram dump', ignore_status=True))
             return None
-        if seconds < not_before:
+        if early_wakeup:
             raise sys_power.EarlyWakeupError('Woke up at %f' % seconds)
         raise error.TestError('Broken RTC timestamp: ' + utils.read_file(path))
 
