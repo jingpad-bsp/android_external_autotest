@@ -2,23 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ast, compiler, datetime, hashlib, logging, os, random, re, time
-import traceback
+import ast, datetime, logging
 
 import common
 
-from autotest_lib.client.common_lib import base_job, control_data, global_config
+from autotest_lib.client.common_lib import base_job, global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
-from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
-from autotest_lib.server.cros.dynamic_suite.job_status import Status
 from autotest_lib.server.cros.dynamic_suite.reimager import FwReimager
 from autotest_lib.server.cros.dynamic_suite.reimager import OsReimager
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
-from autotest_lib.server import frontend
 
 
 """CrOS dynamic test suite generation and execution module.
@@ -300,12 +296,18 @@ class SuiteSpec(object):
                            Default: True
     @var dependencies: map of test names to dependency lists.
                        Initially {'': []}.
+    @param suite_dependencies: A string with a comma separated list of suite
+                               level dependencies, which act just like test
+                               dependencies and are appended to each test's
+                               set of dependencies at job creation time.
+
     """
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
                  skip_reimage=False, add_experimental=True, file_bugs=False,
                  max_runtime_mins=24*60,
-                 try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS, **dargs):
+                 try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
+                 suite_dependencies=None, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -332,6 +334,10 @@ class SuiteSpec(object):
                                  this suite will run.
         @param try_job_timeout_mins: Max time in mins we allow a try job to run
                                      before timing out.
+        @param suite_dependencies: A string with a comma separated list of suite
+                                   level dependencies, which act just like test
+                                   dependencies and are appended to each test's
+                                   set of dependencies at job creation time.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -362,6 +368,7 @@ class SuiteSpec(object):
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
         self.try_job_timeout_mins = try_job_timeout_mins
+        self.suite_dependencies = suite_dependencies
 
 
 def skip_reimage(g):
@@ -400,9 +407,46 @@ def reimage_and_run(**dargs):
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for
                                             the required build fails to parse.
+    @param suite_dependencies: A string with a comma separated list of suite
+                               level dependencies, which act just like test
+                               dependencies and are appended to each test's
+                               set of dependencies at job creation time.
     """
     suite_spec = SuiteSpec(**dargs)
 
+    suite_spec.dependencies = _gatherAndParseDependencies(suite_spec)
+    logging.debug('Full dependency dictionary: %s', suite_spec.dependencies)
+
+    afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
+                                        user=suite_spec.job.user, debug=False)
+    tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
+                                        user=suite_spec.job.user, debug=False)
+    manager = host_lock_manager.HostLockManager(afe=afe)
+    if dargs.get('firmware_reimage'):
+        reimager_class = FwReimager
+    else:
+        reimager_class = OsReimager
+
+    reimager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
+                              tko, results_dir=suite_spec.job.resultdir)
+
+    _perform_reimage_and_run(suite_spec, afe, tko, reimager, manager)
+
+    reimager.clear_reimaged_host_state(suite_spec.build)
+
+
+def _gatherAndParseDependencies(suite_spec):
+    """Gather dependecy info for all suite jobs from image server, and
+    combine this with suite dependencies to return a dictionary of per-test
+    dependencies.
+
+    @param suite_spec: A SuiteSpec object with (at least) populated
+                       name, build, and devserver fields. Used to retrieve
+                       dependency info for the suite from devserver.
+
+    @return A dictionary mapping test name (string) to per-test dependencies
+            (list of strings)
+    """
     # Gather per-suite:per-test DEPENDENCIES info, if this build has it.
     all_dependencies = {}
     try:
@@ -425,25 +469,19 @@ def reimage_and_run(**dargs):
     except dev_server.DevServerException:
         # Not all builds have dependency info at this time, which is OK.
         logging.info('Proceeding without DEPENDENCIES information.')
-    suite_spec.dependencies = all_dependencies.get(suite_spec.name, {'': []})
 
-    afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
-                                        user=suite_spec.job.user, debug=False)
-    tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
-                                        user=suite_spec.job.user, debug=False)
-    manager = host_lock_manager.HostLockManager(afe=afe)
-    if dargs.get('firmware_reimage'):
-        reimager_class = FwReimager
-    else:
-        reimager_class = OsReimager
+    dep_dict = all_dependencies.get(suite_spec.name, {'': []})
 
-    reimager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
-                              tko, results_dir=suite_spec.job.resultdir)
+    # Parse the suite_dependency string into a list of dependency labels,
+    # then append this list of suite dependencies to all individual job
+    # dependency lists.
+    if suite_spec.suite_dependencies:
+        suite_deplist = [deplabel.strip(' ') for deplabel in
+                         suite_spec.suite_dependencies.split(',')]
+        for deplist in dep_dict.values():
+            deplist.extend(suite_deplist)
 
-    _perform_reimage_and_run(suite_spec, afe, tko, reimager, manager)
-
-    reimager.clear_reimaged_host_state(suite_spec.build)
-
+    return dep_dict
 
 def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
     """
