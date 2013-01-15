@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -185,7 +185,7 @@ class Modem(object):
         # reported technology should be identical.
         BASESTATION_TO_REPORTED_TECHNOLOGY = {
             cellular.Technology.GPRS: cellular.Technology.GPRS,
-            cellular.Technology.EGPRS: cellular.Technology.GPRS,
+            cellular.Technology.EGPRS: cellular.Technology.EGPRS,
             cellular.Technology.WCDMA: cellular.Technology.HSDUPA,
             cellular.Technology.HSDPA: cellular.Technology.HSDUPA,
             cellular.Technology.HSUPA: cellular.Technology.HSDUPA,

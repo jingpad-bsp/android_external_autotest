@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -226,7 +226,6 @@ call:cell:tbflow:t3192 ms1500
 """)
 
   EGPRS_MAX = _Parse("""
-call:ms:pattach on
 call:pdtch:window:size:auto wmax
 call:bch:scel egprs
 call:pdtch:mslot:config d4u1

@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -21,6 +21,8 @@ import flimflam
 
 _STILL_REGISTERED_ERROR = error.TestError('modem registered to base station')
 _NOT_REGISTERED_ERROR = error.TestError('modem not registered to base station')
+
+CELLULAR_TIMEOUT = 180
 
 
 class _WrongTech(Exception):
@@ -80,7 +82,7 @@ class cellular_Signal(test.test):
             # Going to wait 'til after ResetAllModems changes land.
             time.sleep(10)
 
-            service = env.CheckedConnectToCellular()
+            service = env.CheckedConnectToCellular(timeout=CELLULAR_TIMEOUT)
 
             # Step through all technologies, forcing a transition
             failed_technologies = []
@@ -94,7 +96,7 @@ class cellular_Signal(test.test):
                     self.TimedPollForCondition(
                         'Power.OFF.%s.deregister_time' % tname,
                         lambda: not cell_modem.ModemIsRegistered(),
-                        timeout=60,
+                        timeout=CELLULAR_TIMEOUT,
                         exception=_STILL_REGISTERED_ERROR)
 
                     logging.info('Powering on basestation')
@@ -102,7 +104,7 @@ class cellular_Signal(test.test):
                     self.TimedPollForCondition(
                         'Power.DEFAULT.%s.register_time' % tname,
                         lambda: cell_modem.ModemIsRegistered(),
-                        timeout=60,
+                        timeout=CELLULAR_TIMEOUT,
                         exception=_NOT_REGISTERED_ERROR)
 
                 logging.info('Stopping basestation')
@@ -111,7 +113,7 @@ class cellular_Signal(test.test):
                     self.TimedPollForCondition(
                         'Stop.%s.deregister_time' % tname,
                         lambda: not cell_modem.ModemIsRegistered(),
-                        timeout=60,
+                        timeout=CELLULAR_TIMEOUT,
                         exception=_STILL_REGISTERED_ERROR)
 
                 logging.info('Reconfiguring for %s' % tech)
@@ -122,7 +124,7 @@ class cellular_Signal(test.test):
                     self.TimedPollForCondition(
                         'Start.%s.register_time' % tname,
                         lambda: cell_modem.ModemIsRegisteredUsing(tech),
-                        timeout=60,
+                        timeout=CELLULAR_TIMEOUT,
                         exception=_WrongTech(tech))
                 except _WrongTech, wt:
                     failed_technologies.append(
