@@ -4,6 +4,7 @@
 
 import os
 import sys
+from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_config import ChaosAPList
 
 import asus_ap_configurator
@@ -98,5 +99,8 @@ class APConfiguratorFactory(object):
         return None
 
     def turn_off_all_routers(self):
+        ap_power_cartridge = ap_cartridge.APCartridge()
         for ap in self.ap_list:
             ap.power_down_router()
+            ap_power_cartridge.push_configurator(ap)
+        ap_power_cartridge.run_configurators()

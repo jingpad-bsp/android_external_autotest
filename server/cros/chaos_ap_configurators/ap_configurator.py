@@ -68,6 +68,9 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         self._command_list = []
 
+        self.driver_connection_established = False
+        self.router_on = False
+
     def __del__(self):
         try:
             self.driver.close()
@@ -186,18 +189,32 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         raise NotImplementedError
 
     def power_cycle_router_up(self):
+        self.add_item_to_command_list(self._power_cycle_router_up, (), 1, 0)
+
+    def _power_cycle_router_up(self):
         """Turns the ap off and then back on again."""
-        self.rpm_client.queue_request(self.host_name, 'CYCLE')
+        self.rpm_client.queue_request(self.host_name, 'OFF')
+        self.router_on = False
+        self._power_up_router()
 
     def power_down_router(self):
+        self.add_item_to_command_list(self._power_down_router, (), 1, 999)
+
+    def _power_down_router(self):
         """Turns off the power to the ap via the power strip."""
         self.rpm_client.queue_request(self.host_name, 'OFF')
+        self.router_on = False
 
     def power_up_router(self):
+        self.add_item_to_command_list(self._power_up_router, (), 1, 0)
+
+    def _power_up_router(self):
         """Turns on the power to the ap via the power strip.
 
         This method returns once it can navigate to a web page of the ap UI.
         """
+        if self.router_on:
+            return
         self.rpm_client.queue_request(self.host_name, 'ON')
         self.establish_driver_connection()
         self.wait = WebDriverWait(self.driver, timeout=5)
@@ -206,7 +223,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             try:
                 self.navigate_to_page(1)
                 logging.debug('Page navigation complete')
-                self.driver.close()
+                self.router_on = True
                 return
             # Navigate to page may throw a Selemium error or its own
             # RuntimeError depending on the implementation.  Either way we are
@@ -215,7 +232,6 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 self.driver.refresh()
                 logging.info('Waiting for router %s to come back up.' %
                              self.get_router_name())
-        self.driver.close()
         raise RuntimeError('Unable to load admin page after powering on the '
                            'router: %s' % self.get_router_name)
 
@@ -322,6 +338,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         raise NotImplementedError
 
     def establish_driver_connection(self):
+        if self.driver_connection_established:
+            return
         # Load the Auth extension
         extension_path = os.path.join(os.path.dirname(__file__),
                                       'basic_auth_extension.crx')
@@ -334,15 +352,19 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             self.driver = webdriver.Remote('http://127.0.0.1:9515',
                 {'chrome.extensions': base64_extensions})
         except Exception, e:
+            self.driver_connection_established = False
             raise RuntimeError('Could not connect to webdriver, have you '
                                'downloaded the prebuild components to the /tmp '
                                'directory in the chroot?  Have you run: '
                                '(outside-chroot) <path to chroot tmp directory>'
                                '/chromium-webdriver-parts/.chromedriver?\n'
                                'Exception message: %s' % str(e))
+        self.driver_connection_established = True
 
     def apply_settings(self):
         """Apply all settings to the access point."""
+        if len(self._command_list) == 0:
+            return
         self.establish_driver_connection()
         self.wait = WebDriverWait(self.driver, timeout=5)
         # Pull items by page and then sort
@@ -354,9 +376,23 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             sorted_page_commands = sorted(page_commands,
                                           key=lambda k: k['priority'])
             if sorted_page_commands:
+                first_command = sorted_page_commands[0]['method']
+                # If the first command is bringing the router up or down,
+                # do that before navigating to a URL.
+                if (first_command == self._power_up_router or
+                    first_command == self._power_cycle_router_up or
+                    first_command == self._power_down_router):
+                    first_command(*sorted_page_commands[0]['args'])
+                    sorted_page_commands.pop(0)
+
+                # If the router is off, no point in navigating
+                if not self.router_on:
+                    break
+
                 self.navigate_to_page(i)
                 for command in sorted_page_commands:
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
-        self.driver.close()
+        # Webdriver coredumps if we do this, investigating
+        # self.driver.close()

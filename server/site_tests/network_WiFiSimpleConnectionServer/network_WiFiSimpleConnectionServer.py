@@ -15,6 +15,7 @@ from autotest_lib.server import autotest, test
 
 from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator_factory
 from autotest_lib.server.cros.chaos_ap_configurators import download_chromium_prebuilt
+from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.wlan import connector, disconnector
 from autotest_lib.server.cros.wlan import profile_manager
 
@@ -33,7 +34,6 @@ class network_WiFiSimpleConnectionServer(test.test):
 
 
     def run_connect_disconnect_test(self, ssid, security=None, passphrase=None):
-
         """ Connects to the AP and Navigates to URL.
 
         Args:
@@ -72,42 +72,68 @@ class network_WiFiSimpleConnectionServer(test.test):
         return error
 
 
-    def loop_ap_configs_and_test(self, ap, tries):
+    def supported_band_and_channel(self, ap, band, channel):
+        bands = ap.get_supported_bands()
+        for current_band in bands:
+            if (current_band['band'] == band and
+                channel in current_band['channels']):
+                return True
+        return False
+
+
+    def loop_ap_configs_and_test(self, all_aps, tries):
         """ Configures AP to all supported radio permuations runs a test.
+
         Args:
-            ap: The AP to run the test on.
+            ap: List of APs to run the test on.
             tries: The number of times to connect/disconnect.
         """
-        bands_info = ap.get_supported_bands()
-        # For each band, we want to iterate through all possible channels.
-        for band, channel in [[band['band'], channel] for band in bands_info
-                               for channel in band['channels']]:
-            logging.info('Running test using band %s and channel %s',
-                         band, channel)
-            ap_info = {
-                'band': band,
-                'channel': channel,
-                'radio': True,
-                'ssid': '_'.join([ap.get_router_short_name(), str(channel),
-                                 str(band)]),
-                'visibility': True,
-                'security': None,
-            }
-            logging.info('Using ssid %s', ap_info['ssid'])
-            ap.set_band(ap_info['band'])
-            ap.set_channel(ap_info['channel'])
-            ap.set_radio(enabled=ap_info['radio'])
-            ap.set_ssid(ap_info['ssid'])
-            ap.set_visibility(visible=ap_info['visibility'])
-            ap.set_security_disabled()
-            ap.apply_settings()
-            for iteration in range(tries):
-                resp = self.run_connect_disconnect_test(ap_info['ssid'], tries)
-                if resp:
-                    ap_info['error'] = resp
-                    ap_info['iterations_before_failure'] = iteration
-                    self.error_list.append(ap_info)
-                    break
+        # We need to go through the APs and pull out the common bands and
+        # then channels, the factory can do this a better way.
+
+        bands_and_channels = {}
+        for ap in all_aps:
+            bands = ap.get_supported_bands()
+            for band in bands:
+                if band['band'] not in bands_and_channels:
+                    bands_and_channels[band['band']] = set(band['channels'])
+                else:
+                    bands_and_channels[band['band']].union(band['channels'])
+
+
+        cartridge = ap_cartridge.APCartridge()
+        for band in bands_and_channels.keys():
+            for channel in bands_and_channels[band]:
+                for ap in all_aps:
+                    if self.supported_band_and_channel(ap, band, channel):
+                        ap_info = {
+                            'band': band,
+                            'channel': channel,
+                            'radio': True,
+                            'ssid': '_'.join([ap.get_router_short_name(),
+                                              str(channel), str(band)]),
+                            'visibility': True,
+                            'security': None,
+                        }
+                        logging.info('Using ssid %s', ap_info['ssid'])
+                        ap.power_up_router()
+                        ap.set_band(ap_info['band'])
+                        ap.set_channel(ap_info['channel'])
+                        ap.set_radio(enabled=ap_info['radio'])
+                        ap.set_ssid(ap_info['ssid'])
+                        ap.set_visibility(visible=ap_info['visibility'])
+                        ap.set_security_disabled()
+                        cartridge.push_configurator(ap)
+                cartridge.run_configurators()
+
+                for iteration in range(tries):
+                    resp = self.run_connect_disconnect_test(ap_info['ssid'],
+                                                            tries)
+                    if resp:
+                        ap_info['error'] = resp
+                        ap_info['iterations_before_failure'] = iteration
+                        self.error_list.append(ap_info)
+                        break
 
 
     def run_once(self, tries=1):
@@ -119,16 +145,11 @@ class network_WiFiSimpleConnectionServer(test.test):
 
         factory = ap_configurator_factory.APConfiguratorFactory()
         all_aps = factory.get_ap_configurators()
-        for ap in all_aps:
-            ap_name = ap.get_router_short_name()
-            logging.debug('Turning on ap: %s' % ap_name)
-            ap.power_up_router()
-
-            try:
-                self.loop_ap_configs_and_test(ap, tries)
-            finally:
-                logging.debug('Client test complete, powering down router')
-                ap.power_down_router()
+        try:
+            self.loop_ap_configs_and_test(all_aps, tries)
+        finally:
+            logging.info('Client test complete, powering down router')
+            factory.turn_off_all_routers()
 
         # Test failed if any of the intermediate tests failed.
         if self.error_list:

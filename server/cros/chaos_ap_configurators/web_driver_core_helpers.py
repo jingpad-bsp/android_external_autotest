@@ -13,7 +13,8 @@ try:
   from selenium import webdriver
 except ImportError:
   raise ImportError('Could not locate the webdriver package.  Did you build? '
-                    'Are you using a prebuilt autotest package?')
+                    'Are you using a prebuilt autotest package?  Do you need '
+                    'to pass --autotest_dir?')
 
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
