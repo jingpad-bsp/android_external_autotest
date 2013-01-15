@@ -16,7 +16,7 @@
                         }
     ],
 
-    [ "run_onc_client_test",
+    [ "set_user_onc",
             { "onc":
                      """{
                           "NetworkConfigurations": [
@@ -36,6 +36,9 @@
                           "Type": "UnencryptedConfiguration"
                           }"""
             } ],
+    [ "connect" ],
+    [ "client_ping", { "count":"10"} ],
+    [ "client_logout" ],
     [ "destroy" ],
   ],
 }

@@ -8,51 +8,98 @@
 
 import logging
 import pprint
+import os
+import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import auth_server, cros_ui_test, pyauto_test
 
 class network_ONC(cros_ui_test.UITest):
-  version = 1
-  auto_login = False
+    version = 1
+    auto_login = False
 
-  def initialize(self):
-    base_class = 'policy_base.PolicyTestBase'
-    cros_ui_test.UITest.initialize(self, pyuitest_class=base_class)
-    self.pyauto.Login('testacct@testacct.com', 'testacct')
-    self.pyauto.RunSuperuserActionOnChromeOS('CleanFlimflamDirs')
+    STATE_LIST  = {
+        'STATE_LOGGED_IN': '/tmp/NETWORKONC_logged_in',
+        'STATE_ONC_SET':'/tmp/NETWORKONC_onc_set',
+        'STATE_EXIT':'/tmp/NETWORKONC_exit'
+    }
 
-  def ConnectToWifiNetwork(self, ssid, encryption=None):
-    service_path = self.pyauto.GetServicePath(ssid)
-    if not service_path:
-      raise error.TestError('Could not find desired network with '
-                            'ssid %s' % ssid)
-    logging.debug('Connecting to service_path %s for ssid %s' %
-                  (service_path, ssid))
-    self.pyauto.ConnectToWifiNetwork(service_path)
+    TIMEOUT = 360
 
-  def test_simple_wifi_connect(self, ssid, onc):
-    """This test sets the ONC policy, then attemps to
-       successfully connect to the network defined by
-       the ONC file."""
+    def initialize(self):
+        self._clear_states()
+        base_class = 'policy_base.PolicyTestBase'
+        cros_ui_test.UITest.initialize(self, pyuitest_class=base_class)
+        self.pyauto.Login('user@example.com', 'password')
+        self._set_state('STATE_LOGGED_IN')
+        self.pyauto.RunSuperuserActionOnChromeOS('CleanFlimflamDirs')
 
-    logging.debug('Attempting to set onc file:\n%s' % onc)
-    self.pyauto.SetUserPolicy({'OpenNetworkConfiguration': onc})
 
-    self.ConnectToWifiNetwork(ssid)
+    def cleanup(self):
+        self._clear_states()
+        super(network_ONC, self).cleanup()
 
-    # Verify wifi network set by ONC is in the list
-    network_list = self.pyauto.NetworkScan().get('wifi_networks')
-    logging.debug('Scanned network list after connect.')
-    logging.debug(pprint.pformat(network_list))
-    for network_path, network_obj in network_list.iteritems():
-      if isinstance(network_obj, dict) and network_obj.get('name') == ssid and \
-         network_obj.get('status') in ['Connected', 'Online state',
-                                       'Portal state']:
-        break
-    else:
-      raise error.TestFail('Failed to connect to network %s' % ssid)
 
-  def run_once(self, test_type, **params):
-      logging.info('client: Running client test %s', test_type)
-      getattr(self, test_type)(**params)
+    def _clear_states(self):
+        """ Reset the state of the system by erasing all state files. """
+        for state_key in self.STATE_LIST.keys():
+            self._clear_state(state_key)
+
+
+    def _clear_state(self, state):
+        """ Erases the file repesenting the indicated state. """
+        if state not in self.STATE_LIST:
+            raise error.TestError('State \'%s\' not found.' % state)
+
+        if os.path.isfile(self.STATE_LIST[state]):
+            os.remove(self.STATE_LIST[state])
+
+
+    def _set_state(self, state):
+        """ Creates the file representing the state. """
+        if state not in self.STATE_LIST:
+            raise error.TestError('State \'%s\' not found.' % state)
+
+        with open(self.STATE_LIST[state], 'w'):
+            pass
+
+
+    def wait_for_logout(self, test_timeout):
+        """ Wait for logout file before exiting or if timeout is hit.
+
+        Args:
+            timeout: Integer representing the time to wait before
+                     the loop terminates. 0 indicates no time limit.
+        """
+
+        end_time = time.time() + test_timeout
+
+        # Break when the STATE_EXIT file exists, or we have
+        # reached the timeout duration.
+        while not os.path.isfile(self.STATE_LIST['STATE_EXIT']):
+
+            # Only check the timout condition if test_timeout is not 0
+            if test_timeout != 0 and time.time() > end_time:
+                break
+
+            time.sleep(1)
+
+        logging.info('Exit flag detected or timeout reached, exiting.')
+
+
+    def test_simple_set_user_onc(self, onc='', test_timeout=TIMEOUT):
+        """ Set the user policy, waits for condition, then logs out.
+
+        Args:
+            onc: String representing the onc file.
+            timeout: Time to wait before logging out.  0 if no limit.
+
+        """
+        self.pyauto.SetUserPolicy({'OpenNetworkConfiguration': onc})
+        self._set_state('STATE_ONC_SET')
+        self.wait_for_logout(test_timeout)
+
+
+    def run_once(self, test_type, **params):
+        logging.info('client: Running client test %s', test_type)
+        getattr(self, test_type)(**params)

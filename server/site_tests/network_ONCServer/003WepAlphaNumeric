@@ -4,7 +4,7 @@
 
 { "name":"003WepAlphaNumeric",
   "uses_onc": True,
-  "steps":[         
+  "steps":[
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "ssid":"003WepAlphaNumeric",
                           "channel":"2412", "mode":"11g",
@@ -17,7 +17,7 @@
     ],
 
 
-    [ "run_onc_client_test",
+    [ "set_user_onc",
             { "onc":
                      """{
                           "NetworkConfigurations": [
@@ -36,6 +36,9 @@
                           "Type": "UnencryptedConfiguration"
                           }"""
             } ],
+    [ "connect" ],
+    [ "client_ping", { "count":"10"} ],
+    [ "client_logout" ],
     [ "destroy" ],
   ],
 }

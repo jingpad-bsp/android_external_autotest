@@ -11,3 +11,23 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+
+onc='''
+{
+  "NetworkConfigurations": [
+    {
+      "GUID": "{485d6076-dd44-6b6d-69787465725f5042}",
+      "Type": "WiFi",
+      "Name": "My WiFi Network",
+      "WiFi": {
+        "Passphrase": "chromeos",
+        "SSID": "CrOS_DLinkN150",
+        "Security": "WPA-PSK"
+      }
+    }
+  ],
+  "Certificates": [],
+  "Type": "UnencryptedConfiguration"
+}'''
+
+job.run_test('network_ONC', test_type='test_simple_set_user_onc', onc=onc)

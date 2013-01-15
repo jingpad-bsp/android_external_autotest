@@ -28,7 +28,7 @@
                           "server_cert" : "/tmp/hostapd_server_cert",
                           "private_key" : "/tmp/hostapd_private_key",
                           "eap_user_file" : "/tmp/hostapd_eap_user_file"} ],
-    [ "run_onc_client_test",
+    [ "set_user_onc",
             { "onc":
                      """{
                           "NetworkConfigurations": [
@@ -58,6 +58,9 @@
                           "Type": "UnencryptedConfiguration"
                           }"""
             } ],
+    [ "connect" ],
+    [ "client_ping", { "count":"10"} ],
+    [ "client_logout" ],
     [ "destroy" ],
   ],
 }
