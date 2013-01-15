@@ -141,6 +141,21 @@ class ChaosAP(object):
         time.sleep(TIMEOUT)
 
 
+    def __str__(self):
+        ap_info = {
+            'brand': self.get_brand(),
+            'model': self.get_model(),
+            'ssid' : self.get_ssid(),
+            'bss'  : self.get_bss(),
+            'hostname': self.get_wan_host(),
+        }
+        return ('AP Info:\n'
+                '  Name:      %(brand)s %(model)s\n'
+                '  SSID:      %(ssid)s\n'
+                '  BSS:       %(bss)s\n'
+                '  Hostname:  %(hostname)s\n' % ap_info)
+
+
 class ChaosAPList(object):
     """ Object containing information about all AP's in the chaos lab. """
 

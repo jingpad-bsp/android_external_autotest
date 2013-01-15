@@ -22,8 +22,7 @@ def run(machine):
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
         for ap in ap_config:
-            tag = '.'.join([ap.get_ssid(), ap.get_bss()])
             job.run_test("network_WiFiInteropChaos", host=host, ap=ap,
-                         capturer=capturer, tries=25, tag=tag)
+                         capturer=capturer, tries=10, tag=ap.get_bss())
 
 parallel_simple(run, machines)

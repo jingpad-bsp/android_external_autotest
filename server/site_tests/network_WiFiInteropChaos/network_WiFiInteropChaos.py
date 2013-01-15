@@ -71,6 +71,7 @@ class network_WiFiInteropChaos(test.test):
             capturer: packet_capture instance defined in packet_capture.
             ap: ChaosAP instance defined in cros.chaos_config
         """
+        logging.info(ap)
         self.capturer = capturer
 
         # Loop through AP's and connect to them one by one.
