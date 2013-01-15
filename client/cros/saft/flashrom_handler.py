@@ -464,7 +464,8 @@ class FlashromHandler(object):
         # If the device tree wasn't found, give up and return an error.
         if dtb_offset == -1:
             return -1
-        prop_offset = blob.index("blob boot,dtb,ecbin", dtb_offset) + 0x18
+        # Search the patterns "blob boot,dtb,ecbin" / "blob boot,dtb-rwa,ecbin".
+        prop_offset = blob.index("blob boot,dtb", dtb_offset) + 0x18
         ecbin_size_offset = blob.index("ecbin", prop_offset) + 0x18
         return ecbin_size_offset
 
