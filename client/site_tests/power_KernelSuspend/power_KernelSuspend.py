@@ -10,6 +10,6 @@ class power_KernelSuspend(test.test):
 
     version = 1
 
-    def run_once(self):
+    def run_once(self, seconds=10):
         # go to suspend
-        sys_power.kernel_suspend(10)
+        sys_power.kernel_suspend(seconds)
