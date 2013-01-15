@@ -6,8 +6,8 @@ import logging, os, re, time
 
 import common
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error, enum
-from autotest_lib.client.cros import cros_logging, rtc, sys_power
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_logging, sys_power
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
@@ -26,7 +26,7 @@ class Suspender(object):
 
     Private attributes:
         _log_reader: LogReader that is set to start right before suspending.
-        _method: Set to the sys_power.do_suspend method to use.
+        _suspend: Set to the sys_power suspend function to use.
         _throw: Set to have SuspendFailure exceptions raised to the caller.
         _reset_pm_print_times: Set to deactivate pm_print_times after the test.
         _restart_tlsdated: Set to restart tlsdated after the test.
@@ -57,7 +57,10 @@ class Suspender(object):
         self.disconnect_3G_time = 0
         self.successes = []
         self.failures = []
-        self._method = 'dbus' if use_dbus else 'powerd_suspend'
+        if use_dbus:
+            self._suspend = sys_power.dbus_suspend
+        else:
+            self._suspend = sys_power.do_suspend
         self._throw = throw
         self._reset_pm_print_times = False
         self._restart_tlsdated = False
@@ -138,28 +141,28 @@ class Suspender(object):
 
     def _hwclock_ts(self, not_before, retries=3):
         """Read the RTC resume timestamp saved by powerd_suspend."""
-        early_wakeup = False
         for _ in xrange(retries + 1):
+            early_wakeup = False
             if os.path.exists(self._HWCLOCK_FILE):
                 match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
                                   utils.read_file(self._HWCLOCK_FILE),
                                   re.DOTALL)
                 if match:
                     seconds = int(match.group(1)) + float(match.group(2))
-                    # Lucas's RTC seems a little flaky, can trigger a second off
                     if seconds < not_before:
                         early_wakeup = True
                         continue
                     logging.debug('RTC resume timestamp read: %f' % seconds)
                     return seconds
             time.sleep(0.2)
+        if early_wakeup:
+            raise sys_power.EarlyWakeupError('Woke up at %f' % seconds)
         if utils.get_board() in ['LUMPY', 'STUMPY', 'KIEV']:
             logging.debug('RTC read failure (crosbug/36004), dumping nvram:\n' +
                     utils.system_output('mosys nvram dump', ignore_status=True))
             return None
-        if early_wakeup:
-            raise sys_power.EarlyWakeupError('Woke up at %f' % seconds)
-        raise error.TestError('Broken RTC timestamp: ' + utils.read_file(path))
+        raise error.TestError('Broken RTC timestamp: ' +
+                              utils.read_file(self._HWCLOCK_FILE))
 
 
     def _firmware_resume_time(self):
@@ -220,7 +223,7 @@ class Suspender(object):
             for _ in xrange(10):
                 self._log_reader.set_start_by_current()
                 try:
-                    alarm = sys_power.do_suspend(duration, self._method)
+                    alarm = self._suspend(duration)
                 except sys_power.EarlyWakeupError:
                     # might be a SuspendAbort... we check for it ourselves below
                     alarm = self._EARLY_WAKEUP

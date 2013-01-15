@@ -12,4 +12,4 @@ class power_KernelSuspend(test.test):
 
     def run_once(self):
         # go to suspend
-        sys_power.do_suspend(seconds=10, method='kernel')
+        sys_power.kernel_suspend(10)

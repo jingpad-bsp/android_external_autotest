@@ -20,7 +20,7 @@ class network_WWANActivate(test.test):
         """
         for i in range(0, repeat):
             logging.info('Test run %d', i)
-            sys_power.suspend_to_ram(3)
+            sys_power.do_suspend(3)
             wait = wait_for_modem(deadline, interface, deadline/10)
             logging.info('%.2f seconds to modem activation', wait)
 

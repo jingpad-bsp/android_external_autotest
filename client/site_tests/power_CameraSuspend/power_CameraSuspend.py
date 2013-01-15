@@ -21,7 +21,7 @@ except ImportError:
 def async_suspend():
     try:
         time.sleep(5) # allow some time to start capturing
-        sys_power.do_suspend(seconds=10, method='kernel')
+        sys_power.kernel_suspend(10)
     except:
         # Any exception will be re-raised in main process, but the stack trace
         # will be wrong. Log it here with the correct stack trace.

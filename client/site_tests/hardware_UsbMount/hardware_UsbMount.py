@@ -92,7 +92,7 @@ class hardware_UsbMount(storage_mod.StorageTester):
         if not os.path.ismount(storage['mountpoint']):
             raise error.TestFail('filesystem %s mount failed ' % storage)
 
-        sys_power.suspend_to_ram(self.SECS_TO_SUSPEND)
+        sys_power.do_suspend(self.SECS_TO_SUSPEND)
 
         # mount_volume=False because we don't want the method to mount if
         # unmonted: we need to check its actual status right after suspend

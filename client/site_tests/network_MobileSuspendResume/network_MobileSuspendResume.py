@@ -89,7 +89,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
         return self.get_powered(device) == enable
 
     def suspend_resume(self, duration=10):
-        sys_power.do_suspend(duration, 'dbus')
+        sys_power.dbus_suspend(duration)
         logging.info('Machine resumed')
 
         # Race condition hack alert: Before we added this sleep, this

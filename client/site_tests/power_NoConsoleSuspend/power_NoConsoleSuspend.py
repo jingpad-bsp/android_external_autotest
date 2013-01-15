@@ -20,7 +20,7 @@ class power_NoConsoleSuspend(test.test):
         utils.write_one_line(SYSFS_CONSOLE_SUSPEND, 'N')
 
     def run_once(self):
-        sys_power.do_suspend(seconds=10, method='kernel')
+        sys_power.kernel_suspend(10)
 
     def cleanup(self):
         # Restore old console_suspend module param

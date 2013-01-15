@@ -111,7 +111,7 @@ class network_EthCaps(test.test):
         alarm_secs =  before_suspend_secs + self._threshold_secs * 2
         rtc.set_wake_alarm(alarm_secs)
 
-        sys_power.suspend_to_ram()
+        sys_power.do_suspend()
 
         after_suspend_secs = rtc.get_seconds()
         # flush RTC as it may not work subsequently if wake was not RTC

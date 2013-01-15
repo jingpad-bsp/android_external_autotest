@@ -78,7 +78,7 @@ class power_HotCPUSuspend(test.test):
                 raise error.TestError('unexpected CPU idle time while spinning')
 
             # go to suspend
-            sys_power.do_suspend(seconds=10, method='kernel')
+            sys_power.kernel_suspend(10)
 
             # keep spinning after userland resumes
             logging.info('spinning for %d more seconds', RESUME_BURN_SECONDS)

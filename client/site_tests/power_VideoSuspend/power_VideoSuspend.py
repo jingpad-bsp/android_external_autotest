@@ -42,7 +42,7 @@ class power_VideoSuspend(cros_ui_test.UITest):
         # TODO(spang): Make this sane. crosbug.com/37452
         time.sleep(5)
 
-        sys_power.do_suspend(seconds=10, method='kernel')
+        sys_power.kernel_suspend(10)
         # TODO(spang): Check video is still playing. crosbug.com/37452
 
         logging.info('done %s', url)
