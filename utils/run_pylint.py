@@ -10,7 +10,7 @@ Example:
 run_pylint.py filename.py
 """
 
-import os, sys, fnmatch
+import os, re, sys, fnmatch
 
 
 # Do a basic check to see if pylint is even installed.
@@ -49,7 +49,7 @@ logilab.common.modutils.file_from_modpath = file_from_modpath
 
 
 import pylint.lint
-from pylint.checkers import imports, variables
+from pylint.checkers import base, imports, variables
 
 # need to put autotest root dir on sys.path so pylint will be happy
 autotest_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -126,6 +126,35 @@ class CustomVariablesChecker(variables.VariablesChecker):
         node.modname = patch_modname(node.modname)
         return super(CustomVariablesChecker, self).visit_from(node)
 
+
+class CustomDocStringChecker(base.DocStringChecker):
+    """Modifies stock docstring checker to suit Autotest doxygen style."""
+
+    def _check_docstring(self, node_type, node):
+        """
+        Teaches pylint to look for @param with each argument in the
+        function/method signature.
+
+        @param node_type: type of the node we're currently checking.
+        @param node: node of the ast we're currently checking.
+        """
+        super(CustomDocStringChecker, self)._check_docstring(node_type, node)
+        docstring = node.doc
+        if (docstring is not None and
+               (node_type is 'method' or
+                node_type is 'function')):
+            args = node.argnames()
+            old_msg = self.linter._messages['C0111'].msg
+            for arg in args:
+                arg_docstring_rgx = '.*@param '+arg+'.*'
+                line = re.search(arg_docstring_rgx, node.doc)
+                if not line and arg is not 'self':
+                    self.linter._messages['C0111'].msg = ('Docstring needs '
+                                                          '"@param '+arg+':"')
+                    self.add_message('C0111', node=node)
+            self.linter._messages['C0111'].msg = old_msg
+
+base.DocStringChecker = CustomDocStringChecker
 imports.ImportsChecker = CustomImportsChecker
 variables.VariablesChecker = CustomVariablesChecker
 
@@ -134,6 +163,7 @@ def check_file(file_path, base_opts):
     """
     Invokes pylint on files after confirming that they're not black listed.
 
+    @param base_opts: pylint base options.
     @param file_path: path to the file we need to run pylint on.
     """
     if not file_path.endswith('.py'):
@@ -163,6 +193,7 @@ def check_dir(dir_path, base_opts):
     """
     Calls visit on files in dir_path.
 
+    @param base_opts: pylint base options.
     @param dir_path: path to directory.
     """
     os.path.walk(dir_path, visit, base_opts)
@@ -226,7 +257,7 @@ def main():
         pylint_base_opts = ['--rcfile=%s' % pylint_rc,
                             '--reports=no',
                             '--disable=W,R,E,C,F',
-                            '--enable=W0611',]
+                            '--enable=W0611,C0111,C0112',]
     else:
         all_failures = 'error,warning,refactor,convention'
         pylint_base_opts = ['--disable-msg-cat=%s' % all_failures,
