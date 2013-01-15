@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "jwerner, chromeos-power"
-NAME = "power_SuspendStress"
+NAME = "power_SuspendStress.barePerBuild"
 SUITE = "kernel_per-build_regression"
 PURPOSE = "Run repeated iterations of suspend/resume to find rare errors."
 TIME = "SHORT"
@@ -18,9 +18,9 @@ Follows this by a few short checks to make sure the system is still in a good
 state (work in progress, feel free to add some more).
 """
 
-job.run_test('power_SuspendStress', duration=120)
+job.run_test('power_SuspendStress', duration=120, tag='barePerBuild')
 
-job.run_test('hardware_EC')
-job.run_test('hardware_TPMCheck')
+job.run_test('hardware_EC', tag='power_SuspendStress')
+job.run_test('hardware_TPMCheck', tag='power_SuspendStress')
 # TODO: uncomment after crosbug.com/36987 is fixed
-#job.run_test('login_LoginSuccess')
+#job.run_test('login_LoginSuccess', tag='power_SuspendStress')

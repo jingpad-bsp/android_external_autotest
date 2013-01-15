@@ -25,12 +25,19 @@ class SuspendAbort(SuspendFailure):
 
 class KernelError(SuspendFailure):
     """Kernel problem encountered during suspend/resume."""
-    pass
+    WHITELIST = [
+            # crosbug.com/37594: debug tracing clock desync we don't care about
+            (r'kernel/trace/ring_buffer.c:\d+ rb_reserve_next_event',
+             r'Delta way too big!'),
+        ]
 
 
 class FirmwareError(SuspendFailure):
     """String 'ERROR' found in firmware log after resume."""
-    WHITELIST = [r'PNP: 002e\.4 70 irq size: 0x0000000001 not assigned']
+    WHITELIST = [
+            # crosbug.com/36762: no one knows, but it has always been there
+            r'PNP: 002e\.4 70 irq size: 0x0000000001 not assigned'
+        ]
 
 
 class EarlyWakeupError(SuspendFailure):

@@ -62,9 +62,12 @@ class LogReader(object):
 
         Generator function.
         Return an iterator on the content of files.
+
+        This generator can peek a line once (and only once!) by using
+        .send(offset). Must iterate over the peeked line before you can
+        peek again.
         """
         log_files = []
-        line_number = 1
         if self._include_rotated_logs:
             log_files.extend(utils.system_output(
                 'ls -tr1 %s.*' % self._filename,
@@ -72,10 +75,16 @@ class LogReader(object):
         log_files.append(self._filename)
         for log_file in log_files:
             f = open(log_file)
+            for _ in xrange(self._start_line):
+                # read f up to the logical start of the log, discard the lines
+                f.next()
             for line in f:
-                if line_number >= self._start_line:
-                    yield line
-                line_number += 1
+                peek = yield line
+                if peek:
+                  buf = [f.next() for _ in xrange(peek)]
+                  yield buf[-1]
+                  while buf:
+                    yield buf.pop(0)
             f.close()
 
 

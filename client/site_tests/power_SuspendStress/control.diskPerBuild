@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "jwerner, chromeos-power"
-NAME = "power_SuspendStress"
+NAME = "power_SuspendStress.diskPerBuild"
 SUITE = "kernel_per-build_regression"
 PURPOSE = "Run repeated iterations of suspend/resume while stressing the disk."
 TIME = "SHORT"
@@ -16,7 +16,9 @@ DOC = """
 Runs two minutes of suspend/resume cycles in the background of a file I/O bench.
 """
 
-job.parallel([lambda: job.run_test('power_SuspendStress',
-                                   duration=120, init_delay=10)],
+job.parallel([lambda: job.run_test('power_SuspendStress', tag='diskPerBuild',
+                                   duration=120, init_delay=10, min_suspend=7,
+                                   tolerated_aborts=1, breathing_time=8)],
              [lambda: job.run_test('hardware_StorageFio',
-                                   quicktest=True, iterations=2)])
+                                   quicktest=True, iterations=2,
+                                   tag='power_SuspendStress')])

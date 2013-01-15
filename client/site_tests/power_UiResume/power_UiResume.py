@@ -20,5 +20,5 @@ class power_UiResume(cros_ui_test.UITest):
     def run_once(self):
         # Some idle time before initiating suspend-to-ram
         time.sleep(random.randint(3, 7))
-        results = self._suspender.suspend(random.randint(5, 11))
+        results = self._suspender.suspend(random.randint(0, 6))
         self.write_perf_keyval(results)

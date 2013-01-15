@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "jwerner, chromeos-power"
-NAME = "power_SuspendStress"
+NAME = "power_SuspendStress.videoPerBuild"
 SUITE = "kernel_per-build_regression"
 PURPOSE = "Run repeated iterations of suspend/resume while rendering a video."
 TIME = "SHORT"
@@ -16,6 +16,8 @@ DOC = """
 Runs two minutes of suspend/resume cycles in the background of an OpenGL video.
 """
 
-job.parallel([lambda: job.run_test('power_SuspendStress',
-                                   duration=120, init_delay=10)],
-             [lambda: job.run_test('graphics_SanAngeles', creds='$default')])
+job.parallel([lambda: job.run_test('power_SuspendStress', tag='videoPerBuild',
+                                   duration=120, init_delay=10, min_suspend=7,
+                                   tolerated_aborts=1, breathing_time=10)],
+             [lambda: job.run_test('graphics_SanAngeles', creds='$default',
+                                   tag='power_SuspendStress')])
