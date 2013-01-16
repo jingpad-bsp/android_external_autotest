@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import subprocess
-import sys
 import time
 
 from autotest_lib.client.bin import utils
@@ -19,8 +18,6 @@ from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
 from autotest_lib.server.cros.faft_delay_constants import FAFTDelayConstants
 from autotest_lib.server.cros.servo_test import ServoTest
 from autotest_lib.server import hosts
-from autotest_lib.site_utils import lab_test
-from autotest_lib.site_utils.chromeos_test.common_util import ChromeOSTestError
 
 class FAFTSequence(ServoTest):
     """
@@ -780,7 +777,8 @@ class FAFTSequence(ServoTest):
             logging.info('The test required EC is %swrite-protected. Reboot '
                          'and flip the state.', '' if ec_wp else 'not ')
             self.run_faft_step({
-                'reboot_action': (self.set_ec_write_protect_and_reboot, ec_wp)
+                'reboot_action': (self.set_ec_write_protect_and_reboot, ec_wp),
+                'firmware_action': self.wait_dev_screen_and_ctrl_d,
             })
 
 
@@ -793,7 +791,8 @@ class FAFTSequence(ServoTest):
             logging.info('Restore the original EC write protection and reboot.')
             self.run_faft_step({
                 'reboot_action': (self.set_ec_write_protect_and_reboot,
-                                  self._old_ec_wp)
+                                  self._old_ec_wp),
+                'firmware_action': self.wait_dev_screen_and_ctrl_d,
             })
 
 
