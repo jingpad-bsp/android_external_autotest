@@ -226,16 +226,8 @@ call:cell:tbflow:t3192 ms1500
 """)
 
   EGPRS_MAX = _Parse("""
-call:pdtch:window:size:auto wmax
 call:bch:scel egprs
 call:pdtch:mslot:config d4u1
-call:pdtch:ms:txlevel:burst 10
-call:pdtch:ms:txlevel:burs2 10
-call:pdtch:ms:txlevel:burs3 10
-call:pdtch:ms:txlevel:burs4 10
-call:pdtc:mcsc mcs9, mcs9
-call:function:data:block:polling:interval:auto 32
-call:pdtch:tbflow:downlink:delayed:duration 5
 call:cell:tbflow:t3192 ms1500
 """)
 
