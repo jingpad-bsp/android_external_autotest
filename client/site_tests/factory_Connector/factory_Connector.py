@@ -518,10 +518,8 @@ class factory_Connector(state_machine.FactoryStateMachine):
         factory.log('%s run_once' % self.__class__)
         # Display dual screen if external display is connected.
         self.run_cmd('xrandr --auto', '')
-        # Disable the power management.
-        # Because this test never ends in normal usage, so no need
-        # to enable powerm again.
-        self.run_cmd('stop powerm', 'powerm stop')
+        # Disable power management.
+        self.run_cmd('stop powerd', 'powerd stop')
         # Initialize variables.
         self.config_file = config_file
         self.base_config = PluggableConfig({})

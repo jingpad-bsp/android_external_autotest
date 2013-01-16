@@ -43,9 +43,9 @@ class power_SuspendShutdown(test.test):
                  ' /usr/share/power_manager/retry_suspend_ms'
                  % _RETRY_SUSPEND_MS)
 
-        # restart powerm to pick up new retry settings
-        logging.info('restarting powerm')
-        host.run('restart powerm')
+        # restart powerd to pick up new retry settings
+        logging.info('restarting powerd')
+        host.run('restart powerd')
 
         # initialize pyauto
         self.pyauto = pyauto_proxy.create_pyauto_proxy(host, auto_login=True)
@@ -103,8 +103,8 @@ class power_SuspendShutdown(test.test):
                      ' /usr/share/power_manager/retry_suspend_ms',
                      ignore_status=True)
 
-            # restart powerm to pick up old retry settings
-            host.run('restart powerm')
+            # restart powerd to pick up old retry settings
+            host.run('restart powerd')
 
             # cleanup pyauto
             self.pyauto.cleanup()

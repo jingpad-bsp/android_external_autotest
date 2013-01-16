@@ -33,10 +33,9 @@ class power_BacklightServer(test.test):
         return int(result.stdout.rstrip())
 
     def _check_power_status(self):
-        for daemon in ['powerd', 'powerm']:
-            cmd_result = self._client_cmd('status ' + daemon)
-            if 'running' not in cmd_result.stdout:
-                raise error.TestError(daemon + ' must be running.')
+        cmd_result = self._client_cmd('status powerd')
+        if 'running' not in cmd_result.stdout:
+            raise error.TestError('powerd must be running.')
 
         result = self._client_cmd('power-supply-info | grep online')
         if 'yes' not in result.stdout:

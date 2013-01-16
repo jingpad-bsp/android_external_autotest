@@ -106,16 +106,14 @@ class ManageServices(object):
     """
 
 
-    def __init__(self, services_to_stop=['powerd', 'powerm', 'update-engine',
+    def __init__(self, services_to_stop=['powerd', 'update-engine',
                                          'bluetoothd']):
         """Initialize instance.
 
         Note, on services_to_stop.  These non-essential services can
         spontaneously change power draw:
 
-          powerd: dims backlights and suspends the device.  NOTE: powerd should
-            be stopped prior to powerm.
-          powerm: power manager running as root
+          powerd: dims backlights and suspends the device.
           update-engine: we don't want any updates downloaded during the test
           bluetoothd: bluetooth, scanning for devices can create a spike.
         """

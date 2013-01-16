@@ -69,7 +69,6 @@
           "netns": {"min": 1, "max": 1},
           "phy0": {"min": 1, "max": 1},
           "ply-image": {"min": 1, "max": 1},
-          "powerm": {"min": 1, "max": 1},
           "python2.6": {"min": 0},
           "rsyslogd": {"min": 1},
           "scsi_eh_0": {"min": 1, "max": 1},

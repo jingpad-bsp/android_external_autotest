@@ -25,7 +25,6 @@ class logging_CrashServices(crash_test.CrashTest):
                     "/usr/bin/metrics_daemon",
                     "/usr/sbin/pkcsslotd",
                     "/usr/bin/powerd",
-                    "/usr/bin/powerm",
                     "/usr/bin/pulseaudio",
                     "/usr/sbin/rsyslogd",
                     "/usr/sbin/tcsd",

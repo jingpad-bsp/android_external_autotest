@@ -66,7 +66,7 @@ def dbus_suspend(seconds):
     completed or failed. Returns the wake alarm time from the RTC as epoch.
     """
     alarm = prepare_wakeup(seconds)[0]
-    upstart.ensure_running(['powerd', 'powerm'])
+    upstart.ensure_running(['powerd'])
     os.system('/usr/bin/powerd_dbus_suspend --timeout 30')
     check_wakeup(alarm)
     return alarm
