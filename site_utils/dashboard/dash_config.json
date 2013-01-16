@@ -121,7 +121,9 @@
              {"categories": "sync",
               "cc": ["rsimha@google.com"]},
              {"categories": "video",
-              "cc": ["rohitbm@google.com"]}]},
+              "cc": ["rohitbm@google.com"]},
+             {"categories": "firmware",
+              "cc": ["chromeos-firmware@google.com"]}]},
         {"platforms": {"x86-generic-full": ["netbook_sandy_bridge"]},
          "filters": [
              {"categories": "bvt|browsertests|pyauto|sync",
