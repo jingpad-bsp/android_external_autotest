@@ -20,7 +20,7 @@ This test will fail if one of the following conditions is met:
 3. Firmware version does not increase after firmware update.
 4. Firmware version does not recover to original version after recovery.
 """
-SUITE = "faft,faft_update"
+SUITE = "faft_update"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
