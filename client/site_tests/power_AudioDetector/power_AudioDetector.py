@@ -2,34 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, threading, time
-from autotest_lib.client.bin import test, utils
+import logging, threading, time
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, rtc
+from autotest_lib.client.cros import cros_ui_test, power_utils, rtc
 from autotest_lib.client.cros.audio import audio_helper
-
-def restart_process(name):
-    if utils.system_output('status %s' % name).find('start/running') != -1:
-        utils.system_output('restart %s' % name)
-    else:
-        utils.system_output('start %s' % name)
-
 
 class power_AudioDetector(cros_ui_test.UITest):
     version = 1
-    _pref_path = '/var/lib/power_manager'
-    _backup_path = '/tmp/var_lib_power_manager_backup'
 
     def run_once(self, run_time_sec=60):
         if run_time_sec < 10:
             raise error.TestFail('Must run for at least 10 seconds')
 
         # Start powerd if not started.  Set timeouts for quick idle events.
-        # Save old prefs in a backup directory.
-        # TODO(crosbug.com/36382): make this a library function.
-        pref_path = self._pref_path
-        os.system('mkdir %s' % self._backup_path)
-        os.system('mv %s/* %s' % (pref_path, self._backup_path))
         run_time_ms = run_time_sec * 1000
         react_ms = min(10000, run_time_ms / 10)
         gap_ms = run_time_ms / 4
@@ -44,10 +30,9 @@ class power_AudioDetector(cros_ui_test.UITest):
                   'unplugged_dim_ms'     : dim_ms,
                   'unplugged_off_ms'     : off_ms,
                   'unplugged_suspend_ms' : suspend_ms }
-        for name in prefs:
-            os.system('echo %d > %s/%s' % (prefs[name], pref_path, name))
+        self._saved_prefs = power_utils.set_power_prefs(prefs)
 
-        restart_process('powerd')
+        utils.restart_job('powerd')
 
         # Audio loop time should be significantly shorter than |run_time_sec|
         # time, so that the total playback time doesn't exceed it by much.
@@ -97,13 +82,9 @@ class power_AudioDetector(cros_ui_test.UITest):
         if self.logged_in():
             self.logout()
 
-        # Restore prefs, delete backup directory, and restart powerd.
-        # TODO(crosbug.com/36382): make this a library function.
-        pref_path = self._pref_path
-        utils.system_output('rm %s/*' % pref_path)
-        utils.system_output('mv %s/* %s' % (self._backup_path, pref_path))
-        utils.system_output('rmdir %s' % self._backup_path)
-        restart_process('powerd')
+        # Restore saved prefs and restart powerd.
+        power_utils.set_power_prefs(self._saved_prefs)
+        utils.restart_job('powerd')
 
 
     def _play_audio(self, loop_time):

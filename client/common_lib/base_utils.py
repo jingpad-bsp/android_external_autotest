@@ -2,7 +2,7 @@
 # Copyright 2008 Google Inc. Released under the GPL v2
 
 import os, pickle, random, re, resource, select, shutil, signal, StringIO
-import socket, struct, subprocess, sys, time, textwrap, urlparse
+import socket, struct, subprocess, time, textwrap, urlparse
 import warnings, smtplib, logging, urllib2
 from threading import Thread, Event
 try:
@@ -1890,4 +1890,16 @@ def set_xrandr_output(output_name, enable):
     """
 
     call_xrandr('--output %s --%s' % (output_name, 'auto' if enable else 'off'))
+
+
+def restart_job(name):
+    """
+    Restarts an upstart job if it's running.
+    If it's not running, start it.
+    """
+
+    if system_output('status %s' % name).find('start/running') != -1:
+        system_output('restart %s' % name)
+    else:
+        system_output('start %s' % name)
 

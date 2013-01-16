@@ -44,6 +44,53 @@ def has_rapl_support():
     return False
 
 
+def set_power_prefs(new_prefs):
+    """
+    Deletes the power prefs in /var/lib/power_manager and overwrites them with
+    new ones.
+
+    Arguments:
+      new_prefs:  Dictionary containing new prefs, with key=pref file name and
+                  value=pref value (int/float/string)
+                  e.g. { plugged_dim_ms: 10000, plugged_off_ms: 20000 }
+    Returns:
+      Dictionary containing old prefs that were overwritten, with the same
+      format as |new_prefs|.
+    """
+    prefs_path = '/var/lib/power_manager'
+
+    # Back up existing prefs before deleting them.
+    saved_prefs = {}
+    for filename in os.listdir(prefs_path):
+        full_path = '%s/%s' % (prefs_path, filename)
+        saved_prefs[filename] = open(full_path).read()
+        os.remove(full_path)
+
+    # Write the new prefs.
+    for filename in new_prefs:
+        full_path = '%s/%s' % (prefs_path, filename)
+        open(full_path, 'w').write(str(new_prefs[filename]))
+
+    return saved_prefs
+
+
+def call_powerd_dbus_method(method_name, args=''):
+    """
+    Calls a dbus method exposed by powerd.
+
+    Arguments:
+      method_name: name of the dbus method.
+      args: string containing args to dbus method call.
+    """
+    destination = 'org.chromium.PowerManager'
+    path = '/org/chromium/PowerManager'
+    interface = 'org.chromium.PowerManager'
+    command = ('dbus-send --type=method_call --system ' + \
+               '--dest=%s %s %s.%s %s') % (destination, path, interface, \
+               method_name, args)
+    utils.system_output(command)
+
+
 class ManageServices(object):
     """Class to manage CrOS services which influence power consumption.
 
@@ -128,7 +175,7 @@ class Backlight(object):
           level: integer of brightness to set
 
         Raises:
-          error.TestFail: if 'cmd' returns non-zero exist status
+          error.TestFail: if 'cmd' returns non-zero exit status
         """
         cmd = '%s --set_brightness %d' % (self.bl_cmd, level)
         try:
@@ -144,13 +191,44 @@ class Backlight(object):
           percent: float between 0 and 100
 
         Raises:
-          error.TestFail: if 'cmd' returns non-zero exist status
+          error.TestFail: if 'cmd' returns non-zero exit status
         """
         cmd = '%s --set_brightness_percent %f' % (self.bl_cmd, percent)
         try:
             utils.system(cmd)
         except error.CmdError:
             raise error.TestFail('Setting percent with backlight-tool')
+
+
+    def set_resume_level(self, level):
+        """Set backlight level on resume to the given brightness.
+        Args:
+          level: integer of brightness to set
+
+        Raises:
+          error.TestFail: if 'cmd' returns non-zero exit status
+        """
+        cmd = '%s --set_resume_brightness %d' % (self.bl_cmd, level)
+        try:
+            utils.system(cmd)
+        except error.CmdError:
+            raise error.TestFail('Setting resume level with backlight-tool')
+
+
+    def set_resume_percent(self, percent):
+        """Set backlight level on resume to the given brightness percent.
+
+        Args:
+          percent: float between 0 and 100
+
+        Raises:
+          error.TestFail: if 'cmd' returns non-zero exit status
+        """
+        cmd = '%s --set_resume_brightness_percent %f' % (self.bl_cmd, percent)
+        try:
+            utils.system(cmd)
+        except error.CmdError:
+            raise error.TestFail('Setting resume percent with backlight-tool')
 
 
     def set_default(self):
@@ -165,7 +243,7 @@ class Backlight(object):
         Returns integer of current backlight level.
 
         Raises:
-          error.TestFail: if 'cmd' returns non-zero exist status
+          error.TestFail: if 'cmd' returns non-zero exit status
         """
         cmd = '%s --get_brightness' % self.bl_cmd
         try:
@@ -180,7 +258,7 @@ class Backlight(object):
         Returns integer of maximum backlight level.
 
         Raises:
-          error.TestFail: if 'cmd' returns non-zero exist status
+          error.TestFail: if 'cmd' returns non-zero exit status
         """
         cmd = '%s --get_max_brightness' % self.bl_cmd
         try:
@@ -261,3 +339,80 @@ class KbdBacklight(object):
         value = int((percent * self._get_max()) / 100)
         cmd = "echo %d > %s" % (value, os.path.join(self._path, 'brightness'))
         utils.system(cmd)
+
+
+class BacklightController(object):
+    """Class to simulate control of backlight via keyboard or Chrome UI.
+
+    Public methods:
+      increase_brightness: Increase backlight by one adjustment step.
+      decrease_brightness: Decrease backlight by one adjustment step.
+      set_brightness_to_max: Increase backlight to max by calling
+          increase_brightness()
+      set_brightness_to_min: Decrease backlight to min or zero by calling
+          decrease_brightness()
+
+    Private attributes:
+      _max_num_steps: maximum number of backlight adjustment steps between 0 and
+                      max brightness.
+
+    Private methods:
+      _call_powerd_dbus_method: executes dbus method call to power manager.
+    """
+
+    def __init__(self):
+        self._max_num_steps = 16
+
+
+    def decrease_brightness(self, allow_off=False):
+        """
+        Decrease brightness by one step, as if the user pressed the brightness
+        down key or button.
+
+        Arguments
+          allow_off: Boolean flag indicating whether the brightness can be
+                     reduced to zero.
+                     Set to true to simulate brightness down key.
+                     set to false to simulate Chrome UI brightness down button.
+        """
+        call_powerd_dbus_method('DecreaseScreenBrightness',
+                                'boolean:%s' % \
+                                    ('true' if allow_off else 'false'))
+
+
+    def increase_brightness(self):
+        """
+        Increase brightness by one step, as if the user pressed the brightness
+        up key or button.
+        """
+        call_powerd_dbus_method('IncreaseScreenBrightness')
+
+
+    def set_brightness_to_max(self):
+        """
+        Increases the brightness using powerd until the brightness reaches the
+        maximum value. Returns when it reaches the maximum number of brightness
+        adjustments
+        """
+        num_steps_taken = 0
+        while num_steps_taken < self._max_num_steps:
+            self.increase_brightness()
+            num_steps_taken += 1
+
+
+    def set_brightness_to_min(self, allow_off=False):
+        """
+        Decreases the brightness using powerd until the brightness reaches the
+        minimum value (zero or the minimum nonzero value). Returns when it
+        reaches the maximum number of brightness adjustments.
+
+        Arguments
+          allow_off: Boolean flag indicating whether the brightness can be
+                     reduced to zero.
+                     Set to true to simulate brightness down key.
+                     set to false to simulate Chrome UI brightness down button.
+        """
+        num_steps_taken = 0
+        while num_steps_taken < self._max_num_steps:
+            self.decrease_brightness(allow_off)
+            num_steps_taken += 1

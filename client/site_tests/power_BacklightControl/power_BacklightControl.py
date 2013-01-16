@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import logging, time
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import base_utils, error
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_status, power_utils
 
 
@@ -15,19 +15,15 @@ def get_num_outputs_on():
     Return value: integer value of number of connected outputs that are on.
     """
 
-    xrandr_state = base_utils.get_xrandr_output_state()
+    xrandr_state = utils.get_xrandr_output_state()
     output_states = [xrandr_state[name] for name in xrandr_state]
     return sum([1 if is_enabled else 0 for is_enabled in output_states])
 
 
 class power_BacklightControl(test.test):
     version = 1
-    _pref_path = '/var/lib/power_manager'
-    _backup_path = '/tmp/var_log_power_manager_backup'
-    # Minimum and maximum number of brightness steps expected
-    # between the minimum and maximum brightness levels.
+    # Minimum number of steps expected between min and max brightness levels.
     _min_num_steps = 4
-    _max_num_steps = 16
     # Minimum required percentage change in energy rate between transitions
     # (max -> min, min-> off)
     _energy_rate_change_threshold_percent = 5
@@ -50,9 +46,6 @@ class power_BacklightControl(test.test):
 
         # Start powerd if not started.  Set timeouts to delay idle events.
         # Save old prefs in a backup directory.
-        pref_path = self._pref_path
-        os.system('mkdir %s' % self._backup_path)
-        os.system('mv %s/* %s' % (pref_path, self._backup_path))
         prefs = { 'disable_als'          : 1,
                   'react_ms'             : 30000,
                   'plugged_dim_ms'       : 7200000,
@@ -61,13 +54,8 @@ class power_BacklightControl(test.test):
                   'unplugged_dim_ms'     : 7200000,
                   'unplugged_off_ms'     : 9000000,
                   'unplugged_suspend_ms' : 18000000 }
-        for name in prefs:
-            os.system('echo %d > %s/%s' % (prefs[name], pref_path, name))
-
-        if utils.system_output('status powerd').find('start/running') != -1:
-            os.system('restart powerd')
-        else:
-            os.system('start powerd')
+        self._saved_prefs = power_utils.set_power_prefs(prefs)
+        utils.restart_job('powerd')
 
         keyvals = {}
         num_errors = 0
@@ -98,11 +86,12 @@ class power_BacklightControl(test.test):
         self._wait_for_stable_energy_rate()
         keyvals['initial_power_w'] = self._get_current_energy_rate()
 
-        self._set_brightness_to_max()
+        self._backlight_controller = power_utils.BacklightController()
+        self._backlight_controller.set_brightness_to_max()
 
         current_brightness = \
-            base_utils.wait_for_value(self._backlight.get_level,
-                                      max_threshold=keyvals['max_brightness'])
+            utils.wait_for_value(self._backlight.get_level,
+                                 max_threshold=keyvals['max_brightness'])
         if current_brightness != keyvals['max_brightness']:
             num_errors += 1
             logging.error(('Failed to increase brightness to max, ' + \
@@ -115,8 +104,8 @@ class power_BacklightControl(test.test):
         # Note that we don't know what the minimum brightness is, so just set
         # min_threshold=0 to use the timeout to wait for the brightness to
         # settle.
-        self._set_brightness_to_min()
-        current_brightness = base_utils.wait_for_value(
+        self._backlight_controller.set_brightness_to_min()
+        current_brightness = utils.wait_for_value(
             self._backlight.get_level,
             min_threshold=(keyvals['max_brightness'] / 2 - 1))
         if current_brightness >= keyvals['max_brightness'] / 2 or \
@@ -130,15 +119,15 @@ class power_BacklightControl(test.test):
 
         # Turn off the screen by decreasing brightness one more time with
         # allow_off=True.
-        self._decrease_brightness(True)
-        current_brightness = base_utils.wait_for_value(
+        self._backlight_controller.decrease_brightness(True)
+        current_brightness = utils.wait_for_value(
             self._backlight.get_level, min_threshold=0)
         if current_brightness != 0:
             num_errors += 1
             logging.error('Brightness is %d, expecting 0.' % current_brightness)
 
         # Wait for screen to turn off.
-        num_outputs_on = base_utils.wait_for_value(
+        num_outputs_on = utils.wait_for_value(
             get_num_outputs_on, min_threshold=(starting_num_outputs_on - 1))
         keyvals['outputs_on_after_screen_off'] = num_outputs_on
         if num_outputs_on >= starting_num_outputs_on:
@@ -150,8 +139,8 @@ class power_BacklightControl(test.test):
             keyvals['screen_off_power_w'] = self._get_current_energy_rate()
 
         # Set brightness to max.
-        self._set_brightness_to_max()
-        current_brightness = base_utils.wait_for_value(
+        self._backlight_controller.set_brightness_to_max()
+        current_brightness = utils.wait_for_value(
             self._backlight.get_level, max_threshold=keyvals['max_brightness'])
         if current_brightness != keyvals['max_brightness']:
             num_errors += 1
@@ -203,58 +192,11 @@ class power_BacklightControl(test.test):
 
     def cleanup(self):
         # Restore prefs, delete backup directory, and restart powerd.
-        pref_path = self._pref_path
-        os.system('rm %s/*' % pref_path)
-        os.system('mv %s/* %s' % (self._backup_path, pref_path))
-        os.system('rmdir %s' % self._backup_path)
-        os.system('restart powerd')
+        power_utils.set_power_prefs(self._saved_prefs)
+        utils.restart_job('powerd')
         if self._backlight:
             self._backlight.restore()
         super(power_BacklightControl, self).cleanup()
-
-
-    def _call_powerd_dbus_method(self, method_name, args=''):
-        destination = 'org.chromium.PowerManager'
-        path = '/org/chromium/PowerManager'
-        interface = 'org.chromium.PowerManager'
-        command = ('dbus-send --type=method_call --system ' + \
-                   '--dest=%s %s %s.%s %s') % (destination, path, interface, \
-                   method_name, args)
-        utils.system_output(command)
-
-
-    def _decrease_brightness(self, allow_off=False):
-        self._call_powerd_dbus_method('DecreaseScreenBrightness',
-                                      'boolean:%s' % \
-                                      ('true' if allow_off else 'false'))
-
-
-    def _increase_brightness(self):
-        self._call_powerd_dbus_method('IncreaseScreenBrightness')
-
-
-    def _set_brightness_to_max(self):
-        """
-        Increases the brightness using powerd until the brightness reaches the
-        maximum value. Returns when it reaches the maximum number of brightness
-        adjustments
-        """
-        num_steps_taken = 0
-        while num_steps_taken < self._max_num_steps:
-            self._increase_brightness()
-            num_steps_taken += 1
-
-
-    def _set_brightness_to_min(self):
-        """
-        Decreases the brightness using powerd until the brightness reaches the
-        minimum non-zero value. Returns when it reaches the maximum number of
-        brightness adjustments
-        """
-        num_steps_taken = 0
-        while num_steps_taken < self._max_num_steps:
-            self._decrease_brightness(False)
-            num_steps_taken += 1
 
 
     def _get_current_energy_rate(self):
