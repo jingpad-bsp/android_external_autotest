@@ -140,15 +140,16 @@ class FAFTCheckers(object):
         crossystem_dict = {'tried_fwb': '0'}
         if expected_fw:
             crossystem_dict['mainfw_act'] = expected_fw.upper()
-        if self.faftsequence.check_ec_capability(suppress_warning=True):
-            crossystem_dict['ecfw_act'] = ('RW' if twostop else 'RO')
-
         succeed = True
         if not self.vdat_flags_checker(vboot.VDAT_FLAG_LF_USE_RO_NORMAL,
                 0 if twostop else vboot.VDAT_FLAG_LF_USE_RO_NORMAL):
             succeed = False
         if not self.crossystem_checker(crossystem_dict):
             succeed = False
+        if self.faftsequence.check_ec_capability(suppress_warning=True):
+            expected_ec = ('RW' if twostop else 'RO')
+            if not self.ec_act_copy_checker(expected_ec):
+                succeed = False
         return succeed
 
 
@@ -199,6 +200,13 @@ class FAFTCheckers(object):
         pattern = re.compile("Firmware copy: (.*)")
         for line in lines:
             matched = pattern.match(line)
-            if matched and matched.group(1) == expected_copy:
-                return True
+            if matched:
+                if matched.group(1) == expected_copy:
+                    return True
+                else:
+                    logging.info("Expected EC in %s but now in %s",
+                                 expected_copy, matched.group(1))
+                    return False
+        logging.info("Wrong output format of 'ectool version':\n%s",
+                     '\n'.join(lines))
         return False
