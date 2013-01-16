@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -45,6 +45,11 @@ class cellular_Smoke(test.test):
             # TODO(rochberg) Need to figure out what isn't settling here.
             # Going to wait 'til after ResetAllModems changes land.
             time.sleep(10)
+
+            # Clear all errors before we start.
+            # Resetting the modem above may have caused some errors on the
+            # 8960 (eg. lost connection, etc).
+            env.emulator.ClearErrors()
 
             service = env.CheckedConnectToCellular()
             env.CheckHttpConnectivity()

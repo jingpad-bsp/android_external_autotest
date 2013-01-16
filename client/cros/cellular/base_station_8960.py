@@ -81,6 +81,9 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
   def ResetDataCounters(self):
     self.c.SendStanza(['CALL:COUNt:DTMonitor:CLEar'])
 
+  def ClearErrors(self):
+    self.c.RetrieveErrors()
+
   def LogStats(self):
     self.c.Query("CALL:HSDPa:SERVice:PSData:HSDSchannel:CONFig?")
 

@@ -15,7 +15,6 @@ from autotest_lib.client.cros.cellular import mm
 
 import time
 
-from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 
@@ -81,6 +80,11 @@ class cellular_Signal(test.test):
             # TODO(jglasgow) Need to figure out what isn't settling here.
             # Going to wait 'til after ResetAllModems changes land.
             time.sleep(10)
+
+            # Clear all errors before we start.
+            # Resetting the modem above may have caused some errors on the
+            # 8960 (eg. lost connection, etc).
+            env.emulator.ClearErrors()
 
             service = env.CheckedConnectToCellular(timeout=CELLULAR_TIMEOUT)
 

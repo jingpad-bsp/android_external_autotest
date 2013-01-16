@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -333,6 +333,11 @@ class network_3GModemControl(test.test):
             if config and technology:
                 bs, verifier = emulator_config.StartDefault(config, technology)
                 cell_tools.PrepareModemForTechnology('', technology)
+
+                # Clear all errors before we start.
+                # Preparing the modem above may have caused some errors on the
+                # 8960 (eg. lost connection, etc).
+                bs.ClearErrors()
 
             fake_sim = sim.SIM(sim.SIM.Carrier('att'),
                 mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
