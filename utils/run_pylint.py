@@ -225,7 +225,7 @@ def main():
     if pylint_version >= 0.21:
         pylint_base_opts = ['--rcfile=%s' % pylint_rc,
                             '--reports=no',
-                            '--disable=W,R,E,C',
+                            '--disable=W,R,E,C,F',
                             '--enable=W0611',]
     else:
         all_failures = 'error,warning,refactor,convention'
