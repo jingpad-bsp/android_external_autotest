@@ -1,11 +1,11 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Configure cellular data emulation setup."""
 import logging, time
 
-from autotest_lib.client.cros.cellular import base_station_8960, cellular
+from autotest_lib.client.cros.cellular import base_station_8960
 from autotest_lib.client.cros.cellular import ether_io_rf_switch
 from autotest_lib.client.cros.cellular import prologix_scpi_driver, scpi
 
@@ -17,12 +17,14 @@ def _CreateBaseStation(c):
     if c['type'] != '8960-prologix':
         raise KeyError('Could not configure basestation of type %s' % c['type'])
 
+    # TODO(thieule): Does |opc_on_stanza| need to be set for PXT?
     adapter = c['gpib_adapter']
     s = scpi.Scpi(
         prologix_scpi_driver.PrologixScpiDriver(
             hostname=adapter['address'],
             port=adapter['ip_port'],
-            gpib_address=adapter['gpib_address']))
+            gpib_address=adapter['gpib_address']),
+            opc_on_stanza=True)
     return base_station_8960.BaseStation8960(s)
 
 
