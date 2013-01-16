@@ -33,7 +33,7 @@ def NumOfTask(task):
   if task.num is None:
     return default_num
   else:
-    return task.num
+    return int(task.num)
 
 
 # TODO(milleral): crosbug.com/37623
