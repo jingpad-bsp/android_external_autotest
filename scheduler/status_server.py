@@ -1,4 +1,4 @@
-import os, BaseHTTPServer, cgi, threading, urllib, fcntl, logging
+import BaseHTTPServer, cgi, threading, urllib, fcntl, logging
 import common
 from autotest_lib.scheduler import drone_manager, scheduler_config
 
@@ -10,7 +10,6 @@ _HEADER = """
 <body>
 Actions:<br>
 <a href="?reparse_config=1">Reparse global config values</a><br>
-<a href="?restart_scheduler=1">Restart the scheduler</a><br>
 <br>
 """
 
