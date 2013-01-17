@@ -1,0 +1,21 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "asharif bjanakiraman"
+NAME = "platform_DebugDaemonGetPerfData"
+PURPOSE = "Verify that debugd's GetPerfData works."
+
+CRITERIA = """
+GetPerfData must return a valid, non-empty protobuf.
+"""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+Exercises the debugd GetPerfData API.
+"""
+
+job.run_test('platform_DebugDaemonGetPerfData')
