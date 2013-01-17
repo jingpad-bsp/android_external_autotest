@@ -10,6 +10,8 @@ import air_state_verifier
 import base_station_interface
 import cellular
 
+from autotest_lib.client.bin import utils
+
 
 class Error(Exception):
   pass
@@ -47,6 +49,11 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
     # failing to accept CDMA connections after switching from a
     # GSM technology.
     self.c.SendStanza(['SYSTEM:PRESet3'])
+
+  def _IsIdle(self):
+    call_state = self.c.Query('CALL:STATus?')
+    data_state = self.c.Query('CALL:STATus:DATa?')
+    return call_state == 'IDLE' and data_state in ['IDLE', 'OFF']
 
   def Close(self):
     self.c.Close()
@@ -149,6 +156,11 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
 
   def Stop(self):
     self.c.SendStanza(['CALL:OPERating:MODE OFF'])
+    # Make sure the call status goes to idle before continuing.
+    utils.poll_for_condition(
+        lambda: self._IsIdle(),
+        timeout=cellular.DEFAULT_TIMEOUT,
+        exception=Error('8960 did not enter IDLE state'))
 
   def SupportedTechnologies(self):
     return [
