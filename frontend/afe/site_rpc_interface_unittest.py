@@ -56,11 +56,15 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
             mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.getter)
 
 
-    def _mockRpcUtils(self, to_return):
+    def _mockRpcUtils(self, to_return, control_file_substring=''):
         """Fake out the autotest rpc_utils module with a mockable class.
 
         @param to_return: the value that rpc_utils.create_job_common() should
                           be mocked out to return.
+        @param control_file_substring: A substring that is expected to appear
+                                       in the control file output string that
+                                       is passed to create_job_common.
+                                       Default: ''
         """
         download_started_time = constants.DOWNLOAD_STARTED_TIME
         payload_finished_time = constants.PAYLOAD_FINISHED_TIME
@@ -70,7 +74,9 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                             priority='Medium',
                             control_type='Server',
                             control_file=mox.And(mox.StrContains(self._BOARD),
-                                                 mox.StrContains(self._BUILD)),
+                                                 mox.StrContains(self._BUILD),
+                                                 mox.StrContains(
+                                                     control_file_substring)),
                             hostless=True,
                             keyvals=mox.And(mox.In(download_started_time),
                                             mox.In(payload_finished_time))
@@ -142,6 +148,14 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                           self._BUILD,
                           None,
                           num=[])
+        self.assertRaises(error.SuiteArgumentException,
+                          site_rpc_interface.create_suite_job,
+                          self._NAME,
+                          self._BOARD,
+                          self._BUILD,
+                          None,
+                          num='5')
+
 
 
     def testCreateSuiteJobFail(self):
@@ -187,9 +201,27 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         job_id = 5
         self._mockRpcUtils(job_id)
         self.mox.ReplayAll()
-        self.assertEquals(
-                site_rpc_interface.create_suite_job(
-                        self._NAME, self._BOARD, self._BUILD, None, False),
+        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
+                                                              self._BOARD,
+                                                              self._BUILD,
+                                                              None, False),
+                job_id)
+
+    def testCreateSuiteIntegerNum(self):
+        """Ensures that success results in a successful RPC."""
+        self._mockDevServerGetter()
+        self.dev_server.trigger_download(self._BUILD,
+                                         synchronous=False).AndReturn(True)
+        self.getter.get_control_file_contents_by_name(
+            self._SUITE_NAME).AndReturn('f')
+        job_id = 5
+        self._mockRpcUtils(job_id, control_file_substring='num=17')
+        self.mox.ReplayAll()
+        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
+                                                              self._BOARD,
+                                                              self._BUILD,
+                                                              None, False,
+                                                              num=17),
                 job_id)
 
 

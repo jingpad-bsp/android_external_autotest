@@ -4,7 +4,7 @@
 
 
 import logging, re
-import deduping_scheduler, forgiving_config_parser
+import deduping_scheduler
 from distutils import version
 from constants import Labels
 
@@ -136,13 +136,14 @@ class Task(object):
         @param pool: the pool of machines to use for scheduling purposes.
                      Default: None
         @param num: the number of devices across which to shard the test suite.
+                    Type: integer or None
                     Default: None
         """
         self._name = name
         self._suite = suite
         self._branch_specs = branch_specs
         self._pool = pool
-        self._num = '%d' % num if num else None
+        self._num = num
 
         self._bare_branches = []
         if not branch_specs:
@@ -159,7 +160,7 @@ class Task(object):
         # Since we expect __hash__() and other comparitor methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
         # the string representation of this object.
-        self._str = '%s: %s on %s with pool %s, across %r machines' % (
+        self._str = '%s: %s on %s with pool %s, across %d machines' % (
             self.__class__.__name__, suite, branch_specs, pool, num)
 
 

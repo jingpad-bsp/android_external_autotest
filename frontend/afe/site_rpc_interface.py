@@ -7,8 +7,8 @@ __author__ = 'cmasone@chromium.org (Chris Masone)'
 import common
 import datetime
 import logging
-import sys
-from autotest_lib.client.common_lib import error, global_config
+
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -83,7 +83,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     @param pool: Specify the pool of machines to use for scheduling
             purposes.
     @param check_hosts: require appropriate live hosts to exist in the lab.
-    @param num: Specify the number of machines to schedule across.
+    @param num: Specify the number of machines to schedule across (integer).
+                Leave unspecified or use None to use default sharding factor.
     @param file_bugs: File a bug on each test failure in this suite.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -96,16 +97,13 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     """
     # All suite names are assumed under test_suites/control.XX.
     suite_name = canonicalize_suite_name(suite_name)
-    try:
-        if num is None:  # Yes, specifically None
-            numeric_num = None
-        elif num == '0':
-            logging.warning("Can't run on 0 hosts; using default.")
-            numeric_num = None
-        else:
-            numeric_num = int(num)
-    except (ValueError, TypeError) as e:
-        raise error.SuiteArgumentException('Ill-specified num argument: %s' % e)
+
+    if type(num) is not int and num is not None:
+        raise error.SuiteArgumentException('Ill specified num argument. Must be'
+                                           ' an integer or None.')
+    if num == 0:
+        logging.warning("Can't run on 0 hosts; using default.")
+        num = None
 
     timings = {}
     # Ensure components of |build| necessary for installing images are staged
@@ -129,7 +127,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'build': build,
                    'check_hosts': check_hosts,
                    'pool': pool,
-                   'num': numeric_num,
+                   'num': num,
                    'file_bugs': file_bugs}
     control_file = tools.inject_vars(inject_dict, control_file_in)
 

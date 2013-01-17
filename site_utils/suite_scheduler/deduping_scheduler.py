@@ -4,7 +4,6 @@
 
 import logging
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server import frontend
 
 
 class DedupingSchedulerException(Exception):
@@ -73,6 +72,7 @@ class DedupingScheduler(object):
         @param pool: the pool of machines to use for scheduling purposes.
                      Default: None
         @param num: the number of devices across which to shard the test suite.
+                    Type: integer or None
                     Default: None (uses sharding factor in global_config.ini).
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
@@ -107,6 +107,7 @@ class DedupingScheduler(object):
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: the pool of machines to use for scheduling purposes.
         @param num: the number of devices across which to shard the test suite.
+                    Type: integer or None
         @param force: Always schedule the suite.
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
