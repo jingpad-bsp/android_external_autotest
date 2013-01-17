@@ -6,7 +6,7 @@
 
 import logging
 import optparse
-import os, shutil, re, string
+import os, re
 from autotest_lib.client.bin import utils, test
 
 re_float = r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
@@ -191,6 +191,16 @@ class kernel_fs_Punybench(test.test):
         self.write_perf_keyval({prefix + 'threadtree_ops': p})
 
 
+    def _uread_args(self):
+        """Set custom args for _uread tests
+        """
+        size = 8 * 1024 * 1024 * 1024
+        loops = 4
+        iterations = 1
+        return ('-f %s -z %d -i %d -l %d -b12' %
+               (file, size, iterations, loops))
+
+
     def _uread(self, prefix, file):
         """Read a large file.
 
@@ -205,16 +215,22 @@ class kernel_fs_Punybench(test.test):
           size=8589934592 n=1 55.5 3. timer avg= 55.5 stdv=0.0693 147.6 MiB/s
           size=8589934592 n=1 55.6 4. timer avg= 55.5 stdv=0.0817 147.5 MiB/s
         """
-        size = 8 * 1024 * 1024 * 1024
-        loops = 4
-        iterations = 1
-        args = ('-f %s -z %d -i %d -l %d -b12' %
-               (file, size, iterations, loops))
+        args = '-f %s' % file
         result = self._run('uread', args)
         r1 = re.search(r"[^\s]+ MiB/s.*$", result)
         r2 = re.search(re_float, r1.group(0))
         mib_s = r2.group(0)
         self.write_perf_keyval({prefix + 'uread_MiB_s': mib_s})
+
+
+    def _ureadrand_args(self):
+        """Set custom args for _ureadrand
+        """
+        size = 8 * 1024 * 1024 * 1024
+        loops = 4
+        iterations = 100000
+        return ('-f %s -z %d -i %d -l %d -b12' %
+               (file, size, iterations, loops))
 
 
     def _ureadrand(self, prefix, file):
@@ -223,20 +239,27 @@ class kernel_fs_Punybench(test.test):
         Args:
           prefix: prefix to use on name/value pair for identifying results
           file: file path to use for test
+
         Example results (modified to fit in 80 columes):
 size=8589934592 n=10000 4.7 3. timer avg= 4 stdv= 4.6 9.1 MiB/s 2326 IOPs/sec
 size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
         """
-        size = 8 * 1024 * 1024 * 1024
-        loops = 4
-        iterations = 100000
-        args = ('-f %s -z %d -i %d -l %d -b12' %
-               (file, size, iterations, loops))
+        args = '-f %s' % file
         result = self._run('ureadrand', args)
         r1 = re.search(r"([^\s]+ IOPs/sec).*$", result)
         r2 = re.search(re_float, r1.group(0))
         iops = r2.group(0)
         self.write_perf_keyval({prefix + 'ureadrand_iops': iops})
+
+
+    def _uwrite_args(self):
+        """Custom args for _uwrite
+        """
+        size = 8 * 1024 * 1024 * 1024
+        loops = 4
+        iterations = 1
+        return ('-f %s -z %d -i %d -l %d -b12' %
+               (file, size, iterations, loops))
 
 
     def _uwrite(self, prefix, file):
@@ -252,16 +275,11 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
           size=8589934592 n=1 55.5 3. timer avg= 55.5 stdv=0.0693 147.6 MiB/s
           size=8589934592 n=1 55.6 4. timer avg= 55.5 stdv=0.0817 147.5 MiB/s
         """
-        size = 8 * 1024 * 1024 * 1024
-        loops = 4
-        iterations = 1
-        args = ('-f %s -z %d -i %d -l %d -b12' %
-               (file, size, iterations, loops))
+        args = '-f %s' % file
         result = self._run('uwrite', args)
-        r1 = re.search(r"avg=.*$", result)
+        r1 = re.search(r"[^\s]+ MiB/s.*$", result)
         r2 = re.search(re_float, r1.group(0))
-        secs = float(r2.group(0))
-        mib_s = size * iterations / secs / (1024 * 1024)
+        mib_s = r2.group(0)
         self.write_perf_keyval({prefix + 'uwrite_MiB_s': mib_s})
 
 
@@ -318,7 +336,6 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
           dir: directory path to use for tests
           file: file path to use for tests
         """
-        self._threadtree(prefix, dir)
         self._uread(prefix, file)
         self._ureadrand(prefix, file)
         self._uwrite(prefix, file)
@@ -326,6 +343,7 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
         # This tests sometimes gives invalid results
         # self._uwriterand(prefix + '_small_', file, 8 * 1024)
         self._uwritesync(prefix, file)
+        self._threadtree(prefix, dir)
 
 
     def _ecryptfs(self):
