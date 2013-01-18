@@ -8,8 +8,7 @@ import time
 import urlparse
 
 import ap_configurator
-from selenium.common.exceptions import TimeoutException as \
-    SeleniumTimeoutException
+
 
 class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
@@ -37,26 +36,14 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
         self.driver.get(page_url)
         page_name = os.path.basename(self.driver.current_url)
         xpath = '//a[text()="Login"]'
-        def wait_for_login(xpath):
-            # Waits for login screen to become available.
-            # Args: xpath: the xpath of the element to wait for.
-            # Login screen comes up for the first time after doing power_up.
-            # After that we are directed to wireless_settings page.
-            ret = None
-            try:
-               self.wait.until(lambda _: self.driver.find_element_by_xpath
-                               (xpath))
-               ret = self.driver.find_element_by_xpath(xpath)
-            except SeleniumTimeoutException, e:
-               pass
-            return ret
-        if page_name == 'home.htm' and wait_for_login(xpath):
+        if page_name == 'home.htm' and self.object_by_xpath_exist(xpath):
             self.click_button_by_xpath(xpath)
             xpath = '//input[@name="www_password"]'
             self.set_content_of_text_field_by_xpath('password', xpath,
                                                     abort_check=True)
             self.click_button_by_id('submitBtn_submit')
         else:
+            logging.info('Could not open the login page.')
             return None
 
 

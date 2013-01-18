@@ -95,6 +95,33 @@ class WebDriverCoreHelpers(object):
         xpath = 'id("%s")' % element_id
         return self.wait_for_object_by_xpath(xpath)
 
+    def object_by_id_exist(self, element_id):
+        """Finds if an object exist in this particular page.
+
+        Args:
+          element_id: the id of the element to find
+
+        Returns:
+          True if the element exists. False if the element does not.
+        """
+        xpath = 'id("%s")' % element_id
+        return self.object_by_xpath_exist(xpath)
+
+    def object_by_xpath_exist(self, xpath):
+        """Finds if an object exist in this particular page.
+
+        Args:
+          element_id: the id of the element to find
+
+        Returns:
+          True if the xpath exists. False if the xpath does not.
+        """
+        try:
+            self.wait_for_object_by_xpath(xpath)
+        except SeleniumTimeoutException:
+            return False
+        return True
+
     def wait_for_object_by_xpath(self, xpath):
         """Waits for an element to become available; returns a reference to it.
 

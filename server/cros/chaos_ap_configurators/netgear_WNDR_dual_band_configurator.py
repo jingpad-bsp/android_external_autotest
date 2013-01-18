@@ -80,7 +80,10 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
         page_url = urlparse.urljoin(self.admin_interface_url,
                                     'WLG_wireless_dual_band.htm')
         self.driver.get(page_url)
-        self.wait_for_object_by_xpath('//input[@name="ssid" and @type="text"]')
+        xpath = '//input[@name="ssid" and @type="text"]'
+        if not object_by_xpath_exist(xpath):
+            logging.info('The page did not load. The xpath %s was not found'
+                         % xpath )
 
 
     def save_page(self, page_number):
