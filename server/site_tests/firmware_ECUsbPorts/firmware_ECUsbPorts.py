@@ -62,8 +62,7 @@ class firmware_ECUsbPorts(FAFTSequence):
                 gpio_name = "USB%d_ENABLE" % (cnt + 1)
                 self.ec.send_command_get_output(
                         "gpioget %s" % gpio_name,
-                        ["[01].\s*%s" % gpio_name],
-                        timeout=1)
+                        ["[01].\s*%s" % gpio_name])
                 cnt = cnt + 1
                 limit = limit - 1
             except error.TestFail:
@@ -91,8 +90,7 @@ class firmware_ECUsbPorts(FAFTSequence):
                     gpio_name = "USB%d_ENABLE" % idx
                     self.ec.send_command_get_output(
                             "gpioget %s" % gpio_name,
-                            ["0.\s*%s" % gpio_name],
-                            timeout=1)
+                            ["0.\s*%s" % gpio_name])
                 return True
             except error.TestFail:
                 # USB ports not disabled. Retry.

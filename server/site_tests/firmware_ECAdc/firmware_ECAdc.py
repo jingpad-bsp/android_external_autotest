@@ -24,8 +24,8 @@ class firmware_ECAdc(FAFTSequence):
           error.TestFail: Raised when read fails.
         """
         try:
-            t = int(self.ec.send_command_get_output("ectemp",
-                    ["EC temperature is (\d+) K"])[0][1])
+            t = int(self.ec.send_command_get_output("temps",
+                    ["ECInternal\s+: (\d+) K"])[0][1])
             if t < 273 or t > 373:
                 raise error.TestFail("Abnormal EC temperature %d K" % t)
         except pexpect.TIMEOUT:

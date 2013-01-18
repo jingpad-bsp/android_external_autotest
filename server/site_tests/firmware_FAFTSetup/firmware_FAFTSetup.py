@@ -54,8 +54,7 @@ class firmware_FAFTSetup(FAFTSequence):
                                "RW:\s+[^\r\n]*\r\n",
                                "Build:\s+[^\r\n]*\r\n"]
             self.ec.send_command_get_output("version",
-                                            expected_output,
-                                            timeout=0.2)
+                                            expected_output)
             return True
         except: # pylint: disable=W0702
             logging.error("Cannot talk to EC console.")

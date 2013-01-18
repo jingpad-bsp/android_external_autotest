@@ -25,8 +25,7 @@ class firmware_ECWriteProtect(FAFTSequence):
         """
         try:
             self.ec.send_command_get_output("flashinfo",
-                  ["Flags:\s+wp_gpio_asserted\s+ro_at_boot\s+ro_now\s+all_now"],
-                  timeout=0.1)
+                  ["Flags:\s+wp_gpio_asserted\s+ro_at_boot\s+ro_now\s+all_now"])
             return True
         except error.TestFail:
             # Didn't get expected flags

@@ -90,7 +90,7 @@ class ChromeEC(object):
         self._servo.set_nocheck('ec_uart_cmd', command)
 
 
-    def send_command_get_output(self, command, regexp_list, timeout=1):
+    def send_command_get_output(self, command, regexp_list):
         """Send command through UART and wait for response.
 
         This function waits for response message matching regular expressions.
@@ -119,7 +119,6 @@ class ChromeEC(object):
             raise error.TestError('Arugment regexp_list is not a list: %s' %
                                   str(regexp_list))
 
-        self._servo.set('ec_uart_timeout', str(float(timeout)))
         self.set_uart_regexp(str(regexp_list))
         self._servo.set_nocheck('ec_uart_cmd', command)
         return ast.literal_eval(self._servo.get('ec_uart_cmd'))
