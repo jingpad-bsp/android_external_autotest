@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, os, re, shutil, stat, string, time, urllib
+import logging, os, re, urllib
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.cros import chrome_test
 from autotest_lib.client.common_lib import error, utils
 
 # See partner bug 891 for why these tests' performance is being ignored.
@@ -13,18 +13,30 @@ _IGNORE_PERFORMANCE_TESTS=(
     'tulip_bp.mp4',
     'tulip_mp.mp4')
 
-class audiovideo_FFMPEG(test.test):
+class audiovideo_FFMPEG(chrome_test.ChromeBinaryTest):
+    """
+    This test plays the media from the URLs in the 'testcases' file and records
+    frames per second and CPU usage measured.
+    """
     version = 1
-    dep = 'ffmpeg'
     test_binary = 'ffmpeg_tests'
-
-    def setup(self):
-        self.job.setup_dep([self.dep])
+    libffmpeg = 'libffmpegsumo.so'
+    chrome_tst = '/usr/local/autotest/deps/chrome_test/test_src/out/Release/'
+    chrome_sys = '/opt/google/chrome/'
 
     def run_once(self, fps_warning=0):
-        """ Run FFMPEG performance test! """
+        """
+        Run FFMPEG performance test!
+        @param fps_warning: Emit warning when fps falls below this threshold.
+        """
+        # LD_LIBRARY_PATH does not work anymore - have to make a symlink.
+        chrome_tst_libffmpeg = os.path.join(self.chrome_tst, self.libffmpeg)
+        chrome_sys_libffmpeg = os.path.join(self.chrome_sys, self.libffmpeg)
+        if not os.path.exists(chrome_tst_libffmpeg):
+            os.symlink(chrome_sys_libffmpeg, chrome_tst_libffmpeg)
+
         # fetch all the test cases from file.
-        testcases = os.path.join(self.bindir, "testcases")
+        testcases = os.path.join(self.bindir, 'testcases')
         self.performance_results = {}
         self.min_fps_video = 100
         self.max_tpf_audio = 0
@@ -44,10 +56,10 @@ class audiovideo_FFMPEG(test.test):
 
 
     def run_testcase(self, testcase):
-        dep_dir = os.path.join(self.autodir, 'deps', self.dep)
-        self.job.install_pkg(self.dep, 'dep', dep_dir)
-        executable = os.path.join(dep_dir, self.test_binary)
-
+        """
+        Runs a single tescase and records the CPU usage.
+        @param testcase: URL with media file to play.
+        """
         file_url = testcase[0]
         if file_url.startswith("http"):
             file_name = file_url.split('/')[-1]
@@ -61,13 +73,14 @@ class audiovideo_FFMPEG(test.test):
             file_path = os.path.join(self.bindir, file_name)
 
         if not os.path.exists(file_path):
-            raise error.TestError("ffmpeg_tests: test media missing %s!"
+            raise error.TestError('ffmpeg_tests: test media missing %s!'
                                   % file_url)
-
-        command_line = ("LD_LIBRARY_PATH=/opt/google/chrome/ %s %s"
+        executable = os.path.join(self.chrome_tst, self.test_binary)
+        # TODO(ihf): There used to be a LD_LIBRARY_PATH=/opt/google/chrome/
+        # in the command_line. Investigate why it stopped working.
+        command_line = ('%s %s'
                         % (executable, file_path))
-        logging.info("Running %s" % command_line)
-
+        logging.info('Running %s' % command_line)
         cpu_usage, stdout = utils.get_cpu_percentage(
                                  utils.system_output,
                                  command_line,
