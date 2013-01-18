@@ -30,15 +30,8 @@ class TLSDate:
     def start(self, subprog):
         print 'running with %s' % self._test_obj.srcdir + '/' + subprog
         self._subprog = subprog
-        args = ['/usr/sbin/tlsdated',
-                '-w',       # don't set hwclock
-                '-p',       # don't set system time
-                '-r',       # use stdin for routes
-                '-t', '2',  # try twice for new routes
-                '-d', '2',  # delay two seconds for new routes
-                '-T', '2',  # try twice for subprocesses
-                '-D', '2',  # delay two seconds for subprocesses
-                '-a', '2',  # run every two seconds in steady state
+        args = ['/usr/bin/tlsdated',
+                '-f', self._test_obj.srcdir + '/test.conf',
                 '-c', self._cachedir,
                 '-v',
                 self._test_obj.srcdir + '/' + subprog,
