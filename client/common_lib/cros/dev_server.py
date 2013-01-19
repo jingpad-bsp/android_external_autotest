@@ -106,7 +106,7 @@ class DevServer(object):
 
 
     @staticmethod
-    def _devserver_up(devserver):
+    def devserver_up(devserver):
         """Returns True if the |devserver| is responding to calls."""
         call = DevServer._build_call(devserver, 'index')
 
@@ -159,7 +159,7 @@ class DevServer(object):
         calls = []
         # Note we use cls.servers as servers is class specific.
         for server in cls.servers():
-            if cls._devserver_up(server):
+            if cls.devserver_up(server):
                 calls.append(cls._build_call(server, method, **kwargs))
 
         return calls
@@ -178,7 +178,7 @@ class DevServer(object):
         while devservers:
             hash_index = hash(build) % len(devservers)
             devserver = devservers.pop(hash_index)
-            if cls._devserver_up(devserver):
+            if cls.devserver_up(devserver):
                 return cls(devserver)
         else:
             logging.error('All devservers are currently down!!!')

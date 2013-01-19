@@ -4,16 +4,15 @@
 
 import json
 import logging
-import socket
-import subprocess
-import tempfile
 import time
+import os
 import urllib2
 import urlparse
 
-from autotest_lib.client.common_lib import error, global_config, site_utils
+from autotest_lib.client.bin import utils as client_utils
+from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
-from autotest_lib.server import test
+from autotest_lib.server import hosts, test
 
 
 def _wait(secs, desc=None):
@@ -221,24 +220,29 @@ class OmahaDevserver(object):
                a unique port number.
         @param update_payload_lorry_url: URL to provision for update requests.
 
-        @raise error.TestError when things go wrong.
-
         """
-        # First, obtain the target URL base / image strings.
         if not update_payload_lorry_url:
             raise error.TestError('missing update payload url')
-        update_payload_url_base, update_payload_path, _ = self._split_url(
-                update_payload_lorry_url)
 
-        # Second, compute a unique port for the DUT update checks to use, based
-        # on the DUT's IP address.
+        self._omaha_host = omaha_host
         self._omaha_port = self._get_unique_port(dut_ip_addr)
-        logging.debug('dut ip addr: %s => omaha/devserver port: %d',
-                      dut_ip_addr, self._omaha_port)
+        self._devserver_dir = devserver_dir
+        self._update_payload_lorry_url = update_payload_lorry_url
 
-        # Invoke the Omaha/devserver.
+        self._devserver_ssh = hosts.SSHHost(self._omaha_host,
+                                            user=os.environ['USER'])
+        self._devserver_output = '/tmp/devserver.%s' % self._omaha_port
+        self._devserver_pid = None
+
+
+    def start_devserver(self):
+        """Starts the devserver and stores the remote pid in self._devserver_pid
+        """
+        update_payload_url_base, update_payload_path, _ = self._split_url(
+                self._update_payload_lorry_url)
+        # Invoke the Omaha/devserver on the remote server.
         cmdlist = [
-                './devserver.py',
+                '%s/devserver.py' % self._devserver_dir,
                 '--archive_dir=static/',
                 '--payload=%s' % update_payload_path,
                 '--port=%d' % self._omaha_port,
@@ -247,46 +251,81 @@ class OmahaDevserver(object):
                 '--max_updates=1',
                 '--host_log',
         ]
-        logging.info('launching omaha/devserver on %s (%s): %s',
-                     omaha_host, devserver_dir, ' '.join(cmdlist))
-        # TODO(garnold) invoke omaha/devserver remotely! The host needs to be
-        # either globally known to all DUTs, or inferrable based on the DUT's
-        # own IP address, or otherwise provisioned to it.
-        is_omaha_devserver_local = (
-                omaha_host in ['localhost', socket.gethostname()])
-        if not is_omaha_devserver_local:
-          raise error.TestError(
-              'remote omaha/devserver invocation unsupported yet')
-        # We are using subprocess directly (as opposed to existing util
-        # wrappers like utils.run() or utils.BgJob) because we need to be able
-        # to terminate the subprocess once the test finishes.
-        devserver_output_namedtemp = tempfile.NamedTemporaryFile()
-        self._devserver = subprocess.Popen(
-                cmdlist, stdout=devserver_output_namedtemp.file,
-                stderr=subprocess.STDOUT, cwd=devserver_dir or None)
-        timeout = self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
-        devserver_output_log = []
-        with open(devserver_output_namedtemp.name, 'r') as devserver_output:
-            while timeout > 0 and self._devserver.returncode is None:
-                time.sleep(self._WAIT_SLEEP_INTERVAL)
-                timeout -= self._WAIT_SLEEP_INTERVAL
-                devserver_started = False
-                while not devserver_started:
-                    line = devserver_output.readline()
-                    if not line:
-                        break
-                    log_line = '[devserver]' + line.rstrip('\n')
-                    logging.debug(log_line)
-                    devserver_output_log.append(log_line)
-                    devserver_started = 'Bus STARTED' in line
-                else:
-                    break
-            else:
-                raise error.TestError(
-                    'omaha/devserver not running, error log:\n%s' %
-                    '\n'.join(devserver_output_log))
+        # In the remote case that a previous devserver is still running,
+        # kill it.
+        devserver_pid = self._remote_devserver_pid()
+        if devserver_pid:
+            logging.warning('Previous devserver still running. Killing.')
+            self._kill_devserver_pid(devserver_pid)
+            self._devserver_ssh.run('rm -f %s' % self._devserver_output,
+                                    ignore_status=True)
 
-        self._omaha_host = site_utils.externalize_host(omaha_host)
+        remote_cmd = '( %s ) </dev/null >%s 2>&1 & echo $!' % (
+                ' '.join(cmdlist), self._devserver_output)
+        logging.info('Starting devserver with %r', remote_cmd)
+        self._devserver_pid = self._devserver_ssh.run_output(remote_cmd)
+
+
+    def _kill_devserver_pid(self, pid):
+        """Kills devserver with given pid and verifies devserver is down.
+
+        @param pid: The pid of the devserver to kill.
+
+        @raise client_utils.TimeoutError if we are unable to kill the devserver
+               within the default timeouts (11 seconds).
+        """
+        def _devserver_down():
+            return self._remote_devserver_pid() == None
+
+        self._devserver_ssh.run('kill %s' % pid)
+        try:
+            client_utils.poll_for_condition(_devserver_down,
+                                            sleep_interval=1)
+            return
+        except client_utils.TimeoutError:
+            logging.warning('Could not gracefully shut down devserver.')
+
+        self._devserver_ssh.run('kill -9 %s' % pid)
+        client_utils.poll_for_condition(_devserver_down, timeout=1)
+
+
+    def _remote_devserver_pid(self):
+        """If a devserver is running on our port, return its pid."""
+        # fuser returns pid in its stdout if found.
+        result = self._devserver_ssh.run('fuser -n tcp %d' % self._omaha_port,
+                                         ignore_status=True)
+        if result.exit_status == 0:
+            return result.stdout.strip()
+
+
+    def wait_for_devserver_to_start(self):
+        """Returns True if the devserver has started within the time limit."""
+        timeout = self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
+        netloc = self.get_netloc()
+        while(timeout > 0):
+            time.sleep(self._WAIT_SLEEP_INTERVAL)
+            timeout -= self._WAIT_SLEEP_INTERVAL
+            if dev_server.DevServer.devserver_up('http://%s' % netloc):
+                return True
+        else:
+            self.log_output()
+            return False
+
+
+    def get_netloc(self):
+        """Returns the netloc (host:port) of the devserver."""
+        if not self._devserver_pid:
+            raise error.TestError('no running omaha/devserver')
+
+
+        return '%s:%s' % (self._omaha_host, self._omaha_port)
+
+
+    def log_output(self):
+        """Logs the output of the devserver log to logging.error."""
+        if self._devserver_pid:
+            logging.error(self._devserver_ssh.run_output(
+                    'cat %s' % self._devserver_output))
 
 
     @staticmethod
@@ -318,20 +357,14 @@ class OmahaDevserver(object):
         return (((ip_addr_bytes[2] << 8) | ip_addr_bytes[3] | 0x8000) & ~0x4000)
 
 
-    def get_netloc(self):
-        if not self._devserver:
-            raise error.TestError('no running omaha/devserver')
-        return '%s:%s' % (self._omaha_host, self._omaha_port)
-
-
     def kill(self):
         """Kill private devserver, wait for it to die."""
-        if not self._devserver:
+        if not self._devserver_pid:
             raise error.TestError('no running omaha/devserver')
+
         logging.info('killing omaha/devserver')
-        self._devserver.terminate()
-        self._devserver.communicate()
-        self._devserver = None
+        self._kill_devserver_pid(self._devserver_pid)
+        self._devserver_ssh.run('rm -f %s' % self._devserver_output)
 
 
 class autoupdate_EndToEndTest(test.test):
@@ -368,7 +401,7 @@ class autoupdate_EndToEndTest(test.test):
     _WAIT_FOR_MP_RECOVERY_SECONDS = 8 * 60
     _WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS = 12 * 60
     _WAIT_FOR_DOWNLOAD_STARTED_SECONDS = 2 * 60
-    _WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS = 5 * 60
+    _WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS = 10 * 60
     _WAIT_FOR_UPDATE_COMPLETED_SECONDS = 4 * 60
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
     _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
@@ -584,7 +617,7 @@ class autoupdate_EndToEndTest(test.test):
         else:
             # image_url is of the format that is in the devserver i.e.
             # <hostname>/static/BRANCH/VERSION/update.gz.
-            # We want to transform it the correct omaha_url which is
+            # We want to transform it to the correct omaha url which is
             # <hostname>/update/BRANCH/VERSION.
             image_url_dir = image_url.rpartition('/update.gz')[0]
             image_url_dir = image_url_dir.replace('/static/', '/update/')
@@ -653,7 +686,6 @@ class autoupdate_EndToEndTest(test.test):
             raise error.TestError("Can't install mp image without servo.")
 
 
-
     def run_once(self, host, test_conf, use_servo):
         """Performs a complete auto update test.
 
@@ -692,15 +724,16 @@ class autoupdate_EndToEndTest(test.test):
             logging.info('source image rootfs partition: %s',
                          source_rootfs_partition)
 
-        omaha_host = test_conf.get('omaha_host')
-        omaha_host = 'localhost' if not omaha_host else omaha_host
+        omaha_host = urlparse.urlparse(lorry_devserver.url()).hostname
         self._omaha_devserver = OmahaDevserver(
                 omaha_host, self._devserver_dir, self._host.ip,
                 target_payload_url)
 
-        omaha_netloc = self._omaha_devserver.get_netloc()
+        self._omaha_devserver.start_devserver()
+        self._omaha_devserver.wait_for_devserver_to_start()
 
         # Trigger an update (test vs MP).
+        omaha_netloc = self._omaha_devserver.get_netloc()
         if self._use_test_image:
             self._trigger_test_update(omaha_netloc)
         else:

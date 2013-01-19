@@ -23,11 +23,9 @@ To invoke this test locally with an attached servo board:
 
   run_remote_tests.sh \
           --args="<ARGLIST>" \
-          --servo \
           --remote=<DUT-IPADDR \
           --ssh_connect_timeout 2 \       # Make the test run faster
           --ssh_connection_attempts 2 \   # when not using test
-          --allow_offline_remote \        # images.
           autoupdate_EndToEndTest
 
 where ARGLIST is a whitespace separated list of the following key=value pairs.
@@ -49,15 +47,19 @@ Other values pertaining to the test environment include:
 
   servo_host=HOST         host running servod (if not set, servo won't be used)
   servo_port=PORT         servod's IP port (default: servod's default port)
-  omaha_host=HOST         host on which to spawn Omaha/devserver (default:
-                          localhost)
 
+Please note, this test spawns omaha server instances (devserver) on a devserver
+configured in your global_config using autotest's ssh mechanism. This means that
+if you are running this locally and intend to use a local devserver, you will
+need to setup your ssh keys for public key authentication e.g. create keys,
+ssh-add the private key, add the public key to your authorized keys and finally
+enable public key authentication in your sshd config.
 """
 
 TEST_CONF_KEYS = (
     'board', 'name', 'image_type', 'update_type',
     'source_release', 'target_release', 'source_branch', 'target_branch',
-    'source_image_uri', 'target_payload_uri', 'omaha_host')
+    'source_image_uri', 'target_payload_uri')
 
 
 args_dict = utils.args_to_dict(args)
@@ -72,17 +74,28 @@ if use_servo:
 test_conf = {}
 for key in TEST_CONF_KEYS:
     test_conf[key] = args_dict.get(key) or locals().get(key)
+    # Currently all args are required. #TODO(sosa) - make some optional.
+    if not test_conf[key]:
+        error.AutotestError('Must specify %s in arglist.' % key)
 
 
 def run_test(machine):
     """Execute a test configuration on a given machine."""
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test(
-            "autoupdate_EndToEndTest",
-            tag='%s_%s_%s_%s' % (
-                test_conf['board'], test_conf['name'],
-                test_conf['image_type'], test_conf['update_type']),
-            host=host, test_conf=test_conf, use_servo=use_servo)
+    try:
+        job.run_test(
+                "autoupdate_EndToEndTest",
+                tag='%s_%s_%s_%s' % (
+                        test_conf['board'], test_conf['name'],
+                        test_conf['image_type'], test_conf['update_type']),
+                host=host, test_conf=test_conf, use_servo=use_servo)
+    except Exception as e:
+        if not issubclass(type(e), error.TestBaseException):
+            error_msg = 'Received test error: %s' % e
+            logging.error(error_msg)
+            raise error.TestError(error_msg)
+
+        raise
 
 
 # Invoke parallel tests.
