@@ -1,0 +1,21 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_FMap"
+PURPOSE = "Check the existence of BIOS and EC FMap and the required FMap areas"
+CRITERIA = "This test will fail if the required FMap areas not existed"
+SUITE = "faft"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks the active BIOS and EC firmware contains the required
+FMap areas and verifies their hierarchies. It relies on flashrom to dump
+the active BIOS and EC firmware and dump_fmap to decode them.
+"""
+
+job.run_test('firmware_FMap')
