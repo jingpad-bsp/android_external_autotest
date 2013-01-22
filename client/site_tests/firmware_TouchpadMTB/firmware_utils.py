@@ -75,7 +75,7 @@ def create_log_dir(firmware_version, mode):
 def stop_power_management():
     """Stop the power daemon management."""
     ret_d = common_util.simple_system('stop -q powerd')
-    if ret_d or ret_m:
+    if ret_d:
         print 'Error in stopping powerd.'
         print 'The screen may dim during the test.'
 
@@ -83,7 +83,7 @@ def stop_power_management():
 def start_power_management():
     """Start the power daemon management."""
     ret_d = common_util.simple_system('start -q powerd')
-    if ret_d or ret_m:
+    if ret_d:
         print 'Error in starting powerd.'
         print 'The screen may not go into suspend mode.'
         print 'If this is a problem, you could reboot the machine.'
