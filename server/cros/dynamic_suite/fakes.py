@@ -4,13 +4,10 @@
 
 """Fakes for dynamic_suite-related unit tests."""
 
-import datetime
-from autotest_lib.server.cros.dynamic_suite import job_status
-
 
 class FakeControlData(object):
     """A fake parsed control file data structure."""
-    def __init__(self, suite, data, expr=False):
+    def __init__(self, suite, data, time='LONG', expr=False):
         self.string = 'text-' + data
         self.name = 'name-' + data
         self.path = None  # Will be set during 'parsing'.
@@ -19,6 +16,7 @@ class FakeControlData(object):
         self.test_type = 'Client'
         self.experimental = expr
         self.dependencies = []
+        self.time = time
 
 
 class FakeJob(object):

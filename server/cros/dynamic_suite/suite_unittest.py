@@ -45,10 +45,18 @@ class SuiteTest(mox.MoxTestBase):
         self.getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
         self.devserver = dev_server.ImageServer(self._DEVSERVER_HOST)
 
-        self.files = {'one': FakeControlData(self._TAG, 'data_one', expr=True),
-                      'two': FakeControlData(self._TAG, 'data_two'),
-                      'three': FakeControlData(self._TAG, 'data_three'),
-                      'four': FakeControlData('other', 'data_four')}
+        self.files = {'one': FakeControlData(self._TAG, 'data_one',
+                                             'FAST', expr=True),
+                      'two': FakeControlData(self._TAG, 'data_two',
+                                             'SHORT'),
+                      'three': FakeControlData(self._TAG, 'data_three',
+                                               'MEDIUM'),
+                      'four': FakeControlData('other', 'data_four',
+                                              'LONG'),
+                      'five': FakeControlData(self._TAG, 'data_five',
+                                              'LONG'),
+                      'six': FakeControlData(self._TAG, 'data_six',
+                                              'LENGTHY')}
 
         self.files_to_filter = {
             'with/deps/...': FakeControlData(self._TAG, 'gets filtered'),
@@ -107,10 +115,12 @@ class SuiteTest(mox.MoxTestBase):
         tests = Suite.find_and_parse_tests(self.getter,
                                            predicate,
                                            add_experimental=True)
-        self.assertEquals(len(tests), 3)
+        self.assertEquals(len(tests), 5)
         self.assertTrue(self.files['one'] in tests)
         self.assertTrue(self.files['two'] in tests)
         self.assertTrue(self.files['three'] in tests)
+        self.assertTrue(self.files['five'] in tests)
+        self.assertTrue(self.files['six'] in tests)
 
 
     def testStableUnstableFilter(self):
@@ -302,3 +312,18 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite.schedule_and_wait(recorder.record_entry, True)
+
+
+    def testGetTestsSortedByTime(self):
+        """Should find all tests and sorted by TIME setting."""
+        self.expect_control_file_parsing()
+        self.mox.ReplayAll()
+        # Get all tests.
+        tests = Suite.find_and_parse_tests(self.getter,
+                                           lambda d: True,
+                                           add_experimental=True)
+        self.assertEquals(len(tests), 6)
+        times = [control_data.ControlData.get_test_time_index(test.time)
+                 for test in tests]
+        self.assertTrue(all(x>=y for x, y in zip(times, times[1:])),
+                        'Tests are not ordered correctly.')

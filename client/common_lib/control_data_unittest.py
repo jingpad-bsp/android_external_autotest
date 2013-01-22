@@ -1,7 +1,9 @@
 #!/usr/bin/python
 
-import os, sys, unittest
+import os, unittest
+
 import common
+
 from autotest_lib.client.common_lib import control_data, autotemp
 
 ControlData = control_data.ControlData
@@ -134,6 +136,24 @@ class SetMethodTests(unittest.TestCase):
                           'foo', [], options)
         self.assertRaises(ValueError, cd._set_option,
                           'foo', None, options)
+
+
+    def test_get_test_time_index(self):
+        inputs = [time.upper() for time in
+                  ControlData.TEST_TIME_LIST]
+        time_min_index = [ControlData.get_test_time_index(time)
+                          for time in inputs]
+        expected_time_index = range(len(ControlData.TEST_TIME_LIST))
+        self.assertEqual(time_min_index, expected_time_index)
+
+
+    def test_get_test_time_index_failure(self):
+        def fail():
+            """Test function to raise ControlVariableException exception
+            for invalid TIME setting."""
+            index = ControlData.get_test_time_index('some invalid TIME')
+
+        self.assertRaises(control_data.ControlVariableException, fail)
 
 
 # this is so the test can be run in standalone mode

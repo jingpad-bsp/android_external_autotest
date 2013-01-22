@@ -13,8 +13,6 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
-from autotest_lib.server.cros.dynamic_suite import reporting
-from autotest_lib.server import frontend
 
 
 class Suite(object):
@@ -439,7 +437,8 @@ class Suite(object):
         @param add_experimental: add tests with experimental attribute set.
 
         @return list of ControlData objects that should be run, with control
-                file text added in |text| attribute.
+                file text added in |text| attribute. Results are sorted based
+                on the TIME setting in control file, slowest test comes first.
         """
         tests = {}
         files = cf_getter.get_control_file_list()
@@ -460,5 +459,8 @@ class Suite(object):
                 logging.warn("Skipping %s\n%s", file, e)
             except Exception, e:
                 logging.error("Bad %s\n%s", file, e)
-
-        return [test for test in tests.itervalues() if predicate(test)]
+        tests = [test for test in tests.itervalues() if predicate(test)]
+        tests.sort(key=lambda t:
+                   control_data.ControlData.get_test_time_index(t.time),
+                   reverse=True)
+        return tests

@@ -1,8 +1,9 @@
 #
 # Copyright 2008 Google Inc. Released under the GPL v2
 
-import compiler, textwrap, types
+import compiler, logging, textwrap
 
+from autotest_lib.client.common_lib import enum
 
 REQUIRED_VARS = set(['author', 'doc', 'name', 'time', 'test_type'])
 
@@ -11,6 +12,27 @@ class ControlVariableException(Exception):
 
 
 class ControlData(object):
+    # Available TIME settings in control file, the list must be in lower case
+    # and in ascending order, test running faster comes first.
+    TEST_TIME_LIST = ['fast', 'short', 'medium', 'long', 'lengthy']
+    TEST_TIME = enum.Enum(*TEST_TIME_LIST, string_values=False)
+
+
+    @staticmethod
+    def get_test_time_index(time):
+        """
+        Get the order of estimated test time, based on the TIME setting in
+        Control file. Faster test gets a lower index number.
+        """
+        try:
+            return ControlData.TEST_TIME.get_value(time.lower())
+        except AttributeError:
+            # Raise exception if time value is not a valid TIME setting.
+            error_msg = '%s is not a valid TIME.' % time
+            logging.error(error_msg)
+            raise ControlVariableException(error_msg)
+
+
     def __init__(self, vars, path, raise_warnings=False):
         # Defaults
         self.path = path
@@ -126,8 +148,7 @@ class ControlData(object):
 
 
     def set_time(self, val):
-        self._set_option('time', val,
-                         ['fast', 'short', 'medium', 'long', 'lengthy'])
+        self._set_option('time', val, ControlData.TEST_TIME_LIST)
 
 
     def set_test_class(self, val):
