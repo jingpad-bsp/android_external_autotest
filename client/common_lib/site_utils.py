@@ -172,7 +172,7 @@ def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
     for pid in pid_list:
         if base_utils.pid_is_alive(pid):
             failed_list.append('Could not kill %d for process name: %s.' % pid,
-                               get_process_name(pid))
+                               base_utils.get_process_name(pid))
     if failed_list:
         raise error.AutoservRunError('Following errors occured: %s' %
                                      failed_list, None)
