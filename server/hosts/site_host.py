@@ -528,7 +528,7 @@ class SiteHost(remote.RemoteHost):
         return utils.ping(self.hostname, tries=1, deadline=1) == 0
 
 
-    def _ping_wait_down(self, timeout):
+    def ping_wait_down(self, timeout):
         """Wait until the host no longer responds to `ping`.
 
         @param timeout Minimum time to allow before declaring the
@@ -579,7 +579,7 @@ class SiteHost(remote.RemoteHost):
         @exception TestFail The host did not go to sleep within
                             the allowed time.
         """
-        if not self._ping_wait_down(timeout=self.SLEEP_TIMEOUT):
+        if not self.ping_wait_down(timeout=self.SLEEP_TIMEOUT):
             raise error.TestFail(
                 'client failed to sleep after %d seconds' %
                     self.SLEEP_TIMEOUT)
@@ -638,7 +638,7 @@ class SiteHost(remote.RemoteHost):
         @exception TestFail The host did not shut down within the
                             allowed time.
         """
-        if not self._ping_wait_down(timeout=self.SHUTDOWN_TIMEOUT):
+        if not self.ping_wait_down(timeout=self.SHUTDOWN_TIMEOUT):
             raise error.TestFail(
                 'client failed to shut down after %d seconds' %
                     self.SHUTDOWN_TIMEOUT)
