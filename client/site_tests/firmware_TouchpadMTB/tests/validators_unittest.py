@@ -24,7 +24,7 @@ from validators import (CountPacketsValidator,
                         PhysicalClickValidator,
                         PinchValidator,
                         RangeValidator,
-                        SampleRateValidator,
+                        ReportRateValidator,
                         StationaryFingerValidator,
 )
 
@@ -438,14 +438,14 @@ class NoLevelJumpValidatorTest(BaseValidatorTest):
             self.assertTrue(self._get_score(filename, device) == 1.0)
 
 
-class SampleRateValidatorTest(BaseValidatorTest):
-    """Unit tests for SampleRateValidator class."""
+class ReportRateValidatorTest(BaseValidatorTest):
+    """Unit tests for ReportRateValidator class."""
     def setUp(self):
-        super(SampleRateValidatorTest, self).setUp()
-        self.criteria = conf.sample_rate_criteria
+        super(ReportRateValidatorTest, self).setUp()
+        self.criteria = conf.report_rate_criteria
 
     def _get_score(self, filename, device):
-        validator = SampleRateValidator(self.criteria, device=device)
+        validator = ReportRateValidator(self.criteria, device=device)
         packets = parse_tests_data(filename)
         vlog = validator.check(packets)
         score = vlog.get_score()

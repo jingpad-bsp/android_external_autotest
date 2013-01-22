@@ -25,7 +25,7 @@ one_finger_tracking
   NoGapValidator                     :     0.74      0.24        12
   NoReversedMotionBothEndsValidator  :     0.68      0.34        12
   NoReversedMotionMiddleValidator    :     1.00      1.00        12
-  SampleRateValidator                :     1.00      1.00        12
+  ReportRateValidator                :     1.00      1.00        12
 one_finger_to_edge
   CountTrackingIDValidator           :     1.00      1.00         4
   LinearityBothEndsValidator         :     0.88      0.89         4

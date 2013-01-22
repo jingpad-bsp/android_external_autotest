@@ -751,16 +751,16 @@ class Mtb:
         list_x, list_y = self.get_x_y(target_slot)
         return len(list_x)
 
-    def get_sample_rate(self):
-        """Get the sample rate of the packets in Hz."""
+    def get_report_rate(self):
+        """Get the report rate of the packets in Hz."""
         first_sync_event = self.packets[0][-1]
         first_sync_time = first_sync_event.get(MTB.EV_TIME)
         last_sync_event = self.packets[-1][-1]
         last_sync_time = last_sync_event.get(MTB.EV_TIME)
         duration = last_sync_time - first_sync_time
         num_packets = len(self.packets) - 1
-        sample_rate = float(num_packets) / duration
-        return sample_rate
+        report_rate = float(num_packets) / duration
+        return report_rate
 
     def _call_check_event_func(self, event, expected_value, check_event_result,
                                check_event_func):

@@ -645,26 +645,26 @@ class NoLevelJumpValidator(BaseValidator):
         return self.log
 
 
-class SampleRateValidator(BaseValidator):
-    """Validator to check the sample rate.
+class ReportRateValidator(BaseValidator):
+    """Validator to check the report rate.
 
     Example:
-        To verify that the sample rate is around 80 Hz. It gets 0 points
-        if the sample rate drops below 60 Hz.
-          SampleRateValidator('== 80 ~ -20')
+        To verify that the report rate is around 80 Hz. It gets 0 points
+        if the report rate drops below 60 Hz.
+          ReportRateValidator('== 80 ~ -20')
     """
 
     def __init__(self, criteria_str, mf=None, device=None):
         name = self.__class__.__name__
-        super(SampleRateValidator, self).__init__(criteria_str, mf, device,
+        super(ReportRateValidator, self).__init__(criteria_str, mf, device,
                                                   name)
 
     def check(self, packets, variation=None):
-        """The Sample rate should be within the specified range."""
+        """The Report rate should be within the specified range."""
         self.init_check(packets)
-        # Get the sample rate
-        sample_rate = self.packets.get_sample_rate()
-        msg = 'Sample rate: %.2f Hz'
-        self.log_details(msg % sample_rate)
-        self.log_score(self.fc.mf.grade(sample_rate))
+        # Get the report rate
+        report_rate = self.packets.get_report_rate()
+        msg = 'Report rate: %.2f Hz'
+        self.log_details(msg % report_rate)
+        self.log_score(self.fc.mf.grade(report_rate))
         return self.log
