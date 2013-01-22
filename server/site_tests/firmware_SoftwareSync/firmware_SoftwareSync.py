@@ -4,7 +4,6 @@
 
 import logging
 
-from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -15,23 +14,12 @@ class firmware_SoftwareSync(FAFTSequence):
     version = 1
 
 
-    def ensure_rw(self):
-        """Ensure firmware A is not in RO-normal mode."""
-        flags = self.faft_client.bios.get_preamble_flags('a')
-        if flags & vboot.PREAMBLE_USE_RO_NORMAL:
-            flags = flags ^ vboot.PREAMBLE_USE_RO_NORMAL
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.bios.set_preamble_flags,
-                    ('a', flags))
-            })
-
-
     def setup(self, dev_mode=False):
         super(firmware_SoftwareSync, self).setup()
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
-        self.ensure_rw()
+        self.setup_rw_boot()
 
 
     def cleanup(self):

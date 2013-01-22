@@ -1089,6 +1089,24 @@ class FAFTSequence(ServoTest):
                 })
 
 
+    def setup_rw_boot(self, section='a'):
+        """Make sure firmware is in RW-boot mode.
+
+        If the given firmware section is in RO-boot mode, turn off the RO-boot
+        flag and reboot DUT into RW-boot mode.
+
+        Args:
+          section: A firmware section, either 'a' or 'b'.
+        """
+        flags = self.faft_client.bios.get_preamble_flags(section)
+        if flags & vboot.PREAMBLE_USE_RO_NORMAL:
+            flags = flags ^ vboot.PREAMBLE_USE_RO_NORMAL
+            self.run_faft_step({
+                'userspace_action': (self.faft_client.bios.set_preamble_flags,
+                    (section, flags))
+            })
+
+
     def setup_kernel(self, part):
         """Setup for kernel test.
 
