@@ -13,6 +13,8 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
+from autotest_lib.server.cros.dynamic_suite import reporting
+from autotest_lib.server import frontend
 
 
 class Suite(object):
@@ -107,7 +109,8 @@ class Suite(object):
     def create_from_name(name, build, devserver, cf_getter=None, afe=None,
                          tko=None, pool=None, results_dir=None,
                          max_runtime_mins=24*60,
-                         version_prefix=constants.VERSION_PREFIX):
+                         version_prefix=constants.VERSION_PREFIX,
+                         file_bugs=False):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -132,6 +135,8 @@ class Suite(object):
                                build name to form a label which the DUT needs
                                to be labeled with to be eligible to run this
                                test.
+        @param file_bugs: True if we should file bugs on test failures for
+                          this suite run.
         @return a Suite instance.
         """
         if cf_getter is None:
@@ -139,7 +144,7 @@ class Suite(object):
 
         return Suite(Suite.name_in_tag_predicate(name),
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix)
+                     max_runtime_mins, version_prefix, file_bugs)
 
 
     @staticmethod
@@ -147,7 +152,8 @@ class Suite(object):
                                        cf_getter=None, afe=None, tko=None,
                                        pool=None, results_dir=None,
                                        max_runtime_mins=24*60,
-                                       version_prefix=constants.VERSION_PREFIX):
+                                       version_prefix=constants.VERSION_PREFIX,
+                                       file_bugs=False):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -173,6 +179,8 @@ class Suite(object):
                                build name to form a label which the DUT needs
                                to be labeled with to be eligible to run this
                                test.
+        @param file_bugs: True if we should file bugs on test failures for
+                          this suite run.
         @return a Suite instance.
         """
         if cf_getter is None:
@@ -185,12 +193,13 @@ class Suite(object):
 
         return Suite(in_tag_not_in_blacklist_predicate,
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix)
+                     max_runtime_mins, version_prefix, file_bugs)
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
                  pool=None, results_dir=None, max_runtime_mins=24*60,
-                 version_prefix=constants.VERSION_PREFIX):
+                 version_prefix=constants.VERSION_PREFIX,
+                 file_bugs=False):
         """
         Constructor
 
@@ -228,6 +237,8 @@ class Suite(object):
                                                  add_experimental=True)
         self._max_runtime_mins = max_runtime_mins
         self._version_prefix = version_prefix
+        self._file_bugs = file_bugs
+
 
     @property
     def tests(self):
@@ -350,6 +361,8 @@ class Suite(object):
                  prototype:
                    record(base_job.status_log_entry)
         """
+        if self._file_bugs:
+            bug_reporter = reporting.Reporter()
         try:
             for result in job_status.wait_for_results(self._afe,
                                                       self._tko,
@@ -358,6 +371,19 @@ class Suite(object):
                 if (self._results_dir and
                     job_status.is_for_infrastructure_fail(result)):
                     self._remember_provided_job_id(result)
+
+                # I'd love to grab the actual tko test object here, as that
+                # includes almost all of the needed information: test name,
+                # status, reason, etc. However, doing so would cause a
+                # bunch of database traffic to grab data that we already
+                # have laying around in memory across several objects here.
+                worse = result.is_worse_than(job_status.Status("WARN", ""))
+                if self._file_bugs and worse:
+                    failure = reporting.TestFailure(build=self._build,
+                                                    suite=self._tag,
+                                                    test=result.test_name,
+                                                    reason=result.reason)
+                    bug_reporter.report(failure)
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,

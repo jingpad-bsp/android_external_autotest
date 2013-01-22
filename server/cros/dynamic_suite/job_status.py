@@ -575,3 +575,8 @@ class Status(object):
     @property
     def owner(self):
         return self._owner
+
+
+    @property
+    def reason(self):
+        return self._reason
