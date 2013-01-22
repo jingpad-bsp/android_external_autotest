@@ -68,7 +68,6 @@ class FMap(object):
     def __init__(self, target=None):
         self._target = target or TARGET_BIOS
         self._areas = None
-        self._errors = []
 
 
     def is_flash_available(self):
@@ -85,7 +84,7 @@ class FMap(object):
         """
         if not self._areas:
             with NamedTemporaryFile(prefix='fw_%s_' % self._target) as f:
-                utils.system("flashrom %s -r %s" %  (
+                utils.system("flashrom %s -r %s -i FMAP" % (
                         self._TARGET_PROGRAMMERS[self._target],
                         f.name))
                 lines = utils.system_output("dump_fmap -p %s" % f.name)
