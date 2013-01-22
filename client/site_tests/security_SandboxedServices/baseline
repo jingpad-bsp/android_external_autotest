@@ -15,7 +15,7 @@ metrics_daemon,root,No,No,No,No,No
 disks,root,No,No,No,No,No
 update_engine,root,No,No,No,No,No
 bluetoothd,bluetooth,Yes,Yes,No,Yes,No
-debugd,debugd,No,No,No,No,No
+debugd,root,No,No,No,No,No
 cras,cras,Yes,Yes,No,No,No
 tcsd,tss,No,No,No,No,No
 cromo,cromo,No,No,No,No,No
@@ -26,3 +26,4 @@ mtpd,mtp,Yes,Yes,No,No,Yes
 tlsdated,root,No,No,No,No,No
 lid_touchpad_he,root,No,No,No,No,No
 thermal.sh,root,No,No,No,No,No
+daisydog,watchdog,Yes,Yes,No,No,No
