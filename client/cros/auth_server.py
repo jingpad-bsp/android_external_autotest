@@ -348,10 +348,6 @@ function onLoad() {
 
     def _ensure_oauth2_params_valid(self, handler, url_args):
         self._ensure_params_provided(handler, url_args, ['scope', 'client_id'])
-        if constants.OAUTH2_CLIENT_ID != _value(url_args['client_id']):
-            raise error.TestError(
-                '%s called with incorrect params.' % handler.path)
-
 
     def _oauth2_get_auth_code_responder(self, handler, url_args):
         self._log(handler, url_args)
