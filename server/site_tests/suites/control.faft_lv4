@@ -6,7 +6,7 @@ from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
 NAME = "FAFT LV4"
-TIME = "LONG"
+TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"

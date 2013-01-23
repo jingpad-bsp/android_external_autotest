@@ -20,7 +20,7 @@ This test will fail if following requrements are met:
 2. Firmware datakey version does not match original datakey version.
 """
 SUITE = "faft_update"
-TIME = "LONG"
+TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
 TEST_TYPE = "server"
