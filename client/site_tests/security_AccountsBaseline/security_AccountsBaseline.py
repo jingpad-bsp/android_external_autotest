@@ -24,6 +24,8 @@ class security_AccountsBaseline(test.test):
 
 
     def run_once(self):
+        failed = False
+
         self.capture_files()
         # Match users
         passwd_baseline = self.load_path(os.path.join(
@@ -31,19 +33,28 @@ class security_AccountsBaseline(test.test):
         passwd_actual = self.load_path('/etc/passwd')
 
         if len(passwd_actual) != len(passwd_baseline):
-            raise error.TestFail('User baseline mismatch. '
+            failed = True
+            logging.error('User baseline mismatch. '
                 'Expected: %d users. Got: %d.' % (
                 len(passwd_baseline), len(passwd_actual)))
         for expected in passwd_baseline:
             got = [x for x in passwd_actual if x[0] == expected[0]]
             if not got:
-                raise error.TestFail('No entry for %s' % expected[0])
+                failed = True
+                logging.error('No passwd entry for %s' % expected[0])
+                continue
             got = got[0]
             # Match uid (3rd field) and gid (4th field).
             if (expected[2], expected[3]) != (got[2], got[3]):
-                raise error.TestFail(
+                failed = True
+                logging.error(
                     'Expected uid/gid (%s, %s) for user %s. Got (%s, %s)' %
                     (expected[2], expected[3], got[0], got[2], got[3]))
+        for actual in passwd_actual:
+            got = [x for x in passwd_baseline if x[0] == actual[0]]
+            if not got:
+                failed = True
+                logging.error('Unexpected passwd entry for %s' % actual[0])
 
         # Match groups
         group_baseline = self.load_path(os.path.join(
@@ -51,19 +62,33 @@ class security_AccountsBaseline(test.test):
         group_actual = self.load_path('/etc/group')
 
         if len(group_actual) != len(group_baseline):
-            raise error.TestFail('Group baseline mismatch. '
+            failed = True
+            logging.error('Group baseline mismatch. '
                 'Expected: %d groups. Got: %d.' % (
                 len(group_baseline), len(group_actual)))
         for expected in group_baseline:
             got = [x for x in group_actual if x[0] == expected[0]]
             if not got:
-                raise error.TestFail('No entry for %s' % expected[0])
+                failed = True
+                logging.error('No group entry for %s' % expected[0])
+                continue
             got = got[0]
             # Match gid (3rd field) and members (4th field. comma separated).
             if expected[2] != got[2]:
-                raise error.TestFail('Expected id %s for group %s). Got %s' %
+                failed = True
+                logging.error('Expected id %s for group %s). Got %s' %
                     (expected[2], expected[0], got[2]))
             if set(expected[3].split(',')) != set(got[3].split(',')):
-                raise error.TestFail(
+                failed = True
+                logging.error(
                     'Expected members %s for group %s. Got %s' % (
                     expected[3], expected[0], got[3]))
+        for actual in group_actual:
+            got = [x for x in group_baseline if x[0] == actual[0]]
+            if not got:
+                failed = True
+                logging.error('Unexpected group entry for %s' % actual[0])
+
+        # Fail the test after all mismatches have been reported.
+        if failed:
+            raise error.TestFail('Baseline mismatch.')
