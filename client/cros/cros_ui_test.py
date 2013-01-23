@@ -360,9 +360,19 @@ class UITest(pyauto_test.PyAutoTest):
       screenshot_file = os.path.join(
           self.resultsdir, '%s-%d.%s' % (fname_prefix, next_index, format))
       logging.info('Saving screenshot to %s.' % screenshot_file)
-      utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
-                   '/usr/local/bin/import -window root -depth 8 %s' %
-                   screenshot_file)
+
+      old_exc_type = sys.exc_info()[0]
+      try:
+          utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
+                       '/usr/local/bin/import -window root -depth 8 %s' %
+                       screenshot_file)
+      except Exception as err:
+          # Do not raise an exception if the screenshot fails while processing
+          # another exception.
+          if old_exc_type is None:
+              raise
+          logging.error(err)
+
       return screenshot_file
 
 
