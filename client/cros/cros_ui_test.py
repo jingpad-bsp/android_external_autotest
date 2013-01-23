@@ -412,12 +412,14 @@ class UITest(pyauto_test.PyAutoTest):
                                      'Please check the file named %s.png '
                                      'located in the results folder.' %
                                      screenshot_name)
-        except:
-            # If Login() times out, update error messages.
-            screenshot_name = 'login-timeout-fail-screenshot'
-            raise error.TestFail('Login timed out. Please check the file '
-                                 'named  %s.png located in the results '
-                                 'folder.' % screenshot_name)
+        except Exception as err:
+            if isinstance(err, error.AutotestError):
+                raise  # Do not modify our own errors.
+
+            screenshot_name = 'login-fail-screenshot'
+            raise error.TestFail('Exception raised during login: %s. See the '
+                                 'file named %s.png in the results folder.' %
+                                 (err, screenshot_name))
         finally:
             self.take_screenshot(fname_prefix=screenshot_name)
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')
