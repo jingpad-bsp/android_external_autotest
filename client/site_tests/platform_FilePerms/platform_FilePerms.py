@@ -56,7 +56,7 @@ class platform_FilePerms(test.test):
             'options': standard_rw_options},
         '/sys/fs/fuse/connections': { # crosbug.com/32631
             'type': 'fusectl',
-            'options': ['rw', 'relatime']},
+            'options': standard_rw_options},
         '/sys/kernel/debug': {
             'type': 'debugfs',
             'options': standard_rw_options},
