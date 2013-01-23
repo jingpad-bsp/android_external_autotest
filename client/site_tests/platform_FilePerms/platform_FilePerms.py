@@ -12,7 +12,7 @@ import re
 import stat
 import subprocess
 
-from autotest_lib.client.bin import utils, test
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 class platform_FilePerms(test.test):
@@ -57,9 +57,9 @@ class platform_FilePerms(test.test):
         '/sys/fs/fuse/connections': { # crosbug.com/32631
             'type': 'fusectl',
             'options': ['rw', 'relatime']},
-        '/sys/kernel/debug': { # crosbug.com/32632
+        '/sys/kernel/debug': {
             'type': 'debugfs',
-            'options': ['rw', 'relatime']},
+            'options': standard_rw_options},
         '/tmp': {'type': 'tmpfs', 'options': standard_rw_options},
         '/tmp/cgroup/cpu': { # crosbug.com/32633
             'type': 'cgroup',
