@@ -687,6 +687,9 @@ class _BaseRun(object):
                 stderr_read += len(self._strip_stderr_prologue(result.stderr))
 
                 if result.exit_status is not None:
+                    # TODO (crosbug.com/38224)- sbasi: Remove extra logging.
+                    logging.debug('Result exit status is %d.',
+                                  result.exit_status)
                     return result
                 elif not self.host.wait_up(client_disconnect_timeout):
                     raise error.AutoservSSHTimeout(

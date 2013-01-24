@@ -6,7 +6,10 @@ import sys, os, signal, time, subprocess, fcntl
 logdir = sys.argv[1]
 stdout_start = int(sys.argv[2])  # number of bytes we can skip on stdout
 stderr_start = int(sys.argv[3])  # nubmer of bytes we can skip on stderr
+# TODO (crosbug.com/38224)- sbasi: Remove extra logging.
+stderr = open(os.path.join(logdir, 'stderr'), 'a', 0)
 
+print >> stderr, 'Entered autotestd_monitor.'
 # if any of our tail processes die, the monitor should die too
 def kill_self(signum, frame):
     os.kill(os.getpid(), signal.SIGTERM)
@@ -26,6 +29,8 @@ def launch_tail(filename, outstream, start):
 stdout_pump = launch_tail('stdout', sys.stdout, stdout_start)
 stderr_pump = launch_tail('stderr', sys.stderr, stderr_start)
 
+print >> stderr, 'Finished launching tail subprocesses.'
+
 # wait for logdir/started to exist to be sure autotestd is started
 start_time = time.time()
 started_file_path = os.path.join(logdir, 'started')
@@ -34,9 +39,12 @@ while not os.path.exists(started_file_path):
     if time.time() - start_time >= 30:
         raise Exception("autotestd failed to start in %s" % logdir)
 
+print >> stderr, 'Finished waiting on autotestd to start.'
+
 # watch the exit code file for an exit
 exit_code_file = open(os.path.join(logdir, 'exit_code'))
 fcntl.flock(exit_code_file, fcntl.LOCK_EX)
+print >> stderr, 'Got lock of exit_code_file.'
 try:
     exit_code = exit_code_file.read()
     if len(exit_code) != 4:
@@ -46,9 +54,12 @@ try:
 finally:
     fcntl.flock(exit_code_file, fcntl.LOCK_UN)
     exit_code_file.close()
+    print >> stderr, 'Released lock of exit_code_file and closed it.'
 
 # tail runs in 1s polling loop, so give them a chance to finish
 time.sleep(2)
+
+print >> stderr, 'Killing child processes.'
 # clear the SIGCHLD handler so that killing the tails doesn't kill us
 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 os.kill(stdout_pump.pid, signal.SIGTERM)
