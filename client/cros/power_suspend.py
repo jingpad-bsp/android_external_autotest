@@ -253,7 +253,9 @@ class Suspender(object):
             for _ in xrange(10):
                 self._log_reader.set_start_by_current()
                 try:
-                    board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 2)
+                    # TODO(jwerner): reduce default to 2 after all boards that
+                    # need it have more accurate timing values
+                    board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 4)
                     alarm = self._suspend(duration + board_delay)
                 except sys_power.EarlyWakeupError:
                     # might be a SuspendAbort... we check for it ourselves below
