@@ -160,8 +160,12 @@ class Task(object):
         # Since we expect __hash__() and other comparitor methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
         # the string representation of this object.
-        self._str = '%s: %s on %s with pool %s, across %d machines' % (
-            self.__class__.__name__, suite, branch_specs, pool, num)
+        if num is None:
+            numStr = '[Default num]'
+        else:
+            numStr = '%d' % num
+        self._str = '%s: %s on %s with pool %s, across %s machines' % (
+            self.__class__.__name__, suite, branch_specs, pool, numStr)
 
 
     def _FitsSpec(self, branch):
