@@ -2,7 +2,7 @@
 
 import logging, os, shutil, sys, tempfile, time, urllib2
 import subprocess, re
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import revision_control, utils
 
 _READ_SIZE = 64*1024
 _MAX_PACKAGE_SIZE = 100*1024*1024
@@ -75,7 +75,7 @@ class ExternalPackage(object):
     class __metaclass__(type):
         """Any time a subclass is defined, add it to our list."""
         def __init__(mcs, name, bases, dict):
-            if name != 'ExternalPackage':
+            if name != 'ExternalPackage' and not name.startswith('_'):
                 mcs.subclasses.append(mcs)
 
 
@@ -313,6 +313,17 @@ class ExternalPackage(object):
         return os.path.join(temp_dir, 'lib', python_xy, 'site-packages')
 
 
+    def _rsync (self, temp_site_dir, install_dir):
+        """Rsync contents. """
+        status = system("rsync -r '%s/' '%s/'" %
+                        (os.path.normpath(temp_site_dir),
+                         os.path.normpath(install_dir)))
+        if status:
+            logging.error('%s rsync to install_dir failed.', self.name)
+            return False
+        return True
+
+
     def _install_using_setup_py_and_rsync(self, install_dir,
                                           setup_py='setup.py',
                                           temp_dir=None):
@@ -354,12 +365,7 @@ class ExternalPackage(object):
             else:
                 temp_site_dir = temp_dir
 
-            status = system("rsync -r '%s/' '%s/'" %
-                            (temp_site_dir, install_dir))
-            if status:
-                logging.error('%s rsync to install_dir failed.' % self.name)
-                return False
-            return True
+            return self._rsync(temp_site_dir, install_dir)
         finally:
             shutil.rmtree(temp_dir)
 
@@ -748,3 +754,107 @@ class GVizAPIPackage(ExternalPackage):
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
                         ExternalPackage._build_and_install_current_dir_noegg)
+
+
+class _ExternalGitRepo(ExternalPackage):
+    """
+    Parent class for any package which needs to pull a git repo.
+
+    This class inherits from ExternalPackage only so we can sync git
+    repos through the build_externals script. We do not reuse any of
+    ExternalPackage's other methods. Any package that needs a git repo
+    should subclass this and override build_and_install or fetch as
+    they see appropriate.
+    """
+
+    os_requirements = {'/usr/bin/git' : 'git-core'}
+
+    def is_needed(self, unused_install_dir):
+        """Tell build_externals that we need to fetch."""
+        # TODO(beeps): check if we're already upto date.
+        return True
+
+
+    def build_and_install(self, unused_install_dir):
+        """
+        Fall through method to install a package.
+
+        Overwritten in base classes to pull a git repo.
+        """
+        raise NotImplementedError
+
+
+    def fetch(self, unused_dest_dir):
+        """Fallthrough method to fetch a package."""
+        return True
+
+
+class HdctoolsRepo(_ExternalGitRepo):
+    """Clones or updates the hdctools repo."""
+
+    temp_hdctools_dir = tempfile.mktemp(suffix='hdctools')
+    _GIT_URL = ('https://git.chromium.org/git/'
+                'chromiumos/third_party/hdctools')
+
+    def fetch(self, unused_dest_dir):
+        """
+        Fetch repo to a temporary location.
+
+        We use an intermediate temp directory to stage our
+        installation because we only care about the servo package.
+        If we can't get at the top commit hash after fetching
+        something is wrong. This can happen when we've cloned/pulled
+        an empty repo. Not something we expect to do.
+
+        @parma unused_dest_dir: passed in because we inherit from
+            ExternalPackage.
+
+        @return: True if repo sync was successful.
+        """
+        git_repo = revision_control.GitRepo(
+                        self.temp_hdctools_dir,
+                        self._GIT_URL,
+                        None,
+                        self.temp_hdctools_dir)
+        git_repo.fetch_and_reset_or_clone()
+
+        if git_repo.get_latest_commit_hash():
+            return True
+        return False
+
+
+    def build_and_install(self, install_dir):
+        """Reach into the hdctools repo and rsync only the servo directory."""
+
+        servo_dir = os.path.join(self.temp_hdctools_dir, 'servo')
+        if not os.path.exists(servo_dir):
+            return False
+
+        rv = self._rsync(servo_dir, os.path.join(install_dir, 'servo'))
+        shutil.rmtree(self.temp_hdctools_dir)
+        return rv
+
+
+class ChromiteRepo(_ExternalGitRepo):
+    """Clones or updates the chromite repo."""
+
+    _GIT_URL = ('https://git.chromium.org/git/'
+                'chromiumos/chromite')
+
+    def build_and_install(self, install_dir):
+        """
+        Clone if the repo isn't initialized, pull clean bits if it is.
+
+        Unlike it's hdctools counterpart the chromite repo clones master
+        directly into site-packages. It doesn't use an intermediate temp
+        directory because it doesn't need installastion.
+
+        @param install_dir: destination directory for chromite installation.
+        """
+        local_chromite_dir = os.path.join(install_dir, 'chromite')
+        git_repo = revision_control.GitRepo(local_chromite_dir, self._GIT_URL)
+        git_repo.fetch_and_reset_or_clone()
+
+        if git_repo.get_latest_commit_hash():
+            return True
+        return False

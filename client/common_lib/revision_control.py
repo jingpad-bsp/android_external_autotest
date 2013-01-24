@@ -10,6 +10,34 @@ import error, utils
 from autotest_lib.client.bin import os_dep
 
 
+class RevisionControlError(Exception):
+    """Local exception to be raised by code in this file."""
+
+
+class GitError(RevisionControlError):
+    """Exceptions raised for general git errors."""
+
+
+class GitCloneError(GitError):
+    """Exceptions raised for git clone errors."""
+
+
+class GitFetchError(GitError):
+    """Exception raised for git fetch errors."""
+
+
+class GitPullError(GitError):
+    """Exception raised for git pull errors."""
+
+
+class GitResetError(GitError):
+    """Exception raised for git reset errors."""
+
+
+class GitCommitError(GitError):
+    """Exception raised for git commit errors."""
+
+
 class GitRepo(object):
     """
     This class represents a git repo.
@@ -19,7 +47,24 @@ class GitRepo(object):
     implementation classes.
     """
 
-    def __init__(self, repodir, giturl, weburl=None):
+    def __init__(self, repodir, giturl, weburl=None, abs_work_tree=None):
+        """
+        Initialized reposotory.
+
+        @param repodir: destination repo directory.
+        @param giturl: master repo git url.
+        @param weburl: a web url for the master repo.
+        @param abs_work_tree: work tree of the git repo. In the
+            absence of a work tree git manipulations will occur
+            in the current working directory for non bare repos.
+            In such repos the -git-dir option should point to
+            the .git directory and -work-tree should point to
+            the repos working tree.
+        Note: a bare reposotory is one which contains all the
+        working files (the tree) and the other wise hidden files
+        (.git) in the same directory. This class assumes non-bare
+        reposotories.
+        """
         if repodir is None:
             raise ValueError('You must provide a path that will hold the'
                              'git repository')
@@ -35,13 +80,25 @@ class GitRepo(object):
         self.gitpath = utils.sh_escape(os.path.join(self.repodir,'.git'))
 
         # Find git base command. If not found, this will throw an exception
-        git_base_cmd = os_dep.command('git')
-
-        # base git command , pointing to gitpath git dir
-        self.gitcmdbase = '%s --git-dir=%s' % (git_base_cmd, self.gitpath)
+        self.git_base_cmd = os_dep.command('git')
+        self.git_dir = giturl
+        self.work_tree = abs_work_tree
 
         # default to same remote path as local
         self._build = os.path.dirname(self.repodir)
+
+
+    def gen_git_cmd_base(self):
+        """
+        The command we use to run git cannot be set. It is reconstructed
+        on each access from it's component variables. This is it's getter.
+        """
+        # base git command , pointing to gitpath git dir
+        gitcmdbase = '%s --git-dir=%s' % (self.git_base_cmd,
+                                          self.gitpath)
+        if self.work_tree:
+            gitcmdbase += ' --work-tree=%s' % self.work_tree
+        return gitcmdbase
 
 
     def _run(self, command, timeout=None, ignore_status=False):
@@ -66,8 +123,109 @@ class GitRepo(object):
                 exceptions if the command did return exit code !=0 (True), or
                 not supress them (False).
         """
-        cmd = '%s %s' % (self.gitcmdbase, cmd)
+        cmd = '%s %s' % (self.gen_git_cmd_base(), cmd)
         return self._run(cmd, ignore_status=ignore_status)
+
+
+    def clone(self):
+        """
+        Clones a repo using giturl and repodir.
+
+        Since we're cloning the master repo we don't have a work tree yet,
+        make sure the getter of the gitcmd doesn't think we do by setting
+        work_tree to None.
+
+        @raises GitCloneError: if cloning the master repo fails.
+        """
+        logging.info('Cloning git repo %s', self.giturl)
+        cmd = 'clone %s %s ' % (self.giturl, self.repodir)
+        abs_work_tree = self.work_tree
+        self.work_tree = None
+        try:
+            rv = self.gitcmd(cmd, True)
+            if rv.exit_status != 0:
+                logging.error(rv.stderr)
+                raise GitCloneError('Failed to clone git url', rv)
+            else:
+                logging.info(rv.stdout)
+        finally:
+            self.work_tree = abs_work_tree
+
+
+    def pull(self):
+        """
+        Pulls into repodir using giturl.
+
+        @raises GitPullError: if pulling from giturl fails.
+        """
+        logging.info('Updating git repo %s', self.giturl)
+        cmd = 'pull %s ' % self.giturl
+        rv = self.gitcmd(cmd, True)
+        if rv.exit_status != 0:
+            logging.error(rv.stderr)
+            e_msg = 'Failed to pull git repo data'
+            raise GitPullError(e_msg, rv)
+
+
+    def commit(self, msg='default'):
+        """
+        Commit changes to repo with the supplied commit msg.
+
+        @param msg: A message that goes with the commit.
+        """
+        rv = self.gitcmd('commit -a -m %s' % msg)
+        if rv.exit_status != 0:
+            logging.error(rv.stderr)
+            raise revision_control.GitCommitError('Unable to commit', rv)
+
+
+    def reset_head(self):
+        """
+        Reset repo to HEAD@{0} by running git reset --hard HEAD.
+
+        @raises GitResetError: if we fails to reset HEAD.
+        """
+        logging.info('Resetting head on repo %s', self.repodir)
+        rv = self.gitcmd('reset --hard HEAD')
+        if rv.exit_status != 0:
+            logging.error(rv.stderr)
+            e_msg = 'Failed to reset HEAD'
+            raise GitResetError(e_msg, rv)
+
+
+    def fetch_remote(self):
+        """
+        Fetches all files from the remote but doesn't reset head.
+
+        @raises GitFetchError: if we fail to fetch all files from giturl.
+        """
+        logging.info('fetching from repo %s', self.giturl)
+        rv = self.gitcmd('fetch --all')
+        if rv.exit_status != 0:
+            logging.error(rv.stderr)
+            e_msg = 'Failed to fetch from %s' % self.giturl
+            raise GitFetchError(e_msg, rv)
+
+
+    def fetch_and_reset_or_clone(self):
+        """
+        Fetch all files from master and reset head, clone master if
+        git-dir isn't a  repo yet. This will effectively produce an
+        exact copy of the master, squashing local changes so we don't
+        have to bother about merge conflicts. If however, the repo
+        is empty (i.e the dependent repo cloned an empty master and
+        never pulled subsequently), we won't be able to reset HEAD;
+        so do a pull, since we don't have to worry about merge
+        conflicts anyway.
+        """
+        if self.is_repo_initialized():
+            if self.is_repo_empty():
+                self.pull()
+            else:
+                self.fetch_remote()
+                self.reset_head()
+        else:
+            self.clone()
 
 
     def get(self, **kwargs):
@@ -82,26 +240,12 @@ class GitRepo(object):
         """
         if not self.is_repo_initialized():
             # this is your first time ...
-            logging.info('Cloning git repo %s', self.giturl)
-            cmd = 'clone %s %s ' % (self.giturl, self.repodir)
-            rv = self.gitcmd(cmd, True)
-            if rv.exit_status != 0:
-                logging.error(rv.stderr)
-                raise error.CmdError('Failed to clone git url', rv)
-            else:
-                logging.info(rv.stdout)
-
-        else:
+            self.clone()
+        elif self.is_out_of_date():
             # exiting repo, check if we're up-to-date
-            if self.is_out_of_date():
-                logging.info('Updating git repo %s', self.giturl)
-                rv = self.gitcmd('pull', True)
-                if rv.exit_status != 0:
-                    logging.error(rv.stderr)
-                    e_msg = 'Failed to pull git repo data'
-                    raise error.CmdError(e_msg, rv)
-            else:
-                logging.info('repo up-to-date')
+            self.pull()
+        else:
+            logging.info('repo up-to-date')
 
         # remember where the source is
         self.source_material = self.repodir
@@ -149,16 +293,50 @@ class GitRepo(object):
 
     def is_repo_initialized(self):
         """
-        Return whether the git repo was already initialized (has a top commit).
+        Return whether the git repo was already initialized.
 
-        @return: False, if the repo was initialized, True if it was not.
+        Counts objects in .git directory, since these will exist even if the
+        repo is empty. Assumes non-bare reposotories like the rest of this file.
+
+        @return: True if the repo is initialized.
         """
-        cmd = 'log --max-count=1'
+        cmd = 'count-objects'
         rv = self.gitcmd(cmd, True)
         if rv.exit_status == 0:
             return True
 
         return False
+
+
+    def get_latest_commit_hash(self):
+        """
+        Get the commit hash of the latest commit in the repo.
+
+        We don't raise an exception if no commit hash was found as
+        this could be an empty repository. The caller should notice this
+        methods return value and raise one appropriately.
+
+        @return: The first commit hash if anything has been committed.
+        """
+        cmd = 'rev-list -n 1 --all'
+        rv = self.gitcmd(cmd, True)
+        if rv.exit_status == 0:
+            return rv.stdout
+        return None
+
+
+    def is_repo_empty(self):
+        """
+        Checks for empty but initialized repos.
+
+        eg: we clone an empty master repo, then don't pull
+        after the master commits.
+
+        @return True if the repo has no commits.
+        """
+        if self.get_latest_commit_hash():
+            return False
+        return True
 
 
     def get_revision(self):
