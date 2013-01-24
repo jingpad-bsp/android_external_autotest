@@ -1,7 +1,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import glob, logging, os, time
+import glob, logging, os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import base_utils, error
@@ -31,6 +31,10 @@ def get_percent_difference(file1, file2):
 class graphics_VTSwitch(cros_ui_test.UITest):
     version = 1
     # TODO(crosbug.com/36417): Need to handle more than one display screen.
+
+    def setup(self):
+        self.job.setup_dep(['gfxtest'])
+
 
     def run_once(self,
                  num_iterations=2,
