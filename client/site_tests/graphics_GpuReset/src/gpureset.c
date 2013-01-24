@@ -261,6 +261,7 @@ int main(int argc, char **argv)
 	printf("INFO: i915 pci_id=0x%x.\n", pci_id);
 	switch(pci_id) {
 		// sandy bridge
+		case 0x102:
 		case 0x106:
 		case 0x116:
 		case 0x126:
