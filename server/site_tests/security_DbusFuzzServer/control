@@ -15,6 +15,7 @@ Test passes if the fuzzer finds zero vulnerabilities.
 TEST_CLASS = "security"
 TEST_CATEGORY = "Security"
 TEST_TYPE = "server"
+SUITE = "manual"
 
 def run_dbusfuzz(machine):
     host = hosts.create_host(machine)
