@@ -3,21 +3,14 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import pprint
-import shutil
-import sys
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-
 from autotest_lib.server import autotest, test
-
 from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator_factory
 from autotest_lib.server.cros.chaos_ap_configurators import download_chromium_prebuilt
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.wlan import connector, disconnector
-from autotest_lib.server.cros.wlan import profile_manager
 
 class network_WiFiSimpleConnectionServer(test.test):
 
@@ -104,6 +97,7 @@ class network_WiFiSimpleConnectionServer(test.test):
         cartridge = ap_cartridge.APCartridge()
         for band in bands_and_channels.keys():
             for channel in bands_and_channels[band]:
+                logging.info('Testing band %s and channel %s' % (band, channel))
                 for ap in all_aps:
                     if self.supported_band_and_channel(ap, band, channel):
                         ap_info = {
@@ -111,7 +105,8 @@ class network_WiFiSimpleConnectionServer(test.test):
                             'channel': channel,
                             'radio': True,
                             'ssid': '_'.join([ap.get_router_short_name(),
-                                              str(channel), str(band)]),
+                                              str(channel),
+                                              str(band).replace('.', '_')]),
                             'visibility': True,
                             'security': None,
                         }
@@ -145,11 +140,9 @@ class network_WiFiSimpleConnectionServer(test.test):
 
         factory = ap_configurator_factory.APConfiguratorFactory()
         all_aps = factory.get_ap_configurators()
-        try:
-            self.loop_ap_configs_and_test(all_aps, tries)
-        finally:
-            logging.info('Client test complete, powering down router')
-            factory.turn_off_all_routers()
+        self.loop_ap_configs_and_test(all_aps, tries)
+        logging.info('Client test complete, powering down router')
+        factory.turn_off_all_routers()
 
         # Test failed if any of the intermediate tests failed.
         if self.error_list:

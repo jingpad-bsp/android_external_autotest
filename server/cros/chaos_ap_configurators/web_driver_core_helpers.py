@@ -9,16 +9,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..',
                              'client', 'deps', 'pyauto_dep', 'test_src',
                              'third_party', 'webdriver', 'pylib'))
 
-try:
-  from selenium import webdriver
-except ImportError:
-  raise ImportError('Could not locate the webdriver package.  Did you build? '
-                    'Are you using a prebuilt autotest package?  Do you need '
-                    'to pass --autotest_dir?')
-
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import WebDriverException
 
 
@@ -139,6 +131,42 @@ class WebDriverCoreHelpers(object):
                                            '%s' % (xpath, str(e)))
         return self.driver.find_element_by_xpath(xpath)
 
+
+    def number_of_items_in_popup_by_id(self, element_id, alert_handler=None):
+        """Returns the number of items in a popup given the element ID.
+
+        Args:
+          element_id: the html ID of the item
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
+
+        Returns:
+            The number of items in the popup.
+        """
+        xpath = 'id("%s")' % element_id
+        self.number_of_items_in_popup_by_xpath(xpath, alert_handler)
+
+
+    def number_of_items_in_popup_by_xpath(self, xpath, alert_handler=None):
+        """Returns the number of items in a popup given a xpath
+
+        Args:
+          xpath: the xpath of the popup
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
+
+        Returns:
+          The number of items in the popup.
+        """
+        popup = self.driver.find_element_by_xpath(xpath)
+        try:
+            self.wait.until(lambda _:
+                            len(popup.find_elements_by_tag_name('option')))
+        except SeleniumTimeoutException, e:
+            return 0
+        return len(popup.find_elements_by_tag_name('option'))
+
+
     def select_item_from_popup_by_id(self, item, element_id,
                                      wait_for_xpath=None, alert_handler=None):
         """Selects an item from a popup, by passing the element ID.
@@ -167,14 +195,11 @@ class WebDriverCoreHelpers(object):
           alert_handler: method invoked if an alert is detected.  The method
                          must take one parameter, a webdriver alert object
         """
-        popup = self.driver.find_element_by_xpath(xpath)
-        try:
-            self.wait.until(lambda _:
-                            len(popup.find_elements_by_tag_name('option')))
-        except SeleniumTimeoutException, e:
+        if self.number_of_items_in_popup_by_xpath(xpath) == 0:
             raise SeleniumTimeoutException('The popup at xpath %s has no items.'
                                            '\n WebDriver exception: %s', xpath,
                                            str(e))
+        popup = self.driver.find_element_by_xpath(xpath)
         for option in popup.find_elements_by_tag_name('option'):
             if option.text == item:
                 option.click()

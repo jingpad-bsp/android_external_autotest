@@ -3,8 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
-import random
 
 import ap_configurator
 import selenium.common.exceptions
@@ -179,7 +177,6 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
             self.current_band = self.band_5ghz
         else:
             raise RuntimeError('Invalid band sent %s' % band)
-        self.add_item_to_command_list(self._set_band, (band,), 1, 1001)
 
 
     def set_security_disabled(self):

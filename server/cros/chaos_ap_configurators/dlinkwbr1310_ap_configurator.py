@@ -25,35 +25,23 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
 
     def _open_landing_page(self):
-        page_url = urlparse.urljoin(self.admin_interface_url,'index.htm')
+        page_url = urlparse.urljoin(self.admin_interface_url,'wireless.htm')
         self.driver.get(page_url)
-        page_name = os.path.basename(self.driver.current_url)
+        pwd = '//input[@name="login_pass"]'
+        # TODO: Replace with new existence checker
+        try:
+            # Check if we are on the login page
+            self.wait_for_object_by_xpath(pwd)
+        except SeleniumTimeoutException:
+            # We are at the config page, done.
+            return
+
         xpath = '//input[@name="login_name"]'
-        def wait_for_login(xpath):
-            # Waits for login screen to become available.
-            # Args: xpath: the xpath of the element to wait for.
-            # Login screen comes up for the first time after doing power_up.
-            # After that we are directed to wireless_settings page.
-            ret = None
-            try:
-               self.wait.until(lambda _: self.driver.find_element_by_xpath
-                               (xpath))
-               ret = self.driver.find_element_by_xpath(xpath)
-            except SeleniumTimeoutException, e:
-               pass
-            return ret
-        if page_name == 'index.htm' and wait_for_login(xpath):
-              self.set_content_of_text_field_by_xpath('admin', xpath,
-                                                      abort_check=False)
-              pwd = '//input[@name="login_pass"]'
-              self.set_content_of_text_field_by_xpath('password', pwd,
-                                                      abort_check=False)
-              button = '//input[@name="login"]'
-              self.click_button_by_xpath(button)
-        self._wireless_settings()
-
-
-    def _wireless_settings(self):
+        self.set_content_of_text_field_by_xpath('admin', xpath,
+                                                abort_check=False)
+        self.set_content_of_text_field_by_xpath('password', pwd,
+                                                abort_check=False)
+        self.click_button_by_xpath('//input[@name="login"]')
         wlan = '//a[text()="Wireless settings"]'
         self.wait_for_object_by_xpath(wlan)
         self.click_button_by_xpath(wlan)
@@ -88,7 +76,7 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath('//input[@name="button"]')
         progress_value = self.wait_for_object_by_id("wTime")
         # Give the router 40 secs to update.
-        for i in xrange(60):
+        for i in xrange(80):
             page_name = os.path.basename(self.driver.current_url)
             time.sleep(0.5)
             if page_name == 'wireless.htm':

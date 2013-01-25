@@ -21,8 +21,6 @@ except ImportError:
   raise ImportError('Could not locate the webdriver package.  Did you build? '
                     'Are you using a prebuilt autotest package?')
 
-from selenium.common.exceptions import TimeoutException as \
-    SeleniumTimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
 
@@ -382,6 +380,11 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 if (first_command == self._power_up_router or
                     first_command == self._power_cycle_router_up or
                     first_command == self._power_down_router):
+                    direction = 'up'
+                    if first_command == self._power_down_router:
+                        direction = 'down'
+                    logging.info('Powering %s %s' %
+                                 (direction, self.short_name))
                     first_command(*sorted_page_commands[0]['args'])
                     sorted_page_commands.pop(0)
 

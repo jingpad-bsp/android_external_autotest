@@ -3,19 +3,14 @@
 # found in the LICENSE file.
 
 import logging
-import os
-import time
 import urlparse
 
 import ap_configurator
-import selenium
-import selenium.common.exceptions
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 
 
 class TrendnetAPConfigurator(ap_configurator.APConfigurator):
-    """Derived class to control the Trendnet TEW-639GR/691GR."""
+    """Derived class to control the Trendnet TEW-639GR."""
 
 
     def __init__(self, router_dict):
@@ -72,20 +67,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
             xpath = ('//input[@class="button_submit" and @value="Apply"]')
         self.click_button_by_xpath(xpath)
         self.wait = WebDriverWait(self.driver, timeout=60)
-        if self.short_name == 'TEW-691GR':
-          self.click_button_by_xpath('//input[@value="Reboot the Device"]')
-          self.wait = WebDriverWait(self.driver, timeout=5)
-          # Give the trendnet up to 2 minutes. The idea here is to end when the
-          # reboot is complete.
-          for i in xrange(240):
-              progress_value = self.wait_for_object_by_id('progressValue')
-              html = self.driver.execute_script('return arguments[0].innerHTML',
-                                                progress_value)
-              percentage = html.rstrip('%')
-              if int(percentage) < 95:
-                  time.sleep(0.5)
-              else:
-                  return
+        # TODO: Wait for the progress bar, even if its brief.
 
 
     def set_mode(self, mode, band=None):

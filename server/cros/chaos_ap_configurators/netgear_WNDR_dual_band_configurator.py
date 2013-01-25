@@ -2,12 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
 import urlparse
 
 import ap_configurator
-import selenium.common.exceptions
 
 
 class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
@@ -41,10 +38,10 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
             alert.accept()
             raise RuntimeError('%s. Please change the SSID of one band' % text)
         elif 'do not want any wireless security on your network?' in text:
-            logging.info('Alert message:', text)
+            alert.accept()
+        elif 'recommends that you set the router to a high channel' in text:
             alert.accept()
         else:
-            alert.accept()
             raise RuntimeError('We have an unhandled alert: %s' % text)
 
 
@@ -80,10 +77,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
         page_url = urlparse.urljoin(self.admin_interface_url,
                                     'WLG_wireless_dual_band.htm')
         self.driver.get(page_url)
-        xpath = '//input[@name="ssid" and @type="text"]'
-        if not object_by_xpath_exist(xpath):
-            logging.info('The page did not load. The xpath %s was not found'
-                         % xpath )
+        self.wait_for_object_by_xpath('//input[@name="ssid" and @type="text"]')
 
 
     def save_page(self, page_number):
@@ -132,7 +126,8 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
             channel_choices = ['Auto', '36', '40', '44', '48', '149', '153',
                                '157', '161', '165']
         self.select_item_from_popup_by_xpath(channel_choices[position],
-                                             xpath)
+                                             xpath,
+                                             alert_handler=self._alert_handler)
 
 
     def set_band(self, band):

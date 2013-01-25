@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import time
 import urlparse
 
@@ -56,15 +55,20 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
            raise RuntimeError('Invalid page number passed. Number of pages '
                               '%d, page value sent was %d' %
                               (self.get_number_of_pages(), page_number))
+        if self.driver.title.find('DD-WRT') == -1:
+            logging.info('Page failed to load for buffalo.')
 
 
     def save_page(self, page_number):
         apply_set = '//input[@name="apply_button"]'
         self.click_button_by_xpath(apply_set)
-        if self.driver.find_element_by_class_name("ddwrt_message"):
-            time.sleep(5)
-        else:
-            raise RuntimeError('Processing dialog not found!')
+        timeout = 0
+        while self.object_by_xpath_exist("ddwrt_message") and timeout < 60:
+            time.sleep(1)
+            timeout = timeout + 1
+        # Sometime the buffalo interface will go down
+        if self.driver.title.find('DD-WRT') == -1:
+            self.navigate_to_page(page_number)
 
 
     def set_mode(self, mode, band=None):
@@ -115,6 +119,9 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
                            '7 - 2442 MHz', '8 - 2447 MHz', '9 - 2452 MHz',
                            '10 - 2457 MHz', '11 - 2462 MHz']
         xpath = '//select[@name="ath0_channel"]'
+        if self.number_of_items_in_popup_by_xpath(xpath) == 0:
+            # If the popup is empty, refresh.
+            self.driver.refresh()
         self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
 
 

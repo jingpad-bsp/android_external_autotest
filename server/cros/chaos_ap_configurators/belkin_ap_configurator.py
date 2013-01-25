@@ -8,6 +8,8 @@ import time
 import urlparse
 
 import ap_configurator
+from selenium.common.exceptions import NoSuchElementException as \
+    SeleniumNoSuchElementException
 
 
 class BelkinAPConfigurator(ap_configurator.APConfigurator):
@@ -34,17 +36,19 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
     def _open_landing_page(self):
         page_url = urlparse.urljoin(self.admin_interface_url,'home.htm')
         self.driver.get(page_url)
-        page_name = os.path.basename(self.driver.current_url)
-        xpath = '//a[text()="Login"]'
-        if page_name == 'home.htm' and self.object_by_xpath_exist(xpath):
-            self.click_button_by_xpath(xpath)
-            xpath = '//input[@name="www_password"]'
-            self.set_content_of_text_field_by_xpath('password', xpath,
-                                                    abort_check=True)
-            self.click_button_by_id('submitBtn_submit')
-        else:
-            logging.info('Could not open the login page.')
-            return None
+        # Do we need to login?
+        # TODO: Update with new existence checker.
+        try:
+            self.driver.find_element_by_link_text('Login')
+        except SeleniumNoSuchElementException:
+            # already logged in, return
+            return
+        login_element = self.driver.find_element_by_link_text('Login')
+        login_element.click()
+        xpath = '//input[@name="www_password"]'
+        self.set_content_of_text_field_by_xpath('password', xpath,
+                                                abort_check=True)
+        self.click_button_by_id('submitBtn_submit')
 
 
     def get_supported_bands(self):

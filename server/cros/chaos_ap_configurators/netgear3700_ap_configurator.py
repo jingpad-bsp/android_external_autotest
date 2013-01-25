@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+
 import netgear_WNDR_dual_band_configurator
 from netgear_WNDR_dual_band_configurator import *
 
@@ -25,24 +26,6 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
             alert.accept()
         else:
             super(Netgear3700APConfigurator, self)._alert_handler(alert)
-
-
-    def _open_landing_page(self):
-         self.driver.get(self.admin_interface_url)
-         page_name = os.path.basename(self.driver.current_url)
-         if page_name == 'index.htm':
-             try:
-                self.wait_for_object_by_xpath('//frame[@name="contents"]')
-             except SeleniumTimeoutException, e:
-                raise SeleniumTimeoutException('Unable to navigate to the '
-                                               'login or configuration page. '
-                                               'WebDriver exception:%s', e)
-
-
-    def _open_configuration_page(self):
-        self._open_landing_page()
-        if os.path.basename(self.driver.current_url) != 'index.htm':
-            raise RuntimeError('Invalid url %s' % self.driver.current_url)
 
 
     def _get_settings_page(self):
@@ -76,7 +59,11 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def navigate_to_page(self, page_number):
-        self._open_configuration_page()
+        self.driver.get(self.admin_interface_url)
+        if self.driver.title.find('NETGEAR') != -1:
+            self.wait_for_object_by_xpath('//frame[@name="topframe"]')
+        else:
+            raise RuntimeError('Unable to open landing page.')
         self._get_settings_page()
 
 
