@@ -16,8 +16,8 @@
 #       src             eg. tests/<test>/src
 #       tmpdir          eg. tmp/<tempname>_<testname.tag>
 
-import fcntl, getpass, os, re, sys, shutil, tarfile, tempfile, time, traceback
-import warnings, logging, glob, resource
+import fcntl, os, re, sys, shutil, tempfile, time, traceback
+import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
@@ -40,10 +40,11 @@ class base_test(object):
         self.debugdir = os.path.join(self.outputdir, 'debug')
         os.mkdir(self.debugdir)
         # TODO(ericli): figure out how autotest crash handler work with cros
+        # Once this is re-enabled import getpass. crosbug.com/31232
         # crash handler, we should restore it in near term.
-#        if getpass.getuser() == 'root':
-#            self.configure_crash_handler()
-#        else:
+        # if getpass.getuser() == 'root':
+        #     self.configure_crash_handler()
+        # else:
         self.crash_handling_enabled = False
         self.bindir = bindir
         self.srcdir = os.path.join(self.bindir, 'src')
@@ -191,10 +192,38 @@ class base_test(object):
             utils.drop_caches()
 
 
+    def _call_run_once_with_retry(self, constraints, profile_only,
+                                  postprocess_profiled_run, args, dargs):
+        """Thin wrapper around _call_run_once that retries unsuccessful tests.
+
+        If the job object's attribute test_retry is > 0 retry any tests that
+        ran unsuccessfully X times.
+        *Note this does not competely re-initialize the test, it only
+            re-executes code once all the initial job set up (packages,
+            sysinfo, etc) is complete.
+        """
+        if self.job.test_retry != 0:
+            logging.info('Test will be retried a maximum of %d times',
+                         self.job.test_retry)
+
+        max_runs = self.job.test_retry
+        for retry_run in xrange(0, max_runs+1):
+            try:
+                self._call_run_once(constraints, profile_only,
+                                    postprocess_profiled_run, args, dargs)
+                break
+            except Exception as err:
+                if retry_run == max_runs:
+                    raise
+                self.job.record('INFO', None, None, 'Run %s failed with %s' % (
+                        retry_run, err))
+        if retry_run > 0:
+            self.write_test_keyval({'test_retries_before_success': retry_run})
+
+
     def _call_run_once(self, constraints, profile_only,
                        postprocess_profiled_run, args, dargs):
         self.drop_caches_between_iterations()
-
         # execute iteration hooks
         for hook in self.before_iteration_hooks:
             hook(self)
@@ -273,8 +302,9 @@ class base_test(object):
                 elif time_elapsed > 0:
                     logging.debug('Executing iteration %d, time_elapsed %d s',
                                   timed_counter, time_elapsed)
-                self._call_run_once(constraints, profile_only,
-                                    postprocess_profiled_run, args, dargs)
+                self._call_run_once_with_retry(constraints, profile_only,
+                                               postprocess_profiled_run, args,
+                                               dargs)
                 test_iteration_finish = _get_time()
                 time_elapsed = test_iteration_finish - test_start
             logging.debug('Test finished after %d iterations, '
@@ -289,8 +319,9 @@ class base_test(object):
                 if iterations > 1:
                     logging.debug('Executing iteration %d of %d',
                                   self.iteration, iterations)
-                self._call_run_once(constraints, profile_only,
-                                    postprocess_profiled_run, args, dargs)
+                self._call_run_once_with_retry(constraints, profile_only,
+                                               postprocess_profiled_run, args,
+                                               dargs)
 
         if not profile_only:
             self.iteration += 1
@@ -619,7 +650,6 @@ def _call_test_function(func, *args, **dargs):
     try:
         return func(*args, **dargs)
     except error.AutotestError:
-        # Pass already-categorized errors on up as is.
         raise
     except Exception, e:
         # Other exceptions must be treated as a FAIL when
@@ -633,7 +663,6 @@ def runtest(job, url, tag, args, dargs,
             before_iteration_hook=None, after_iteration_hook=None):
     local_namespace = local_namespace.copy()
     global_namespace = global_namespace.copy()
-
     # if this is not a plain test name then download and install the
     # specified test
     if url.endswith('.tar.bz2'):

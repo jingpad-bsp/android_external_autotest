@@ -9,11 +9,11 @@ This is the core infrastructure. Derived from the client side job.py
 Copyright Martin J. Bligh, Andy Whitcroft 2007
 """
 
-import getpass, os, sys, re, stat, tempfile, time, select, subprocess, platform
+import getpass, os, sys, re, tempfile, time, select, platform
 import traceback, shutil, warnings, fcntl, pickle, logging, itertools, errno
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import base_job
-from autotest_lib.client.common_lib import error, log, utils, packages
+from autotest_lib.client.common_lib import error, utils, packages
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.server import test, subcommand, profilers
 from autotest_lib.server.hosts import abstract_ssh
@@ -139,7 +139,7 @@ class base_server_job(base_job.base_job):
 
     def __init__(self, control, args, resultdir, label, user, machines,
                  client=False, parse_job='',
-                 ssh_user='root', ssh_port=22, ssh_pass='',
+                 ssh_user='root', ssh_port=22, ssh_pass='', test_retry=0,
                  group_name='', tag='',
                  control_filename=SERVER_CONTROL_FILENAME):
         """
@@ -156,15 +156,18 @@ class base_server_job(base_job.base_job):
         @param ssh_user: The SSH username.  [root]
         @param ssh_port: The SSH port number.  [22]
         @param ssh_pass: The SSH passphrase, if needed.
+        @param test_retry: The number of times to retry a test if the test did
+                not complete successfully.
         @param group_name: If supplied, this will be written out as
                 host_group_name in the keyvals file for the parser.
         @param tag: The job execution tag from the scheduler.  [optional]
         @param control_filename: The filename where the server control file
                 should be written in the results directory.
         """
-        super(base_server_job, self).__init__(resultdir=resultdir)
-
+        super(base_server_job, self).__init__(resultdir=resultdir,
+                                              test_retry=test_retry)
         path = os.path.dirname(__file__)
+        self.test_retry = test_retry
         self.control = control
         self._uncollected_log_file = os.path.join(self.resultdir,
                                                   'uncollected_logs')
@@ -246,7 +249,7 @@ class base_server_job(base_job.base_job):
         return autodir, clientdir, serverdir
 
 
-    def _find_resultdir(self, resultdir):
+    def _find_resultdir(self, resultdir, *args, **dargs):
         """
         Determine the location of resultdir. For server jobs we expect one to
         always be explicitly passed in to __init__, so just return that.

@@ -93,6 +93,7 @@ def run_autoserv(pid_file_manager, results, parser):
     ssh_pass = parser.options.ssh_pass
     collect_crashinfo = parser.options.collect_crashinfo
     control_filename = parser.options.control_filename
+    test_retry = parser.options.test_retry
 
     # can't be both a client and a server side test
     if client and server:
@@ -134,7 +135,8 @@ def run_autoserv(pid_file_manager, results, parser):
         kwargs['control_filename'] = control_filename
     job = server_job.server_job(control, parser.args[1:], results, label,
                                 user, machines, client, parse_job,
-                                ssh_user, ssh_port, ssh_pass, **kwargs)
+                                ssh_user, ssh_port, ssh_pass, test_retry,
+                                **kwargs)
     job.logging.start_logging()
     job.init_parser()
 

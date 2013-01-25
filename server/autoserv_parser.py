@@ -1,4 +1,4 @@
-import os, sys, getopt, optparse
+import os, sys, optparse
 
 from autotest_lib.client.common_lib import host_protections, utils
 
@@ -132,6 +132,12 @@ class base_autoserv_parser(object):
                                type="string", default=None,
                                help=("filename to use for the server control "
                                      "file in the results directory"))
+        self.parser.add_option("--test-retry", action="store",
+                               type="int", default=0,
+                               help=("Num of times to retry a test that failed "
+                                     "[default: %default]"))
+
+
 
 
     def parse_args(self):
