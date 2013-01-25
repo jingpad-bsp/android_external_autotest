@@ -34,6 +34,9 @@ _valid_log_levels = _log_debug, _log_normal, _log_verbose
 _autotest_url_format = r'http://%(host)s/afe/#tab_id=view_job&object_id=%(job)s'
 _autotest_test_name = 'autoupdate_EndToEndTest'
 _autoupdate_suite_name = 'au'
+_default_dump_dir = os.path.realpath(
+        os.path.join(os.path.dirname(__file__), '..', '..', 'server',
+                     'site_tests', _autotest_test_name))
 
 
 class FullReleaseTestError(BaseException):
@@ -146,12 +149,30 @@ class TestConfig(object):
         return 'delta' if self.is_delta_update else 'full'
 
 
+    def _unique_name_suffix(self):
+        """Unique name suffix for the test config given the target version."""
+        return '%s_%s-%s' % (self.name, self.source_branch, self.source_release)
+
+
     def get_autotest_name(self):
-        # Conforms to suite naming style assuming autoupdate is the suite name.
-        return '%s-release/%s-%s/au/%s.%s_%s-%s' % (
+        """Returns job name to use when creating an autotest job.
+
+        Returns a job name that conforms to the suite naming style assuming
+        'au' is the suite name.
+        """
+        return '%s-release/%s-%s/au/%s.%s' % (
                 self.board, self.target_branch, self.target_release,
-                _autotest_test_name, self.name, self.source_branch,
-                self.source_release,)
+                _autotest_test_name, self._unique_name_suffix())
+
+
+    def get_control_file_name(self):
+        """Returns the name of the name of the control file to store this in.
+
+        Returns the control file name that should be generated for this test.
+        A unique name suffix is used to keep from collisions per target
+        release/board.
+        """
+        return 'control.%s' % self._unique_name_suffix()
 
 
     def __str__(self):
@@ -196,6 +217,12 @@ class TestConfig(object):
 
 
 def get_release_branch(release):
+    """Returns the release branch for the given release.
+
+    @param release: release version e.g. 3920.0.0.
+
+    @returns the branch string e.g. R26.
+    """
     return _release_info.get_branch(release)
 
 
@@ -614,6 +641,42 @@ def run_test_local(test, env, remote):
                 'command execution failed: %s' % e)
 
 
+def generate_full_control_file(test, env, control_code):
+    """Returns the parameterized control file for the test config.
+
+    @param test: the test config.
+    @param env: instance of TestEnv for the test.
+    @param control_code: string containing the template control code.
+
+    @returns parameterized control file based on args.
+    """
+    return test.get_code_args() + env.get_code_args() + control_code
+
+
+def dump_autotest_control_file(test, env, control_code, directory):
+    """Creates control file for test and returns the path to created file.
+
+    @param test: the test config.
+    @param env: instance of TestEnv for the test.
+    @param control_code: string containing the template control code.
+    @param directory: the directory to dump the control file.
+
+    @returns Path to the newly dumped control file.
+    """
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    parametrized_control_code = generate_full_control_file(
+            test, env, control_code)
+
+    control_file = os.path.join(directory,
+                                test.get_control_file_name())
+    with open(control_file, 'w') as fh:
+        fh.write(parametrized_control_code)
+
+    return control_file
+
+
 def run_test_afe(test, env, control_code, afe, dry_run):
     """Run an end-to-end update test via AFE.
 
@@ -627,8 +690,8 @@ def run_test_afe(test, env, control_code, afe, dry_run):
 
     """
     # Parametrize the control script.
-    parametrized_control_code = (
-            test.get_code_args() + env.get_code_args() + control_code)
+    parametrized_control_code = generate_full_control_file(
+            test, env, control_code)
 
     # Create the job.
     meta_hosts = ['board:%s' % test.board]
@@ -667,6 +730,11 @@ def parse_args():
             description='Schedule Chrome OS release update tests on given '
                         'board(s).')
 
+    parser.add_option('--dump', default=False, action='store_true',
+                      help='dump control files that would be used in autotest '
+                           'without running them. Implies --dry_run')
+    parser.add_option('--dump_dir', default=_default_dump_dir,
+                      help='directory to dump control files generated')
     parser.add_option('--nmo', dest='test_nmo', action='store_true',
                       help='generate N-1 update tests')
     parser.add_option('--npo', dest='test_npo', action='store_true',
@@ -711,6 +779,12 @@ def parse_args():
     # Sanity check log level.
     if opts.log_level not in _valid_log_levels:
         parser.error('invalid log level (%s)' % opts.log_level)
+
+    if opts.dump:
+        if opts.remote:
+            parser.error("--remote doesn't make sense with --dump")
+
+        opts.dry_run = True
 
     # Process list of specific source releases.
     opts.specific = opts.specific.split(',') if opts.specific else []
@@ -759,6 +833,17 @@ def main():
                     _autotest_test_name, 'control')
             with open(control_file) as f:
                 control_code = f.read()
+
+            if args.dump:
+                for test in test_list:
+                    # Control files for the same board are all in the same
+                    # sub-dir.
+                    directory = os.path.join(args.dump_dir, test.board)
+                    control_file = dump_autotest_control_file(
+                            test, env, control_code, directory)
+                    logging.info('dumped control file for test %s to %s',
+                                 test, control_file)
+                    return
 
             # Schedule jobs via AFE.
             afe = frontend.AFE(debug=(args.log_level == _log_debug))
