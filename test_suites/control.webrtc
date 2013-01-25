@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "kjellander, phoglund, webrtc-cros-build"
-NAME = "WebRTC"
+NAME = "WebRTC Suite"
 TIME = "MEDIUM"
 TEST_CATEGORY = "General"
 TEST_CLASS = "suite"
