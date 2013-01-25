@@ -32,6 +32,7 @@ _log_normal = 'normal'
 _log_verbose = 'verbose'
 _valid_log_levels = _log_debug, _log_normal, _log_verbose
 _autotest_url_format = r'http://%(host)s/afe/#tab_id=view_job&object_id=%(job)s'
+_autotest_test_name = 'autoupdate_EndToEndTest'
 
 
 class FullReleaseTestError(BaseException):
@@ -142,6 +143,14 @@ class TestConfig(object):
 
     def get_update_type(self):
         return 'delta' if self.is_delta_update else 'full'
+
+
+    def get_autotest_name(self):
+        # Conforms to suite naming style assuming autoupdate is the suite name.
+        return '%s-release/%s-%s/au/%s.%s_%s-%s' % (
+                self.board, self.target_branch, self.target_release,
+                _autotest_test_name, self.name, self.source_branch,
+                self.source_release,)
 
 
     def __str__(self):
@@ -589,7 +598,7 @@ def run_test_local(test, env, remote):
            '--args=%s%s' % (test.get_cmdline_args(), env.get_cmdline_args()),
            '--remote=%s' % remote,
            '--use_emerged',
-           'autoupdate_EndToEndTest']
+           _autotest_test_name]
 
     # Only set servo arguments if servo is in the environment.
     if env.is_var_set('servo_host'):
@@ -629,8 +638,9 @@ def run_test_afe(test, env, control_code, afe, dry_run):
     if not dry_run:
         job = afe.create_job(
                 parametrized_control_code,
-                name=test.name, priority='Medium', control_type='Server',
-                meta_hosts=meta_hosts, dependencies=dependencies)
+                name=test.get_autotest_name(), priority='Medium',
+                control_type='Server', meta_hosts=meta_hosts,
+                dependencies=dependencies)
         return job.id
     else:
         logging.info('Would have run scheduled test %s against afe', test.name)
@@ -744,7 +754,7 @@ def main():
             # Obtain the test control file content.
             control_file = os.path.join(
                     common.autotest_dir, 'server', 'site_tests',
-                    'autoupdate_EndToEndTest', 'control')
+                    _autotest_test_name, 'control')
             with open(control_file) as f:
                 control_code = f.read()
 
