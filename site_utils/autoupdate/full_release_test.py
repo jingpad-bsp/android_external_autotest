@@ -552,23 +552,27 @@ def generate_test_list(args):
     src_as_payload = args.servo_host == None
 
     for board in args.tested_board_list:
+        test_list_for_board = []
+
         # Configure N-1-to-N and N-to-N+1 tests.
         if args.test_nmo or args.test_npo:
-            test_list += generate_npo_nmo_list(
+            test_list_for_board += generate_npo_nmo_list(
                     args.use_mp_images, board, args.tested_release,
                     args.test_nmo, args.test_npo, src_as_payload)
 
         # Configure FSI tests.
         if args.test_fsi:
-            test_list += generate_fsi_list(
+            test_list_for_board += generate_fsi_list(
                     args.use_mp_images, board, args.tested_release,
                     src_as_payload)
 
-        # Add list of specifically provided source releases.
+        # Add tests for specifically provided source releases.
         if args.specific:
-            test_list += generate_specific_list(
+            test_list_for_board += generate_specific_list(
                     args.use_mp_images, board, args.tested_release,
-                    args.specific, test_list, src_as_payload)
+                    args.specific, test_list_for_board, src_as_payload)
+
+        test_list += test_list_for_board
 
     return test_list
 
