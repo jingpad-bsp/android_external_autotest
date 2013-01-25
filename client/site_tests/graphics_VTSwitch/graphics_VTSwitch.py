@@ -136,6 +136,9 @@ class graphics_VTSwitch(cros_ui_test.UITest):
         # but the test might fail and terminate while in VT2.
         self._switch_to_vt(1)
 
+        if self.logged_in():
+            self.logout()
+
 
     def _take_current_vt_screenshot(self):
         """
@@ -162,9 +165,13 @@ class graphics_VTSwitch(cros_ui_test.UITest):
         autotest_deps_path = os.path.join(self.autodir, 'deps')
         getfb_path = os.path.join(autotest_deps_path, 'gfxtest', 'getfb')
         output = utils.system_output('%s %s' % (getfb_path, output_path))
-        output = output.split('\n')
-        output_dict = dict([pair.split('=') for pair in output])
-        size = '%sx%s' % (output_dict['width'], output_dict['height'])
+        for line in output.split('\n'):
+            # Parse the getfb output for info about framebuffer size.  The line
+            # should looks omething like:
+            #   Framebuffer info: 1024x768, 32bpp
+            if line.startswith('Framebuffer info:'):
+                size = line.split(':')[1].split(',')[0].strip()
+                break
         final_output_path = output_path + '.rgb'
         utils.system('convert -depth 8 -size %s %s %s' %
                      (size, output_path, final_output_path))

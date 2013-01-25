@@ -41,7 +41,8 @@ int main(int argc, char *argv[])
     goto exit;
   }
 
-  printf("%dx%d, %dbpp\n", info.xres, info.yres, info.bits_per_pixel);
+  printf("Framebuffer info: %dx%d, %dbpp\n", info.xres, info.yres,
+         info.bits_per_pixel);
 
   // Figure out the size of the screen in bytes
   screen_size = info.xres * info.yres * info.bits_per_pixel / 8;
