@@ -33,6 +33,7 @@ _log_verbose = 'verbose'
 _valid_log_levels = _log_debug, _log_normal, _log_verbose
 _autotest_url_format = r'http://%(host)s/afe/#tab_id=view_job&object_id=%(job)s'
 _autotest_test_name = 'autoupdate_EndToEndTest'
+_autoupdate_suite_name = 'au'
 
 
 class FullReleaseTestError(BaseException):
@@ -170,19 +171,20 @@ class TestConfig(object):
 
     def _get_args(self, assign, delim, is_quote_val):
         template = "%s%s'%s'" if is_quote_val else "%s%s%s"
-        return delim.join([template % (key, assign, val)
-                           for key, val in [
-                               ('board', self.board),
-                               ('name', self.name),
-                               ('image_type', self.get_image_type()),
-                               ('update_type', self.get_update_type()),
-                               ('source_release', self.source_release),
-                               ('target_release', self.target_release),
-                               ('source_branch', self.source_branch),
-                               ('target_branch', self.target_branch),
-                               ('source_image_uri', self.source_image_uri),
-                               ('target_payload_uri',
-                                self.target_payload_uri)]])
+        return delim.join(
+                [template % (key, assign, val) for key, val in [
+                        ('board', self.board),
+                        ('name', self.name),
+                        ('image_type', self.get_image_type()),
+                        ('update_type', self.get_update_type()),
+                        ('source_release', self.source_release),
+                        ('target_release', self.target_release),
+                        ('source_branch', self.source_branch),
+                        ('target_branch', self.target_branch),
+                        ('source_image_uri', self.source_image_uri),
+                        ('target_payload_uri', self.target_payload_uri),
+                        ('SUITE', _autoupdate_suite_name)]])
+
 
     def get_cmdline_args(self):
         return self._get_args('=', ' ', False)
