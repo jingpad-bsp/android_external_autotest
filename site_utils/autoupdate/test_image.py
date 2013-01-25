@@ -5,6 +5,7 @@
 """Module for discovering Chrome OS test images and payloads."""
 
 
+import re
 import subprocess
 
 
@@ -50,6 +51,11 @@ def find_payload_uri(board, release, branch, delta=False,
     @raise TestImageError if an error has occurred.
 
     """
+    # TODO(garnold) adjustment to -he variant board names; should be removed
+    # once we switch to using artifacts from gs://chromeos-images/
+    # (see chromium-os:38222)
+    board = re.sub('-he$', '_he', board)
+
     payload_uri_list = gs_ls(
             'gs://chromeos-image-archive/%s-release/%s-%s/%s' %
             (board, branch, release,
@@ -88,8 +94,14 @@ def find_image_uri(board, release, branch):
     @raise TestImageError if an error has occurred.
 
     """
-    image_archive_uri_list = gs_ls('gs://chromeos-image-archive/%s-release/'
-                                   '%s-%s/image.zip' % (board, branch, release))
+    # TODO(garnold) adjustment to -he variant board names; should be removed
+    # once we switch to using artifacts from gs://chromeos-images/
+    # (see chromium-os:38222)
+    board = re.sub('-he$', '_he', board)
+
+    image_archive_uri_list = gs_ls(
+            'gs://chromeos-image-archive/%s-release/%s-%s/image.zip' %
+            (board, branch, release))
 
     image_archive_uri_list_len = len(image_archive_uri_list)
     if image_archive_uri_list_len == 0:
