@@ -7,11 +7,9 @@
 """Unit tests for client/common_lib/cros/dev_server.py."""
 
 import httplib
-import logging
 import mox
 import StringIO
 import time
-import unittest
 import urllib2
 
 from autotest_lib.client.common_lib import global_config
@@ -47,9 +45,9 @@ class DevServerTest(mox.MoxTestBase):
     def testSimpleResolve(self):
         """One devserver, verify we resolve to it."""
         self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
-        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
         dev_server._get_dev_server_list().AndReturn([DevServerTest._HOST])
-        dev_server.DevServer._devserver_up(DevServerTest._HOST).AndReturn(True)
+        dev_server.DevServer.devserver_up(DevServerTest._HOST).AndReturn(True)
         self.mox.ReplayAll()
         devserver = dev_server.ImageServer.resolve('my_build')
         self.assertEquals(devserver.url(), DevServerTest._HOST)
@@ -99,15 +97,15 @@ class DevServerTest(mox.MoxTestBase):
     def testResolveWithManyDevservers(self):
         """Should be able to return different urls with multiple devservers."""
         self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
-        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
 
         host0_expected = 'http://host0:8080'
         host1_expected = 'http://host1:8082'
 
         dev_server.ImageServer.servers().MultipleTimes().AndReturn(
                 [host0_expected, host1_expected])
-        dev_server.DevServer._devserver_up(host0_expected).AndReturn(True)
-        dev_server.DevServer._devserver_up(host1_expected).AndReturn(True)
+        dev_server.DevServer.devserver_up(host0_expected).AndReturn(True)
+        dev_server.DevServer.devserver_up(host1_expected).AndReturn(True)
 
         self.mox.ReplayAll()
         host0 = dev_server.ImageServer.resolve(0)
@@ -285,10 +283,10 @@ class DevServerTest(mox.MoxTestBase):
     def testGetLatestBuild(self):
         """Should successfully return a build for a given target."""
         self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
-        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
 
         dev_server.ImageServer.servers().AndReturn([self._HOST])
-        dev_server.DevServer._devserver_up(self._HOST).AndReturn(True)
+        dev_server.DevServer.devserver_up(self._HOST).AndReturn(True)
 
         target = 'x86-generic-release'
         build_string = 'R18-1586.0.0-a1-b1514'
@@ -303,7 +301,7 @@ class DevServerTest(mox.MoxTestBase):
     def testGetLatestBuildWithManyDevservers(self):
         """Should successfully return newest build with multiple devservers."""
         self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
-        self.mox.StubOutWithMock(dev_server.DevServer, '_devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
 
         host0_expected = 'http://host0:8080'
         host1_expected = 'http://host1:8082'
@@ -311,8 +309,8 @@ class DevServerTest(mox.MoxTestBase):
         dev_server.ImageServer.servers().MultipleTimes().AndReturn(
                 [host0_expected, host1_expected])
 
-        dev_server.DevServer._devserver_up(host0_expected).AndReturn(True)
-        dev_server.DevServer._devserver_up(host1_expected).AndReturn(True)
+        dev_server.DevServer.devserver_up(host0_expected).AndReturn(True)
+        dev_server.DevServer.devserver_up(host1_expected).AndReturn(True)
 
         target = 'x86-generic-release'
         build_string1 = 'R9-1586.0.0-a1-b1514'
