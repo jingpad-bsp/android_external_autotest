@@ -123,10 +123,7 @@ class power_x86Settings(test.test):
         if cpu_arch is not 'Atom':
             self._cpu_type = 'Non-Atom'
 
-        self._cpu_id = 0
-        self._rdmsr_cmd = 'iotools rdmsr'
-        self._pci_read32_cmd = 'iotools pci_read32'
-        self._mmio_read32_cmd = 'iotools mmio_read32'
+        self._registers = power_utils.Registers()
 
         status = power_status.get_status()
         if status.linepower[0].online:
@@ -400,33 +397,13 @@ class power_x86Settings(test.test):
 
 
     def _verify_dmi_power_settings(self):
-        # DMIBAR is at offset 0x68 of B/D/F 0/0/0
-        cmd = '%s 0 0 0 0x68' % (self._pci_read32_cmd)
-        self._dmi_bar = int(utils.system_output(cmd), 16) & 0xfffffffe
-        logging.debug('DMI BAR is %s', hex(self._dmi_bar))
-
-        return self._verify_registers('dmi', self._read_dmi_bar,
-                                      DMI_BAR_CHECKS[self._cpu_type])
-
+        return self._registers.verify_dmi(DMI_BAR_CHECKS[self._cpu_type])
 
     def _verify_mch_power_settings(self):
-        # MCHBAR is at offset 0x48 of B/D/F 0/0/0
-        cmd = '%s 0 0 0 0x48' % (self._pci_read32_cmd)
-        self._mch_bar = int(utils.system_output(cmd), 16) & 0xfffffffe
-        logging.debug('MCH BAR is %s', hex(self._mch_bar))
-
-        return self._verify_registers('mch', self._read_mch_bar,
-                                       MCH_BAR_CHECKS[self._cpu_type])
-
+        return self._registers.verify_mch(MCH_BAR_CHECKS[self._cpu_type])
 
     def _verify_msr_power_settings(self):
-        errors = 0
-        for cpu_id in xrange(0, max(utils.count_cpus(), 1)):
-            self._cpu_id = cpu_id
-            errors += self._verify_registers('msr', self._read_msr,
-                                             MSR_CHECKS[self._cpu_type])
-        return errors
-
+        return self._registers.verify_msr(MSR_CHECKS[self._cpu_type])
 
     def _verify_rapl_power_settings(self):
         errors = 0
@@ -452,56 +429,3 @@ class power_x86Settings(test.test):
                 logging.error('Error(%d), RAPL %s power < %.3fW',
                               errors, domain, test_params['min'])
         return errors
-
-
-    def _verify_registers(self, reg_type, read_fn, match_list):
-        errors = 0
-        for k, v in match_list.iteritems():
-            r = read_fn(k)
-            for item in v:
-                good = self._shift_mask_match(r, item)
-                if not good:
-                    errors += 1
-                    logging.error('Error(%d), %s: reg = %s val = %s match = %s',
-                                  errors, reg_type, k, hex(r), v)
-        return errors
-
-
-    def _shift_mask_match(self, value, match):
-        expr = match[1]
-        bits = match[0].split(':')
-        operator = match[2] if len(match) == 3 else '=='
-        hi_bit = int(bits[0])
-        if len(bits) == 2:
-            lo_bit = int(bits[1])
-        else:
-            lo_bit = int(bits[0])
-
-        value >>= lo_bit
-        mask = (1 << (hi_bit - lo_bit + 1)) - 1
-        value &= mask
-
-        good = eval("%d %s %d" % (value, operator, expr))
-        if not good:
-            logging.error('FAILED: bits: %s value: %s mask: %s expr: %s ' +
-                          'operator: %s', bits, hex(value), mask, expr,
-                          operator)
-        return good
-
-
-    def _read_dmi_bar(self, offset):
-        return self._read_mmio_read32(self._dmi_bar + int(offset, 16))
-
-
-    def _read_mch_bar(self, offset):
-        return self._read_mmio_read32(self._mch_bar + int(offset, 16))
-
-
-    def _read_mmio_read32(self, address):
-        cmd = '%s %s' % (self._mmio_read32_cmd, address)
-        return int(utils.system_output(cmd), 16)
-
-
-    def _read_msr(self, register):
-        cmd = '%s %d %s' % (self._rdmsr_cmd, self._cpu_id, register)
-        return int(utils.system_output(cmd), 16)

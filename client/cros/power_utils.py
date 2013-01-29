@@ -414,3 +414,94 @@ class BacklightController(object):
         while num_steps_taken < self._max_num_steps:
             self.decrease_brightness(allow_off)
             num_steps_taken += 1
+
+
+class Registers(object):
+    """Class to examine PCI and MSR registers."""
+
+    def __init__(self):
+        self._cpu_id = 0
+        self._rdmsr_cmd = 'iotools rdmsr'
+        self._mmio_read32_cmd = 'iotools mmio_read32'
+
+        self._pci_read32_cmd = 'iotools pci_read32'
+        self._mch_bar = None
+        self._dmi_bar = None
+
+    def _init_mch_bar(self):
+        if self._mch_bar != None:
+            return
+        # MCHBAR is at offset 0x48 of B/D/F 0/0/0
+        cmd = '%s 0 0 0 0x48' % (self._pci_read32_cmd)
+        self._mch_bar = int(utils.system_output(cmd), 16) & 0xfffffffe
+        logging.debug('MCH BAR is %s', hex(self._mch_bar))
+
+    def _init_dmi_bar(self):
+        if self._dmi_bar != None:
+            return
+        # DMIBAR is at offset 0x68 of B/D/F 0/0/0
+        cmd = '%s 0 0 0 0x68' % (self._pci_read32_cmd)
+        self._dmi_bar = int(utils.system_output(cmd), 16) & 0xfffffffe
+        logging.debug('DMI BAR is %s', hex(self._dmi_bar))
+
+    def _read_msr(self, register):
+        cmd = '%s %d %s' % (self._rdmsr_cmd, self._cpu_id, register)
+        return int(utils.system_output(cmd), 16)
+
+    def _read_mmio_read32(self, address):
+        cmd = '%s %s' % (self._mmio_read32_cmd, address)
+        return int(utils.system_output(cmd), 16)
+
+    def _read_dmi_bar(self, offset):
+        self._init_dmi_bar()
+        return self._read_mmio_read32(self._dmi_bar + int(offset, 16))
+
+    def _read_mch_bar(self, offset):
+        self._init_mch_bar()
+        return self._read_mmio_read32(self._mch_bar + int(offset, 16))
+
+    def _shift_mask_match(self, reg_name, value, match):
+        expr = match[1]
+        bits = match[0].split(':')
+        operator = match[2] if len(match) == 3 else '=='
+        hi_bit = int(bits[0])
+        if len(bits) == 2:
+            lo_bit = int(bits[1])
+        else:
+            lo_bit = int(bits[0])
+
+        value >>= lo_bit
+        mask = (1 << (hi_bit - lo_bit + 1)) - 1
+        value &= mask
+
+        good = eval("%d %s %d" % (value, operator, expr))
+        if not good:
+            logging.error('FAILED: %s bits: %s value: %s mask: %s expr: %s ' +
+                          'operator: %s', reg_name, bits, hex(value), mask,
+                          expr, operator)
+        return good
+
+    def _verify_registers(self, reg_name, read_fn, match_list):
+        errors = 0
+        for k, v in match_list.iteritems():
+            r = read_fn(k)
+            for item in v:
+                good = self._shift_mask_match(reg_name, r, item)
+                if not good:
+                    errors += 1
+                    logging.error('Error(%d), %s: reg = %s val = %s match = %s',
+                                  errors, reg_name, k, hex(r), v)
+        return errors
+
+    def verify_msr(self, match_list):
+        errors = 0
+        for cpu_id in xrange(0, max(utils.count_cpus(), 1)):
+            self._cpu_id = cpu_id
+            errors += self._verify_registers('msr', self._read_msr, match_list)
+        return errors
+
+    def verify_dmi(self, match_list):
+        return self._verify_registers('dmi', self._read_dmi_bar, match_list)
+
+    def verify_mch(self, match_list):
+        return self._verify_registers('mch', self._read_mch_bar, match_list)
