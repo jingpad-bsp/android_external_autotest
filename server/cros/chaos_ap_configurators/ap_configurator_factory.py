@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
-import sys
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_config import ChaosAPList
 
@@ -29,6 +27,7 @@ import netgear2000_ap_configurator
 import netgear_WNDR_dual_band_configurator
 import netgear_single_band_configurator
 import trendnet_ap_configurator
+import trendnet691gr_ap_configurator
 
 
 class APConfiguratorFactory(object):
@@ -43,6 +42,8 @@ class APConfiguratorFactory(object):
             dlink_ap_configurator.DLinkAPConfigurator,
         'TrendnetAPConfigurator':
             trendnet_ap_configurator.TrendnetAPConfigurator,
+        'Trendnet691grAPConfigurator':
+            trendnet691gr_ap_configurator.Trendnet691grAPConfigurator,
         'DLinkDIR655APConfigurator':
             dlink_dir655_ap_configurator.DLinkDIR655APConfigurator,
         'BuffaloAPConfigurator':

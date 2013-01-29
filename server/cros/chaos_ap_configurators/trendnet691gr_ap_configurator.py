@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
-
 import trendnet_ap_configurator
 
 
@@ -18,18 +16,10 @@ class Trendnet691grAPConfigurator(trendnet_ap_configurator.
         elif page_number == 2:
             xpath = ('//input[@class="button_submit" and @value="Apply"]')
         self.click_button_by_xpath(xpath)
-        self.wait = WebDriverWait(self.driver, timeout=60)
-        self.click_button_by_xpath('//input[@value="Reboot the Device"]')
-        self.wait = WebDriverWait(self.driver, timeout=5)
-        # Give the trendnet up to 2 minutes. The idea here is to end when the
-        # reboot is complete.
-        for i in xrange(240):
-            progress_value = self.wait_for_object_by_id('progressValue')
-            html = self.driver.execute_script('return arguments[0].innerHTML',
-                                              progress_value)
-            percentage = html.rstrip('%')
-            if int(percentage) < 95:
-                time.sleep(0.5)
-            else:
-                return
-
+        # Wait for the settings progress bar to save the setting.
+        self.wait_for_progress_bar()
+        # Then reboot the device if told to.
+        reboot_button = '//input[@value="Reboot the Device"]'
+        if self.object_by_xpath_exist(reboot_button):
+            self.click_button_by_xpath(reboot_button)
+            self.wait_for_progress_bar()

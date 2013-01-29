@@ -8,8 +8,7 @@ import time
 import urlparse
 
 import ap_configurator
-from selenium.common.exceptions import TimeoutException as \
-    SeleniumTimeoutException
+
 
 class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
@@ -28,11 +27,7 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
         page_url = urlparse.urljoin(self.admin_interface_url,'wireless.htm')
         self.driver.get(page_url)
         pwd = '//input[@name="login_pass"]'
-        # TODO: Replace with new existence checker
-        try:
-            # Check if we are on the login page
-            self.wait_for_object_by_xpath(pwd)
-        except SeleniumTimeoutException:
+        if not self.object_by_xpath_exist(pwd):
             # We are at the config page, done.
             return
 

@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 import logging
+import time
 import urlparse
 
 import ap_configurator
-from selenium.webdriver.support.ui import WebDriverWait
 
 
 class TrendnetAPConfigurator(ap_configurator.APConfigurator):
@@ -60,14 +60,27 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
                                (self.get_number_of_pages(), page_number))
 
 
+    def wait_for_progress_bar(self):
+        for i in xrange(240):
+            if not self.object_by_id_exist('progressValue'):
+                return
+            progress_value = self.wait_for_object_by_id('progressValue')
+            html = self.driver.execute_script('return arguments[0].innerHTML',
+                                              progress_value)
+            percentage = html.rstrip('%')
+            if int(percentage) < 95:
+                time.sleep(0.5)
+            else:
+                break
+
+
     def save_page(self, page_number):
         if page_number == 1:
             xpath = ('//input[@type="submit" and @value="Apply"]')
         elif page_number == 2:
             xpath = ('//input[@class="button_submit" and @value="Apply"]')
         self.click_button_by_xpath(xpath)
-        self.wait = WebDriverWait(self.driver, timeout=60)
-        # TODO: Wait for the progress bar, even if its brief.
+        self.wait_for_progress_bar()
 
 
     def set_mode(self, mode, band=None):

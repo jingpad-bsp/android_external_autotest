@@ -37,7 +37,6 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
         page_url = urlparse.urljoin(self.admin_interface_url,'home.htm')
         self.driver.get(page_url)
         # Do we need to login?
-        # TODO: Update with new existence checker.
         try:
             self.driver.find_element_by_link_text('Login')
         except SeleniumNoSuchElementException:
