@@ -12,6 +12,7 @@ EXPERIMENTAL_PREFIX = 'experimental_'
 FW_VERSION_PREFIX = 'fw-version:'
 JOB_REPO_URL = 'job_repo_url'
 VERSION_PREFIX = 'cros-version:'
+BOARD_PREFIX = 'board:'
 
 # Timings
 ARTIFACT_FINISHED_TIME = 'artifact_finished_time'

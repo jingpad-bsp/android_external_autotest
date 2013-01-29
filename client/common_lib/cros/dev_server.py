@@ -336,6 +336,24 @@ class ImageServer(DevServer):
 
 
     @remote_devserver_call()
+    def setup_telemetry(self, build):
+        """Tell the devserver to setup telemetry for this build.
+
+        The devserver will stage autotest and then extract the required files
+        for telemetry.
+
+        @param build: the build to setup telemetry for.
+
+        @returns path on the devserver that telemetry is installed to.
+        """
+        call = self.build_call(
+                'setup_telemetry',
+                archive_url=_get_image_storage_server() + build)
+        response = urllib2.urlopen(call)
+        return response.read()
+
+
+    @remote_devserver_call()
     def finish_download(self, image):
         """Tell the devserver to finish staging |image|.
 

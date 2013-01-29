@@ -502,6 +502,22 @@ class SiteHost(remote.RemoteHost):
             self.run('rm -rf ' + path)
 
 
+    def _get_label_from_afe(self, label_prefix):
+        """Retrieve a host's specific label from the AFE.
+
+        Looks for a host label that has the form <label_prefix>:<value>
+        and returns the "<value>" part of the label. None is returned
+        if there is not a label matching the pattern
+
+        @returns the label that matches the prefix or 'None'
+        """
+        host_model = models.Host.objects.get(hostname=self.hostname)
+        host_label = host_model.labels.get(name__startswith=label_prefix)
+        if not host_label:
+            return None
+        return host_label.name.split(label_prefix, 1)[1]
+
+
     def _get_board_from_afe(self):
         """Retrieve this host's board from its labels in the AFE.
 
@@ -511,19 +527,18 @@ class SiteHost(remote.RemoteHost):
 
         @returns board from label, or `None`.
         """
-        host_model = models.Host.objects.get(hostname=self.hostname)
-        board_labels = filter(lambda l: l.name.startswith('board:'),
-                              host_model.labels.all())
-        board_name = None
-        if len(board_labels) == 1:
-            board_name = board_labels[0].name.split(':', 1)[1]
-        elif len(board_labels) == 0:
-            logging.error('Host %s does not have a board label.',
-                          self.hostname)
-        else:
-            logging.error('Host %s has multiple board labels.',
-                          self.hostname)
-        return board_name
+        return self._get_label_from_afe(ds_constants.BOARD_PREFIX)
+
+
+    def get_build(self):
+        """Retrieve the current build for this Host from the AFE.
+
+        Looks through this host's labels in the AFE to determine its build.
+
+        @returns The current build or None if it could not find it or if there
+                 were multiple build labels assigned to this host.
+        """
+        return self._get_label_from_afe(ds_constants.VERSION_PREFIX)
 
 
     def _install_repair(self):
@@ -1162,9 +1177,10 @@ class SiteHost(remote.RemoteHost):
         # Devices in the lab generally have the correct board name but our own
         # development devices have {board_name}-signed-{key_type}. The board
         # name may also begin with 'x86-' which we need to keep.
+        board_format_string = ds_constants.BOARD_PREFIX + '%s'
         if 'x86' not in board:
-            return 'board:%s' % board.split('-')[0]
-        return 'board:%s' % '-'.join(board.split('-')[0:2])
+            return board_format_string % board.split('-')[0]
+        return board_format_string % '-'.join(board.split('-')[0:2])
 
 
     @label_decorator('lightsensor')
