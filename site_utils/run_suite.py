@@ -71,7 +71,8 @@ def parse_options():
     parser.add_option("-f", "--file_bugs", dest="file_bugs", default='False',
                       help='File bugs on test failures. Must pass "True" or '
                            '"False" if used.')
-
+    parser.add_option("-l", "--bypass_labstatus", dest="bypass_labstatus",
+                      action="store_true", help='Bypass lab status check.')
 
     options, args = parser.parse_args()
     return parser, options, args
@@ -325,7 +326,8 @@ def main():
     setup_logging(logfile=log_name)
 
     try:
-        utils.check_lab_status(options.board)
+        if not options.bypass_labstatus:
+            utils.check_lab_status(options.board)
     except (error.LabIsDownException, error.BoardIsDisabledException) as e:
         logging.debug('Error Message: %s', e)
         print str(e)
