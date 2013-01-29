@@ -8,7 +8,7 @@ import common, logging, os, re, shutil
 from autotest_lib.client.bin import test, utils
 
 # changing this version number will force a delete of piglit/ and remake
-version = 2
+version = 3
 
 # TODO(ihf) piglit only builds on x86, Tegra2 only supports GLES
 def setup(topdir):
@@ -31,17 +31,21 @@ def setup(topdir):
         utils.extract_tarball_to_dir(tarball_path, dst_path)
         # patch in files now
         utils.system('patch -p0 < ' +
-                     os.path.join(srcdir, 'CMakeLists_GLES_Release.patch'))
-        utils.system('patch -p0 < ' +
                      os.path.join(srcdir,
                      'monitor_tests_for_GPU_hang_and_SW_rasterization.patch'))
+        utils.system('patch -p0 < ' +
+                     os.path.join(srcdir,
+                     'lib_path.patch'))
+
         shutil.copyfile(os.path.join(srcdir, 'cros-driver.tests'),
                         os.path.join(dst_path, 'tests/cros-driver.tests'))
         os.chdir(dst_path)
         # we have to tell cmake where to find glut
         cmd = 'cmake  -DCMAKE_FIND_ROOT_PATH=' + sysroot
-        cmd = cmd + ' -DGLUT_INCLUDE_DIR=' + sysroot + '/usr/include'
-        cmd = cmd + ' -DGLUT_glut_LIBRARY=' + glut_libpath
+        cmd += ' -DGLUT_INCLUDE_DIR=' + sysroot + '/usr/include'
+        cmd += ' -DGLUT_glut_LIBRARY=' + glut_libpath
+        # By default Piglit requires Waffle on Linux. Use GLUT instead.
+        cmd += ' -DPIGLIT_USE_WAFFLE=0'
         utils.run(cmd)
         utils.make('-j %d' % utils.count_cpus())
         # strip symbols from all binaries to save space
