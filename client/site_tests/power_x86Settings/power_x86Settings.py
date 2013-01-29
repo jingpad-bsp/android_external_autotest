@@ -58,8 +58,6 @@ MSR_CHECKS = {
         '0x1a0': [('33:32', 3), ('26:25', 3), ('16', 1)],
         },
     'Non-Atom': {
-        # VMX disabled.
-        '0x3a':  [('2:0', 1)],
         # IA32_ENERGY_PERF_BIAS[3:0] -- 0 == hi-perf, 6 balanced, 15 powersave
         '0x1b0': [('3:0', 6)],
         },
