@@ -123,7 +123,9 @@
              {"categories": "video",
               "cc": ["rohitbm@google.com"]},
              {"categories": "firmware",
-              "cc": ["chromeos-firmware@google.com"]}]},
+              "cc": ["chromeos-firmware@google.com"]},
+             {"categories": "webrtc",
+              "cc": ["webrtc-cros-build@google.com"]}]},
         {"platforms": {"x86-generic-full": ["netbook_sandy_bridge"]},
          "filters": [
              {"categories": "bvt|browsertests|pyauto|sync",
