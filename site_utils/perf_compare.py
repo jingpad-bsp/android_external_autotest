@@ -32,13 +32,16 @@ Once you're set up with passwordless sudo, you can run the script (preferably
 from an empty directory, since several output files are produced):
 
 > python perf_compare.py --crosperf=CROSPERF_EXE --image-1=IMAGE_1 \
-  --image-2=IMAGE_2 --board=BOARD --remote=REMOTE
+  --image-2=IMAGE_2 --board-1=BOARD_1 --board-2=BOARD_2 --remote-1=REMOTE_1 \
+  --remote-2=REMOTE_2
 
 You'll need to specify the following inputs: the full path to the crosperf
 executable; the absolute paths to 2 locally-built chromeOS images (which must
 reside in the "typical location" relative to the chroot, as required by
-crosperf); the name of the board associated with the 2 images; and the IP
-address of at least one remote device on which to run crosperf. Run with -h to
+crosperf); the name of the boards associated with the 2 images (if both images
+have the same board, you can specify that single board with --board=BOARD); and
+the IP addresses of the 2 remote devices on which to run crosperf (if you have
+only a single device available, specify it with --remote=REMOTE). Run with -h to
 see the full set of accepted command-line arguments.
 
 Notes:
@@ -48,8 +51,10 @@ output directories and created CSV files based on the specified
 --experiment-name.  If you don't want to lose any old crosperf/CSV data, either
 move it to another location, or run this script with a different
 --experiment-name.
-2) This script will only run the benchmarks/perf keys specified in the
-file "perf_benchmarks.json".
+2) This script will only run the benchmarks and process the perf keys specified
+in the file "perf_benchmarks.json".  Some benchmarks output more perf keys than
+what are specified in perf_benchmarks.json, and these will appear in the
+crosperf outputs, but not in the outputs produced specifically by this script.
 """
 
 
@@ -84,6 +89,7 @@ benchmark: {benchmark} {{
 _IMAGE_INFO_TEMPLATE = """
 label: {label} {{
   chromeos_image: {image}
+  board: {board}
   remote: {remote}
 }}
 """
@@ -182,31 +188,32 @@ def output_benchmarks_info(f, iteration_nums, perf_keys):
     return perf_keys_requested
 
 
-def output_image_info(f, label, image, remote):
+def output_image_info(f, label, image, board, remote):
     """Writes information about a given image to an output file.
 
     @param f: A file object that is writeable.
     @param label: A string label for the given image.
     @param image: The string path to the image on disk.
+    @param board: The string board associated with the image.
     @param remote: The string IP address on which to install the image.
     """
     f.write(_IMAGE_INFO_TEMPLATE.format(
-                label=label, image=image,
-                remote=remote.replace(',', ' ')))
+                label=label, image=image, board=board, remote=remote))
 
 
-def invoke_crosperf(crosperf_exe, result_dir, experiment_name, board, remote,
-                    iteration_nums, perf_keys, image_1, image_2, image_1_name,
-                    image_2_name):
+def invoke_crosperf(crosperf_exe, result_dir, experiment_name, board_1, board_2,
+                    remote_1, remote_2, iteration_nums, perf_keys, image_1,
+                    image_2, image_1_name, image_2_name):
     """Invokes crosperf with a set of benchmarks and waits for it to complete.
 
     @param crosperf_exe: The string path to a crosperf executable.
     @param result_dir: The string name of the directory in which crosperf is
         expected to write its output.
     @param experiment_name: A string name to give the crosperf invocation.
-    @param board: The string board associated with the locally-built images.
-    @param remote: A list of one or more String IP addresses of devices to use
-        when invoking crosperf.
+    @param board_1: The string board associated with the first image.
+    @param board_2: The string board associated with the second image.
+    @param remote_1: The string IP address/name of the first remote device.
+    @param remote_2: The string IP address/name of the second remote device.
     @param iteration_nums: A list of integers representing the number of
         iterations to run for the different benchmarks.
     @param perf_keys: A list of perf keys to run, or None to run the full set
@@ -221,13 +228,11 @@ def invoke_crosperf(crosperf_exe, result_dir, experiment_name, board, remote,
     """
     # Create experiment file for crosperf.
     with open(_EXPERIMENT_FILE_NAME, 'w') as f:
-        f.write('name: {name}\nboard: {board}\n'.format(
-                    name=experiment_name, board=board))
+        f.write('name: {name}\n'.format(name=experiment_name))
         perf_keys_requested = output_benchmarks_info(
             f, iteration_nums, perf_keys)
-        output_image_info(f, image_1_name, image_1, remote[0])
-        output_image_info(f, image_2_name, image_2,
-                          remote[1] if len(remote) > 1 else remote[0])
+        output_image_info(f, image_1_name, image_1, board_1, remote_1)
+        output_image_info(f, image_2_name, image_2, board_2, remote_2)
 
     # Invoke crosperf with the experiment file.
     logging.info('Invoking crosperf with created experiment file...')
@@ -371,60 +376,132 @@ def parse_options():
     parser.add_option('--image-2', metavar='PATH', type='string', default=None,
                       help='Absolute path to the second image .bin file '
                            '(required).')
-    parser.add_option('--board', metavar='BOARD', type='string', default=None,
-                      help='Name of the board associated with the images '
-                           '(required).')
-    parser.add_option('--remote', metavar='IP[,IP]', type='string',
-                      default=None,
-                      help='IP address/name of remote device to use; separate '
-                           'with a comma if specifying two IP addresses '
-                           '(required).')
 
-    parser.add_option('--image-1-name', metavar='NAME', type='string',
-                      default=_IMAGE_1_NAME,
-                      help='Descriptive name for the first image. Defaults to '
-                           '"%default".')
-    parser.add_option('--image-2-name', metavar='NAME', type='string',
-                      default=_IMAGE_2_NAME,
-                      help='Descriptive name for the second image. Defaults to '
-                           '"%default".')
-    parser.add_option('--experiment-name', metavar='NAME', type='string',
-                      default=_DEFAULT_EXPERIMENT_NAME,
-                      help='A descriptive name for the performance comparison '
-                           'experiment to run. Defaults to "%default".')
+    board_group = optparse.OptionGroup(
+        parser, 'Specifying the boards (required)')
+    board_group.add_option('--board', metavar='BOARD', type='string',
+                           default=None,
+                           help='Name of the board associated with the images, '
+                                'if both images have the same board. If each '
+                                'image has a different board, use '
+                                'options --board-1 and --board-2 instead.')
+    board_group.add_option('--board-1', metavar='BOARD', type='string',
+                           default=None,
+                           help='Board associated with the first image.')
+    board_group.add_option('--board-2', metavar='BOARD', type='string',
+                           default=None,
+                           help='Board associated with the second image.')
+    parser.add_option_group(board_group)
 
-    parser.add_option('--perf-keys', metavar='KEY1[,KEY2...]', type='string',
-                      default=None,
-                      help='Comma-separated list of perf keys to evaluate, '
-                           'if you do not want to run the complete set. By '
-                           'default, will evaluate with the complete set of '
-                           'perf keys.')
-    parser.add_option('--iterations', metavar='N1[,N2...]', type='string',
-                      default=str(_ITERATIONS),
-                      help='Number of iterations to use to evaluate each perf '
-                           'key (defaults to %default).  If specifying a '
-                           'custom list of perf keys (with --perf-keys) and '
-                           'you want to have a different number of iterations '
-                           'for each perf key, specify a comma-separated list '
-                           'of iteration numbers where N1 corresponds to KEY1, '
-                           'N2 corresponds to KEY2, etc.')
+    remote_group = optparse.OptionGroup(
+        parser, 'Specifying the remote devices (required)')
+    remote_group.add_option('--remote', metavar='IP', type='string',
+                            default=None,
+                            help='IP address/name of remote device to use, if '
+                                 'only one physical device is to be used. If '
+                                 'using two devices, use options --remote-1 '
+                                 'and --remote-2 instead.')
+    remote_group.add_option('--remote-1', metavar='IP', type='string',
+                            default=None,
+                            help='IP address/name of first device to use.')
+    remote_group.add_option('--remote-2', metavar='IP', type='string',
+                            default=None,
+                            help='IP address/name of second device to use.')
+    parser.add_option_group(remote_group)
 
-    parser.add_option('-v', '--verbose', action='store_true', default=False,
-                      help='Use verbose logging.')
+    optional_group = optparse.OptionGroup(parser, 'Optional settings')
+    optional_group.add_option('--image-1-name', metavar='NAME', type='string',
+                              default=_IMAGE_1_NAME,
+                              help='Descriptive name for the first image. '
+                                   'Defaults to "%default".')
+    optional_group.add_option('--image-2-name', metavar='NAME', type='string',
+                              default=_IMAGE_2_NAME,
+                              help='Descriptive name for the second image. '
+                                    'Defaults to "%default".')
+    optional_group.add_option('--experiment-name', metavar='NAME',
+                              type='string', default=_DEFAULT_EXPERIMENT_NAME,
+                              help='A descriptive name for the performance '
+                                   'comparison experiment to run. Defaults to '
+                                   '"%default".')
+    optional_group.add_option('--perf-keys', metavar='KEY1[,KEY2...]',
+                              type='string', default=None,
+                              help='Comma-separated list of perf keys to '
+                                   'evaluate, if you do not want to run the '
+                                   'complete set. By default, will evaluate '
+                                   'with the complete set of perf keys.')
+    optional_group.add_option('--iterations', metavar='N1[,N2...]',
+                              type='string', default=str(_ITERATIONS),
+                              help='Number of iterations to use to evaluate '
+                                   'each perf key (defaults to %default). If '
+                                   'specifying a custom list of perf keys '
+                                   '(with --perf-keys) and you want to have a '
+                                   'different number of iterations for each '
+                                   'perf key, specify a comma-separated list '
+                                   'of iteration numbers where N1 corresponds '
+                                   'to KEY1, N2 corresponds to KEY2, etc.')
+    optional_group.add_option('-v', '--verbose', action='store_true',
+                              default=False, help='Use verbose logging.')
+    parser.add_option_group(optional_group)
 
     options, _ = parser.parse_args()
-
-    # Verify required command-line parameters have been specified.
-    if not options.crosperf:
-        parser.error('You must specify the path to a crosperf executable.')
-    if not options.image_1 or not options.image_2:
-        parser.error('You must specify the paths for 2 image .bin files.')
-    if not options.board:
-        parser.error('You must specify a board name.')
-    if not options.remote:
-        parser.error('You must specify at least one remote device to use.')
-
     return options
+
+
+def verify_command_line_options(options, iteration_nums, perf_keys):
+    """Verifies there are no errors in the specified command-line options.
+
+    @param options: An optparse.Options object.
+    @param iteration_nums: An array of numbers representing the number of
+        iterations to perform to evaluate each perf key.
+    @param perf_keys: A list of strings representing perf keys to evaluate, or
+        None if no particular perf keys are specified.
+
+    @return True, if there were no errors in the command-line options, or
+        False if any error was detected.
+    """
+    success = True
+    if not options.crosperf:
+        logging.error('You must specify the path to a crosperf executable.')
+        success = False
+    if options.crosperf and not os.path.isfile(options.crosperf):
+        logging.error('Could not locate crosperf executable "%s".',
+                      options.crosperf)
+        if options.crosperf.startswith('/google'):
+            logging.error('Did you remember to run prodaccess?')
+        success = False
+    if not options.image_1 or not options.image_2:
+        logging.error('You must specify the paths for 2 image .bin files.')
+        success = False
+    if not options.board and (not options.board_1 or not options.board_2):
+        logging.error('You must specify the board name(s): either a single '
+                      'board with --board, or else two board names with '
+                      '--board-1 and --board-2.')
+        success = False
+    if options.board and options.board_1 and options.board_2:
+        logging.error('Specify either one board with --board, or two boards '
+                      'with --board-1 and --board-2, but not both.')
+        success = False
+    if not options.remote and (not options.remote_1 or not options.remote_2):
+        logging.error('You must specify the remote device(s) to use: either a '
+                      'single device with --remote, or else two devices with '
+                      '--remote-1 and --remote-2.')
+        success = False
+    if options.remote and options.remote_1 and options.remote_2:
+        logging.error('Specify either one remote device with --remote, or two '
+                      'devices with --remote-1 and --remote-2, but not both.')
+        success = False
+    if len(iteration_nums) > 1 and not perf_keys:
+        logging.error('You should only specify multiple iteration numbers '
+                      'if you\'re specifying a custom list of perf keys to '
+                      'evaluate.')
+        success = False
+    if (options.perf_keys and len(iteration_nums) > 1 and
+        len(options.perf_keys.split(',')) > len(iteration_nums)):
+        logging.error('You specified %d custom perf keys, but only %d '
+                      'iteration numbers.', len(options.perf_keys.split(',')),
+                      len(iteration_nums))
+        success = False
+    return success
 
 
 def main():
@@ -434,28 +511,11 @@ def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',
                         level=log_level)
 
-    # Verify there are no errors in the specified command-line options.
     iteration_nums = [int(i) for i in options.iterations.split(',')]
     perf_keys = options.perf_keys.split(',') if options.perf_keys else None
 
-    if len(iteration_nums) > 1 and not perf_keys:
-        logging.error('You should only specify multiple iteration numbers '
-                      'if you\'re specifying a custom list of perf keys to '
-                      'evaluate.')
-        return 1
-
-    if (options.perf_keys and len(iteration_nums) > 1 and
-        len(options.perf_keys.split(',')) > len(iteration_nums)):
-        logging.error('You specified %d custom perf keys, but only %d '
-                      'iteration numbers.', len(options.perf_keys.split(',')),
-                      len(iteration_nums))
-        return 1
-
-    if not os.path.isfile(options.crosperf):
-        logging.error('Could not locate crosperf executable "%s".',
-                      options.crosperf)
-        if options.crosperf.startswith('/google'):
-            logging.error('Did you remember to run prodaccess?')
+    # Verify there are no errors in the specified command-line options.
+    if not verify_command_line_options(options, iteration_nums, perf_keys):
         return 1
 
     # Clean up any old results that will be overwritten.
@@ -466,11 +526,20 @@ def main():
     if os.path.isfile(result_file):
         os.remove(result_file)
 
-    remote = options.remote.split(',')
+    if options.remote:
+        remote_1, remote_2 = options.remote, options.remote
+    else:
+        remote_1, remote_2 = options.remote_1, options.remote_2
+
+    if options.board:
+        board_1, board_2 = options.board, options.board
+    else:
+        board_1, board_2 = options.board_1, options.board_2
+
     report_file, perf_keys_requested = invoke_crosperf(
-        options.crosperf, result_dir, options.experiment_name, options.board,
-        remote, iteration_nums, perf_keys, options.image_1, options.image_2,
-        options.image_1_name, options.image_2_name)
+        options.crosperf, result_dir, options.experiment_name, board_1, board_2,
+        remote_1, remote_2, iteration_nums, perf_keys, options.image_1,
+        options.image_2, options.image_1_name, options.image_2_name)
     generate_results(report_file, result_file, perf_keys_requested)
 
     return 0
