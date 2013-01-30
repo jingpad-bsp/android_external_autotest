@@ -6,7 +6,6 @@
 import random
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros import dev_server
 
 
 _CONFIG = global_config.global_config
@@ -24,9 +23,8 @@ def sharding_factor():
     return _CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
 
 
-def infrastructure_user_list():
-    return _CONFIG.get_config_value('CROS', 'infrastructure_users', type=list,
-                                    default=[])
+def infrastructure_user():
+    return _CONFIG.get_config_value('CROS', 'infrastructure_user', type=str)
 
 
 def package_url_pattern():
@@ -122,12 +120,12 @@ def incorrectly_locked(host):
     Given a host, determine if the host is locked by some user.
 
     If the host is unlocked, or locked by the test infrastructure,
-    this will return False.  Usernames defined as 'part of the test
-    infrastructure' are listed in global_config.ini under the [CROS]
-    section in the 'infrastructure_users' field.
+    this will return False.  There is only one system user defined as part
+    of the test infrastructure and is listed in global_config.ini under the
+    [CROS] section in the 'infrastructure_user' field.
 
     @param host: Host instance (as in server/frontend.py)
     @return False if the host is not locked, or locked by the infra.
-            True if the host is locked by someone we haven't blessed.
+            True if the host is locked by the infra user.
     """
-    return (host.locked and host.locked_by not in infrastructure_user_list())
+    return (host.locked and host.locked_by != infrastructure_user())

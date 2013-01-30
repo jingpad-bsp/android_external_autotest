@@ -6,13 +6,9 @@
 
 """Unit tests for server/cros/dynamic_suite/tools.py."""
 
-import logging
 import mox
-import unittest
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite.comparitors import AllInHostList
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost
 from autotest_lib.server.cros.dynamic_suite.host_spec import HostSpec
@@ -71,8 +67,8 @@ class DynamicSuiteToolsTest(mox.MoxTestBase):
     def testNotIncorrectlyLocked(self):
         """Should accept hosts locked by the infrastructure."""
         infra_user = 'an infra user'
-        self.mox.StubOutWithMock(tools, 'infrastructure_user_list')
-        tools.infrastructure_user_list().AndReturn([infra_user])
+        self.mox.StubOutWithMock(tools, 'infrastructure_user')
+        tools.infrastructure_user().AndReturn(infra_user)
         self.mox.ReplayAll()
         host = FakeHost(locked=True, locked_by=infra_user)
         self.assertFalse(tools.incorrectly_locked(host))
@@ -174,7 +170,7 @@ class DynamicSuiteToolsTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         hosts_per_spec = dict(zip(self.specs, host_lists))
-        self.reimager._choose_hosts(hosts_per_spec, len(self.specs)+1)
+        self.reimager._choose_hosts(hosts_per_spec, len(self.specs) + 1)
 
 
     def testSubsumeTrivialHostSpec(self):
@@ -265,8 +261,8 @@ class DynamicSuiteToolsTest(mox.MoxTestBase):
     def testRandomBestHostRunningAvailable(self):
         """Should return the correctly locked 'Running' host."""
         user = 'an infra user'
-        self.mox.StubOutWithMock(tools, 'infrastructure_user_list')
-        tools.infrastructure_user_list().MultipleTimes().AndReturn([user])
+        self.mox.StubOutWithMock(tools, 'infrastructure_user')
+        tools.infrastructure_user().MultipleTimes().AndReturn(user)
 
         running = FakeHost('h1', status='Running', locked=True, locked_by=user)
         hosts = [FakeHost('h2', status='Running', locked=True, locked_by='foo'),
@@ -341,8 +337,9 @@ class DynamicSuiteToolsTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        to_use = self.reimager._choose_hosts(hosts_per_spec, len(self.specs)+1)
-        self.assertEquals(to_use.size(), len(self.specs)+1)
+        to_use = self.reimager._choose_hosts(hosts_per_spec,
+                                             len(self.specs) + 1)
+        self.assertEquals(to_use.size(), len(self.specs) + 1)
         for expected_host in expected:
             self.assertTrue(to_use.contains_host(expected_host))
         self.assertTrue(to_use.contains_host(extra_expected))
@@ -371,7 +368,8 @@ class DynamicSuiteToolsTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        to_use = self.reimager._choose_hosts(hosts_per_spec, len(self.specs)+1)
+        to_use = self.reimager._choose_hosts(hosts_per_spec,
+                                             len(self.specs) + 1)
         self.assertEquals(to_use.size(), len(self.specs))
         for expected_host in expected:
             self.assertTrue(to_use.contains_host(expected_host))

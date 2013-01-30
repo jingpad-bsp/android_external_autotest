@@ -36,12 +36,12 @@ def autotest_master():
     return autotest_master
 
 
-def autotest_users():
+def autotest_user():
     """Returns the valid list of autotest users we can 'become' on the master.
     """
-    autotest_master = CONFIG.get_config_value('CROS', 'infrastructure_users',
-                                              type=list, default=[])
-    return autotest_master
+    autotest_user = CONFIG.get_config_value('CROS', 'infrastructure_user',
+                                              type=str)
+    return autotest_user
 
 
 def main(argv):
@@ -51,7 +51,7 @@ def main(argv):
     common_util.parse_args(argv)
     master = autotest_master()
     # Take the first user.
-    main_user = autotest_users()[0]
+    main_user = autotest_user()
     remote_path = os.path.join(_AUTOTEST_PATH, _HELPER_PATH)
     command = ('ssh %(master)s -- become %(user)s -- '
                '%(remote_path)s/lab_deploy_helper.py %(argv)s' %
