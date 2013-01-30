@@ -21,8 +21,6 @@ except ImportError:
   raise ImportError('Could not locate the webdriver package.  Did you build? '
                     'Are you using a prebuilt autotest package?')
 
-from selenium.webdriver.support.ui import WebDriverWait
-
 
 class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     """Base class for objects to configure access points using webdriver."""
@@ -215,7 +213,6 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             return
         self.rpm_client.queue_request(self.host_name, 'ON')
         self.establish_driver_connection()
-        self.wait = WebDriverWait(self.driver, timeout=5)
         # With the 5 second timeout give the router up to 2 minutes
         for i in range(24):
             try:
@@ -364,7 +361,6 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         if len(self._command_list) == 0:
             return
         self.establish_driver_connection()
-        self.wait = WebDriverWait(self.driver, timeout=5)
         # Pull items by page and then sort
         if self.get_number_of_pages() == -1:
             self.fail(msg='Number of pages is not set.')

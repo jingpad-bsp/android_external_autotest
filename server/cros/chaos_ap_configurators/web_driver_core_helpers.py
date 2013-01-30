@@ -12,7 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..',
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 from selenium.common.exceptions import WebDriverException
-
+from selenium.webdriver.support.ui import WebDriverWait
 
 class WebDriverCoreHelpers(object):
     """Base class for manipulating web pages using webdriver."""
@@ -20,7 +20,7 @@ class WebDriverCoreHelpers(object):
     def __init__(self):
         super(WebDriverCoreHelpers, self).__init__()
         self.driver = None
-        self.wait = None
+        self.wait = WebDriverWait(self.driver, timeout=5)
 
     def _handle_alert(self, xpath, alert_handler):
         """Calls the alert handler if there is an alert.
@@ -52,6 +52,15 @@ class WebDriverCoreHelpers(object):
                                % alert_text)
         alert_handler(alert)
 
+
+    def set_wait_time(self, time):
+        self.wait = WebDriverWait(self.driver, timeout=time)
+
+
+    def restore_default_wait_time(self):
+        self.wait = WebDriverWait(self.driver, timeout=5)
+
+
     def click_button_by_id(self, element_id, alert_handler=None):
         """Clicks a button by id.
 
@@ -75,7 +84,7 @@ class WebDriverCoreHelpers(object):
         button.click()
         self._handle_alert(xpath, alert_handler)
 
-    def wait_for_object_by_id(self, element_id):
+    def wait_for_object_by_id(self, element_id, wait_time=5):
         """Waits for an element to become available; returns a reference to it.
 
         Args:
@@ -85,7 +94,7 @@ class WebDriverCoreHelpers(object):
           Reference to the element if found before a timeout.
         """
         xpath = 'id("%s")' % element_id
-        return self.wait_for_object_by_xpath(xpath)
+        return self.wait_for_object_by_xpath(xpath, wait_time=wait_time)
 
     def object_by_id_exist(self, element_id):
         """Finds if an object exist in this particular page.
@@ -114,7 +123,7 @@ class WebDriverCoreHelpers(object):
             return False
         return True
 
-    def wait_for_object_by_xpath(self, xpath):
+    def wait_for_object_by_xpath(self, xpath, wait_time=5):
         """Waits for an element to become available; returns a reference to it.
 
         Args:
@@ -123,12 +132,14 @@ class WebDriverCoreHelpers(object):
         Returns:
           Reference to the element if found before a timeout.
         """
+        self.set_wait_time(wait_time)
         try:
             self.wait.until(lambda _: self.driver.find_element_by_xpath(xpath))
         except SeleniumTimeoutException, e:
             raise SeleniumTimeoutException('Unable to find the object by '
                                            'xpath: %s\n WebDriver exception: '
                                            '%s' % (xpath, str(e)))
+        self.restore_default_wait_time()
         return self.driver.find_element_by_xpath(xpath)
 
 

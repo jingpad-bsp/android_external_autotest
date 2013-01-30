@@ -61,7 +61,8 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
     def navigate_to_page(self, page_number):
         self.driver.get(self.admin_interface_url)
         if self.driver.title.find('NETGEAR') != -1:
-            self.wait_for_object_by_xpath('//frame[@name="topframe"]')
+            self.wait_for_object_by_xpath('//frame[@name="topframe"]',
+                                          wait_time=60)
         else:
             raise RuntimeError('Unable to open landing page.')
         self._get_settings_page()
