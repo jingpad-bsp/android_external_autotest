@@ -142,11 +142,11 @@ class graphics_VTSwitch(cros_ui_test.UITest):
 
     def _take_current_vt_screenshot(self):
         """
-        Captures a screenshot of the current VT screen in raw RGB pixel format.
+        Captures a screenshot of the current VT screen in BMP format.
         Returns the path of the screenshot file.
         """
         current_vt = int(utils.system_output('fgconsole'))
-        extension = 'rgb'
+        extension = 'bmp'
 
         # In VT1, X is running so use the screenshot function in cros_ui_test.
         if current_vt == 1:
@@ -156,7 +156,7 @@ class graphics_VTSwitch(cros_ui_test.UITest):
         prefix = 'graphics_VTSwitch_VT2'
         next_index = len(glob.glob(
             os.path.join(self.resultsdir, '%s-*.%s' % (prefix, extension))))
-        filename = '%s-%d.rgba' % (prefix, next_index)
+        filename = '%s-%d.%s' % (prefix, next_index, extension)
         output_path = os.path.join(self.resultsdir, filename)
         return self._take_drm_screenshot(output_path)
 
@@ -164,7 +164,7 @@ class graphics_VTSwitch(cros_ui_test.UITest):
     def _take_drm_screenshot(self, output_path):
         autotest_deps_path = os.path.join(self.autodir, 'deps')
         getfb_path = os.path.join(autotest_deps_path, 'gfxtest', 'getfb')
-        output = utils.system_output('%s %s' % (getfb_path, output_path))
+        output = utils.system_output('%s %s.rgba' % (getfb_path, output_path))
         for line in output.split('\n'):
             # Parse the getfb output for info about framebuffer size.  The line
             # should looks omething like:
@@ -172,12 +172,11 @@ class graphics_VTSwitch(cros_ui_test.UITest):
             if line.startswith('Framebuffer info:'):
                 size = line.split(':')[1].split(',')[0].strip()
                 break
-        final_output_path = output_path + '.rgb'
-        utils.system('convert -depth 8 -size %s %s %s' %
-                     (size, output_path, final_output_path))
+        utils.system('convert -depth 8 -size %s %s.rgba %s' %
+                     (size, output_path, output_path))
 
-        logging.info('Saving screenshot to %s' % final_output_path)
-        return final_output_path
+        logging.info('Saving screenshot to %s' % output_path)
+        return output_path
 
 
     def _switch_to_vt(self, vt):
