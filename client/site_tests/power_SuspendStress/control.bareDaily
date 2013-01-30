@@ -4,7 +4,7 @@
 
 AUTHOR = "jwerner, chromeos-power"
 NAME = "power_SuspendStress.bareDaily"
-#SUITE = "kernel_daily_regression"
+SUITE = "kernel_daily_regression"
 PURPOSE = "Run repeated iterations of suspend/resume to find rare errors."
 TIME = "LENGTHY"
 TEST_CATEGORY = "Functional"
@@ -21,6 +21,5 @@ state (work in progress, feel free to add some more).
 job.run_test('power_SuspendStress', duration=(60 * 60 * 1.5), tag='bareDaily')
 
 job.run_test('hardware_EC', tag='power_SuspendStress')
+job.run_test('login_LoginSuccess', tag='power_SuspendStress')
 job.run_test('hardware_TPMCheck', tag='power_SuspendStress')
-# TODO: uncomment after crosbug.com/36987 is fixed
-#job.run_test('login_LoginSuccess', tag='power_SuspendStress')

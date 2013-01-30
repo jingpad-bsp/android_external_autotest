@@ -17,7 +17,7 @@ Runs two minutes of suspend/resume cycles in the background of an OpenGL video.
 """
 
 job.parallel([lambda: job.run_test('power_SuspendStress', tag='videoPerBuild',
-                                   duration=120, init_delay=10, min_suspend=7,
+                                   duration=120, init_delay=20, min_suspend=7,
                                    tolerated_aborts=1, breathing_time=10)],
              [lambda: job.run_test('graphics_SanAngeles', creds='$default',
                                    tag='power_SuspendStress')])

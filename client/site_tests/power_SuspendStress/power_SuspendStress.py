@@ -14,7 +14,7 @@ class power_SuspendStress(test.test):
 
     # TODO(scottz): automate use_dbus after crosbug.com/38140
     def initialize(self, duration, use_dbus=False, init_delay=0,
-                   tolerated_aborts=0, breathing_time=3, min_suspend=0):
+                   tolerated_aborts=0, breathing_time=5, min_suspend=0):
         """
         duration: total run time of the test
         use_dbus: suspend via DBus... use this only in parallel to a

@@ -1256,7 +1256,11 @@ def get_board():
     Get the board name from crossystem. Cached for the lifetime of this script.
     """
     if not hasattr(get_board, '_cached'):
-        get_board._cached = system_output('crossystem hwid').split()[0]
+        hwid = system_output('crossystem hwid').split()
+        if hwid[0] in ['ACER', 'SAMS', 'IEC', 'X86']:
+            get_board._cached = hwid[1]
+        else:
+            get_board._cached = hwid[0]
     return get_board._cached
 
 

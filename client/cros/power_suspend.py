@@ -45,18 +45,34 @@ class Suspender(object):
     # board-specific "time to suspend" values determined empirically
     # TODO: migrate to separate file with http://crosbug.com/38148
     _SUSPEND_DELAY = {
-        # The MMC sometimes likes to take ~3 seconds... bug?
+        # TODO: Reevaluate this when http://crosbug.com/38460 is fixed
         'SNOW': 5,
 
-        # TODO: Reevaluate when http://crosbug.com/36766 is fixed
-        'ACER': 4,  # ZGB uses old-style HWIDs... but this is unambiguous
+        # TODO: Reevaluate this when http://crosbug.com/36766 is fixed
+        'ZGB': 4,
+
+        # TODO: Reevaluate these when http://crosbug.com/38225 is fixed
+        'MARIO': 6,
+        'ALEX': 6,
+
+        # TODO: Reevaluate this when http://crosbug.com/38239 is fixed
+        # edit: bumping this even more to make it work for now...
+        # TODO(jwerner): figure out how to deal with the UMH/firmware delays
+        # once crosbug/p 16981 and 17115 are solved.
+        'STOUT': 10,
 
         # These two need high values, because it seems to mitigate their
         # RTC interrupt problem. See http://crosbug.com/36004
         'LUMPY': 5,
         'STUMPY': 5,
 
-        # Kievs sometimes miss their RTC wakeups even with 8 second suspends
+        # RTS5209 card reader takes ~1 second to suspend... really bad staging
+        # driver, we'll get a better one with 3.8 rebase, not worth trying to
+        # fix this in the meantime. Also on Stout.
+        'BUTTERFLY': 4,
+
+        # Hard disk sync and overall just slow
+        'PARROT': 7,
         'KIEV': 9,
     }
 
@@ -252,10 +268,9 @@ class Suspender(object):
             # Retry suspend until we get clear HwClock reading on buggy boards
             for _ in xrange(10):
                 self._log_reader.set_start_by_current()
+                utils.system('sync')
+                board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 3)
                 try:
-                    # TODO(jwerner): reduce default to 2 after all boards that
-                    # need it have more accurate timing values
-                    board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 4)
                     alarm = self._suspend(duration + board_delay)
                 except sys_power.EarlyWakeupError:
                     # might be a SuspendAbort... we check for it ourselves below
@@ -274,7 +289,7 @@ class Suspender(object):
 
                 warning_regex = re.compile(r' kernel: \[.*WARNING:')
                 abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
-                        r'|powerd_suspend\[.*Aborting suspend, wake event rec')
+                        r'|powerd_suspend\[.*Cancel suspend at kernel')
                 unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
                 # TODO(scottz): warning_monitor crosbug.com/38092
                 syslog = self._log_reader.read_all_logs()
