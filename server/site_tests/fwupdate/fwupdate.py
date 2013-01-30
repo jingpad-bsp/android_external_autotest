@@ -18,15 +18,21 @@ class fwupdate(test.test):
                                      os.path.basename(fwurl))
         if fwurl.startswith('gs://'):
             utils.system('gsutil cp %s %s' % (fwurl, local_tarball))
+        elif fwurl.startswith('file://'):
+            utils.system('cp %s %s' % (fwurl[7:], local_tarball))
         else:
             utils.system('wget -O %s %s' % (local_tarball, fwurl))
         self._ap_image = 'image-%s.bin' % board
         self._ec_image = 'ec.bin'
         self._board = board
         self._servo = servo
+        untar_timeout = 60
         utils.system('tar xf %s -C %s %s %s' % (
                 local_tarball, self.tmpd.name,
-                self._ap_image, self._ec_image), timeout=60)
+                self._ap_image, self._ec_image), timeout=untar_timeout)
+        utils.system('tar xf %s  --wildcards -C %s "dts/*"' % (
+                local_tarball, self.tmpd.name), timeout=untar_timeout,
+                     ignore_status=True)
 
     def cleanup(self):
         self.tmpd.clean()
@@ -39,3 +45,4 @@ class fwupdate(test.test):
         self._servo.program_bootprom(
             self._board,
             os.path.join(self.tmpd.name, self._ap_image))
+        self._servo.cold_reset()
