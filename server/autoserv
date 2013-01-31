@@ -3,7 +3,7 @@
 # Released under the GPL v2
 
 """
-Run an control file through the server side engine
+Run a control file through the server side engine
 """
 
 import sys, os, re, traceback, signal, time, logging, getpass
