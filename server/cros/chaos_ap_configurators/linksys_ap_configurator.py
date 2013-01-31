@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Class to control the Linksys WRT54G2 router."""
+
 import logging
-import os
 import urlparse
 
 import ap_configurator
-import selenium.common.exceptions
 
 
 class LinksysAPConfigurator(ap_configurator.APConfigurator):
@@ -169,6 +169,12 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
+        if update_interval < 600:
+            logging.info('The minimum update interval is 600, overriding.')
+            update_interval = 600
+        elif update_interval > 7200:
+            logging.info('The maximum update interval is 7200, overriding.')
+            update_interval = 7200
         popup = '//select[@name="SecurityMode"]'
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="PassPhrase"]'

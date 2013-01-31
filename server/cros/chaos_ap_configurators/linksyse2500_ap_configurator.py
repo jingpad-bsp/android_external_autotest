@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import urlparse
 
 import linksyse_dual_band_configurator
@@ -25,19 +26,6 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
 
     def get_number_of_pages(self):
         return 2
-
-
-    def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
-                 'channels': ['1 - 2.412GHz', '2 - 2.417GHz', '3 - 2.422GHz',
-                              '4 - 2.427GHz', '5 - 2.432GHz', '6 - 2.437GHz',
-                              '7 - 2.442GHz', '8 - 2.447GHz', '9 - 2.452GHz',
-                              '10 - 2.457GHz', '11 - 2.462GHz']},
-                {'band': self.band_5ghz,
-                 'channels': ['36 - 5.180GHz', '40 - 5.200GHz',
-                              '44 - 5.220GHz', '48 - 5.240GHz',
-                              '149 - 5.745GHz', '153 - 5.765GHz',
-                              '157 - 5.785GHz', '161 - 5.805GHz']}]
 
 
     def get_supported_modes(self):
@@ -118,14 +106,16 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
 
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
-        channel_choices = ['1 - 2.412GHz', '2 - 2.417GHz', '3 - 2.422GHz',
-                           '4 - 2.427GHz', '5 - 2.432GHz', '6 - 2.437GHz',
-                           '7 - 2.442GHz', '8 - 2.447GHz', '9 - 2.452GHz',
-                           '10 - 2.457GHz', '11 - 2.462GHz']
+        channel_choices = ['Auto',
+                           '1 - 2.412GHZ', '2 - 2.417GHZ', '3 - 2.422GHZ',
+                           '4 - 2.427GHZ', '5 - 2.432GHZ', '6 - 2.437GHZ',
+                           '7 - 2.442GHZ', '8 - 2.447GHZ', '9 - 2.452GHZ',
+                           '10 - 2.457GHZ', '11 - 2.462GHZ']
         xpath = '//select[@name="_wl0_channel"]'
         if self.current_band == self.band_5ghz:
             xpath = '//select[@name="_wl1_channel"]'
-            channel_choices = ['36 - 5.180GHz', '40 - 5.200GHz',
+            channel_choices = ['Auto (DFS)',
+                               '36 - 5.180GHz', '40 - 5.200GHz',
                                '44 - 5.220GHz', '48 - 5.240GHz',
                                '149 - 5.745GHz', '153 - 5.765GHz',
                                '157 - 5.785GHz', '161 - 5.805GHz']
@@ -145,3 +135,12 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
     def set_security_wpapsk(self, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 2, 900)
+
+
+    def _set_visibility(self, visible=True):
+        button = 'closed_24g'
+        if self.current_band == self.band_5ghz:
+            button = 'closed_5g'
+        int_value = 0 if visible else 1
+        xpath = ('//input[@value="%d" and @name="%s"]' % (int_value, button))
+        self.click_button_by_xpath(xpath)

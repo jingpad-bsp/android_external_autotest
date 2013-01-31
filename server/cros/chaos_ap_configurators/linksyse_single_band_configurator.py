@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import urlparse
 
 import ap_configurator
@@ -35,8 +34,8 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
             alert.accept()
         elif 'Wireless security is currently disabled.' in text:
             alert.accept()
-            self.click_button_by_xpath('//a[text()="Save Settings"]',
-                                       alert_handler=self._sec_alert)
+            self.click_button_by_id('divBT1', alert_handler=self._sec_alert)
+            self.click_button_by_xpath('//input[@value="Continue"]')
         elif 'Your new setting will disable Wi-Fi Protected Setup.' in text:
             alert.accept()
         else:
@@ -55,7 +54,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
-                 'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
+                 'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def is_security_mode_supported(self, security_mode):
@@ -83,21 +82,8 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def save_page(self, page_number):
-        try:
-            self.driver.find_element_by_xpath('//a[text()="Save Settings"]')
-            return
-        except WebDriverException, e:
-            message = str(e)
-            if message.find('An open modal dialog blocked the operation') == -1:
-                return
-        alert = self.driver.switch_to_alert()
-        alert_text = alert.text
-        alert.accept()
-        self.click_button_by_xpath('//a[text()="Save Settings"]',
-                                   alert_handler=self._sec_alert)
-        button_xpath = '//input[@name="action"]'
-        if self.wait_for_object_by_xpath(button_xpath):
-            self.click_button_by_xpath(button_xpath)
+        self.click_button_by_id('divBT1', alert_handler=self._sec_alert)
+        self.click_button_by_xpath('//input[@value="Continue"]')
 
 
     def set_mode(self, mode, band=None):
@@ -126,6 +112,17 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="ssid_24g"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
+        # If security is off leaving focus from the field will throw
+        # a alert dialog.
+        ssid_field = self.driver.find_element_by_xpath(xpath)
+        try:
+            ssid_field.send_keys("\t");
+            return
+        except WebDriverException, e:
+            message = str(e)
+            if message.find('An open modal dialog blocked the operation') == -1:
+                return
+        self._sec_alert(self.driver.switch_to_alert())
 
 
     def set_channel(self, channel):
@@ -135,10 +132,11 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
         xpath = '//select[@name="_wl0_channel"]'
-        channels = ['1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
-                    '4 - 2.427 GHz', '5 - 2.432 GHz', '6 - 2.437 GHz',
-                    '7 - 2.442 GHz', '8 - 2.447 GHz', '9 - 2.452 GHz',
-                    '10 - 2.457 GHz', '11 - 2.462 GHz']
+        channels = ['Auto',
+                    '1 - 2.412GHZ', '2 - 2.417GHZ', '3 - 2.422GHZ',
+                    '4 - 2.427GHZ', '5 - 2.432GHZ', '6 - 2.437GHZ',
+                    '7 - 2.442GHZ', '8 - 2.447GHZ', '9 - 2.452GHZ',
+                    '10 - 2.457GHZ', '11 - 2.462GHZ']
         self.select_item_from_popup_by_xpath(channels[position], xpath)
 
 
@@ -184,6 +182,9 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
         # and Mixed mode.
         # WEP and WPA-Personal do not show up in the list, no alert is thrown.
         popup = '//select[@name="wl0_security_mode"]'
+        if not self.item_in_popup_by_xpath_exist(self.security_wep, popup):
+            raise RuntimeError('The popup %s did not contain the item %s. '
+                               'Is the mode N?' % (popup, self.security_wep))
         self.select_item_from_popup_by_xpath(self.security_wep, popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl0_passphrase"]'
@@ -193,7 +194,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath(xpath, alert_handler=self._sec_alert)
 
 
-    def set_security_wpapsk(self, shared_key):
+    def set_security_wpapsk(self, shared_key, update_interval=None):
         # WEP and WPA-Personal are not supported for Wireless-N only mode,
         # so use WPA2-Personal to avoid conflicts.
         self.add_item_to_command_list(self._set_security_wpa2psk,
@@ -201,6 +202,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wpa2psk(self, shared_key):
+        logging.info('update_interval is not supported.')
         popup = '//select[@name="wl0_security_mode"]'
         self.select_item_from_popup_by_xpath(self.security_wpa2psk, popup,
                                              alert_handler=self._sec_alert)
@@ -210,5 +212,10 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_visibility(self, visible=True):
-        logging.info('Visibility is not supported for Linksys single band AP')
-        return None
+        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
+
+
+    def _set_visibility(self, visible=True):
+        int_value = 0 if visible else 1
+        xpath = ('//input[@value="%d" and @name="closed_24g"]' % int_value)
+        self.click_button_by_xpath(xpath, alert_handler=self._sec_alert)

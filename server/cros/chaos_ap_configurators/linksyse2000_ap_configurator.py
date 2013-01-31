@@ -88,7 +88,9 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def set_mode(self, mode, band=None):
-        self.add_item_to_command_list(self._set_mode, (mode,), 1, 900)
+        if band:
+            self.add_item_to_command_list(self._set_band, (band,), 1, 700)
+        self.add_item_to_command_list(self._set_mode, (mode, band), 1, 800)
 
 
     def _set_mode(self, mode, band=None):
@@ -129,17 +131,18 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_ssid(self, ssid):
-        if self.current_band == self.band_2ghz:
-            xpath = '//select[@name="wl_net_mode_24g"]'
-            self.select_item_from_popup_by_xpath('Mixed', xpath,
-                                                 alert_handler=self._sec_alert)
         xpath = '//input[@maxlength="32" and @name="wl_ssid_24g"]'
+        mode = '//select[@name="wl_net_mode_24g"]'
         if self.current_band == self.band_5ghz:
-            xpath = '//select[@name="wl_net_mode_5g"]'
-            self.select_item_from_popup_by_xpath('Mixed', xpath,
-                                                 alert_handler=self._sec_alert)
             xpath = '//input[@maxlength="32" and @name="wl_ssid_5g"]'
-        self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
+            mode = '//select[@name="wl_net_mode_5g"]'
+        ssid_field = self.driver.find_element_by_xpath(xpath)
+        if ssid_field.get_attribute('disabled') == 'true':
+            # This means the mode is disabled, so we have to set it to something
+            # so we can fill in the SSID
+            self.select_item_from_popup_by_xpath('Mixed', mode,
+                                                 alert_handler=self._sec_alert)
+        self.set_content_of_text_field_by_xpath(ssid, xpath)
 
 
     def set_channel(self, channel):
@@ -175,7 +178,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        self.add_item_to_command_list(self._set_band, (band,), 1, 900)
+        self.add_item_to_command_list(self._set_band, (band,), 1, 800)
 
 
     def _set_band(self, band):
@@ -216,6 +219,9 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
         # and Mixed mode.
         # WEP and WPA-Personal do not show up in the list, no alert is thrown.
         popup = '//select[@name="security_mode2"]'
+        if not self.item_in_popup_by_xpath_exist(self.security_wep, popup):
+            raise RuntimeError ('Unable to find wep security item in popup.  '
+                                'Is the mode set to N?')
         self.select_item_from_popup_by_xpath(self.security_wep, popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_passphrase"]'
@@ -225,7 +231,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath(xpath, alert_handler=self._sec_alert)
 
 
-    def set_security_wpapsk(self, shared_key):
+    def set_security_wpapsk(self, shared_key, update_interval=None):
         # WEP and WPA-Personal are not supported for Wireless-N only mode,
         # so use WPA2-Personal to avoid conflicts.
         self.add_item_to_command_list(self._set_security_wpa2psk,
@@ -233,6 +239,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wpa2psk(self, shared_key):
+        logging.info('update_interval is not supported')
         popup = '//select[@name="security_mode2"]'
         self.select_item_from_popup_by_xpath(self.security_wpa2psk, popup,
                                              alert_handler=self._sec_alert)

@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import urlparse
 
 import ap_configurator
@@ -41,7 +40,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
             alert.accept()
         elif 'Setting the Security Mode to WEP, WPA Personal' in text:
             alert.accept()
-        elif 'Turning off SSID Broadcast  will disable WPS' in text:
+        elif 'Turning off SSID Broadcast' in text:
             alert.accept()
         elif 'Security modes are not compatible' in text:
             alert.accept()
@@ -64,9 +63,9 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
-                 'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10 , 11]},
+                 'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
                 {'band': self.band_5ghz,
-                 'channels': [36, 40, 44, 48, 149, 153, 157, 161]}]
+                 'channels': ['Auto', 36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def get_supported_modes(self):
@@ -111,7 +110,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_mode(self, mode, band=None):
-        self.add_item_to_command_list(self._set_mode, (mode, band), 1, 900)
+        self.add_item_to_command_list(self._set_mode, (mode, band), 1, 800)
 
 
     def _set_mode(self, mode, band=None):
@@ -168,14 +167,15 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
-        channel_choices = ['1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
+        channel_choices = ['Auto',
+                           '1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
                            '4 - 2.427 GHz', '5 - 2.432 GHz', '6 - 2.437 GHz',
                            '7 - 2.442 GHz', '8 - 2.447 GHz', '9 - 2.452 GHz',
                            '10 - 2.457 GHz', '11 - 2.462 GHz']
         xpath = '//select[@name="_wl0_channel"]'
         if self.current_band == self.band_5ghz:
             xpath = '//select[@name="_wl1_channel"]'
-            channel_choices = ['36 - 5.180 GHz', '40 - 5.200 GHz',
+            channel_choices = ['Auto', '36 - 5.180 GHz', '40 - 5.200 GHz',
                                '44 - 5.220 GHz', '48 - 5.240 GHz',
                                '149 - 5.745 GHz', '153 - 5.765 GHz',
                                '157 - 5.785 GHz', '161 - 5.805 GHz']
@@ -249,5 +249,13 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_visibility(self, visible=True):
-        logging.info('Visibility is not supported for Linksys dual band AP')
-        return None
+        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
+
+
+    def _set_visibility(self, visible=True):
+        button = 'wl0_closed'
+        if self.current_band == self.band_5ghz:
+            button = 'wl1_closed'
+        int_value = 0 if visible else 1
+        xpath = ('//input[@value="%d" and @name="%s"]' % (int_value, button))
+        self.click_button_by_xpath(xpath)

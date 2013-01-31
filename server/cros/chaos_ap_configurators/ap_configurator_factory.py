@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""File containing class to build all available ap_configurators."""
+
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_config import ChaosAPList
 
@@ -91,15 +93,34 @@ class APConfiguratorFactory(object):
             self.ap_list.append(configurator(ap))
 
     def get_ap_configurators(self):
+        """Returns all available configurators."""
         return self.ap_list
 
     def get_ap_configurator_by_short_name(self, name):
+        """Returns a configurator by short name.
+
+        @param name: short name of the configurator
+        """
         for ap in self.ap_list:
             if ap.get_router_short_name() == name:
                 return ap
         return None
 
+
+    def get_aps_with_security_mode(self, security_mode):
+        """Returns all configurators that support a given security mode.
+
+        @param security_mode: desired security mode
+        """
+        aps = []
+        for ap in self.ap_list:
+            if ap.is_security_mode_supported(security_mode):
+                aps.append(ap)
+        return aps
+
+
     def turn_off_all_routers(self):
+        """Powers down all of the routers."""
         ap_power_cartridge = ap_cartridge.APCartridge()
         for ap in self.ap_list:
             ap.power_down_router()

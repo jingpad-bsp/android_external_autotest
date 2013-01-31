@@ -2,12 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Subclass of the LinksysAPConfigurator."""
+
 import linksys_ap_configurator
 
 
 class LinksysAP15Configurator(linksys_ap_configurator.LinksysAPConfigurator):
     """Derived class to control Linksys WRT54G2 1.5 router."""
-
 
     def _set_mode(self, mode):
         # Create the mode to popup item mapping
@@ -20,3 +21,10 @@ class LinksysAP15Configurator(linksys_ap_configurator.LinksysAPConfigurator):
                                ' %s.', hex(mode), self.get_router_name())
         xpath = ('//select[@name="wl_net_mode"]')
         self.select_item_from_popup_by_xpath(mode_name, xpath)
+
+
+    def _set_visibility(self, visible=True):
+        self._set_radio(enabled=True)
+        int_value = 0 if visible else 1
+        xpath = ('//input[@value="%d" and @name="wl_closed"]' % int_value)
+        self.click_button_by_xpath(xpath)

@@ -22,6 +22,7 @@ class WebDriverCoreHelpers(object):
         self.driver = None
         self.wait = WebDriverWait(self.driver, timeout=5)
 
+
     def _handle_alert(self, xpath, alert_handler):
         """Calls the alert handler if there is an alert.
 
@@ -72,6 +73,7 @@ class WebDriverCoreHelpers(object):
         xpath = 'id("%s")' % element_id
         return self.click_button_by_xpath(xpath, alert_handler)
 
+
     def click_button_by_xpath(self, xpath, alert_handler=None):
         """Clicks a button by xpath.
 
@@ -83,6 +85,7 @@ class WebDriverCoreHelpers(object):
         button = self.wait_for_object_by_xpath(xpath)
         button.click()
         self._handle_alert(xpath, alert_handler)
+
 
     def get_url(self, page_url, page_title=None):
         """Load page and check if the page loads completely, if not, reload
@@ -120,6 +123,7 @@ class WebDriverCoreHelpers(object):
         xpath = 'id("%s")' % element_id
         return self.wait_for_object_by_xpath(xpath, wait_time=wait_time)
 
+
     def object_by_id_exist(self, element_id):
         """Finds if an object exist in this particular page.
 
@@ -131,6 +135,7 @@ class WebDriverCoreHelpers(object):
         """
         xpath = 'id("%s")' % element_id
         return self.object_by_xpath_exist(xpath)
+
 
     def object_by_xpath_exist(self, xpath):
         """Finds if an object exist in this particular page.
@@ -146,6 +151,7 @@ class WebDriverCoreHelpers(object):
         except SeleniumTimeoutException:
             return False
         return True
+
 
     def wait_for_object_by_xpath(self, xpath, wait_time=5):
         """Waits for an element to become available; returns a reference to it.
@@ -165,6 +171,44 @@ class WebDriverCoreHelpers(object):
                                            '%s' % (xpath, str(e)))
         self.restore_default_wait_time()
         return self.driver.find_element_by_xpath(xpath)
+
+
+    def item_in_popup_by_id_exist(self, item, element_id):
+        """Returns if an item exists in a popup given a id
+
+        Args:
+          item: name of the item
+          xpath: the xpath of the popup
+
+        Returns:
+          True if the item exists; False otherwise.
+        """
+        if self.number_of_items_in_popup_by_xpath(xpath) == 0:
+            raise SeleniumTimeoutException('The popup at xpath %s has no items.'
+                                           '\n WebDriver exception: %s', xpath,
+                                           str(e))
+        xpath = 'id("%s")' % element_id
+        self.item_in_popup_by_xpath_exist(item, xpath)
+
+
+    def item_in_popup_by_xpath_exist(self, item, xpath):
+        """Returns if an item exists in a popup given an xpath
+
+        Args:
+          item: name of the item
+          xpath: the xpath of the popup
+
+        Returns:
+          True if the item exists; False otherwise.
+        """
+        if self.number_of_items_in_popup_by_xpath(xpath) == 0:
+            raise SeleniumTimeoutException('The popup at xpath %s has no items.'
+                                           % xpath)
+        popup = self.driver.find_element_by_xpath(xpath)
+        for option in popup.find_elements_by_tag_name('option'):
+            if option.text == item:
+                return True
+        return False
 
 
     def number_of_items_in_popup_by_id(self, element_id, alert_handler=None):
@@ -218,6 +262,7 @@ class WebDriverCoreHelpers(object):
         self.select_item_from_popup_by_xpath(item, xpath, wait_for_xpath,
                                              alert_handler)
 
+
     def select_item_from_popup_by_xpath(self, item, xpath, wait_for_xpath=None,
                                         alert_handler=None):
         """Selects an item from a popup, by passing the xpath of the popup.
@@ -232,8 +277,11 @@ class WebDriverCoreHelpers(object):
         """
         if self.number_of_items_in_popup_by_xpath(xpath) == 0:
             raise SeleniumTimeoutException('The popup at xpath %s has no items.'
-                                           '\n WebDriver exception: %s', xpath,
-                                           str(e))
+                                           % xpath)
+        if not self.item_in_popup_by_xpath_exist(item, xpath):
+            raise SeleniumTimeoutException('The popup at xpath %s does not '
+                                           'contain the item %s.' % (xpath,
+                                           item))
         popup = self.driver.find_element_by_xpath(xpath)
         for option in popup.find_elements_by_tag_name('option'):
             if option.text == item:
@@ -243,8 +291,10 @@ class WebDriverCoreHelpers(object):
         if wait_for_xpath:
             self.wait_for_object_by_xpath(wait_for_xpath)
 
+
     def set_content_of_text_field_by_id(self, content, text_field_id,
-                                        wait_for_xpath=None):
+                                        wait_for_xpath=None,
+                                        abort_check=False):
         """Sets the content of a textfield, by passing the element ID.
 
         Args:
@@ -254,7 +304,10 @@ class WebDriverCoreHelpers(object):
                           the method does not wait.
         """
         xpath = 'id("%s")' % text_field_id
-        self.set_content_of_text_field_by_xpath(content, xpath, wait_for_xpath)
+        self.set_content_of_text_field_by_xpath(content, xpath,
+                                                wait_for_xpath=wait_for_path,
+                                                abort_check=abort_check)
+
 
     def set_content_of_text_field_by_xpath(self, content, xpath,
                                            wait_for_xpath=None,
@@ -277,10 +330,10 @@ class WebDriverCoreHelpers(object):
                 raise SeleniumTimeoutException('Unable to obtain the value of '
                                                'the text field %s.\nWebDriver '
                                                'exception:%s' % (xpath, str(e)))
-        text_field = self.driver.find_element_by_xpath(xpath)
         text_field.clear()
         text_field.send_keys(content)
         if wait_for_xpath: self.wait_for_object_by_xpath(wait_for_xpath)
+
 
     def set_check_box_selected_by_id(self, check_box_id, selected=True,
                                      wait_for_xpath=None, alert_handler=None):
@@ -297,6 +350,7 @@ class WebDriverCoreHelpers(object):
         xpath = 'id("%s")' % check_box_id
         self.set_check_box_selected_by_xpath(xpath, selected, wait_for_xpath,
                                              alert_handler)
+
 
     def set_check_box_selected_by_xpath(self, xpath, selected=True,
                                         wait_for_xpath=None,
