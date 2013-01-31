@@ -8,7 +8,6 @@ import region_task
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.test import factory
 from cros.factory.test import registration_codes
 from cros.factory.test import shopfloor
@@ -100,7 +99,11 @@ class ShopFloorVpdTask(task.FactoryTask):
         task.schedule(self.fetch_vpd)
 
     def fetch_vpd(self):
-        self.vpd.update(shopfloor.get_vpd())
+        shopfloor_vpd = shopfloor.get_vpd()
+        if shopfloor_vpd is not None:
+           self.vpd.update(shopfloor_vpd)
+        else:
+           factory.log('No VPD information found on shopfloor server.')
         if self.registration_code_map is not None:
             self.registration_code_map.update(
                 shopfloor.get_registration_code_map())
@@ -112,6 +115,9 @@ class factory_VPD(test.test):
 
     SERIAL_TASK_NAME = 'serial'
     REGION_TASK_NAME = 'region'
+
+    def vpd_is_empty(self):
+      return len(self.vpd['ro']) == 0 and len(self.vpd['rw']) == 0
 
     def run_once(self, override_vpd=None,
                  store_registration_codes=False,
@@ -125,7 +131,9 @@ class factory_VPD(test.test):
             if shopfloor.is_enabled():
                 self.tasks += [
                     ShopFloorVpdTask(self.vpd, self.registration_code_map)]
-            else:
+                task.run_factory_tasks(self.job, self.tasks)
+            if self.vpd_is_empty():
+                self.tasks = []
                 if self.SERIAL_TASK_NAME in task_list:
                     self.tasks += [serial_task.SerialNumberTask(self.vpd)]
                 if self.REGION_TASK_NAME in task_list:
