@@ -68,6 +68,7 @@ class LogReader(object):
         peek again.
         """
         log_files = []
+        line_number = 0
         if self._include_rotated_logs:
             log_files.extend(utils.system_output(
                 'ls -tr1 %s.*' % self._filename,
@@ -75,10 +76,10 @@ class LogReader(object):
         log_files.append(self._filename)
         for log_file in log_files:
             f = open(log_file)
-            for _ in xrange(self._start_line):
-                # read f up to the logical start of the log, discard the lines
-                f.next()
             for line in f:
+                line_number += 1
+                if line_number < self._start_line:
+                    continue
                 peek = yield line
                 if peek:
                   buf = [f.next() for _ in xrange(peek)]
