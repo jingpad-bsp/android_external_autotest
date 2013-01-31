@@ -11,11 +11,7 @@ class Trendnet691grAPConfigurator(trendnet_ap_configurator.
 
 
     def save_page(self, page_number):
-        if page_number == 1:
-            xpath = ('//input[@type="submit" and @value="Apply"]')
-        elif page_number == 2:
-            xpath = ('//input[@class="button_submit" and @value="Apply"]')
-        self.click_button_by_xpath(xpath)
+        super(Trendnet691grAPConfigurator, self).save_page(page_number)
         # Wait for the settings progress bar to save the setting.
         self.wait_for_progress_bar()
         # Then reboot the device if told to.

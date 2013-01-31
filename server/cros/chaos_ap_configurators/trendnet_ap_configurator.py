@@ -22,6 +22,19 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         self.security_wpa2psk = 'WPA2-PSK'
 
 
+    def _alert_handler(self, alert):
+        """Checks for any modal dialogs which popup to alert the user and
+        either raises a RuntimeError or ignores the alert.
+
+        Args:
+          alert: The modal dialog's contents.
+        """
+        text = alert.text
+        if 'Please input 10 or 26 characters of WEP key1' in text:
+            alert.accept()
+            raise RuntimeError(text)
+
+
     def get_number_of_pages(self):
         return 2
 
@@ -47,13 +60,11 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/basic.asp')
-            self.driver.get(page_url)
-            if not self.driver.title.startswith('TEW'):
-                raise RuntimeError('Page loaded does not match what we want.')
+            self.get_url(page_url, 'TEW')
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/security.asp')
-            self.driver.get(page_url)
+            self.get_url(page_url)
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %
@@ -79,7 +90,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
             xpath = ('//input[@type="submit" and @value="Apply"]')
         elif page_number == 2:
             xpath = ('//input[@class="button_submit" and @value="Apply"]')
-        self.click_button_by_xpath(xpath)
+        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
         self.wait_for_progress_bar()
 
 

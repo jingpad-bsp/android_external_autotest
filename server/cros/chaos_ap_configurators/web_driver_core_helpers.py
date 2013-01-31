@@ -84,6 +84,30 @@ class WebDriverCoreHelpers(object):
         button.click()
         self._handle_alert(xpath, alert_handler)
 
+    def get_url(self, page_url, page_title=None):
+        """Load page and check if the page loads completely, if not, reload
+           the page.
+
+        Args:
+          page_url: The url to load.
+          page_title: The complete/partial title of the page after it loads.
+
+        Returns:
+          True if the page loaded properly. False if it did not.
+        """
+        self.driver.get(page_url)
+        if page_title:
+            try:
+                self.wait.until(lambda _: page_title in self.driver.title)
+            except:
+                self.driver.get(page_url)
+                self.wait.until(lambda _: self.driver.title)
+            finally:
+                if not page_title in self.driver.title:
+                    raise RuntimeError('Page did not load. Expected %s in '
+                                       'title, but got %s as title.' %
+                                       (page_title, self.driver.title))
+
     def wait_for_object_by_id(self, element_id, wait_time=5):
         """Waits for an element to become available; returns a reference to it.
 
