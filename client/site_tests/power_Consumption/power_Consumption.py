@@ -445,7 +445,8 @@ class power_Consumption(cros_ui_test.UITest):
         # Let the login complete
         time.sleep(5)
 
-        self._services = power_utils.ManageServices()
+        self._services = power_utils.ServiceStopper(
+            upstart.ServiceStopper.POWER_DRAW_SERVICES)
         self._services.stop_services()
 
         self._backlight = power_utils.Backlight()

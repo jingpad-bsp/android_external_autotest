@@ -91,59 +91,6 @@ def call_powerd_dbus_method(method_name, args=''):
     utils.system_output(command)
 
 
-class ManageServices(object):
-    """Class to manage CrOS services which influence power consumption.
-
-    Public attributes:
-      services_to_stop: list of services that should be stopped
-
-    Public methods:
-      stop_sevices: stop services that unpredictably influence power.
-      restore_services: restore services that were previously stopped.
-
-    Private attributes:
-      _services_stopped: list of services that were successfully stopped
-    """
-
-
-    def __init__(self, services_to_stop=['powerd', 'update-engine',
-                                         'bluetoothd']):
-        """Initialize instance.
-
-        Note, on services_to_stop.  These non-essential services can
-        spontaneously change power draw:
-
-          powerd: dims backlights and suspends the device.
-          update-engine: we don't want any updates downloaded during the test
-          bluetoothd: bluetooth, scanning for devices can create a spike.
-        """
-        self.services_to_stop = services_to_stop
-        self._services_stopped = []
-
-
-    def stop_services(self):
-        """Turn off services that introduce power variance."""
-
-        for service in self.services_to_stop:
-            cmd = 'status %s' % service
-            is_stopped = utils.system_output(cmd).find('stop/waiting') != -1
-            if is_stopped:
-                continue
-            try:
-                utils.system('stop %s' % service)
-                self._services_stopped.append(service)
-            except error.CmdError as e:
-                logging.warning('Error stopping service %s. %s',
-                                service, str(e))
-
-
-    def restore_services(self):
-        """Restore services that were stopped for power investigations."""
-        for service in reversed(self._services_stopped):
-            utils.system('start %s' % service, ignore_status=True)
-        self._services_stopped = []
-
-
 class BacklightException(Exception):
     """Class for Backlight exceptions."""
 

@@ -5,7 +5,7 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_utils
+from autotest_lib.client.cros import power_utils, upstart
 
 
 class hardware_Backlight(test.test):
@@ -16,7 +16,7 @@ class hardware_Backlight(test.test):
 
         Private Attributes:
           _backlight: power_utils.Backlight object
-          _services: power_utils.ManageServicres object
+          _services: upstart.ServiceStopper object
         """
         super(hardware_Backlight, self).initialize()
         self._backlight = None
@@ -25,7 +25,7 @@ class hardware_Backlight(test.test):
 
     def run_once(self):
         # Stop powerd to avoid it adjusting backlight levels
-        self._services = power_utils.ManageServices(['powerd'])
+        self._services = upstart.ServiceStopper(['powerd'])
         self._services.stop_services()
 
         # optionally test keyboard backlight

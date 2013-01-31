@@ -5,6 +5,7 @@
 import time
 from autotest_lib.client.cros import cros_ui_test
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
+from autotest_lib.client.cros import upstart
 
 
 class power_Idle(cros_ui_test.UITest):
@@ -15,7 +16,7 @@ class power_Idle(cros_ui_test.UITest):
 
         Private Attributes:
           _backlight: power_utils.Backlight object
-          _services: power_utils.ManageServicres object
+          _services: upstart.ServiceStopper object
         """
         super(power_Idle, self).initialize()
         self._backlight = None
@@ -28,7 +29,8 @@ class power_Idle(cros_ui_test.UITest):
 
     def run_once(self, idle_time=120, sleep=10):
 
-        self._services = power_utils.ManageServices()
+        self._services = upstart.ServiceStopper(
+            upstart.ServiceStopper.POWER_DRAW_SERVICES)
         self._services.stop_services()
 
         self._backlight = power_utils.Backlight()
