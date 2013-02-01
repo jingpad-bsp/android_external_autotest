@@ -60,7 +60,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/basic.asp')
-            self.get_url(page_url, 'TEW')
+            self.get_url(page_url, page_title='TEW')
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/security.asp')
