@@ -130,6 +130,15 @@ class CustomVariablesChecker(variables.VariablesChecker):
 class CustomDocStringChecker(base.DocStringChecker):
     """Modifies stock docstring checker to suit Autotest doxygen style."""
 
+    def visit_module(self, node):
+        """
+        Don't visit imported modules when checking for docstrings.
+
+        @param node: the node we're visiting.
+        """
+        pass
+
+
     def _check_docstring(self, node_type, node):
         """
         Teaches pylint to look for @param with each argument in the
@@ -241,8 +250,14 @@ def get_cmdline_options(args_list, pylint_base_opts, rcfile):
 def main():
     """Main function checks each file in a commit for pylint violations."""
 
-    # For now all error/warning/refactor/convention exceptions except W0611 are
-    # disabled. W0611 raises an exception when an imported module is not used.
+    # For now all error/warning/refactor/convention exceptions except those in
+    # the enable string are disabled.
+    # W0611: All imported modules (except common) need to be used.
+    # W1201: Logging methods should take the form
+    #   logging.<loggingmethod>(format_string, format_args...); and not
+    #   logging.<loggingmethod>(format_string % (format_args...))
+    # C0111: Docstring needed. Also checks @param for each arg.
+    # C0112: Non-empty Docstring needed.
     # Ideally we would like to enable as much as we can, but if we did so at
     # this stage anyone who makes a tiny change to a file will be tasked with
     # cleaning all the lint in it. See chromium-os:37364.
@@ -257,13 +272,15 @@ def main():
         pylint_base_opts = ['--rcfile=%s' % pylint_rc,
                             '--reports=no',
                             '--disable=W,R,E,C,F',
-                            '--enable=W0611,C0111,C0112',]
+                            '--enable=W0611,W1201,C0111,C0112',
+                            '--no-docstring-rgx=_.*',]
     else:
         all_failures = 'error,warning,refactor,convention'
         pylint_base_opts = ['--disable-msg-cat=%s' % all_failures,
                             '--reports=no',
                             '--include-ids=y',
-                            '--ignore-docstrings=n',]
+                            '--ignore-docstrings=n',
+                            '--no-docstring-rgx=_.*',]
 
     # run_pylint can be invoked directly with command line arguments,
     # or through a presubmit hook which uses the arguments in pylintrc. In the
