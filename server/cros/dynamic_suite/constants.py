@@ -17,3 +17,9 @@ VERSION_PREFIX = 'cros-version:'
 ARTIFACT_FINISHED_TIME = 'artifact_finished_time'
 DOWNLOAD_STARTED_TIME = 'download_started_time'
 PAYLOAD_FINISHED_TIME = 'payload_finished_time'
+
+# Reimage type names
+# Please be very careful in changing or adding to these, as one needs to
+# maintain backwards compatibility.
+REIMAGE_TYPE_OS = 'os'
+REIMAGE_TYPE_FIRMWARE = 'firmware'

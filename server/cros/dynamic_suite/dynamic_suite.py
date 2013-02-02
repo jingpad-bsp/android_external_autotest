@@ -12,8 +12,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
-from autotest_lib.server.cros.dynamic_suite.reimager import FwReimager
-from autotest_lib.server.cros.dynamic_suite.reimager import OsReimager
+from autotest_lib.server.cros.dynamic_suite import reimager
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 
 
@@ -323,7 +322,8 @@ class SuiteSpec(object):
                  skip_reimage=False, add_experimental=True, file_bugs=False,
                  max_runtime_mins=24*60, firmware_reimage=False,
                  try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
-                 suite_dependencies=None, **dargs):
+                 suite_dependencies=None,
+                 reimage_type=constants.REIMAGE_TYPE_OS, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -350,12 +350,16 @@ class SuiteSpec(object):
                                  this suite will run.
         @param firmware_reimage: True if we should use the FwReimager,
                                  False if we should use OsReimager.
+                                 (This flag has now been deprecated in favor of
+                                  reimage_type.)
         @param try_job_timeout_mins: Max time in mins we allow a try job to run
                                      before timing out.
         @param suite_dependencies: A string with a comma separated list of suite
                                    level dependencies, which act just like test
                                    dependencies and are appended to each test's
                                    set of dependencies at job creation time.
+        @param reimage_type: A string identifying the type of reimaging that
+                             should be done before running tests.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -388,6 +392,7 @@ class SuiteSpec(object):
         self.firmware_reimage = firmware_reimage
         self.try_job_timeout_mins = try_job_timeout_mins
         self.suite_dependencies = suite_dependencies
+        self.reimage_type = reimage_type
 
 
 def skip_reimage(g):
@@ -422,16 +427,38 @@ def reimage_and_run(**dargs):
                              Default: True
     @param file_bugs: automatically file bugs on test failures.
                       Default: False
-    @raises AsynchronousBuildFailure: if there was an issue finishing staging
-                                      from the devserver.
-    @raises MalformedDependenciesException: if the dependency_info file for
-                                            the required build fails to parse.
     @param suite_dependencies: A string with a comma separated list of suite
                                level dependencies, which act just like test
                                dependencies and are appended to each test's
                                set of dependencies at job creation time.
+    @param reimage_type: A string indicating what type of reimaging that the
+                         suite wishes to have done to the machines it will
+                         run on. Valid arguments are given as constants in this
+                         file.
+    @raises AsynchronousBuildFailure: if there was an issue finishing staging
+                                      from the devserver.
+    @raises MalformedDependenciesException: if the dependency_info file for
+                                            the required build fails to parse.
     """
     suite_spec = SuiteSpec(**dargs)
+
+    # Horrible hacks to handle backwards compatibility, overall goal here is
+    #   reimage_firmware == True -> Firmware
+    #   reimage_firmware == False AND reimage_type == None -> OS
+    #   reimage_firmware == False AND reimage_type != None -> reimage_type
+    # and once we've set reimage_type right, ignore that reimage_firmware
+    # has ever existed...
+    # Remove all this code and reimage_firmware once R26 falls off stable.
+    if suite_spec.firmware_reimage:
+        suite_spec.reimage_type = constants.REIMAGE_TYPE_FIRMWARE
+        logging.warning("reimage_and_run |firmware_reimage=True| argument "
+                "has been deprecated. Please use |reimage_type='firmware'| "
+                "instead.")
+    elif suite_spec.reimage_type is None:
+        suite_spec.reimage_type = constants.REIMAGE_TYPE_OS
+
+    suite_spec.firmware_reimage = False
+    # </backwards_compatibility_hacks>
 
     suite_spec.dependencies = _gatherAndParseDependencies(suite_spec)
     logging.debug('Full dependency dictionary: %s', suite_spec.dependencies)
@@ -440,18 +467,18 @@ def reimage_and_run(**dargs):
                                         user=suite_spec.job.user, debug=False)
     tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
+    try:
+        reimager_class = reimager.reimager_for(suite_spec.reimage_type)
+    except KeyError:
+        raise error.UnknownReimageType("%s not recognized reimage_type" %
+                                       suite_spec.reimage_type)
 
-    if suite_spec.firmware_reimage:
-        reimager_class = FwReimager
-    else:
-        reimager_class = OsReimager
+    imager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
+                            tko, results_dir=suite_spec.job.resultdir)
 
-    reimager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
-                              tko, results_dir=suite_spec.job.resultdir)
+    _perform_reimage_and_run(suite_spec, afe, tko, imager)
 
-    _perform_reimage_and_run(suite_spec, afe, tko, reimager)
-
-    reimager.clear_reimaged_host_state(suite_spec.build)
+    imager.clear_reimaged_host_state(suite_spec.build)
 
 
 def _gatherAndParseDependencies(suite_spec):

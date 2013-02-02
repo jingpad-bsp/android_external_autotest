@@ -23,6 +23,31 @@ from autotest_lib.frontend.afe.json_rpc import proxy
 
 DEFAULT_TRY_JOB_TIMEOUT_MINS = global_config.global_config.get_config_value(
             'SCHEDULER', 'try_job_timeout_mins', type=int, default=4*60)
+_reimage_types = {}
+
+
+def reimage_type(name):
+    """
+    A class decorator to register a reimager with a name of what type of
+    reimaging it can do.
+    @param name The name of the reimaging type to be registered.
+    @return The true decorator that accepts the class to register as |name|.
+    """
+    def curry(klass):
+        _reimage_types[name] = klass
+        return klass
+    return curry
+
+
+def reimager_for(name):
+    """
+    Returns the reimager class associated with the given (string) name.
+
+    @param name The name of the reimage type being requested.
+    @return The subclass of Reimager that was requested.
+    @raise KeyError if the name was not recognized as a reimage type.
+    """
+    return _reimage_types[name]
 
 
 class Reimager(object):
@@ -581,6 +606,7 @@ class Reimager(object):
         raise NotImplementedError()
 
 
+@reimage_type(constants.REIMAGE_TYPE_OS)
 class OsReimager(Reimager):
     """
     A class that can run jobs to reimage Chrome OS on devices.
@@ -624,13 +650,14 @@ class OsReimager(Reimager):
         return self._schedule_reimage_job_base(host_group, params)
 
 
-
+@reimage_type(constants.REIMAGE_TYPE_FIRMWARE)
 class FwReimager(Reimager):
     """
     A class that can run jobs to reimage firmware on devices.
 
     See attributes' description in the parent class docstring.
     """
+
 
     def __init__(self, autotest_dir, board, afe=None, tko=None,
                  results_dir=None):
@@ -644,6 +671,7 @@ class FwReimager(Reimager):
         self._version_prefix = constants.FW_VERSION_PREFIX
         self._control_file = 'fwupdate'
         self._url_pattern = tools.firmware_url_pattern()
+
 
     def _schedule_reimage_job(self, params, host_group, devserver):
         """Schedules the reimaging of a group of hosts with a Chrome OS image.

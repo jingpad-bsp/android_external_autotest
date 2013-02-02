@@ -2,7 +2,7 @@
 Internal global error types
 """
 
-import sys, traceback, threading, logging
+import sys, traceback, threading
 from traceback import format_exception
 
 # Add names you want to be imported by 'from errors import *' to this list.
@@ -109,7 +109,7 @@ def get_context():
 def exception_context(e):
     """Return the context of a given exception (or None if none is defined)."""
     if hasattr(e, "_context"):
-        return e._context
+        return e._context  # pylint: disable=W0212
 
 
 def set_exception_context(e, s):
@@ -198,29 +198,29 @@ class UnhandledJobError(JobError):
 class TestBaseException(AutotestError):
     """The parent of all test exceptions."""
     # Children are required to override this.  Never instantiate directly.
-    exit_status="NEVER_RAISE_THIS"
+    exit_status = "NEVER_RAISE_THIS"
 
 
 class TestError(TestBaseException):
     """Indicates that something went wrong with the test harness itself."""
-    exit_status="ERROR"
+    exit_status = "ERROR"
 
 
 class TestNAError(TestBaseException):
     """Indictates that the test is Not Applicable.  Should be thrown
     when various conditions are such that the test is inappropriate."""
-    exit_status="TEST_NA"
+    exit_status = "TEST_NA"
 
 
 class TestFail(TestBaseException):
     """Indicates that the test failed, but the job will not continue."""
-    exit_status="FAIL"
+    exit_status = "FAIL"
 
 
 class TestWarn(TestBaseException):
     """Indicates that bad things (may) have happened, but not an explicit
     failure."""
-    exit_status="WARN"
+    exit_status = "WARN"
 
 
 class UnhandledTestError(TestError):
@@ -557,6 +557,11 @@ class HostLockManagerReuse(CrosDynamicSuiteException):
 
 class ReimageAbortedException(CrosDynamicSuiteException):
     """Raised when a Reimage job is aborted"""
+    pass
+
+
+class UnknownReimageType(CrosDynamicSuiteException):
+    """Raised when a suite passes in an invalid reimage type"""
     pass
 
 
