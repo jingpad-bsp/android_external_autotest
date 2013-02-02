@@ -184,8 +184,6 @@ class FAFTSequence(ServoTest):
     def setup(self, ec_wp=None):
         """Autotest setup function."""
         super(FAFTSequence, self).setup()
-        if not self._remote_infos['faft']['used']:
-            raise error.TestError('The use_faft flag should be enabled.')
         self.register_faft_template({
             'state_checker': (None),
             'userspace_action': (None),

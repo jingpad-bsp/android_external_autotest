@@ -6,90 +6,39 @@ import httplib, logging, os, socket, subprocess, sys, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, test
-from autotest_lib.server.cros import servo
+
 
 class ServoTest(test.test):
-    """AutoTest test class that creates and destroys a servo object.
+    """AutoTest test class to serve as a parent class for FAFT tests.
 
-    Servo-based server side AutoTests can inherit from this object.
-    There are 2 remote clients supported:
-        If use_pyauto flag is True, a remote PyAuto client will be launched;
-        If use_faft flag is Ture, a remote FAFT client will be launched.
+    TODO(jrbarnette):  This class is a legacy, reflecting
+    refactoring that has begun but not completed.  The long term
+    plan is to move all function here into FAFT specific classes.
+    http://crosbug.com/33305.
     """
     version = 2
 
-    # Exposes RPC access to a remote PyAuto client.
-    pyauto = None
-    # Exposes RPC access to a remote FAFT client.
-    faft_client = None
-
-    # Autotest references to the client.
-    _autotest_client = None
-    # Remote client info list.
-    _remote_infos = {
-        'pyauto': {
-            # Used or not.
-            'used': False,
-            # Reference name of RPC object in this class.
-            'ref_name': 'pyauto',
-            # Port number of the remote RPC.
-            'port': 9988,
-            # The remote command to be run.
-            'remote_command': 'python /usr/local/autotest/cros/remote_pyauto.py'
-                              ' --no-http-server',
-            # The short form of remote command, used by pkill.
-            'remote_command_short': 'remote_pyauto',
-            # The remote process info.
-            'remote_process': None,
-            # The ssh tunnel process info.
-            'ssh_tunnel': None,
-            # Polling RPC function name for testing the server availability.
-            'polling_rpc': 'IsLinux',
-            # Additional SSH options.
-            'ssh_config': '-o StrictHostKeyChecking=no ',
-        },
-        'faft': {
-            'used': False,
-            'ref_name': 'faft_client',
-            'port': 9990,
-            'remote_command': '/usr/local/autotest/cros/faft_client.py',
-            'remote_command_short': 'faft_client',
-            'remote_log_file': '/tmp/faft_client.log',
-            'remote_process': None,
-            'ssh_tunnel': None,
-            'polling_rpc': 'system.is_available',
-            'ssh_config': '-o StrictHostKeyChecking=no '
-                          '-o UserKnownHostsFile=/dev/null ',
-        },
-    }
-
-    def _init_servo(self, host):
-        """Initialize `self.servo`.
-
-        If the host has an attached servo object, use that.
-        Otherwise assume that there's a locally attached servo
-        device, and use it.
-
-        """
-        if host.servo:
-            self.servo = host.servo
-        else:
-            self.servo = servo.Servo()
-
+    _PORT = 9990
+    _REMOTE_COMMAND = '/usr/local/autotest/cros/faft_client.py'
+    _REMOTE_COMMAND_SHORT = 'faft_client'
+    _REMOTE_LOG_FILE = '/tmp/faft_client.log'
+    _SSH_CONFIG = ('-o StrictHostKeyChecking=no '
+                   '-o UserKnownHostsFile=/dev/null ')
 
     def initialize(self, host, _, use_pyauto=False, use_faft=False):
         """Create a Servo object and install the dependency.
-
-        If use_pyauto/use_faft is True the PyAuto/FAFTClient dependency is
-        installed on the client and a remote PyAuto/FAFTClient server is
-        launched and connected.
         """
-        # Initialize servotest args.
-        self._client = host
-        self._remote_infos['pyauto']['used'] = use_pyauto
-        self._remote_infos['faft']['used'] = use_faft
+        # TODO(jrbarnette): Part of the incomplete refactoring:
+        # assert here that there are no legacy callers passing
+        # parameters for functionality that's been deprecated and
+        # removed.
+        assert use_faft and not use_pyauto
 
-        self._init_servo(host)
+        self.servo = host.servo
+        self.faft_client = None
+        self._client = host
+        self._ssh_tunnel = None
+        self._remote_process = None
 
         # Initializes dut, may raise AssertionError if pre-defined gpio
         # sequence to set GPIO's fail.  Autotest does not handle exception
@@ -99,14 +48,10 @@ class ServoTest(test.test):
         except (AssertionError, xmlrpclib.Fault) as e:
             raise error.TestFail(e)
 
-        # Install PyAuto/FAFTClient dependency.
-        for info in self._remote_infos.itervalues():
-            if info['used']:
-                if not self._autotest_client:
-                    self._autotest_client = autotest.Autotest(self._client)
-                self._autotest_client.install()
-                self.launch_client(info)
-
+        # Install faft_client dependency.
+        self._autotest_client = autotest.Autotest(self._client)
+        self._autotest_client.install()
+        self._launch_client()
 
     def _ping_test(self, hostname, timeout=5):
         """Verify whether a host responds to a ping.
@@ -119,7 +64,6 @@ class ServoTest(test.test):
             return subprocess.call(
                     ['ping', '-c', '1', '-W', str(timeout), hostname],
                     stdout=fnull, stderr=fnull) == 0
-
 
     def _sshd_test(self, hostname, timeout=5):
         """Verify whether sshd is running in host.
@@ -138,17 +82,13 @@ class ServoTest(test.test):
             time.sleep(timeout)
             return False
 
-
-    def launch_client(self, info):
+    def _launch_client(self):
         """Launch a remote XML RPC connection on client with retrials.
-
-        Args:
-          info: A dict of remote info, see the definition of self._remote_infos.
         """
         retry = 3
         while retry:
             try:
-                self._launch_client_once(info)
+                self._launch_client_once()
                 break
             except AssertionError:
                 retry -= 1
@@ -158,38 +98,29 @@ class ServoTest(test.test):
                 else:
                     raise
 
-
-    def _launch_client_once(self, info):
+    def _launch_client_once(self):
         """Launch a remote process on client and set up an xmlrpc connection.
-
-        Args:
-          info: A dict of remote info, see the definition of self._remote_infos.
         """
-        assert info['used'], \
-            'Remote %s dependency not installed.' % info['ref_name']
-
-        if info['ssh_tunnel']:
-            info['ssh_tunnel'].terminate()
-            info['ssh_tunnel'] = None
+        if self._ssh_tunnel:
+            self._ssh_tunnel.terminate()
+            self._ssh_tunnel = None
 
         # Launch RPC server remotely.
-        self._kill_remote_process(info)
-        self._launch_ssh_tunnel(info)
+        self._kill_remote_process()
+        self._launch_ssh_tunnel()
 
-        logging.info('Client command: %s', info['remote_command'])
-        log_file = info.get('remote_log_file', '/dev/null')
-        logging.info("Logging to %s", log_file)
+        logging.info('Client command: %s', self._REMOTE_COMMAND)
+        logging.info("Logging to %s", self._REMOTE_LOG_FILE)
         full_cmd = ['ssh -n -q %s root@%s \'%s &> %s\'' % (
-                info['ssh_config'],
-                self._client.ip, info['remote_command'], log_file)]
+                      self._SSH_CONFIG, self._client.ip,
+                      self._REMOTE_COMMAND, self._REMOTE_LOG_FILE)]
         logging.info('Starting process %s', ' '.join(full_cmd))
-        info['remote_process'] = subprocess.Popen(full_cmd, shell=True)
+        self._remote_process = subprocess.Popen(full_cmd, shell=True)
 
         # Connect to RPC object.
         logging.info('Connecting to client RPC server...')
-        remote_url = 'http://localhost:%s' % info['port']
-        setattr(self, info['ref_name'],
-            xmlrpclib.ServerProxy(remote_url, allow_none=True))
+        remote_url = 'http://localhost:%s' % self._PORT
+        self.faft_client = xmlrpclib.ServerProxy(remote_url, allow_none=True)
         logging.info('Server proxy: %s', remote_url)
 
         # Poll for client RPC server to come online.
@@ -199,9 +130,7 @@ class ServoTest(test.test):
         while timeout > 0 and not succeed:
             time.sleep(1)
             try:
-                remote_object = getattr(self, info['ref_name'])
-                polling_rpc = getattr(remote_object, info['polling_rpc'])
-                polling_rpc()
+                self.faft_client.system.is_available()
                 succeed = True
             except (socket.error,
                     xmlrpclib.ProtocolError,
@@ -221,15 +150,14 @@ class ServoTest(test.test):
                 logging.info("HTTP/HTTPS headers: %s", rpc_error.headers)
                 logging.info("Error code: %d", rpc_error.errcode)
                 logging.info("Error message: %s", rpc_error.errmsg)
-            if 'remote_log_file' in info:
-                p = subprocess.Popen([
-                    'ssh -n -q %s root@%s \'cat %s\'' % (info['ssh_config'],
-                    self._client.ip, info['remote_log_file'])], shell=True,
-                    stdout=subprocess.PIPE)
-                logging.info('Log of running remote %s:', info['ref_name'])
-                logging.info(p.communicate()[0])
+            p = subprocess.Popen([
+                'ssh -n -q %s root@%s \'cat %s\'' % (self._SSH_CONFIG,
+                self._client.ip, self._REMOTE_LOG_FILE)], shell=True,
+                stdout=subprocess.PIPE)
+            logging.info('Log of running remote %s:',
+                         self._REMOTE_COMMAND_SHORT)
+            logging.info(p.communicate()[0])
         assert succeed, 'Timed out connecting to client RPC server.'
-
 
     def wait_for_client(self, install_deps=False, timeout=100):
         """Wait for the client to come back online.
@@ -249,15 +177,10 @@ class ServoTest(test.test):
         assert (timeout > 0), 'Timed out waiting for client to reboot.'
         logging.info('Server: Client machine is up.')
         # Relaunch remote clients.
-        for name, info in self._remote_infos.iteritems():
-            if info['used']:
-                if install_deps:
-                    if not self._autotest_client:
-                        self._autotest_client = autotest.Autotest(self._client)
-                    self._autotest_client.install()
-                self.launch_client(info)
-                logging.info('Server: Relaunched remote %s.', name)
-
+        if install_deps:
+            self._autotest_client.install()
+        self._launch_client()
+        logging.info('Server: Relaunched remote %s.', 'faft')
 
     def wait_for_client_offline(self, timeout=60):
         """Wait for the client to come offline.
@@ -272,58 +195,44 @@ class ServoTest(test.test):
         assert timeout, 'Timed out waiting for client offline.'
         logging.info('Server: Client machine is offline.')
 
-
     def kill_remote(self):
         """Call remote cleanup and kill ssh."""
-        for info in self._remote_infos.itervalues():
-            if info['remote_process'] and info['remote_process'].poll() is None:
-                remote_object = getattr(self, info['ref_name'])
-                try:
-                    remote_object.cleanup()
-                    logging.info('Cleanup succeeded.')
-                except xmlrpclib.ProtocolError, e:
-                    logging.info('Cleanup returned protocol error: ' + str(e))
+        if self._remote_process and self._remote_process.poll() is None:
+            try:
+                self.faft_client.cleanup()
+                logging.info('Cleanup succeeded.')
+            except xmlrpclib.ProtocolError, e:
+                logging.info('Cleanup returned protocol error: ' + str(e))
         self._terminate_all_ssh()
-
 
     def cleanup(self):
         """Delete the Servo object, call remote cleanup, and kill ssh."""
         self.kill_remote()
 
-
-    def _launch_ssh_tunnel(self, info):
+    def _launch_ssh_tunnel(self):
         """Establish an ssh tunnel for connecting to the remote RPC server.
-
-        Args:
-          info: A dict of remote info, see the definition of self._remote_infos.
         """
-        if not info['ssh_tunnel'] or info['ssh_tunnel'].poll() is not None:
-            info['ssh_tunnel'] = subprocess.Popen([
+        if not self._ssh_tunnel or self._ssh_tunnel.poll() is not None:
+            self._ssh_tunnel = subprocess.Popen([
                 'ssh -N -n -q %s -L %s:localhost:%s root@%s' %
-                (info['ssh_config'], info['port'], info['port'],
+                (self._SSH_CONFIG, self._PORT, self._PORT,
                 self._client.ip)], shell=True)
-            assert info['ssh_tunnel'].poll() is None, \
-                'The SSH tunnel on port %d is not up.' % info['port']
+            assert self._ssh_tunnel.poll() is None, \
+                'The SSH tunnel on port %d is not up.' % self._PORT
 
-
-    def _kill_remote_process(self, info):
+    def _kill_remote_process(self):
         """Ensure the remote process and local ssh process are terminated.
-
-        Args:
-          info: A dict of remote info, see the definition of self._remote_infos.
         """
-        kill_cmd = 'pkill -f %s' % info['remote_command_short']
+        kill_cmd = 'pkill -f %s' % self._REMOTE_COMMAND_SHORT
         subprocess.call(['ssh -n -q %s root@%s \'%s\'' %
-                         (info['ssh_config'], self._client.ip, kill_cmd)],
+                         (self._SSH_CONFIG, self._client.ip, kill_cmd)],
                         shell=True)
-        if info['remote_process'] and info['remote_process'].poll() is None:
-            info['remote_process'].terminate()
-
+        if self._remote_process and self._remote_process.poll() is None:
+            self._remote_process.terminate()
 
     def _terminate_all_ssh(self):
         """Terminate all ssh connections associated with remote processes."""
-        for info in self._remote_infos.itervalues():
-            if info['ssh_tunnel'] and info['ssh_tunnel'].poll() is None:
-                info['ssh_tunnel'].terminate()
-            self._kill_remote_process(info)
-            info['ssh_tunnel'] = None
+        if self._ssh_tunnel and self._ssh_tunnel.poll() is None:
+            self._ssh_tunnel.terminate()
+        self._kill_remote_process()
+        self._ssh_tunnel = None
