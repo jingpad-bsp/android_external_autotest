@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import functools
 import logging
 import re
 import subprocess
@@ -108,15 +109,23 @@ def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
     return base_command % (opts, user, port)
 
 
-def add_function_to_list(functions_list):
-    """Decorator used to group functions together into the provided list.
 
-    @param functions_list list to which the decorated function will
-        be added.
+def add_label_detector(label_function_list, label_list=None, label=None):
+    """Decorator used to group functions together into the provided list.
+    @param label_function_list: List of label detecting functions to add
+                                decorated function to.
+    @param label_list: List of detectable labels to add detectable labels to.
+                       (Default: None)
+    @param label: Label string that is detectable by this detection function
+                  (Default: None)
     """
-    # pylint: disable=C0111
     def add_func(func):
-        functions_list.append(func)
+        """
+        @param func: The function to be added as a detector.
+        """
+        label_function_list.append(func)
+        if label and label_list is not None:
+            label_list.append(label)
         return func
     return add_func
 
@@ -180,6 +189,9 @@ class SiteHost(remote.RemoteHost):
                           'illuminance0_input']
     _LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
     _LABEL_FUNCTIONS = []
+    _DETECTABLE_LABELS = []
+    label_decorator = functools.partial(add_label_detector, _LABEL_FUNCTIONS,
+                                        _DETECTABLE_LABELS)
 
 
     @staticmethod
@@ -788,7 +800,7 @@ class SiteHost(remote.RemoteHost):
         return platform.replace('google_', '')
 
 
-    @add_function_to_list(_LABEL_FUNCTIONS)
+    @label_decorator()
     def get_board(self):
         """Determine the correct board label for this host.
 
@@ -805,7 +817,7 @@ class SiteHost(remote.RemoteHost):
         return 'board:%s' % '-'.join(board.split('-')[0:2])
 
 
-    @add_function_to_list(_LABEL_FUNCTIONS)
+    @label_decorator('lightsensor')
     def has_lightsensor(self):
         """Determine the correct board label for this host.
 
@@ -826,7 +838,7 @@ class SiteHost(remote.RemoteHost):
             return None
 
 
-    @add_function_to_list(_LABEL_FUNCTIONS)
+    @label_decorator('bluetooth')
     def has_bluetooth(self):
         """Determine the correct board label for this host.
 
