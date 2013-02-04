@@ -10,6 +10,8 @@ class audiovideo_VDA(chrome_test.ChromeBinaryTest):
   version = 1
   # Keep a current list of machines that don't support video acceleration.
   boards_without_VDA = ['ALEX', 'MARIO', 'ZGB']
+  # Keep a current list of machines that use Exynos.
+  boards_with_exynos_VDA = ['DAISY', 'SNOW']
 
   def run_once(self):
     board = utils.get_board()
@@ -22,7 +24,11 @@ class audiovideo_VDA(chrome_test.ChromeBinaryTest):
                                    'gpu', 'testdata', 'test-25fps.h264')
     # The FPS expectations here are lower than observed in most runs to keep
     # the bots green.
+    binary_test = 'video_decode_accelerator_unittest'
     cmd_line_params = ('--test_video_data="%s:320:240:250:258:35:150:1"' %
                        test_video_file)
-    self.run_chrome_binary_test('video_decode_accelerator_unittest',
-                                cmd_line_params)
+    self.run_chrome_binary_test(binary_test, cmd_line_params)
+    # Also run tests with EVDA for Exynos.
+    if board in self.boards_with_exynos_VDA:
+        cmd_line_params = ('%s --use-exynos-vda' % cmd_line_params)
+        self.run_chrome_binary_test(binary_test, cmd_line_params)
