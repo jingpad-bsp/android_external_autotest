@@ -1,0 +1,22 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "jwerner, chromeos-power"
+NAME = "power_SuspendStress.idleDaily"
+SUITE = "kernel_daily_regression"
+PURPOSE = "Run repeated iterations of idle-suspend."
+TIME = "LENGTHY"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "power"
+TEST_TYPE = "client"
+EXPERIMENTAL = "True"
+
+DOC = """
+Runs one hour of suspend/resume tests where suspend is triggered by idling.
+"""
+
+job.parallel([lambda: job.run_test('power_SuspendStress', tag='idleDaily',
+                                   method='idle', duration=3600, init_delay=20,
+                                   min_suspend=9)],
+             [lambda: job.run_test('dummy_IdleSuspend')])

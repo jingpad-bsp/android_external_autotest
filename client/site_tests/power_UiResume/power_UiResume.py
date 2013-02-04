@@ -4,7 +4,7 @@
 
 import random, time
 
-from autotest_lib.client.cros import cros_ui_test, power_suspend
+from autotest_lib.client.cros import cros_ui_test, power_suspend, sys_power
 
 
 class power_UiResume(cros_ui_test.UITest):
@@ -14,7 +14,8 @@ class power_UiResume(cros_ui_test.UITest):
         # It's important to log in with a real user. If logged in as
         # guest, powerd will shut down instead of suspending.
         super(power_UiResume, self).initialize(creds=creds)
-        self._suspender = power_suspend.Suspender(use_dbus=True, throw=True)
+        self._suspender = power_suspend.Suspender(
+                method=sys_power.dbus_suspend, throw=True)
 
 
     def run_once(self):

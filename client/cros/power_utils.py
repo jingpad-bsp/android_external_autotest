@@ -350,10 +350,15 @@ class PowerPrefChanger(object):
         utils.restart_job('powerd')
 
 
+    def finalize(self):
+        if os.path.exists(self._TEMPDIR):
+            utils.system('umount %s' % self._PREFDIR, ignore_status=True)
+            shutil.rmtree(self._TEMPDIR)
+            utils.restart_job('powerd')
+
+
     def __del__(self):
-        utils.system('umount %s' % self._PREFDIR, ignore_status=True)
-        shutil.rmtree(self._TEMPDIR)
-        utils.restart_job('powerd')
+        self.finalize()
 
 
 class Registers(object):

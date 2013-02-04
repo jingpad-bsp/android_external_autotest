@@ -4,22 +4,25 @@
 
 import logging, numpy, random, time
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_suspend, sys_power
+from autotest_lib.client.cros import power_suspend, service_stopper, sys_power
 
 
 class power_SuspendStress(test.test):
     version = 1
 
-    # TODO(scottz): automate use_dbus after crosbug.com/38140
-    def initialize(self, duration, use_dbus=False, init_delay=0,
+    # TODO(scottz): automate default/dbus distinction after crosbug.com/38140
+    def initialize(self, duration, method='default', init_delay=0,
                    tolerated_aborts=0, breathing_time=5, min_suspend=0):
         """
         duration: total run time of the test
-        use_dbus: suspend via DBus... use this only in parallel to a
-                UITest-based test, or there will be no logged-in user
-                and powerd will shut down instead of suspend!
+        method: suspend method to use... available options:
+            'default': call powerd_suspend directly, no powerd involvement
+            'dbus': use RequestSuspend DBus message... use only in parallel to
+                a UITest-based test, or there will be no logged-in user and
+                powerd will shut down instead of suspend!
+            'idle': wait for idle suspend... use with dummy_IdleSuspend
         init_delay: wait this many seconds before starting the test to give
                 parallel tests time to get started
         tolerated_aborts: only fail test for SuspendAborts if they surpass
@@ -30,11 +33,15 @@ class power_SuspendStress(test.test):
                 interval between min_suspend and min_suspend + 3
         """
         self._duration = duration
-        self._use_dbus = use_dbus
         self._init_delay = init_delay
         self._tolerated_aborts = tolerated_aborts
         self._min_suspend = min_suspend
         self._breathing_time = breathing_time
+        self._method = {
+            'default': sys_power.do_suspend,
+            'dbus': sys_power.dbus_suspend,
+            'idle': sys_power.idle_suspend,
+        }[method]
 
 
     def _do_suspend(self):
@@ -43,7 +50,7 @@ class power_SuspendStress(test.test):
 
     def run_once(self):
         time.sleep(self._init_delay)
-        self._suspender = power_suspend.Suspender(use_dbus=self._use_dbus)
+        self._suspender = power_suspend.Suspender(method=self._method)
         timeout = time.time() + self._duration
         while time.time() < timeout:
             time.sleep(random.randint(0, 3))
@@ -83,3 +90,8 @@ class power_SuspendStress(test.test):
                     'aborts, %d kernel warnings, %d firmware errors, %d early '
                     'wakeups)' % (total, total + len(self._suspender.successes),
                     abort, kernel, firmware, early))
+
+
+    def cleanup(self):
+        # clean this up before we wait ages for all the log copying to finish...
+        self._suspender.finalize()

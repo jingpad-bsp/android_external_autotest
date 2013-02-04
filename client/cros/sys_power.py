@@ -7,7 +7,7 @@
 
 """Provides utility methods for controlling powerd in ChromiumOS."""
 
-import errno, logging, os, rtc, upstart
+import errno, logging, os, rtc, time, upstart
 
 SYSFS_POWER_STATE = '/sys/power/state'
 SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
@@ -144,6 +144,27 @@ def kernel_suspend(seconds):
         logging.info('Woke from suspend at %d', rtc.get_seconds())
     logging.debug('New wakeup count: %d', read_wakeup_count())
     check_wakeup(alarm)
+
+
+def idle_suspend(seconds):
+    """
+    Wait for the system to suspend to RAM (S3), scheduling the RTC to wake up
+    |seconds| after this function was called. Caller must ensure that the system
+    will idle-suspend in time for this to happen. Returns the wake alarm time
+    from the RTC as epoch.
+    """
+    alarm, _ = prepare_wakeup(seconds)
+    while rtc.get_seconds() < alarm:
+        time.sleep(0.2)
+
+    # tell powerd something happened, or it will immediately idle-suspend again
+    # TODO: switch to cros.power_utils#call_powerd_dbus_method once this
+    # horrible mess with the WiFi tests and this file's imports is solved
+    os.system('dbus-send --type=method_call --system --dest='
+              'org.chromium.PowerManager /org/chromium/PowerManager '
+              'org.chromium.PowerManager.HandleUserActivity int64:%d' % alarm)
+
+    return alarm
 
 
 def memory_suspend(seconds, size):

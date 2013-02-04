@@ -79,9 +79,6 @@ class Suspender(object):
     # alarm/not_before value guaranteed to raise EarlyWakeup in _hwclock_ts
     _EARLY_WAKEUP = 2147483647
 
-    # File written by powerd_suspend containing the hwclock time at resume.
-    _HWCLOCK_FILE = '/var/run/power_manager/root/hwclock-on-resume'
-
     # File written by send_metrics_on_resume containing timing information about
     # the last resume.
     _TIMINGS_FILE = '/var/run/power_manager/root/last_resume_timings'
@@ -93,15 +90,16 @@ class Suspender(object):
     # Sanity check value to catch overlong resume times (from missed RTC wakes)
     _MAX_RESUME_TIME = 10
 
-    def __init__(self, use_dbus=False, throw=False, device_times=False):
+    # File written by powerd_suspend containing the hwclock time at resume.
+    HWCLOCK_FILE = '/var/run/power_manager/root/hwclock-on-resume'
+
+    def __init__(self, method=sys_power.do_suspend,
+                 throw=False, device_times=False):
         """Prepare environment for suspending."""
         self.disconnect_3G_time = 0
         self.successes = []
         self.failures = []
-        if use_dbus:
-            self._suspend = sys_power.dbus_suspend
-        else:
-            self._suspend = sys_power.do_suspend
+        self._suspend = method
         self._throw = throw
         self._reset_pm_print_times = False
         self._restart_tlsdated = False
@@ -115,7 +113,7 @@ class Suspender(object):
             self._restart_tlsdated = True
 
         # prime powerd_suspend RTC timestamp saving and make sure hwclock works
-        utils.open_write_close(self._HWCLOCK_FILE, '')
+        utils.open_write_close(self.HWCLOCK_FILE, '')
         hwclock_output = utils.system_output('hwclock -r --debug --utc',
                                              ignore_status=True)
         if hwclock_output.find('Using /dev interface') == -1:
@@ -141,15 +139,6 @@ class Suspender(object):
             else:
                 logging.error('Could not disconnect: %s.' % status)
                 self.disconnect_3G_time = -1
-
-
-    def __del__(self):
-        """Restore normal environment (not turning 3G back on for now...)"""
-        os.remove(self._HWCLOCK_FILE)
-        if self._restart_tlsdated:
-            utils.system('initctl start tlsdated')
-        if self._reset_pm_print_times:
-            self._set_pm_print_times(False)
 
 
     def _set_pm_print_times(self, on):
@@ -180,21 +169,20 @@ class Suspender(object):
         raise error.TestError('Could not find %s entry.' % name)
 
 
-    def _hwclock_ts(self, not_before, retries=3):
+    def _hwclock_ts(self, not_before, retries=10):
         """Read the RTC resume timestamp saved by powerd_suspend."""
         for _ in xrange(retries + 1):
             early_wakeup = False
-            if os.path.exists(self._HWCLOCK_FILE):
+            if os.path.exists(self.HWCLOCK_FILE):
                 match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
-                                  utils.read_file(self._HWCLOCK_FILE),
+                                  utils.read_file(self.HWCLOCK_FILE),
                                   re.DOTALL)
                 if match:
                     seconds = int(match.group(1)) + float(match.group(2))
-                    if seconds < not_before:
-                        early_wakeup = True
-                        continue
                     logging.debug('RTC resume timestamp read: %f' % seconds)
-                    return seconds
+                    if seconds >= not_before:
+                        return seconds
+                    early_wakeup = True
             time.sleep(0.2)
         if early_wakeup:
             logging.debug('Early wakeup, dumping eventlog if it exists:\n' +
@@ -206,7 +194,7 @@ class Suspender(object):
                     utils.system_output('mosys nvram dump', ignore_status=True))
             return None
         raise error.TestError('Broken RTC timestamp: ' +
-                              utils.read_file(self._HWCLOCK_FILE))
+                              utils.read_file(self.HWCLOCK_FILE))
 
 
     def _firmware_resume_time(self):
@@ -291,6 +279,8 @@ class Suspender(object):
                 abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
                         r'|powerd_suspend\[.*Cancel suspend at kernel')
                 unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
+                start_regex = re.compile(r'powerd_suspend\[\d+\]: Going to sus')
+                start_found = False
                 # TODO(scottz): warning_monitor crosbug.com/38092
                 syslog = self._log_reader.read_all_logs()
                 for line in syslog:
@@ -310,6 +300,11 @@ class Suspender(object):
                                 cros_logging.strip_timestamp(line))
                     if unknown_regex.search(line):
                         raise sys_power.SuspendFailure('Unidentified problem.')
+                    if start_regex.search(line):
+                        start_found = True
+                if not start_found:
+                    raise error.TestError('Sanity check failed: system did not '
+                            'actually try to suspend.')
 
                 hwclock_ts = self._hwclock_ts(alarm)
                 if hwclock_ts:
@@ -362,3 +357,17 @@ class Suspender(object):
             if self._throw:
                 raise error.TestFail(message)
             return None
+
+
+    def finalize(self):
+        """Restore normal environment (not turning 3G back on for now...)"""
+        if os.path.exists(self.HWCLOCK_FILE):
+            os.remove(self.HWCLOCK_FILE)
+            if self._restart_tlsdated:
+                utils.system('initctl start tlsdated')
+            if self._reset_pm_print_times:
+                self._set_pm_print_times(False)
+
+
+    def __del__(self):
+        self.finalize()
