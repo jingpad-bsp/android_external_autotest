@@ -6,7 +6,7 @@ import os, re, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_utils, upstart
+from autotest_lib.client.cros import power_utils, service_stopper
 
 class graphics_SyncControlTest(test.test):
     """Confirms that infrastructure for aligning graphics operations in the
@@ -30,7 +30,7 @@ class graphics_SyncControlTest(test.test):
         if board in hz:
             cmd = cmd + " --vsync {0:.2f}".format(hz[board])
 
-        self._services = upstart.ServiceStopper(['ui'])
+        self._services = service_stopper.ServiceStopper(['ui'])
         self._services.stop_services()
         x_summary = utils.system_output('X :1 & echo "XPID=$!"',
                                             ignore_status=True)

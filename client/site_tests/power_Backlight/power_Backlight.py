@@ -5,7 +5,8 @@
 import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, power_status, power_utils, upstart
+from autotest_lib.client.cros import cros_ui, power_status, power_utils
+from autotest_lib.client.cros import service_stopper
 
 class power_Backlight(test.test):
     version = 1
@@ -16,7 +17,7 @@ class power_Backlight(test.test):
 
         Private Attributes:
           _backlight: power_utils.Backlight object
-          _services: upstart.ServiceStopper object
+          _services: service_stopper.ServiceStopper object
         """
         super(power_Backlight, self).initialize()
         self._backlight = None
@@ -26,8 +27,8 @@ class power_Backlight(test.test):
     def run_once(self, delay=60, seconds=10, tries=20):
         self._backlight = power_utils.Backlight()
 
-        self._services = upstart.ServiceStopper(
-            upstart.ServiceStopper.POWER_DRAW_SERVICES)
+        self._services = service_stopper.ServiceStopper(
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._services.stop_services()
 
         # disable screen blanking. Stopping screen-locker isn't

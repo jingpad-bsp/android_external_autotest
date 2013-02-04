@@ -5,7 +5,7 @@
 import logging, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_status, power_utils, upstart
+from autotest_lib.client.cros import power_status, power_utils, service_stopper
 
 
 class power_BatteryCharge(test.test):
@@ -36,8 +36,8 @@ class power_BatteryCharge(test.test):
         """
 
         time_to_sleep = 60
-        self._services = upstart.ServiceStopper(
-            upstart.ServiceStopper.POWER_DRAW_SERVICES + ['ui'])
+        self._services = service_stopper.ServiceStopper(
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES + ['ui'])
         self._services.stop_services()
 
         self._backlight = power_utils.Backlight()

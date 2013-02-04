@@ -14,6 +14,7 @@ from autotest_lib.client.cros import cros_ui, cros_ui_test
 from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
+from autotest_lib.client.cros import service_stopper
 import flimflam  # Requires flimflam_test_path to be imported first.
 
 
@@ -446,7 +447,7 @@ class power_Consumption(cros_ui_test.UITest):
         time.sleep(5)
 
         self._services = power_utils.ServiceStopper(
-            upstart.ServiceStopper.POWER_DRAW_SERVICES)
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._services.stop_services()
 
         self._backlight = power_utils.Backlight()
