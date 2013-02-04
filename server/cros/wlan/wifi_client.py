@@ -6,20 +6,42 @@ import logging
 import signal
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants
+from autotest_lib.server import autotest
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
 
 
 class WiFiClient(object):
-    """ WiFiClient is a thin layer of logic over a remote DUT in wifitests. """
+    """WiFiClient is a thin layer of logic over a remote DUT in wifitests."""
 
     DEFAULT_PING_COUNT = 10
     COMMAND_PING = 'ping'
 
+
+    @property
+    def host(self):
+        """@return host object representing the remote DUT."""
+        return self._host
+
+
+    @property
+    def shill(self):
+        """@return shill RPCProxy object."""
+        return self._shill_proxy
+
+
     @property
     def client(self):
-        """ @return host object representing a remote DUT. """
-        return self._client
+        """Deprecated accessor for the client host.
+
+        The term client is used very loosely in old autotests and this
+        accessor should not be used in new code.  Use host() instead.
+
+        @return host object representing a remote DUT.
+
+        """
+        return self._host
 
 
     def __init__(self, client_host):
@@ -31,13 +53,30 @@ class WiFiClient(object):
         """
         super(WiFiClient, self).__init__()
         self._ping_thread = None
-        self._client = client_host
+        self._host = client_host
         self._ping_stats = {}
+        # Make sure the client library is on the device so that the proxy code
+        # is there when we try to call it.
+        client_at = autotest.Autotest(self.host)
+        client_at.install()
+        # Start up the XMLRPC proxy on the client
+        self._shill_proxy = self.host.xmlrpc_connect(
+                constants.SHILL_XMLRPC_SERVER_COMMAND,
+                constants.SHILL_XMLRPC_SERVER_PORT,
+                constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
+                constants.SHILL_XMLRPC_SERVER_READY_METHOD)
+
+
+    def close(self):
+        """Tear down state associated with the client."""
+        if self._ping_thread is not None:
+            self.ping_bg_stop()
+        # This kills the RPC server.
+        self._host.close()
 
 
     def ping(self, ping_ip, ping_args, save_stats=None, count=None):
-        """
-        Ping an address from the client and return the command output.
+        """Ping an address from the client and return the command output.
 
         @param ping_ip string IPv4 address for the client to ping.
         @param ping_args dict of parameters understood by
@@ -52,6 +91,8 @@ class WiFiClient(object):
             count = self.DEFAULT_PING_COUNT
         # Timeout is 3s / ping packet.
         timeout = 3 * count
+        ping_args = ping_args.copy()
+        ping_args['count'] = count
         result = self.client.run('%s %s %s' %
                                  (self.COMMAND_PING,
                                   wifi_test_utils.ping_args(ping_args),
@@ -64,8 +105,7 @@ class WiFiClient(object):
 
 
     def ping_bg(self, ping_ip, ping_args):
-        """
-        Ping an address from the client in the background.
+        """Ping an address from the client in the background.
 
         Only one instance of a background ping is supported at a time.
 
@@ -85,8 +125,7 @@ class WiFiClient(object):
 
 
     def ping_bg_stop(self, save_stats=None):
-        """
-        Stop pinging an address from the client in the background.
+        """Stop pinging an address from the client in the background.
 
         Clean up state from a previous call to ping_bg.  If requested,
         statistics from the background ping run may be saved.
@@ -109,8 +148,7 @@ class WiFiClient(object):
 
 
     def assert_ping_similarity(self, key1, key2):
-        """
-        Assert that two specified sets of ping results are 'similar'.
+        """Assert that two specified sets of ping results are 'similar'.
 
         @param key1 string key given previously as a value for save_stats.
         @param key2 string key given previously as a value for save_stats.
