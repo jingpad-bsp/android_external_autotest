@@ -65,17 +65,11 @@ class power_AudioDetector(cros_ui_test.UITest):
         if thread.is_alive():
             logging.error('Audio thread did not terminate at end of test.')
 
-        # Check powerd log to make sure suspend was delayed due to audio, and
-        # that no suspend took place.
+        # Check powerd's log to make sure that no suspend took place.
         powerd_log_path = '/var/log/power_manager/powerd.LATEST'
         log = open(powerd_log_path, 'r').read()
-
-        if log.find('All suspend delays accounted for. Suspending.') != -1:
+        if log.find('Starting suspend') != -1:
             raise error.TestFail('System suspended while audio was playing.')
-
-        if log.find('Delaying suspend because audio is playing.') == -1:
-            raise error.TestFail('Could not find logging of audio delaying ' +
-                                 'suspend.')
 
 
     def cleanup(self):
