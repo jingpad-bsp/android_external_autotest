@@ -16,6 +16,7 @@ class FAFTClientAttribute(object):
       has_keyboard: boolean, True if the device has a built in keyboard.
             False otherwise.
       ec_capability: list, specifies ec capability list.
+      gbb_version: float, GBB version.
       wp_voltage: string, specifies write protect pin voltage.
       key_matrix_layout: int, specifies which keyboard layout needs to be used
             for testing.
@@ -35,6 +36,7 @@ class FAFTClientAttribute(object):
     keyboard_dev = True
     long_rec_combo = False
     ec_capability = list()
+    gbb_version = 1.1
     wp_voltage = 'pp1800'
     key_matrix_layout = 0
     key_checker = [[0x29, 'press'],
@@ -96,6 +98,10 @@ class FAFTClientAttribute(object):
                                         'usb', 'peci']
         elif platform == 'Snow':
             self.ec_capability = ['battery', 'keyboard', 'arm']
+
+        # Set 'gbb_version'
+        if platform in ['Alex', 'Mario', 'ZGB']:
+            self.gbb_version = 1.0
 
         # Set 'wp_voltage'
         if platform == 'Link':

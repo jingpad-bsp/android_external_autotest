@@ -907,6 +907,10 @@ class FAFTSequence(ServoTest):
 
     def setup_gbb_flags(self):
         """Setup the GBB flags for FAFT test."""
+        if self.client_attr.gbb_version < 1.1:
+            logging.info('Skip modifying GBB on versions older than 1.1.')
+            return
+
         if self.check_setup_done('gbb_flags'):
             return
 
