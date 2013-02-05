@@ -2,16 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 {
-  "ignored_extension_names": [
-    "Bookmark Manager",
-    "Chrome Web Store",
-    "GaiaTestAuthExtension"
+# Chrome Web Store ("ahfgeienlihckogmohjhadlkjgocpleb") and
+# Bookmark Manager ("eemcgdkfndhakfknompkggombfjjjeno") are
+# already tracked and reviewed on the Chrome side. Ignore them
+# in our test, otherwise it's just a baseline maintenance treadmill.
+  "ignored_extension_ids": [
+    "ahfgeienlihckogmohjhadlkjgocpleb",
+    "eemcgdkfndhakfknompkggombfjjjeno"
   ],
-  "ignored_crx_files": [
-  ],
-  "bundled_crx_directory": "/opt/google/chrome/extensions",
   "bundled_crx_baseline": [
-      { "crx_file": "apdfllckaahabafndbhieahigkjlhalf.crx",
+      { "id": "apdfllckaahabafndbhieahigkjlhalf",
         "name": "Google Drive",
         "effective_host_permissions": [],
         "api_permissions": ["background",
@@ -20,37 +20,37 @@
                             "notifications",
                             "unlimitedStorage"]
       },
-      { "crx_file": "blpcfgokakmgnkcojhhkbfbldkacnbeo.crx",
+      { "id": "blpcfgokakmgnkcojhhkbfbldkacnbeo",
         "name": "YouTube",
         "effective_host_permissions": [],
         "api_permissions": ["appNotifications"]
       },
-      { "crx_file": "ejjicmeblgpmajnghnpcppodonldlgfn.crx",
+      { "id": "ejjicmeblgpmajnghnpcppodonldlgfn",
         "name": "Google Calendar",
         "effective_host_permissions": [],
         "api_permissions": ["notifications",
                             "unlimitedStorage"]
       },
-      { "crx_file": "fobcpibfeplaikcclojfdhfdmbbeofai.crx",
+      { "id": "fobcpibfeplaikcclojfdhfdmbbeofai",
         "name": "Games",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "gbchcmhmhahfdphkhkmpfmihenigjmpp.crx",
+      { "id": "gbchcmhmhahfdphkhkmpfmihenigjmpp",
         "name": "Chrome Remote Desktop",
         "effective_host_permissions": ["https://accounts.google.com/*",
                                        "https://relay.google.com/*",
                                        "https://*.talkgadget.google.com/*",
-"https://chromoting-oauth.talkgadget.google.com/talkgadget/oauth/chrome-remote-desktop/rel/*",
+"https://*.talkgadget.google.com/talkgadget/oauth/chrome-remote-desktop/rel/*",
                                        "https://www.googleapis.com/*"],
         "api_permissions": ["clipboardRead", "clipboardWrite"]
       },
-      { "crx_file": "icppfcnhkcmnfdhfhphakoifcfokfdhg.crx",
+      { "id": "icppfcnhkcmnfdhfhphakoifcfokfdhg",
         "name": "Google Play Music",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "kjebfhglflhjjjiceimfkgicifkhjlnm.crx",
+      { "id": "kjebfhglflhjjjiceimfkgicifkhjlnm",
         "name": "Scratchpad",
         "effective_host_permissions": ["https://docs.google.com/*",
                                        "https://www.google.com/*"],
@@ -59,78 +59,79 @@
                             "notifications",
                             "tabs"]
       },
-      { "crx_file": "pjkljhegncpnkpknbcohdijeoejaedia.crx",
+      { "id": "pjkljhegncpnkpknbcohdijeoejaedia",
         "name": "Gmail",
         "effective_host_permissions": [],
         "api_permissions": ["notifications"]
       },
-      { "crx_file": "lneaknkopdijkpnocmklfnjbeapigfbh.crx",
+      { "id": "lneaknkopdijkpnocmklfnjbeapigfbh",
         "name": "Google Maps",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "dlppkpafhbajpcmmoheippocdidnckmm.crx",
+      { "id": "dlppkpafhbajpcmmoheippocdidnckmm",
         "name": "Google+",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "gbkeegbaiigmenfmjfclcdgdpimamgkj.crx",
+      { "id": "gbkeegbaiigmenfmjfclcdgdpimamgkj",
         "name": "Chrome Office Viewer",
         "effective_host_permissions": [],
         "api_permissions": ["fileBrowserHandler",
                             "fileBrowserHandlerInternal",
+                            "metricsPrivate",
                             "unlimitedStorage"
                            ]
       },
-      { "crx_file": "coobgpohoikkiipiblmjeljniedjpjpf.crx",
+      { "id": "coobgpohoikkiipiblmjeljniedjpjpf",
         "name": "Google Search",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "kbpgddbgniojgndnhlkjbkpknjhppkbk.crx",
+      { "id": "kbpgddbgniojgndnhlkjbkpknjhppkbk",
         "name": "Google+ Hangouts",
         "effective_host_permissions": [],
         "api_permissions": ["background", "tabs"]
       },
-      { "crx_file": "hkhhlkdconhgemhegnplaldnmnmkaemd.crx",
+      { "id": "hkhhlkdconhgemhegnplaldnmnmkaemd",
         "name": "Get Started",
         "effective_host_permissions": [],
         "api_permissions": ["unlimitedStorage"]
       },
-      { "crx_file": "mmimngoggfoobjdlefbcabngfnmieonb.crx",
+      { "id": "mmimngoggfoobjdlefbcabngfnmieonb",
         "name": "Google Play Books",
         "effective_host_permissions": [],
         "api_permissions": ["clipboardWrite",
                             "unlimitedStorage"]
       },
-      { "crx_file": "aohghmighlieiainnegkcijnfilokake.crx",
+      { "id": "aohghmighlieiainnegkcijnfilokake",
         "name": "Google Docs",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "joodangkbfjnajiiifokapkpmhfnpleo.crx",
+      { "id": "joodangkbfjnajiiifokapkpmhfnpleo",
         "name": "Calculator",
         "effective_host_permissions": [],
         "api_permissions": ["app.currentWindowInternal",
                             "app.runtime",
                             "app.window"]
       },
-      { "crx_file": "felcaaldnbdncclmgdcncolpebgiejap.crx",
+      { "id": "felcaaldnbdncclmgdcncolpebgiejap",
         "name": "Google Sheets",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "aapocclcgogkmnckokdopfmhonfmgoek.crx",
+      { "id": "aapocclcgogkmnckokdopfmhonfmgoek",
         "name": "Google Slides",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "fppdphmgcddhjeddoeghpjefkdlccljb.crx",
+      { "id": "fppdphmgcddhjeddoeghpjefkdlccljb",
         "name": "Google Play Movies",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "crx_file": "hfhhnacclhffhdffklopdkcgdhifgngh.crx",
+      { "id": "hfhhnacclhffhdffklopdkcgdhifgngh",
         "name": "Camera",
         "effective_host_permissions": [],
         "api_permissions": ["app.currentWindowInternal",
@@ -145,7 +146,8 @@
       }
   ],
   "component_extension_baseline": [
-      { "name": "Files",
+      { "id": "hhaomjibdihmijegdhdafkllkbggdgoj",
+        "name": "File Manager",
         "effective_host_permissions": ["chrome://extension-icon/*",
                                        "chrome://resources/*",
                                        "chrome://theme/*",
@@ -161,7 +163,8 @@
                             "clipboardRead",
                             "unlimitedStorage"]
       },
-      { "name": "Wallpaper Picker",
+      { "id": "obklkkbkpaoaejdabbfldmcfplpdgolj",
+        "name": "Wallpaper Picker",
         "effective_host_permissions": ["https://storage.googleapis.com/*",
                                        "https://commondatastorage.googleapis.com/*"],
         "api_permissions": ["app.currentWindowInternal",
@@ -170,28 +173,45 @@
                             "storage",
                             "wallpaperPrivate"]
       },
-      { "name": "Mobile Activation",
+      { "id": "iadeocfgjdjdmpenejdbfeaocpbikmab",
+        "name": "Mobile Activation",
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "name": "crosh_builtin",
+      { "id": "nkoccljplnhpfnfiajclkommnmllphnl",
+        "name": "crosh_builtin",
         "effective_host_permissions": [],
         "api_permissions": ["terminalPrivate",
                             "unlimitedStorage"]
       },
-      { "name": "Chrome OS ECHO Extension",
+      { "id": "kddnkjkcjddckihglkfcickdhbmaodcn",
+        "name": "Chrome OS ECHO Extension",
         "effective_host_permissions": ["https://*/*"],
         "api_permissions": ["cookies",
                             "echoPrivate",
                             "experimental"]
       },
-      { "name": "Chrome",
+      { "id": "mgndgikekgjfcpckkfioiadnlibdjbkf",
+        "name": "Chrome",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+      { "id": "mlbmkoenclnokonejhlfakkeabdlmpek",
+        "name": "TimeScapes",
+        "boards": ["link"],
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+      { "id": "plamffmopddapimaopfdbibfkjpbojbf",
+        "name": "Registration",
+        "boards": ["butterfly"],
         "effective_host_permissions": [],
         "api_permissions": []
       }
   ],
   "official_components": [
       { "name": "Help",
+        "id": "honijodknafkokifofgiaalefdiedpko",
         "effective_host_permissions": [
             "https://gweb-gettingstartedguide.appspot.com/*",
             "http://support.google.com/chromeos/*",

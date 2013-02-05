@@ -22,12 +22,4 @@ what their effective permissions are, etc. Then it compares those to a
 list and fails (with various helpful details) if there is not an exact match.
 """
 
-job.run_test('security_BundledExtensions', creds='$default',
-             tag='ComponentExtensionPermissions',
-             mode='ComponentExtensionPermissions')
-job.run_test('security_BundledExtensions', creds='$default',
-             tag='BundledCrxPermissions',
-             mode='BundledCrxPermissions')
-job.run_test('security_BundledExtensions', creds='$default',
-             tag='NoUnexpectedExtensions',
-             mode='NoUnexpectedExtensions')
+job.run_test('security_BundledExtensions', creds='$default')
