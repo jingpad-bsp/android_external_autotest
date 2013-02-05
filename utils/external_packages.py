@@ -769,6 +769,23 @@ class StatsdPackage(ExternalPackage):
                         ExternalPackage._build_and_install_current_dir_setup_py)
 
 
+class GdataPackage(ExternalPackage):
+    """
+    Pulls the GData library, giving us an API to query tracker.
+    """
+
+    version = '2.0.14'
+    url_filename = 'gdata-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('http://gdata-python-client.googlecode.com/files/%s' % (
+        url_filename),)
+    hex_sum = '5eed0e01ab931e3f706ec544fc8f06ecac384e91'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_noegg)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
