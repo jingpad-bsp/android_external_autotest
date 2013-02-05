@@ -1262,7 +1262,26 @@ class FAFTSequence(ServoTest):
         Raises:
           error.TestError: if failed to change magic.
         """
-        raise error.TestError("FAFTSequence._modify_usb_kernel() is unsafe")
+        assert len(from_magic) == 8
+        assert len(to_magic) == 8
+        # USB image only contains one kernel.
+        kernel_part = self._join_part(usb_dev, self.KERNEL_MAP['a'])
+        read_cmd = "sudo dd if=%s bs=8 count=1 2>/dev/null" % kernel_part
+        current_magic = self.servo.system_output(read_cmd)
+        if current_magic == to_magic:
+            logging.info("The kernel magic is already %s.", current_magic)
+            return
+        if current_magic != from_magic:
+            raise error.TestError("Invalid kernel image on USB: wrong magic.")
+
+        logging.info('Modify the kernel magic in USB, from %s to %s.',
+                     from_magic, to_magic)
+        write_cmd = ("echo -n '%s' | sudo dd of=%s oflag=sync conv=notrunc "
+                     " 2>/dev/null" % (to_magic, kernel_part))
+        self.servo.system(write_cmd)
+
+        if self.servo.system_output(read_cmd) != to_magic:
+            raise error.TestError("Failed to write new magic.")
 
 
     def corrupt_usb_kernel(self, usb_dev):
