@@ -370,6 +370,7 @@ class Registers(object):
         self._cpu_id = 0
         self._rdmsr_cmd = 'iotools rdmsr'
         self._mmio_read32_cmd = 'iotools mmio_read32'
+        self._rcba = 0xfed1c000
 
         self._pci_read32_cmd = 'iotools pci_read32'
         self._mch_bar = None
@@ -396,7 +397,7 @@ class Registers(object):
         return int(utils.system_output(cmd), 16)
 
     def _read_mmio_read32(self, address):
-        cmd = '%s %s' % (self._mmio_read32_cmd, address)
+        cmd = '%s 0x%x' % (self._mmio_read32_cmd, address)
         return int(utils.system_output(cmd), 16)
 
     def _read_dmi_bar(self, offset):
@@ -406,6 +407,9 @@ class Registers(object):
     def _read_mch_bar(self, offset):
         self._init_mch_bar()
         return self._read_mmio_read32(self._mch_bar + int(offset, 16))
+
+    def _read_rcba(self, offset):
+        return self._read_mmio_read32(self._rcba + int(offset, 16))
 
     def _shift_mask_match(self, reg_name, value, match):
         expr = match[1]
@@ -438,6 +442,9 @@ class Registers(object):
                     errors += 1
                     logging.error('Error(%d), %s: reg = %s val = %s match = %s',
                                   errors, reg_name, k, hex(r), v)
+                else:
+                    logging.debug('ok, %s: reg = %s val = %s match = %s',
+                                  reg_name, k, hex(r), v)
         return errors
 
     def verify_msr(self, match_list):
@@ -452,3 +459,6 @@ class Registers(object):
 
     def verify_mch(self, match_list):
         return self._verify_registers('mch', self._read_mch_bar, match_list)
+
+    def verify_rcba(self, match_list):
+        return self._verify_registers('rcba', self._read_rcba, match_list)

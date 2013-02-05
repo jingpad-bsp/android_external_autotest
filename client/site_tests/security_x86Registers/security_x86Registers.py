@@ -32,21 +32,50 @@ MSR_NEGATIVE = {
         },
     }
 
+RCBA_POSITIVE = {
+    # GCS register, BILD bit should be set.
+    '0x3410': [('0', 1)],
+    }
+
+RCBA_NEGATIVE = {
+    # GCS register, BILD bit inverted from positive test.
+    '0x3410': [('0', 0)],
+    }
 
 class security_x86Registers(test.test):
     version = 1
 
-    def _check_msr(self):
+    def _check_negative_positive(self, name, func, match_neg, match_pos):
         errors = 0
 
         # Negative tests; make sure infrastructure is working.
-        if self._registers.verify_msr(MSR_NEGATIVE[self._cpu_type]) == 0:
-            logging.error('FAIL: inverted MSR tests did not fail!')
+        logging.debug("expecting %s FAILs:" % (name))
+        if func(match_neg) == 0:
+            logging.error('BAD: inverted %s tests did not fail!' % (name))
             errors += 1
 
         # Positive tests; make sure values are for real.
-        errors += self._registers.verify_msr(MSR_POSITIVE[self._cpu_type])
+        logging.debug("expecting %s oks:" % (name))
+        errors += func(match_pos)
 
+        return errors
+
+    def _check_msr(self):
+        return self._check_negative_positive('MSR',
+                                             self._registers.verify_msr,
+                                             MSR_NEGATIVE[self._cpu_type],
+                                             MSR_POSITIVE[self._cpu_type])
+
+    def _check_bios(self):
+        return self._check_negative_positive('BIOS',
+                                             self._registers.verify_rcba,
+                                             RCBA_NEGATIVE,
+                                             RCBA_POSITIVE)
+
+    def _check_all(self):
+        errors = 0
+        errors += self._check_msr()
+        errors += self._check_bios()
         return errors
 
     def run_once(self):
@@ -67,7 +96,7 @@ class security_x86Registers(test.test):
         self._registers = power_utils.Registers()
 
         # Check running machine.
-        errors += self._check_msr()
+        errors += self._check_all()
 
         # Pause briefly to make sure the RTC is ready for suspend/resume.
         time.sleep(3)
@@ -75,7 +104,7 @@ class security_x86Registers(test.test):
         sys_power.do_suspend(10)
 
         # Check resumed machine.
-        errors += self._check_msr()
+        errors += self._check_all()
 
         if errors > 0:
             raise error.TestFail("x86 register mismatch detected")
