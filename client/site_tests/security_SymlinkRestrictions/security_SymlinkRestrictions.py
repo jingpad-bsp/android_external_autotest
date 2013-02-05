@@ -101,7 +101,6 @@ class security_SymlinkRestrictions(test.test):
                        (chk_path, user))
 
     def _check_symlinks(self, sticky, userone, usertwo):
-        tmpdir = tempfile.mkdtemp(prefix='symlinks-')
         uidone = pwd.getpwnam(userone)[2]
         uidtwo = pwd.getpwnam(usertwo)[2]
 
