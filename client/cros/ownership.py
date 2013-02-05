@@ -330,3 +330,14 @@ def sign(pem_key, data):
     if not sig_data:
         raise error.OwnershipError('Empty signature!')
     return sig_data
+
+def get_user_policy_key_filename(username):
+    """Returns the path to the user policy key for the given username."""
+    # Get the hashed username. Notice the upper() call; the cryptohome
+    # command generates lowercase hex encodings, while session_manager
+    # uses uppercase for its paths.
+    # http://crosbug.com/38733
+    sanitized_username = cryptohome.get_user_hash(username).upper()
+    return '%s/%s/%s' % (constants.USER_POLICY_DIR,
+                         sanitized_username,
+                         constants.USER_POLICY_KEY_FILENAME)

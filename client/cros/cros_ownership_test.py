@@ -129,8 +129,8 @@ class OwnershipTest(test.test):
             settings.data_roaming_enabled.data_roaming_enabled = roaming
         if whitelist:
             settings.allow_new_users.allow_new_users = False
-        for user in whitelist:
-            settings.user_whitelist.user_whitelist.append(user)
+            for user in whitelist:
+                settings.user_whitelist.user_whitelist.append(user)
         if proxies != None:
             settings.device_proxy_settings.proxy_mode = proxies['proxy_mode']
 

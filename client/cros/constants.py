@@ -106,6 +106,8 @@ SESSION_MANAGER = 'session_manager'
 SESSION_MANAGER_LOG = '/var/log/session_manager'
 SIGNED_POLICY_FILE = WHITELIST_DIR + '/policy'
 SPECIAL_CASE_DOMAIN = 'gmail.com'
+USER_POLICY_DIR = '/var/run/user_policy'
+USER_POLICY_KEY_FILENAME = 'policy.pub'
 
 TOKEN_AUTH_URL = '/accounts/TokenAuth'
 TOKEN_AUTH_NEW_URL = '/TokenAuth'
