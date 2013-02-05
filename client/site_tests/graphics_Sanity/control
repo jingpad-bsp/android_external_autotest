@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = 'graphics_WindowManagerGraphicsCapture'
-PURPOSE = 'Verify the window manager can capture graphics from applications.'
+NAME = 'graphics_Sanity'
+PURPOSE = 'Verifies we can draw and capture graphics from applications.'
 CRITERIA = """
 This test fails if application screen shots cannot capture the screen output.
 """
@@ -15,7 +15,8 @@ TEST_CLASS = "graphics"
 TEST_TYPE = 'client'
 
 DOC = """
-This test verifies the window manager can capture graphics from applications.
+This test verifies we can capture graphics from applications. It is meant to be
+a basic check if the graphics system is alive.
 """
 
-job.run_test('graphics_WindowManagerGraphicsCapture')
+job.run_test('graphics_Sanity')

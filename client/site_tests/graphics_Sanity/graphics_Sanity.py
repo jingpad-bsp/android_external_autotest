@@ -2,18 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, time
+import os
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import graphics_ui_test
 
-class graphics_WindowManagerGraphicsCapture(graphics_ui_test.GraphicsUITest):
+class graphics_Sanity(graphics_ui_test.GraphicsUITest):
+    """
+    This test is meant to be used as a quick sanity check for GL/GLES.
+    """
     version = 1
 
     def setup(self):
         self.job.setup_dep(['glbench'])
 
     def run_once(self):
+        """
+        Draws a texture with a soft ellipse twice and captures each image.
+        Compares the output fuzzily against reference images.
+        """
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
@@ -33,7 +39,7 @@ class graphics_WindowManagerGraphicsCapture(graphics_ui_test.GraphicsUITest):
 
         exefile = os.path.join(self.autodir, 'deps/glbench/windowmanagertest')
         # Enable running in window manager.
-        exefile = ('chvt 1 && DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' 
+        exefile = ('chvt 1 && DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority '
                    + exefile)
 
         # Delay before screenshot: 1 second has caused failures.
