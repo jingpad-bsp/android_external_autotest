@@ -1,3 +1,5 @@
+# pylint: disable-msg=C0111
+
 import logging, os
 from datetime import datetime
 from django.db import models as dbmodels, connection
@@ -1001,6 +1003,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     parse_failed_repair: if True, a failed repair launched by this job will have
     its results parsed as part of the job.
     drone_set: The set of drones to run this job on
+    parent_job: Parent job (optional)
     """
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_timeout_default', default=240)
@@ -1051,6 +1054,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     parameterized_job = dbmodels.ForeignKey(ParameterizedJob, null=True,
                                             blank=True)
 
+    parent_job = dbmodels.ForeignKey('self', blank=True, null=True)
 
     # custom manager
     objects = JobManager()

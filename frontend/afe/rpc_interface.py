@@ -1,3 +1,5 @@
+# pylint: disable-msg=C0111
+
 """\
 Functions to expose over the RPC interface.
 
@@ -33,7 +35,6 @@ import datetime
 import common
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
-from autotest_lib.client.common_lib import global_config
 
 
 def get_parameterized_autoupdate_image_url(job):
@@ -499,7 +500,7 @@ def create_job(name, priority, control_file, control_type,
                timeout=None, max_runtime_mins=None, run_verify=True,
                email_list='', dependencies=(), reboot_before=None,
                reboot_after=None, parse_failed_repair=None, hostless=False,
-               keyvals=None, drone_set=None, image=None):
+               keyvals=None, drone_set=None, image=None, parent_job_id=None):
     """\
     Create and enqueue a job.
 
@@ -530,6 +531,7 @@ def create_job(name, priority, control_file, control_type,
     @param atomic_group_name The name of an atomic group to schedule the job on.
     @param drone_set The name of the drone set to run this test on.
     @param image OS image to install before running job.
+    @param parent_job_id id of a job considered to be parent of created job.
 
 
     @returns The created Job id number.
