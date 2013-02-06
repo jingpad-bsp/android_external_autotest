@@ -121,6 +121,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
 
                 showText(name, "view_label");
                 showField(jobObject, "owner", "view_owner");
+                showField(jobObject, "parent_job", "view_parent");
                 showField(jobObject, "priority", "view_priority");
                 showField(jobObject, "created_on", "view_created");
                 showField(jobObject, "timeout", "view_timeout");
