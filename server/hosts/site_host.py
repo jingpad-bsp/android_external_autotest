@@ -33,6 +33,7 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 # In practice, you can't test Repair jobs without a full
 # installation, so that kind of failure isn't expected.
 try:
+    # pylint: disable=W0611
     from autotest_lib.frontend import setup_django_environment
     from autotest_lib.frontend.afe import models
 except:
@@ -61,6 +62,13 @@ def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
       change with every new installation, don't waste memory/space saving them.
 
       - SSH protocol forced to 2; needed for ServerAliveInterval.
+
+    @param user User name to use for the ssh connection.
+    @param port Port on the target host to use for ssh connection.
+    @param opts Additional options to the ssh command.
+    @param hosts_file Ignored.
+    @param connect_timeout Ignored.
+    @param alive_interval Ignored.
     """
     base_command = ('/usr/bin/ssh -a -x %s -o StrictHostKeyChecking=no'
                     ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
@@ -71,7 +79,12 @@ def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
 
 
 def add_function_to_list(functions_list):
-    """Decorator used to group functions together into the provided list."""
+    """Decorator used to group functions together into the provided list.
+
+    @param functions_list list to which the decorated function will
+        be added.
+    """
+    # pylint: disable=C0111
     def add_func(func):
         functions_list.append(func)
         return func
@@ -140,11 +153,29 @@ class SiteHost(remote.RemoteHost):
 
 
     @staticmethod
-    def get_servo_arguments(arglist):
+    def get_servo_arguments(args_dict):
+        """Extract servo options from `args_dict` and return the result.
+
+        Take the provided dictionary of argument options and return
+        a subset that represent standard arguments needed to
+        construct a servo object for a host.  The intent is to
+        provide standard argument processing from run_remote_tests
+        for tests that require a servo to operate.
+
+        Recommended usage:
+        ~~~~~~~~
+            args_dict = utils.args_to_dict(args)
+            servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+            host = hosts.create_host(machine, servo_args=servo_args)
+        ~~~~~~~~
+
+        @param args_dict Dictionary from which to extract the servo
+          arguments.
+        """
         servo_args = {}
         for arg in ('servo_host', 'servo_port'):
-            if arg in arglist:
-                servo_args[arg] = arglist[arg]
+            if arg in args_dict:
+                servo_args[arg] = args_dict[arg]
         return servo_args
 
 
@@ -425,7 +456,7 @@ class SiteHost(remote.RemoteHost):
         self.run('update_engine_client --status')
 
 
-    def xmlrpc_connect(self, command, port, cleanup=None):
+    def xmlrpc_connect(self, command, port, command_name=None):
         """Connect to an XMLRPC server on the host.
 
         The `command` argument should be a simple shell command that
@@ -443,6 +474,8 @@ class SiteHost(remote.RemoteHost):
         @param command Shell command to start the server.
         @param port Port number on which the server is expected to
                     be serving.
+        @param command_name String to use as input to `pkill` to
+            terminate the XMLRPC server on the host.
         """
         self.xmlrpc_disconnect(port)
 
@@ -470,7 +503,7 @@ class SiteHost(remote.RemoteHost):
         logging.debug('Started XMLRPC server on host %s, pid = %s',
                       self.hostname, remote_pid)
 
-        self._xmlrpc_proxy_map[port] = (cleanup, tunnel_proc)
+        self._xmlrpc_proxy_map[port] = (command_name, tunnel_proc)
         rpc_url = 'http://localhost:%d' % local_port
         return xmlrpclib.ServerProxy(rpc_url, allow_none=True)
 
@@ -595,7 +628,7 @@ class SiteHost(remote.RemoteHost):
         See @ref test_wait_for_sleep for more on this function's
         usage.
 
-        @param[in] old_boot_id A boot id value obtained before the
+        @param old_boot_id A boot id value obtained before the
                                target host went to sleep.
 
         @exception TestFail The host did not respond within the
@@ -656,7 +689,7 @@ class SiteHost(remote.RemoteHost):
         See @ref test_wait_for_shutdown for more on this function's
         usage.
 
-        @param[in] old_boot_id A boot id value obtained before the
+        @param old_boot_id A boot id value obtained before the
                                shut down.
 
         @exception TestFail The host did not respond within the
@@ -696,14 +729,17 @@ class SiteHost(remote.RemoteHost):
 
 
     def power_off(self):
+        """Turn off power to this host via RPM."""
         rpm_client.set_power(self.hostname, 'OFF')
 
 
     def power_on(self):
+        """Turn on power to this host via RPM."""
         rpm_client.set_power(self.hostname, 'ON')
 
 
     def power_cycle(self):
+        """Cycle power to this host by turning it OFF, then ON."""
         rpm_client.set_power(self.hostname, 'CYCLE')
 
 
