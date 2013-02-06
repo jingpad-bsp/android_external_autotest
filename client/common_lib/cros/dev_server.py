@@ -58,27 +58,32 @@ def _get_crash_server_list():
         default=[])
 
 
-def remote_devserver_call(method):
+def remote_devserver_call(timeout_min=30):
     """A decorator to use with remote devserver calls.
 
     This decorator converts urllib2.HTTPErrors into DevServerExceptions with
     any embedded error info converted into plain text.
     """
-    @retry.retry(urllib2.URLError, timeout_min=30)
-    def wrapper(*args, **kwargs):
-        """This wrapper actually catches the HTTPError."""
-        try:
-            return method(*args, **kwargs)
-        except urllib2.HTTPError as e:
-            error_markup = e.read()
-            strip = MarkupStripper()
-            try:
-                strip.feed(error_markup.decode('utf_32'))
-            except UnicodeDecodeError:
-                strip.feed(error_markup)
-            raise DevServerException(strip.get_data())
+    #pylint: disable=C0111
+    def inner_decorator(method):
 
-    return wrapper
+        @retry.retry(urllib2.URLError, timeout_min=timeout_min)
+        def wrapper(*args, **kwargs):
+            """This wrapper actually catches the HTTPError."""
+            try:
+                return method(*args, **kwargs)
+            except urllib2.HTTPError as e:
+                error_markup = e.read()
+                strip = MarkupStripper()
+                try:
+                    strip.feed(error_markup.decode('utf_32'))
+                except UnicodeDecodeError:
+                    strip.feed(error_markup)
+                raise DevServerException(strip.get_data())
+
+        return wrapper
+
+    return inner_decorator
 
 
 class DevServerException(Exception):
@@ -106,12 +111,18 @@ class DevServer(object):
 
 
     @staticmethod
-    def devserver_up(devserver):
-        """Returns True if the |devserver| is responding to calls."""
+    def devserver_up(devserver, timeout_min=0.1):
+        """Returns True if the |devserver| is responding to calls.
+
+        @param devserver: url of the devserver.
+        @param timeout_min: How long to wait in minutes before deciding the
+                            the devserver is not up (float).
+        """
         call = DevServer._build_call(devserver, 'index')
 
-        @remote_devserver_call
+        @remote_devserver_call(timeout_min=timeout_min)
         def make_call():
+            """Inner method that makes the call."""
             urllib2.urlopen(call)
 
         try:
@@ -139,8 +150,9 @@ class DevServer(object):
 
 
     def build_call(self, method, **kwargs):
-        """
-        Builds a devserver RPC string that can be invoked using urllib.open.
+        """Builds a devserver RPC string that can be invoked using urllib.open.
+
+        @param method: remote devserver method to call.
         """
         return self._build_call(self._devserver, method, **kwargs)
 
@@ -173,7 +185,10 @@ class DevServer(object):
 
     @classmethod
     def resolve(cls, build):
-        """"Resolves a build to a devserver instance."""
+        """"Resolves a build to a devserver instance.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514).
+        """
         devservers = cls.servers()
         while devservers:
             hash_index = hash(build) % len(devservers)
@@ -192,7 +207,7 @@ class CrashServer(DevServer):
         return _get_crash_server_list()
 
 
-    @remote_devserver_call
+    @remote_devserver_call()
     def symbolicate_dump(self, minidump_path, build):
         """Ask the devserver to symbolicate the dump at minidump_path.
 
@@ -236,7 +251,7 @@ class ImageServer(DevServer):
     def devserver_url_for_servo(cls, build):
         """Returns the devserver url for use with servo recovery.
 
-        @param board:  The board type to be recovered.
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514).
         """
         # To simplify manual steps on the server side, we ignore the
         # board type and hard-code the server as first in the list.
@@ -262,7 +277,7 @@ class ImageServer(DevServer):
             self.nton_payload = nton_payload
 
 
-    @remote_devserver_call
+    @remote_devserver_call()
     def stage_artifacts(self, image, artifacts):
         """Tell the devserver to download and stage |artifacts| from |image|.
 
@@ -288,7 +303,7 @@ class ImageServer(DevServer):
                                        (' '.join(artifacts), image))
 
 
-    @remote_devserver_call
+    @remote_devserver_call()
     def trigger_download(self, image, synchronous=True):
         """Tell the devserver to download and stage |image|.
 
@@ -320,7 +335,7 @@ class ImageServer(DevServer):
                                      image)
 
 
-    @remote_devserver_call
+    @remote_devserver_call()
     def finish_download(self, image):
         """Tell the devserver to finish staging |image|.
 
@@ -395,7 +410,7 @@ class ImageServer(DevServer):
         return url_pattern % (self.url(), board, branch, release)
 
 
-    @remote_devserver_call
+    @remote_devserver_call()
     def list_control_files(self, build):
         """Ask the devserver to list all control files for |build|.
 
@@ -410,7 +425,7 @@ class ImageServer(DevServer):
         return [line.rstrip() for line in response]
 
 
-    @remote_devserver_call
+    @remote_devserver_call()
     def get_control_file(self, build, control_path):
         """Ask the devserver for the contents of a control file.
 
@@ -426,7 +441,7 @@ class ImageServer(DevServer):
         return urllib2.urlopen(call).read()
 
 
-    @remote_devserver_call
+    @remote_devserver_call()
     def get_dependencies_file(self, build):
         """Ask the dev server for the contents of the suite dependencies file.
 
@@ -446,7 +461,7 @@ class ImageServer(DevServer):
 
 
     @classmethod
-    @remote_devserver_call
+    @remote_devserver_call()
     def get_latest_build(cls, target, milestone=''):
         """Ask all the devservers for the latest build for a given target.
 

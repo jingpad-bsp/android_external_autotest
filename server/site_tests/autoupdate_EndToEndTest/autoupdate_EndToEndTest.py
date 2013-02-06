@@ -45,7 +45,7 @@ class ExpectedUpdateEvent(object):
     def verify(self, actual_event):
         """Verify the attributes of an actual event.
 
-        @params actual_event: a dictionary containing event attributes
+        @param actual_event: a dictionary containing event attributes
 
         @return True if all attributes as expected, False otherwise.
 
@@ -165,7 +165,10 @@ class UpdateEventLogVerifier(object):
 
 
     def verify_expected_event_chain(self, expected_event_chain):
-        """Verify a given event chain."""
+        """Verify a given event chain.
+
+        @param expected_event_chain: instance of expected event chain.
+        """
         return expected_event_chain.verify(self._get_next_log_event)
 
 
@@ -300,13 +303,18 @@ class OmahaDevserver(object):
 
     def wait_for_devserver_to_start(self):
         """Returns True if the devserver has started within the time limit."""
+        logging.warning('Waiting for devserver to start up.')
         timeout = self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
         netloc = self.get_netloc()
-        while(timeout > 0):
-            time.sleep(self._WAIT_SLEEP_INTERVAL)
-            timeout -= self._WAIT_SLEEP_INTERVAL
-            if dev_server.DevServer.devserver_up('http://%s' % netloc):
+        current_time = time.time()
+        deadline = current_time + timeout
+        while(current_time < deadline):
+            if dev_server.DevServer.devserver_up('http://%s' % netloc,
+                                                 timeout_min=0.1):
                 return True
+
+            time.sleep(self._WAIT_SLEEP_INTERVAL)
+            current_time = time.time()
         else:
             self.log_output()
             return False
@@ -540,6 +548,12 @@ class autoupdate_EndToEndTest(test.test):
     def stage_image(self, lorry_devserver, image_uri, board, release, branch):
         """Stage a Chrome OS image on Lorry/devserver.
 
+        @param lorry_devserver: instance of client.common_lib.dev_server to use
+                                to reach the devserver instance for this build.
+        @param image_uri: The uri of the image.
+        @param board: The board for the image.
+        @param release: The given version string for the build e.g. 3729.0.0.
+        @param branch: The given chrome branch for the build e.g. R28.
         @return URL of the staged image on the server.
 
         @raise error.TestError if there's a problem with staging.
@@ -571,6 +585,15 @@ class autoupdate_EndToEndTest(test.test):
     def stage_payload(self, lorry_devserver, payload_uri, board, release,
                       branch, is_delta, is_nton):
         """Stage an update target payload on Lorry/devserver.
+
+        @param lorry_devserver: instance of client.common_lib.dev_server to use
+                                to reach the devserver instance for this build.
+        @param payload_uri: The uri of the payload.
+        @param board: The board for the image.
+        @param release: The given version string for the build e.g. 3729.0.0.
+        @param branch: The given chrome branch for the build e.g. R28.
+        @param is_delta: If true, this payload is a delta payload.
+        @param is_nton: If true, this payload is an nplus1 payload.
 
         @return URL of the staged payload on the server.
 

@@ -139,6 +139,12 @@ class CustomDocStringChecker(base.DocStringChecker):
         pass
 
 
+    @staticmethod
+    def _should_skip_arg(arg):
+        """Returns true if the arg should be skipped."""
+        return arg in ('self', 'cls', 'args', 'kwargs', 'dargs')
+
+
     def _check_docstring(self, node_type, node):
         """
         Teaches pylint to look for @param with each argument in the
@@ -157,7 +163,7 @@ class CustomDocStringChecker(base.DocStringChecker):
             for arg in args:
                 arg_docstring_rgx = '.*@param '+arg+'.*'
                 line = re.search(arg_docstring_rgx, node.doc)
-                if not line and arg is not 'self':
+                if not line and not self._should_skip_arg(arg):
                     self.linter._messages['C0111'].msg = ('Docstring needs '
                                                           '"@param '+arg+':"')
                     self.add_message('C0111', node=node)
