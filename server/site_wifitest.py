@@ -274,8 +274,7 @@ class WiFiTest(object):
        # NB: do last so code above doesn't need to cleanup on failure
        self.test_profile = {'name':'test'}
        # cleanup in case a previous failure left the profile around
-       self.profile_pop(self.test_profile, ignore_status=True)
-       self.profile_remove(self.test_profile, ignore_status=True)
+       self.profile_cleanup()
        self.profile_create(self.test_profile)
        self.profile_push(self.test_profile)
 
@@ -287,9 +286,7 @@ class WiFiTest(object):
             self.wifi.destroy({})
 
         self.wifi.cleanup({})
-        if hasattr(self, 'test_profile'):
-          self.profile_pop(self.test_profile)
-          self.profile_remove(self.test_profile)
+        self.profile_cleanup()
         self.client_stop_capture({})
         self.client_stop_statistics({})
         self.firewall_cleanup({})
@@ -1870,6 +1867,11 @@ class WiFiTest(object):
                             ignore_status=ignore_status)
 
 
+    def profile_cleanup(self):
+        """ Pop and remove all profiles until 'default' is found. """
+        self.client.run('%s/test/clean-profiles' %
+                        (self.client_cmd_flimflam_lib))
+
     def __get_wifi_device_path(self):
         if self.client_wifi_device_path:
             return self.client_wifi_device_path
@@ -2223,8 +2225,7 @@ class WiFiTest(object):
             logging.info("Reboot timeout is %f seconds", reboot_timeout)
             self.client.reboot(timeout=reboot_timeout)
 
-        self.profile_pop(self.test_profile, ignore_status=True)
-        self.profile_remove(self.test_profile, ignore_status=True)
+        self.profile_cleanup()
         self.profile_create(self.test_profile)
         self.profile_push(self.test_profile)
 
