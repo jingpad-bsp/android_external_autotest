@@ -8,7 +8,6 @@ NAME = "WiFi RateRange"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "Server"
-SUITE = "wificell"  # TODO(tgao): proper suite name?
 SYNC_COUNT = 1
 DOC = """
 WiFiRateRange is a suite of 4-machine tests to benchmark WiFi performance
