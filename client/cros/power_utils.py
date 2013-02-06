@@ -1,7 +1,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging, os, re
+import logging, os, re, shutil, tempfile
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -42,36 +42,6 @@ def has_rapl_support():
     if cpu_arch and ((cpu_arch is 'Celeron') or (cpu_arch is 'Core')):
         return True
     return False
-
-
-def set_power_prefs(new_prefs):
-    """
-    Deletes the power prefs in /var/lib/power_manager and overwrites them with
-    new ones.
-
-    Arguments:
-      new_prefs:  Dictionary containing new prefs, with key=pref file name and
-                  value=pref value (int/float/string)
-                  e.g. { plugged_dim_ms: 10000, plugged_off_ms: 20000 }
-    Returns:
-      Dictionary containing old prefs that were overwritten, with the same
-      format as |new_prefs|.
-    """
-    prefs_path = '/var/lib/power_manager'
-
-    # Back up existing prefs before deleting them.
-    saved_prefs = {}
-    for filename in os.listdir(prefs_path):
-        full_path = '%s/%s' % (prefs_path, filename)
-        saved_prefs[filename] = open(full_path).read()
-        os.remove(full_path)
-
-    # Write the new prefs.
-    for filename in new_prefs:
-        full_path = '%s/%s' % (prefs_path, filename)
-        open(full_path, 'w').write(str(new_prefs[filename]))
-
-    return saved_prefs
 
 
 def call_powerd_dbus_method(method_name, args=''):
@@ -361,6 +331,29 @@ class BacklightController(object):
         while num_steps_taken < self._max_num_steps:
             self.decrease_brightness(allow_off)
             num_steps_taken += 1
+
+
+class PowerPrefChanger(object):
+    """
+    Class to temporarily change powerd prefs. Construct with a dict of
+    pref_name/value pairs (e.g. {'disable_idle_suspend':0}). Destructor (or
+    reboot) will restore old prefs automatically."""
+
+    _PREFDIR = '/var/lib/power_manager'
+    _TEMPDIR = '/tmp/autotest_powerd_prefs'
+
+    def __init__(self, prefs):
+        shutil.copytree(self._PREFDIR, self._TEMPDIR)
+        for name, value in prefs.iteritems():
+            utils.write_one_line('%s/%s' % (self._TEMPDIR, name), value)
+        utils.system('mount --bind %s %s' % (self._TEMPDIR, self._PREFDIR))
+        utils.restart_job('powerd')
+
+
+    def __del__(self):
+        utils.system('umount %s' % self._PREFDIR, ignore_status=True)
+        shutil.rmtree(self._TEMPDIR)
+        utils.restart_job('powerd')
 
 
 class Registers(object):

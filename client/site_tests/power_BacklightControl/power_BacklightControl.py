@@ -44,8 +44,6 @@ class power_BacklightControl(test.test):
         status = power_status.get_status()
         status.assert_battery_state(5)
 
-        # Start powerd if not started.  Set timeouts to delay idle events.
-        # Save old prefs in a backup directory.
         prefs = { 'disable_als'          : 1,
                   'react_ms'             : 30000,
                   'plugged_dim_ms'       : 7200000,
@@ -54,8 +52,7 @@ class power_BacklightControl(test.test):
                   'unplugged_dim_ms'     : 7200000,
                   'unplugged_off_ms'     : 9000000,
                   'unplugged_suspend_ms' : 18000000 }
-        self._saved_prefs = power_utils.set_power_prefs(prefs)
-        utils.restart_job('powerd')
+        self._pref_change = power_utils.PowerPrefChanger(prefs)
 
         keyvals = {}
         num_errors = 0
@@ -191,9 +188,6 @@ class power_BacklightControl(test.test):
 
 
     def cleanup(self):
-        # Restore prefs, delete backup directory, and restart powerd.
-        power_utils.set_power_prefs(self._saved_prefs)
-        utils.restart_job('powerd')
         if self._backlight:
             self._backlight.restore()
         super(power_BacklightControl, self).cleanup()

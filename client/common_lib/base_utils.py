@@ -222,7 +222,7 @@ def get_field(data, param, linestart="", sep=" "):
 
 
 def write_one_line(filename, line):
-    open_write_close(filename, line.rstrip('\n') + '\n')
+    open_write_close(filename, str(line).rstrip('\n') + '\n')
 
 
 def open_write_close(filename, data):

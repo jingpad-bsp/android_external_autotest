@@ -36,12 +36,11 @@ class power_VideoDetector(cros_ui_test.UITest):
                   'plugged_off_ms'       : off_ms,
                   'unplugged_dim_ms'     : dim_ms,
                   'unplugged_off_ms'     : off_ms, }
-        self._saved_prefs = power_utils.set_power_prefs(prefs)
+        self._pref_change = power_utils.PowerPrefChanger(prefs)
 
         keyvals = {}
 
         # Start with max brightness, so we can easily detect dimming.
-        utils.restart_job('powerd')
         power_utils.BacklightController().set_brightness_to_max()
         backlight = power_utils.Backlight()
         initial_brightness = base_utils.wait_for_value(backlight.get_max_level)
@@ -72,7 +71,4 @@ class power_VideoDetector(cros_ui_test.UITest):
     def cleanup(self):
         if self.logged_in():
             self.logout()
-
-        # Restore saved prefs and restart powerd.
-        power_utils.set_power_prefs(self._saved_prefs)
         utils.restart_job('powerd')
