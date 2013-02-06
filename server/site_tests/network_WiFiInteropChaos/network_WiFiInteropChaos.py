@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Chaos lab static connection test."""
+
 import logging
 import os
 
@@ -14,6 +16,7 @@ from autotest_lib.server.cros.wlan import profile_manager
 
 
 class network_WiFiInteropChaos(test.test):
+    """Test to connect to statically configured APs in the Chaos lab."""
     version = 1
 
 
@@ -25,6 +28,14 @@ class network_WiFiInteropChaos(test.test):
 
 
     def connect_ap(self, host, ap, tries=1):
+        """Establishes a connetion to the ap.
+
+        Params:
+            @param host: Autotest host instance.
+            @param ap: ChaosAP instance defined in cros.chaos_config.
+            @param tries: number of times to try to connect to the ap.
+        """
+
         c = connector.Connector(host)
         d = disconnector.Disconnector(host)
 
@@ -67,12 +78,16 @@ class network_WiFiInteropChaos(test.test):
         This test connects to an ap 'tries' number of times.
 
         Params:
-            host: Autotest host instance.
-            capturer: packet_capture instance defined in packet_capture.
-            ap: ChaosAP instance defined in cros.chaos_config
+            @param host: Autotest host instance.
+            @param capturer: packet_capture instance defined in packet_capture.
+            @param ap: ChaosAP instance defined in cros.chaos_config.
+            @param tries: number of times to try to connect to the ap.
         """
         logging.info(ap)
         self.capturer = capturer
+
+        mac_addresses = host.run('ip link show').stdout
+        logging.info('Device MAC addresses\n %s' % mac_addresses)
 
         # Loop through AP's and connect to them one by one.
         # Capture all fail to connect test cases and raise
