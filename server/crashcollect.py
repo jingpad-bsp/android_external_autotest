@@ -29,7 +29,6 @@ def get_crashinfo(host, test_start_time):
 
         crashinfo_dir = get_crashinfo_dir(host)
         collect_messages(host)
-        collect_log_file(host, "/var/log/monitor-ssh-reboots", crashinfo_dir)
         collect_command(host, "dmesg", os.path.join(crashinfo_dir, "dmesg"))
         collect_uncollected_logs(host)
 
