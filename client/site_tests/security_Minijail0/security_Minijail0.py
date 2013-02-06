@@ -9,7 +9,7 @@ import re
 import shutil
 import tempfile
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 class security_Minijail0(test.test):
@@ -40,11 +40,12 @@ class security_Minijail0(test.test):
             if '%T' in setup:
                 td = tempfile.mkdtemp()
                 setup = setup.replace('%T', td)
-            os.system(setup)
+            utils.system(setup)
         if '%T' in args:
             td = td or tempfile.mkdtemp()
             args = args.replace('%T', td)
-        ret = os.system('/sbin/minijail0 %s /bin/bash %s' % (args, path))
+        ret = utils.system('/sbin/minijail0 %s /bin/bash %s' % (args, path),
+                           ignore_status=True)
         if td:
             # The test better not have polluted our mount namespace :).
             shutil.rmtree(td)
@@ -52,11 +53,15 @@ class security_Minijail0(test.test):
 
     def run_once(self):
         failed = []
+        ran = 0
         for p in glob.glob('%s/test-*' % self.srcdir):
             name = os.path.basename(p)
             logging.info('Running: %s' % name)
             if self.run_test(p):
                 failed.append(name)
+            ran += 1
+        if ran == 0:
+            failed.append("No tests found to run from %s!" % (self.srcdir))
         if failed:
             logging.error('Failed: %s' % failed)
             raise error.TestFail('Failed: %s' % failed)
