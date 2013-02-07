@@ -7,7 +7,7 @@ ifndef SYSROOT
 endif
 
 OUT_DIR ?= .
-PROTO_PATH = $(SYSROOT)/usr/include/proto
+PROTO_PATH = $(SYSROOT)/usr/share/protofiles
 PROTO_DEFS = $(PROTO_PATH)/chrome_device_policy.proto \
 	$(PROTO_PATH)/device_management_backend.proto
 PROTO_BINDINGS = $(OUT_DIR)/chrome_device_policy_pb2.py \

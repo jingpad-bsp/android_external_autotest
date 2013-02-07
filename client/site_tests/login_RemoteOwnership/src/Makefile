@@ -7,7 +7,7 @@ ifndef SYSROOT
 endif
 
 OUT_DIR ?= .
-PROTO_PATH = $(SYSROOT)/usr/include/proto
+PROTO_PATH = $(SYSROOT)/usr/share/protofiles
 PROTO_DEFS = $(PROTO_PATH)/device_management_backend.proto
 PROTO_BINDINGS = $(OUT_DIR)/device_management_backend_pb2.py
 
