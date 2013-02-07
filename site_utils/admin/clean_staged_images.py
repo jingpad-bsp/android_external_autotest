@@ -26,28 +26,23 @@ import shutil
 import time
 
 import common
-from autotest_lib.server import frontend
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.cli.rpc import AFE_RPC_PATH
-from autotest_lib.client.common_lib import global_config, logging_config
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
 
 # This filename must be kept in sync with devserver's downloader.py
 _TIMESTAMP_FILENAME = 'staged.timestamp'
 _HOURS_TO_SECONDS = 60*60
-
-
-class CleanStagedImagesLoggingConfig(logging_config.LoggingConfig):
-    def configure_logging(self, results_dir=None, verbose=False):
-        super(CleanStagedImagesLoggingConfig, self).configure_logging(
-                use_console=True, verbose=verbose)
+_EXEMPTED_DIRECTORIES = [ 'servo-images' ]
 
 
 def validate_and_parse_build_milestone(build_name):
     """Parse the build name and ensure it is a proper build name.
 
     Example build name: R21-4555.2.3 or R21-2368.0.0-rc30
-    @param  build_name: The name of the build.
+
+    @param build_name The name of the build.
     @returns the milestone of the build if it is valid.
 
     >>> validate_and_parse_build_milestone('R21-4555.2.3')
@@ -159,6 +154,9 @@ def prune_builds_and_labels(builds_dir, keep_duration, keep_paladin_duration):
         return
 
     for build_dir in glob.glob(builds_dir + '/*'):
+        if os.path.basename(build_dir) in _EXEMPTED_DIRECTORIES:
+            logging.debug('Skipping %s', build_dir)
+            continue
         logging.debug('Processing %s', build_dir)
         if build_dir.endswith('-paladin'):
             keep = keep_paladin_duration
@@ -171,6 +169,7 @@ def prune_builds_and_labels(builds_dir, keep_duration, keep_paladin_duration):
         # delete_labels_of_unstaged_builds(build_dir)
 
 def main():
+    """Main routine."""
     usage = 'usage: %prog [options] images_dir'
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-a', '--max-age', default=24, type=int,
