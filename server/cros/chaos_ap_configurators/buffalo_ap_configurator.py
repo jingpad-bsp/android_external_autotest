@@ -46,17 +46,15 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         if page_number == 1:
            page_url = urlparse.urljoin(self.admin_interface_url,
                                        'Wireless_Basic.asp')
-           self.driver.get(page_url)
+           self.get_url(page_url, page_title='DD-WRT')
         elif page_number == 2:
            page_url = urlparse.urljoin(self.admin_interface_url,
                                        'WL_WPATable.asp')
-           self.driver.get(page_url)
+           self.get_url(page_url, page_title='DD-WRT')
         else:
            raise RuntimeError('Invalid page number passed. Number of pages '
                               '%d, page value sent was %d' %
                               (self.get_number_of_pages(), page_number))
-        if self.driver.title.find('DD-WRT') == -1:
-            logging.info('Page failed to load for buffalo.')
 
 
     def save_page(self, page_number):

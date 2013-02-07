@@ -305,7 +305,7 @@ class WebDriverCoreHelpers(object):
         """
         xpath = 'id("%s")' % text_field_id
         self.set_content_of_text_field_by_xpath(content, xpath,
-                                                wait_for_xpath=wait_for_path,
+                                                wait_for_xpath=wait_for_xpath,
                                                 abort_check=abort_check)
 
 

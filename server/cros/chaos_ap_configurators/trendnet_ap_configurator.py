@@ -64,7 +64,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/security.asp')
-            self.get_url(page_url)
+            self.get_url(page_url, page_title='TEW')
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %
