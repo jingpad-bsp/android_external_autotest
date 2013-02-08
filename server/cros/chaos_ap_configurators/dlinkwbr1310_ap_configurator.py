@@ -56,9 +56,9 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_disabled,
-                                 self.security_wpapsk,
-                                 self.security_wep)
+        return security_mode in (self.security_type_disabled,
+                                 self.security_type_wpapsk,
+                                 self.security_type_wep)
 
 
     def navigate_to_page(self, page_number):
@@ -78,7 +78,7 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
                 break
 
 
-    def set_mode(self, mode_enable=True):
+    def set_mode(self, mode_enable=True, band=None):
         self.add_item_to_command_list(self._set_mode, (mode_enable,), 1, 900)
 
 

@@ -42,7 +42,13 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.mode_g = 0x0100
         self.mode_n = 0x1000
 
-        # Possible security settings
+        # Possible security types
+        self.security_type_disabled = 0
+        self.security_type_wep = 1
+        self.security_type_wpawpsk = 2
+        self.security_type_wpa2wpsk = 3
+
+        # Possible security strings
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
         self.security_wpawpsk = 'WPA-Personal'
@@ -58,6 +64,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.short_name = ap.get_model()
         self.mac_address = ap.get_wan_mac()
         self.host_name = ap.get_wan_host()
+        self.config_data = ap
 
         # Set a default band, this can be overriden by the subclasses
         self.current_band = self.band_2ghz
@@ -127,6 +134,12 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
+    def get_bss(self):
+        if self.current_band == self.band_2ghz:
+            return self.config_data.get_bss()
+        else:
+            return self.config_data.get_bss5()
+
     def _get_channel_popup_position(self, channel):
         """Internal method that converts a channel value to a popup position."""
         supported_bands = self.get_supported_bands()
@@ -135,6 +148,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 return band['channels'].index(channel)
         raise RuntimeError('The channel passed %d to the band %s is not '
                            'supported.' % (channel, band))
+
 
     def get_supported_modes(self):
         """Returns a list of dictionaries describing the supported modes.
