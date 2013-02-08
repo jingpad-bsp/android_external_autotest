@@ -492,11 +492,13 @@ static void *alsa_capture(void *arg) {
             gettimeofday(&cap_time, NULL);
 
             fprintf(stderr, "Found audio\n");
-            fprintf(stderr, "Played at %ld %ld, %ld delay\n",
-                    sine_start_tv.tv_sec, sine_start_tv.tv_usec,
+            fprintf(stderr, "Played at %llu %llu, %ld delay\n",
+                    (unsigned long long)sine_start_tv.tv_sec,
+                    (unsigned long long)sine_start_tv.tv_usec,
                     playback_delay_frames);
-            fprintf(stderr, "Capture at %ld %ld, %ld delay sample %d\n",
-                    cap_time.tv_sec, cap_time.tv_usec,
+            fprintf(stderr, "Capture at %llu %llu, %ld delay sample %d\n",
+                    (unsigned long long)cap_time.tv_sec,
+                    (unsigned long long)cap_time.tv_usec,
                     cap_delay_frames, noise_delay_frames);
 
             latency_us = subtract_timevals(&cap_time, &sine_start_tv);
