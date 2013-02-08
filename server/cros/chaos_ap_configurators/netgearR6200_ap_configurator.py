@@ -33,9 +33,9 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_disabled,
-                                 self.security_wpa2psk,
-                                 self.security_wep)
+        return security_mode in (self.security_type_disabled,
+                                 self.security_type_wpa2psk,
+                                 self.security_type_wep)
 
 
     def _set_channel(self, channel):

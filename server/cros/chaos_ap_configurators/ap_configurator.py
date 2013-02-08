@@ -46,14 +46,14 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         # Possible security types
         self.security_type_disabled = 0
         self.security_type_wep = 1
-        self.security_type_wpawpsk = 2
-        self.security_type_wpa2wpsk = 3
+        self.security_type_wpapsk = 2
+        self.security_type_wpa2psk = 3
 
         # Possible security strings
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
-        self.security_wpawpsk = 'WPA-Personal'
-        self.security_wpa2wpsk = 'WPA2-Personal'
+        self.security_wpapsk = 'WPA-Personal'
+        self.security_wpa2psk = 'WPA2-Personal'
         self.security_wpa8021x = 'WPA-Enterprise'
         self.security_wpa28021x = 'WPA2-Enterprise'
 
