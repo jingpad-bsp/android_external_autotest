@@ -42,6 +42,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.mode_g = 0x00100
         self.mode_n = 0x01000
         self.mode_auto = 0x10000
+        self.mode_m = 0x0111
+        self.mode_d = 0x1011
 
         # Possible security types
         self.security_type_disabled = 0

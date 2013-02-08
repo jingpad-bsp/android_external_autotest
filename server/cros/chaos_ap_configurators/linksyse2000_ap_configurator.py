@@ -19,8 +19,6 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
         self.security_wpa8021x = 'WPA Enterprise'
         self.security_wpa28021x = 'WPA2 Enterprise'
         self.current_band = self.band_2ghz
-        self.mode_m = 0x1001
-        self.mode_d = 0x1010
 
 
     def _sec_alert(self, alert):
@@ -54,12 +52,10 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_disabled,
-                                 self.security_wpa8021x,
-                                 self.security_wpapsk,
-                                 self.security_wpa2psk,
-                                 self.security_wep,
-                                 self.security_wpa28021x)
+        return security_mode in (self.security_type_disabled,
+                                 self.security_type_wpapsk,
+                                 self.security_type_wpa2psk,
+                                 self.security_type_wep)
 
 
     def navigate_to_page(self, page_number):

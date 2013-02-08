@@ -78,16 +78,13 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def is_security_mode_supported(self, security_mode):
         if self.current_band == self.band_5ghz:
-            return security_mode in (self.security_disabled,
-                                     self.security_wpa2psk,
-                                     self.security_wpa28021x)
-        return security_mode in (self.security_disabled,
-                                 self.security_wpa2psk,
-                                 self.security_wpapsk,
-                                 self.security_wpa28021x,
-                                 self.security_wep,
-                                 self.security_wpapskmixed,
-                                 self.security_wpa8021xmixed)
+            return security_mode in (self.security_type_disabled,
+                                     self.security_type_wpapsk,
+                                     self.security_type_wpa2psk)
+        return security_mode in (self.security_type_disabled,
+                                 self.security_type_wpapsk,
+                                 self.security_type_wpa2psk,
+                                 self.security_type_wep)
 
 
     def navigate_to_page(self, page_number):

@@ -67,8 +67,9 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_disabled, self.security_wep,
-                                 self.security_wpapsk, self.security_wpa8021x)
+        return security_mode in (self.security_type_disabled,
+                                 self.security_type_wep,
+                                 self.security_type_wpapsk)
 
 
     def navigate_to_page(self, page_number):
