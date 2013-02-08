@@ -10,9 +10,6 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
     def __init__(self, router_dict):
         super(AsusQISAPConfigurator, self).__init__(router_dict)
-        self.mode_n = 'N Only'
-        self.mode_legacy = 'Legacy'
-        self.mode_auto = 'auto'
 
 
     def _set_authentication(self, authentication, wait_for_xpath=None):
@@ -58,9 +55,9 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
-                 'modes': [self.mode_legacy, self.mode_n, self.mode_auto]},
+                 'modes': [self.mode_n, self.mode_auto]},
                 {'band': self.band_5ghz,
-                 'modes': [self.mode_legacy, self.mode_n, self.mode_auto]}]
+                 'modes': [self.mode_n, self.mode_auto]}]
 
 
     def _set_mode(self, mode, band=None):

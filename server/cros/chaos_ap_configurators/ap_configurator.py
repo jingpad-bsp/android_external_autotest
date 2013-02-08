@@ -37,10 +37,11 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.current_band = self.band_2ghz
 
         # Possible modes
-        self.mode_a = 0x0001
-        self.mode_b = 0x0010
-        self.mode_g = 0x0100
-        self.mode_n = 0x1000
+        self.mode_a = 0x00001
+        self.mode_b = 0x00010
+        self.mode_g = 0x00100
+        self.mode_n = 0x01000
+        self.mode_auto = 0x10000
 
         # Possible security types
         self.security_type_disabled = 0

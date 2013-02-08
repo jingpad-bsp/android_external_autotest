@@ -72,9 +72,9 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_disabled,
-                                 self.security_wpapsk,
-                                 self.security_wep)
+        return security_mode in (self.security_type_disabled,
+                                 self.security_type_wpapsk,
+                                 self.security_type_wep)
 
 
     def navigate_to_page(self, page_number):
