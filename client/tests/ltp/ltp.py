@@ -44,6 +44,7 @@ class ltp(test.test):
         utils.system('patch -p1 < ../patches/cpuid.patch')
         utils.system('patch -p1 < ../patches/kill-ipc.patch')
         utils.system('patch -p1 < ../patches/genpow.patch')
+        utils.system('patch -p1 < ../patches/sysctl.patch')
         utils.make('autotools')
         utils.configure('--prefix=%s' % ltpbin_dir)
         utils.make('-j %d all' % utils.count_cpus())
