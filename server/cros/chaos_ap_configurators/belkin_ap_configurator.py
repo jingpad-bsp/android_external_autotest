@@ -13,16 +13,7 @@ from selenium.common.exceptions import NoSuchElementException as \
 
 
 class BelkinAPConfigurator(ap_configurator.APConfigurator):
-
-
-    def __init__(self, router_dict):
-        super(BelkinAPConfigurator, self).__init__(router_dict)
-        self.security_disabled = 'Disabled'
-        self.security_wep = '64bit WEP'
-        self.security_wpapsk = 'WPA-PSK(no server)'
-        self.authentication_psk = 'psk'
-        self.authentication_wpa2 = 'WPA2'
-        self.authentication_wpa1_wpa2 = 'WPA1WPA2'
+    """Base class for Belkin F5D8235-4 V2 router."""
 
 
     def _security_alert(self, alert):
@@ -35,7 +26,7 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
     def _open_landing_page(self):
         page_url = urlparse.urljoin(self.admin_interface_url,'home.htm')
-        self.driver.get(page_url)
+        self.get_url(page_url, page_title='Setup Home')
         # Do we need to login?
         try:
             self.driver.find_element_by_link_text('Login')
@@ -76,11 +67,11 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless_chan.htm')
-            self.driver.get(page_url)
+            self.get_url(page_url, page_title='SSID')
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless_encrypt_64.htm')
-            self.driver.get(page_url)
+            self.get_url(page_url, page_title='Security')
         else:
             raise RuntimeError('Invalid page number passed. Number of pages '
                                '%d, page value sent was %d' %
@@ -156,13 +147,13 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('This router (%s) does not support radio' %
+        logging.info('This router (%s) does not support radio',
                      self.get_router_name())
         return None
 
 
     def set_band(self, band):
-        logging.info('This router (%s) does not support multiple bands.' %
+        logging.info('This router (%s) does not support multiple bands.',
                      self.get_router_name())
         return None
 
@@ -173,7 +164,7 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         xpath = '//select[@name="wl_sec_mode"]'
-        self.select_item_from_popup_by_xpath(self.security_disabled, xpath)
+        self.select_item_from_popup_by_xpath('Disabled', xpath)
 
 
     def set_security_wep(self, key_value, authentication):
@@ -185,12 +176,11 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
         popup = '//select[@name="wl_sec_mode"]'
         self.wait_for_object_by_xpath(popup)
         text_field = '//input[@name="wep64pp"]'
-        self.select_item_from_popup_by_xpath(self.security_wep, popup,
+        self.select_item_from_popup_by_xpath('64bit WEP', popup,
                                              wait_for_xpath=text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
-        button = self.driver.find_element_by_id('submitBtn_generate')
-        button.click()
+        self.click_button_by_id('submitBtn_generate')
 
 
     def set_security_wpapsk(self, shared_key, update_interval=None):
@@ -203,15 +193,14 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="wl_wpa_psk1"]'
         psk = '//select[@name="wl_auth"]'
-        self.select_item_from_popup_by_xpath(self.security_wpapsk, popup,
+        self.select_item_from_popup_by_xpath('WPA-PSK(no server)', popup,
                                              wait_for_xpath=key_field)
-        self.select_item_from_popup_by_xpath(self.authentication_psk, psk,
-                                             wait_for_xpath=None)
+        self.select_item_from_popup_by_xpath('psk', psk)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
                                                 abort_check=False)
 
 
     def set_visibility(self, visible=True):
-        logging.info('Visibility is not supported for this router %s.' %
+        logging.info('Visibility cannot be changed for this router %s.',
                      self.get_router_name())
         return None

@@ -23,7 +23,6 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
         self.security_wpa28021x = 'WPA2 Enterprise'
         self.security_wpapskmixed = 'WPA2/WPA Mixed Mode'
         self.security_wpa8021xmixed = 'WPA2/WPA Enterprise Mixed Mode'
-        self.current_band = self.band_2ghz
 
 
     def _alert_handler(self, alert):
@@ -91,7 +90,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
         if page_number == 1:
             url = urlparse.urljoin(self.admin_interface_url,
                                    'Wireless_Basic.asp')
-            self.driver.get(url)
+            self.get_url(url, page_title='Settings')
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %
@@ -181,10 +180,6 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        self.add_item_to_command_list(self._set_band, (band,), 1, 900)
-
-
-    def _set_band(self, band):
         if band == self.band_5ghz:
             self.current_band = self.band_5ghz
         elif band == self.band_2ghz:

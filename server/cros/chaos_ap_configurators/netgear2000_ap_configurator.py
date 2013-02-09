@@ -49,8 +49,8 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
 
     def navigate_to_page(self, page_number):
         try:
-            self.driver.get(urlparse.urljoin(self.admin_interface_url,
-                            'adv_index.htm'))
+            self.get_url(urlparse.urljoin(self.admin_interface_url,
+                         'adv_index.htm'), page_title='WNR2000v3')
             self.click_button_by_id('setup_bt')
             self.wait_for_object_by_id('wireless')
             self.click_button_by_id('wireless')

@@ -8,9 +8,6 @@ import asus_ap_configurator
 class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
     """Derived class for Asus routers with the Quick Internet Setup UI."""
 
-    def __init__(self, router_dict):
-        super(AsusQISAPConfigurator, self).__init__(router_dict)
-
 
     def _set_authentication(self, authentication, wait_for_xpath=None):
         """Sets the authentication method in the popup.
@@ -25,11 +22,8 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
 
     def navigate_to_page(self, page_number):
-        try:
-            self.driver.get('%s/Advanced_Wireless_Content.asp' %
-                            self.admin_interface_url)
-        except Exception, e:
-            raise RuntimeError('Could not load the page, Error: %s' % str(e))
+        self.get_url('%s/Advanced_Wireless_Content.asp' %
+                         self.admin_interface_url, page_title='General')
 
 
     def get_number_of_pages(self):

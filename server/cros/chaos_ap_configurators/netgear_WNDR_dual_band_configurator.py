@@ -76,7 +76,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
                                (self.get_number_of_pages(), page_number))
         page_url = urlparse.urljoin(self.admin_interface_url,
                                     'WLG_wireless_dual_band.htm')
-        self.driver.get(page_url)
+        self.get_url(page_url, page_title='NETGEAR Router')
         self.wait_for_object_by_xpath('//input[@name="ssid" and @type="text"]')
 
 
@@ -131,10 +131,6 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        self.add_item_to_command_list(self._set_band, (band,), 1, 900)
-
-
-    def _set_band(self, band):
         if band == self.band_5ghz:
             self.current_band = self.band_5ghz
         elif band == self.band_2ghz:

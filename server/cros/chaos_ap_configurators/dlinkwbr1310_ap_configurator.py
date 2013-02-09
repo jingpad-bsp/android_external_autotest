@@ -11,21 +11,12 @@ import ap_configurator
 
 
 class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
-
-
-    def __init__(self, router_dict):
-        super(DLinkwbr1310APConfigurator, self).__init__(router_dict)
-        self.security_disabled = 'Disable Wireless Security (not recommended)'
-        self.security_wep = 'Enable WEP Wireless Security (basic)'
-        self.security_wpapsk = 'Enable WPA-Personal Wireless Security \
-                               (enhanced)'
-        self.security_wpa2psk = 'Enable WPA2 Wireless Security (enhanced)'
-        self.wep_key_type = 'ASCII'
+    """Class to control the DLink wbr1310."""
 
 
     def _open_landing_page(self):
         page_url = urlparse.urljoin(self.admin_interface_url,'wireless.htm')
-        self.driver.get(page_url)
+        self.get_url(page_url, page_title='D-LINK CORPORATION')
         pwd = '//input[@name="login_pass"]'
         if not self.object_by_xpath_exist(pwd):
             # We are at the config page, done.
@@ -126,7 +117,8 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_disabled(self):
-        self.select_item_from_popup_by_id(self.security_disabled, 'wep_type')
+        security_disabled = 'Disable Wireless Security (not recommended)'
+        self.select_item_from_popup_by_id(security_disabled, 'wep_type')
 
 
     def set_security_wep(self, key_value, authentication):
@@ -137,9 +129,10 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
     def _set_security_wep(self, key_value, authentication):
         popup = '//select[@name="wep_type"]'
         self.wait_for_object_by_xpath(popup)
-        self.select_item_from_popup_by_xpath(self.security_wep, popup)
+        security_wep = 'Enable WEP Wireless Security (basic)'
+        self.select_item_from_popup_by_xpath(security_wep, popup)
         key_type = '//select[@name="wep_key_type"]'
-        self.select_item_from_popup_by_xpath(self.wep_key_type, key_type)
+        self.select_item_from_popup_by_xpath('ASCII', key_type)
         text_field = '//input[@name="key1"]'
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
@@ -155,7 +148,8 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
         self.wait_for_object_by_xpath(popup)
         key_field1 = '//input[@name="wpapsk1"]'
         key_field2 = '//input[@name="wpapsk2"]'
-        self.select_item_from_popup_by_xpath(self.security_wpa2psk, popup,
+        security_wpapsk = 'Enable WPA-Personal Wireless Security (enhanced)'
+        self.select_item_from_popup_by_xpath(security_wpa2psk, popup,
                                              wait_for_xpath=key_field1)
         self.set_content_of_text_field_by_xpath(shared_key, key_field1,
                                                 abort_check=False)

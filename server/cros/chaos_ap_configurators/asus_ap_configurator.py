@@ -9,24 +9,7 @@ import selenium.common.exceptions
 
 
 class AsusAPConfigurator(ap_configurator.APConfigurator):
-    """Asus router base class."""
-
-    def __init__(self, router_dict):
-        super(AsusAPConfigurator, self).__init__(router_dict)
-        #  Overrides
-        self.security_wep_none = 'None'
-        self.security_wep64 = 'WEP-64bits'
-        self.security_wep128 = 'WEP-128bits'
-        self.security_wpapsk = 'WPA-Personal'
-        self.security_wpa2psk = 'WPA2-Personal'
-        self.security_wpaautopsk = 'WPA-Auto-Personal'
-        self.security_wpa8021x = 'WPA-Enterprise'
-        self.security_wpa28021x = 'WPA2-Enterprise'
-        self.security_wpaauto8021x = 'WPA-Auto-Enterprise'
-        self.security_radius8021x = 'Radius with 802.1x'
-        self.wep_authentication_open = 'Open System'
-        self.wep_authentication_shared = 'Shared Key'
-        self.current_band = self.band_2ghz
+    """Base class for Asus RT-N56U router."""
 
 
     def _set_authentication(self, authentication, wait_for_xpath=None):
@@ -81,9 +64,11 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         # The page is determined by what band we are using. We ignore the input.
         admin_url = self.admin_interface_url
         if self.current_band == self.band_2ghz:
-            self.driver.get('%s/Advanced_Wireless2g_Content.asp' % admin_url)
+            self.get_url('%s/Advanced_Wireless2g_Content.asp' % admin_url,
+                         page_title='2.4G')
         elif self.current_band == self.band_5ghz:
-            self.driver.get('%s/Advanced_Wireless_Content.asp' % admin_url)
+            self.get_url('%s/Advanced_Wireless_Content.asp' % admin_ur,
+                         page_title='5G')
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %
@@ -128,8 +113,8 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
                  (mode & self.mode_g == self.mode_g)) and \
                  (self.current_band != self.band_2ghz):
                 #  b/g, b, g mode only in 2.4Ghz
-                logging.info('Mode \'%s\' is not available for 5Ghz band.'
-                             % mode_name)
+                logging.info('Mode \'%s\' is not available for 5Ghz band.',
+                             mode_name)
                 return
         else:
             raise RuntimeError('The mode selected \'%s\' is not supported by '
@@ -189,7 +174,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
             popup = '//select[@name="wl_wep_x"]'
         self._set_authentication(self.wep_authentication_open,
                                  wait_for_xpath=popup)
-        self.select_item_from_popup_by_xpath(self.security_wep_none, popup)
+        self.select_item_from_popup_by_xpath('None', popup)
 
 
     def set_security_wep(self, key_value, authentication):
@@ -203,30 +188,29 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         if self.current_band == self.band_5ghz:
             popup = '//select[@name="wl_wep_x"]'
             text_field = '//input[@name="wl_phrase_x"]'
-        self._set_authentication(self.wep_authentication_open,
-                                 wait_for_xpath=popup)
-        self.select_item_from_popup_by_xpath(self.security_wep64, popup,
-            wait_for_xpath=text_field,
-            alert_handler=self._invalid_security_handler)
-        field = self.driver.find_element_by_xpath(text_field)
-        field.clear()
-        field.send_keys(key_value)
+        self._set_authentication('Open System', wait_for_xpath=popup)
+        self.select_item_from_popup_by_xpath('WEP-64bits', popup,
+                                             wait_for_xpath=text_field,
+                                             alert_handler=
+                                             self._invalid_security_handler)
+        self.set_content_of_text_field_by_xpath(key_value, text_field,
+                                                abort_check=True)
 
 
     def set_security_wpapsk(self, shared_key, update_interval=1800):
         #  Asus does not support TKIP (wpapsk) encryption in 'n' mode.
         #  So we will use AES (wpa2psk) to avoid conflicts and modal dialogs.
-        self.add_item_to_command_list(self._set_security_wpa2psk,
+        self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 1, 900)
 
 
-    def _set_security_wpa2psk(self, shared_key, update_interval):
+    def _set_security_wpapsk(self, shared_key, update_interval):
         key_field = '//input[@name="rt_wpa_psk"]'
         interval_field = '//input[@name="rt_wpa_gtk_rekey"]'
         if self.current_band == self.band_5ghz:
             key_field = '//input[@name="wl_wpa_psk"]'
             interval_field = '//input[@name="wl_wpa_gtk_rekey"]'
-        self._set_authentication(self.security_wpa2psk,
+        self._set_authentication('WPA-Personal',
                                  wait_for_xpath=key_field)
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         self.set_content_of_text_field_by_xpath(str(update_interval),
@@ -243,5 +227,4 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         xpath = '//input[@name="rt_closed" and @value="%s"]' % value
         if self.current_band == self.band_5ghz:
             xpath = '//input[@name="wl_closed" and @value="%s"]' % value
-        ssid = self.driver.find_element_by_xpath(xpath)
-        ssid.click()
+        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)

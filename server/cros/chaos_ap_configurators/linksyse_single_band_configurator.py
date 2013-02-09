@@ -67,11 +67,11 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'Wireless_Basic.asp')
-            self.driver.get(page_url)
+            self.get_url(page_url, page_title='Settings')
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'WL_WPATable.asp')
-            self.driver.get(page_url)
+            self.driver.get(page_url, page_title='Security')
         else:
             raise RuntimeError('Invalid page number passed. Number of pages '
                                '%d, page value sent was %d' %

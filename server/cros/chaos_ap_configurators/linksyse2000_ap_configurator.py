@@ -10,17 +10,6 @@ import ap_configurator
 class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
-    def __init__(self, router_dict):
-        super(Linksyse2000APConfigurator, self).__init__(router_dict)
-        self.security_disabled = 'Disabled'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA Personal'
-        self.security_wpa2psk = 'WPA2 Personal'
-        self.security_wpa8021x = 'WPA Enterprise'
-        self.security_wpa28021x = 'WPA2 Enterprise'
-        self.current_band = self.band_2ghz
-
-
     def _sec_alert(self, alert):
         text = alert.text
         if 'Your wireless security mode is not compatible with' in text:
@@ -62,11 +51,11 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'Wireless_Basic.asp')
-            self.driver.get(page_url)
+            self.get_url(page_url, page_title='Settings')
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'WL_WPATable.asp')
-            self.driver.get(page_url)
+            self.get_url(page_url, page_title='Security')
         else:
             raise RuntimeError('Invalid page number passed. Number of pages '
                                '%d, page value sent was %d' %
@@ -202,7 +191,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         xpath = '//select[@name="security_mode2"]'
-        self.select_item_from_popup_by_xpath(self.security_disabled, xpath)
+        self.select_item_from_popup_by_xpath('Disabled', xpath)
 
 
     def set_security_wep(self, key_value, authentication):
@@ -215,7 +204,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
         # and Mixed mode.
         # WEP and WPA-Personal do not show up in the list, no alert is thrown.
         popup = '//select[@name="security_mode2"]'
-        if not self.item_in_popup_by_xpath_exist(self.security_wep, popup):
+        if not self.item_in_popup_by_xpath_exist('WEP', popup):
             raise RuntimeError ('Unable to find wep security item in popup.  '
                                 'Is the mode set to N?')
         self.select_item_from_popup_by_xpath(self.security_wep, popup,
@@ -237,7 +226,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
     def _set_security_wpa2psk(self, shared_key):
         logging.info('update_interval is not supported')
         popup = '//select[@name="security_mode2"]'
-        self.select_item_from_popup_by_xpath(self.security_wpa2psk, popup,
+        self.select_item_from_popup_by_xpath('WPA Personal', popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,

@@ -53,8 +53,8 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def navigate_to_page(self, page_number):
-        self.driver.get(urlparse.urljoin(self.admin_interface_url,
-                        'WLG_wireless.htm'))
+        self.get_url(urlparse.urljoin(self.admin_interface_url,
+                     'WLG_wireless.htm'), page_title='NETGEAR Router')
         try:
             self.wait_for_object_by_xpath('//input[@name="ssid"]')
         except SeleniumTimeoutException, e:

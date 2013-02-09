@@ -17,15 +17,6 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
     """Derived class to control the DLink DIR-655."""
 
 
-    def __init__(self, router_dict):
-        super(DLinkDIR655APConfigurator, self).__init__(router_dict)
-        # Overrides
-        self.security_disabled = 'None'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA-Personal'
-        self.security_wpa8021x = 'WPA-Enterprise'
-
-
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
@@ -75,7 +66,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
     def navigate_to_page(self, page_number):
         # All settings are on the same page, so we always open the config page
         page_url = urlparse.urljoin(self.admin_interface_url, 'wireless.asp')
-        self.driver.get(page_url)
+        self.get_url(page_url, page_title='D-LINK CORPORATION')
         at_configuration_page = True
         try:
             self.wait_for_object_by_id('w_enable')
@@ -92,7 +83,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
             self.set_content_of_text_field_by_id('password', 'log_pass')
             self.click_button_by_id('login', alert_handler=self._alert_handler)
             # This will send us to the landing page and not where we want to go.
-            self.driver.get(page_url)
+            self.get_url(page_url, page_title='D-LINK CORPORATION')
 
 
     def save_page(self, page_number):
@@ -208,7 +199,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         self._set_radio(enabled=True)
-        self.select_item_from_popup_by_id(self.security_disabled, 'wep_type')
+        self.select_item_from_popup_by_id('None', 'wep_type')
 
 
     def set_security_wep(self, key_value, authentication):
@@ -218,7 +209,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wep(self, key_value, authentication):
         self._set_radio(enabled=True)
-        self.select_item_from_popup_by_id(self.security_wep, 'wep_type',
+        self.select_item_from_popup_by_id('WEP', 'wep_type',
                                           wait_for_xpath='id("key1")')
         self.select_item_from_popup_by_id(authentication, 'auth_type',
                                           wait_for_xpath='id("key1")')
@@ -232,7 +223,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
         self._set_radio(enabled=True)
-        self.select_item_from_popup_by_id(self.security_wpapsk, 'wep_type',
+        self.select_item_from_popup_by_id('WPA-Personal', 'wep_type',
             wait_for_xpath='id("wlan0_gkey_rekey_time")')
         self.select_item_from_popup_by_id('WPA Only', 'wpa_mode',
             wait_for_xpath='id("wlan0_psk_pass_phrase")')
