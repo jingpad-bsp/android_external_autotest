@@ -145,7 +145,7 @@ class ConfiguratorTest(unittest.TestCase):
             self.ap.set_band(band)
             self.ap.set_ssid('pqrstu')
             self.ap.set_visibility(True)
-            if self.ap.is_security_mode_supported(self.ap.security_wep):
+            if self.ap.is_security_mode_supported(self.ap.security_type_wep):
                 self.ap.set_security_wep('test2',
                                          self.ap.wep_authentication_open)
             self.ap.apply_settings()
@@ -158,7 +158,7 @@ class ConfiguratorTest(unittest.TestCase):
         for mode in self.ap.get_supported_modes():
             if not self.ap.mode_n in mode['modes']:
                 return
-        if not self.ap.is_security_mode_supported(self.ap.security_wep):
+        if not self.ap.is_security_mode_supported(self.ap.security_type_wep):
             return
         self.ap.set_mode(self.ap.mode_n)
         self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
@@ -175,7 +175,7 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_security_wep(self):
         """Test configuring WEP security."""
-        if not self.ap.is_security_mode_supported(self.ap.security_wep):
+        if not self.ap.is_security_mode_supported(self.ap.security_type_wep):
             return
         for mode in self.ap.get_supported_modes():
             self.ap.set_band(mode['band'])
@@ -206,7 +206,7 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_band(good_pair['band'])
         self.ap.set_mode(good_pair['mode'])
         self.ap.set_visibility(True)
-        if self.ap.is_security_mode_supported(self.ap.security_wep):
+        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
             self.ap.set_security_wep('88888', self.ap.wep_authentication_open)
         self.ap.set_ssid('secgentest')
         self.ap.apply_settings()
@@ -248,11 +248,11 @@ class ConfiguratorTest(unittest.TestCase):
         """Mini stress for changing security settings rapidly."""
         self.disabled_security_on_all_bands()
         self.ap.set_radio(enabled=True)
-        if self.ap.is_security_mode_supported(self.ap.security_wep):
+        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
             self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
-        if self.ap.is_security_mode_supported(self.ap.security_disabled):
+        if self.ap.is_security_mode_supported(self.ap.security_type_disabled):
             self.ap.set_security_disabled()
-        if self.ap.is_security_mode_supported(self.ap.security_wpapsk):
+        if self.ap.is_security_mode_supported(self.ap.security_type_wpapsk):
             self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
@@ -264,13 +264,13 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_radio(enabled=True)
         self.ap.set_band(good_pair['band'])
         self.ap.set_mode(good_pair['mode'])
-        if self.ap.is_security_mode_supported(self.ap.security_wep):
+        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
             self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
         self.ap.apply_settings()
-        if self.ap.is_security_mode_supported(self.ap.security_disabled):
+        if self.ap.is_security_mode_supported(self.ap.security_type_disabled):
             self.ap.set_security_disabled()
         self.ap.apply_settings()
-        if self.ap.is_security_mode_supported(self.ap.security_wpapsk):
+        if self.ap.is_security_mode_supported(self.ap.security_type_wpapsk):
             self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
@@ -283,7 +283,7 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_band(good_pair['band'])
         self.ap.set_mode(good_pair['mode'])
         self.ap.apply_settings()
-        if self.ap.is_security_mode_supported(self.ap.security_wep):
+        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
             self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
         self.ap.set_radio(enabled=False)
         self.ap.apply_settings()

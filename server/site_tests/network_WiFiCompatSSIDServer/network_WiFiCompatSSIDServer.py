@@ -10,8 +10,10 @@ import sys
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test, autotest
-from autotest_lib.client.cros.wifi_compat import ap_configurator_factory
-from autotest_lib.client.cros.wifi_compat import download_chromium_prebuilt
+from autotest_lib.server.cros.chaos_ap_configurators \
+import ap_configurator_factory
+from autotest_lib.server.cros.chaos_ap_configurators \
+import download_chromium_prebuilt
 
 
 class network_WiFiCompatSSIDServer(test.test):

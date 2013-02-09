@@ -11,6 +11,7 @@ import asus_ap_configurator
 import asus_ac66r_ap_configurator
 import asus_qis_ap_configurator
 import belkin_ap_configurator
+import belkinF9K_ap_configurator
 import buffalo_ap_configurator
 import dlink_ap_configurator
 import dlink_dir655_ap_configurator
@@ -22,6 +23,7 @@ import linksyse_single_band_configurator
 import linksyse2000_ap_configurator
 import linksyse2100_ap_configurator
 import linksyse2500_ap_configurator
+import medialink_ap_configurator
 import netgear3700_ap_configurator
 import netgear4300_ap_configurator
 import netgearR6200_ap_configurator
@@ -72,6 +74,10 @@ class APConfiguratorFactory(object):
             netgear_WNDR_dual_band_configurator.NetgearDualBandAPConfigurator,
         'BelkinAPConfigurator':
             belkin_ap_configurator.BelkinAPConfigurator,
+        'BelkinF9KAPConfigurator':
+            belkinF9K_ap_configurator.BelkinF9KAPConfigurator,
+        'MediaLinkAPConfigurator':
+            medialink_ap_configurator.MediaLinkAPConfigurator,
         'NetgearSingleBandAPConfigurator':
             netgear_single_band_configurator.NetgearSingleBandAPConfigurator,
         'DLinkwbr1310APConfigurator':
