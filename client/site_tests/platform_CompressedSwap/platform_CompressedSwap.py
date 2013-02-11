@@ -1,10 +1,10 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, select, signal, subprocess, time
+import errno, logging, os, select, signal, subprocess, time
 
 from autotest_lib.client.bin import utils, test
 from autotest_lib.client.common_lib import error
@@ -16,6 +16,9 @@ class platform_CompressedSwap(test.test):
     """
     version = 1
     executable = 'hog'
+    swap_enable_file = '/home/chronos/.swap_enabled'
+    swap_disksize_file = '/sys/block/zram0/disksize'
+
 
     def setup(self):
         os.chdir(self.srcdir)
@@ -42,26 +45,45 @@ class platform_CompressedSwap(test.test):
                 return True
         return False
 
-    def run_once(self, just_checking_lowmem=False):
+    def run_once(self, just_checking_lowmem=False, checking_for_oom=False):
 
         memtotal = utils.read_from_meminfo('MemTotal')
         swaptotal = utils.read_from_meminfo('SwapTotal')
-        if just_checking_lowmem:
-            # When just checking for low mem notification, swaptotal is
-            # allowed to be 0.  If it is, set swaptotal to memtotal.
-            if swaptotal == 0:
-                swaptotal = memtotal
-        else:
-            # Verify we set /sys/block/zram0/disksize to approximately 3/2 of
-            # MemTotal as per /etc/swap.conf.
-            swap_target = memtotal * 3 / 2
-            if swaptotal == 0:
-                raise error.TestFail('SwapTotal is 0, swap is configured off.')
-            if swaptotal < swap_target / 2 or swaptotal > swap_target * 3 / 2:
-                raise error.TestFail('SwapTotal %d is nowhere near our ' \
-                    'target of %d.' % (swaptotal, swap_target))
+        free_target = (memtotal + swaptotal) * 0.03
 
-        got_low_mem_notification = False
+        # Check for proper swap space configuration.
+        # If the swap enable file says "0", swap.conf does not create swap.
+        if not just_checking_lowmem and not checking_for_oom:
+            if os.path.exists(self.swap_enable_file):
+                enable_size = utils.read_one_line(self.swap_enable_file)
+            else:
+                enable_size = "nonexistent" # implies nonzero
+            if enable_size == "0":
+                if swaptotal != 0:
+                    raise error.TestFail('The swap enable file said 0, but'
+                                         ' swap was still enabled for %d.' %
+                                         swaptotal)
+                logging.info('Swap enable (0), swap disabled.')
+            else:
+                # Rather than parsing swap.conf logic to calculate a size,
+                # use the value it writes to /sys/block/zram0/disksize.
+                if not os.path.exists(self.swap_disksize_file):
+                    raise error.TestFail('The %s swap enable file should have'
+                                         ' caused zram to load, but %s was'
+                                         ' not found.' %
+                                         (enable_size, self.swap_disksize_file))
+                disksize = utils.read_one_line(self.swap_disksize_file)
+                swaprequested = int(disksize) / 1000
+                if (swaptotal < swaprequested * 0.9 or
+                    swaptotal > swaprequested * 1.1):
+                    raise error.TestFail('Our swap of %d K is not within 10%'
+                                         ' of the %d K we requested.' %
+                                         (swaptotal, swaprequested))
+                logging.info('Swap enable (%s), requested %d, total %d'
+                             % (enable_size, swaprequested, swaptotal))
+
+        first_oom = 0
+        first_lowmem = 0
         cleared_low_mem_notification = False
 
         # Loop over hog creation until MemFree+SwapFree approaches 0.
@@ -75,7 +97,7 @@ class platform_CompressedSwap(test.test):
             total_free = memfree + swapfree
             logging.debug('nhogs %d: memfree %d, swapfree %d' %
                           (len(hogs), memfree, swapfree))
-            if total_free < swaptotal * 0.03:
+            if not checking_for_oom and total_free < free_target:
                 break;
 
             p = subprocess.Popen(cmd)
@@ -85,24 +107,28 @@ class platform_CompressedSwap(test.test):
             time.sleep(2)
 
             if self.check_for_oom(hogs):
-                utils.system("killall -TERM hog")
-                raise error.TestFail('Oom detected after %d hogs created' %
-                                     len(hogs))
+                first_oom = len(hogs)
+                break
 
             # Check for low memory notification.
             if self.getting_low_mem_notification():
-                if not got_low_mem_notification:
-                    first_notification = len(hogs)
-                got_low_mem_notification = True
+                if first_lowmem == 0:
+                    first_lowmem = len(hogs)
                 logging.info('Got low memory notification after hog %d' %
                              len(hogs))
 
-        logging.info('Finished creating %d hogs, SwapFree %d, MemFree %d' %
-                     (len(hogs), swapfree, memfree))
+        logging.info('Finished creating %d hogs, SwapFree %d, MemFree %d, '
+                     'low mem at %d, oom at %d' %
+                     (len(hogs), swapfree, memfree, first_lowmem, first_oom))
+
+        if not checking_for_oom and first_oom > 0:
+            utils.system("killall -TERM hog")
+            raise error.TestFail('Oom detected after %d hogs created' %
+                                 len(hogs))
 
         # Before cleaning up all the hogs, verify that killing hogs back to
         # our initial low memory notification causes notification to end.
-        if got_low_mem_notification:
+        if first_lowmem > 0:
             hogs_killed = 0;
             for p in hogs:
                 if not self.getting_low_mem_notification():
@@ -110,8 +136,18 @@ class platform_CompressedSwap(test.test):
                     logging.info('Cleared low memory notification after %d '
                                  'hogs were killed' % hogs_killed)
                     break;
-                p.kill()
-                hogs_killed += 1
+                try:
+                    p.kill()
+                except OSError, e:
+                    if e.errno == errno.ESRCH:
+                        logging.info('Hog %d not found to kill, assume Oomed' %
+                                     (hogs.index(p) + 1));
+                    else:
+                        logging.warning('Hog %d kill failed: %s' %
+                                        (hogs.index(p) + 1,
+                                         os.strerror(e.errno)));
+                else:
+                    hogs_killed += 1
                 time.sleep(2)
 
         # Clean up the rest of our hogs since they otherwise live forever.
@@ -122,12 +158,12 @@ class platform_CompressedSwap(test.test):
                      (swapfree, swapfree2))
 
         # Raise exceptions due to low memory notification failures.
-        if not got_low_mem_notification:
+        if first_lowmem == 0:
             raise error.TestFail('We did not get low memory notification!')
         elif not cleared_low_mem_notification:
             raise error.TestFail('We did not clear low memory notification!')
-        elif len(hogs) - hogs_killed < first_notification - 3:
+        elif len(hogs) - hogs_killed < first_lowmem - 3:
             raise error.TestFail('We got low memory notification at hog %d, '
                                  'but we did not clear it until we dropped to '
                                  'hog %d' %
-                                 (first_notification, len(hogs) - hogs_killed))
+                                 (first_lowmem, len(hogs) - hogs_killed))
