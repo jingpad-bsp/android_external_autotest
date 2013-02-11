@@ -756,6 +756,19 @@ class GVizAPIPackage(ExternalPackage):
                         ExternalPackage._build_and_install_current_dir_noegg)
 
 
+class StatsdPackage(ExternalPackage):
+    version = '1.5.7'
+    url_filename = 'python-statsd-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('http://pypi.python.org/packages/source/p/python-statsd/%s' % (
+        url_filename),)
+    hex_sum = '7490370b7e24aca4fd193838ac4e0107bb8185e1'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_setup_py)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
