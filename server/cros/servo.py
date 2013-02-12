@@ -101,20 +101,17 @@ class Servo(object):
 
     KEY_MATRIX = [KEY_MATRIX_ALT_0, KEY_MATRIX_ALT_1, KEY_MATRIX_ALT_2]
 
-    def __init__(self, servo_host='localhost', target_host=None,
-                 servo_port=9999):
+    def __init__(self, servo_host='localhost', servo_port=9999):
         """Sets up the servo communication infrastructure.
 
         @param servo_host  Name of the host where the servod process
                            is running.
-        @param target_host Name of the target which is connected to servo
         @param servo_port  Port the servod process is listening on.
         """
         self._key_matrix = 0
         self._server = None
         self._connect_servod(servo_host, servo_port)
         self._is_localhost = (servo_host == 'localhost')
-        self._target_host = target_host
 
         # a string, showing what interface (host or dut) the USB device is
         # connected to.
@@ -136,11 +133,6 @@ class Servo(object):
             self._ssh_prefix = 'ssh %s root@%s ' % (common_options, servo_host)
             self._scp_cmd_template = 'scp %s ' % common_options
             self._scp_cmd_template += '%s ' + 'root@' + servo_host + ':%s'
-
-    def get_target_hostname(self):
-        """Retrieves target (DUT) hostname."""
-        return self._target_host
-
 
     def initialize_dut(self, cold_reset=False):
         """Initializes a dut for testing purposes.

@@ -175,11 +175,6 @@ class FAFTSequence(ServoTest):
             # Setting up key matrix mapping
             self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
 
-            self._host = None
-            if (self.client_attr.broken_rec_mode and
-                    self.servo.get_target_hostname()):
-                self._host = hosts.create_host(self.servo.get_target_hostname())
-
 
     def setup(self, ec_wp=None):
         """Autotest setup function."""
@@ -969,8 +964,8 @@ class FAFTSequence(ServoTest):
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
             self.servo.power_short_press()
         elif self.client_attr.broken_rec_mode:
-            if self._host and self._host.has_power():
-                self._host.power_cycle()
+            if self._client.has_power():
+                self._client.power_cycle()
             else:
                 logging.info('You have %d seconds to power cycle this device.',
                              self.delay.user_power_cycle)

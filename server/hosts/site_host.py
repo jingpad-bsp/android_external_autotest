@@ -60,8 +60,7 @@ def _get_lab_servo(target_hostname):
     servo_host = _make_servo_hostname(target_hostname)
     if utils.host_is_in_lab_zone(servo_host):
         try:
-            return servo.Servo(
-                    servo_host=servo_host, target_host=target_hostname)
+            return servo.Servo(servo_host=servo_host)
         except: # pylint: disable=W0702
             # TODO(jrbarnette):  Long-term, if we can't get to
             # a servo in the lab, we want to fail, so we should
