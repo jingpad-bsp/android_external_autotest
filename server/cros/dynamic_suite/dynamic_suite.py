@@ -14,6 +14,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reimager
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
+from autotest_lib.tko import utils as tko_utils
 
 
 """CrOS dynamic test suite generation and execution module.
@@ -396,6 +397,11 @@ class SuiteSpec(object):
 
 
 def skip_reimage(g):
+    """
+    Pulls the SKIP_IMAGE value out of a global variables dictionary.
+    @param g: The global variables dictionary.
+    @return:  Value associated with SKIP-IMAGE
+    """
     return g.get('SKIP_IMAGE')
 
 
@@ -406,6 +412,8 @@ def reimage_and_run(**dargs):
     Will re-image a number of devices (of the specified board) with the
     provided build, and then run the indicated test suite on them.
     Guaranteed to be compatible with any build from stable to dev.
+
+    @param dargs: Dictionary containing the arguments listed below.
 
     Currently required args:
     @param build: the build to install e.g.
@@ -475,6 +483,12 @@ def reimage_and_run(**dargs):
 
     imager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
                             tko, results_dir=suite_spec.job.resultdir)
+
+    my_job_id = int(tko_utils.get_afe_job_id(dargs['job'].tag))
+    tko_index = dargs['job'].job_model.index
+
+    logging.debug('Determined own job id: %d', my_job_id)
+    logging.debug('Determined own tko index: %d', tko_index)
 
     _perform_reimage_and_run(suite_spec, afe, tko, imager)
 
