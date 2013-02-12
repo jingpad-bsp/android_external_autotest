@@ -26,6 +26,7 @@ private_host_attributes_config.py
 *.rej
 .*~
 *~
+.*.swp
 .#*
 .DS_Store.
 # additional patterns:
