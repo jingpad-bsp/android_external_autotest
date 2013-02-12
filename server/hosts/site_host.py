@@ -40,6 +40,37 @@ except:
     models = None
 
 
+def _make_servo_hostname(hostname):
+    host_parts = hostname.split('.')
+    host_parts[0] = host_parts[0] + '-servo'
+    return '.'.join(host_parts)
+
+
+def _get_lab_servo(target_hostname):
+    """Instantiate a Servo for |target_hostname| in the lab.
+
+    Assuming that |target_hostname| is a device in the CrOS test
+    lab, create and return a Servo object pointed at the servo
+    attached to that DUT.  The servo in the test lab is assumed
+    to already have servod up and running on it.
+
+    @param target_hostname: device whose servo we want to target.
+    @return an appropriately configured Servo instance.
+    """
+    servo_host = _make_servo_hostname(target_hostname)
+    if utils.host_is_in_lab_zone(servo_host):
+        try:
+            return servo.Servo(
+                    servo_host=servo_host, target_host=target_hostname)
+        except: # pylint: disable=W0702
+            # TODO(jrbarnette):  Long-term, if we can't get to
+            # a servo in the lab, we want to fail, so we should
+            # pass any exceptions along.  Short-term, we're not
+            # ready to rely on servo, so we ignore failures.
+            pass
+    return None
+
+
 def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
                      connect_timeout=None, alive_interval=None):
     """Override default make_ssh_command to use options tuned for Chrome OS.
@@ -199,7 +230,7 @@ class SiteHost(remote.RemoteHost):
         # errors that might happen.
         self.env['LIBC_FATAL_STDERR_'] = '1'
         self._xmlrpc_proxy_map = {}
-        self.servo = servo.Servo.get_lab_servo(hostname)
+        self.servo = _get_lab_servo(hostname)
         if not self.servo and servo_args is not None:
             self.servo = servo.Servo(**servo_args)
 
