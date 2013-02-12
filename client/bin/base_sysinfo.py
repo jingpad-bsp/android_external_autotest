@@ -33,6 +33,12 @@ class loggable(object):
 
 
     def readline(self, logdir):
+        """Reads one line from the log.
+
+        @param logdir: The log directory.
+        @return A line from the log, or the empty string if the log doesn't
+            exist.
+        """
         path = os.path.join(logdir, self.logf)
         if os.path.exists(path):
             return utils.read_one_line(path)
@@ -41,6 +47,7 @@ class loggable(object):
 
 
 class logfile(loggable):
+    """Represents a log file."""
     def __init__(self, path, logf=None, log_in_keyval=False):
         if not logf:
             logf = os.path.basename(path)
@@ -74,11 +81,16 @@ class logfile(loggable):
 
 
     def run(self, logdir):
+        """Copies the log file to the specified directory.
+
+        @param logdir: The log directory.
+        """
         if os.path.exists(self.path):
             shutil.copyfile(self.path, os.path.join(logdir, self.logf))
 
 
 class command(loggable):
+    """Represents a command."""
     def __init__(self, cmd, logf=None, log_in_keyval=False, compress_log=False):
         if not logf:
             logf = cmd.replace(" ", "_")
@@ -113,6 +125,10 @@ class command(loggable):
 
 
     def run(self, logdir):
+        """Runs the command.
+
+        @param logdir: The log directory.
+        """
         env = os.environ.copy()
         if "PATH" not in env:
             env["PATH"] = "/usr/bin:/bin"
@@ -131,6 +147,7 @@ class command(loggable):
 
 
 class base_sysinfo(object):
+    """Represents system info."""
     def __init__(self, job_resultsdir):
         self.sysinfodir = self._get_sysinfodir(job_resultsdir)
 
@@ -184,10 +201,16 @@ class base_sysinfo(object):
 
 
     def serialize(self):
+        """Returns parameters in a dictionary."""
         return {"boot": self.boot_loggables, "test": self.test_loggables}
 
 
     def deserialize(self, serialized):
+        """Stores parameters from a dictionary into instance variables.
+
+        @param serialized: A dictionary containing parameters to store as
+            instance variables.
+        """
         self.boot_loggables = serialized["boot"]
         self.test_loggables = serialized["test"]
 
@@ -229,8 +252,7 @@ class base_sysinfo(object):
 
     @log.log_and_ignore_errors("post-reboot sysinfo error:")
     def log_per_reboot_data(self):
-        """ Logging hook called whenever a job starts, and again after
-        any reboot. """
+        """Logging hook called when a job starts, and again after any reboot."""
         logdir = self._get_boot_subdir(next=True)
         if not os.path.exists(logdir):
             os.mkdir(logdir)
@@ -246,7 +268,10 @@ class base_sysinfo(object):
 
     @log.log_and_ignore_errors("pre-test sysinfo error:")
     def log_before_each_test(self, test):
-        """ Logging hook called before a test starts. """
+        """Logging hook called before a test starts.
+
+        @param test: A test object.
+        """
         self._installed_packages = package.list_all()
         if os.path.exists("/var/log/messages"):
             stat = os.stat("/var/log/messages")
@@ -256,7 +281,10 @@ class base_sysinfo(object):
 
     @log.log_and_ignore_errors("post-test sysinfo error:")
     def log_after_each_test(self, test):
-        """ Logging hook called after a test finishs. """
+        """Logging hook called after a test finishs.
+
+        @param test: A test object.
+        """
         test_sysinfodir = self._get_sysinfodir(test.outputdir)
 
         # create a symlink in the test sysinfo dir to the current boot
@@ -295,7 +323,11 @@ class base_sysinfo(object):
 
     @log.log_and_ignore_errors("pre-test siteration sysinfo error:")
     def log_before_each_iteration(self, test, iteration=None):
-        """ Logging hook called before a test iteration."""
+        """Logging hook called before a test iteration.
+
+        @param test: A test object.
+        @param iteration: A test iteration.
+        """
         if not iteration:
             iteration = test.iteration
         logdir = self._get_iteration_subdir(test, iteration)
@@ -306,7 +338,11 @@ class base_sysinfo(object):
 
     @log.log_and_ignore_errors("post-test siteration sysinfo error:")
     def log_after_each_iteration(self, test, iteration=None):
-        """ Logging hook called after a test iteration."""
+        """Logging hook called after a test iteration.
+
+        @param test: A test object.
+        @param iteration: A test iteration.
+        """
         if not iteration:
             iteration = test.iteration
         logdir = self._get_iteration_subdir(test, iteration)
@@ -344,8 +380,12 @@ class base_sysinfo(object):
 
 
     def log_test_keyvals(self, test_sysinfodir):
-        """ Logging hook called by log_after_each_test to collect keyval
-        entries to be written in the test keyval. """
+        """Logging hook called by log_after_each_test.
+
+        Collects keyval entries to be written in the test keyval.
+
+        @param test_sysinfodir: The test's system info directory.
+        """
         keyval = {}
 
         # grab any loggables that should be in the keyval

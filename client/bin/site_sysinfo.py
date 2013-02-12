@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, shutil, re, logging
+import os
 
 from autotest_lib.client.common_lib import utils, global_config
 from autotest_lib.client.bin import base_sysinfo
@@ -18,6 +18,7 @@ command = base_sysinfo.command
 
 
 class logdir(base_sysinfo.loggable):
+    """Represents a log directory."""
     def __init__(self, directory, additional_exclude=None):
         super(logdir, self).__init__(directory, log_in_keyval=False)
         self.dir = directory
@@ -50,6 +51,10 @@ class logdir(base_sysinfo.loggable):
 
 
     def run(self, log_dir):
+        """Copies this log directory to the specified directory.
+
+        @param log_dir: The destination log directory.
+        """
         if os.path.exists(self.dir):
             parent_dir = os.path.dirname(self.dir)
             utils.system("mkdir -p %s%s" % (log_dir, parent_dir))
@@ -65,11 +70,16 @@ class logdir(base_sysinfo.loggable):
 
 
 class purgeable_logdir(logdir):
+    """Represents a log directory that will be purged."""
     def __init__(self, directory, additional_exclude=None):
         super(purgeable_logdir, self).__init__(directory, additional_exclude)
         self.additional_exclude = additional_exclude
 
     def run(self, log_dir):
+        """Copies this log dir to the destination dir, then purges the source.
+
+        @param log_dir: The destination log directory.
+        """
         super(purgeable_logdir, self).run(log_dir)
 
         if os.path.exists(self.dir):
@@ -77,6 +87,7 @@ class purgeable_logdir(logdir):
 
 
 class site_sysinfo(base_sysinfo.base_sysinfo):
+    """Represents site system info."""
     def __init__(self, job_resultsdir):
         super(site_sysinfo, self).__init__(job_resultsdir)
         crash_exclude_string = None
@@ -130,6 +141,9 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
                 keyval["CHROMEOS_BUILD"] = (
                     lsb_dict[lsb_key].rstrip(")").split(" ")[3])
             keyval[lsb_key] = lsb_dict[lsb_key]
+
+        # get the hwid (hardware ID)
+        keyval["hwid"] = utils.system_output('crossystem hwid')
 
         # return the updated keyvals
         return keyval
