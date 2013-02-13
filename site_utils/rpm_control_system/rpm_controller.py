@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ConfigParser
 import logging
 import pexpect
 import Queue
@@ -16,9 +15,6 @@ import dli_urllib
 
 # Format Appears as: [Date] [Time] - [Msg Level] - [Message]
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-CONFIG_FILE = 'rpm_config.ini'
-CONFIG = ConfigParser.ConfigParser()
-CONFIG.read(CONFIG_FILE)
 
 
 class RPMController(object):
@@ -84,7 +80,7 @@ class RPMController(object):
 
         @param rpm_hostname: hostname of rpm device to be controlled.
         """
-        self._dns_zone = CONFIG.get('CROS', 'dns_zone')
+        self._dns_zone = rpm_config.get('CROS', 'dns_zone')
         self.hostname = rpm_hostname
         self.request_queue = Queue.Queue()
         self._running = False
@@ -95,7 +91,7 @@ class RPMController(object):
         if hydra_name:
             self.behind_hydra = True
             self.hydra_name = hydra_name
-            self._hydra_hostname = CONFIG.get(hydra_name,'hostname')
+            self._hydra_hostname = rpm_config.get(hydra_name,'hostname')
 
 
     def _start_processing_requests(self):
@@ -189,7 +185,7 @@ class RPMController(object):
         if not ssh:
             return
         ssh.expect(RPMController.PASSWORD_PROMPT, timeout=60)
-        ssh.sendline(CONFIG.get(self.hydra_name, 'admin_password'))
+        ssh.sendline(rpm_config.get(self.hydra_name, 'admin_password'))
         ssh.expect(RPMController.HYDRA_PROMPT)
         ssh.sendline(RPMController.CLI_CMD)
         cli_prompt_re = re.compile(RPMController.CLI_PROMPT)
@@ -241,7 +237,7 @@ class RPMController(object):
                 return False
         if response == 0:
             try:
-                ssh.sendline(CONFIG.get(self.hydra_name,'password'))
+                ssh.sendline(rpm_config.get(self.hydra_name,'password'))
                 ssh.sendline('')
                 response = ssh.expect_list(
                         [re.compile(RPMController.USERNAME_PROMPT),
@@ -288,9 +284,9 @@ class RPMController(object):
                  would be if another user is logged into the device.
         """
         if admin_override:
-            username = CONFIG.get(self.hydra_name, 'admin_username')
+            username = rpm_config.get(self.hydra_name, 'admin_username')
         else:
-            username = '%s:%s' % (CONFIG.get(self.hydra_name,'username'),
+            username = '%s:%s' % (rpm_config.get(self.hydra_name,'username'),
                                   self.hostname)
         cmd = RPMController.SSH_LOGIN_CMD % (username, self._hydra_hostname)
         num_attempts = 0
@@ -480,8 +476,8 @@ class SentryRPMController(RPMController):
         if hostname.startswith('chromeos2'):
             hydra_name = 'hydra1'
         super(SentryRPMController, self).__init__(hostname, hydra_name)
-        self._username = CONFIG.get('SENTRY', 'username')
-        self._password = CONFIG.get('SENTRY', 'password')
+        self._username = rpm_config.get('SENTRY', 'username')
+        self._password = rpm_config.get('SENTRY', 'password')
 
 
     def type(self):
@@ -494,8 +490,8 @@ class SentryRPMController(RPMController):
         @param ssh: Pexpect object to use to configure the RPM.
         """
         # Create and configure the testing user profile.
-        testing_user = CONFIG.get('SENTRY','testing_user')
-        testing_password = CONFIG.get('SENTRY','testing_password')
+        testing_user = rpm_config.get('SENTRY','testing_user')
+        testing_password = rpm_config.get('SENTRY','testing_password')
         ssh.sendline('create user %s' % testing_user)
         response = ssh.expect_list([re.compile('not unique'),
                                     re.compile(self.PASSWORD_PROMPT)])
@@ -575,8 +571,8 @@ class WebPoweredRPMController(RPMController):
 
 
     def __init__(self, hostname, powerswitch=None):
-        username = CONFIG.get('WEBPOWERED', 'username')
-        password = CONFIG.get('WEBPOWERED', 'password')
+        username = rpm_config.get('WEBPOWERED', 'username')
+        password = rpm_config.get('WEBPOWERED', 'password')
         # Call the constructor in RPMController. However since this is a web
         # accessible device, there should not be a need to tunnel through a
         # hydra serial concentrator.
