@@ -6,7 +6,7 @@
 
 """Unit tests for site_utils/task.py."""
 
-import logging, mox, unittest
+import mox, unittest
 
 import deduping_scheduler, forgiving_config_parser, task
 
@@ -157,7 +157,7 @@ class TaskTest(TaskTestBase):
         mytask = task.Task(self._TASK_NAME, self._SUITE, [self._BRANCH_SPEC],
                            num=expected_sharding)
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
-                                 None, str(expected_sharding),
+                                 None, expected_sharding,
                                  False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(mytask.Run(self.sched, self._MAP, self._BOARD))
