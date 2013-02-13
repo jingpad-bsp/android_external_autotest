@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+#pylint: disable-msg=C0111
 __author__ = "raphtee@google.com (Travis Miller)"
 
 import unittest, os, tempfile, logging
@@ -7,7 +7,7 @@ import unittest, os, tempfile, logging
 import common
 from autotest_lib.server import autotest, utils, hosts, server_job, profilers
 from autotest_lib.client.bin import sysinfo
-from autotest_lib.client.common_lib import utils as client_utils, packages
+from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.test_utils import mock
 
@@ -201,7 +201,7 @@ class TestBaseAutotest(unittest.TestCase):
         cmd = ';'.join('rm -f ' + control for control in delete_file_list)
         self.host.run.expect_call(cmd, ignore_status=True)
 
-        utils.get.expect_call(control).and_return("temp")
+        utils.get.expect_call(control, local_copy=True).and_return("temp")
 
         c = autotest.global_config.global_config
         c.get_config_value.expect_call("PACKAGES",
@@ -232,7 +232,7 @@ class TestBaseAutotest(unittest.TestCase):
         os.remove.expect_call("temp")
 
         run_obj.execute_control.expect_call(timeout=30,
-                                            client_disconnect_timeout=1800)
+                                            client_disconnect_timeout=120)
 
         # run and check output
         self.base_autotest.run(control, timeout=30)
@@ -300,6 +300,9 @@ class TestBaseAutotest(unittest.TestCase):
         self.god.stub_function(logger, '_send_tarball')
 
         c = autotest.global_config.global_config
+        c.get_config_value.expect_call('PACKAGES',
+                                       'serve_packages_from_autoserv',
+                                       type=bool).and_return(True)
         c.get_config_value.expect_call('PACKAGES',
                                        'serve_packages_from_autoserv',
                                        type=bool).and_return(True)
