@@ -196,7 +196,7 @@ sudo a2enmod rewrite
 sudo a2enmod python
 # Setup permissions so that Apache web user can read the proper files.
 chmod -R o+r "${AT_DIR}"
-find "${AT_DIR}"/ -type d | xargs chmod o+x
+find "${AT_DIR}"/ -type d -print0 | xargs --null chmod o+x
 chmod o+x "${AT_DIR}"/tko/*.cgi
 # restart server
 sudo /etc/init.d/apache2 restart
