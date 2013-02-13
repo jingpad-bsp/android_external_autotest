@@ -66,9 +66,11 @@ LONG_RUNTIME = set((
     'logging_manager_test.py',
     ))
 
-# This particular KVM autotest test is not a unittest
+
 SKIP = set((
+    # This particular KVM autotest test is not a unittest
     'guest_test.py',
+    'ap_configurator_test.py'
     ))
 
 LONG_TESTS = (REQUIRES_DJANGO |
@@ -84,7 +86,9 @@ LONG_TESTS = (REQUIRES_DJANGO |
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
-class TestFailure(Exception): pass
+class TestFailure(Exception):
+    """Exception type for any test failure."""
+    pass
 
 
 def run_test(mod_names, options):
@@ -111,6 +115,11 @@ def run_test(mod_names, options):
 
 
 def scan_for_modules(start, options):
+    """Scan folders and find all test modules.
+    @param start: The absolute directory to look for tests under.
+    @param options: optparse options.
+    @return a list of modules to be executed.
+    """
     modules = []
 
     skip_tests = SKIP
@@ -185,6 +194,7 @@ def find_and_run_tests(start, options):
 
 
 def main():
+    """Entry point for unittest_suite.py"""
     options, args = parser.parse_args()
     if args:
         options.module_list = args
