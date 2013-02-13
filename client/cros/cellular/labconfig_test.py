@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# pylint: disable-msg=C0111
+
 import unittest
 import cellular
 import labconfig
@@ -15,6 +17,7 @@ TEST_CELL = {
             'address': '1.2.3.4',
             'name': 'one_two_three_four',
             'technologies': ['CDMA_2000'],
+            'rf_switch_port': 0
             },
         {
             'address': '5.6.7.8',
@@ -25,9 +28,6 @@ TEST_CELL = {
     'rf_switch': {
         'type': 'ether_io',
         'address':  '172.31.206.172',
-        # Ports maps from port index to name as specified in
-        # duts.name
-        'ports': ['one_two_three_four', None, None, 'five_six_seven_eight'],
         }
     }
 
@@ -67,10 +67,10 @@ class TestLabConfig(unittest.TestCase):
     def test_get_interface_ip(self):
         self.assertEqual('127.0.0.1', labconfig.get_interface_ip('lo'))
 
-    def test_get_switch_port(self):
+    def test_get_rf_switch_port(self):
         c = labconfig.Configuration(['--cell', 'test', '--technology=all'])
         self.assertEqual(0,
-                         c.get_switch_port('one_two_three_four'))
+                         c.get_rf_switch_port('one_two_three_four'))
 
 if __name__ == '__main__':
   unittest.main()

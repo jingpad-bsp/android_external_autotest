@@ -7,11 +7,14 @@ import optparse, pickle, re, subprocess
 import cellular, labconfig_data
 
 class LabConfigError(Exception):
-  pass
+    """Exception thrown on bad lab configuration"""
+    pass
 
 
 def get_interface_ip(interface='eth0'):
-    """Returns the IP address for an interface, or None if not found."""
+    """Returns the IP address for an interface, or None if not found.
+    @param interface: the interface to request IP address for.
+    """
 
     # We'd like to use
     #  utils.system_output('ifconfig eth0 2>&1', retain_output=True)
@@ -99,7 +102,9 @@ class Configuration(object):
             self.options.cell)
 
     def get_technologies(self, machine=None):
-        """Gets technologies to use for machine; defaults to all available."""
+        """Gets technologies to use for machine; defaults to all available.
+        @param machine: Machine to get technologies for.
+        """
         technologies_list = self.options.technology.split(',')
 
         if 'all' in technologies_list:
@@ -116,9 +121,13 @@ class Configuration(object):
         return enums
 
     def get_rf_switch_port(self, machine=None):
-        """Get the RF Switch Port for the specified machine."""
+        """Get the RF Switch Port for the specified machine.
+        @param machine: machine to get rf switch port for
+        """
         dut = self._get_dut(machine)
+        print dut
         return dut['rf_switch_port']
 
     def get_pickle(self):
+        """Get pickled object."""
         return pickle.dumps(self)
