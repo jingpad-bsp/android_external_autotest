@@ -50,15 +50,28 @@ class MemoryError(SuspendFailure):
     pass
 
 
+class SuspendNotAllowed(SuspendFailure):
+    """Suspend was not allowed to be performed."""
+    pass
+
+
 def prepare_wakeup(seconds):
+    """Prepare the device to wake up from an upcoming suspend.
+
+    @param seconds: The number of seconds to allow the device to suspend.
+    """
     wakeup_count = read_wakeup_count()
     alarm = int(rtc.get_seconds() + seconds)
-    logging.debug('Suspend for %d seconds, wakealarm = %d' % (seconds, alarm))
+    logging.debug('Suspend for %d seconds, wakealarm = %d', seconds, alarm)
     rtc.set_wake_alarm(alarm)
     return (alarm, wakeup_count)
 
 
 def check_wakeup(alarm):
+    """Verify that the device did not wakeup early.
+
+    @param alarm: The time at which the device was expected to wake up.
+    """
     now = rtc.get_seconds()
     if now < alarm:
         logging.error('Woke up early at %d', now)
@@ -66,12 +79,19 @@ def check_wakeup(alarm):
 
 
 def dbus_suspend(seconds):
-    """
+    """Do a suspend using dbus.
+
     Suspend the system to RAM (S3), waking up again after |seconds|, using
     the powerd_dbus_suspend script. System must be logged in as a non-guest
     user for this to work. Function will block until suspend/resume has
     completed or failed. Returns the wake alarm time from the RTC as epoch.
+
+    @param seconds: The number of seconds to suspend the device.
     """
+    if not os.path.exists('/var/run/state/logged-in'):
+        raise SuspendNotAllowed(
+            'Cannot suspend using dbus when there is no user currently logged '
+            'in; otherwise, device would shut down instead of suspending.')
     alarm = prepare_wakeup(seconds)[0]
     upstart.ensure_running(['powerd'])
     os.system('/usr/bin/powerd_dbus_suspend --timeout 30')
@@ -80,10 +100,13 @@ def dbus_suspend(seconds):
 
 
 def do_suspend(seconds):
-    """
+    """Do a suspend.
+
     Suspend the system to RAM (S3), waking up again after |seconds|, using
     the powerd_suspend script. Function will block until suspend/resume has
     completed or failed. Returns the wake alarm time from the RTC as epoch.
+
+    @param seconds: The number of seconds to suspend the device.
     """
     alarm, wakeup_count = prepare_wakeup(seconds)
     os.system('/usr/bin/powerd_suspend -w %d' % wakeup_count)
@@ -92,10 +115,13 @@ def do_suspend(seconds):
 
 
 def kernel_suspend(seconds):
-    """
+    """Do a kernel suspend.
+
     Suspend the system to RAM (S3), waking up again after |seconds|, by directly
     writing to /sys/power/state. Function will block until suspend/resume has
     completed or failed.
+
+    @param seconds: The number of seconds to suspend the device.
     """
     alarm, wakeup_count = prepare_wakeup(seconds)
     logging.debug('Saving wakeup count: %d', wakeup_count)
@@ -105,7 +131,7 @@ def kernel_suspend(seconds):
         with open(SYSFS_POWER_STATE, 'w') as sysfs_file:
             sysfs_file.write('mem')
     except IOError as e:
-        logging.exception('Writing to %s failed' % SYSFS_POWER_STATE)
+        logging.exception('Writing to %s failed', SYSFS_POWER_STATE)
         if e.errno == errno.EBUSY and rtc.get_seconds() >= alarm:
             # The kernel returns EBUSY if it has to abort because
             # the RTC alarm fires before we've reached suspend.
@@ -121,10 +147,14 @@ def kernel_suspend(seconds):
 
 
 def memory_suspend(seconds, size):
-    """
+    """Do a memory suspend.
+
     Suspend the system to RAM (S3), waking up again after |seconds|, using
     the memory_suspend_test tool. Function will block until suspend/resume has
     completed or failed. Returns the wake alarm time from the RTC as epoch.
+
+    @param seconds: The number of seconds to suspend the device.
+    @param size: Amount of memory to allocate, in bytes.
     """
     # since we cannot have utils.system_output in here, we need a workaround
     output = '/tmp/memory_suspend_output'
@@ -152,8 +182,9 @@ def read_wakeup_count():
 
 
 def write_wakeup_count(wakeup_count):
-    """
-    Writes a value to /sys/power/wakeup_count.
+    """Writes a value to /sys/power/wakeup_count.
+
+    @param wakeup_count: The wakeup count value to write.
     """
     try:
         with open(SYSFS_WAKEUP_COUNT, 'w') as sysfs_file:
