@@ -2,6 +2,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# pylint: disable-msg=C0111
 
 """Test iperf parser."""
 
@@ -76,8 +77,8 @@ UDP buffer size: 0.11 MByte (default)
         expected = {'jitter': 0.014,
                     'throughput': 100000.0,
                     'lost': 2.2}
-        expected.update(dict([('uplink_' + a, b)
-                              for (a,b) in expected.items()]))
+        expected = dict([('uplink_' + a, b)
+                              for (a,b) in expected.items()])
         self.assertEqual(expected,
                          iperf.ParseIperfOutput(text))
 
@@ -107,8 +108,8 @@ UDP buffer size:   110 KByte (default)
         expected = {'jitter': 0.014,
                     'throughput': 100000.0,
                     'lost': 2.2}
-        expected.update(dict([('uplink_' + a, b)
-                              for (a,b) in expected.items()]))
+        expected = dict([('uplink_' + a, b)
+                              for (a,b) in expected.items()])
         expected.update({'downlink_throughput': 1.05e6,
                          'downlink_jitter': 0.085,
                          'downlink_lost': 0.37})
@@ -126,8 +127,7 @@ TCP window size: 0.02 MByte (default)
 [  3] local 172.31.206.145 port 38376 connected with 172.31.206.152 port 5001
 [ ID] Interval       Transfer     Bandwidth
 [  3]  0.0- 3.0 sec  34.1 MBytes  95.4 Mbits/sec""".lstrip().rstrip()
-        self.assertEqual({'throughput': 95.4e6,
-                          'uplink_throughput': 95.4e6},
+        self.assertEqual({'uplink_throughput': 95.4e6},
                          iperf.ParseIperfOutput(text))
     def test_tcp_tradeoff(self):
         text = """------------------------------------------------------------
@@ -144,19 +144,17 @@ TCP window size: 85.3 KByte (default)
 [  4] local 172.31.206.145 port 5001 connected with 172.31.206.152 port 56542
 [ ID] Interval       Transfer     Bandwidth
 [  4]  0.0- 3.0 sec  34.1 MBytes  94.7 Mbits/sec""".lstrip().rstrip()
-        self.assertEqual({'throughput': 95.4e6,
-                          'uplink_throughput': 95.4e6,
+        self.assertEqual({'uplink_throughput': 95.4e6,
                           'downlink_throughput': 94.7e6},
                          iperf.ParseIperfOutput(text))
 
-
     def test_Multipliers(self):
-        self.assertEqual(1, iperf.ParseMultiplier(1, 'bits/sec'))
-        self.assertEqual(1, iperf.ParseMultiplier('1', 'bits/sec'))
-        self.assertEqual(1000, iperf.ParseMultiplier('1', 'Kbits/sec'))
-        self.assertEqual(1000000, iperf.ParseMultiplier('1', 'Mbits/sec'))
-        self.assertEqual(1000000000, iperf.ParseMultiplier('1', 'Gbits/sec'))
-        self.assertEqual(1000000000, iperf.ParseMultiplier('1000', 'Mbits/sec'))
+        self.assertEqual(1, iperf.ApplyMultiplier(1, 'bits/sec'))
+        self.assertEqual(1, iperf.ApplyMultiplier('1', 'bits/sec'))
+        self.assertEqual(1000, iperf.ApplyMultiplier('1', 'Kbits/sec'))
+        self.assertEqual(1000000, iperf.ApplyMultiplier('1', 'Mbits/sec'))
+        self.assertEqual(1000000000, iperf.ApplyMultiplier('1', 'Gbits/sec'))
+        self.assertEqual(1000000000, iperf.ApplyMultiplier('1000', 'Mbits/sec'))
 
 
 if __name__ == '__main__':
