@@ -3,7 +3,7 @@
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
+# pylint: disable-msg=C0111
 """Unit tests for TestConfig class."""
 
 __author__ = 'dalecurtis@google.com (Dale Curtis)'
@@ -126,7 +126,8 @@ class TestConfigTest(unittest.TestCase):
   def testValidConfig(self):
     self.assertEquals(sorted(self._config.GetConfig().keys()),
                       sorted(['appengine', 'boards', 'default_groups',
-                              'dev_server', 'groups', 'import_hosts']))
+                              'dev_server', 'groups', 'import_hosts',
+                              'default_tot_groups']))
 
   def testParseConfigGroups(self):
     boards, groups, platforms = self._test_config.ParseConfigGroups()
