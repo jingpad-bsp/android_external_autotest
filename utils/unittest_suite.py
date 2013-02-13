@@ -18,6 +18,14 @@ parser.add_option("--skip-tests", dest="skip_tests",  default=[],
 
 parser.set_defaults(module_list=None)
 
+# Following sets are used to define a collection of modules that are optional
+# tests and do not need to be executed in unittest suite for various reasons.
+# Each entry can be file name or relative path that's relative to the parent
+# folder of the folder containing this file (unittest_suite.py). The list
+# will be used to filter any test file with matching name or matching full
+# path. If a file's name is too general and has a chance to collide with files
+# in other folder, it is recommended to specify its relative path here, e.g.,
+# using 'mirror/trigger_unittest.py', instead of 'trigger_unittest.py' only.
 
 REQUIRES_DJANGO = set((
         'monitor_db_unittest.py',
@@ -83,9 +91,10 @@ LONG_TESTS = (REQUIRES_DJANGO |
               REQUIRES_PROTOBUFS |
               LONG_RUNTIME)
 
-
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
+# The set of files in LONG_TESTS with its full path
+LONG_TESTS_FULL_PATH = {os.path.join(ROOT, t) for t in LONG_TESTS}
 
 class TestFailure(Exception):
     """Exception type for any test failure."""
@@ -116,7 +125,9 @@ def run_test(mod_names, options):
 
 
 def scan_for_modules(start, options):
-    """Scan folders and find all test modules.
+    """Scan folders and find all test modules that are not included in the
+    blacklist (defined in LONG_TESTS).
+
     @param start: The absolute directory to look for tests under.
     @param options: optparse options.
     @return a list of modules to be executed.
@@ -126,28 +137,34 @@ def scan_for_modules(start, options):
     skip_tests = SKIP
     if options.skip_tests:
         skip_tests.update(options.skip_tests.split())
+    skip_tests_full_path = {os.path.join(ROOT, t) for t in skip_tests}
 
-    for dirpath, subdirs, filenames in os.walk(start):
+    for dir_path, sub_dirs, file_names in os.walk(start):
         # Only look in and below subdirectories that are python modules.
-        if '__init__.py' not in filenames:
+        if '__init__.py' not in file_names:
             if options.full:
-                for filename in filenames:
-                    if filename.endswith('.pyc'):
-                        os.unlink(os.path.join(dirpath, filename))
+                for file_name in file_names:
+                    if file_name.endswith('.pyc'):
+                        os.unlink(os.path.join(dir_path, file_name))
             # Skip all subdirectories below this one, it is not a module.
-            del subdirs[:]
+            del sub_dirs[:]
             if options.debug:
-                print 'Skipping', dirpath
+                print 'Skipping', dir_path
             continue  # Skip this directory.
 
         # Look for unittest files.
-        for fname in filenames:
-            if fname.endswith('_unittest.py') or fname.endswith('_test.py'):
-                if not options.full and fname in LONG_TESTS:
+        for file_name in file_names:
+            if (file_name.endswith('_unittest.py') or
+                file_name.endswith('_test.py')):
+                file_path = os.path.join(dir_path, file_name)
+                if (not options.full and
+                    (file_name in LONG_TESTS or
+                     file_path in LONG_TESTS_FULL_PATH)):
                     continue
-                if fname in skip_tests:
+                if (file_name in skip_tests or
+                    file_path in skip_tests_full_path):
                     continue
-                path_no_py = os.path.join(dirpath, fname).rstrip('.py')
+                path_no_py = os.path.join(dir_path, file_name).rstrip('.py')
                 assert path_no_py.startswith(ROOT)
                 names = path_no_py[len(ROOT)+1:].split('/')
                 modules.append(['autotest_lib'] + names)
