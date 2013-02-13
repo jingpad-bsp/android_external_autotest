@@ -3,6 +3,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+set -e
 
 USAGE="Usage: setup_dev_autotest.sh [-p <password>] [-a </path/to/autotest>]"
 HELP="${USAGE}\n\n\
@@ -119,6 +120,10 @@ else
   PASSWD_STRING="-p"
 fi
 
+if ! mysqladmin ping ; then
+  sudo service mysql start
+fi
+
 CLOBBERDB=
 EXISTING_DATABASE=$(mysql -u root "${PASSWD_STRING}" -e "SELECT SCHEMA_NAME \
 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'chromeos_autotest_db'")
@@ -140,8 +145,6 @@ create database chromeos_autotest_db; \
 grant all privileges on chromeos_autotest_db.* TO \
 'chromeosqa-admin'@'localhost' identified by '${PASSWD}'; \
 FLUSH PRIVILEGES;"
-
-set -e
 
 if [[ "${CLOBBERDB}" = 'y' || "${CLOBBERDB}" = 'Y' ]]; then
   mysql -u root "${PASSWD_STRING}" -e "${SQL_COMMAND}"
