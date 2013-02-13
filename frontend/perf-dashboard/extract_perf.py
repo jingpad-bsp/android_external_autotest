@@ -150,6 +150,9 @@ def extract_perf_for_job_id(cursor, job_id, unexpected_job_names, test_dir):
         # TODO(dennisjeffrey): Simplify the below code once the following bug
         # is addressed to standardize the platform names: crosbug.com/38521.
         match = re.search('(\w+)-r', job_name)
+        if not match:
+            unexpected_job_names.add(job_name)
+            continue
         # Only process jobs for known platforms.
         platform = match.group(1) if match.group(1) in _PLATFORMS else None
         if platform:
@@ -230,7 +233,11 @@ def extract_new_perf_data(cursor, options):
                   oldest_db_lookup_date)
 
     # Get unique test names.
-    test_names = set([c['test_name'] for c in charts])
+    test_names = set()
+    for c in charts:
+        test_names.add(c['test_name'])
+        if 'old_test_names' in c:
+            test_names |= set(c['old_test_names'])
 
     # Get list of already-completed job IDs so we don't re-fetch their data.
     completed_ids = set()

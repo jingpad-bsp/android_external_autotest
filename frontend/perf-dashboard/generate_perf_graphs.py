@@ -302,11 +302,20 @@ def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
                     f.write(simplejson.dumps(entry) + '\n')
 
 
-def process_perf_data_file(file_name, test_name, completed_ids,
-                           test_name_to_charts, options, summary_id_to_rev_num):
-    """Processes a single perf data file to convert into graphable format.
+def process_perf_data_files(file_names, test_name, completed_ids,
+                            test_name_to_charts, options,
+                            summary_id_to_rev_num):
+    """Processes data files for a single test/platform.
 
-    @param file_name: The string name of the perf data file to process.
+    Multiple data files may exist if the given test name is associated with one
+    or more old test names (i.e., the name of the test has changed over time).
+    In this case, we treat all results from the specified files as if they came
+    from a single test associated with the current test name.
+
+    This function converts the data from the specified data files into new
+    data files formatted in a way that can be graphed.
+
+    @param file_names: A list of perf data files to process.
     @param test_name: The string name of the test associated with the file name
         to process.
     @param completed_ids: A dictionary of already-processed job IDs.
@@ -320,44 +329,45 @@ def process_perf_data_file(file_name, test_name, completed_ids,
     @return The number of newly-added graph data entries.
     """
     newly_added_count = 0
-    with open(file_name, 'r') as fp:
-        for line in fp.readlines():
-            info = simplejson.loads(line.strip())
-            job_id = info[0]
-            job_name = info[1]
-            platform = info[2]
-            perf_keys = info[3]
+    for file_name in file_names:
+        with open(file_name, 'r') as fp:
+            for line in fp.readlines():
+                info = simplejson.loads(line.strip())
+                job_id = info[0]
+                job_name = info[1]
+                platform = info[2]
+                perf_keys = info[3]
 
-            # Skip this job ID if it's already been processed.
-            if job_id in completed_ids:
-                continue
+                # Skip this job ID if it's already been processed.
+                if job_id in completed_ids:
+                    continue
 
-            # Scan the desired charts and see if we need to output the
-            # current line info to a graph output file.
-            for chart in test_name_to_charts[test_name]:
-                graph_name = chart['graph_name']
-                units = chart['units']
-                better_direction = chart['better_direction']
-                url = chart['info_url']
-                chart_keys = chart['keys']
+                # Scan the desired charts and see if we need to output the
+                # current line info to a graph output file.
+                for chart in test_name_to_charts[test_name]:
+                    graph_name = chart['graph_name']
+                    units = chart['units']
+                    better_direction = chart['better_direction']
+                    url = chart['info_url']
+                    chart_keys = chart['keys']
 
-                store_entry = False
-                for chart_key in chart_keys:
-                    if chart_key in [x[0] for x in perf_keys]:
-                        store_entry = True
-                        break
+                    store_entry = False
+                    for chart_key in chart_keys:
+                        if chart_key in [x[0] for x in perf_keys]:
+                            store_entry = True
+                            break
 
-                if store_entry:
-                    output_graph_data_for_entry(
-                        test_name, graph_name, job_name, platform,
-                        units, better_direction, url, perf_keys,
-                        chart_keys, options, summary_id_to_rev_num)
+                    if store_entry:
+                        output_graph_data_for_entry(
+                            test_name, graph_name, job_name, platform,
+                            units, better_direction, url, perf_keys,
+                            chart_keys, options, summary_id_to_rev_num)
 
-            # Mark this job ID as having been processed.
-            with open(_COMPLETED_ID_FILE, 'a') as fp:
-                fp.write(job_id + '\n')
-            completed_ids[job_id] = True
-            newly_added_count += 1
+                # Mark this job ID as having been processed.
+                with open(_COMPLETED_ID_FILE, 'a') as fp:
+                    fp.write(job_id + '\n')
+                completed_ids[job_id] = True
+                newly_added_count += 1
 
     return newly_added_count
 
@@ -387,11 +397,15 @@ def initialize_graph_dir(options):
 
     test_name_to_charts = {}
     test_names = set()
+    test_name_to_old_names = {}
+    # The _CHART_CONFIG_FILE should (and is assumed to) have one entry per
+    # test_name.  That entry should declare all graphs associated with the given
+    # test_name.
     for chart in charts:
-        if chart['test_name'] not in test_name_to_charts:
-            test_name_to_charts[chart['test_name']] = []
-        test_name_to_charts[chart['test_name']].append(chart)
+        test_name_to_charts[chart['test_name']] = chart['graphs']
         test_names.add(chart['test_name'])
+        test_name_to_old_names[chart['test_name']] = (
+            chart.get('old_test_names', []))
 
     # Scan all database data and format/output only the new data specified in
     # the graph JSON file.
@@ -407,10 +421,23 @@ def initialize_graph_dir(options):
         files = os.listdir(test_data_dir)
         for file_name in files:
             logging.debug('Processing perf platform data file: %s', file_name)
-            newly_added_count += process_perf_data_file(
-                os.path.join(test_data_dir, file_name), test_name,
-                completed_ids, test_name_to_charts, options,
-                summary_id_to_rev_num)
+
+            # The current test may be associated with one or more old test
+            # names for which perf results exist for the current platform.
+            # If so, we need to consider those old perf results too, as being
+            # associated with the current test/platform.
+            files_to_process = [os.path.join(test_data_dir, file_name)]
+            for old_test_name in test_name_to_old_names[test_name]:
+                old_test_file_name = os.path.join(_DATA_DIR, old_test_name,
+                                                  file_name)
+                if os.path.exists(old_test_file_name):
+                    logging.debug('(also processing this platform for old test '
+                                  'name "%s")', old_test_name)
+                    files_to_process.append(old_test_file_name)
+
+            newly_added_count += process_perf_data_files(
+                files_to_process, test_name, completed_ids,
+                test_name_to_charts, options, summary_id_to_rev_num)
 
     # Store the latest revision numbers for each test/platform/release
     # combination, to be used on the next invocation of this script.
