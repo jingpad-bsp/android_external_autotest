@@ -13,6 +13,7 @@ import tempfile
 import thread
 import time
 import unittest
+import os
 
 # Set the factory log root so that we can watch it.
 log_root = os.environ['CROS_FACTORY_LOG_ROOT'] = tempfile.mkdtemp()
