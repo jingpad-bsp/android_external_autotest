@@ -1,11 +1,11 @@
 #!/usr/bin/python
-
+#pylint: disable-msg=C0111
 import logging, os, shutil, sys, StringIO
 import common
 
 from autotest_lib.client.bin import job, setup_job
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import base_job, error, log, packages
+from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import logging_manager, logging_config
 from autotest_lib.client.common_lib import base_job_unittest
 from autotest_lib.client.common_lib.test_utils import mock, unittest
@@ -80,6 +80,7 @@ class test_init_minimal_options(abstract_test_init, setup_job_test_case):
             user = None
             log = False
             tap_report = None
+            output_dir = False
 
         self.job.__init__(options)
 
@@ -171,6 +172,7 @@ class test_setup_job(unittest.TestCase):
         options.hostname = 'localhost'
         options.user = 'my_user'
         options.tap_report = None
+        options.output_dir = False
         self.job.__init__(options)
 
         # check
