@@ -77,7 +77,6 @@ if [ -f ${SHADOW_CONFIG_PATH} ]; then
   done
   if [[ "${clobber}" = 'n' || "${clobber}" = 'N' ]]; then
     echo "Refusing to clobber existing shadow_config.ini."
-    exit 0
   fi
   echo "Clobbering existing shadow_config.ini."
 fi
