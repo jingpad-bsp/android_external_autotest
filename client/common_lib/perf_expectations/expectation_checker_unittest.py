@@ -2,17 +2,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# pylint: disable-msg=C0111
+
 import logging
 import unittest
+import os
 
 import expectation_checker
 
+_TEST_JSON = os.path.join(os.path.dirname(__file__),
+                          'perf_expectations_test.json')
 
 class perf_expectation_checker_test(unittest.TestCase):
     def test__init__(self):
         checker = expectation_checker.perf_expectation_checker(
             'desktopui_PyAutoPerfTests','stumpy',
-            'perf_expectations_test.json')
+            _TEST_JSON)
         expected = {
             'stumpy/desktopui_PyAutoPerfTests/milliseconds_NewTabCalendar':
             {'improve': '1230.000000',
@@ -32,7 +37,7 @@ class perf_expectation_checker_test(unittest.TestCase):
     def test_compare_one_trace_lower_is_better(self):
         checker = expectation_checker.perf_expectation_checker(
             'test_1', 'stumpy',
-            'perf_expectations_test.json')
+            _TEST_JSON)
         result = checker.compare_one_trace('lower_is_better_trace', 300.0)
         self.assertEqual(result, ('regress', 0.5))
         result = checker.compare_one_trace('lower_is_better_trace', 50.0)
@@ -43,7 +48,7 @@ class perf_expectation_checker_test(unittest.TestCase):
     def test_compare_one_trace_higher_is_better(self):
         checker = expectation_checker.perf_expectation_checker(
             'test_1', 'stumpy',
-            'perf_expectations_test.json')
+            _TEST_JSON)
         result = checker.compare_one_trace('higher_is_better_trace', 50.0)
         self.assertEqual(result, ('regress', 0.5))
         result = checker.compare_one_trace('higher_is_better_trace', 300.0)
@@ -55,7 +60,7 @@ class perf_expectation_checker_test(unittest.TestCase):
 
         checker = expectation_checker.perf_expectation_checker(
             'test_1', 'stumpy',
-            'perf_expectations_test.json')
+            _TEST_JSON)
         perf_results = {
             'lower_is_better_trace': 50,
             'higher_is_better_trace': 50,
