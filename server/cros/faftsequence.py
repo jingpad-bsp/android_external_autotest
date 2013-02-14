@@ -94,6 +94,7 @@ class FAFTSequence(ServoTest):
 
     _backup_firmware_sha = ()
 
+
     # Class level variable, keep track the states of one time setup.
     # This variable is preserved across tests which inherit this class.
     _global_setup_done = {
@@ -135,10 +136,19 @@ class FAFTSequence(ServoTest):
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
         # Parse arguments from command line
         args = {}
+        self.power_control = host.POWER_CONTROL_RPM
         for arg in cmdline_args:
             match = re.search("^(\w+)=(.+)", arg)
             if match:
                 args[match.group(1)] = match.group(2)
+        if 'power_control' in args:
+            self.power_control = args['power_control']
+            if self.power_control not in host.POWER_CONTROL_VALID_ARGS:
+                raise error.TestError('Valid values for --args=power_control '
+                                      'are %s. But you entered wrong argument '
+                                      'as "%s".'
+                                       % (host.POWER_CONTROL_VALID_ARGS,
+                                       self.power_control))
         if 'image' in args:
             self._install_image_path = args['image']
             logging.info('Install Chrome OS test image path: %s',
@@ -942,6 +952,21 @@ class FAFTSequence(ServoTest):
                 self.run_faft_step({})
 
 
+    def power_on(self):
+        """Switch DUT AC power on."""
+        self._client.power_on(self.power_control)
+
+
+    def power_off(self):
+        """Switch DUT AC power off."""
+        self._client.power_off(self.power_control)
+
+
+    def power_cycle(self):
+        """Power cycle DUT AC power."""
+        self._client.power_cycle(self.power_control)
+
+
     def enable_rec_mode_and_reboot(self):
         """Switch to rec mode and reboot.
 
@@ -964,12 +989,7 @@ class FAFTSequence(ServoTest):
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
             self.servo.power_short_press()
         elif self.client_attr.broken_rec_mode:
-            if self._client.has_power():
-                self._client.power_cycle()
-            else:
-                logging.info('You have %d seconds to power cycle this device.',
-                             self.delay.user_power_cycle)
-                time.sleep(self.delay.user_power_cycle)
+            self.power_cycle()
             logging.info('Booting to recovery mode.')
             self.servo.custom_recovery_mode()
         else:

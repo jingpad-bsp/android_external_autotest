@@ -170,6 +170,11 @@ class SiteHost(remote.RemoteHost):
     REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
     _INSTALL_TIMEOUT = 240
 
+    # _USB_POWER_TIMEOUT: Time to allow for USB to power toggle ON and OFF.
+    # _POWER_CYCLE_TIMEOUT: Time to allow for manual power cycle.
+    _USB_POWER_TIMEOUT = 5
+    _POWER_CYCLE_TIMEOUT = 10
+
     _DEFAULT_SERVO_URL_FORMAT = ('/static/servo-images/'
                                  '%(board)s_test_image.bin')
 
@@ -207,6 +212,18 @@ class SiteHost(remote.RemoteHost):
     _PING_STATUS_DOWN = False
     _PING_STATUS_UP = True
 
+    # Allowed values for the power_method argument.
+
+    # POWER_CONTROL_RPM: Passed as default arg for power_off/on/cycle() methods.
+    # POWER_CONTROL_SERVO: Used in set_power() and power_cycle() methods.
+    # POWER_CONTROL_MANUAL: Used in set_power() and power_cycle() methods.
+    POWER_CONTROL_RPM = 'RPM'
+    POWER_CONTROL_SERVO = 'servoj10'
+    POWER_CONTROL_MANUAL = 'manual'
+
+    POWER_CONTROL_VALID_ARGS = (POWER_CONTROL_RPM,
+                                POWER_CONTROL_SERVO,
+                                POWER_CONTROL_MANUAL)
 
     @staticmethod
     def get_servo_arguments(args_dict):
@@ -913,19 +930,72 @@ class SiteHost(remote.RemoteHost):
         return SiteHost.check_for_rpm_support(self.hostname)
 
 
-    def power_off(self):
-        """Turn off power to this host via RPM."""
-        rpm_client.set_power(self.hostname, 'OFF')
+    def _set_power(self, state, power_method):
+        """Sets the power to the host via RPM, Servo or manual.
+
+        @param state Specifies which power state to set to DUT
+        @param power_method Specifies which method of power control to
+                            use. By default "RPM" will be used. Valid values
+                            are the strings "RPM", "manual", "servoj10".
+
+        """
+        ACCEPTABLE_STATES = ['ON', 'OFF']
+
+        if state.upper() not in ACCEPTABLE_STATES:
+            raise error.TestError('State must be one of: %s.'
+                                   % (ACCEPTABLE_STATES,))
+
+        if power_method == self.POWER_CONTROL_SERVO:
+            logging.info('Setting servo port J10 to %s', state)
+            self.servo.set('prtctl3_pwren', state.lower())
+            time.sleep(self._USB_POWER_TIMEOUT)
+        elif power_method == self.POWER_CONTROL_MANUAL:
+            logging.info('You have %d seconds to set the AC power to %s.',
+                         self._POWER_CYCLE_TIMEOUT, state)
+            time.sleep(self._POWER_CYCLE_TIMEOUT)
+        else:
+            if not self.has_power():
+                raise error.TestFail('DUT does not have RPM connected.')
+            rpm_client.set_power(self.hostname, state.upper())
 
 
-    def power_on(self):
-        """Turn on power to this host via RPM."""
-        rpm_client.set_power(self.hostname, 'ON')
+    def power_off(self, power_method=POWER_CONTROL_RPM):
+        """Turn off power to this host via RPM, Servo or manual.
+
+        @param power_method Specifies which method of power control to
+                            use. By default "RPM" will be used. Valid values
+                            are the strings "RPM", "manual", "servoj10".
+
+        """
+        self._set_power('OFF', power_method)
 
 
-    def power_cycle(self):
-        """Cycle power to this host by turning it OFF, then ON."""
-        rpm_client.set_power(self.hostname, 'CYCLE')
+    def power_on(self, power_method=POWER_CONTROL_RPM):
+        """Turn on power to this host via RPM, Servo or manual.
+
+        @param power_method Specifies which method of power control to
+                            use. By default "RPM" will be used. Valid values
+                            are the strings "RPM", "manual", "servoj10".
+
+        """
+        self._set_power('ON', power_method)
+
+
+    def power_cycle(self, power_method=POWER_CONTROL_RPM):
+        """Cycle power to this host by turning it OFF, then ON.
+
+        @param power_method Specifies which method of power control to
+                            use. By default "RPM" will be used. Valid values
+                            are the strings "RPM", "manual", "servoj10".
+
+        """
+        if power_method in (self.POWER_CONTROL_SERVO,
+                            self.POWER_CONTROL_MANUAL):
+            self.power_off(power_method=power_method)
+            time.sleep(self._POWER_CYCLE_TIMEOUT)
+            self.power_on(power_method=power_method)
+        else:
+            rpm_client.set_power(self.hostname, 'CYCLE')
 
 
     def get_platform(self):
