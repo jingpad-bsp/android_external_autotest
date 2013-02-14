@@ -8,6 +8,7 @@
    "rdbytes_kernel_to_startup,rdbytes_kernel_to_startup_done,rdbytes_kernel_to_x_started,rdbytes_kernel_to_chrome_exec,rdbytes_kernel_to_chrome_main,rdbytes_kernel_to_login"],
   ["build_RootFilesystemSize", "bytes_rootfs_prod"],
   ["build_RootFilesystemSize", "bytes_rootfs_test"],
+  ["power_BatteryCharge.full", "a_avg50_charge_current"],
   ["power_LoadTest.WIFI", "w_energy_rate"],
   ["power_LoadTest.WIFI", "minutes_battery_life"],
   ["power_LoadTest.WIFI_1hr", "w_energy_rate"],
