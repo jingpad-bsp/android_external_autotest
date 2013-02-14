@@ -786,6 +786,75 @@ class GdataPackage(ExternalPackage):
                         ExternalPackage._build_and_install_current_dir_noegg)
 
 
+class DnsPythonPackage(ExternalPackage):
+    """
+    dns module
+
+    Used in unittests.
+    """
+    module_name = 'dns'
+    version = '1.3.5'
+    url_filename = 'dnspython-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('http://www.dnspython.org/kits/%s/%s' % (
+        version, url_filename))
+    hex_sum = '06314dad339549613435470c6add992910e26e5d'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_noegg)
+
+    def _get_installed_version_from_module(self, module):
+        """Ask our module its version string and return it or '' if unknown."""
+        try:
+            __import__(self.module_name + '.version')
+            return module.version.version
+        except AttributeError:
+            logging.error('could not get version from %s', module)
+            return ''
+
+
+class PyudevPackage(ExternalPackage):
+    """
+    pyudev module
+
+    Used in unittests.
+    """
+    version = '0.16.1'
+    url_filename = 'pyudev-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('http://pypi.python.org/packages/source/p/pyudev/%s' % (
+        url_filename),)
+    hex_sum = 'b36bc5c553ce9b56d32a5e45063a2c88156771c0'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class PyMoxPackage(ExternalPackage):
+    """
+    mox module
+
+    Used in unittests.
+    """
+    module_name = 'mox'
+    version = '0.5.3'
+    url_filename = 'mox-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('http://pypi.python.org/packages/source/m/mox/%s' % (
+        url_filename),)
+    hex_sum = '1c502d2c0a8aefbba2c7f385a83d33e7d822452a'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_noegg)
+
+    def _get_installed_version_from_module(self, module):
+        # mox doesn't contain a proper version
+        return self.version
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
