@@ -173,14 +173,15 @@ def ExecuteWorkItemsThreadInjectionCallback(input_queue, input_queue_lock,
   still the target number, and if it is less it spawns new threads to continue
   working.
 
-  Args:
-    input_queue: multiprocessing.manager.Queue() holding submitted work items.
-    input_queue_lock: lock for the input queue.
-    output_queue: multiprocessing.manager.Queue() holding finished work items.
-    output_queue_lock: lock for the output queue.
-    method_name: name of method to execute on each item.
-    max_threads: maximum threads to start per worker process.
-    logger: multiprocessing logger.
+  @param input_queue: multiprocessing.manager.Queue() holding submitted work
+                      items.
+  @param input_queue_lock: lock for the input queue.
+  @param output_queue: multiprocessing.manager.Queue() holding finished work
+                       items.
+  @param output_queue_lock: lock for the output queue.
+  @param method_name: name of method to execute on each item.
+  @param max_threads: maximum threads to start per worker process.
+  @param logger: multiprocessing logger.
   """
   # We only care about the case when this timer fires and there is still work
   # in the queue.
@@ -220,14 +221,16 @@ def ExecuteWorkItemsProcessCallback(input_queue, output_queue, method_name,
                                     **logger_init_args):
   """Starts threads in a new process to perform requested work.
 
-  Args:
-    input_queue: multiprocessing.manager.Queue() holding submitted work items.
-    output_queue: multiprocessing.manager.Queue() holding finished work items.
-    method_name: name of method to execute on each item.
-    max_threads: maximum threads to start per worker process.
-    provide_logger: if true provide a multiprocessing logger to the callback.
-    logger_init_callback: optional callback where user can setup logging.
-    logger_init_args: optional arguments to logger_init_callback.
+  @param input_queue: multiprocessing.manager.Queue() holding submitted work
+                      items.
+  @param output_queue: multiprocessing.manager.Queue() holding finished work
+                       items.
+  @param method_name: name of method to execute on each item.
+  @param max_threads: maximum threads to start per worker process.
+  @param provide_logger: if true provide a multiprocessing logger to the
+                         callback.
+  @param logger_init_callback: optional callback where user can setup logging.
+  @param logger_init_args: optional arguments to logger_init_callback.
   """
   # Setup logging.
   logger = None
@@ -274,16 +277,19 @@ def ExecuteWorkItemsProcessCallback(input_queue, output_queue, method_name,
 class MultiProcWorkPool(object):
   """Multi Processor Thread Pool implementation."""
 
+  # TODO: Fix crosbug.com/38902 regarding procs=0 not being correctly
+  # handled. Unit test for this module is disabled for now as a result
+  # of bug.
   def __init__(self, procs=None, threads_per_proc=DEFAULT_THREADS_PER_PROC,
                max_threads=None):
     """Create an instance of MultiProcWorkPool.
 
-    Args:
-      procs: Number of worker processes to spawn.  Default CPU count.  If
-             procs is 0 no processes will be created and the work will be
-             performed on the main process.
-      threads_per_proc: Number of threads per processor to run.
-      max_threads: Limit on total threads across all processors.
+
+    @param procs: Number of worker processes to spawn.  Default CPU count.  If
+                 procs is 0 no processes will be created and the work will be
+                 performed on the main process.
+    @param threads_per_proc: Number of threads per processor to run.
+    @param max_threads: Limit on total threads across all processors.
     """
     if procs is not None:
       assert procs >= 0, 'procs cannot be negative.'
@@ -310,20 +316,20 @@ class MultiProcWorkPool(object):
                        logger_init_callback=None, **logger_init_args):
     """Distrubutes work on a list of objects across processes/threads.
 
-    Args:
-      object_list: List of objects to call work method on.
-      method_name: Name of method to execute on objects.
-      return_objects: When true return a list of the objects after the work
-                      has been executed.
-      provide_logger: Pass a mp logger object to the execute method.
-      logger_init_callback: Callback to be called once per process to allow
-                            user to configure logging.  A bare logger will be
-                            passed into the callback.  If logging is requested
-                            and not callback is provided the default logging
-                            will go to stderr.
-      logger_init_args: Arguments to pass into logger_init_callback.
-    Returns:
-      Either None or a list of objects when return_objects is True.
+
+    @param object_list: List of objects to call work method on.
+    @param method_name: Name of method to execute on objects.
+    @param return_objects: When true return a list of the objects after the work
+                    has been executed.
+    @param provide_logger: Pass a mp logger object to the execute method.
+    @param logger_init_callback: Callback to be called once per process to allow
+                           user to configure logging.  A bare logger will be
+                           passed into the callback.  If logging is requested
+                           and not callback is provided the default logging
+                           will go to stderr.
+    @param logger_init_args: Arguments to pass into logger_init_callback.
+
+    @return: Either None or a list of objects when return_objects is True.
     """
     input_queue = self._manager.Queue()
     output_queue = None
