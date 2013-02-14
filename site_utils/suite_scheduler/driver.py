@@ -4,9 +4,11 @@
 
 import logging, time
 
-import base_event, board_enumerator, build_event, deduping_scheduler
-import forgiving_config_parser, manifest_versions, task, timed_event
+import base_event, board_enumerator, build_event
+import task, timed_event
 
+import common
+from autotest_lib.client.common_lib import site_utils, error
 
 class Driver(object):
     """Implements the main loop of the suite_scheduler.
@@ -130,6 +132,13 @@ class Driver(object):
         logging.info('Boards currently in the lab: %r', boards)
         for e in self._events.itervalues():
             if e.ShouldHandle():
+                try:
+                    site_utils.check_lab_status()
+                except error.LabIsDownException as ex:
+                    logging.warn('Skipping event %s, because lab is down '
+                                 'with message: %s', e.keyword, ex.message)
+                    continue
+
                 logging.info('Handling %s event', e.keyword)
                 for board in boards:
                     branch_builds = e.GetBranchBuildsForBoard(board)
@@ -145,7 +154,7 @@ class Driver(object):
         """
         board, type, milestone, manifest = base_event.ParseBuildName(build_name)
         branch_builds = {task.PickBranchName(type, milestone): [build_name]}
-        logging.info('Testing build %s-%s on %s' % (milestone, manifest, board))
+        logging.info('Testing build %s-%s on %s', milestone, manifest, board)
 
         for e in self._events.itervalues():
             if e.keyword in keywords:

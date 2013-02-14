@@ -6,18 +6,19 @@
 
 """Unit tests for site_utils/board_enumerator.py."""
 
-import logging, mox, unittest
+import mox, unittest
 
 import base_event, board_enumerator, build_event, deduping_scheduler, driver
 import forgiving_config_parser, manifest_versions, task, timed_event
 
+import common
 from autotest_lib.server import frontend
+from autotest_lib.client.common_lib import site_utils, error
 from constants import Labels
 
 
 class DriverTest(mox.MoxTestBase):
     """Unit tests for Driver."""
-
 
     _BOARDS = ['board1', 'board2']
 
@@ -53,6 +54,7 @@ class DriverTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(timed_event.Nightly, 'CreateFromConfig')
         self.mox.StubOutWithMock(timed_event.Weekly, 'CreateFromConfig')
         self.mox.StubOutWithMock(build_event.NewBuild, 'CreateFromConfig')
+        self.mox.StubOutWithMock(site_utils, 'check_lab_status')
         timed_event.Nightly.CreateFromConfig(
             mox.IgnoreArg(), self.mv).AndReturn(mock_nightly)
         timed_event.Weekly.CreateFromConfig(
@@ -84,6 +86,19 @@ class DriverTest(mox.MoxTestBase):
         self.afe.get_labels(name__startswith=prefix).AndReturn(mocks)
 
 
+    def _ExpectLabStatusQuery(self, lab_up=True, message='No message.'):
+        """Expect one call to site_utils.check_lab_status
+        @param lab_up: True if lab shoule be up. False if lab should be down.
+                       Default: True.
+        @param message: String message with which lab should be down, if down.
+        """
+        if lab_up:
+            site_utils.check_lab_status()
+        else:
+            site_utils.check_lab_status().AndRaise(
+                error.LabIsDownException(message))
+
+
     def _ExpectHandle(self, event, group):
         """Make event report that it's handle-able, and expect it to be handle.
 
@@ -99,6 +114,17 @@ class DriverTest(mox.MoxTestBase):
         # Should happen once per loop, not once per Handle()
         # http://crosbug.com/30642
         event.UpdateCriteria().InAnyOrder(group)
+
+
+    def _ExpectNoHandle(self, event, group):
+        """Make event report that it's handle-able, but do not expect to
+        handle it.
+
+        @param event: the mock event that expectations will be set on.
+        @param group: group to put new expectations in.
+        """
+        bbs = {'branch': 'build-string'}
+        event.ShouldHandle().InAnyOrder(group).AndReturn(True)
 
 
     def testTasksFromConfig(self):
@@ -122,12 +148,15 @@ class DriverTest(mox.MoxTestBase):
                 self.assertTrue(self.nightly_bvt in event.tasks)
             if keyword == timed_event.Weekly.KEYWORD:
                 self.assertTrue(self.weekly_bvt in event.tasks)
+
+        self.mox.UnsetStubs()
         self.mox.VerifyAll()
 
-        # Now, change up the config and SetUpEventsAndTasks again!
         self.mox.ResetAll()
         self.config.remove_section(timed_event.Weekly.KEYWORD)
+
         self._ExpectSetup()
+        self.mox.StubOutWithMock(task.Task, 'CreateFromConfigSection')
         task.Task.CreateFromConfigSection(
             self.config, timed_event.Nightly.KEYWORD).InAnyOrder().AndReturn(
                 (timed_event.Nightly.KEYWORD, self.nightly_bvt))
@@ -145,6 +174,7 @@ class DriverTest(mox.MoxTestBase):
         events = self._ExpectSetup()
         self._ExpectEnumeration()
         for event in events:
+            self._ExpectLabStatusQuery()
             self._ExpectHandle(event, 'events')
         self.mox.ReplayAll()
 
@@ -158,9 +188,23 @@ class DriverTest(mox.MoxTestBase):
         self._ExpectEnumeration()
         for event in events:
             if event.keyword == timed_event.Nightly.KEYWORD:
+                self._ExpectLabStatusQuery()
                 self._ExpectHandle(event, 'events')
             else:
                 event.ShouldHandle().InAnyOrder('events').AndReturn(False)
+        self.mox.ReplayAll()
+
+        self.driver.SetUpEventsAndTasks(self.config, self.mv)
+        self.driver.HandleEventsOnce(self.mv)
+
+
+    def testClosedLab(self):
+        """Test that events do not get handled if the lab is closed."""
+        events = self._ExpectSetup()
+        self._ExpectEnumeration()
+        for event in events:
+            self._ExpectLabStatusQuery(False, 'Lab closed due to sheep.')
+            self._ExpectNoHandle(event, 'events')
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
@@ -183,7 +227,6 @@ class DriverTest(mox.MoxTestBase):
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
         self.driver.ForceEventsOnceForBuild([events[0].keyword], build)
-
 
 
 if __name__ == '__main__':
