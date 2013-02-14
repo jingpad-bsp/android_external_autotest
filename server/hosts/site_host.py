@@ -193,6 +193,18 @@ class SiteHost(remote.RemoteHost):
     label_decorator = functools.partial(add_label_detector, _LABEL_FUNCTIONS,
                                         _DETECTABLE_LABELS)
 
+    # Constants used in ping_wait_up() and ping_wait_down().
+    #
+    # _PING_WAIT_COUNT is the approximate number of polling
+    # cycles to use when waiting for a host state change.
+    #
+    # _PING_STATUS_DOWN and _PING_STATUS_UP are names used
+    # for arguments to the internal _ping_wait_for_status()
+    # method.
+    _PING_WAIT_COUNT = 40
+    _PING_STATUS_DOWN = False
+    _PING_STATUS_UP = True
+
 
     @staticmethod
     def get_servo_arguments(args_dict):
@@ -598,39 +610,77 @@ class SiteHost(remote.RemoteHost):
             self.xmlrpc_disconnect(port)
 
 
-    def _ping_is_up(self):
-        """Ping the host once, and return whether it responded."""
-        return utils.ping(self.hostname, tries=1, deadline=1) == 0
+    def _ping_check_status(self, status):
+        """Ping the host once, and return whether it has a given status.
 
+        @param status Check the ping status against this value.
+        @return True iff `status` and the result of ping are the same
+                (i.e. both True or both False).
+
+        """
+        ping_val = utils.ping(self.hostname, tries=1, deadline=1)
+        return not (status ^ (ping_val == 0))
+
+    def _ping_wait_for_status(self, status, timeout):
+        """Wait for the host to have a given status (UP or DOWN).
+
+        Status is checked by polling.  Polling will not last longer
+        than the number of seconds in `timeout`.  The polling
+        interval will be long enough that only approximately
+        _PING_WAIT_COUNT polling cycles will be executed, subject
+        to a maximum interval of about one minute.
+
+        @param status Waiting will stop immediately if `ping` of the
+                      host returns this status.
+        @param timeout Poll for at most this many seconds.
+        @return True iff the host status from `ping` matched the
+                requested status at the time of return.
+
+        """
+        # _ping_check_status() takes about 1 second, hence the
+        # "- 1" in the formula below.
+        poll_interval = min(int(timeout / self._PING_WAIT_COUNT), 60) - 1
+        end_time = time.time() + timeout
+        while time.time() <= end_time:
+            if self._ping_check_status(status):
+                return True
+            if poll_interval > 0:
+                time.sleep(poll_interval)
+
+        # The last thing we did was sleep(poll_interval), so it may
+        # have been too long since the last `ping`.  Check one more
+        # time, just to be sure.
+        return self._ping_check_status(status)
+
+    def ping_wait_up(self, timeout):
+        """Wait for the host to respond to `ping`.
+
+        N.B.  This method is not a reliable substitute for
+        `wait_up()`, because a host that responds to ping will not
+        necessarily respond to ssh.  This method should only be used
+        if the target DUT can be considered functional even if it
+        can't be reached via ssh.
+
+        @param timeout Minimum time to allow before declaring the
+                       host to be non-responsive.
+        @return True iff the host answered to ping before the timeout.
+
+        """
+        return self._ping_wait_for_status(self._PING_STATUS_UP, timeout)
 
     def ping_wait_down(self, timeout):
         """Wait until the host no longer responds to `ping`.
 
-        @param timeout Minimum time to allow before declaring the
-                       host to be non-responsive.
+        This function can be used as a slightly faster version of
+        `wait_down()`, by avoiding potentially long ssh timeouts.
+
+        @param timeout Minimum time to allow for the host to become
+                       non-responsive.
+        @return True iff the host quit answering ping before the
+                timeout.
+
         """
-
-        # This function is a slightly faster version of wait_down().
-        #
-        # In AbstractSSHHost.wait_down(), `ssh` is used to determine
-        # whether the host is down.  In some situations (mine, at
-        # least), `ssh` can take over a minute to determine that the
-        # host is down.  The `ping` command answers the question
-        # faster, so we use that here instead.
-        #
-        # There is no equivalent for wait_up(), because a target that
-        # answers to `ping` won't necessarily respond to `ssh`.
-        end_time = time.time() + timeout
-        while time.time() <= end_time:
-            if not self._ping_is_up():
-                return True
-
-        # If the timeout is short relative to the run time of
-        # _ping_is_up(), we might be prone to false failures for
-        # lack of checking frequently enough.  To be safe, we make
-        # one last check _after_ the deadline.
-        return not self._ping_is_up()
-
+        return self._ping_wait_for_status(self._PING_STATUS_DOWN, timeout)
 
     def test_wait_for_sleep(self):
         """Wait for the client to enter low-power sleep mode.

@@ -48,7 +48,6 @@ class Servo(object):
     SLEEP_DELAY = 6
     BOOT_DELAY = 10
     RECOVERY_BOOT_DELAY = 10
-    RECOVERY_INSTALL_DELAY = 540
 
     # Time required for the EC to be working after cold reset.
     # Five seconds is at least twice as big as necessary for Alex,
@@ -504,9 +503,7 @@ class Servo(object):
 
 
     def install_recovery_image(self, image_path=None,
-                               wait_timeout=RECOVERY_INSTALL_DELAY,
-                               make_image_noninteractive=False,
-                               host=None):
+                               make_image_noninteractive=False):
         """Install the recovery image specied by the path onto the DUT.
 
         This method uses google recovery mode to install a recovery image
@@ -516,14 +513,9 @@ class Servo(object):
 
         Args:
             image_path: Path on the host to the recovery image.
-            wait_timeout: How long to wait for completion; default is
-                          determined by a constant.
             make_image_noninteractive: Make the recovery image noninteractive,
                                        therefore the DUT will reboot
                                        automatically after installation.
-            host: Host object for the DUT that the installation process is
-                  running on. If provided, will wait to see if the host is back
-                  up after starting recovery mode.
         """
         self.image_to_servo_usb(image_path, make_image_noninteractive)
 
@@ -534,21 +526,6 @@ class Servo(object):
             time.sleep(Servo.RECOVERY_BOOT_DELAY)
             self.switch_usbkey('dut')
             self.disable_recovery_mode()
-
-            if host:
-                logging.info('Running the recovery process on the DUT. '
-                             'Will wait up to %d seconds for recovery to '
-                             'complete.', wait_timeout)
-                start_time = time.time()
-                # Wait for the host to come up.
-                if host.wait_up(timeout=wait_timeout):
-                    logging.info('Recovery process completed successfully in '
-                                 '%d seconds.', time.time() - start_time)
-                else:
-                    logging.error('Host failed to come back up in the allotted '
-                                  'time: %d seconds.', wait_timeout)
-                logging.info('Removing the usb key from the DUT.')
-                self.switch_usbkey('host')
         except:
             # In case anything went wrong we want to make sure to do a clean
             # reset.
