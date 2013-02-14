@@ -61,7 +61,7 @@ def _run_client_test(machine):
     # battery must be at least 80% of design capacity
     percent_battery_wear_allowed = .20
 
-    client_at.run_test('power_BatteryCharge',
+    client_at.run_test('power_BatteryCharge', tag='full',
                  max_run_time=time_limit,
                  percent_charge_to_add=100,
                  percent_initial_charge_max=5,
