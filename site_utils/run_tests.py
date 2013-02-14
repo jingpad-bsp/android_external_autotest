@@ -56,7 +56,7 @@ def ParseOptions():
   options = parser.parse_args()[0]
 
   if not options.board or not options.platform:
-    parser.error('A board and platform must be provided.')
+    parser.error('A board, build, and platform must be provided.')
 
   # Load correct config file if alternate is specified.
   if options.config != test_config.DEFAULT_CONFIG_FILE:
@@ -99,7 +99,9 @@ def main():
   if options.build:
     build = options.build
   else:
-    build = dev.GetLatestBuildVersion(options.board)
+    raise NotImplementedException('You must pass in a build with the --build '
+                                  'flag. Detecting the latest build for a '
+                                  'board is no longer supported.')
 
   logging.info('Latest build version available on Dev Server is %s.', build)
 

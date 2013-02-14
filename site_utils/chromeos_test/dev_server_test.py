@@ -4,6 +4,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# pylint: disable-msg=C0111
+
 """Unit tests for DevServer class."""
 
 __author__ = 'dalecurtis@google.com (Dale Curtis)'
@@ -216,32 +218,6 @@ class DevServerTest(unittest.TestCase):
     self.assertTrue(os.path.exists(abc_path))
     self.assertFalse(os.path.exists(junk_path))
 
-  def testFindDevServerBuild(self):
-    # Ensure no matching boards raises exception for latest.
-    self.assertRaises(
-        common_util.ChromeOSTestError, self._dev.FindDevServerBuild, 'aasdf',
-        'latest')
-
-    # Ensure no matching builds or boards raises an exception.
-    self.assertRaises(
-        common_util.ChromeOSTestError, self._dev.FindDevServerBuild, 'aasdf',
-        'asdgsadg')
-
-    # Component functions of FindDevServerBuild are verified elsewhere, so just
-    # check exceptions are raised and absolute names return values.
-    for board, builds in TEST_LAYOUT.iteritems():
-      # Ensure latest returns the proper build.
-      self.assertEqual(self._dev.FindDevServerBuild(board, 'latest'),
-                       (board, builds[-1]))
-
-      # Ensure specific board, build is returned.
-      self.assertEqual(self._dev.FindDevServerBuild(board, builds[0]),
-                       (board, builds[0]))
-
-      # Ensure too many matches raises an exception.
-      self.assertRaises(
-          common_util.ChromeOSTestError, self._dev.FindDevServerBuild, board,
-          builds[0][:5])
 
   def testCloneDevServerBuild(self):
     test_prefix = 'abc'

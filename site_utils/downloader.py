@@ -103,6 +103,7 @@ class Downloader(object):
         logging.info('------------[ Processing board %s ]------------', board)
         # Retrieve the latest build version for this board.
         if not self._options.build:
+
           build = build_util.GetLatestBuildbotBuildVersion(
               archive_server=board_cfg['archive_server'], board=board,
               boto=board_cfg['boto'], archive_path=board_cfg['archive_path'],
@@ -178,7 +179,14 @@ class Downloader(object):
         mton_payload_dir = None
         try:
           # Retrieve N-1 (current LATEST) build from Dev Server.
-          previous_build = dev.GetLatestBuildVersion(board)
+
+
+          raise NotImplementedException('This code is broken. Do not use.'
+                                        'If you must use, contact the lab '
+                                        'team.')
+          # ..because the following function call no longer exists
+          # previous_build = dev.GetLatestBuildVersion(board)
+
           previous_image = dev.GetImage(board, previous_build, staging_dir)
 
           mton_payload_dir = os.path.join(dev.AU_BASE, previous_build + '_mton')

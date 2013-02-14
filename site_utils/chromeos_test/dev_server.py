@@ -19,7 +19,6 @@ import posixpath
 
 # Autotest imports
 import common
-from autotest_lib.client.common_lib.cros import dev_server
 
 import common_util
 
@@ -40,13 +39,14 @@ class DevServer(object):
     """Initializes class variables and fixes private key permissions.
 
     Args:
-      host: Address of the Dev Server.
-      path: Images directory root on Dev Server.
-      user: Dev Server SSH user name.
-      private_key: Optional private key file for password-less login. If the
-          key file has any group or world permissions they will be removed.
-      remote_host: If a different hostname/ip should be needed for uploading
-          images to the dev server.
+      @param host: Address of the Dev Server.
+      @param path: Images directory root on Dev Server.
+      @param user: Dev Server SSH user name.
+      @param private_key: Optional private key file for password-less login.
+                          If the key file has any group or world permissions
+                          they will be removed.
+      @param remote_host: If a different hostname/ip should be needed for
+                          uploading images to the dev server.
     """
     self._dev_host = dev_host
     if remote_host:
@@ -66,29 +66,6 @@ class DevServer(object):
             'Removing group and world permissions from private key %s to make'
             ' SSH happy.', self._private_key)
 
-  def GetLatestBuildVersion(self, board):
-    """Retrieves the latest build version from Dev Server for a given board.
-
-    Sends a request to http://devserver/latestbuild?target=x86-mario-release to
-    find the latest build for a given target.
-
-    Args:
-      board: Board name for this build; e.g., x86-generic-rel
-
-    Returns:
-      The returned string from the devserver.
-
-    Raises:
-      common_util.ChromeOSTestError: If the build version can't be retrieved.
-    """
-    new_dev_server = dev_server.DevServer()
-    latest_build = new_dev_server.get_latest_build(board)
-    if not latest_build:
-      # Raise this to keep the previously established API.
-      raise common_util.ChromeOSTestError(
-          'Unable to determine the latest build for %s' % board)
-
-    return latest_build
 
   def UploadAutotestPackages(self, remote_dir, staging_dir):
     """Uploads Autotest packages from staging directory to Dev Server.
@@ -97,8 +74,8 @@ class DevServer(object):
     directory to the specified Dev Server.
 
     Args:
-      remote_dir: Directory to upload build components into.
-      staging_dir: Directory containing update.gz and stateful.tgz
+      @param remote_dir: Directory to upload build components into.
+      @param staging_dir: Directory containing update.gz and stateful.tgz
 
     Raises:
       common_util.ChromeOSTestError: If any steps in the process fail to
@@ -124,9 +101,9 @@ class DevServer(object):
       - Control files from autotest/server/{tests, site_tests}
 
     Args:
-      remote_dir: Directory to upload build components into.
-      staging_dir: Directory containing update.gz and stateful.tgz
-      upload_image: Should the chromiumos_test_image.bin be uploaded?
+      @param remote_dir: Directory to upload build components into.
+      @param staging_dir: Directory containing update.gz and stateful.tgz
+      @param upload_image: Should the chromiumos_test_image.bin be uploaded?
 
     Raises:
       common_util.ChromeOSTestError: If any steps in the process fail to
@@ -179,7 +156,7 @@ class DevServer(object):
     components the resource/task represented by the tag is unavailable.
 
     Args:
-      tag: Unique resource/task identifier. Use '/' for nested tags.
+      @param tag: Unique resource/task identifier. Use '/' for nested tags.
 
     Returns:
       Path to the created directory on Dev Server or None if creation failed.
@@ -204,7 +181,7 @@ class DevServer(object):
     the lock will fail to release.
 
     Args:
-      tag: Unique resource/task identifier. Use '/' for nested tags.
+      @param tag: Unique resource/task identifier. Use '/' for nested tags.
 
     Raises:
       common_util.ChromeOSTestError: If processing lock can't be released.
@@ -220,8 +197,8 @@ class DevServer(object):
     If a LATEST file already exists, it's renamed to LATEST.n-1
 
     Args:
-      board: Board name for this build; e.g., x86-generic-rel
-      build: Full build string to look for; e.g., 0.8.61.0-r1cf43296-b269
+      @param board: Board name for this build; e.g., x86-generic-rel
+      @param build: Full build string to look for; e.g., 0.8.61.0-r1cf43296-b269
     """
     try:
       latest_path = posixpath.join(self._images, board, self.LATEST)
@@ -241,8 +218,8 @@ class DevServer(object):
     """Returns Dev Server update URL for use with memento updater.
 
     Args:
-      board: Board name for this build; e.g., x86-generic-rel
-      build: Full build string to look for; e.g., 0.8.61.0-r1cf43296-b269
+      @param board: Board name for this build; e.g., x86-generic-rel
+      @param build: Full build string to look for; e.g., 0.8.61.0-r1cf43296-b269
 
     Returns:
       Properly formatted Dev Server update URL.
@@ -253,7 +230,7 @@ class DevServer(object):
     """Returns a list of boards given a partial board name.
 
     Args:
-      board: Partial board name for this build; e.g., x86-generic
+      @param board: Partial board name for this build; e.g., x86-generic
 
     Returns:
       Returns a list of boards given a partial board and build.
@@ -269,8 +246,8 @@ class DevServer(object):
     """Returns a list of matching builds given a board and partial build.
 
     Args:
-      board: Partial board name for this build; e.g., x86-generic-rel
-      build: Partial build string to look for; e.g., 0.8.61.0
+      @param board: Partial board name for this build; e.g., x86-generic-rel
+      @param build: Partial build string to look for; e.g., 0.8.61.0
 
     Returns:
       Returns a list of (board, build) tuples given a partial board and build.
@@ -287,7 +264,8 @@ class DevServer(object):
     """Wrapper function for executing commands on the Dev Server.
 
     Args:
-      cmd: Command to execute on Dev Server.
+      @param cmd: Command to execute on Dev Server.
+      @param kwargs: Dicionary of optional args.
 
     Returns:
       Results from common_util.RunCommand()
@@ -302,8 +280,9 @@ class DevServer(object):
     definition for common_util.RunCommand for complete argument definitions.
 
     Args:
-      src: Local path/file.
-      dest: Remote destination on Dev Server.
+      @param src: Local path/file.
+      @param dest: Remote destination on Dev Server.
+      @param kwargs: Dictionary of optional args.
 
     Returns:
       Results from common_util.RemoteCopy()
@@ -318,8 +297,9 @@ class DevServer(object):
     not creates it.
 
     Args:
-      tag: Unique resource/task identifier. Use '/' for nested tags.
-      force: Force re-creation of remote_build_dir even if it already exists.
+      @param tag: Unique resource/task identifier. Use '/' for nested tags.
+      @param force: Force re-creation of remote_build_dir even if it already
+                    exists.
 
     Returns:
       Tuple of (remote_build_dir, exists).
@@ -343,9 +323,8 @@ class DevServer(object):
     """Given partial build and board ids, figure out the appropriate build.
 
     Args:
-      board: Partial board name for this build; e.g., x86-generic
-      build: Partial build string to look for; e.g., 0.8.61.0 or "latest" to
-          return the latest build for for most newest board.
+      @param board: Partial board name for this build; e.g., x86-generic
+      @param build: Partial build string to look for; e.g., 0.8.61.0
 
     Returns:
       Tuple of (board, build):
@@ -358,28 +337,22 @@ class DevServer(object):
     """
     # Find matching updates on Dev Server.
     if build.lower().strip() == 'latest':
-      boards = self.FindMatchingBoard(board)
-      if not boards:
-        raise common_util.ChromeOSTestError(
-            'No boards matching %s could be found on the Dev Server.' % board)
+      raise NotImplementedException('FindDevServerBuild no longer supports '
+                                    'the value "latest". You must pass a '
+                                    'build string to look for.')
+    
+    builds = self.FindMatchingBuild(board, build)
+    if not builds:
+      raise common_util.ChromeOSTestError(
+          'No builds matching %s could be found for board %s.' % (
+              build, board))
 
-      # Take the last board in sorted order, under the assumption that the last
-      # entry will be the most recent board (...-r12, ...-r13, ...).
-      board = sorted(boards)[-1]
-      build = self.GetLatestBuildVersion(board)
-    else:
-      builds = self.FindMatchingBuild(board, build)
-      if not builds:
-        raise common_util.ChromeOSTestError(
-            'No builds matching %s could be found for board %s.' % (
-                build, board))
+    if len(builds) > 1:
+      raise common_util.ChromeOSTestError(
+          'The given build id is ambiguous. Disambiguate by using one of'
+          ' these instead: %s' % ', '.join([b[1] for b in builds]))
 
-      if len(builds) > 1:
-        raise common_util.ChromeOSTestError(
-            'The given build id is ambiguous. Disambiguate by using one of'
-            ' these instead: %s' % ', '.join([b[1] for b in builds]))
-
-      board, build = builds[0]
+    board, build = builds[0]
 
     return board, build
 
@@ -387,10 +360,11 @@ class DevServer(object):
     """Clone existing Dev Server build. Returns path to cloned build.
 
     Args:
-      board: Fully qualified board name; e.g., x86-generic-rel
-      build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
-      tag: Unique resource/task identifier. Use '/' for nested tags.
-      force: Force re-creation of remote_build_dir even if it already exists.
+      @param board: Fully qualified board name; e.g., x86-generic-rel
+      @param build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
+      @param tag: Unique resource/task identifier. Use '/' for nested tags.
+      @param force: Force re-creation of remote_build_dir even if it already
+                    exists.
 
     Returns:
       The path on Dev Server to the remote build.
@@ -412,9 +386,10 @@ class DevServer(object):
     """Attempts to pull the requested control file from the Dev Server.
 
     Args:
-      board: Fully qualified board name; e.g., x86-generic-rel
-      build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
-      control: Path to control file on remote host relative to Autotest root.
+      @param board: Fully qualified board name; e.g., x86-generic-rel
+      @param build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
+      @param control: Path to control file on remote host relative to Autotest
+                      root.
 
     Returns:
       Contents of the control file.
@@ -431,8 +406,8 @@ class DevServer(object):
     """Returns a list of autoupdate test targets for the given board, build.
 
     Args:
-      board: Fully qualified board name; e.g., x86-generic-rel
-      build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
+      @param board: Fully qualified board name; e.g., x86-generic-rel
+      @param build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
 
     Returns:
       List of autoupdate test targets; e.g., ['0.14.747.0-r2bf8859c-b2927_nton']
@@ -452,9 +427,9 @@ class DevServer(object):
     is given a new random file name in the staging directory.
 
     Args:
-      board: Fully qualified board name; e.g., x86-generic-rel
-      build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
-      staging_dir: Directory to store downloaded image in.
+      @param board: Fully qualified board name; e.g., x86-generic-rel
+      @param build: Fully qualified build string; e.g., 0.8.61.0-r1cf43296-b269
+      @param staging_dir: Directory to store downloaded image in.
 
     Returns:
       File name of the image in the staging directory.
