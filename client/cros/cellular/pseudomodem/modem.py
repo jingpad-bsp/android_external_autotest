@@ -14,7 +14,6 @@ import dbus.types
 import dbus_std_ifaces
 import disable_machine
 import enable_machine
-import gobject
 import logging
 import mm1
 import modem_simple
@@ -100,6 +99,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                                       [dbus.types.UInt32(100), True],
                                       signature='ub'),
             'OwnNumbers' : ['5555555555'],
+            'PowerState' : dbus.types.UInt32(mm1.MM_MODEM_POWER_STATE_ON),
 
             # specified by subclass:
             'ModemCapabilities' :
@@ -288,6 +288,10 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                          out_signature='s')
     def Command(self, cmd, timeout):
         return 'Bananas are tasty and fresh.'
+
+    @dbus.service.method(mm1.I_MODEM, in_signature='u')
+    def SetPowerState(self, power_state):
+        self.SetUInt32(mm1.I_MODEM, 'PowerState', power_state);
 
     @dbus.service.signal(mm1.I_MODEM, signature='iiu')
     def StateChanged(self, old, new, reason):
