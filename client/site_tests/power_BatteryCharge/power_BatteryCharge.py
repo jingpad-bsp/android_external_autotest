@@ -114,13 +114,25 @@ class power_BatteryCharge(test.test):
         keyvals['percent_final_charge'] = keyvals['ah_final_charge'] * 100 / \
                                           keyvals['ah_charge_capacity']
 
+        percent_charge_added = keyvals['percent_final_charge'] - \
+            keyvals['percent_initial_charge']
+        # Conditionally write charge current keyval only when the amount of
+        # charge added is > 50% to remove samples when test is run but battery
+        # is already mostly full.  Otherwise current will be ~0 and not
+        # meaningful.
+        if percent_charge_added > 50:
+            hrs_charging = keyvals['s_time_taken'] / 3600.
+            keyvals['a_avg50_charge_current'] = \
+                (keyvals['ah_final_charge'] - self.initial_charge) / \
+                hrs_charging
+
         self.write_perf_keyval(keyvals)
 
 
     def cleanup(self):
-        if self._services:
+        if hasattr(self, '_services') and self._services:
             self._services.restore_services()
-        if self._backlight:
+        if hasattr(self, '_backlight') and self._backlight:
             self._backlight.restore()
 
 
