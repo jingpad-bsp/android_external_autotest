@@ -10,7 +10,10 @@ Example:
 run_pylint.py filename.py
 """
 
-import os, re, sys, fnmatch
+import fnmatch, os, re, sys
+
+import common
+from autotest_lib.client.common_lib import utils
 
 
 # Do a basic check to see if pylint is even installed.
@@ -247,6 +250,29 @@ def get_cmdline_options(args_list, pylint_base_opts, rcfile):
                 extend_baseopts(pylint_base_opts, args)
                 args_list.remove(args)
 
+
+def check_presubmit_diff(file_list, commit):
+    """
+    checks if the version of code in the working tree diverges from the commit.
+
+    Most run hooks today run on a per-line basis, so they can pull each new line
+    in a commit and check them. pylint needs the whole file for scope/context,
+    because of which it checks the actual files on the filesystem. However
+    in the case where we have uncommitted changes we can't go on because we
+    will check the wrong file version.
+
+    @param file_list: list of files in this commit.
+    @param commit: hash of the commit this upload applies to.
+    """
+    for file in file_list:
+        output = utils.run('git diff --no-ext-diff %s %s' % (commit, file),
+                           ignore_status=False).stdout
+        if output:
+            print ('you have uncommitted files in your work tree that are a'
+                   ' part of this commit:\n %s' % output.strip('\n'))
+            sys.exit(1)
+
+
 def main():
     """Main function checks each file in a commit for pylint violations."""
 
@@ -293,8 +319,10 @@ def main():
                             open(pylint_rc).read())
     else:
         presubmit_files = os.environ.get('PRESUBMIT_FILES')
+        presubmit_commit = os.environ.get('PRESUBMIT_COMMIT')
         if presubmit_files:
             args_list = presubmit_files.split('\n')
+            check_presubmit_diff(args_list, presubmit_commit)
         else:
             check_dir('.', pylint_base_opts)
             return
