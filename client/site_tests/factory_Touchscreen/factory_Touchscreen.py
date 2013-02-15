@@ -15,7 +15,6 @@ import gobject
 import gtk
 import os
 
-from cmath import pi
 from glob import glob
 from gtk import gdk
 
@@ -37,17 +36,7 @@ _TS_HEIGHT = 416
 _TS_SECTOR_WIDTH = (_TS_WIDTH / _X_SEGMENTS) - 1
 _TS_SECTOR_HEIGHT = (_TS_HEIGHT / _Y_SEGMENTS) - 1
 
-_X_SP_OFFSET = 428
-_SP_WIDTH = 15
-
 _F_RADIUS = 21
-
-_X_OF_OFFSET = 486 + _F_RADIUS + 2
-_Y_OF_OFFSET = 54 + _F_RADIUS + 2
-
-_X_TFL_OFFSET = 459 + _F_RADIUS + 2
-_X_TFR_OFFSET = 513 + _F_RADIUS + 2
-_Y_TF_OFFSET = 117 + _F_RADIUS + 2
 
 
 class TouchscreenTest:
@@ -128,14 +117,6 @@ class TouchscreenTest:
                     _TS_SECTOR_WIDTH, _TS_SECTOR_HEIGHT)
             context.rectangle(*coords)
             context.fill()
-
-        context.arc(_X_OF_OFFSET, _Y_OF_OFFSET, self._of_z_rad, 0.0, 2.0 * pi)
-        context.fill()
-
-        context.arc(_X_TFL_OFFSET, _Y_TF_OFFSET, self._tf_z_rad, 0.0, 2.0 * pi)
-        context.fill()
-        context.arc(_X_TFR_OFFSET, _Y_TF_OFFSET, self._tf_z_rad, 0.0, 2.0 * pi)
-        context.fill()
 
         return True
 
