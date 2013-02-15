@@ -56,12 +56,14 @@ RESULTS_DIR = '/usr/local/autotest/results'
 # Hosts sub-directory that contains cleanup, verify and repair jobs.
 HOSTS_SUB_DIR = 'hosts'
 
-LOG_FILENAME_FORMAT = ('/usr/local/autotest/logs/'
-                       'gs_offloader_log_%Y%m%d_%H%M%S.txt')
+LOG_LOCATION = '/usr/local/autotest/logs/'
+LOG_FILENAME_FORMAT = 'gs_offloader_%s_log_%s.txt'
+LOG_TIMESTAMP_FORMAT = '%Y%m%d_%H%M%S'
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 
 CLEAN_CMD = 'find %s -iname chrome_20[0-9][0-9]\* -exec rm {} \;'
 
+# pylint: disable=E1120
 NOTIFY_ADDRESS = global_config.global_config.get_config_value(
     'SCHEDULER', 'notify_email', default='')
 
@@ -246,7 +248,7 @@ def offloading_thread(queue):
     try:
       work = queue.get()
       work()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0703
       logging.debug(str(e))
     finally:
       queue.task_done()
@@ -284,7 +286,7 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
   # memory.
   queue = Queue.Queue(maxsize=threads)
   threadpool = []
-  for i in range(0, threads):
+  for i in range(0, threads):  # pylint: disable = W0612
     thread = threading.Thread(target=offloading_thread, args=(queue,))
     # Setting worker threads as daemons means that the program will exit if
     # the main thread exits.
@@ -329,7 +331,17 @@ def parse_options():
 
 def main():
   options = parse_options()
-  log_filename = time.strftime(LOG_FILENAME_FORMAT)
+
+  if options.process_all:
+    offloader_type = 'all'
+  elif options.process_hosts_only:
+    offloader_type = 'hosts'
+  else:
+    offloader_type = 'jobs'
+
+  log_timestamp = time.strftime(LOG_TIMESTAMP_FORMAT)
+  log_filename = os.path.join(LOG_LOCATION,
+          LOG_FILENAME_FORMAT % (offloader_type, log_timestamp))
   logging.basicConfig(filename=log_filename, level=logging.DEBUG,
                       format=LOGGING_FORMAT)
   offload_files(RESULTS_DIR, options.process_all, options.process_hosts_only,
