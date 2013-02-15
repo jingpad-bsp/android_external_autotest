@@ -17,9 +17,8 @@
                                 site_eap_certs.server_private_key_1,
                               "/tmp/hostapd_eap_user_file" :
                                 """* PEAP
-                                "testuser-chapv2" MSCHAPV2 "password" [2]
-                                "testuser-md5" MD5 "password" [2]""" } } ],
-
+"testuser-chapv2" MSCHAPV2 "password" [2]
+"testuser-md5" MD5 "password" [2]""" } } ],
     [ "config",          { "ssid":"010PeapVerifyCert",
                            "channel":"2412", "mode":"11g",
                            "wpa":"1", "wpa_key_mgmt":"WPA-EAP",
@@ -68,7 +67,7 @@ MIIDRjCCAq+gAwIBAgIJANn/MIB1esFIMA0GCSqGSIb3DQEBBQUAMG8xCzAJBgNVBAYTAlVTMRMwEQYD
                              "Type": "UnencryptedConfiguration"
                         }"""
             } ],
-    [ "connect" ],
+    [ "connect_wifi_onc" ],
     [ "client_ping", { "count":"10"} ],
     [ "client_logout" ],
     [ "destroy" ],

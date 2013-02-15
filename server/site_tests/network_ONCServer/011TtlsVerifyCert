@@ -16,9 +16,9 @@
                               "/tmp/hostapd_private_key" :
                                 site_eap_certs.server_private_key_1,
                               "/tmp/hostapd_eap_user_file" :
-                                """* PEAP
-                                "testuser-chapv2" MSCHAPV2 "password" [2]
-                                "testuser-md5" MD5 "password" [2]""" } } ],
+                                """* TTLS 
+"testuser-chapv2" MSCHAPV2 "password" [2]
+"testuser-md5" MD5 "password" [2]""" } } ],
 
    [ "config",          {  "ssid":"011TtlsVerifyCert",
                            "channel":"2412", "mode":"11g",
@@ -43,7 +43,8 @@
                                      "Security": "WPA-EAP",
                                      "SSID": "011TtlsVerifyCert",
                                      "EAP": {
-                                             "Outer": "TTLS",
+                                             "Outer": "EAP-TTLS",
+                                             "Inner": "Automatic",
                                              "UseSystemCAs": true,
                                              "SaveCredentials": true,
                                              "Identity": "testuser-chapv2",
@@ -68,7 +69,7 @@ MIIDRjCCAq+gAwIBAgIJANn/MIB1esFIMA0GCSqGSIb3DQEBBQUAMG8xCzAJBgNVBAYTAlVTMRMwEQYD
                              "Type": "UnencryptedConfiguration"
                         }"""
             } ],
-    [ "connect" ],
+    [ "connect_wifi_onc" ],
     [ "client_ping", { "count":"10"} ],
     [ "client_logout" ],
     [ "destroy" ],

@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 { "name":"000Wep",
-  "uses_onc": True,
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "ssid":"000Wep",
@@ -40,7 +39,7 @@
                           "Type": "UnencryptedConfiguration"
                           }"""
             } ],
-    [ "connect" ],
+    [ "connect_wifi_onc" ],
     [ "client_ping", { "count":"10"} ],
     [ "client_logout" ],
     [ "destroy" ],

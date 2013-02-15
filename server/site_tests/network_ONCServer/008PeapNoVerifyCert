@@ -58,7 +58,7 @@
                           "Type": "UnencryptedConfiguration"
                           }"""
             } ],
-    [ "connect" ],
+    [ "connect_wifi_onc" ],
     [ "client_ping", { "count":"10"} ],
     [ "client_logout" ],
     [ "destroy" ],

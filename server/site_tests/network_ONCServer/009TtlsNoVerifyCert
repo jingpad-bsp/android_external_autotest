@@ -4,7 +4,7 @@
 
 # Try 802.1x authentication.
 
-{ "name":"test009TtlsNoCert",
+{ "name":"009TtlsNoCert",
   "steps":[
     [ "create",         { "type":"hostap" } ],
     [ "install_files",  { "system" : "router",
@@ -16,10 +16,10 @@
                               "/tmp/hostapd_private_key" :
                                 site_eap_certs.server_private_key_1,
                               "/tmp/hostapd_eap_user_file" :
-                                """* PEAP
+                                """* TTLS
 "testuser-chapv2" MSCHAPV2 "password" [2]
 "testuser-md5" MD5 "password" [2]""" } } ],
-    [ "config",         { "ssid":"test009TtlsNoCert",
+    [ "config",         { "ssid":"009TtlsNoCert",
                           "channel":"2412", "mode":"11g",
                           "wpa":"1", "wpa_key_mgmt":"WPA-EAP",
                           "eap_server" : "1",
@@ -34,15 +34,16 @@
                           "NetworkConfigurations": [
                            {
                              "GUID": "{e9653da3-2d0c-c18f-026450ccab4d5e98}",
-                             "Name": "test009TtlsNoCert",
+                             "Name": "009TtlsNoCert",
                              "Type": "WiFi",
                              "WiFi": {
                                       "AutoConnect": true,
                                       "HiddenSSID": false,
                                       "Security": "WPA-EAP",
-                                      "SSID": "test009TtlsNoCert",
+                                      "SSID": "009TtlsNoCert",
                                       "EAP": {
-                                      "Outer": "TTLS",
+                                      "Outer": "EAP-TTLS",
+                                      "Inner": "Automatic",
                                       "UseSystemCAs": false,
                                       "SaveCredentials": true,
                                       "Identity": "testuser-chapv2",
@@ -58,7 +59,7 @@
                           "Type": "UnencryptedConfiguration"
                           }"""
             } ],
-    [ "connect" ],
+    [ "connect_wifi_onc" ],
     [ "client_ping", { "count":"10"} ],
     [ "client_logout" ],
     [ "destroy" ],

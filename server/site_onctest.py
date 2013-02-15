@@ -7,6 +7,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_wifitest
+from autotest_lib.server import site_host_route
 from autotest_lib.server.cros import stress
 
 class ONCTest(site_wifitest.WiFiTest):
@@ -71,11 +72,41 @@ class ONCTest(site_wifitest.WiFiTest):
             raise error.TestError('TIMEOUT waiting for ONC to be ready')
 
 
-    def connect(self, params):
+    def connect_wifi_onc(self, params):
         """ Connect to the configured AP. """
         # Wait for the ONC configuration to be ready before connecting.
         self._wait_for_client_state('STATE_ONC_SET')
         super(ONCTest, self).connect(params)
+
+
+    def __add_host_route(self, host):
+        """ Adding local and remote ip route. """
+        # What is the local address we use to get to the test host?
+        local_ip = site_host_route.LocalHostRoute(host.ip).route_info["src"]
+
+        # How does the test host currently get to this local address?
+        host_route = site_host_route.RemoteHostRoute(host, local_ip).route_info
+
+        # Flatten the returned dict into a single string
+        route_args = " ".join(" ".join(x) for x in host_route.iteritems())
+
+        self.host_route_args[host.ip] = "%s %s" % (local_ip, route_args)
+        host.run("ip route add %s" % self.host_route_args[host.ip])
+
+
+    def connect_vpn_onc(self, params):
+        """ Connect to the configured VPN. """
+        # Wait for the ONC configuration to be ready before connecting.
+        self._wait_for_client_state('STATE_ONC_SET')
+        self.vpn_client_kill({}) # Must be first.  Relies on self.vpn_kind.
+        # Starting up the VPN client may cause the DUT's routing table (esp.
+        # the default route) to change.  Set up a host route backwards so
+        # we don't lose our control connection in that event.
+        self.__add_host_route(self.client)
+        # Service is connectable after onc import
+        result = self.client.run('%s/test/connect-service '
+                                     ' l2tpipsec-psk ' %
+                                     (self.client_cmd_flimflam_lib))
 
 
     def _client_logout(self):

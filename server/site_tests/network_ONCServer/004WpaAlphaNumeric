@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 { "name":"004WpaAlphaNumeric",
-  "uses_onc": True,
   "steps":[
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "ssid":"004WpaAlphaNumeric",
@@ -34,7 +33,7 @@
                           "Type": "UnencryptedConfiguration"
                           }"""
             } ],
-    [ "connect" ],
+    [ "connect_wifi_onc" ],
     [ "client_ping", { "count":"10"} ],
     [ "client_logout" ],
     [ "destroy" ],
