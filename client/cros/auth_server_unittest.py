@@ -4,7 +4,7 @@
 
 """GoogleAuthServer unittest."""
 
-import logging, os, sys, threading, time, unittest, urllib
+import os, unittest, urllib
 
 import constants as chromeos_constants
 from auth_server import GoogleAuthServer
@@ -12,11 +12,13 @@ from auth_server import GoogleAuthServer
 class test_auth_server(unittest.TestCase):
     def setUp(self):
         print "starting"
-        self._ssl_port=50030
+        self._normal_port = 50020
+        self._ssl_port = 50030
         creds_path = (os.path.dirname(os.path.realpath( __file__)) +
                       '/httpd_unittest_server')
 
-        self._test_server = GoogleAuthServer(port=self._ssl_port,
+        self._test_server = GoogleAuthServer(port=self._normal_port,
+                                             ssl_port=self._ssl_port,
                                              cert_path=(creds_path+'.pem'),
                                              key_path=(creds_path+'.key'))
         self._test_server.run()
@@ -34,7 +36,7 @@ class test_auth_server(unittest.TestCase):
                 'https://localhost:%s%s' %
                 (self._ssl_port, chromeos_constants.CLIENT_LOGIN_URL),
                 args).read()
-        except IOError, e:
+        except IOError:
             pass
         self._test_server.wait_for_client_login()
         return cl_resp
@@ -47,7 +49,7 @@ class test_auth_server(unittest.TestCase):
                                      (self._ssl_port,
                                       chromeos_constants.ISSUE_AUTH_TOKEN_URL),
                                      args).read()
-        except IOError, e:
+        except IOError:
             pass
         self._test_server.wait_for_issue_token()
         return it_resp
@@ -58,11 +60,11 @@ class test_auth_server(unittest.TestCase):
         try:
             ta_format = ('https://localhost:%s%s?auth=%s&' +
                          'continue=https://localhost:%s/webhp')
-            ta_resp = urllib.urlopen(
+            urllib.urlopen(
                 ta_format % (self._ssl_port,
                              chromeos_constants.TOKEN_AUTH_URL,
                              args,
                              self._ssl_port)).read()
-        except IOError, e:
+        except IOError:
             pass
         self._test_server.wait_for_test_over()
