@@ -210,19 +210,10 @@ class CrashServer(DevServer):
         except ImportError:
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
-        # Stage debug symbols.
-        call = self.build_call('stage_debug',
-                               archive_url=_get_image_storage_server() + build)
-        request = requests.get(call)
-        if (request.status_code != requests.codes.ok or
-            request.text != 'Success'):
-            error_fd = cStringIO.StringIO(request.text)
-            raise urllib2.HTTPError(
-                    call, request.status_code, request.text, request.headers,
-                    error_fd)
 
         # Symbolicate minidump.
-        call = self.build_call('symbolicate_dump')
+        call = self.build_call('symbolicate_dump',
+                               archive_url=_get_image_storage_server() + build)
         request = requests.post(
                 call, files={'minidump': open(minidump_path, 'rb')})
         if request.status_code == requests.codes.OK:
@@ -269,6 +260,32 @@ class ImageServer(DevServer):
             self.full_payload = full_payload
             self.mton_payload = mton_payload
             self.nton_payload = nton_payload
+
+
+    @remote_devserver_call
+    def stage_artifacts(self, image, artifacts):
+        """Tell the devserver to download and stage |artifacts| from |image|.
+
+        This is the main call point for staging any specific artifacts for a
+        given build. To see the list of artifacts one can stage see:
+
+        ~src/platfrom/dev/artifact_info.py.
+
+        This is maintained along with the actual devserver code.
+
+        @param image: the image to fetch and stage.
+        @param artifacts: A list of artifacts.
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        call = self.build_call('stage',
+                               archive_url=_get_image_storage_server() + image,
+                               artifacts=','.join(artifacts))
+        response = urllib2.urlopen(call)
+        if not response.read() == 'Success':
+              raise DevServerException("staging artifacts %s for %s failed;"
+                                       "HTTP OK not accompanied by 'Success'." %
+                                       (' '.join(artifacts), image))
 
 
     @remote_devserver_call
@@ -321,32 +338,6 @@ class ImageServer(DevServer):
             raise DevServerException("finish_download for %s failed;"
                                      "HTTP OK not accompanied by 'Success'." %
                                      image)
-
-
-    @remote_devserver_call
-    def trigger_test_image_download(self, image_dir):
-        """Tell the devserver to download and stage a Chrome OS test image.
-
-        Tells the devserver to fetch a test image from |image_dir| on the image
-        storage server named by _get_image_storage_server(). The call is
-        synchronous.
-
-        @param image_dir: the directory from which to fetch the image
-
-        @raise DevServerException upon any return code that's not HTTP OK.
-
-        """
-        call = self.build_call(
-                'stage_images',
-                archive_url=_get_image_storage_server() + image_dir,
-                image_types='test')
-        response = urllib2.urlopen(call)
-        was_successful = response.read() == 'Success'
-        if not was_successful:
-            raise DevServerException(
-                "trigger_download of test image from %s failed; "
-                "HTTP OK not accompanied by 'Success'." %
-                image_dir)
 
 
     def get_delta_payload_url(self, payload_type, board, release, branch):

@@ -552,7 +552,7 @@ class autoupdate_EndToEndTest(test.test):
             image_uri_path = urlparse.urlsplit(image_uri).path.partition(
                     'image.zip')[0].strip('/')
             try:
-                lorry_devserver.trigger_test_image_download(image_uri_path)
+                lorry_devserver.stage_artifacts(image_uri_path, ['test_image'])
                 staged_url = lorry_devserver.get_test_image_url(
                         board, release, branch)
             except dev_server.DevServerException, e:
@@ -584,12 +584,15 @@ class autoupdate_EndToEndTest(test.test):
             payload_uri_path = urlparse.urlsplit(payload_uri).path.rsplit(
                     '/', 1)[0].strip('/')
             try:
-                lorry_devserver.trigger_download(payload_uri_path)
                 if is_delta:
+                    lorry_devserver.stage_artifacts(
+                            payload_uri_path, ['delta_payloads'])
                     staged_url = lorry_devserver.get_delta_payload_url(
                             'nton' if is_nton else 'mton',
                             board, release, branch)
                 else:
+                    lorry_devserver.stage_artifacts(
+                            payload_uri_path, ['full_payload'])
                     staged_url = lorry_devserver.get_full_payload_url(
                             board, release, branch)
             except dev_server.DevServerException, e:

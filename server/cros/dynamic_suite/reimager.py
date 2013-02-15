@@ -692,9 +692,9 @@ class FwReimager(Reimager):
                   build artifacts from.
 
         @return a frontend.Job object for the scheduled reimaging job.
-
         """
-        devserver.finish_download(params['image_name'])
+        # Ensures that the firmware tarball is staged.
+        devserver.stage_artifacts(params['image_name'], ['firmware'])
         params['devserver_url'] = devserver.url()
         params['board'] = self._board_label.split(':')[-1]
         return self._schedule_reimage_job_base(host_group, params)
