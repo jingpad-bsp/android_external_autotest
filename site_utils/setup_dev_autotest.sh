@@ -66,6 +66,7 @@ fi
 SHADOW_CONFIG_PATH="${AUTOTEST_DIR}/shadow_config.ini"
 echo "Autotest supports local overrides of global configuration through a "
 echo "'shadow' configuration file.  Setting one up for you now."
+CLOBBER=0
 if [ -f ${SHADOW_CONFIG_PATH} ]; then
   clobber=
   while read -n 1 -p "Clobber existing shadow config? [Y/n]: " clobber; do
@@ -76,12 +77,16 @@ if [ -f ${SHADOW_CONFIG_PATH} ]; then
     echo "Please enter y or n."
   done
   if [[ "${clobber}" = 'n' || "${clobber}" = 'N' ]]; then
+    CLOBBER=1
     echo "Refusing to clobber existing shadow_config.ini."
+  else
+    echo "Clobbering existing shadow_config.ini."
   fi
-  echo "Clobbering existing shadow_config.ini."
 fi
 
-cat > "${SHADOW_CONFIG_PATH}" <<EOF
+# Create clean shadow config if we're replacing it/creating a new one.
+if [ $CLOBBER -eq 0 ]; then
+  cat > "${SHADOW_CONFIG_PATH}" <<EOF
 [AUTOTEST_WEB]
 host: localhost
 password: ${PASSWD}
@@ -95,7 +100,8 @@ hostname: localhost
 [SCHEDULER]
 drones: localhost
 EOF
-echo -e "Done!\n"
+  echo -e "Done!\n"
+fi
 
 echo "Installing needed Ubuntu packages..."
 PKG_LIST="mysql-server mysql-common libapache2-mod-python python-mysqldb \

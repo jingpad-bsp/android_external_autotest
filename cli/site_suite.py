@@ -58,7 +58,7 @@ class site_suite_create(action_common.atest_create, site_suite):
         self.parser.add_option('-f', '--file_bugs', default=False,
                                help='File bugs on test failures.',
                                action='store_true', metavar='FILE_BUGS')
-        self.parser.add_option('-n', '--num',
+        self.parser.add_option('-n', '--num', type=int,
                                help='Number of machines to schedule across.',
                                metavar='NUM')
         self.parser.add_option('-p', '--pool', help='Pool of machines to use.',

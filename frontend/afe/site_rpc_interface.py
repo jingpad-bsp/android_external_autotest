@@ -97,10 +97,9 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     """
     # All suite names are assumed under test_suites/control.XX.
     suite_name = canonicalize_suite_name(suite_name)
-
     if type(num) is not int and num is not None:
-        raise error.SuiteArgumentException('Ill specified num argument. Must be'
-                                           ' an integer or None.')
+        raise error.SuiteArgumentException('Ill specified num argument %r. '
+                                           'Must be an integer or None.' % num)
     if num == 0:
         logging.warning("Can't run on 0 hosts; using default.")
         num = None
