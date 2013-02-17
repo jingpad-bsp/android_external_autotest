@@ -586,13 +586,13 @@ class autoupdate_EndToEndTest(test.test):
             try:
                 if is_delta:
                     lorry_devserver.stage_artifacts(
-                            payload_uri_path, ['delta_payloads'])
+                            payload_uri_path, ['delta_payloads', 'stateful'])
                     staged_url = lorry_devserver.get_delta_payload_url(
                             'nton' if is_nton else 'mton',
                             board, release, branch)
                 else:
                     lorry_devserver.stage_artifacts(
-                            payload_uri_path, ['full_payload'])
+                            payload_uri_path, ['full_payload', 'stateful'])
                     staged_url = lorry_devserver.get_full_payload_url(
                             board, release, branch)
             except dev_server.DevServerException, e:
