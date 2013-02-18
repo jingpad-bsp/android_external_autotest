@@ -131,7 +131,7 @@ class Servo(object):
             common_options = '-o PasswordAuthentication=no'
             self._sudo_required = False
             self._ssh_prefix = 'ssh %s root@%s ' % (common_options, servo_host)
-            self._scp_cmd_template = 'scp %s ' % common_options
+            self._scp_cmd_template = 'scp -r %s ' % common_options
             self._scp_cmd_template += '%s ' + 'root@' + servo_host + ':%s'
 
     def initialize_dut(self, cold_reset=False):
@@ -625,16 +625,36 @@ class Servo(object):
 
 
     def program_ec(self, board, image):
-        """Program EC on a given board using given image."""
+        """Program EC on a given board using given image.
+
+        @param board: a string, type of the DUT board
+        @param image: a string, file name of the EC image to program on the
+                      DUT
+        """
         if not self.is_localhost():
             image = self._scp_image(image)
         programmer.program_ec(board, self, image)
 
 
     def program_bootprom(self, board, image):
-        """Program bootprom on a given board using given image."""
+        """Program bootprom on a given board using given image.
+
+        In case servo is controlled by a remote host, the image needs to be
+        transferred to the host.
+
+        If the device tree subdirectory is present along with the image, the
+        subdirectory is also copied to the remote host.
+
+        @param board: a string, type of the DUT board
+        @param image: a string, file name of the firmware image to program on
+                      the DUT. The device tree subdirectory, if present, is on
+                      the same level with the image file.
+        """
         if not self.is_localhost():
+            dts_path = os.path.join(os.path.dirname(image), 'dts')
             image = self._scp_image(image)
+            if os.path.isdir(dts_path):
+                self._scp_image(dts_path)
         programmer.program_bootprom(board, self, image)
 
     def switch_usbkey(self, side):
