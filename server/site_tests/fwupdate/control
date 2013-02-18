@@ -5,6 +5,7 @@
 import os
 
 from autotest_lib.server import utils
+from autotest_lib.server.cros import servo
 
 AUTHOR = 'Chrome OS Team'
 NAME = 'fwupdate'
@@ -50,11 +51,10 @@ def clear_version_labels(machine):
     AFE.set_host_attribute('job_repo_url', None, hostname=machine)
 
 def run_fwupdate(machine):
-    host = hosts.create_host(machine, servo_args=servo_args)
     if AFE:
         clear_version_labels(machine)
-    if job.run_test('fwupdate', servo=host.servo,
-                    board=dut_board, fwurl=fwurl) and AFE:
+    if job.run_test('fwupdate', servo=servo.Servo(**servo_args),
+                    board=dut_board, fwurl=fwurl, disable_sysinfo=True) and AFE:
         label = AFE.get_labels(
             name__startswith=constants.FW_VERSION_PREFIX + image_name)[0]
         label.add_hosts([machine])
