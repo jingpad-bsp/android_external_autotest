@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 import logging
 
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import global_config, error
 from autotest_lib.scheduler import drones, scheduler_config
 
 HOSTS_JOB_SUBDIR = 'hosts/'
