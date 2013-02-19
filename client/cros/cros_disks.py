@@ -507,7 +507,8 @@ class FilesystemTestFile(FilesystemTestObject):
         with ExceptionSuppressor(IOError):
             with open(path, 'wb+') as f:
                 f.write(self._content)
-            os.chmod(path, self._mode)
+            with ExceptionSuppressor(OSError):
+                os.chmod(path, self._mode)
             return True
         return False
 
