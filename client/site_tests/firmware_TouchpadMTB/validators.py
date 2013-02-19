@@ -100,6 +100,14 @@ def validate(packets, gesture, variation):
     return (score_list, msg_list, logs)
 
 
+def get_short_name(validator_name):
+    """Get the short name of the validator.
+
+    E.g, the short name of LinearityValidator is Linearity.
+    """
+    return validator_name.split('Validator')[0]
+
+
 class BaseValidator(object):
     """Base class of validators."""
     aggregator = 'fuzzy.average'

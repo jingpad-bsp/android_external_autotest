@@ -55,6 +55,8 @@ import sys
 
 from common_util import Debug
 from firmware_constants import VLOG
+from test_conf import validator_score_weight
+from validators import get_short_name
 
 
 def _setup_debug(debug_flag):
@@ -89,6 +91,7 @@ class FirmwareSummary:
         self._parse_result_summary()
         self._combine_rounds()
         self._combine_gestures()
+        self._combine_validators()
 
     def _load_result_log(self, log_filename):
         """Load the json log file into the log dictionary."""
@@ -236,6 +239,59 @@ class FirmwareSummary:
                 self.validator_summary_ssd[validator][fw] = ssd
                 self.validator_summary_count[validator][fw] = count
 
+    def _combine_validators(self):
+        """Combine the scores of all validators to get the final weighted score.
+
+        validator_score_weight looks like:
+            {'CountTrackingIDValidator': 3,
+             'DrumrollValidator': 1,
+             'LinearityValidator': 2,
+             'NoGapValidator': 2,
+             ...
+            }
+
+        self.validators looks like:
+            ['CountTrackingIDValidator',
+             'DrumrollValidator',
+             'LinearityBothEndsValidator',
+             'LinearityMiddleValidator',
+             'NoGapValidator',
+             ...
+            ]
+
+        Note that both names of the validators
+             'LinearityBothEndsValidator' and
+             'LinearityMiddleValidator'
+        are created at run time based on LinearityValidator and use
+        the same weight of
+             'LinearityValidator': 2
+        """
+        name_weight_tuple = validator_score_weight.items()
+        name_weight_list = list(name_weight_tuple)
+        name_weight_list.sort()
+
+        # Reconstruct validator_score_weight with the validator short name.
+        short_name_weight_dict = dict([(get_short_name(validator_name), weight)
+                for validator_name, weight in name_weight_list])
+
+        validator_name_weight_list = []
+        for validator in self.validators:
+            for name, weight in short_name_weight_dict.items():
+                if validator.startswith(name):
+                    break
+            else:
+                print 'Error: cannot find the weight of %s' % validator
+                sys.exit(-1)
+            validator_name_weight_list.append((validator, weight))
+
+        validators, weights = zip(*validator_name_weight_list)
+
+        self.weighted_average = {}
+        for fw in self.fws:
+            scores = [self.validator_summary_score[validator][fw]
+                      for validator in self.validators]
+            self.weighted_average[fw] = n.average(scores, weights=weights)
+
     def _print_summary_title(self, summary_title_str):
         """Print the summary of the test results by gesture."""
         # Create a flexible column title format according to the number of
@@ -333,10 +389,19 @@ class FirmwareSummary:
                 statistics += [average, ssd, count]
             self._print_statistics(statistics)
 
+    def _print_result_summary_final_weighted_average(self):
+        """Print the final weighted average of all validators."""
+        title_str = 'Test Summary (final weighted average)'
+        print '\n\n' + title_str
+        print '-' * len(title_str)
+        for fw in self.fws:
+            print '%s: %4.3f' % (fw, self.weighted_average[fw])
+
     def print_result_summary(self):
         """Print the summary of the test results."""
         self._print_result_summary_by_gesture()
         self._print_result_summary_by_validator()
+        self._print_result_summary_final_weighted_average()
 
 
 def _usage_and_exit():
@@ -347,7 +412,7 @@ def _usage_and_exit():
 
 
 if __name__ == '__main__':
-    # Parse the command options
+    # Parse the command options.
     debug_flag = False
     argc = len(sys.argv)
     if argc < 2 or argc > 3:

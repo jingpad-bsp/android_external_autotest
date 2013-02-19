@@ -193,6 +193,25 @@ gesture_names_robot_pause = {
 }
 
 
+# Define the validator score weights
+weight_rare = 1
+weight_common = 2
+weight_critical = 3
+validator_score_weight = {'CountPacketsValidator': weight_common,
+                          'CountTrackingIDValidator': weight_critical,
+                          'DrumrollValidator': weight_rare,
+                          'LinearityValidator': weight_common,
+                          'NoGapValidator': weight_common,
+                          'NoLevelJumpValidator': weight_rare,
+                          'NoReversedMotionValidator': weight_common,
+                          'PhysicalClickValidator': weight_critical,
+                          'PinchValidator': weight_rare,
+                          'RangeValidator': weight_common,
+                          'ReportRateValidator': weight_common,
+                          'StationaryFingerValidator': weight_common,
+}
+
+
 # Define the gesture list that the user needs to perform in the test suite.
 def get_gesture_dict():
     gesture_dict = {
