@@ -821,7 +821,7 @@ class WiFiTest(object):
                                                  'constants.py')
         result = self.client.run('python "%s" "%s" "%d"' %
             (script_client_file,
-            params.get('ssid', self.defssid),
+            params.get('ssid', self.wifi.get_ssid()),
             params.get('wait_timeout', self.deftimeout))).stdout.rstrip()
 
         print "%s: %s" % (self.name, result)
