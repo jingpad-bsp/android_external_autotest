@@ -153,7 +153,7 @@ CELLS['mtv'] = {
             "rf_switch_port": 4,
             },
         {
-            "address": "172.22.50.160",
+            "address": "172.22.50.191",
             "ethernet_mac": "c0:c1:c0:4b:d7:4f",
             "name": "alex-y3300",
             "technologies": ICERA_TECHNOLOGIES,
@@ -161,7 +161,7 @@ CELLS['mtv'] = {
             "rf_switch_port": 1,
             },
         {
-            "address": "172.22.50.12",
+            "address": "172.22.50.89",
             "ethernet_mac": "58:6d:8f:50:ae:55",
             "name": "alex-y3400",
             "technologies": ICERA_TECHNOLOGIES,
