@@ -12,7 +12,7 @@ import re
 import sys
 
 from firmware_constants import AXIS, GV, MTB, VAL
-sys.path.append('/usr/local/autotest/bin/input')
+sys.path.append('../../bin/input')
 from linux_input import *
 
 

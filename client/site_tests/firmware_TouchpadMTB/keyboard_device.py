@@ -9,7 +9,7 @@ import os
 import re
 import sys
 
-sys.path.append('/usr/local/autotest/bin/input')
+sys.path.append('../../bin/input')
 import input_device
 
 import mtb

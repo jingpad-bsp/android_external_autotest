@@ -27,7 +27,7 @@ import validators
 
 from firmware_utils import GestureList
 
-sys.path.append('/usr/local/autotest/bin/input')
+sys.path.append('../../bin/input')
 import input_device
 
 # Include some constants
