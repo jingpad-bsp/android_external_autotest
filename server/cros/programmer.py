@@ -113,11 +113,16 @@ class CrosProgrammer(_BaseProgrammer):
         """Prepare programmer for programming.
 
         @param path: a string, name of the file containing the firmware image.
-        @param board: a string, used to find the appropriate device tree.
+        @param board: a string, used to find the appropriate device tree. The
+                      device tree is expected to be in the dts subdirectory
+                      along with the firmware image file.
         """
+        firmware_root = os.path.dirname(path)
+        dts_file = os.path.join(
+            firmware_root, 'dts',
+            'exynos5250-%s.dts' % board)
         self._program_command = 'cros_write_firmware -b daisy -w usb '
-        self._program_command += '-d exynos5250-%s -F spi -i %s -V' % (
-            board, path)
+        self._program_command += '-d %s -F spi -i %s -V -D' % (dts_file, path)
 
 
 class OpenocdEcProgrammer(_BaseProgrammer):
