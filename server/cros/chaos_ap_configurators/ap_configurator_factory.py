@@ -32,6 +32,7 @@ import netgear_WNDR_dual_band_configurator
 import netgear_single_band_configurator
 import trendnet_ap_configurator
 import trendnet691gr_ap_configurator
+import westerndigitaln600_ap_configurator
 
 
 class APConfiguratorFactory(object):
@@ -87,7 +88,9 @@ class APConfiguratorFactory(object):
         'LinksyseSingleBandAPConfigurator':
             linksyse_single_band_configurator.LinksyseSingleBandAPConfigurator,
         'Linksyse2500APConfigurator':
-            linksyse2500_ap_configurator.Linksyse2500APConfigurator
+            linksyse2500_ap_configurator.Linksyse2500APConfigurator,
+        'WesternDigitalN600APConfigurator':
+            westerndigitaln600_ap_configurator.WesternDigitalN600APConfigurator
     }
 
     def __init__(self):
