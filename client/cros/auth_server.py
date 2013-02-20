@@ -365,9 +365,9 @@ function onLoad() {
         self._ensure_params_provided(handler,
                                      url_args,
                                      ['grant_type', 'client_secret'])
-        if constants.OAUTH2_CLIENT_SECRET != _value(url_args['client_secret']):
+        if len(_value(url_args['client_secret'])) == 0:
             raise error.TestError(
-                '%s called with incorrect params.' % handler.path)
+                '%s missing client_secret param.' % handler.path)
         if 'authorization_code' == _value(url_args['grant_type']):
             self._ensure_params_provided(handler, url_args, ['code'])
             if self.__oauth2_auth_code != _value(url_args['code']):
