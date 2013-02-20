@@ -490,7 +490,8 @@ def reimage_and_run(**dargs):
     logging.debug('Determined own job id: %d', my_job_id)
     logging.debug('Determined own tko index: %d', tko_index)
 
-    _perform_reimage_and_run(suite_spec, afe, tko, imager)
+    _perform_reimage_and_run(suite_spec, afe, tko, imager,
+                             suite_job_id=my_job_id)
 
     imager.clear_reimaged_host_state(suite_spec.build)
 
@@ -544,7 +545,7 @@ def _gatherAndParseDependencies(suite_spec):
     return dep_dict
 
 
-def _perform_reimage_and_run(spec, afe, tko, reimager):
+def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
     """
     Do the work of reimaging hosts and running tests.
 
@@ -552,13 +553,15 @@ def _perform_reimage_and_run(spec, afe, tko, reimager):
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param tko: an instance of TKO as defined in server/frontend.py.
     @param reimager: the Reimager to use to reimage DUTs.
+    @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                         Default: None
     """
     # Kicking off the reimage job is now async, so we immeditely continue on.
     tests_to_skip = []
     if not spec.skip_reimage:
         if not reimager.schedule(spec.build, spec.pool, spec.devserver,
                 spec.job.record_entry, spec.check_hosts, tests_to_skip,
-                spec.dependencies, num=spec.num):
+                spec.dependencies, num=spec.num, suite_job_id=suite_job_id):
             # Tryjob will be marked with WARN or ABORT by the reimager if it
             # fails to launch the reimaging.
             return
@@ -586,7 +589,8 @@ def _perform_reimage_and_run(spec, afe, tko, reimager):
         results_dir=spec.job.resultdir,
         max_runtime_mins=spec.max_runtime_mins,
         version_prefix=reimager.version_prefix,
-        file_bugs=spec.file_bugs)
+        file_bugs=spec.file_bugs,
+        suite_job_id=suite_job_id)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)

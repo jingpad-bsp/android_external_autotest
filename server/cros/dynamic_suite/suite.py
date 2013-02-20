@@ -60,7 +60,9 @@ class Suite(object):
 
     @staticmethod
     def parse_tag(tag):
-        """Splits a string on ',' optionally surrounded by whitespace."""
+        """Splits a string on ',' optionally surrounded by whitespace.
+        @param tag: string to split.
+        """
         return map(lambda x: x.strip(), tag.split(','))
 
 
@@ -129,6 +131,7 @@ class Suite(object):
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
+        @param max_runtime_mins: Maximum suite runtime, in minutes.
         @param version_prefix: a string, a prefix to be concatenated with the
                                build name to form a label which the DUT needs
                                to be labeled with to be eligible to run this
@@ -151,7 +154,8 @@ class Suite(object):
                                        pool=None, results_dir=None,
                                        max_runtime_mins=24*60,
                                        version_prefix=constants.VERSION_PREFIX,
-                                       file_bugs=False):
+                                       file_bugs=False,
+                                       suite_job_id=None):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -173,31 +177,35 @@ class Suite(object):
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
+        @param max_runtime_mins: Maximum suite runtime, in minutes.
         @param version_prefix: a string, a prefix to be concatenated with the
                                build name to form a label which the DUT needs
                                to be labeled with to be eligible to run this
                                test.
         @param file_bugs: True if we should file bugs on test failures for
                           this suite run.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                     Default: None
         @return a Suite instance.
         """
         if cf_getter is None:
             cf_getter = Suite.create_ds_getter(build, devserver)
 
         def in_tag_not_in_blacklist_predicate(test):
+            #pylint: disable-msg=C0111
             return (Suite.name_in_tag_predicate(name)(test) and
                     hasattr(test, 'path') and
                     True not in [b.endswith(test.path) for b in blacklist])
 
         return Suite(in_tag_not_in_blacklist_predicate,
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix, file_bugs)
+                     max_runtime_mins, version_prefix, file_bugs, suite_job_id)
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
                  pool=None, results_dir=None, max_runtime_mins=24*60,
                  version_prefix=constants.VERSION_PREFIX,
-                 file_bugs=False):
+                 file_bugs=False, suite_job_id=None):
         """
         Constructor
 
@@ -214,8 +222,11 @@ class Suite(object):
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
+        @param max_runtime_mins: Maximum suite runtime, in minutes.
         @param version_prefix: a string, prefix for the database label
                                associated with the build
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                             Default: None
         """
         self._predicate = predicate
         self._tag = tag
@@ -236,6 +247,7 @@ class Suite(object):
         self._max_runtime_mins = max_runtime_mins
         self._version_prefix = version_prefix
         self._file_bugs = file_bugs
+        self._suite_job_id = suite_job_id
 
 
     @property
@@ -285,7 +297,8 @@ class Suite(object):
             dependencies=job_deps,
             keyvals={constants.JOB_BUILD_KEY: self._build,
                      constants.JOB_SUITE_KEY: self._tag},
-            max_runtime_mins=self._max_runtime_mins)
+            max_runtime_mins=self._max_runtime_mins,
+            parent_job_id=self._suite_job_id)
 
         setattr(test_obj, 'test_name', test.name)
 
@@ -318,6 +331,7 @@ class Suite(object):
 
 
     def schedule(self, record, add_experimental=True):
+        #pylint: disable-msg=C0111
         """
         Schedule jobs using |self._afe|.
 

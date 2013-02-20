@@ -1,3 +1,4 @@
+#pylint: disable-msg=C0111
 """\
 Utility functions for rpc_interface.py.  We keep them in a separate file so that
 only RPC interface functions go into that file.
@@ -5,7 +6,7 @@ only RPC interface functions go into that file.
 
 __author__ = 'showard@google.com (Steve Howard)'
 
-import datetime, os, sys, inspect
+import datetime, os, inspect
 import django.http
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 
@@ -15,6 +16,7 @@ NULL_DATE = datetime.date.max
 def prepare_for_serialization(objects):
     """
     Prepare Python objects to be returned via RPC.
+    @param objects: objects to be prepared.
     """
     if (isinstance(objects, list) and len(objects) and
         isinstance(objects[0], dict) and 'id' in objects[0]):
@@ -642,7 +644,9 @@ def create_job_common(name, priority, control_type, control_file=None,
                       run_verify=True, email_list='', dependencies=(),
                       reboot_before=None, reboot_after=None,
                       parse_failed_repair=None, hostless=False, keyvals=None,
-                      drone_set=None, parameterized_job=None):
+                      drone_set=None, parameterized_job=None,
+                      parent_job_id=None):
+    #pylint: disable-msg=C0111
     """
     Common code between creating "standard" jobs and creating parameterized jobs
     """
@@ -745,7 +749,8 @@ def create_job_common(name, priority, control_type, control_file=None,
                    parse_failed_repair=parse_failed_repair,
                    keyvals=keyvals,
                    drone_set=drone_set,
-                   parameterized_job=parameterized_job)
+                   parameterized_job=parameterized_job,
+                   parent_job_id=parent_job_id)
     return create_new_job(owner=owner,
                           options=options,
                           host_objects=host_objects,

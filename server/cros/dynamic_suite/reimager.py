@@ -34,6 +34,7 @@ def reimage_type(name):
     @return The true decorator that accepts the class to register as |name|.
     """
     def curry(klass):
+        #pylint: disable-msg=C0111
         _reimage_types[name] = klass
         return klass
     return curry
@@ -156,7 +157,8 @@ class Reimager(object):
 
 
     def schedule(self, build, pool, devserver, record, check_hosts,
-                 tests_to_skip, dependencies={'':[]}, num=None):
+                 tests_to_skip, dependencies={'':[]}, num=None,
+                 suite_job_id=None):
         """
         Asynchronously attempt to reimage some machines.
 
@@ -200,6 +202,8 @@ class Reimager(object):
                              with builds that have no dependency information.
 
         @param num: the maximum number of devices to reimage.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                     Default: None
         @return True if we succeed to kick off reimage jos, false if we can't.
         """
 
@@ -230,7 +234,8 @@ class Reimager(object):
 
             # Schedule job and record job metadata.
             self._canary_job = self._schedule_reimage_job(
-                {'image_name':build}, self._to_reimage, devserver)
+                {'image_name':build}, self._to_reimage, devserver,
+                suite_job_id=suite_job_id)
 
             self._record_job_if_possible(Reimager.JOB_NAME, self._canary_job)
             logging.info('Created re-imaging job: %d', self._canary_job.id)
@@ -258,6 +263,7 @@ class Reimager(object):
                 tests_to_skip,
                 dependencies={'':[]},
                 timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
+        #pylint: disable-msg=C0111
         """
         Synchronously attempt to reimage some machines.
 
@@ -556,7 +562,8 @@ class Reimager(object):
                 raise ve
 
 
-    def _schedule_reimage_job_base(self, host_group, params):
+    def _schedule_reimage_job_base(self, host_group, params,
+                                   suite_job_id=None):
         """
         Schedules the reimaging of hosts in a host group.
 
@@ -570,6 +577,8 @@ class Reimager(object):
                 injected as assignments into the scheduling autotest control
                 file. The dictionary contains reimaging type specific
                 information.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                             Default: None
         @return a frontend.Job object for the reimaging job we scheduled.
         """
         params['image_url'] = self._url_pattern % (
@@ -584,10 +593,12 @@ class Reimager(object):
                                      name=params['image_name'] + '-try',
                                      control_type='Server',
                                      priority='Low',
+                                     parent_job_id=suite_job_id,
                                      **host_group.as_args())
 
 
-    def _schedule_reimage_job(self, params, host_group, devserver):
+    def _schedule_reimage_job(self, params, host_group, devserver,
+                              suite_job_id=None):
         """
         This is meant to be overridden by a subclass to do whatever special
         setup work is required before calling into _schedule_reimage_job_base.
@@ -600,6 +611,8 @@ class Reimager(object):
         @param host_group: the HostGroup to be used for this reimaging job.
         @param devserver: an instance of devserver that DUTs should use to get
                   build artifacts from.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+           Default: None
 
         @return a frontend.Job object for the scheduled reimaging job.
         """
@@ -627,7 +640,8 @@ class OsReimager(Reimager):
         self._control_file = 'autoupdate'
         self._url_pattern = tools.image_url_pattern()
 
-    def _schedule_reimage_job(self, params, host_group, devserver):
+    def _schedule_reimage_job(self, params, host_group, devserver,
+                              suite_job_id=None):
         """Schedules the reimaging of a group of hosts with a Chrome OS image.
 
         Adds a parameter to the params dictionary and invokes the base class
@@ -642,12 +656,15 @@ class OsReimager(Reimager):
         @param host_group: the HostGroup to be used for this reimaging job.
         @param devserver: an instance of devserver that DUTs should use to get
                   build artifacts from.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                             Default: None
 
         @return a frontend.Job object for the scheduled reimaging job.
 
         """
         params['devserver_url'] = devserver.url()
-        return self._schedule_reimage_job_base(host_group, params)
+        return self._schedule_reimage_job_base(host_group, params,
+                                               suite_job_id=suite_job_id)
 
 
 @reimage_type(constants.REIMAGE_TYPE_FIRMWARE)
@@ -673,7 +690,8 @@ class FwReimager(Reimager):
         self._url_pattern = tools.firmware_url_pattern()
 
 
-    def _schedule_reimage_job(self, params, host_group, devserver):
+    def _schedule_reimage_job(self, params, host_group, devserver,
+                              suite_job_id=None):
         """Schedules the reimaging of a group of hosts with a Chrome OS image.
 
         Makes sure that the artifacts download has been completed (firmware
@@ -690,11 +708,13 @@ class FwReimager(Reimager):
         @param host_group: the HostGroup to be used for this reimaging job.
         @param devserver: an instance of devserver that DUTs should use to get
                   build artifacts from.
-
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                             Default: None
         @return a frontend.Job object for the scheduled reimaging job.
         """
         # Ensures that the firmware tarball is staged.
         devserver.stage_artifacts(params['image_name'], ['firmware'])
         params['devserver_url'] = devserver.url()
         params['board'] = self._board_label.split(':')[-1]
-        return self._schedule_reimage_job_base(host_group, params)
+        return self._schedule_reimage_job_base(host_group, params,
+                                               suite_job_id=suite_job_id)

@@ -1149,7 +1149,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             parse_failed_repair=options.get('parse_failed_repair'),
             created_on=datetime.now(),
             drone_set=drone_set,
-            parameterized_job=parameterized_job)
+            parameterized_job=parameterized_job,
+            parent_job=options.get('parent_job_id'))
 
         job.dependency_labels = options['dependencies']
 
