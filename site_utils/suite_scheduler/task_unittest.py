@@ -28,6 +28,7 @@ class TaskTestBase(mox.MoxTestBase):
     _BOARD = 'board1'
     _BRANCH = '20'
     _BRANCH_SPEC = '>=R' + _BRANCH
+    _BRANCH_SPEC_EQUAL = '==R' + _BRANCH
     _MAP = {_BRANCH: [_BUILD]}
     _NUM = 2
     _POOL = 'fake_pool'
@@ -70,6 +71,25 @@ class TaskCreateTest(TaskTestBase):
                                               self._NUM))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
         self.assertFalse(new_task._FitsSpec('12'))
+
+
+    def testCreateFromConfigEqualBranch(self):
+        """Ensure a Task can be built from a correct config with support of
+        branch_specs: ==RXX."""
+        # Modify the branch_specs setting in self.config.
+        self.config.set(self._TASK_NAME, 'branch_specs',
+                        self._BRANCH_SPEC_EQUAL)
+        keyword, new_task = task.Task.CreateFromConfigSection(self.config,
+                                                              self._TASK_NAME)
+        self.assertEquals(keyword, self._EVENT_KEY)
+        self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
+                                              [self._BRANCH_SPEC_EQUAL],
+                                              self._POOL, self._NUM))
+        self.assertTrue(new_task._FitsSpec(self._BRANCH))
+        self.assertFalse(new_task._FitsSpec('12'))
+        self.assertFalse(new_task._FitsSpec('21'))
+        # Reset the branch_specs setting in self.config to >=R.
+        self.config.set(self._TASK_NAME, 'branch_specs', self._BRANCH_SPEC)
 
 
     def testCreateFromConfigNoBranch(self):

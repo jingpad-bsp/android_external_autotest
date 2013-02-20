@@ -18,6 +18,12 @@ BARE_BRANCHES = ['factory', 'firmware']
 
 
 def PickBranchName(type, milestone):
+    """Pick branch name. If type is among BARE_BRANCHES, return type,
+    otherwise, return milestone.
+
+    @param type: type of the branch, e.g., 'release', 'factory', or 'firmware'
+    @param milestone: CrOS milestone number
+    """
     if type in BARE_BRANCHES:
         return type
     return milestone
@@ -43,7 +49,7 @@ class Task(object):
         [TaskName]
         suite: suite_to_run  # Required
         run_on: event_on which to run  # Required
-        branch_specs: factory,firmware,>=R12  # Optional
+        branch_specs: factory,firmware,>=R12 or ==R12 # Optional
         pool: pool_of_devices  # Optional
         num: sharding_factor  # int, Optional
 
@@ -92,7 +98,7 @@ class Task(object):
         """Make sure entries in the list branch_specs are correctly formed.
 
         We accept any of BARE_BRANCHES in |branch_specs|, as
-        well as _one_ string of the form '>=RXX', where 'RXX' is a
+        well as _one_ string of the form '>=RXX' or '==RXX', where 'RXX' is a
         CrOS milestone number.
 
         @param branch_specs: an iterable of branch specifiers.
@@ -102,7 +108,8 @@ class Task(object):
         for branch in branch_specs:
             if branch in BARE_BRANCHES:
                 continue
-            if branch.startswith('>=R') and not have_seen_numeric_constraint:
+            if ((branch.startswith('>=R') or branch.startswith('==R')) and
+                not have_seen_numeric_constraint):
                 have_seen_numeric_constraint = True
                 continue
             raise MalformedConfigEntry("%s isn't a valid branch spec." % branch)
@@ -116,7 +123,8 @@ class Task(object):
         given branch 'fits' with the specifications passed in here.
         For example, given branch_specs = ['factory', '>=R18'], we'd set things
         up so that _FitsSpec() would return True for 'factory', or 'RXX'
-        where XX is a number >= 18.
+        where XX is a number >= 18. Same check is done for branch_specs = [
+        'factory', '==R18'], which limit the test to only one specific branch.
 
         Given branch_specs = ['factory', 'firmware'], _FitsSpec()
         would pass only those two specific strings.
@@ -128,6 +136,11 @@ class Task(object):
           t._FitsSpec('R17')  # False
           t._FitsSpec('firmware')  # False
           t._FitsSpec('goober')  # False
+
+          t = Task('Name', 'suite', ['factory', '==R18'])
+          t._FitsSpec('R19')  # False, branch does not equal to 18
+          t._FitsSpec('R18')  # True
+          t._FitsSpec('R17')  # False
 
         @param name: name of this task, e.g. 'NightlyPower'
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -146,6 +159,7 @@ class Task(object):
         self._num = num
 
         self._bare_branches = []
+        self._version_equal_constraint = False
         if not branch_specs:
             # Any milestone is OK.
             self._numeric_constraint = version.LooseVersion('0')
@@ -155,6 +169,10 @@ class Task(object):
                 if spec.startswith('>='):
                     self._numeric_constraint = version.LooseVersion(
                         spec.lstrip('>=R'))
+                elif spec.startswith('=='):
+                    self._version_equal_constraint = True
+                    self._numeric_constraint = version.LooseVersion(
+                        spec.lstrip('==R'))
                 else:
                     self._bare_branches.append(spec)
         # Since we expect __hash__() and other comparitor methods to be used
@@ -172,40 +190,52 @@ class Task(object):
         """Checks if a branch is deemed OK by this instance's branch specs.
 
         When called on a branch name, will return whether that branch
-        'fits' the specifications stored in self._bare_branches and
-        self._numeric_constraint.
+        'fits' the specifications stored in self._bare_branches,
+        self._numeric_constraint and self._version_equal_constraint.
 
         @param branch: the branch to check.
         @return True if b 'fits' with stored specs, False otherwise.
         """
         if branch in BARE_BRANCHES:
             return branch in self._bare_branches
-        return (self._numeric_constraint and
-                version.LooseVersion(branch) >= self._numeric_constraint)
+        if self._numeric_constraint:
+            if self._version_equal_constraint:
+                return version.LooseVersion(branch) == self._numeric_constraint
+            else:
+                return version.LooseVersion(branch) >= self._numeric_constraint
+        else:
+            return False
 
 
     @property
     def name(self):
+        """Name of this task, e.g. 'NightlyPower'."""
         return self._name
 
 
     @property
     def suite(self):
+        """Name of the suite to run, e.g. 'bvt'."""
         return self._suite
 
 
     @property
     def branch_specs(self):
+        """a pre-vetted iterable of branch specifiers,
+        e.g. ['>=R18', 'factory']."""
         return self._branch_specs
 
 
     @property
     def pool(self):
+        """The pool of machines to use for scheduling purposes."""
         return self._pool
 
 
     @property
     def num(self):
+        """The number of devices across which to shard the test suite.
+        Type: integer or None"""
         return self._num
 
 
