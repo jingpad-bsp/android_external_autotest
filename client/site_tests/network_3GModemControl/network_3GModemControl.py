@@ -209,7 +209,8 @@ class network_3GModemControl(test.test):
             error.TestFail('Device failed to enter state Powered=False.'))
         utils.poll_for_condition(
             lambda: not self.flim.FindCellularService(timeout=1),
-            error.TestFail('Service should not be available.'))
+            error.TestFail('Service should not be available.'),
+            timeout=SERVICE_TIMEOUT)
 
     def EnsureEnabled(self, check_idle):
         """
