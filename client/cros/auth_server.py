@@ -4,7 +4,7 @@
 
 import httplib, json, logging, os, socket, stat, time, urllib
 
-import common, constants, cryptohome, httpd
+import common, cgi, constants, cryptohome, httpd
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -26,6 +26,7 @@ class GoogleAuthServer(object):
     sid = '1234'
     lsid = '5678'
     token = 'aaaa'
+    uber_token = 'bbbb'
 
     __service_login_html = """
 <HTML>
@@ -70,6 +71,9 @@ function onLoad() {
     __issue_auth_token_miss_count = 0
     __token_auth_miss_count = 0
 
+    __oauth_login_uber_token_type = 'uber_token'
+    __oauth_login_gaia_type = 'gaia_credentials'
+
 
     def __init__(self,
                  cert_path='/etc/fake_root_ca/mock_server.pem',
@@ -87,8 +91,10 @@ function onLoad() {
         self._oauth1_get_access_token = constants.OAUTH1_GET_ACCESS_TOKEN_URL
         self._oauth1_get_access_token_new = \
             constants.OAUTH1_GET_ACCESS_TOKEN_NEW_URL
-        self._oauth1_login = constants.OAUTH1_LOGIN_URL
-        self._oauth1_login_new = constants.OAUTH1_LOGIN_NEW_URL
+        self._oauth_login = constants.OAUTH_LOGIN_URL
+        self._oauth_login_new = constants.OAUTH_LOGIN_NEW_URL
+
+        self._merge_session = constants.MERGE_SESSION_URL
 
         self._oauth2_wrap_bridge = constants.OAUTH2_WRAP_BRIDGE_URL
         self._oauth2_wrap_bridge_new = constants.OAUTH2_WRAP_BRIDGE_NEW_URL
@@ -134,10 +140,12 @@ function onLoad() {
         self._testServer.add_url_handler(
             self._oauth1_get_access_token_new,
             self._oauth1_get_access_token_responder)
-        self._testServer.add_url_handler(self._oauth1_login,
-                                         self._oauth1_login_responder)
-        self._testServer.add_url_handler(self._oauth1_login_new,
-                                         self._oauth1_login_responder)
+        self._testServer.add_url_handler(self._oauth_login,
+                                         self._oauth_login_responder)
+        self._testServer.add_url_handler(self._oauth_login_new,
+                                         self._oauth_login_responder)
+        self._testServer.add_url_handler(self._merge_session,
+                                         self._merge_session_responder)
 
         self._testServer.add_url_handler(self._oauth2_wrap_bridge,
                                          self._oauth2_wrap_bridge_responder)
@@ -234,6 +242,25 @@ function onLoad() {
       return True
 
 
+    def _ensure_params_set_provided(self, handler, url_args, params_collection):
+        """Verifies alternative sets of URL parameters. Returns name of
+        the first collection from params_collection that is satisfied by
+        url_args. In case when no collection is fully covered by url_args, it
+        will return an empty string.
+        """
+        result = ""
+        for params_set in params_collection:
+            result = params_set['name']
+            for param in params_set['params']:
+                if param not in url_args:
+                    result = ""
+                    break
+
+            if len(result) != 0:
+              break
+
+        return result
+
     def _ensure_params_provided(self, handler, url_args, params):
       for param in params:
             if not param in url_args:
@@ -293,6 +320,45 @@ function onLoad() {
         handler.end_headers()
 
 
+    def _ensure_oauth_login_params_valid(self,
+                                         handler,
+                                         url_args):
+        """Checks URL parameters and header values for /OAuthLogin call.
+        """
+        # There are two different OAuthLogin calls - we could be either
+        # fetching GAIA uber token or SID/LSID. The former case is
+        # identified with url argument issueuberauth=1.
+        params_set_name = self._ensure_params_set_provided(
+            handler,
+            url_args,
+            [{'name': self.__oauth_login_uber_token_type,
+              'params': ['source',
+                         'issueuberauth']},
+             {'name': self.__oauth_login_gaia_type,
+              'params': ['source']}])
+
+        if len(params_set_name) == 0:
+            raise error.TestError(
+                '%s called with incorrect arguments - %s' %
+                (handler.path, url_args))
+
+        if params_set_name == self.__oauth_login_uber_token_type:
+            if '1' != _value(url_args['issueuberauth']):
+                raise error.TestError(
+                    '%s called with incorrect issueuberauth value.' %
+                    handler.path)
+
+        oauth_headers = ('Bearer %s' % self.__oauth2_access_token,
+                         'OAuth %s' % self.__oauth2_access_token)
+        # Check OAuth2 access token value.
+        if handler.headers['Authorization'] not in oauth_headers:
+            raise error.TestError(
+                '%s request has wrong "Authorization" header value of %r' %
+                (handler.path, handler.headers['Authorization']))
+
+        return params_set_name
+
+
     def _ensure_oauth1_params_valid(self, handler, url_args, expected_token):
         self._ensure_params_provided(handler,
                                      url_args,
@@ -321,17 +387,50 @@ function onLoad() {
             'oauth_token_secret': self.__oauth1_access_token_secret}))
 
 
-    def _oauth1_login_responder(self, handler, url_args):
+    def _oauth_login_responder(self, handler, url_args):
+        """Responder for /OAuthLogin call.
+
+        This call can either return SID+LSID values used for other GAIA API
+        calls or mint GAIA uber token.
+        """
         self._log(handler, url_args)
-        self._ensure_oauth1_params_valid(handler,
-                                         url_args,
-                                         self.__oauth1_access_token)
+        request_type = self._ensure_oauth_login_params_valid(handler,
+                                                             url_args)
         handler.send_response(httplib.OK)
         handler.end_headers()
-        handler.wfile.write('SID=%s\n' % self.sid)
-        handler.wfile.write('LSID=%s\n' % self.lsid)
-        handler.wfile.write('Auth=%s\n' % self.token)
+        if request_type == self.__oauth_login_uber_token_type:
+          handler.wfile.write('%s' % self.uber_token)
+        else:
+          handler.wfile.write('SID=%s\n' % self.sid)
+          handler.wfile.write('LSID=%s\n' % self.lsid)
+          handler.wfile.write('Auth=%s\n' % self.token)
 
+
+    def _merge_session_responder(self, handler, url_args):
+        """Responder for /MergeSession call.
+
+        This call is suppose to populate cookie jar with SID+LSID cookies
+        minted out of GAIA uber token.
+        """
+        self._log(handler, url_args)
+        self._ensure_params_provided(handler,
+                                     url_args,
+                                     ['uberauth',
+                                      'continue',
+                                      'source'])
+        if self.uber_token != _value(url_args['uberauth']):
+            raise error.TestError(
+                '%s has invalid uberauth value of "%s"' %
+                (handler.path, _value(url_args['uberauth'])))
+
+        handler.send_response(httplib.OK)
+        handler.send_header('Set-Cookie',
+                            'SID=%s; Path=/; Secure; HttpOnly' %
+                            self.sid)
+        handler.send_header('Set-Cookie',
+                            'LSID=%s; Path=/; Secure; HttpOnly' %
+                            self.lsid)
+        handler.end_headers()
 
     def _oauth2_wrap_bridge_responder(self, handler, url_args):
         self._log(handler, url_args)
