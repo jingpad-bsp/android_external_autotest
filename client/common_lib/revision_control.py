@@ -47,7 +47,7 @@ class GitRepo(object):
     implementation classes.
     """
 
-    def __init__(self, repodir, giturl, weburl=None, abs_work_tree=None):
+    def __init__(self, repodir, giturl=None, weburl=None, abs_work_tree=None):
         """
         Initialized reposotory.
 
@@ -69,9 +69,7 @@ class GitRepo(object):
             raise ValueError('You must provide a path that will hold the'
                              'git repository')
         self.repodir = utils.sh_escape(repodir)
-        if giturl is None:
-            raise ValueError('You must provide a git URL repository')
-        self.giturl = giturl
+        self._giturl = giturl
         if weburl is not None:
             warnings.warn("Param weburl: You are no longer required to provide "
                           "a web URL for your git repos", DeprecationWarning)
@@ -81,11 +79,22 @@ class GitRepo(object):
 
         # Find git base command. If not found, this will throw an exception
         self.git_base_cmd = os_dep.command('git')
-        self.git_dir = giturl
         self.work_tree = abs_work_tree
 
         # default to same remote path as local
         self._build = os.path.dirname(self.repodir)
+
+
+    @property
+    def giturl(self):
+        """
+        A giturl is necessary to perform certain actions (clone, pull, fetch)
+        but not others (like diff).
+        """
+        if self._giturl is None:
+            raise ValueError('Unsupported operation -- this object was not'
+                             'constructed with a git URL.')
+        return self._giturl
 
 
     def gen_git_cmd_base(self):
@@ -237,7 +246,7 @@ class GitRepo(object):
         'giturl' in 'repodir' directory to be used by build/install
         methods.
 
-        @param **kwargs: Dictionary of parameters to the method get.
+        @param kwargs: Dictionary of parameters to the method get.
         """
         if not self.is_repo_initialized():
             # this is your first time ...

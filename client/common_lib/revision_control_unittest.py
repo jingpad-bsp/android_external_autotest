@@ -1,9 +1,9 @@
 #! /usr/bin/python
-import logging, os, shutil, tempfile, unittest, utils
+import logging, mox, os, shutil, tempfile, utils
 from autotest_lib.client.common_lib import revision_control
 
 
-class git_repo(object):
+class GitRepoManager(object):
     """
     A wrapper for GitRepo.
     """
@@ -58,7 +58,7 @@ class git_repo(object):
 
         @param repodir: directory for repo.
         """
-        logging.info('initializeing git repo in: %s', repodir)
+        logging.info('initializing git repo in: %s', repodir)
         gitcmd = 'git init %s' % repodir
         rv = utils.run(gitcmd)
         if rv.exit_status != 0:
@@ -96,7 +96,7 @@ class git_repo(object):
         self.commit_hash = self.git_repo_manager.get_latest_commit_hash()
 
 
-class revision_control_unittest(unittest.TestCase):
+class RevisionControlUnittest(mox.MoxTestBase):
     """
     A unittest to exercise build_externals.py's usage
     of revision_control.py's Git wrappers.
@@ -108,8 +108,9 @@ class revision_control_unittest(unittest.TestCase):
         """
         Create a master repo and clone it into a dependent repo.
         """
-        self.master_repo = git_repo()
-        self.dependent_repo = git_repo(self.master_repo)
+        super(RevisionControlUnittest, self).setUp()
+        self.master_repo = GitRepoManager()
+        self.dependent_repo = GitRepoManager(self.master_repo)
 
 
     def tearDown(self):
@@ -118,9 +119,10 @@ class revision_control_unittest(unittest.TestCase):
         """
         shutil.rmtree(self.master_repo.repodir)
         shutil.rmtree(self.dependent_repo.repodir)
+        super(RevisionControlUnittest, self).tearDown()
 
 
-    def test_commit(self):
+    def testCommit(self):
         """
         Test add, commit, pull, clone.
         """
@@ -144,3 +146,48 @@ class revision_control_unittest(unittest.TestCase):
                   "out of sync: %r != %r") %
                   (self.dependent_repo.commit_hash,
                    self.master_repo.commit_hash)))
+
+
+    def testGitUrlClone(self):
+        """
+        Test that git clone raises a ValueError if giturl is unset.
+        """
+        self.dependent_repo.git_repo_manager._giturl = None
+        self.mox.StubOutWithMock(revision_control.GitRepo,
+            'is_repo_initialized')
+        self.dependent_repo.git_repo_manager.is_repo_initialized().AndReturn(
+            False)
+        self.mox.ReplayAll()
+
+        self.assertRaises(ValueError,
+                  self.dependent_repo.git_repo_manager.pull_or_clone)
+
+
+    def testGitUrlPull(self):
+        """
+        Test that git pull raises a ValueError if giturl is unset.
+        """
+        self.dependent_repo.git_repo_manager._giturl = None
+        self.mox.StubOutWithMock(revision_control.GitRepo,
+            'is_repo_initialized')
+        self.dependent_repo.git_repo_manager.is_repo_initialized().AndReturn(
+            True)
+        self.mox.ReplayAll()
+
+        self.assertRaises(ValueError,
+                  self.dependent_repo.git_repo_manager.pull_or_clone)
+
+
+    def testGitUrlFetch(self):
+        """
+        Test that git fetch raises a ValueError if giturl is unset.
+        """
+        self.dependent_repo.git_repo_manager._giturl = None
+        self.mox.StubOutWithMock(revision_control.GitRepo,
+            'is_repo_initialized')
+        self.dependent_repo.git_repo_manager.is_repo_initialized().AndReturn(
+            True)
+        self.mox.ReplayAll()
+
+        self.assertRaises(ValueError,
+                  self.dependent_repo.git_repo_manager.pull_or_clone)

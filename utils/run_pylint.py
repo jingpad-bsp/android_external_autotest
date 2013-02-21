@@ -10,8 +10,10 @@ Example:
 run_pylint.py filename.py
 """
 
-import os, re, sys, fnmatch
+import fnmatch, os, re, sys
 
+import common
+from autotest_lib.client.common_lib import autotemp, revision_control
 
 # Do a basic check to see if pylint is even installed.
 try:
@@ -58,6 +60,18 @@ sys.path.insert(0, autotest_root)
 # patch up pylint import checker to handle our importing magic
 ROOT_MODULE = 'autotest_lib.'
 COMMON_MODULE = 'common'
+
+
+class pylint_error(Exception):
+    """
+    Error raised when pylint complains about a file.
+    """
+
+
+class run_pylint_error(pylint_error):
+    """
+    Error raised when an assumption made in this file is violated.
+    """
 
 
 def patch_modname(modname):
@@ -139,9 +153,26 @@ class CustomDocStringChecker(base.DocStringChecker):
         pass
 
 
+    def visit_function(self, node):
+        """
+        Don't request docstrings for commonly overridden autotest functions.
+
+        @param node: node of the ast we're currently checking.
+        """
+        if (node.name in ('run_once', 'initialize', 'cleanup') and
+            any(ancestor.name == 'base_test' for ancestor in
+                node.parent.frame().ancestors())):
+            return
+
+        super(CustomDocStringChecker, self).visit_function(node)
+
+
     @staticmethod
     def _should_skip_arg(arg):
-        """Returns true if the arg should be skipped."""
+        """
+        @return: True if the argument given by arg is whitelisted, and does
+                 not require a "@param" docstring.
+        """
         return arg in ('self', 'cls', 'args', 'kwargs', 'dargs')
 
 
@@ -174,6 +205,36 @@ imports.ImportsChecker = CustomImportsChecker
 variables.VariablesChecker = CustomVariablesChecker
 
 
+def batch_check_files(file_paths, base_opts):
+    """
+    Run pylint on a list of files so we get consolidated errors.
+
+    @param file_paths: a list of file paths.
+    @param base_opts: a list of pylint config options.
+
+    @raises: pylint_error if pylint finds problems with a file
+             in this commit.
+    """
+    pylint_runner = pylint.lint.Run(list(base_opts) + list(file_paths),
+                                    exit=False)
+    if pylint_runner.linter.msg_status:
+        raise pylint_error(pylint_runner.linter.msg_status)
+
+
+def should_check_file(file_path):
+    """
+    Don't check blacklisted or non .py files.
+
+    @param file_path: abs path of file to check.
+    @return: True if this file is a non-blacklisted python file.
+    """
+    file_path = os.path.abspath(file_path)
+    if file_path.endswith('.py'):
+        return all(not fnmatch.fnmatch(file_path, '*' + pattern)
+                   for pattern in BLACKLIST)
+    return False
+
+
 def check_file(file_path, base_opts):
     """
     Invokes pylint on files after confirming that they're not black listed.
@@ -181,15 +242,14 @@ def check_file(file_path, base_opts):
     @param base_opts: pylint base options.
     @param file_path: path to the file we need to run pylint on.
     """
-    if not file_path.endswith('.py'):
-        return
-    for blacklist_pattern in BLACKLIST:
-        if fnmatch.fnmatch(os.path.abspath(file_path),
-                           '*' + blacklist_pattern):
-            return
-    pylint_runner = pylint.lint.Run(base_opts + [file_path], exit=False)
-    if pylint_runner.linter.msg_status:
-        sys.exit(pylint_runner.linter.msg_status)
+    if not isinstance(file_path, basestring):
+        raise TypeError('expected a string as filepath, got %s'%
+            type(file_path))
+
+    if should_check_file(file_path):
+        pylint_runner = pylint.lint.Run(base_opts + [file_path], exit=False)
+        if pylint_runner.linter.msg_status:
+            pylint_error(pylint_runner.linter.msg_status)
 
 
 def visit(arg, dirname, filenames):
@@ -246,12 +306,72 @@ def get_cmdline_options(args_list, pylint_base_opts, rcfile):
         if args.startswith('--'):
             opt_name = args[2:].split('=')[0]
             if opt_name in rcfile and pylint_version >= 0.21:
-                print ('The rcfile already contains %s.'
-                       ' Please edit pylintrc instead.' % opt_name)
-                sys.exit(1)
+                raise run_pylint_error('The rcfile already contains the %s '
+                                        'option. Please edit pylintrc instead.'
+                                        % opt_name)
             else:
                 extend_baseopts(pylint_base_opts, args)
                 args_list.remove(args)
+
+
+def git_show_to_temp_file(commit, original_file, new_temp_file):
+    """
+    'Git shows' the file in original_file to a tmp file with
+    the name new_temp_file. We need to preserve the filename
+    as it gets reflected in pylints error report.
+
+    @param commit: commit hash of the commit we're running repo upload on.
+    @param original_file: the path to the original file we'd like to run
+                          'git show' on.
+    @param new_temp_file: new_temp_file is the path to a temp file we write the
+                          output of 'git show' into.
+    """
+    git_repo = revision_control.GitRepo(common.autotest_dir, None, None,
+        common.autotest_dir)
+
+    with open(new_temp_file, 'w') as f:
+        output = git_repo.gitcmd('show --no-ext-diff %s:%s'
+                                 % (commit, original_file),
+                                 ignore_status=False).stdout
+        f.write(output)
+
+
+def check_committed_files(work_tree_files, commit, pylint_base_opts):
+    """
+    Get a list of files corresponding to the commit hash.
+
+    The contents of a file in the git work tree can differ from the contents
+    of a file in the commit we mean to upload. To work around this we run
+    pylint on a temp file into which we've 'git show'n the committed version
+    of each file.
+
+    @param work_tree_files: list of files in this commit specified by their
+                            absolute path.
+    @param commit: hash of the commit this upload applies to.
+    @param pylint_base_opts: a list of pylint config options.
+    """
+    files_to_check = filter(should_check_file, work_tree_files)
+
+    # Map the absolute path of each file so it's relative to the autotest repo.
+    # All files that are a part of this commit should have an abs path within
+    # the autotest repo, so this regex should never fail.
+    work_tree_files = [re.search(r'%s/(.*)' % common.autotest_dir, f).group(1)
+                       for f in files_to_check]
+
+    tempdir = None
+    try:
+        tempdir = autotemp.tempdir()
+        temp_files = [os.path.join(tempdir.name, file_path.split('/')[-1:][0])
+                      for file_path in work_tree_files]
+
+        for file_tuple in zip(work_tree_files, temp_files):
+            git_show_to_temp_file(commit, *file_tuple)
+        # Only check if we successfully git showed all files in the commit.
+        batch_check_files(temp_files, pylint_base_opts)
+    finally:
+        if tempdir:
+            tempdir.clean()
+
 
 def main():
     """Main function checks each file in a commit for pylint violations."""
@@ -297,19 +417,14 @@ def main():
         get_cmdline_options(args_list,
                             pylint_base_opts,
                             open(pylint_rc).read())
+        batch_check_files(args_list, pylint_base_opts)
+    elif os.environ.get('PRESUBMIT_FILES') is not None:
+        check_committed_files(
+                              os.environ.get('PRESUBMIT_FILES').split('\n'),
+                              os.environ.get('PRESUBMIT_COMMIT'),
+                              pylint_base_opts)
     else:
-        presubmit_files = os.environ.get('PRESUBMIT_FILES')
-        if presubmit_files is not None:
-            args_list = presubmit_files.split('\n')
-        else:
-            check_dir('.', pylint_base_opts)
-            return
-
-    for source_path in args_list:
-        if os.path.isdir(source_path):
-            check_dir(source_path, pylint_base_opts)
-        else:
-            check_file(source_path, pylint_base_opts)
+        check_dir('.', pylint_base_opts)
 
 
 if __name__ == '__main__':

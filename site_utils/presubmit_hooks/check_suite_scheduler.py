@@ -21,12 +21,9 @@ def _commit_contains_ini_or_control():
         print 'Expected a list of presubmit files in the environment variable.'
         sys.exit(1)
 
-    pattern = re.compile(r'.*files/suite_scheduler.ini$|.*control$|'
-                          '.*control.\w+$')
-    for file_path in file_list.split('\n'):
-        if pattern.search(file_path):
-            return True
-    return False
+    pattern = re.compile(r'.*files/suite_scheduler.ini$|.*/control(?:\.\w+)?$')
+    return any (pattern.search(file_path)
+                for file_path in file_list.split('\n'))
 
 
 def main():

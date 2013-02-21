@@ -81,7 +81,18 @@ class tempdir(object):
         b.name # your directory
         b.clean() # clean up after yourself
     """
-    def __init__(self,  suffix='', unique_id=None, prefix='', dir=None):
+    def __init__(self,  suffix='', unique_id='', prefix='', dir=None):
+        """
+        Initialize temp directory.
+
+        @param suffix: suffix for dir.
+        @param prefix: prefix for dir. Defaults to '_autotmp'.
+        @param unique_id: unique id of tempdir.
+        @param dir: parent directory of the tempdir. Defaults to /tmp.
+
+        eg: autotemp.tempdir(suffix='suffix', unique_id='123', prefix='prefix')
+            creates a dir like '/tmp/prefix_autotmp_<random hash>123suffix'
+        """
         suffix = unique_id + suffix
         prefix = prefix + _TEMPLATE
         self.name = module_tempfile.mkdtemp(suffix=suffix,
