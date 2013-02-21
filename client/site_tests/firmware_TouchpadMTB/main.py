@@ -4,15 +4,6 @@
 
 """This module sets up the system for the touchpad firmware test suite."""
 
-
-# Include the paths for running pyauto to show test result html file.
-import sys
-sys.path.append('/usr/local/autotest/cros')
-pyautolib = '/usr/local/autotest/deps/pyauto_dep/test_src/chrome/test/pyautolib'
-sys.path.append(pyautolib)
-import httpd
-import pyauto
-
 import getopt
 import logging
 import os
@@ -51,24 +42,36 @@ def setup_http_data_dir():
             exit(-1)
 
 
-class DummyTest(pyauto.PyUITest):
-    """This is a dummpy test class derived from PyUITest to use pyauto tool."""
-    def test_navigate_to_url(self):
-        """Navigate to the html test result file using pyauto."""
-        testServer = httpd.HTTPListener(8000, conf.docroot)
-        testServer.run()
-        # Note that the report_html_name is passed from firmware_TouchpadMTB
-        # to DummyTest as an environment variable.
-        # It is not passed as a global variable in this module because pyauto
-        # seems to create its own global scope.
-        report_html_name = os.environ[conf.ENVIRONMENT_REPORT_HTML_NAME]
-        if report_html_name:
-            base_url = os.path.basename(report_html_name)
-            url = os.path.join('http://localhost:8000', base_url)
-            self.NavigateToURL(url)
-            msg = 'Chrome has navigated to the specified url: %s'
-            logging.info(msg % os.path.join(conf.docroot, base_url))
-        testServer.stop()
+# Include the paths and import required modules for running pyauto if
+# pyauto has been installed so that the test result file could be displayed
+# on Chrome automatically when all tests are finished.
+pyautolib = '/usr/local/autotest/deps/pyauto_dep/test_src/chrome/test/pyautolib'
+is_pyauto_installed = os.path.isdir(pyautolib)
+if is_pyauto_installed:
+    sys.path.append('/usr/local/autotest/cros')
+    sys.path.append(pyautolib)
+    import httpd
+    import pyauto
+
+    class DummyTest(pyauto.PyUITest):
+        """This is a dummpy test class derived from PyUITest to use pyauto tool.
+        """
+        def test_navigate_to_url(self):
+            """Navigate to the html test result file using pyauto."""
+            testServer = httpd.HTTPListener(8000, conf.docroot)
+            testServer.run()
+            # Note that the report_html_name is passed from firmware_TouchpadMTB
+            # to DummyTest as an environment variable.
+            # It is not passed as a global variable in this module because
+            # pyauto seems to create its own global scope.
+            report_html_name = os.environ[conf.ENVIRONMENT_REPORT_HTML_NAME]
+            if report_html_name:
+                base_url = os.path.basename(report_html_name)
+                url = os.path.join('http://localhost:8000', base_url)
+                self.NavigateToURL(url)
+                msg = 'Chrome has navigated to the specified url: %s'
+                logging.info(msg % os.path.join(conf.docroot, base_url))
+            testServer.stop()
 
 
 class firmware_TouchpadMTB:
@@ -196,8 +199,9 @@ class firmware_TouchpadMTB:
         """A helper to enter gtk main loop."""
         fw.win.main()
         firmware_utils.start_power_management()
-        setup_http_data_dir()
-        pyauto.Main()
+        if is_pyauto_installed:
+            setup_http_data_dir()
+            pyauto.Main()
 
 
 def _usage_and_exit():
