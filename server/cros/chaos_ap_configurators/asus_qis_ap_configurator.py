@@ -85,15 +85,14 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
 
     def _set_security_disabled(self):
-        self._set_authentication(self.wep_authentication_open)
+        self._set_authentication('Open System')
 
 
     def _set_security_wep(self, key_value, authentication):
         popup = '//select[@name="wl_wep_x"]'
         text_field = '//input[@name="wl_phrase_x"]'
-        self._set_authentication(self.wep_authentication_shared,
-                                 wait_for_xpath=popup)
-        self.select_item_from_popup_by_xpath(self.security_wep64, popup,
+        self._set_authentication('Shared Key', wait_for_xpath=popup)
+        self.select_item_from_popup_by_xpath('WEP-64bits', popup,
                                              wait_for_xpath=text_field,
                            alert_handler=self._invalid_security_handler)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
@@ -104,8 +103,7 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
         popup = '//select[@name="wl_crypto"]'
         key_field = '//input[@name="wl_wpa_psk"]'
         interval_field = '//input[@name="wl_wpa_gtk_rekey"]'
-        self._set_authentication(self.security_wpapsk,
-                                 wait_for_xpath=key_field)
+        self._set_authentication('WPA-Personal', wait_for_xpath=key_field)
         self.select_item_from_popup_by_xpath('TKIP', popup)
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         self.set_content_of_text_field_by_xpath(str(update_interval),

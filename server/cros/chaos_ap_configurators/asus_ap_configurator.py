@@ -67,7 +67,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
             self.get_url('%s/Advanced_Wireless2g_Content.asp' % admin_url,
                          page_title='2.4G')
         elif self.current_band == self.band_5ghz:
-            self.get_url('%s/Advanced_Wireless_Content.asp' % admin_ur,
+            self.get_url('%s/Advanced_Wireless_Content.asp' % admin_url,
                          page_title='5G')
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
@@ -172,8 +172,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         popup = '//select[@name="rt_wep_x"]'
         if self.current_band == self.band_5ghz:
             popup = '//select[@name="wl_wep_x"]'
-        self._set_authentication(self.wep_authentication_open,
-                                 wait_for_xpath=popup)
+        self._set_authentication('Open System', wait_for_xpath=popup)
         self.select_item_from_popup_by_xpath('None', popup)
 
 
@@ -227,4 +226,5 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         xpath = '//input[@name="rt_closed" and @value="%s"]' % value
         if self.current_band == self.band_5ghz:
             xpath = '//input[@name="wl_closed" and @value="%s"]' % value
-        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
+        self.click_button_by_xpath(xpath,
+                                   alert_handler=self._invalid_security_handler)

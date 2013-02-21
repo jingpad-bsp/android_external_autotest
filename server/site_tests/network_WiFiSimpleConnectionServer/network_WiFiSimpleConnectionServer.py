@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import pprint
 
 from autotest_lib.client.common_lib import error
@@ -10,6 +11,7 @@ from autotest_lib.server import autotest, test
 from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator_factory
 from autotest_lib.server.cros.chaos_ap_configurators import download_chromium_prebuilt
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
+from autotest_lib.server.cros.chaos_config import ChaosAP
 from autotest_lib.server.cros.wlan import connector, disconnector
 
 class network_WiFiSimpleConnectionServer(test.test):
@@ -17,16 +19,16 @@ class network_WiFiSimpleConnectionServer(test.test):
     version = 1
 
 
-    def initialize(self, host):
+    def initialize(self, host, capturer=None):
         self.host = host
-
-        self.c = connector.Connector(self.host)
+        self.client_at = autotest.Autotest(self.host)
+        self.c = connector.TracingConnector(self.host, capturer)
         self.d = disconnector.Disconnector(self.host)
 
         self.error_list = []
 
 
-    def run_connect_disconnect_test(self, ssid, security=None, passphrase=None):
+    def run_connect_disconnect_test(self, ap):
         """ Connects to the AP and Navigates to URL.
 
         Args:
@@ -40,11 +42,16 @@ class network_WiFiSimpleConnectionServer(test.test):
         """
         error = None
 
-        self.job.set_state('client_passed', None)
-        client_at = autotest.Autotest(self.host)
+        ssid = ap['ssid']
+        frequency = ap['frequency']
+        bss = ap['bss']
+
+        self.c.set_frequency(frequency)
+        self.c.set_filename(os.path.join(self.outputdir,
+                            'connect_fail_%s.trc' % bss))
 
         try:
-            self.c.connect(ssid)
+            self.c.connect(ssid, frequency=frequency, bandwidth='HT40+')
         except (connector.ConnectException,
                 connector.ConnectFailed,
                 connector.ConnectTimeout) as e:
@@ -52,15 +59,6 @@ class network_WiFiSimpleConnectionServer(test.test):
         finally:
             self.d.disconnect(ssid)
 
-        # Get the state of network_NavigateToUrl after running.
-        if not error:
-            state = self.job.get_state('client_passed')
-            if state is None:
-                error = ('The client test did not return a state'
-                         'value. Perhaps it did not run.')
-            elif state is False:
-                error = ('The client failed to load the site.  We may '
-                         'have networking issues')
         return error
 
 
@@ -100,9 +98,13 @@ class network_WiFiSimpleConnectionServer(test.test):
             configured_aps = []
             for ap in all_aps:
                 if self.supported_band_and_channel(ap, band, channel):
+                    # Setting the band gets you the bss
+                    ap.set_band(band)
                     ap_info = {
+                        'bss': ap.get_bss(),
                         'band': band,
                         'channel': channel,
+                        'frequency': ChaosAP.FREQUENCY_TABLE[channel],
                         'radio': True,
                         'ssid': '_'.join([ap.get_router_short_name(),
                                           str(channel),
@@ -110,9 +112,9 @@ class network_WiFiSimpleConnectionServer(test.test):
                         'visibility': True,
                         'security': None,
                     }
+
                     logging.info('Using ssid %s', ap_info['ssid'])
                     ap.power_up_router()
-                    ap.set_band(ap_info['band'])
                     ap.set_channel(ap_info['channel'])
                     ap.set_radio(enabled=ap_info['radio'])
                     ap.set_ssid(ap_info['ssid'])
@@ -124,14 +126,17 @@ class network_WiFiSimpleConnectionServer(test.test):
 
             for ap in configured_aps:
                 logging.info('Client connecting to ssid %s' % ap['ssid'])
+                ap_info['failed_iterations'] = []
+                failure = False
                 for iteration in range(tries):
-                    logging.info('Connection try %d' % iteration)
-                    resp = self.run_connect_disconnect_test(ap['ssid'], tries)
+                    logging.info('Connection try %d' % (iteration + 1))
+                    resp = self.run_connect_disconnect_test(ap)
                     if resp:
-                        ap_info['error'] = resp
-                        ap_info['iterations_before_failure'] = iteration
-                        self.error_list.append(ap_info)
-                        break
+                        failure = True
+                        ap_info['failed_connections'].append({'error': resp,
+                                                             'try': iteration})
+                if failure:
+                    self.error_list.append(ap_info)
 
 
     def run_once(self, tries=1):
@@ -141,11 +146,15 @@ class network_WiFiSimpleConnectionServer(test.test):
                                   'directory>/ %s./ chromedriver'
                                   % download_chromium_prebuilt.DOWNLOAD_PATH)
 
+        # Install all of the autotest libriaries on the client
+        self.client_at.install()
         factory = ap_configurator_factory.APConfiguratorFactory()
         all_aps = factory.get_ap_configurators()
         self.loop_ap_configs_and_test(all_aps, tries)
         logging.info('Client test complete, powering down router')
-        factory.turn_off_all_routers()
+        for ap in all_aps:
+            ap.power_down_router()
+            ap.apply_settings()
 
         # Test failed if any of the intermediate tests failed.
         if self.error_list:
