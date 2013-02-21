@@ -157,15 +157,16 @@ class factory_AudioLoop(test.test):
             time.sleep(0.5)
             self.ui.Pass()
 
-    def playback_sine(self, channel, output_device='default'):
+    def playback_sine(self, channel, output_device='default', sample_size=16):
         """Generates a sine wave and plays on output_device.
 
         Args:
           channel: 0 for left, 1 for right; otherwise, mono.
           output_device: alsa output device.
+          sample_size: output audio sample size. Defaults to 16.
         """
-        cmd = '%s -n -t alsa %s synth %d ' % (self._ah.sox_path,
-                output_device, self._duration)
+        cmd = '%s -b %d -n -t alsa %s synth %d ' % (self._ah.sox_path,
+                sample_size, output_device, self._duration)
         if channel == 0:
             cmd += 'sine %d sine 0' % self._freq
         elif channel == 1:
