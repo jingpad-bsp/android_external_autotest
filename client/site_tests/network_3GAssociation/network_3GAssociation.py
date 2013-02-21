@@ -58,7 +58,7 @@ class network_3GAssociation(test.test):
         if not success:
             raise error.TestFail('Could not disconnect: %s.' % status)
 
-    def run_once(self, connect_count=10, maximum_avg_assoc_time_seconds=5):
+    def run_once(self, connect_count=10, maximum_avg_assoc_time_seconds=10):
         # no backchannel required because we are just testing the time
         # to make a network connection.  The wired ethernet can be
         # left with the default route.
