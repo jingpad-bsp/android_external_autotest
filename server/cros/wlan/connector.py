@@ -71,3 +71,70 @@ class Connector(api_shim.ApiShim):
             raise ConnectFailed(result.stdout)
         elif result.exit_status == 3:
             raise ConnectTimeout(result.stdout)
+
+class TracingConnector(Connector):
+    """ Connector that preforms a packet trace given a packet_capture object.
+
+    A wrapper for Connector that will perform a trace.
+    """
+
+    DEFAULT_BANDWIDTH='HT40+'
+
+    def __init__(self, host, capturer):
+        """ Initialization.
+
+        @param host: Hostname/ip of the client device running the test.
+        @param capturer: A packet_capture instance.
+        """
+        super(TracingConnector, self).__init__(host)
+        self.capturer = capturer
+        self.trace_frequency = None
+        self.trace_bandwidth = self.DEFAULT_BANDWIDTH
+        self.trace_filename = None
+
+    def set_frequency(self, frequency):
+        """ Set the frequency with which to capture from.
+
+        @param frequency:  An integer indicating the capture frequency.
+        """
+        self.trace_frequency = frequency
+
+
+    def set_bandwidth(self, bandwidth=None):
+        """ Set the bandwidth with which to capture with.
+
+        @param bandwidth: A string representing the bandwidth.
+        """
+        if bandwidth:
+            self.trace_bandwidth = bandwidth
+        else:
+            self.trace_bandwidth = self.DEFAULT_BANDWIDTH
+
+
+    def set_filename(self, filename):
+       """ Set the filename.
+
+       @param filename: The file with which to store the capture.
+       """
+       self.trace_filename = filename
+
+
+    def connect(self, ssid, security='', psk='', frequency=None,
+                bandwidth=None):
+        """ Wrapper around connect with packet capturing
+
+        @param ssid: String formatted ssid.
+        @param security: One of '', 'wep', 'psk'.
+        @param psk: The passphrase if security is not ''.
+        """
+
+        self.set_frequency(frequency)
+        self.set_bandwidth(bandwidth)
+        try:
+            self.capturer.start_capture(self.trace_frequency,
+                                        self.trace_bandwidth)
+            super(TracingConnector, self).connect(ssid, security, psk)
+        except ConnectException, e:
+            self.capturer.stop_capture()
+            self.capture.get_capture_file(self.filename)
+            raise e

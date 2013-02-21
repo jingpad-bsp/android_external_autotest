@@ -45,14 +45,19 @@ class ChaosAP(object):
     CONF_ADMIN = 'admin_url'
 
     # Frequency to channel conversion table
-    CHANNEL_TABLE = {'2412': '1', '2417': '2', '2422': '3',
-                     '2427': '4', '2432': '5', '2437': '6',
-                     '2442': '7', '2447': '8', '2452': '9',
-                     '2457': '10', '2462': '11', '2467': '12',
-                     '2472': '13', '2484': '14', '5180': '36',
-                     '5200': '40', '5220': '44', '5240': '48',
-                     '5745': '149', '5765': '153', '5785': '157',
-                     '5805': '161', '5825': '165'}
+    CHANNEL_TABLE = {2412: 1, 2417: 2, 2422: 3,
+                     2427: 4, 2432: 5, 2437: 6,
+                     2442: 7, 2447: 8, 2452: 9,
+                     2457: 10, 2462: 11, 2467: 12,
+                     2472: 13, 2484: 14, 5180: 36,
+                     5200: 40, 5220: 44, 5240: 48,
+                     5745: 149, 5765: 153, 5785: 157,
+                     5805: 161, 5825: 165}
+
+    # This only works because the frequency table is
+    # one to one for Channels/Frequencies.
+    FREQUENCY_TABLE = dict((v,k) for k,v in CHANNEL_TABLE.iteritems())
+
     # Needed for ap_configurator interoperability
     BAND_2GHZ = '2.4GHz'
     BAND_5GHZ = '5GHz'
