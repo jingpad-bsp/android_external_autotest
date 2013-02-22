@@ -64,6 +64,12 @@ class ReimagerTest(mox.MoxTestBase):
 
 
     def check_specs(self, specs, expected):
+        """
+        Asserts that for each entry x in the list specs, x.labels is
+        in the list expected.
+        @param specs: A list of specs to be checked.
+        @param expected: A list of expected labels values.
+        """
         for labels in expected:
             labels.sort()
         for spec in specs:
@@ -243,7 +249,8 @@ class ReimagerTest(mox.MoxTestBase):
             name=mox.StrContains(self._BUILD),
             control_type='Server',
             hosts=mox.SameElementsAs(hostnames),
-            priority='Low')
+            priority='Low',
+            parent_job_id=None)
         self.mox.ReplayAll()
         self.reimager._schedule_reimage_job(
             {'image_name': self._BUILD},
@@ -276,6 +283,9 @@ class ReimagerTest(mox.MoxTestBase):
         @param statuses: dict mapping a hostname to its job_status.Status.
                          Will be returned by job_status.gather_per_host_results
         @param ex: if not None, |ex| is raised by get_jobs()
+        @param check_hosts: expected check_hosts argument
+        @param unsatisfiable_specs: desired host_group.unsatisfiable_specs
+        @param doomed_specs: desired host_group.doomed_specs
         @return a FakeJob configured with appropriate expectations
         """
         self.mox.StubOutWithMock(self.reimager, '_ensure_version_label')

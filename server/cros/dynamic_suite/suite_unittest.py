@@ -194,7 +194,8 @@ class SuiteTest(mox.MoxTestBase):
                 meta_hosts=[constants.VERSION_PREFIX + self._BUILD],
                 dependencies=[],
                 keyvals={'build': self._BUILD, 'suite': self._TAG},
-                max_runtime_mins=24*60
+                max_runtime_mins=24*60,
+                parent_job_id=None
                 ).AndReturn(FakeJob())
 
 
