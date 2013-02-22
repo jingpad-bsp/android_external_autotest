@@ -765,6 +765,7 @@ class GwtPackage(ExternalPackage):
 
 class GVizAPIPackage(ExternalPackage):
     """gviz package"""
+    module_name = 'gviz_api'
     version = '1.7.0'
     url_filename = 'gviz_api_py-%s.tar.gz' % version
     local_filename = 'google-visualization-python.tar.gz'
@@ -775,6 +776,10 @@ class GVizAPIPackage(ExternalPackage):
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
                         ExternalPackage._build_and_install_current_dir_noegg)
+
+    def _get_installed_version_from_module(self, module):
+        # gviz doesn't contain a proper version
+        return self.version
 
 
 class StatsdPackage(ExternalPackage):
@@ -806,6 +811,10 @@ class GdataPackage(ExternalPackage):
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
                         ExternalPackage._build_and_install_current_dir_noegg)
+
+    def _get_installed_version_from_module(self, module):
+        # gdata doesn't contain a proper version
+        return self.version
 
 
 class DnsPythonPackage(ExternalPackage):
@@ -914,6 +923,7 @@ class _ExternalGitRepo(ExternalPackage):
 class HdctoolsRepo(_ExternalGitRepo):
     """Clones or updates the hdctools repo."""
 
+    module_name = 'servo'
     temp_hdctools_dir = tempfile.mktemp(suffix='hdctools')
     _GIT_URL = ('https://git.chromium.org/git/'
                 'chromiumos/third_party/hdctools')
