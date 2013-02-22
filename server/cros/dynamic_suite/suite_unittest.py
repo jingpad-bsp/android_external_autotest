@@ -7,6 +7,7 @@
 
 """Unit tests for server/cros/dynamic_suite/dynamic_suite.py."""
 
+import collections
 import mox
 import shutil
 import tempfile
@@ -16,6 +17,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite.comparitors import StatusContains
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
@@ -232,7 +234,7 @@ class SuiteTest(mox.MoxTestBase):
         suite.schedule(recorder.record_entry, add_experimental=False)
 
 
-    def _createSuiteWithMockedTestsAndControlFiles(self):
+    def _createSuiteWithMockedTestsAndControlFiles(self, file_bugs=False):
         """Create a Suite, using mocked tests and control file contents.
 
         @return Suite object, after mocking out behavior needed to create it.
@@ -242,9 +244,28 @@ class SuiteTest(mox.MoxTestBase):
         suite = Suite.create_from_name(self._TAG, self._BUILD,
                                        self.devserver,
                                        self.getter,
-                                       self.afe, self.tko)
+                                       self.afe, self.tko, file_bugs=file_bugs)
         self.mox.ResetAll()
         return suite
+
+
+    def _mock_recorder_with_results(self, results, recorder):
+        """
+        Checks that results are recoded in order, eg:
+        START, (status, name, reason) END
+
+        @param results: list of results
+        @param recorder: status recorder
+        """
+        for result in results:
+            status = result[0]
+            test_name = result[1]
+            recorder.record_entry(
+                StatusContains.CreateFromStrings('START', test_name))
+            recorder.record_entry(
+                StatusContains.CreateFromStrings(*result)).InAnyOrder('results')
+            recorder.record_entry(
+                StatusContains.CreateFromStrings('END %s' % status, test_name))
 
 
     def schedule_and_expect_these_results(self, suite, results, recorder):
@@ -258,15 +279,7 @@ class SuiteTest(mox.MoxTestBase):
         """
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(recorder.record_entry, True)
-        for result in results:
-            status = result[0]
-            test_name = result[1]
-            recorder.record_entry(
-                StatusContains.CreateFromStrings('START', test_name))
-            recorder.record_entry(
-                StatusContains.CreateFromStrings(*result)).InAnyOrder('results')
-            recorder.record_entry(
-                StatusContains.CreateFromStrings('END %s' % status, test_name))
+
         self.mox.StubOutWithMock(job_status, 'wait_for_results')
         job_status.wait_for_results(self.afe, self.tko, suite._jobs).AndReturn(
             map(lambda r: job_status.Status(*r), results))
@@ -279,6 +292,7 @@ class SuiteTest(mox.MoxTestBase):
         recorder = self.mox.CreateMock(base_job.base_job)
 
         results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
+        self._mock_recorder_with_results(results, recorder)
         self.schedule_and_expect_these_results(suite, results, recorder)
         self.mox.ReplayAll()
 
@@ -337,3 +351,55 @@ class SuiteTest(mox.MoxTestBase):
                  for test in tests]
         self.assertTrue(all(x>=y for x, y in zip(times, times[1:])),
                         'Tests are not ordered correctly.')
+
+
+    def _get_bad_test_report(self):
+        """
+        Fetch the predicates of a failing test, and the parameters
+        that are a fallout of this test failing.
+        """
+        predicates = collections.namedtuple('predicates',
+                                            'status, testname, reason')
+        fallout = collections.namedtuple('fallout',
+                                         ('time_start, time_end, job_id,'
+                                          'username, hostname'))
+        test_report = collections.namedtuple('test_report',
+                                             'predicates, fallout')
+        return test_report(predicates('FAIL', 'bad_test', 'dreadful_reason'),
+                           fallout('None', 'None', 'myjob', 'user', 'myhost'))
+
+
+    def testBugFiling(self):
+        """
+        Confirm that all the necessary predicates are passed on to the
+        bug reporter when a test fails.
+        """
+        self.suite = self._createSuiteWithMockedTestsAndControlFiles(
+                         file_bugs=True)
+
+        test_report = self._get_bad_test_report()
+        test_predicates = test_report.predicates
+        test_fallout = test_report.fallout
+
+        self.recorder = self.mox.CreateMock(base_job.base_job)
+        self._mock_recorder_with_results([test_predicates], self.recorder)
+        self.schedule_and_expect_these_results(
+            self.suite,
+            [test_predicates+test_fallout],
+            self.recorder)
+
+        self.mox.StubOutWithMock(reporting, 'TestFailure')
+        reporting.TestFailure(build=self._BUILD,
+                              hostname=test_fallout.hostname,
+                              job_id=test_fallout.job_id,
+                              owner=test_fallout.username,
+                              reason=test_predicates.reason,
+                              suite=mox.IgnoreArg(),
+                              test=test_predicates.testname)
+
+        self.mox.StubOutWithMock(reporting.Reporter, 'report')
+        reporting.Reporter.report(mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+
+        self.suite.schedule_and_wait(self.recorder.record_entry, True)
