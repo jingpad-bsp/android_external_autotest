@@ -39,6 +39,11 @@ class StatefulUpdateError(ChromiumOSError):
 
 
 def url_to_version(update_url):
+    """Return the version based on update_url.
+
+    @param update_url: url to the image to update to.
+
+    """
     # The Chrome OS version is generally the last element in the URL. The only
     # exception is delta update URLs, which are rooted under the version; e.g.,
     # http://.../update/.../0.14.755.0/au/0.14.754.0. In this case we want to
@@ -48,6 +53,7 @@ def url_to_version(update_url):
 
 
 class ChromiumOSUpdater():
+    """Helper class used to update DUT with image of desired version."""
     KERNEL_A = {'name': 'KERN-A', 'kernel': 2, 'root': 3}
     KERNEL_B = {'name': 'KERN-B', 'kernel': 4, 'root': 5}
 
@@ -89,7 +95,11 @@ class ChromiumOSUpdater():
 
 
     def rootdev(self, options=''):
-        """Returns the stripped output of rootdev <options>."""
+        """Returns the stripped output of rootdev <options>.
+
+        @param options: options to run rootdev.
+
+        """
         return self._run('rootdev %s' % options).stdout.strip()
 
 
@@ -112,17 +122,29 @@ class ChromiumOSUpdater():
 
 
     def get_kernel_priority(self, kernel):
-        """Return numeric priority for the specified kernel."""
+        """Return numeric priority for the specified kernel.
+
+        @param kernel: information of the given kernel, KERNEL_A or KERNEL_B.
+
+        """
         return self._cgpt('-P', kernel)
 
 
     def get_kernel_success(self, kernel):
-        """Return boolean success flag for the specified kernel."""
+        """Return boolean success flag for the specified kernel.
+
+        @param kernel: information of the given kernel, KERNEL_A or KERNEL_B.
+
+        """
         return self._cgpt('-S', kernel) != 0
 
 
     def get_kernel_tries(self, kernel):
-        """Return tries count for the specified kernel."""
+        """Return tries count for the specified kernel.
+
+        @param kernel: information of the given kernel, KERNEL_A or KERNEL_B.
+
+        """
         return self._cgpt('-T', kernel)
 
 
@@ -157,6 +179,7 @@ class ChromiumOSUpdater():
 
 
     def reset_stateful_partition(self):
+        """Clear any pending stateful update request."""
         statefuldev_cmd = [self.get_stateful_update_script()]
         statefuldev_cmd += ['--stateful_change=reset', '2>&1']
         # This shouldn't take any time at all.
@@ -164,6 +187,7 @@ class ChromiumOSUpdater():
 
 
     def revert_boot_partition(self):
+        """Revert the boot partition."""
         part = self.rootdev('-s')
         logging.warn('Reverting update; Boot partition will be %s', part)
         return self._run('/postinst %s 2>&1' % part)
@@ -233,11 +257,18 @@ class ChromiumOSUpdater():
             raise update_error
 
 
-    def run_update(self, force_update):
-        booted_version = self.get_build_id()
-        if (self.update_version and booted_version in self.update_version
-            and not force_update):
+    def run_update(self, force_update, update_root=True):
+        """Update the DUT with image of specific version.
 
+        @param force_update: True to update DUT even if it's running the same
+            version already.
+        @param update_root: True to force a kernel update. If it's False and
+            force_update is True, stateful update will be used to clean up
+            the DUT.
+
+        """
+        booted_version = self.get_build_id()
+        if (self.check_version() and not force_update):
             logging.info('System is already up to date. Skipping update.')
             return False
 
@@ -266,6 +297,9 @@ class ChromiumOSUpdater():
                 multiprocessing.process.Process(target=self._update_root),
                 multiprocessing.process.Process(target=self._update_stateful)
                 ]
+            if not update_root:
+                logging.info('Root update is skipped.')
+                updaters = updaters[1:]
 
             # Run the updaters in parallel.
             for updater in updaters: updater.start()
@@ -291,20 +325,14 @@ class ChromiumOSUpdater():
 
 
     def check_version(self):
+        """Check the image running in DUT has the desired version.
+
+        @returns: True if the DUT's image version matches the version that
+            the autoupdater tries to update to.
+
+        """
         booted_version = self.get_build_id()
-        if self.update_version and not booted_version in self.update_version:
-            # Print out crossystem to make it easier to debug the rollback.
-            logging.debug('Dumping partition table.')
-            self.host.run('cgpt show $(rootdev -s -d)')
-            logging.debug('Dumping crossystem for firmware debugging.')
-            self.host.run('crossystem --all')
-            logging.error('Expected Chromium OS version: %s.'
-                          'Found Chromium OS %s',
-                          self.update_version, booted_version)
-            raise ChromiumOSError('Updater failed on host %s' %
-                                  self.host.hostname)
-        else:
-            return True
+        return self.update_version and booted_version in self.update_version
 
 
     def get_build_id(self):

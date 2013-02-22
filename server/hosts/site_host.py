@@ -4,6 +4,7 @@
 
 import functools
 import logging
+import os
 import re
 import socket
 import subprocess
@@ -302,15 +303,117 @@ class SiteHost(remote.RemoteHost):
         for label in host_model.labels.iterator():
             if not label.name.startswith(ds_constants.VERSION_PREFIX):
                 continue
-            label = models.Label.smart_get(label.name)
+
             label.host_set.remove(host_model)
 
         host_model.set_or_delete_attribute('job_repo_url', None)
 
 
+    def _try_stateful_update(self, update_url, force_update, updater):
+        """Try to use stateful update to initialize DUT.
+
+        When DUT is already running the same version that machine_install
+        tries to install, stateful update is a much faster way to clean up
+        the DUT for testing, compared to a full reimage. It is implemeted
+        by calling autoupdater.run_update, but skipping updating root, as
+        updating the kernel is time consuming and not necessary.
+
+        @param update_url: url of the image.
+        @param force_update: Set to True to update the image even if the DUT
+            is running the same version.
+        @param updater: ChromiumOSUpdater instance used to update the DUT.
+        @returns: True if the DUT was updated with stateful update.
+
+        """
+        if not updater.check_version():
+            return False
+        if not force_update:
+            logging.info('Canceling stateful update because the new and '
+                         'old versions are the same.')
+            return False
+        # Following folders should be rebuilt after stateful update.
+        # A test file is used to confirm each folder gets rebuilt after
+        # the stateful update.
+        folders_to_check = ['/var', '/home', '/mnt/stateful_partition']
+        test_file = '.test_file_to_be_deleted'
+        for folder in folders_to_check:
+            touch_path = os.path.join(folder, test_file)
+            self.run('touch %s' % touch_path)
+
+        if not updater.run_update(force_update=True, update_root=False):
+            return False
+
+        # Reboot to complete stateful update.
+        self.reboot(timeout=60, wait=True)
+        check_file_cmd = 'test -f %s; echo $?'
+        for folder in folders_to_check:
+            test_file_path = os.path.join(folder, test_file)
+            result = self.run(check_file_cmd % test_file_path,
+                              ignore_status=True)
+            if result.exit_status == 1:
+                return False
+        return True
+
+
+    def _post_update_processing(self, updater, inactive_kernel=None):
+        """After the DUT is updated, confirm machine_install succeeded.
+
+        @param updater: ChromiumOSUpdater instance used to update the DUT.
+        @param inactive_kernel: kernel state of inactive kernel before reboot.
+
+        """
+
+        # Touch the lab machine file to leave a marker that distinguishes
+        # this image from other test images.
+        self.run('touch %s' % self._LAB_MACHINE_FILE)
+
+        # Kick off the autoreboot script as the _LAB_MACHINE_FILE was
+        # missing on the first boot.
+        self.run('start autoreboot')
+
+        # Following the reboot, verify the correct version.
+        if not updater.check_version():
+            # Print out crossystem to make it easier to debug the rollback.
+            logging.debug('Dumping partition table.')
+            self.host.run('cgpt show $(rootdev -s -d)')
+            logging.debug('Dumping crossystem for firmware debugging.')
+            self.host.run('crossystem --all')
+            logging.error('Expected Chromium OS version: %s. '
+                          'Found Chromium OS %s',
+                          self.update_version, updater.get_build_id())
+            raise ChromiumOSError('Updater failed on host %s' %
+                                  self.host.hostname)
+
+        # Figure out newly active kernel.
+        new_active_kernel, _ = updater.get_kernel_state()
+
+        # Ensure that previously inactive kernel is now the active kernel.
+        if inactive_kernel and new_active_kernel != inactive_kernel:
+            raise autoupdater.ChromiumOSError(
+                'Update failed. New kernel partition is not active after'
+                ' boot.')
+
+        host_attributes = site_host_attributes.HostAttributes(self.hostname)
+        if host_attributes.has_chromeos_firmware:
+            # Wait until tries == 0 and success, or until timeout.
+            utils.poll_for_condition(
+                lambda: (updater.get_kernel_tries(new_active_kernel) == 0
+                         and updater.get_kernel_success(new_active_kernel)),
+                exception=autoupdater.ChromiumOSError(
+                    'Update failed. Timed out waiting for system to mark'
+                    ' new kernel as successful.'),
+                timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
+
+
     def machine_install(self, update_url=None, force_update=False,
                         local_devserver=False, repair=False):
         """Install the DUT.
+
+        Use stateful update if the DUT is already running the same build.
+        Stateful update does not update kernel and tends to run much faster
+        than a full reimage. If the DUT is running a different build, or it
+        failed to do a stateful update, full update, including kernel update,
+        will be applied to the DUT.
 
         @param update_url: The url to use for the update
                 pattern: http://$devserver:###/update/$build
@@ -342,64 +445,55 @@ class SiteHost(remote.RemoteHost):
             update_url = tools.image_url_pattern() % (devserver.url(),
                                                       image_name)
 
-
-        # In case the system is in a bad state, we always reboot the machine
-        # before machine_install.
-        self.reboot(timeout=60, wait=True)
-
         if repair:
+            # In case the system is in a bad state, we always reboot the machine
+            # before machine_install.
+            self.reboot(timeout=60, wait=True)
             self.run('stop update-engine; start update-engine')
             force_update = True
-        # Attempt to update the system.
+
         updater = autoupdater.ChromiumOSUpdater(update_url, host=self,
-                                                local_devserver=local_devserver)
-        if updater.run_update(force_update):
-            # Figure out active and inactive kernel.
-            active_kernel, inactive_kernel = updater.get_kernel_state()
+                                            local_devserver=local_devserver)
+        updated = False
+        # If the DUT is already running the same build, try stateful update
+        # first. Stateful update does not update kernel and tends to run much
+        # faster than a full reimage.
+        try:
+            updated = self._try_stateful_update(update_url, force_update,
+                                                updater)
+            if updated:
+                logging.info('DUT is updated with stateful update.')
+        except Exception as e:
+            logging.exception(e)
+            logging.warn('Failed to stateful update DUT, force to update.')
 
-            # Ensure inactive kernel has higher priority than active.
-            if (updater.get_kernel_priority(inactive_kernel)
-                    < updater.get_kernel_priority(active_kernel)):
-                raise autoupdater.ChromiumOSError(
-                    'Update failed. The priority of the inactive kernel'
-                    ' partition is less than that of the active kernel'
-                    ' partition.')
-
-            update_engine_log = '/var/log/update_engine.log'
-            logging.info('Dumping %s', update_engine_log)
-            self.run('cat %s' % update_engine_log)
-            # Updater has returned successfully; reboot the host.
+        inactive_kernel = None
+        # Do a full update if stateful update is not applicable or failed.
+        if not updated:
+            # In case the system is in a bad state, we always reboot the
+            # machine before machine_install.
             self.reboot(timeout=60, wait=True)
-            # Touch the lab machine file to leave a marker that distinguishes
-            # this image from other test images.
-            self.run('touch %s' % self._LAB_MACHINE_FILE)
+            if updater.run_update(force_update):
+                updated = True
+                # Figure out active and inactive kernel.
+                active_kernel, inactive_kernel = updater.get_kernel_state()
 
-            # Following the reboot, verify the correct version.
-            updater.check_version()
+                # Ensure inactive kernel has higher priority than active.
+                if (updater.get_kernel_priority(inactive_kernel)
+                        < updater.get_kernel_priority(active_kernel)):
+                    raise autoupdater.ChromiumOSError(
+                        'Update failed. The priority of the inactive kernel'
+                        ' partition is less than that of the active kernel'
+                        ' partition.')
 
-            # Figure out newly active kernel.
-            new_active_kernel, _ = updater.get_kernel_state()
+                update_engine_log = '/var/log/update_engine.log'
+                logging.info('Dumping %s', update_engine_log)
+                self.run('cat %s' % update_engine_log)
+                # Updater has returned successfully; reboot the host.
+                self.reboot(timeout=60, wait=True)
 
-            # Ensure that previously inactive kernel is now the active kernel.
-            if new_active_kernel != inactive_kernel:
-                raise autoupdater.ChromiumOSError(
-                    'Update failed. New kernel partition is not active after'
-                    ' boot.')
-
-            host_attributes = site_host_attributes.HostAttributes(self.hostname)
-            if host_attributes.has_chromeos_firmware:
-                # Wait until tries == 0 and success, or until timeout.
-                utils.poll_for_condition(
-                    lambda: (updater.get_kernel_tries(new_active_kernel) == 0
-                             and updater.get_kernel_success(new_active_kernel)),
-                    exception=autoupdater.ChromiumOSError(
-                        'Update failed. Timed out waiting for system to mark'
-                        ' new kernel as successful.'),
-                    timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
-
-            # Kick off the autoreboot script as the _LAB_MACHINE_FILE was
-            # missing on the first boot.
-            self.run('start autoreboot')
+        if updated:
+            self._post_update_processing(updater, inactive_kernel)
 
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(
