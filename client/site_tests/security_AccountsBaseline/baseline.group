@@ -58,6 +58,7 @@ power:x:228:
 watchdog:x:229:
 devbroker:x:230:
 xorg:x:231:
+nfqueue:x:232:
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
