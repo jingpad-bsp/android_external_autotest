@@ -20,7 +20,7 @@ Tasks:
   suite: power
   run_on: nightly
   pool: remote_power
-  branch_spec: >=R20,factory
+  branch_specs: >=R20,factory
 
   This specifies a Task that gets run whenever the 'nightly' event occurs.
   The Task schedules a suite of tests called 'power' on the pool of machines
@@ -50,6 +50,11 @@ CONFIG_SECTION_SMTP = 'SERVER'
 
 
 def signal_handler(signal, frame):
+    """Singnal hanlder to exit gracefully.
+
+    @param signal: signum
+    @param frame: stack frame object
+    """
     logging.info('Signal %d received.  Exiting gracefully...', signal)
     sys.exit(0)
 
@@ -66,6 +71,7 @@ class SeverityFilter(logging.Filter):
 
 
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
+    """Configure loggings for scheduler, e.g., email setup."""
     def __init__(self):
         super(SchedulerLoggingConfig, self).__init__()
         self._from_address = global_config.global_config.get_config_value(
@@ -90,10 +96,21 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
 
     @classmethod
     def get_log_name(cls):
+        """Get timestamped log name of suite_scheduler, e.g.,
+        suite_scheduler.log.2013-2-1-02-05-06.
+
+        @param cls: class
+        """
         return cls.get_timestamped_log_name('suite_scheduler')
 
 
     def add_smtp_handler(self, subject, level=logging.ERROR):
+        """Add smtp handler to logging handler to trigger email when logging
+        occurs.
+
+        @param subject: email subject.
+        @param level: level of logging to trigger smtp handler.
+        """
         if not self._smtp_user or not self._smtp_password:
             creds = None
         else:
@@ -131,6 +148,7 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
 
 
 def parse_options():
+    """Parse commandline options."""
     usage = "usage: %prog [options]"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-f', '--config_file', dest='config_file',
@@ -156,6 +174,7 @@ def parse_options():
 
 
 def main():
+    """Entry point for suite_scheduler.py"""
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGHUP, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)

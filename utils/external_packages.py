@@ -26,7 +26,10 @@ def _checksum_file(full_path):
 
 
 def system(commandline):
-    """Same as os.system(commandline) but logs the command first."""
+    """Same as os.system(commandline) but logs the command first.
+
+    @param commandline: commandline to be called.
+    """
     logging.info(commandline)
     return os.system(commandline)
 
@@ -96,7 +99,10 @@ class ExternalPackage(object):
 
 
     def is_needed(self, unused_install_dir):
-        """@returns True if self.module_name needs to be built and installed."""
+        """@returns True if self.module_name needs to be built and installed.
+
+        @param unused_install_dir: install directory, not used.
+        """
         if not self.module_name or not self.version:
             logging.warning('version and module_name required for '
                             'is_needed() check to work.')
@@ -255,7 +261,7 @@ class ExternalPackage(object):
             raise Error('%s does not exist in %s' % (setup_py, os.getcwd()))
         status = system("'%s' %s build" % (sys.executable, setup_py))
         if status:
-            logging.error('%s build failed.' % self.name)
+            logging.error('%s build failed.', self.name)
             return False
         return True
 
@@ -355,7 +361,7 @@ class ExternalPackage(object):
             status = system("'%s' %s install --no-compile --prefix='%s'"
                             % (sys.executable, setup_py, temp_dir))
             if status:
-                logging.error('%s install failed.' % self.name)
+                logging.error('%s install failed.', self.name)
                 return False
 
             if os.path.isdir(os.path.join(temp_dir, 'lib')):
@@ -445,6 +451,7 @@ class ExternalPackage(object):
                 logging.warning('Could not fetch %s package from %s.',
                                 self.name, url)
                 continue
+
             data_length = int(url_file.info().get('Content-Length',
                                                   _MAX_PACKAGE_SIZE))
             if data_length <= 0 or data_length > _MAX_PACKAGE_SIZE:
@@ -482,6 +489,7 @@ class ExternalPackage(object):
 # classes that need to use this version of setuptools so that is is inserted
 # into the ExternalPackage.subclasses list before them.
 class SetuptoolsPackage(ExternalPackage):
+    """setuptools package"""
     # For all known setuptools releases a string compare works for the
     # version string.  Hopefully they never release a 0.10.  (Their own
     # version comparison code would break if they did.)
@@ -540,6 +548,7 @@ class SetuptoolsPackage(ExternalPackage):
 
 
 class MySQLdbPackage(ExternalPackage):
+    """mysql package, used in scheduler."""
     module_name = 'MySQLdb'
     version = '1.2.2'
     urls = ('http://downloads.sourceforge.net/project/mysql-python/'
@@ -562,6 +571,7 @@ class MySQLdbPackage(ExternalPackage):
 
 
 class DjangoPackage(ExternalPackage):
+    """django package."""
     version = '1.3'
     local_filename = 'Django-%s.tar.gz' % version
     urls = ('http://www.djangoproject.com/download/%s/tarball/' % version,)
@@ -581,6 +591,7 @@ class DjangoPackage(ExternalPackage):
 
 
 class NumpyPackage(ExternalPackage):
+    """numpy package, required by matploglib."""
     version = '1.2.1'
     local_filename = 'numpy-%s.tar.gz' % version
     urls = ('http://downloads.sourceforge.net/project/numpy/NumPy/%(version)s/'
@@ -592,9 +603,13 @@ class NumpyPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setupegg_py)
 
 
-# This requires numpy so it must be declared after numpy to guarantee that it
-# is already installed.
 class MatplotlibPackage(ExternalPackage):
+    """
+    matplotlib package
+
+    This requires numpy so it must be declared after numpy to guarantee that
+    it is already installed.
+    """
     version = '0.98.5.3'
     short_version = '0.98.5'
     local_filename = 'matplotlib-%s.tar.gz' % version
@@ -610,6 +625,7 @@ class MatplotlibPackage(ExternalPackage):
 
 
 class AtForkPackage(ExternalPackage):
+    """atfork package"""
     version = '0.1.2'
     local_filename = 'atfork-%s.zip' % version
     urls = ('http://python-atfork.googlecode.com/files/' + local_filename,)
@@ -621,6 +637,7 @@ class AtForkPackage(ExternalPackage):
 
 
 class ParamikoPackage(ExternalPackage):
+    """paramiko package"""
     version = '1.7.5'
     local_filename = 'paramiko-%s.tar.gz' % version
     urls = ('http://www.lag.net/paramiko/download/' + local_filename,
@@ -655,12 +672,13 @@ class ParamikoPackage(ExternalPackage):
             raise Error('no paramiko directory in %s.' % os.getcwd())
         status = system("rsync -r 'paramiko' '%s/'" % install_dir)
         if status:
-            logging.error('%s rsync to install_dir failed.' % self.name)
+            logging.error('%s rsync to install_dir failed.', self.name)
             return False
         return True
 
 
 class RequestsPackage(ExternalPackage):
+    """requests package"""
     version = '0.11.2'
     local_filename = 'requests-%s.tar.gz' % version
     urls = ('http://pypi.python.org/packages/source/r/requests/' +
@@ -673,6 +691,7 @@ class RequestsPackage(ExternalPackage):
 
 
 class SimplejsonPackage(ExternalPackage):
+    """simplejson package"""
     version = '2.0.9'
     local_filename = 'simplejson-%s.tar.gz' % version
     urls = ('http://pypi.python.org/packages/source/s/simplejson/' +
@@ -685,6 +704,7 @@ class SimplejsonPackage(ExternalPackage):
 
 
 class Httplib2Package(ExternalPackage):
+    """httplib2 package"""
     version = '0.6.0'
     local_filename = 'httplib2-%s.tar.gz' % version
     urls = ('http://httplib2.googlecode.com/files/' + local_filename,)
@@ -744,6 +764,7 @@ class GwtPackage(ExternalPackage):
 
 
 class GVizAPIPackage(ExternalPackage):
+    """gviz package"""
     version = '1.7.0'
     url_filename = 'gviz_api_py-%s.tar.gz' % version
     local_filename = 'google-visualization-python.tar.gz'
@@ -757,6 +778,7 @@ class GVizAPIPackage(ExternalPackage):
 
 
 class StatsdPackage(ExternalPackage):
+    """python-statsd package"""
     version = '1.5.7'
     url_filename = 'python-statsd-%s.tar.gz' % version
     local_filename = url_filename
@@ -797,7 +819,8 @@ class DnsPythonPackage(ExternalPackage):
     url_filename = 'dnspython-%s.tar.gz' % version
     local_filename = url_filename
     urls = ('http://www.dnspython.org/kits/%s/%s' % (
-        version, url_filename))
+        version, url_filename),)
+
     hex_sum = '06314dad339549613435470c6add992910e26e5d'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
