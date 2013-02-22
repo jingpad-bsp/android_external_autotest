@@ -13,7 +13,7 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
-
+from autotest_lib.server.cros.dynamic_suite import reporting
 
 class Suite(object):
     """
@@ -394,7 +394,11 @@ class Suite(object):
                     failure = reporting.TestFailure(build=self._build,
                                                     suite=self._tag,
                                                     test=result.test_name,
-                                                    reason=result.reason)
+                                                    reason=result.reason,
+                                                    owner=result.owner,
+                                                    hostname=result.hostname,
+                                                    job_id=result.id)
+
                     bug_reporter.report(failure)
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())

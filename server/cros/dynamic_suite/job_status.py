@@ -5,7 +5,7 @@
 import datetime, logging, time
 
 
-from autotest_lib.client.common_lib import base_job, error, global_config, log
+from autotest_lib.client.common_lib import base_job, global_config, log
 from autotest_lib.client.common_lib.host_queue_entry_states \
     import IntStatus as HqeIntStatus
 
@@ -52,7 +52,7 @@ def is_for_infrastructure_fail(status):
     """
     Indicates whether the given Status is from an infra fail.
 
-    @param view: the Status object to look at.
+    @param status: the Status object to look at.
     @return True if this Status indicates an infrastructure-side issue during
                  a test.
     """
@@ -142,6 +142,7 @@ def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS,
 
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param jobs: the jobs to poll on.
+    @param interval: polling interval in seconds.
     @param start_time: Time to compare to the current time to see if a timeout
                        has occurred.
     @param wait_timeout_mins: Time in minutes to wait before aborting the jobs
@@ -173,6 +174,7 @@ def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
     Wait for the jobs specified by each |job.id| to finish.
 
     @param afe: an instance of AFE as defined in server/frontend.py.
+    @param interval: polling interval in seconds.
     @param jobs: the jobs to poll on.
     """
     job_ids = [j.id for j in jobs]
@@ -203,6 +205,7 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
                     as they start Running, and it will be used to lock them.
     @param start_time: Time to compare to the current time to see if a timeout
                        has occurred.
+    @param interval: polling interval.
     @param wait_timeout_mins: Time in minutes to wait before aborting the jobs
                               we are waiting on.
 
@@ -210,6 +213,12 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
             jobs have been aborted.
     """
     def get_all_hosts(my_jobs):
+        """
+        Returns a list of all hosts for jobs in my_jobs.
+
+        @param my_jobs: a list of all the jobs we need hostnames for.
+        @return: a list of hostnames that correspond to my_jobs.
+        """
         all_hosts = []
         for job in my_jobs:
             all_hosts.extend(gather_job_hostnames(afe, job))
@@ -316,7 +325,7 @@ def wait_for_results(afe, tko, jobs):
                         yield Status(s.status, s.test_name, s.reason,
                                      s.test_started_time,
                                      s.test_finished_time,
-                                     job.id, job.owner)
+                                     job.id, job.owner, s.hostname)
                     else:
                         if s.status != 'GOOD':
                             yield Status(s.status,
@@ -441,7 +450,7 @@ class Status(object):
 
 
     def __init__(self, status, test_name, reason='', begin_time_str=None,
-                 end_time_str=None, job_id=None, owner=None):
+                 end_time_str=None, job_id=None, owner=None, hostname=None):
         """
         Constructor
 
@@ -454,12 +463,16 @@ class Status(object):
                              now() if None or 'None'.
         @param job_id: the ID of the job that generated this Status.
         @param owner: the owner of the job that generated this Status.
+        @param hostname: The name of the host the test that generated this
+                         result ran on.
         """
         self._status = status
         self._test_name = test_name
         self._reason = reason
         self._id = job_id
         self._owner = owner
+        self._hostname = hostname
+
         if begin_time_str and begin_time_str != 'None':
             self._begin_timestamp = int(time.mktime(
                 datetime.datetime.strptime(
@@ -476,6 +489,7 @@ class Status(object):
 
 
     def is_good(self):
+        """ Returns true if status is good. """
         return self._status == 'GOOD'
 
 
@@ -559,24 +573,39 @@ class Status(object):
 
     @property
     def test_name(self):
+        """ Name of the test this status corresponds to. """
         return self._test_name
 
 
     @test_name.setter
     def test_name(self, value):
+        """
+        Test name setter.
+
+        @param value: The test name.
+        """
         self._test_name = value
 
 
     @property
     def id(self):
+        """ Id of the job that corresponds to this status. """
         return self._id
 
 
     @property
     def owner(self):
+        """ Owner of the job that corresponds to this status. """
         return self._owner
 
 
     @property
+    def hostname(self):
+        """ Host the job corresponding to this status ran on. """
+        return self._hostname
+
+
+    @property
     def reason(self):
+        """ Reason the job corresponding to this status failed. """
         return self._reason

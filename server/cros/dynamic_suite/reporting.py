@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
-import re
 
-# We need to import common to be able to import chromite.
+# We need to import common to be able to import chromite and requests.
 import common
 from autotest_lib.client.common_lib import global_config
 try:
@@ -25,19 +25,43 @@ class TestFailure(object):
     Each TestFailure has a search marker associated with it that can be used to
     find reports of the same error."""
 
+    # global configurations needed for build artifacts
+    _gs_domain = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'gs_domain', default='')
+    _chromeos_image_archive = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'chromeos_image_archive', default='')
+    _arg_prefix = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'arg_prefix', default='')
 
-    def __init__(self, build, suite, test, reason):
+    # global configurations needed for results log
+    _retrieve_logs_cgi = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'retrieve_logs_cgi', default='')
+    _generic_results_bin = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'generic_results_bin', default='')
+    _debug_dir = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'debug_dir', default='')
+
+
+    _HTTP_ERROR_THRESHOLD = 400
+
+    def __init__(self, build, suite, test, reason, owner, hostname, job_id):
         """
         @param build The build type, of the form <board>/<milestone>-<release>.
                      ie. x86-mario-release/R25-4321.0.0
         @param suite The name of the suite that this test run was a part of.
         @param test The name of the test that this failure is about.
         @param reason The reason that this test failed.
+        @param owner The owner of the test that failed.
+        @param hostname The host this test failure occured on.
+        @param job_id The id of the test that failed.
         """
         self.build = build
         self.suite = suite
         self.test = test
         self.reason = reason
+        self.owner = owner
+        self.hostname = hostname
+        self.job_id = job_id
 
 
     def bug_title(self):
@@ -47,11 +71,29 @@ class TestFailure(object):
 
 
     def bug_summary(self):
-        """Converts information about this failure into a string appropriate
-        to be the summary of this bug. Includes the reason field."""
-        return ('This bug has been automatically filed to track the'
-            ' failure of %s in the %s suite on %s. It failed with a reason'
-            ' of:\n\n%s' % (self.test, self.suite, self.build, self.reason))
+        """
+        Converts information about this failure into a string appropriate
+        to be the summary of this bug. Includes the reason field and links
+        to the build artifacts and results.
+        """
+
+        links = self._get_links_for_failure()
+        summary = """
+                  This bug has been automatically filed to track
+                  the failure of %(test)s in the %(suite)s suite on %(build)s.
+                  It failed with a reason of:%(reason)s.
+                  build artifacts: %(build_artifacts)s
+                  results log: %(results_log)s.
+                  """
+        specifics = {
+            'test': self.test,
+            'suite': self.suite,
+            'build': self.build,
+            'reason': self.reason,
+            'build_artifacts': links.artifacts,
+            'results_log': links.results,
+        }
+        return summary % specifics
 
 
     def search_marker(self):
@@ -59,6 +101,40 @@ class TestFailure(object):
         the report to provide a way to search for this exact failure."""
         return "%s(%s,%s,%s)" % ('TestFailure', self.suite,
                                     self.test, self.reason)
+
+
+    def _link_build_artifacts(self):
+        """
+        Link to the build artifacts.
+
+        @return: url to build artifacts on google storage.
+        """
+        return (self._gs_domain + self._arg_prefix +
+                self._chromeos_image_archive + self.build)
+
+
+    def _link_result_logs(self):
+        """
+        Link to test failure logs.
+
+        @return: url to test logs on google storage.
+        """
+        if self.job_id and self.owner and self.hostname:
+            path_to_object = '%s-%s/%s/%s' % (self.job_id, self.owner,
+                                              self.hostname, self._debug_dir)
+            return (self._retrieve_logs_cgi + self._generic_results_bin +
+                    path_to_object)
+        return 'NA'
+
+
+    def _get_links_for_failure(self):
+        """
+        Get links related to this test failure.
+
+        @return: Returns a named tuple of links.
+        """
+        links = collections.namedtuple('links', 'results, artifacts')
+        return links(self._link_result_logs(), self._link_build_artifacts())
 
 
 class Reporter(object):
@@ -75,18 +151,35 @@ class Reporter(object):
     _SEARCH_MARKER = 'ANCHOR  '
 
 
+    def _get_tracker(self, project, user, password):
+        """ Gets an initialized tracker object. """
+        if project and user and password:
+            creds = gdata_lib.Creds()
+            creds.SetCreds(user, password)
+            tracker = gdata_lib.TrackerComm()
+            tracker.Connect(creds, project)
+            return tracker
+        logging.error('Tracker auth not set up in shadow_config.ini, '
+                      'cannot file bugs.')
+        return None
+
+
     def __init__(self):
         if gdata_lib is None:
             logging.warning("Bug filing disabled due to missing imports.")
-        if self._project_name and self._username and self._password:
-            creds = gdata_lib.Creds()
-            creds.SetCreds(self._username, self._password)
-            self._tracker = gdata_lib.TrackerComm()
-            self._tracker.Connect(creds, self._project_name)
-        else:
-            logging.error('Tracker auth not set up in shadow_config.ini, '
-                          'cannot file bugs.')
-            self._tracker = None
+            return
+
+        self._tracker = self._get_tracker(self._project_name,
+                                          self._username, self._password)
+
+
+    def _check_tracker(self):
+        """
+        Checks if we have a tracker object to use for filing bugs.
+
+        @return: True if we have a tracker object.
+        """
+        return gdata_lib and self._tracker
 
 
     def report(self, failure):
@@ -96,29 +189,42 @@ class Reporter(object):
         If this is a new failure, create a new bug about it.
 
         @param failure A TestFailure instance about the failure.
-        @return None
         """
-        if gdata_lib is None or self._tracker is None:
-            logging.info("Can't file %s", failure.bug_title())
+        if not self._check_tracker():
+            logging.error("Can't file %s", failure.bug_title())
             return
 
         issue = self._find_issue_by_marker(failure.search_marker())
+        summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
+                                    self._SEARCH_MARKER,
+                                    failure.search_marker())
+        self._add_issue_to_tracker(issue, summary, failure.bug_title())
+
+
+    def _add_issue_to_tracker(self, issue, summary, title):
+        """
+        Adds an issue to the tracker.
+
+        Either file a new issue or append a comment to an existing issue.
+
+        @param issue: The new issue.
+        @param summary: A summary of the failure.
+        @param title: Title of the bug. If a bug already exists the summary gets
+            prefixed with the title.
+
+        @return: None
+        """
         if issue:
-            issue_comment = '%s\n\n%s\n\n%s%s' % (failure.bug_title(),
-                                                  failure.bug_summary(),
-                                                  self._SEARCH_MARKER,
-                                                  failure.search_marker())
-            self._tracker.AppendTrackerIssueById(issue.id, issue_comment)
-            logging.info("Filed comment on %s", str(issue.id))
+            summary = '%s\n\n%s' % (title, summary)
+            self._tracker.AppendTrackerIssueById(issue.id, summary)
+            logging.info("Filed comment %s on %s", summary, issue.id)
         else:
-            summary = "%s\n\n%s%s" % (failure.bug_summary(),
-                                      self._SEARCH_MARKER,
-                                      failure.search_marker())
-            issue = gdata_lib.Issue(title=failure.bug_title(),
-                summary=summary, labels=['Test-Support'],
+            issue = gdata_lib.Issue(title=title, summary=summary,
+                labels=['Test-Support', 'autofiled'],
                 status='Untriaged', owner='')
             bugid = self._tracker.CreateTrackerIssue(issue)
-            logging.info("Filing new bug %s", str(bugid))
+            logging.info("Filing new bug %s, with summary %s", bugid,
+                                                               summary)
 
 
     def _find_issue_by_marker(self, marker):
