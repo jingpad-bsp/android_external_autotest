@@ -234,7 +234,7 @@ class ConfigGenerator(object):
     """Generator class that maintains can generate test configs."""
 
     def __init__(self, board, tested_release, test_nmo, test_npo,
-                 src_as_payload, use_mp_images):
+                 src_as_payload, use_mp_images, archive_url):
         """
         @param board: the board under test
         @param tested_release: the tested release version
@@ -243,6 +243,7 @@ class ConfigGenerator(object):
         @param src_as_payload: if True, use the full payload as the src image as
                opposed to using the test image (the latter requires servo).
         @param use_mp_images: use mp images/payloads.
+        @param archive_url: optional gs url to find payloads.
         """
         self.board = board
         self.tested_release = tested_release
@@ -250,17 +251,25 @@ class ConfigGenerator(object):
         self.nmo = test_nmo
         self.npo = test_npo
         self.src_as_payload = src_as_payload
+        self.archive_url = archive_url
 
 
     def _get_source_uri(self, release):
         """Returns the source uri for a given release or None."""
         branch = get_release_branch(release)
+
+        # If we're looking for our own image, use the target archive_url if set.
+        archive_url = None
+        if release == self.tested_release:
+          archive_url = self.archive_url
+
         if self.src_as_payload:
             return test_image.find_payload_uri(
-                    self.board, release, branch, single=True)
+                    self.board, release, branch, single=True,
+                    archive_url=archive_url)
         else:
             return test_image.find_image_uri(
-                    self.board, release, branch)
+                    self.board, release, branch, archive_url=archive_url)
 
 
     def generate_mp_image_npo_nmo_list(self):
@@ -350,7 +359,8 @@ class ConfigGenerator(object):
         test_list = []
         payload_uri_list = test_image.find_payload_uri(
                 self.board, self.tested_release,
-                get_release_branch(self.tested_release), delta=True)
+                get_release_branch(self.tested_release), delta=True,
+                archive_url=self.archive_url)
         for payload_uri in payload_uri_list:
             # Infer the source and target release versions.
             file_name = os.path.basename(payload_uri)
@@ -415,7 +425,8 @@ class ConfigGenerator(object):
         # Find the full payload for the target release.
         tested_payload_uri = test_image.find_payload_uri(
                 self.board, self.tested_release,
-                get_release_branch(self.tested_release), single=True)
+                get_release_branch(self.tested_release), single=True,
+                archive_url=self.archive_url)
         if not tested_payload_uri:
             logging.warning("cannot find full payload for %s, %s; no '%s' tests"
                             " generated", self.board, self.tested_release, name)
@@ -550,7 +561,7 @@ def generate_test_list(args):
         generator = ConfigGenerator(
                 board, args.tested_release,
                 args.test_nmo, args.test_npo, src_as_payload,
-                args.use_mp_images)
+                args.use_mp_images, args.archive_url)
 
         # Configure N-1-to-N and N-to-N+1 tests.
         if args.test_nmo or args.test_npo:
@@ -686,6 +697,8 @@ def parse_args():
             description='Schedule Chrome OS release update tests on given '
                         'board(s).')
 
+    parser.add_option('--archive_url',
+                      help='Use this archive url to find the target payloads.')
     parser.add_option('--dump', default=False, action='store_true',
                       help='dump control files that would be used in autotest '
                            'without running them. Implies --dry_run')

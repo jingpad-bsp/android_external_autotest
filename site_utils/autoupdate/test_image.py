@@ -4,19 +4,38 @@
 
 """Module for discovering Chrome OS test images and payloads."""
 
-
+import logging
 import re
 import subprocess
+
+import common
+from autotest_lib.client.common_lib import global_config
 
 
 # A string indicating a zip-file boundary within a URI path. This string must
 # end with a '/', in order for standard basename code to work correctly for
 # zip-encapsulated paths.
 ZIPFILE_BOUNDARY = '//'
+ARCHIVE_URL_FORMAT = '%(archive_base)s/%(board)s-release/%(branch)s-%(release)s'
 
 
 class TestImageError(BaseException):
+    """Raised on any error in this module."""
     pass
+
+
+def _get_archive_url(board, branch, release):
+    """Returns the gs archive_url for the respective arguments."""
+    # TODO(garnold) adjustment to -he variant board names; should be removed
+    # once we switch to using artifacts from gs://chromeos-images/
+    # (see chromium-os:38222)
+    archive_base = global_config.global_config.get_config_value(
+            'CROS', 'image_storage_server')
+    archive_base = archive_base.rstrip('/') # Remove any trailing /'s.
+    board = re.sub('-he$', '_he', board)
+    return ARCHIVE_URL_FORMAT % dict(
+            archive_base=archive_base, board=board, branch=branch,
+            release=release)
 
 
 def gs_ls(uri_pattern):
@@ -28,13 +47,14 @@ def gs_ls(uri_pattern):
 
     """
     gs_cmd = ['gsutil', 'ls', uri_pattern]
+    logging.debug(' '.join(gs_cmd))
     output = subprocess.Popen(gs_cmd, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE).stdout
     return [path.rstrip() for path in output if path]
 
 
 def find_payload_uri(board, release, branch, delta=False,
-                     single=False):
+                     single=False, archive_url=None):
     """Finds test payloads corresponding to a given board/release.
 
     @param board: the platform name (string)
@@ -44,6 +64,7 @@ def find_payload_uri(board, release, branch, delta=False,
     @param delta: if true, seek delta payloads to the given release
     @param single: if true, expect a single match and return it, otherwise
            None
+    @param archive_url: Optional archive_url directory to find the payload.
 
     @return A (possibly empty) list of URIs, or a single (possibly None) URI if
             |single| is True.
@@ -51,19 +72,17 @@ def find_payload_uri(board, release, branch, delta=False,
     @raise TestImageError if an error has occurred.
 
     """
-    # TODO(garnold) adjustment to -he variant board names; should be removed
-    # once we switch to using artifacts from gs://chromeos-images/
-    # (see chromium-os:38222)
-    board = re.sub('-he$', '_he', board)
+    if not archive_url:
+        archive_url = _get_archive_url(board, branch, release)
 
-    payload_uri_list = gs_ls(
-            'gs://chromeos-image-archive/%s-release/%s-%s/%s' %
-            (board, branch, release,
-             ('chromeos_*_%s-%s*_%s_delta_dev.bin' %
-              (branch, release, board))
-             if delta
-             else ('chromeos_%s-%s*_%s_full_dev.bin' %
-                   (branch, release, board))))
+    if delta:
+        gs_ls_search = (archive_url + '/chromeos_*_%s-%s*_%s_delta_dev.bin' %
+                        (branch, release, board))
+    else:
+        gs_ls_search = (archive_url + '/chromeos_%s-%s*_%s_full_dev.bin' %
+                        (branch, release, board))
+
+    payload_uri_list = gs_ls(gs_ls_search)
 
     if single:
         payload_uri_list_len = len(payload_uri_list)
@@ -77,13 +96,14 @@ def find_payload_uri(board, release, branch, delta=False,
     return payload_uri_list
 
 
-def find_image_uri(board, release, branch):
+def find_image_uri(board, release, branch, archive_url=None):
     """Returns a URI to a test image.
 
     @param board: the platform name (string)
     @param release: the release version (string), without milestone and
            attempt/build counters
     @param branch: the release's branch name
+    @param archive_url: Optional archive_url directory to find the payload.
 
     @return A URI to the desired image if found, None otherwise. It will most
             likely be a file inside an image archive (image.zip), in which case
@@ -94,14 +114,11 @@ def find_image_uri(board, release, branch):
     @raise TestImageError if an error has occurred.
 
     """
-    # TODO(garnold) adjustment to -he variant board names; should be removed
-    # once we switch to using artifacts from gs://chromeos-images/
-    # (see chromium-os:38222)
-    board = re.sub('-he$', '_he', board)
+    if not archive_url:
+        archive_url = _get_archive_url(board, branch, release)
 
-    image_archive_uri_list = gs_ls(
-            'gs://chromeos-image-archive/%s-release/%s-%s/image.zip' %
-            (board, branch, release))
+    gs_ls_search = archive_url + '/image.zip'
+    image_archive_uri_list = gs_ls(gs_ls_search)
 
     image_archive_uri_list_len = len(image_archive_uri_list)
     if image_archive_uri_list_len == 0:
