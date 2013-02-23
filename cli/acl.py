@@ -17,7 +17,6 @@ See topic_common.py for a High Level Design and Algorithm.
 
 """
 
-import os, sys
 from autotest_lib.cli import topic_common, action_common
 
 
@@ -45,6 +44,7 @@ class acl(topic_common.atest):
 
 
     def get_items(self):
+        """Get the items in the ACL list."""
         return self.acls
 
 
@@ -168,6 +168,8 @@ class acl_delete(action_common.atest_delete, acl):
 
 
 class acl_add_or_remove(acl):
+    """Shared implementation for acl add and acl remove."""
+
     def __init__(self):
         super(acl_add_or_remove, self).__init__()
         # Get the appropriate help for adding or removing.
