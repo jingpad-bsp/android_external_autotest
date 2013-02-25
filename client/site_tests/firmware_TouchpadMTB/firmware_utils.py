@@ -50,7 +50,7 @@ def create_log_dir(firmware_version, mode):
     dir_basename = conf.filename.sep.join([get_current_time_str(),
                                            'fw_' + firmware_version,
                                            mode])
-    log_root_dir = '/var/tmp/touchpad_firmware_test'
+    log_root_dir = conf.log_root_dir
     log_dir = os.path.join(log_root_dir, dir_basename)
     latest_symlink = os.path.join(log_root_dir, 'latest')
 

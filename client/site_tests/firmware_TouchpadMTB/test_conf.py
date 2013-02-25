@@ -46,11 +46,12 @@ stationary_finger_criteria = '<= 20, ~ +20'
 relaxed_stationary_finger_criteria = '<= 100, ~ +100'
 
 
-# Define filename and path for html report
+# Define filenames and paths
 docroot = '/tmp'
 report_basename = 'touchpad_firmware_report'
 html_ext = '.html'
 ENVIRONMENT_REPORT_HTML_NAME = 'REPORT_HTML_NAME'
+log_root_dir = '/var/tmp/touchpad_firmware_test'
 
 
 # Define parameters for GUI

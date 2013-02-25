@@ -55,7 +55,7 @@ import sys
 
 from common_util import Debug
 from firmware_constants import VLOG
-from test_conf import validator_score_weight
+from test_conf import validator_score_weight, log_root_dir
 from validators import get_short_name
 
 
@@ -70,8 +70,7 @@ def _setup_debug(debug_flag):
 class FirmwareSummary:
     """Summary for touchpad firmware tests."""
 
-    def __init__(self, log_dir='/var/tmp/touchpad_firmware_test',
-                 debug_flag=False):
+    def __init__(self, log_dir=log_root_dir, debug_flag=False):
         if os.path.isdir(log_dir):
             self.log_dir = log_dir
         else:
