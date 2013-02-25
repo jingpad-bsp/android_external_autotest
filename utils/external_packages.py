@@ -817,6 +817,22 @@ class GdataPackage(ExternalPackage):
         return self.version
 
 
+class GoogleAPIClientPackage(ExternalPackage):
+    """
+    Pulls the Python Google API client library.
+    """
+    version = '1.1'
+    url_filename = 'google-api-python-client-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('https://google-api-python-client.googlecode.com/files/%s' % (
+        url_filename),)
+    hex_sum = '2294949683e367b3d4ecaeb77502509c5af21e60'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_setup_py)
+
+
 class DnsPythonPackage(ExternalPackage):
     """
     dns module
