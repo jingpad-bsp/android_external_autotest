@@ -439,7 +439,7 @@ class SiteHost(remote.RemoteHost):
             self.run('restart ui')
             client_at.run_static_method('autotest_lib.client.cros.cros_ui',
                                         '_wait_for_login_prompt')
-        except error.AutotestRunError, error.AutoservRunError:
+        except (error.AutotestRunError, error.AutoservRunError):
             logging.warn('Unable to restart ui, rebooting device.')
             # Since restarting the UI fails fall back to normal Autotest
             # cleanup routines, i.e. reboot the machine.
