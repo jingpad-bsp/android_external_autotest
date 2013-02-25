@@ -31,6 +31,11 @@ def package_url_pattern():
     return _CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
 
 
+def try_job_timeout_mins():
+    return _CONFIG.get_config_value('SCHEDULER', 'try_job_timeout_mins',
+                                    type=int, default=4*60)
+
+
 def get_package_url(devserver_url, build):
     """Returns the package url from the |devserver_url| and |build|.
 

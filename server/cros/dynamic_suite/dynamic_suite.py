@@ -6,13 +6,14 @@ import ast, datetime, logging
 
 import common
 
-from autotest_lib.client.common_lib import base_job, global_config
+from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reimager
+from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.tko import utils as tko_utils
 
@@ -282,8 +283,7 @@ Step by step:
 """
 
 
-DEFAULT_TRY_JOB_TIMEOUT_MINS = global_config.global_config.get_config_value(
-            'SCHEDULER', 'try_job_timeout_mins', type=int, default=4*60)
+DEFAULT_TRY_JOB_TIMEOUT_MINS = tools.try_job_timeout_mins()
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 

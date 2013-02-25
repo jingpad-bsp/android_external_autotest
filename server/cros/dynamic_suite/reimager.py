@@ -7,7 +7,6 @@ import datetime, hashlib, logging, os
 
 import common
 
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -21,8 +20,7 @@ from autotest_lib.server.cros.dynamic_suite.job_status import Status
 from autotest_lib.frontend.afe.json_rpc import proxy
 
 
-DEFAULT_TRY_JOB_TIMEOUT_MINS = global_config.global_config.get_config_value(
-            'SCHEDULER', 'try_job_timeout_mins', type=int, default=4*60)
+DEFAULT_TRY_JOB_TIMEOUT_MINS = tools.try_job_timeout_mins()
 _reimage_types = {}
 
 
@@ -309,6 +307,10 @@ class Reimager(object):
         """
         begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
         try:
+            # We need to keep track of the timeout for tryjobs ourself. The
+            # scheduler's timeout only applies to a job once it hits the
+            # 'Running' state, and we want a timeout that enforces
+            # 'Queued' + 'Running' < Timeout.
             start_time = datetime.datetime.utcnow()
             if not job_status.wait_for_jobs_to_start(self._afe,
                     [self._canary_job], start_time=start_time,
