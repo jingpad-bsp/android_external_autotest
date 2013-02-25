@@ -199,6 +199,23 @@ public class AfeUtils {
         });
     }
 
+    public static void callRepair(JSONObject params, final SimpleCallback onSuccess,
+                                  final String messagePrefix) {
+        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+        rpcProxy.rpcCall("repair_hosts", params, new JsonRpcCallback() {
+            @Override
+            public void onSuccess(JSONValue result) {
+
+                NotifyManager.getInstance().showMessage(
+                        messagePrefix + " scheduled for repair");
+
+                if (onSuccess != null) {
+                    onSuccess.doCallback(null);
+                }
+            }
+        });
+    }
+
     private static void scheduleReinstallHelper(JSONArray hosts, JSONObject controlInfo,
                                                 final String messagePrefix,
                                                 final JobCreateListener listener) {

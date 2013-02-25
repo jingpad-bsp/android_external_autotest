@@ -137,6 +137,7 @@ public class HostDetailView extends DetailView
     private Button lockButton = new Button();
     private Button reverifyButton = new Button("Reverify");
     private Button reinstallButton = new Button("Reinstall");
+    private Button repairButton = new Button("Repair");
     private CheckBox showSpecialTasks = new CheckBox();
 
     public HostDetailView(HostDetailListener hostDetailListener,
@@ -295,6 +296,20 @@ public class HostDetailView extends DetailView
             }
         });
         addWidget(reinstallButton, "view_host_reinstall_button");
+
+        repairButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                JSONObject params = new JSONObject();
+
+                params.put("id", currentHostObject.get("id"));
+                AfeUtils.callRepair(params, new SimpleCallback() {
+                    public void doCallback(Object source) {
+                       refresh();
+                    }
+                }, "Host " + hostname);
+            }
+        });
+        addWidget(repairButton, "view_host_repair_button");
     }
 
     public void onError(JSONObject errorObject) {

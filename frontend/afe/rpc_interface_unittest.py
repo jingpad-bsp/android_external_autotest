@@ -314,6 +314,19 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(task['requested_by'], 'autotest_system')
 
 
+    def test_repair_hosts(self):
+        hostname_list = rpc_interface.repair_hosts(id__in=[1, 2])
+        self.assertEquals(hostname_list, ['host1', 'host2'])
+        tasks = rpc_interface.get_special_tasks()
+        self.assertEquals(len(tasks), 2)
+        self.assertEquals(set(task['host']['id'] for task in tasks),
+                          set([1, 2]))
+
+        task = tasks[0]
+        self.assertEquals(task['task'], models.SpecialTask.Task.REPAIR)
+        self.assertEquals(task['requested_by'], 'autotest_system')
+
+
     def test_parameterized_job(self):
         global_config.global_config.override_config_value(
                 'AUTOTEST_WEB', 'parameterized_jobs', 'True')

@@ -592,18 +592,36 @@ def abort_host_queue_entries(**filter_data):
         queue_entry.abort()
 
 
+def _call_special_tasks_on_hosts(task, hosts):
+    """\
+    Schedules a set of hosts for a special task.
+
+    @returns A list of hostnames that a special task was created for.
+    """
+    models.AclGroup.check_for_acl_violation_hosts(hosts)
+    for host in hosts:
+        models.SpecialTask.schedule_special_task(host, task)
+    return list(sorted(host.hostname for host in hosts))
+
+
 def reverify_hosts(**filter_data):
     """\
     Schedules a set of hosts for verify.
 
     @returns A list of hostnames that a verify task was created for.
     """
-    hosts = models.Host.query_objects(filter_data)
-    models.AclGroup.check_for_acl_violation_hosts(hosts)
-    for host in hosts:
-        models.SpecialTask.schedule_special_task(host,
-                                                 models.SpecialTask.Task.VERIFY)
-    return list(sorted(host.hostname for host in hosts))
+    return _call_special_tasks_on_hosts(models.SpecialTask.Task.VERIFY,
+            models.Host.query_objects(filter_data))
+
+
+def repair_hosts(**filter_data):
+    """\
+    Schedules a set of hosts for repair.
+
+    @returns A list of hostnames that a repair task was created for.
+    """
+    return _call_special_tasks_on_hosts(models.SpecialTask.Task.REPAIR,
+            models.Host.query_objects(filter_data))
 
 
 def get_jobs(not_yet_run=False, running=False, finished=False, **filter_data):
