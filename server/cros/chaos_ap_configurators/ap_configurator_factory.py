@@ -20,9 +20,11 @@ import linksys_ap_configurator
 import linksys_ap_15_configurator
 import linksyse_dual_band_configurator
 import linksyse_single_band_configurator
+import linksyse1000_ap_configurator
 import linksyse2000_ap_configurator
 import linksyse2100_ap_configurator
 import linksyse2500_ap_configurator
+import linksyswrt160_ap_configurator
 import medialink_ap_configurator
 import netgear3700_ap_configurator
 import netgear4300_ap_configurator
@@ -91,6 +93,10 @@ class APConfiguratorFactory(object):
             linksyse2500_ap_configurator.Linksyse2500APConfigurator,
         'WesternDigitalN600APConfigurator':
             westerndigitaln600_ap_configurator.WesternDigitalN600APConfigurator
+        'Linksyse1000APConfigurator':
+            linksyse1000_ap_configurator.Linksyse1000APConfigurator,
+        'LinksysWRT160APConfigurator':
+            linksyswrt160_ap_configurator.LinksysWRT160APConfigurator,
     }
 
     def __init__(self):

@@ -14,17 +14,6 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
     """Base class for objects to configure Linksys single band access points
        using webdriver."""
 
-
-    def __init__(self, router_dict):
-        super(LinksyseSingleBandAPConfigurator, self).__init__(router_dict)
-        self.security_disabled = 'Disabled'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA Personal'
-        self.security_wpa2psk = 'WPA2 Personal'
-        self.security_wpa8021x = 'WPA Enterprise'
-        self.security_wpa28021x = 'WPA2 Enterprise'
-
-
     def _sec_alert(self, alert):
         text = alert.text
         if 'Your wireless security mode is not compatible with' in text:
@@ -37,6 +26,10 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
             self.click_button_by_xpath('//input[@value="Continue"]')
         elif 'Your new setting will disable Wi-Fi Protected Setup.' in text:
             alert.accept()
+        elif 'Illegal characters [ acceptable characters: 0 to 9 ]' in text:
+            alert.accept()
+            raise RuntimeError('Invalid characters used for key renewal. '
+                               'Error: %s' % text)
         else:
            raise RuntimeError('Invalid handler')
 
@@ -71,7 +64,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'WL_WPATable.asp')
-            self.driver.get(page_url, page_title='Security')
+            self.get_url(page_url, page_title='Security')
         else:
             raise RuntimeError('Invalid page number passed. Number of pages '
                                '%d, page value sent was %d' %
@@ -165,7 +158,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         xpath = '//select[@name="wl0_security_mode"]'
-        self.select_item_from_popup_by_xpath(self.security_disabled, xpath,
+        self.select_item_from_popup_by_xpath('Disabled', xpath,
                                              alert_handler=self._sec_alert)
 
 
@@ -179,10 +172,10 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
         # and Mixed mode.
         # WEP and WPA-Personal do not show up in the list, no alert is thrown.
         popup = '//select[@name="wl0_security_mode"]'
-        if not self.item_in_popup_by_xpath_exist(self.security_wep, popup):
+        if not self.item_in_popup_by_xpath_exist('WEP', popup):
             raise RuntimeError('The popup %s did not contain the item %s. '
                                'Is the mode N?' % (popup, self.security_wep))
-        self.select_item_from_popup_by_xpath(self.security_wep, popup,
+        self.select_item_from_popup_by_xpath('WEP', popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl0_passphrase"]'
         self.set_content_of_text_field_by_xpath(key_value, text,
@@ -193,15 +186,24 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def set_security_wpapsk(self, shared_key, update_interval=None):
         # WEP and WPA-Personal are not supported for Wireless-N only mode,
-        # so use WPA2-Personal to avoid conflicts.
-        self.add_item_to_command_list(self._set_security_wpa2psk,
-                                      (shared_key,), 2, 900)
+        # so use WPA2-Personal when in mode_n.
+        self.add_item_to_command_list(self._set_security_psk, (shared_key,
+                                      update_interval, 'WPA Personal'), 2, 900)
 
 
-    def _set_security_wpa2psk(self, shared_key):
+    def set_security_wpa2psk(self, shared_key, update_interval=None):
+        # WEP and WPA-Personal are not supported for Wireless-N only mode,
+        # so use WPA2-Personal when in mode_n.
+        self.add_item_to_command_list(self._set_security_psk, (shared_key,
+                                      update_interval, 'WPA2 Personal'), 2, 900)
+
+
+    def _set_security_psk(self, shared_key, upadate_interval=None,
+                          rsn_mode='WPA Personal'):
+        """Common method to set wpapsk and wpa2psk modes."""
         logging.info('update_interval is not supported.')
         popup = '//select[@name="wl0_security_mode"]'
-        self.select_item_from_popup_by_xpath(self.security_wpa2psk, popup,
+        self.select_item_from_popup_by_xpath(rsn_mode, popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl0_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,
