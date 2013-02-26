@@ -78,6 +78,7 @@ class TestModemManagerContext(object):
     def __exit__(self, *args):
         if self.use_pseudomodem:
             self.pseudo_modem_manager.Stop()
+            self.pseudo_modem_manager = None
             for modem_manager in self.real_managers:
                 try:
                     utils.run('/sbin/start %s' % modem_manager)
@@ -247,17 +248,19 @@ class PseudoModemManager(object):
             self.modem.SetSIM(self.sim)
         self.manager.Add(self.modem)
 
-        mainloop = gobject.MainLoop()
+        self.mainloop = gobject.MainLoop()
 
         def SignalHandler(signum, frame):
             logging.info('Signal handler called with signal %s', signum)
             self.manager.Remove(self.modem)
-            mainloop.quit()
+            self.mainloop.quit()
+            if self.detach:
+                os._exit(0)
 
         signal.signal(signal.SIGINT, SignalHandler)
         signal.signal(signal.SIGTERM, SignalHandler)
 
-        mainloop.run()
+        self.mainloop.run()
 
     def SendTextMessage(self, sender_no, text):
         # TODO(armansito): Implement

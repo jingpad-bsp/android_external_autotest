@@ -268,8 +268,10 @@ class DBusObjectManager(dbus.service.Object):
             InterfacesRemoved
 
         """
-        self.devices.remove(device)
+        if device in self.devices:
+            self.devices.remove(device)
         interfaces = device.GetInterfacesAndProperties().keys()
+        device.remove_from_connection()
         self.InterfacesRemoved(device.path, interfaces)
 
     @dbus.service.method(mm1.I_OBJECT_MANAGER, out_signature='a{oa{sa{sv}}}')
