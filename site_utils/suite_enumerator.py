@@ -19,13 +19,15 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
-import optparse, os, sys, time
+import optparse, os, sys
 import common
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 
 def parse_options():
+    """Parse command line for arguments including autotest directory, suite
+    name, if to list stable tests only, and if to list all available suites.
+    """
     usage = "usage: %prog [options] suite_name"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-a', '--autotest_dir', dest='autotest_dir',
@@ -44,6 +46,7 @@ def parse_options():
 
 
 def main():
+    """Entry point to run the suite enumerator command."""
     parser, options, args = parse_options()
     if options.listall:
         if args:
@@ -74,6 +77,12 @@ def main():
     if options.add_experimental:
         for test in suite.unstable_tests():
             print test.path
+    # Check if test_suites/control.suite_name exists.
+    if not options.listall:
+        control_path = os.path.join(options.autotest_dir, 'test_suites',
+                                    'control.' + args[0])
+        if not os.path.exists(control_path):
+            print ('Warning! control file is missing: %s' % control_path)
 
 
 if __name__ == "__main__":
