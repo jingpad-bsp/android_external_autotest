@@ -163,6 +163,13 @@
                             "clipboardRead",
                             "unlimitedStorage"]
       },
+      { "id": "pmfjbimdmchhbnneeidfognadeopoehp",
+        "name": "Image Loader",
+        "effective_host_permissions": [],
+        "api_permissions": ["fileBrowserHandler",
+                            "fileBrowserHandlerInternal",
+                            "fileBrowserPrivate"]
+      },
       { "id": "obklkkbkpaoaejdabbfldmcfplpdgolj",
         "name": "Wallpaper Picker",
         "effective_host_permissions": ["https://storage.googleapis.com/*",
