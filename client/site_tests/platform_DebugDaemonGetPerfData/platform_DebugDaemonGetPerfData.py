@@ -25,7 +25,3 @@ class platform_DebugDaemonGetPerfData(test.test):
             raise error.TestFail('No perf output found: %s' % result)
         if len(result) < 10:
             raise error.TestFail('Perf output too small')
-        magic_prefix = "\nX\nN"
-        for i in range(len(magic_prefix)):
-            if magic_prefix[i] != chr(result[i]):
-                raise error.TestFail('Magic signature missing in output')
