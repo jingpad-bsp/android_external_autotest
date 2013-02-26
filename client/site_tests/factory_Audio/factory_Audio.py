@@ -37,6 +37,7 @@ _VERBOSE = False
 # Add -D hw:0,0 since default argument does not work properly.
 # See crosbug.com/p/12330
 _CMD_PLAY_AUDIO = 'aplay -D hw:0,0 %s'
+_CMD_RECORD_AUDIO = 'arecord -D hw:0,0 -f dat -t wav %s'
 
 
 class factory_Audio(test.test):
@@ -127,7 +128,7 @@ class factory_Audio(test.test):
                 # Record via mic.
                 if os.path.isfile('rec.wav'):
                     os.unlink('rec.wav')
-                cmd = 'arecord -f dat -t wav rec.wav'
+                cmd = _CMD_RECORD_AUDIO % 'rec.wav'
             else:
                 if self._test_left_right:
                     if event.keyval == gtk.keysyms.Shift_L:
