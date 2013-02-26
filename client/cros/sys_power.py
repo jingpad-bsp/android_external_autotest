@@ -188,8 +188,10 @@ def memory_suspend(seconds, size):
         for line in open(output, 'r'):
             logging.error(line)
         raise MemoryError('Memory corruption found after resume')
-    elif status:
+    elif status == 1:
         raise SuspendFailure('Failure in powerd_suspend during memory test')
+    elif status:
+        raise SuspendFailure('Unknown failure in memory_suspend_test (crash?)')
     check_wakeup(alarm)
     return alarm
 

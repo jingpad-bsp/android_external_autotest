@@ -18,7 +18,7 @@ class power_MemorySuspend(test.test):
         meminfo = utils.read_file('/proc/meminfo')
         free_kb = int(utils.get_field(meminfo, 0, 'MemFree:'))
         inactive_kb = int(utils.get_field(meminfo, 0, 'Inactive:'))
-        slack_kb = 128 * 1024
+        slack_kb = 192 * 1024
         sys_power.memory_suspend(10, (free_kb + inactive_kb - slack_kb) * 1024)
 
 
