@@ -25,7 +25,8 @@ class Suspender(object):
         suspend: Do a suspend/resume cycle. Return timing measurement dict.
 
     Private attributes:
-        _log_reader: LogReader that is set to start right before suspending.
+        _logs: Array of /var/log/messages lines since start of suspend cycle.
+        _log_file: Open file descriptor at the end of /var/log/messages.
         _suspend: Set to the sys_power suspend function to use.
         _throw: Set to have SuspendFailure exceptions raised to the caller.
         _reset_pm_print_times: Set to deactivate pm_print_times after the test.
@@ -103,7 +104,7 @@ class Suspender(object):
         self._throw = throw
         self._reset_pm_print_times = False
         self._restart_tlsdated = False
-        self._log_reader = cros_logging.LogReader()
+        self._log_file = None
         if device_times:
             self.device_times = []
 
@@ -150,6 +151,20 @@ class Suspender(object):
             self._reset_pm_print_times = False
         else:
             logging.info('Device resume times set to %s' % bool(on))
+
+
+    def _reset_logs(self):
+        """Throw away cached log lines and reset log pointer to current end."""
+        if self._log_file:
+            self._log_file.close()
+        self._log_file = open('/var/log/messages')
+        self._log_file.seek(0, os.SEEK_END)
+        self._logs = []
+
+
+    def _update_logs(self):
+        """Read all lines logged since last reset into log cache."""
+        self._logs += self._log_file.readlines()
 
 
     def _ts(self, name, retries=50, sleep_seconds=0.2):
@@ -202,21 +217,25 @@ class Suspender(object):
         if utils.get_arch() not in ['i686', 'x86_64']:
             # TODO: support this on ARM somehow
             return 0
-        pattern = r'TSC at resume: (\d+)$'
-        line = self._log_reader.get_last_msg(pattern)
-        if line:
-            freq = 1000 * int(utils.read_one_line(
-                    '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq'))
-            return float(re.search(pattern, line).group(1)) / freq
+        regex = re.compile(r'TSC at resume: (\d+)$')
+        freq = 1000 * int(utils.read_one_line(
+                '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq'))
+        for line in reversed(self._logs):
+            match = regex.search(line)
+            if match:
+                return float(match.group(1)) / freq
+
         raise error.TestError('Failed to find TSC resume value in syslog.')
 
 
     def _device_resume_time(self):
         """Read amount of seconds for overall device resume from syslog."""
-        pattern = r'PM: resume of devices complete after ([0-9.]+)'
-        line = self._log_reader.get_last_msg(pattern)
-        if line:
-            return float(re.search(pattern, line).group(1)) / 1000
+        regex = re.compile(r'PM: resume of devices complete after ([0-9.]+)')
+        for line in reversed(self._logs):
+            match = regex.search(line)
+            if match:
+                return float(match.group(1)) / 1000
+
         raise error.TestError('Failed to find device resume time in syslog.')
 
 
@@ -224,7 +243,7 @@ class Suspender(object):
         """Return dict of individual device suspend and resume times."""
         self.device_times.append(dict())
         regex = re.compile(r'call ([^ ]+)\+ returned 0 after ([0-9]+) usecs')
-        for line in self._log_reader.read_all_logs():
+        for line in self._logs:
             match = regex.search(line)
             if match:
                 key = 'seconds_dev_' + match.group(1).replace(':', '-')
@@ -255,7 +274,7 @@ class Suspender(object):
 
             # Retry suspend until we get clear HwClock reading on buggy boards
             for _ in xrange(10):
-                self._log_reader.set_start_by_current()
+                self._reset_logs()
                 utils.system('sync')
                 board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 3)
                 try:
@@ -282,13 +301,14 @@ class Suspender(object):
                 start_regex = re.compile(r'powerd_suspend\[\d+\]: Going to sus')
                 start_found = False
                 # TODO(scottz): warning_monitor crosbug.com/38092
-                syslog = self._log_reader.read_all_logs()
-                for line in syslog:
+                self._update_logs()
+                for i in xrange(len(self._logs)):
+                    line = self._logs[i]
                     if warning_regex.search(line):
                         # match the source file from the WARNING line, and the
                         # actual error text by peeking two lines below that
                         src = cros_logging.strip_timestamp(line)
-                        text = cros_logging.strip_timestamp(syslog.send(2))
+                        text = cros_logging.strip_timestamp(self._logs[i + 2])
                         for p1, p2 in sys_power.KernelError.WHITELIST:
                             if re.search(p1, src) and re.search(p2, text):
                                 logging.info('Whitelisted KernelError: %s', src)
@@ -300,7 +320,7 @@ class Suspender(object):
                                 cros_logging.strip_timestamp(line))
                     if unknown_regex.search(line):
                         raise sys_power.SuspendFailure('Unidentified problem.')
-                    if start_regex.search(line):
+                    if not start_found and start_regex.search(line):
                         start_found = True
                 if not start_found:
                     raise error.TestError('Sanity check failed: system did not '
@@ -317,6 +337,7 @@ class Suspender(object):
             kernel_down = (self._ts('end_suspend_time') -
                            self._ts('start_suspend_time'))
             kernel_up = self._ts('end_resume_time') - start_resume
+            self._update_logs()
             devices_up = self._device_resume_time()
             total_up = hwclock_ts - alarm
             firmware_up = self._firmware_resume_time()
