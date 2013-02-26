@@ -33,7 +33,7 @@ import java.util.Set;
 public class AfeUtils {
     public static final String PLATFORM_SUFFIX = " (platform)";
     public static final String ATOMIC_GROUP_SUFFIX = " (atomic group)";
-    public static final String REINSTALL_TEST_NAME = "Re-install Machine";
+    public static final String REINSTALL_TEST_NAME = "autoupdate:repair";
 
     public static final ClassFactory factory = new SiteClassFactory();
 

@@ -19,6 +19,8 @@ from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server.cros import servo
+from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
+from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.hosts import remote
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
@@ -258,18 +260,77 @@ class SiteHost(remote.RemoteHost):
             self.servo = servo.Servo(**servo_args)
 
 
+    def get_repair_image_name(self):
+        """Generate a image_name from variables in the global config.
+
+        @returns a str of $board-version/$BUILD.
+
+        """
+        stable_version = global_config.global_config.get_config_value(
+                'CROS', 'stable_cros_version')
+        build_pattern = global_config.global_config.get_config_value(
+                'CROS', 'stable_build_pattern')
+        board = self._get_board_from_afe()
+        if board is None:
+            raise error.AutoservError('DUT has no board attribute, '
+                                      'cannot be repaired.')
+        return build_pattern % (board, stable_version)
+
+
+    def clear_cros_version_labels_and_job_repo_url(self):
+        """Clear cros_version labels and host attribute job_repo_url."""
+        host_model = models.Host.objects.get(hostname=self.hostname)
+        for label in host_model.labels.iterator():
+            if not label.name.startswith(ds_constants.VERSION_PREFIX):
+                continue
+            label = models.Label.smart_get(label.name)
+            label.host_set.remove(host_model)
+
+        host_model.set_or_delete_attribute('job_repo_url', None)
+
+
     def machine_install(self, update_url=None, force_update=False,
-                        local_devserver=False):
+                        local_devserver=False, repair=False):
+        """Install the DUT.
+
+        @param update_url: The url to use for the update
+                pattern: http://$devserver:###/update/$build
+                If update_url is None and repair is True we will install the
+                stable image listed in global_config under
+                CROS.stable_cros_version.
+        @param force_update: Force an update even if the version installed
+                is the same. Default:False
+        @param local_devserver: Used by run_remote_test to allow people to
+                use their local devserver. Default: False
+        @param repair: Whether or not we are in repair mode. This adds special
+                cases for repairing a machine like starting update_engine.
+                Setting repair to True sets force_update to True as well.
+                default: False
+        @raises autoupdater.ChromiumOSError
+
+        """
         if not update_url and self._parser.options.image:
             update_url = self._parser.options.image
-        elif not update_url:
+        elif not update_url and not repair:
             raise autoupdater.ChromiumOSError(
                 'Update failed. No update URL provided.')
+        elif not update_url and repair:
+            image_name = self.get_repair_image_name()
+            devserver = dev_server.ImageServer.resolve(image_name)
+            logging.info('Staging repair build: %s', image_name)
+            devserver.trigger_download(image_name, synchronous=False)
+            self.clear_cros_version_labels_and_job_repo_url()
+            update_url = tools.image_url_pattern() % (devserver.url(),
+                                                      image_name)
+
 
         # In case the system is in a bad state, we always reboot the machine
         # before machine_install.
         self.reboot(timeout=60, wait=True)
 
+        if repair:
+            self.run('stop update-engine; start update-engine')
+            force_update = True
         # Attempt to update the system.
         updater = autoupdater.ChromiumOSUpdater(update_url, host=self,
                                                 local_devserver=local_devserver)
@@ -345,6 +406,29 @@ class SiteHost(remote.RemoteHost):
             logging.error('Host %s has multiple board labels.',
                           self.hostname)
         return board_name
+
+
+    def _install_repair(self):
+        """Attempt to repair this host using upate-engine.
+
+        If the host is up, try installing the DUT with a stable
+        "repair" version of Chrome OS as defined in the global_config
+        under CROS.stable_cros_version.
+
+        @returns True if successful, False if update_engine failed.
+
+        """
+        if not self.is_up():
+            return False
+
+        logging.info('Attempting to reimage machine to repair image.')
+        try:
+            self.machine_install(repair=True)
+        except autoupdater.ChromiumOSError:
+            logging.info('Repair via install failed.')
+            return False
+
+        return True
 
 
     def _servo_repair(self, board):
@@ -424,7 +508,12 @@ class SiteHost(remote.RemoteHost):
                 logging.error('host %s has no board; failing repair',
                               self.hostname)
                 raise
-            if (self.servo and
+
+            reimage_success = self._install_repair()
+            # TODO(scottz): All repair pathways should be executed until we've
+            # exhausted all options. Below we favor servo over powercycle when
+            # we really should be falling back to power if servo fails.
+            if (not reimage_success and self.servo and
                     host_board in self._SERVO_REPAIR_WHITELIST):
                 self._servo_repair(host_board)
             elif (self.has_power() and

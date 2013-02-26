@@ -33,23 +33,10 @@ if 'devserver_url' in locals() and 'image_name' in locals():
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10, debug=False)
 
-def clear_version_labels(machine):
-    """Clear all build-specific labels, attributes from the target.
-
-    Copied from server/cros/dynamic_suite.py, because we can't be sure that
-    code will be available in all contexts in which this control file is
-    currently used.
-
-    @param machine: the host to clear labels, attributes from.
-    """
-    labels = AFE.get_labels(name__startswith=vers, host__hostname__in=[machine])
-    for label in labels: label.remove_hosts(hosts=[machine])
-    AFE.set_host_attribute('job_repo_url', None, hostname=machine)
-
-
 def run(machine):
-    clear_version_labels(machine)
     host = hosts.create_host(machine, initialize=False)
+    host.clear_cros_version_labels_and_job_repo_url()
+
     if job.run_test('autoupdate', host=host, update_url=image_url):
         label = AFE.get_labels(name=vers+image_name)[0]
         label.add_hosts([machine])

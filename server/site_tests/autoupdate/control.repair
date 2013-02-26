@@ -1,0 +1,26 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chromium OS"
+NAME = "Auto Update Repair"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+
+DOC = """
+Install a test image as designated by CROS.stable_cros_version.
+
+Can only be used by test suites based on server.cros.dynamic_suite.Suite.
+Assumes that a label including the image name has already been created.
+"""
+
+
+def run(machine):
+    host = hosts.create_host(machine, initialize=False)
+    job.run_test('autoupdate', host=host, update_url=None, repair=True,
+                 disable_sysinfo=True)
+
+
+job.parallel_simple(run, machines)
