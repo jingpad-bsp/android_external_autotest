@@ -125,6 +125,7 @@ OPTIONS = _Options()
 OPTIONS.HELP = 'help'
 OPTIONS.ITERATIONS = 'iterations'
 OPTIONS.MODE = 'mode'
+OPTIONS.REPLAY = 'replay'
 OPTIONS.SIMPLIFIED = 'simplified'
 
 

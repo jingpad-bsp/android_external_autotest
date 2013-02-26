@@ -107,7 +107,10 @@ class firmware_TouchpadMTB:
         # on the window and to print the results in the report.
         firmware_version = self.touchpad.get_firmware_version()
         mode = options[OPTIONS.MODE]
-        self.log_dir = firmware_utils.create_log_dir(firmware_version, mode)
+        if options[OPTIONS.REPLAY]:
+            self.log_dir = options[OPTIONS.REPLAY]
+        else:
+            self.log_dir = firmware_utils.create_log_dir(firmware_version, mode)
         self._create_report_name(mode)
         self.report_html = ReportHtml(self.report_html_name,
                                       self.screen_size,
@@ -221,6 +224,9 @@ def _usage_and_exit():
     print '            robot: using robot to perform gestures automatically'
     print '            robot_int: using robot with finger interaction'
     print '            robot_sim: robot simulation, for developer only'
+    print '  --%s log_dir' % OPTIONS.REPLAY
+    print '        Replay the gesture files and get the test results.'
+    print '        log_dir is a log sub-directory in %s' % conf.log_root_dir
     print '  -s, --%s' % OPTIONS.SIMPLIFIED
     print '        Use one variation per gesture'
     print
@@ -231,6 +237,13 @@ def _usage_and_exit():
     print '  $ DISPLAY=:0 OPTIONS="-m manual" python main.py\n'
     print '  # Perform 1 iteration of all manual and robot gestures.'
     print '  $ DISPLAY=:0 OPTIONS="-m complete" python main.py\n'
+    print '  # Replay the gesture files in the latest log directory.'
+    print '  $ DISPLAY=:0 OPTIONS="--replay latest" python main.py\n'
+    example_log_dir = '20130226_040802-fw_1.2-manual'
+    print '  # Replay the gesture files in %s/%s' % (conf.log_root_dir,
+                                                     example_log_dir)
+    print '  $ DISPLAY=:0 OPTIONS="--replay %s" python main.py\n' % \
+            example_log_dir
     sys.exit(1)
 
 
@@ -249,6 +262,7 @@ def _parse_options():
     # Set the default values of options.
     options = {OPTIONS.ITERATIONS: 1,
                OPTIONS.MODE: MODE.MANUAL,
+               OPTIONS.REPLAY: None,
                OPTIONS.SIMPLIFIED: False}
 
     # Get the environment OPTIONS
@@ -262,6 +276,7 @@ def _parse_options():
         long_opt = [OPTIONS.HELP,
                     OPTIONS.ITERATIONS + '=',
                     OPTIONS.MODE + '=',
+                    OPTIONS.REPLAY + '=',
                     OPTIONS.SIMPLIFIED]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
@@ -281,6 +296,13 @@ def _parse_options():
                 options[OPTIONS.MODE] = arg
             else:
                 print 'Warning: -m should be one of %s' % MODE.GESTURE_PLAY_MODE
+        elif opt in ('--%s' % OPTIONS.REPLAY):
+            log_dir = os.path.join(conf.log_root_dir, arg)
+            if os.path.isdir(log_dir):
+                options[OPTIONS.REPLAY] = log_dir
+            else:
+                print 'Error: the log directory "%s" does not exist.' % log_dir
+                _usage_and_exit()
         elif opt in ('-s', '--%s' % OPTIONS.SIMPLIFIED):
             options[OPTIONS.SIMPLIFIED] = True
         else:

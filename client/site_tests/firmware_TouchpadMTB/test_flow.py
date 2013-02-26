@@ -7,6 +7,7 @@
 """Guide the user to perform gestures. Record and validate the gestures."""
 
 import fcntl
+import glob
 import os
 import subprocess
 import sys
@@ -67,6 +68,7 @@ class TestFlow:
         self.scores = []
         self.mode = options[OPTIONS.MODE]
         self.iterations = options[OPTIONS.ITERATIONS]
+        self.replay_dir = options[OPTIONS.REPLAY]
         self.gv_count = float('infinity')
         gesture_names = self._get_gesture_names()
         self.gesture_list = GestureList(gesture_names).get_gesture_list()
@@ -78,9 +80,19 @@ class TestFlow:
         self.mtb_evemu = mtb.MtbEvemu()
         self.robot = robot_wrapper.RobotWrapper(self.board, self.mode)
         self.robot_waiting = False
+        self._rename_old_log_and_html_files()
 
     def __del__(self):
         self.system_device.close()
+
+    def _rename_old_log_and_html_files(self):
+        """When in replay mode, rename the old log and html files."""
+        if self.replay_dir:
+            for file_type in ['*.log', '*.html']:
+                path_names = os.path.join(self.output.log_dir, file_type)
+                for old_path_name in glob.glob(path_names):
+                    new_path_name = '.'.join([old_path_name, 'old'])
+                    os.rename(old_path_name, new_path_name)
 
     def _is_robot_mode(self):
         """Is it in robot mode?"""
@@ -245,9 +257,14 @@ class TestFlow:
 
     def _stop_record_and_post_image(self):
         """Terminate the recording process."""
-        self.screen_shot.dump_root(self._get_gesture_image_name())
-        self.record_proc.terminate()
-        self.record_proc.wait()
+        if self.replay_dir is None:
+            if not self.gesture_file.closed:
+                self.gesture_file.close()
+            self.screen_shot.dump_root(self._get_gesture_image_name())
+            self.record_proc.terminate()
+            self.record_proc.wait()
+        else:
+            self._get_gesture_image_name()
         self.win.set_image(self.gesture_image_name)
 
     def _create_prompt(self, test, variation):
@@ -297,7 +314,16 @@ class TestFlow:
             self.output.print_report(self.deleted_msg)
 
     def _create_gesture_file_name(self, gesture, variation):
-        """Create the gesture file name based on its variation."""
+        """Create the gesture file name based on its variation.
+
+        Examples of different levels of file naming:
+            Primary name:
+                pinch_to_zoom.zoom_in-lumpy-fw_11.27
+            Root name:
+                pinch_to_zoom.zoom_in-lumpy-fw_11.27-manual-20130221_050510
+            Base name:
+                pinch_to_zoom.zoom_in-lumpy-fw_11.27-manual-20130221_050510.dat
+        """
         if variation is None:
             gesture_name = gesture.name
         else:
@@ -307,14 +333,16 @@ class TestFlow:
                 name_list = [gesture.name, variation]
             gesture_name = '.'.join(name_list)
 
-        basename = conf.filename.sep.join([
+        self.primary_name = conf.filename.sep.join([
                 gesture_name,
                 firmware_utils.get_board(),
-                'fw_' + self.firmware_version,
+                'fw_' + self.firmware_version])
+        root_name = conf.filename.sep.join([
+                self.primary_name,
                 self.mode,
                 firmware_utils.get_current_time_str()])
-        filename = '.'.join([basename, conf.filename.ext])
-        return filename
+        basename = '.'.join([root_name, conf.filename.ext])
+        return basename
 
     def _add_scores(self, new_scores):
         """Add the new scores of a single gesture to the scores list."""
@@ -428,7 +456,6 @@ class TestFlow:
             self.output.print_window(msg_list)
             self.output.buffer_report(msg_list)
             self.output.report_html.insert_validator_logs(vlogs)
-            self.gesture_file.close()
             self.win.set_prompt(prompt, color=color)
             print prompt
             self._stop_record_and_post_image()
@@ -542,8 +569,28 @@ class TestFlow:
             self._setup_this_gesture_variation()
             self._prompt_and_action()
 
+    def _get_existent_event_files(self):
+        """Get the existent event files that starts with the primary_name."""
+        primary_pathnames = os.path.join(self.output.log_dir,
+                                         self.primary_name + '*.dat')
+        self.primary_gesture_files = glob.glob(primary_pathnames)
+        # Reverse sorting the file list so that we could pop from the tail.
+        self.primary_gesture_files.sort()
+        self.primary_gesture_files.reverse()
+
+    def _use_existent_event_file(self):
+        """If the replay flag is set in the command line, and there exists a
+        file(s) with the same primary name, then use the existent file(s)
+        instead of recording a new one.
+        """
+        if self.primary_gesture_files:
+            self.gesture_file_name = self.primary_gesture_files.pop()
+            return True
+        return False
+
     def _pre_setup_this_gesture_variation(self, next_gesture=True):
         """Get gesture, variation, filename, prompt, etc."""
+        next_gesture_first_time = False
         if next_gesture:
             if self.gv_count < self.iterations:
                 self.gv_count += 1
@@ -553,9 +600,17 @@ class TestFlow:
                 if gesture_variation is None:
                     return False
                 self.gesture, self.variation = gesture_variation
+                next_gesture_first_time = True
 
-        self.gesture_file_name = os.path.join(self.output.log_dir,
-                self._create_gesture_file_name(self.gesture, self.variation))
+        basename = self._create_gesture_file_name(self.gesture, self.variation)
+        if next_gesture_first_time:
+            self._get_existent_event_files()
+
+        if self.replay_dir:
+            self.use_existent_event_file_flag = self._use_existent_event_file()
+        else:
+            self.gesture_file_name = os.path.join(self.output.log_dir, basename)
+
         (msg, color_msg, glog) = self._create_prompt(self.gesture,
                                                      self.variation)
         self.win.set_gesture_name(msg)
@@ -564,11 +619,21 @@ class TestFlow:
         self.output.print_report(color_msg)
         self.saved_msg = '(saved: %s)\n' % self.gesture_file_name
         self.deleted_msg = '(deleted: %s)\n' % self.gesture_file_name
-
         return True
 
     def _setup_this_gesture_variation(self):
-        """Fork a new process for mtplot. Add io watch for the gesture file."""
+        """Set up the recording process or use an existent event data file."""
+        if self.replay_dir:
+            if self.use_existent_event_file_flag:
+                self._handle_user_choice_validate_before_parsing()
+                self._handle_keyboard_event(TFK.SAVE)
+            else:
+                # No existent event file to replay for this gesture variation.
+                self._handle_user_choice_save_after_parsing(next_gesture=True)
+            return
+
+        # Now, we will record a new gesture event file.
+        # Fork a new process for mtplot. Add io watch for the gesture file.
         self.gesture_file = open(self.gesture_file_name, 'w')
         self.record_proc = subprocess.Popen(self.record_cmd.split(),
                                             stdout=self.gesture_file)
