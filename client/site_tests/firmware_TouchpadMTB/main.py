@@ -206,20 +206,31 @@ class firmware_TouchpadMTB:
 
 def _usage_and_exit():
     """Print the usage of this program."""
-    print 'Usage: $ %s [options]\n' % sys.argv[0]
+    print 'Usage: $ DISPLAY=:0 [OPTIONS="options"] python %s\n' % sys.argv[0]
     print 'options:'
-    print '  -h, --%s: show this help' % OPTIONS.HELP
-    print '  -i, --%s: iterations' % OPTIONS.ITERATIONS
-    print '  -m, --%s: gesture playing mode' % OPTIONS.MODE
-    print '            could be one of the following options'
+    print '  -h, --%s' % OPTIONS.HELP
+    print '        show this help'
+    print '  -i, --%s iterations' % OPTIONS.ITERATIONS
+    print '        specify the number of iterations'
+    print '  -m, --%s mode' % OPTIONS.MODE
+    print '        specify the gesture playing mode'
+    print '        mode could be one of the following options'
     print '            complete: all gestures including those in ' \
-                                'both MANUAL mode and ROBOT mode'
-    print '            manual: all gestures - gestures in ROBOT mode'
+                                'both manual mode and robot mode'
+    print '            manual: all gestures minus gestures in robot mode'
     print '            robot: using robot to perform gestures automatically'
     print '            robot_int: using robot with finger interaction'
     print '            robot_sim: robot simulation, for developer only'
-    print '  -s, --%s: Use one variation per gesture' % OPTIONS.SIMPLIFIED
+    print '  -s, --%s' % OPTIONS.SIMPLIFIED
+    print '        Use one variation per gesture'
     print
+    print 'Example:'
+    print '  # Use the robot to perform 3 iterations of the robot gestures.'
+    print '  $ DISPLAY=:0 OPTIONS="-m robot_sim -i 3" python main.py\n'
+    print '  # Perform 1 iteration of the manual gestures.'
+    print '  $ DISPLAY=:0 OPTIONS="-m manual" python main.py\n'
+    print '  # Perform 1 iteration of all manual and robot gestures.'
+    print '  $ DISPLAY=:0 OPTIONS="-m complete" python main.py\n'
     sys.exit(1)
 
 
@@ -248,7 +259,9 @@ def _parse_options():
     options_list = options_str.split()
     try:
         short_opt = 'hi:m:s'
-        long_opt = [OPTIONS.HELP, OPTIONS.ITERATIONS, OPTIONS.MODE,
+        long_opt = [OPTIONS.HELP,
+                    OPTIONS.ITERATIONS + '=',
+                    OPTIONS.MODE + '=',
                     OPTIONS.SIMPLIFIED]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
