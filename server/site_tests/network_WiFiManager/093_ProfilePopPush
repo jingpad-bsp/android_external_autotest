@@ -39,9 +39,8 @@
     [ "profile_create", { "name":"top" } ],
     [ "profile_push",   { "name":"top" } ],
 
-    [ "create",         { "type":"hostap" } ],
     [ "config",         { "ssid":"TopSSID093",
-                          "channel":"5240", "ht40-":None, "puren":None,
+                          "channel":"5240", "mode":"11a",
                           "multi_interface":None,  # Create 2nd access point.
                           "wepmode":"on",
                           "wep_key0":  '"abcde"',

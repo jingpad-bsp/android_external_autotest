@@ -15,7 +15,7 @@
     [ "config",         { "channel":"2412", "mode":"11g", "pureg":None } ],
 
     # Create a second AP with the same SSID that requires WPA authentication
-    [ "config",         { "channel":"5240", "ht40-":None, "puren":None,
+    [ "config",         { "channel":"5240", "mode":"11a",
                           "multi_interface":None,
                           "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
                           "wpa_pairwise":"CCMP",
