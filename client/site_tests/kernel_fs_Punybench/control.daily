@@ -4,6 +4,7 @@
 
 NAME = 'kernel_fs_Punybench'
 AUTHOR = 'The Chromium OS Authors'
+SUITE = "kernel_daily_benchmarks"
 TIME = 'LONG'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Performance'
@@ -13,4 +14,8 @@ DOC = '''
 Runs a select set of the puny benchmarks.
 '''
 
+# Having a problem with running disk and ecrptfs tests
+# multiple times.
+# args='--nop --mem --disk --ecryptfs'
+args='--nop --mem'
 job.run_test('kernel_fs_Punybench', args=args)

@@ -28,9 +28,8 @@ class kernel_fs_Punybench(test.test):
 
         Prepends the path to the puny benchmark bin.
 
-        Args:
-          cmd: command to be run
-          args: arguments for the command
+        @param cmd: command to be run
+        @param args: arguments for the command
         """
         result = utils.system_output(
             os.path.join(self.Bin, cmd) + ' ' + args)
@@ -42,18 +41,16 @@ class kernel_fs_Punybench(test.test):
     def _ecrypt_mount(dir, mnt):
         """Mount the eCrypt File System
 
-        Args:
-          dir: directory where encrypted file system is stored
-          mnt: mount point for encrypted file system
+        @param dir: directory where encrypted file system is stored
+        @param mnt: mount point for encrypted file system
         """
         options = ('-o'
-                   ' passwd=abcdefg'
+                   ' key=passphrase:passphrase_passwd=secret'
                    ',ecryptfs_cipher=aes'
                    ',ecryptfs_key_bytes=32'
                    ',no_sig_cache'
                    ',ecryptfs_passthrough=no'
-                   ',ecryptfs_enable_filename_crypto=yes'
-                   ',ecryptfs_fnek_sig=36677572068bf8ca')
+                   ',ecryptfs_enable_filename_crypto=no')
         utils.system_output('mkdir -p %s %s' % (dir, mnt))
         utils.system_output('mount -t ecryptfs %s %s %s' %
                            (options, dir, mnt))
@@ -63,9 +60,8 @@ class kernel_fs_Punybench(test.test):
     def _ecrypt_unmount(dir, mnt):
         """Unmount the eCrypt File System and remove it and its mount point
 
-        Args:
-          dir: directory where encrypted file system was stored
-          mnt: mount point for encrypted file system
+        @param dir: directory where encrypted file system was stored
+        @param mnt: mount point for encrypted file system
         """
         utils.system_output('umount ' + dir)
         utils.system_output('rm -R ' + dir)
@@ -76,11 +72,9 @@ class kernel_fs_Punybench(test.test):
     def _find_max(tag, text):
         """Find the max in a memcpy result.
 
-        Args:
-          tag: name of sub-test to select from text.
-          text: output from memcpy test.
-        Returns:
-          Best result from that sub-test.
+        @param tag: name of sub-test to select from text.
+        @param text: output from memcpy test.
+        @return Best result from that sub-test.
 
         Example input text:
           memcpy (Meg = 2**20)
@@ -128,8 +122,8 @@ class kernel_fs_Punybench(test.test):
     def _get_mib_s(tag, text):
         """Extract the MiB/s for tag from text
 
-        Args:
-          tag: name of sub-test ot select from text
+        @param tag: name of sub-test to select from text
+        @param text: extact MiB/s from this text
 
         Example input text:
           SDRAM:
@@ -164,9 +158,8 @@ class kernel_fs_Punybench(test.test):
         Threadtree creates a directory tree with files for each task.
         It then copies that tree then deletes it.
 
-        Args:
-          prefix: prefix to use on name/value pair for identifying results
-          dir: directory path to use for test
+        @param prefix: prefix to use on name/value pair for identifying results
+        @param dir: directory path to use for test
 
         Example results:
           opens   =       3641
@@ -204,9 +197,8 @@ class kernel_fs_Punybench(test.test):
     def _uread(self, prefix, file):
         """Read a large file.
 
-        Args:
-          prefix: prefix to use on name/value pair for identifying results
-          file: file path to use for test
+        @param prefix: prefix to use on name/value pair for identifying results
+        @param file: file path to use for test
 
         The size should be picked so the file will
         not fit in memory.
@@ -236,9 +228,8 @@ class kernel_fs_Punybench(test.test):
     def _ureadrand(self, prefix, file):
         """Read randomly a large file
 
-        Args:
-          prefix: prefix to use on name/value pair for identifying results
-          file: file path to use for test
+        @param prefix: prefix to use on name/value pair for identifying results
+        @param file: file path to use for test
 
         Example results (modified to fit in 80 columes):
 size=8589934592 n=10000 4.7 3. timer avg= 4 stdv= 4.6 9.1 MiB/s 2326 IOPs/sec
@@ -265,9 +256,8 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
     def _uwrite(self, prefix, file):
         """Write a large file.
 
-        Args:
-          prefix: prefix to use on name/value pair for identifying results
-          file: file path to use for test
+        @param prefix: prefix to use on name/value pair for identifying results
+        @param file: file path to use for test
 
         The size should be picked so the file will not fit in memory.
 
@@ -286,10 +276,10 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
     def _uwriterand(self, prefix, file, size):
         """Write randomly a file
 
-        Args:
-          prefix: prefix to use on name/value pair for identifying results
-          file: file path to use for test
-          size: size of file - large files are much slower than small files
+        @param prefix: prefix to use on name/value pair for identifying results
+        @param file: file path to use for test
+        @param size: size of file - large files are much slower than small files
+
         Example results (modified to fit in 80 columes):
 size=16777216 n=1000 13.4 1. timer avg= 13.4 stdv= 0 0.29 MiB/s 74.8 IOPs/sec
 size=16777216 n=1000 13.3 2. timer avg= 13.3 stdv=0.032 0.3 MiB/s 75.0 IOPs/sec
@@ -309,9 +299,9 @@ size=16777216 n=1000 13.3 2. timer avg= 13.3 stdv=0.032 0.3 MiB/s 75.0 IOPs/sec
     def _uwritesync(self, prefix, file):
         """Synchronously writes a file
 
-        Args:
-          prefix: prefix to use on name/value pair for identifying results
-          file: file path to use for test
+        @param prefix: prefix to use on name/value pair for identifying results
+        @param file: file path to use for test
+
         Example results (modified to fit in 80 columes):
 size=409600 n=100 4.58 3. timer avg= 4.41 stdv=0.195 0.0887 MiB/s 22.7 IOPs/sec
 size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
@@ -331,10 +321,9 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
     def _disk_tests(self, prefix,  dir, file):
         """Run this collection of disk tests
 
-        Args:
-          prefix: prefix to use on name/value pair for identifying results
-          dir: directory path to use for tests
-          file: file path to use for tests
+        @param prefix: prefix to use on name/value pair for identifying results
+        @param dir: directory path to use for tests
+        @param file: file path to use for tests
         """
         self._uread(prefix, file)
         self._ureadrand(prefix, file)
@@ -360,8 +349,8 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
         """Parse input arguments to this autotest.
 
         Args:
-          args: List of arguments to parse.
-        Returns:
+        @param args: List of arguments to parse.
+        @return
           opts: Options, as per optparse.
           args: Non-option arguments, as per optparse.
         """
@@ -388,10 +377,10 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
     def run_once(self, args=[]):
         """Run the PyAuto performance tests.
 
-        Args:
-          args: Either space-separated arguments or a list of string arguments.
-              If this is a space separated string, we'll just call split() on
-              it to get a list.  The list will be sent to optparse for parsing.
+        @param args: Either space-separated arguments or a list of string
+              arguments.  If this is a space separated string, we'll just
+              call split() on it to get a list.  The list will be sent to
+              optparse for parsing.
         """
         if isinstance(args, str):
             args = args.split()

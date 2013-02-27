@@ -29,7 +29,7 @@ CLIENT_TESTS = [
     # --mem - run memory benchmarks
     # --disk - run disk benchmarks
     # --ecryptfs - run encryption benchmarks
-    ('kernel_fs_Punybench', {'args':'--nop --mem --disk'}),
+    ('kernel_fs_Punybench', {'args':'--nop --mem --disk --ecryptfs'}),
 ]
 
 
