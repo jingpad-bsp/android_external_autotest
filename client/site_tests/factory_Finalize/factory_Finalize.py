@@ -17,7 +17,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory import event_log
-from cros.factory.system.power import Power
+from cros.factory import system
 from cros.factory.test import factory
 from cros.factory.test import gooftools
 from cros.factory.test import shopfloor
@@ -134,7 +134,7 @@ class PreflightTask(task.FactoryTask):
 
     def check_battery_level(self):
         """ Checks if battery level is higher than 50% """
-        power = Power()
+        power = system.GetBoard().power
         if not power.CheckBatteryPresent():
             return False
         charge = power.GetChargePct()
