@@ -375,8 +375,21 @@ class SysStat(object):
 
 
     def on_ac(self):
-        return self.linepower[0].online
+        """
+        Returns true if device is currently running from AC power.
+        """
+        on_ac = self.linepower[0].online
+        # Butterfly can incorrectly report AC online for some time after
+        # unplug. Check battery discharge state to confirm.
+        if utils.get_board() == 'BUTTERFLY':
+            on_ac &= (not self.battery_discharging())
+        return on_ac
 
+    def battery_discharging(self):
+        """
+        Returns true if battery is currently discharging.
+        """
+        return(self.battery[0].status.rstrip() == 'Discharging')
 
     def percent_current_charge(self):
         return self.battery[0].charge_now * 100 / \
@@ -396,7 +409,7 @@ class SysStat(object):
         """
         if self.on_ac():
             raise error.TestError(
-                'Running on AC power. Please remove AC power cable')
+                'Running on AC power. Please remove AC power cable.')
 
         percent_initial_charge = self.percent_current_charge()
 
