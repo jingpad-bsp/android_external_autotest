@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ast, re
+import ast, logging, re
 
 from autotest_lib.client.common_lib import error
 
@@ -77,17 +77,30 @@ class ChromeEC(object):
         self._servo.set('ec_uart_regexp', regexp)
 
 
-    def send_command(self, command):
+    def send_command(self, commands):
         """Send command through UART.
 
         This function opens UART pty when called, and then command is sent
         through UART.
 
         Args:
-          command: The command string to send.
+          commands: The commands to send, either a list or a string.
         """
         self.set_uart_regexp('None')
-        self._servo.set_nocheck('ec_uart_cmd', command)
+        if isinstance(commands, list):
+            try:
+                self._servo.set_nocheck('ec_uart_multicmd', ';'.join(commands))
+            except error.TestFail as e:
+                if 'No control named' in str(e):
+                    logging.warning(
+                            'The servod is too old that ec_uart_multicmd '
+                            'not supported. Use ec_uart_cmd instead.')
+                    for command in commands:
+                        self._servo.set_nocheck('ec_uart_cmd', command)
+                else:
+                    raise
+        else:
+            self._servo.set_nocheck('ec_uart_cmd', commands)
 
 
     def send_command_get_output(self, command, regexp_list):
@@ -150,8 +163,12 @@ class ChromeEC(object):
         Args:
           keyname: Key name, one of the keys of KEYMATRIX.
         """
-        self.key_down(keyname)
-        self.key_up(keyname)
+        self.send_command([
+                'kbpress %d %d 1' %
+                    (KEYMATRIX[keyname][1], KEYMATRIX[keyname][0]),
+                'kbpress %d %d 0' %
+                    (KEYMATRIX[keyname][1], KEYMATRIX[keyname][0]),
+                ])
 
 
     def send_key_string_raw(self, string):
