@@ -110,7 +110,7 @@ class ConnectMachine(state_machine.StateMachine):
                 break
         if bearer is None:
             assert bearer_path is None
-            logging.error(('ConnectMachine: No matching bearer found, '
+            logging.info(('ConnectMachine: No matching bearer found, '
                 'creating brearer with properties: ' +
                 str(self.connect_props)))
             bearer_path = self._modem.CreateBearer(bearer_props)
