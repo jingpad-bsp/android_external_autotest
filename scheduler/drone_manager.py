@@ -94,7 +94,12 @@ class PidfileContents(object):
 
 
 class InvalidPidfile(object):
-    def __init__(self, error):
+   process = None
+   exit_status = None
+   num_tests_failed=None
+
+
+   def __init__(self, error):
         self.error = error
 
 
