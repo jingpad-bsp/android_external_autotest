@@ -230,11 +230,11 @@ def get_release_branch(release):
     return _release_info.get_branch(release)
 
 
-class ConfigGenerator(object):
-    """Generator class that maintains can generate test configs."""
+class TestConfigGenerator(object):
+    """Class for generating test configs."""
 
     def __init__(self, board, tested_release, test_nmo, test_npo,
-                 src_as_payload, use_mp_images, archive_url):
+                 src_as_payload, use_mp_images, archive_url=None):
         """
         @param board: the board under test
         @param tested_release: the tested release version
@@ -244,24 +244,25 @@ class ConfigGenerator(object):
                opposed to using the test image (the latter requires servo).
         @param use_mp_images: use mp images/payloads.
         @param archive_url: optional gs url to find payloads.
+
         """
         self.board = board
         self.tested_release = tested_release
-        self.use_mp_images = use_mp_images
-        self.nmo = test_nmo
-        self.npo = test_npo
+        self.test_nmo = test_nmo
+        self.test_npo = test_npo
         self.src_as_payload = src_as_payload
+        self.use_mp_images = use_mp_images
         self.archive_url = archive_url
 
 
     def _get_source_uri(self, release):
-        """Returns the source uri for a given release or None."""
+        """Returns the source uri for a given release or None if not found."""
         branch = get_release_branch(release)
 
         # If we're looking for our own image, use the target archive_url if set.
         archive_url = None
         if release == self.tested_release:
-          archive_url = self.archive_url
+            archive_url = self.archive_url
 
         if self.src_as_payload:
             return test_image.find_payload_uri(
@@ -350,7 +351,7 @@ class ConfigGenerator(object):
         @raise FullReleaseTestError if something went wrong
 
         """
-        if not (self.nmo or self.npo):
+        if not (self.test_nmo or self.test_npo):
             return []
 
         # Find all test delta payloads involving the release version at hand,
@@ -384,8 +385,8 @@ class ConfigGenerator(object):
             # Determine delta type, make sure it was not already discovered.
             delta_type = 'npo' if source_release == target_release else 'nmo'
             # Only add test configs we were asked to test.
-            if (delta_type == 'npo' and not self.npo) or (
-                delta_type == 'nmo' and not self.nmo):
+            if (delta_type == 'npo' and not self.test_npo) or (
+                delta_type == 'nmo' and not self.test_nmo):
                 continue
 
             if delta_type in found:
@@ -558,7 +559,7 @@ def generate_test_list(args):
     for board in args.tested_board_list:
         test_list_for_board = []
 
-        generator = ConfigGenerator(
+        generator = TestConfigGenerator(
                 board, args.tested_release,
                 args.test_nmo, args.test_npo, src_as_payload,
                 args.use_mp_images, args.archive_url)
@@ -697,7 +698,7 @@ def parse_args():
             description='Schedule Chrome OS release update tests on given '
                         'board(s).')
 
-    parser.add_option('--archive_url',
+    parser.add_option('--archive_url', metavar='URL',
                       help='Use this archive url to find the target payloads.')
     parser.add_option('--dump', default=False, action='store_true',
                       help='dump control files that would be used in autotest '
@@ -812,7 +813,8 @@ def main():
                             test, env, control_code, directory)
                     logging.info('dumped control file for test %s to %s',
                                  test, control_file)
-                    return
+
+                return
 
             # Schedule jobs via AFE.
             afe = frontend.AFE(debug=(args.log_level == _log_debug))
