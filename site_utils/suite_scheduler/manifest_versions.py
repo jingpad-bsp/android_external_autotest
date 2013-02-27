@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import glob, logging, re, os
-import task
 from autotest_lib.client.common_lib import autotemp, utils
 from distutils import version
 
@@ -69,8 +68,8 @@ class ManifestVersions(object):
                               'chromeos/manifest-versions.git')
     _ANY_MANIFEST_GLOB_PATTERN = 'build-name/*/pass/'
     _BOARD_MANIFEST_GLOB_PATTERN = 'build-name/%s-*/pass/'
-    _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s-([^-]+)(?:-group)?/pass/'
-                                  '(\d+)/([0-9.]+)\.xml')
+    _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s(?:-pgo)?-([^-]+)(?:-group)?/'
+                                  r'pass/(\d+)/([0-9.]+)\.xml')
 
 
     def __init__(self):
@@ -160,8 +159,10 @@ class ManifestVersions(object):
         branch_manifests = {}
         for manifest_path in manifest_paths:
             logging.debug('parsing manifest path %s', manifest_path)
-            type, milestone, manifest = matcher.match(manifest_path).groups()
-            branch_manifests.setdefault((type, milestone), []).append(manifest)
+            groups = matcher.match(manifest_path).groups()
+            config_type, milestone, manifest = groups
+            branch = branch_manifests.setdefault((config_type, milestone), [])
+            branch.append(manifest)
         for manifest_list in branch_manifests.itervalues():
             manifest_list.sort(key=version.LooseVersion)
         return branch_manifests

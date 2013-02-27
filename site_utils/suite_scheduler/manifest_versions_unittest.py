@@ -6,7 +6,10 @@
 
 """Unit tests for site_utils/manifest_versions.py."""
 
-import logging, mox, os, unittest
+# Turn off "access to protected member of class"
+# pylint: disable=W0212
+
+import mox, os, unittest, re
 
 import manifest_versions
 
@@ -165,6 +168,31 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         self.mox.ReplayAll()
         self.assertRaises(manifest_versions.QueryException,
                           self.mv.ManifestsSinceDays, days_ago, board)
+
+
+    _BOARD_MANIFESTS = {
+        'lumpy': [
+            'lumpy-release',
+            'lumpy-pgo-release',
+        #    'lumpy64-release',
+        ],
+        'x86-zgb': [
+            'x86-zgb-release',
+        #    'x86-zgb_he-release',
+        #    'x86-zgb32-release',
+        ],
+    }
+
+
+    def testBoardManifestRePattern(self):
+        """Ensure we can parse the names of builds that are produced."""
+        for board, builder_names in self._BOARD_MANIFESTS.items():
+            rgx = re.compile(
+                manifest_versions.ManifestVersions._BOARD_MANIFEST_RE_PATTERN %\
+                    board)
+            for builder_name in builder_names:
+                manifest = 'build-name/%s/pass/25/1234.0.0.xml' % builder_name
+                self.assertTrue(rgx.match(manifest), msg=builder_name)
 
 
 if __name__ == '__main__':
