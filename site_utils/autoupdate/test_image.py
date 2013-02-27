@@ -5,11 +5,22 @@
 """Module for discovering Chrome OS test images and payloads."""
 
 import logging
+import os
 import re
 
 import common
 from autotest_lib.client.common_lib import global_config
-from devserver import gsutil_util
+
+try:
+  from devserver import gsutil_util
+except ImportError:
+  # Make this easy for users to automatically import the devserver if not found.
+  from autotest_lib.utils import build_externals, external_packages
+  tot = external_packages.find_top_of_autotest_tree()
+  install_dir = os.path.join(tot, build_externals.INSTALL_DIR)
+  build_externals.build_and_install_packages(
+      [external_packages.DevServerRepo()], install_dir)
+  from devserver import gsutil_util
 
 
 # A string indicating a zip-file boundary within a URI path. This string must
