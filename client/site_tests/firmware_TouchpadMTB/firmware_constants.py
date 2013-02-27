@@ -126,6 +126,7 @@ OPTIONS.HELP = 'help'
 OPTIONS.ITERATIONS = 'iterations'
 OPTIONS.MODE = 'mode'
 OPTIONS.REPLAY = 'replay'
+OPTIONS.RESUME = 'resume'
 OPTIONS.SIMPLIFIED = 'simplified'
 
 

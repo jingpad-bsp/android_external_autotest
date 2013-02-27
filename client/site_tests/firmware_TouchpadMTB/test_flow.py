@@ -69,6 +69,7 @@ class TestFlow:
         self.mode = options[OPTIONS.MODE]
         self.iterations = options[OPTIONS.ITERATIONS]
         self.replay_dir = options[OPTIONS.REPLAY]
+        self.resume_dir = options[OPTIONS.RESUME]
         self.gv_count = float('infinity')
         gesture_names = self._get_gesture_names()
         self.gesture_list = GestureList(gesture_names).get_gesture_list()
@@ -86,8 +87,8 @@ class TestFlow:
         self.system_device.close()
 
     def _rename_old_log_and_html_files(self):
-        """When in replay mode, rename the old log and html files."""
-        if self.replay_dir:
+        """When in replay or resume mode, rename the old log and html files."""
+        if self.replay_dir or self.resume_dir:
             for file_type in ['*.log', '*.html']:
                 path_names = os.path.join(self.output.log_dir, file_type)
                 for old_path_name in glob.glob(path_names):
@@ -257,7 +258,7 @@ class TestFlow:
 
     def _stop_record_and_post_image(self):
         """Terminate the recording process."""
-        if self.replay_dir is None:
+        if self.record_new_file:
             if not self.gesture_file.closed:
                 self.gesture_file.close()
             self.screen_shot.dump_root(self._get_gesture_image_name())
@@ -381,8 +382,10 @@ class TestFlow:
     def _handle_user_choice_save_after_parsing(self, next_gesture):
         """Handle user choice for saving the parsed gesture file."""
         self.output.print_window('')
-        self.output.print_report(self.saved_msg)
-        self._add_scores(self.new_scores)
+        if self.saved_msg:
+            self.output.print_report(self.saved_msg)
+        if self.new_scores:
+            self._add_scores(self.new_scores)
         self.output.report_html.insert_image(self.gesture_image_name)
         self.output.report_html.flush()
         if self._pre_setup_this_gesture_variation(next_gesture=next_gesture):
@@ -606,10 +609,18 @@ class TestFlow:
         if next_gesture_first_time:
             self._get_existent_event_files()
 
-        if self.replay_dir:
+        if self.replay_dir or self.resume_dir:
             self.use_existent_event_file_flag = self._use_existent_event_file()
-        else:
+
+        if ((not self.replay_dir and not self.resume_dir) or
+                (self.resume_dir and not self.use_existent_event_file_flag)):
             self.gesture_file_name = os.path.join(self.output.log_dir, basename)
+            self.saved_msg = '(saved: %s)\n' % self.gesture_file_name
+            self.deleted_msg = '(deleted: %s)\n' % self.gesture_file_name
+        else:
+            self.saved_msg = None
+            self.deleted_msg = None
+        self.new_scores = None
 
         (msg, color_msg, glog) = self._create_prompt(self.gesture,
                                                      self.variation)
@@ -617,13 +628,12 @@ class TestFlow:
         self.output.report_html.insert_gesture_log(glog)
         print color_msg
         self.output.print_report(color_msg)
-        self.saved_msg = '(saved: %s)\n' % self.gesture_file_name
-        self.deleted_msg = '(deleted: %s)\n' % self.gesture_file_name
         return True
 
     def _setup_this_gesture_variation(self):
         """Set up the recording process or use an existent event data file."""
         if self.replay_dir:
+            self.record_new_file = False
             if self.use_existent_event_file_flag:
                 self._handle_user_choice_validate_before_parsing()
                 self._handle_keyboard_event(TFK.SAVE)
@@ -632,8 +642,15 @@ class TestFlow:
                 self._handle_user_choice_save_after_parsing(next_gesture=True)
             return
 
+        if self.resume_dir and self.use_existent_event_file_flag:
+            self.record_new_file = False
+            self._handle_user_choice_validate_before_parsing()
+            self._handle_keyboard_event(TFK.SAVE)
+            return
+
         # Now, we will record a new gesture event file.
         # Fork a new process for mtplot. Add io watch for the gesture file.
+        self.record_new_file = True
         self.gesture_file = open(self.gesture_file_name, 'w')
         self.record_proc = subprocess.Popen(self.record_cmd.split(),
                                             stdout=self.gesture_file)

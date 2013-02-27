@@ -107,7 +107,9 @@ class firmware_TouchpadMTB:
         # on the window and to print the results in the report.
         firmware_version = self.touchpad.get_firmware_version()
         mode = options[OPTIONS.MODE]
-        if options[OPTIONS.REPLAY]:
+        if options[OPTIONS.RESUME]:
+            self.log_dir = options[OPTIONS.RESUME]
+        elif options[OPTIONS.REPLAY]:
             self.log_dir = options[OPTIONS.REPLAY]
         else:
             self.log_dir = firmware_utils.create_log_dir(firmware_version, mode)
@@ -227,6 +229,9 @@ def _usage_and_exit():
     print '  --%s log_dir' % OPTIONS.REPLAY
     print '        Replay the gesture files and get the test results.'
     print '        log_dir is a log sub-directory in %s' % conf.log_root_dir
+    print '  --%s log_dir' % OPTIONS.RESUME
+    print '        Resume recording the gestures files in the log_dir.'
+    print '        log_dir is a log sub-directory in %s' % conf.log_root_dir
     print '  -s, --%s' % OPTIONS.SIMPLIFIED
     print '        Use one variation per gesture'
     print
@@ -243,6 +248,13 @@ def _usage_and_exit():
     print '  # Replay the gesture files in %s/%s' % (conf.log_root_dir,
                                                      example_log_dir)
     print '  $ DISPLAY=:0 OPTIONS="--replay %s" python main.py\n' % \
+            example_log_dir
+
+    print '  # Resume recording the gestures in the latest log directory.'
+    print '  $ DISPLAY=:0 OPTIONS="--resume latest" python main.py\n'
+    print '  # Resume recording the gestures in %s/%s.' % (conf.log_root_dir,
+                                                           example_log_dir)
+    print '  $ DISPLAY=:0 OPTIONS="--resume %s" python main.py\n' % \
             example_log_dir
     sys.exit(1)
 
@@ -263,6 +275,7 @@ def _parse_options():
     options = {OPTIONS.ITERATIONS: 1,
                OPTIONS.MODE: MODE.MANUAL,
                OPTIONS.REPLAY: None,
+               OPTIONS.RESUME: None,
                OPTIONS.SIMPLIFIED: False}
 
     # Get the environment OPTIONS
@@ -277,6 +290,7 @@ def _parse_options():
                     OPTIONS.ITERATIONS + '=',
                     OPTIONS.MODE + '=',
                     OPTIONS.REPLAY + '=',
+                    OPTIONS.RESUME + '=',
                     OPTIONS.SIMPLIFIED]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
@@ -296,10 +310,12 @@ def _parse_options():
                 options[OPTIONS.MODE] = arg
             else:
                 print 'Warning: -m should be one of %s' % MODE.GESTURE_PLAY_MODE
-        elif opt in ('--%s' % OPTIONS.REPLAY):
+        elif opt in ('--%s' % OPTIONS.REPLAY, '--%s' % OPTIONS.RESUME):
             log_dir = os.path.join(conf.log_root_dir, arg)
             if os.path.isdir(log_dir):
-                options[OPTIONS.REPLAY] = log_dir
+                # opt could be either '--replay' or '--resume'.
+                # We would like to strip off the '-' on the left hand side.
+                options[opt.lstrip('-')] = log_dir
             else:
                 print 'Error: the log directory "%s" does not exist.' % log_dir
                 _usage_and_exit()
