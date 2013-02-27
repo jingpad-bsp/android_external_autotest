@@ -112,6 +112,22 @@ class WiFiTest(object):
         self.cur_security    = None
         self.cur_attenuation = None
         self.vpn_kind        = None
+        #
+        # There is a case that leaves some profiles in profile storage but
+        # not on the stack. This will cause the failure for 'profile_create'
+        # in later test cases. We use a list to record the created profiles
+        # and remove them all after the test case ends.
+        #
+        # Example:
+        # 1. profile_create: top  (in profile storage)
+        # 2. profile_push: top    (in profile storage and also on the stack)
+        # 3. connect
+        # 4. profile_pop: top     (still in profile storage)
+        # 5. The test case ends with a failure.
+        # 6. Another test case starts.
+        # 7. profile_create: top  (failure)
+        #
+        self.created_profiles = []
 
         router = config['router']
         #
@@ -1841,6 +1857,7 @@ class WiFiTest(object):
         """ Create a profile with the specified name """
         self.client.run('%s/test/create-profile %s' %
                         (self.client_cmd_flimflam_lib, params['name']))
+        self.created_profiles.append(params['name'])
 
     def profile_remove(self, params, ignore_status=False):
         """ Remove the specified profile """
@@ -1868,9 +1885,15 @@ class WiFiTest(object):
 
 
     def profile_cleanup(self):
-        """ Pop and remove all profiles until 'default' is found. """
+        """ Cleanup all profiles """
+        # Pop and remove all profiles on the stack until 'default' is found.
         self.client.run('%s/test/clean-profiles' %
                         (self.client_cmd_flimflam_lib))
+        # Some profiles may still in profile storage but not on the stack,
+        # invoke 'profile_remove' for self.created_profiles to make sure that
+        # all profiles are deleted.
+        for profile_name in self.created_profiles:
+            self.profile_remove({'name':profile_name}, ignore_status=True)
 
     def __get_wifi_device_path(self):
         if self.client_wifi_device_path:
