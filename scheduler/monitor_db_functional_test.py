@@ -9,6 +9,7 @@ from autotest_lib.frontend.afe import frontend_test_utils, models
 from autotest_lib.frontend.afe import model_attributes
 from autotest_lib.scheduler import drone_manager, email_manager, host_scheduler
 from autotest_lib.scheduler import monitor_db, scheduler_models
+from autotest_lib.scheduler import scheduler_config
 
 # translations necessary for scheduler queries to work with SQLite
 _re_translator = database_connection.TranslatingDatabase.make_regexp_translator
@@ -18,6 +19,7 @@ _DB_TRANSLATORS = (
         # older SQLite doesn't support group_concat, so just don't bother until
         # it arises in an important query
         _re_translator(r'GROUP_CONCAT\((.*?)\)', r'\1'),
+        _re_translator(r'TRUNCATE TABLE', 'DELETE FROM'),
 )
 
 HqeStatus = models.HostQueueEntry.Status
@@ -50,10 +52,14 @@ class MockGlobalConfig(object):
         return self._config_info[identifier]
 
 
+    def parse_config_file(self):
+        pass
+
+
 # the SpecialTask names here must match the suffixes used on the SpecialTask
 # results directories
 _PidfileType = enum.Enum('verify', 'cleanup', 'repair', 'job', 'gather',
-                         'parse', 'archive', 'provision')
+                         'parse', 'archive', 'reset', 'provision')
 
 
 _PIDFILE_TO_PIDFILE_TYPE = {
@@ -350,6 +356,22 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self.mock_config.set_config_value('SCHEDULER', 'gc_stats_interval_mins',
                                           999999)
         self.mock_config.set_config_value('SCHEDULER', 'enable_archiving', True)
+        self.mock_config.set_config_value('SCHEDULER',
+                                          'clean_interval_minutes', 60)
+        self.mock_config.set_config_value('SCHEDULER',
+                                          'max_parse_processes', 50)
+        self.mock_config.set_config_value('SCHEDULER',
+                                          'max_transfer_processes', 50)
+        self.mock_config.set_config_value('SCHEDULER',
+                                          'max_hostless_processes', 50)
+        self.mock_config.set_config_value('SCHEDULER',
+                                          'clean_interval_minutes', 50)
+        self.mock_config.set_config_value('SCHEDULER',
+                                          'max_provision_retries', 1)
+        self.mock_config.set_config_value('SCHEDULER', 'max_repair_limit', 1)
+        self.mock_config.set_config_value(
+                'SCHEDULER', 'secs_to_wait_for_atomic_group_hosts', 600)
+        scheduler_config.config.read_config()
 
 
     def _initialize_test(self):
@@ -414,7 +436,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._assert_nothing_is_running()
 
 
-    def _setup_for_pre_job_cleanup(self):
+    def _setup_for_pre_job_reset(self):
         self._initialize_test()
         job, queue_entry = self._make_job_and_queue_entry()
         job.reboot_before = model_attributes.RebootBefore.ALWAYS
@@ -422,26 +444,24 @@ class SchedulerFunctionalTest(unittest.TestCase,
         return queue_entry
 
 
-    def _run_pre_job_cleanup_job(self, queue_entry):
-        self._run_dispatcher() # cleanup
-        self._check_statuses(queue_entry, HqeStatus.VERIFYING,
-                             HostStatus.CLEANING)
-        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
-        self._run_dispatcher() # verify
-        self.mock_drone_manager.finish_process(_PidfileType.VERIFY)
+    def _run_pre_job_reset_job(self, queue_entry):
+        self._run_dispatcher() # reset
+        self._check_statuses(queue_entry, HqeStatus.RESETTING,
+                             HostStatus.RESETTING)
+        self.mock_drone_manager.finish_process(_PidfileType.RESET)
         self._run_dispatcher() # job
         self._finish_job(queue_entry)
 
 
-    def test_pre_job_cleanup(self):
-        queue_entry = self._setup_for_pre_job_cleanup()
-        self._run_pre_job_cleanup_job(queue_entry)
+    def test_pre_job_reset(self):
+        queue_entry = self._setup_for_pre_job_reset()
+        self._run_pre_job_reset_job(queue_entry)
 
 
-    def _run_pre_job_cleanup_one_failure(self):
-        queue_entry = self._setup_for_pre_job_cleanup()
-        self._run_dispatcher() # cleanup
-        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP,
+    def _run_pre_job_reset_one_failure(self):
+        queue_entry = self._setup_for_pre_job_reset()
+        self._run_dispatcher() # reset
+        self.mock_drone_manager.finish_process(_PidfileType.RESET,
                                                exit_status=256)
         self._run_dispatcher() # repair
         self._check_statuses(queue_entry, HqeStatus.QUEUED,
@@ -450,23 +470,23 @@ class SchedulerFunctionalTest(unittest.TestCase,
         return queue_entry
 
 
-    def test_pre_job_cleanup_failure(self):
-        queue_entry = self._run_pre_job_cleanup_one_failure()
+    def test_pre_job_reset_failure(self):
+        queue_entry = self._run_pre_job_reset_one_failure()
         # from here the job should run as normal
-        self._run_pre_job_cleanup_job(queue_entry)
+        self._run_pre_job_reset_job(queue_entry)
 
 
-    def test_pre_job_cleanup_double_failure(self):
+    def test_pre_job_reset_double_failure(self):
         # TODO (showard): this test isn't perfect.  in reality, when the second
-        # cleanup fails, it copies its results over to the job directory using
+        # reset fails, it copies its results over to the job directory using
         # copy_results_on_drone() and then parses them.  since we don't handle
         # that, there appear to be no results at the job directory.  the
         # scheduler handles this gracefully, parsing gets effectively skipped,
         # and this test passes as is.  but we ought to properly test that
         # behavior.
-        queue_entry = self._run_pre_job_cleanup_one_failure()
-        self._run_dispatcher() # second cleanup
-        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP,
+        queue_entry = self._run_pre_job_reset_one_failure()
+        self._run_dispatcher() # second reset
+        self.mock_drone_manager.finish_process(_PidfileType.RESET,
                                                exit_status=256)
         self._run_dispatcher()
         self._check_statuses(queue_entry, HqeStatus.FAILED,
@@ -533,15 +553,13 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
     def _finish_job(self, queue_entry):
         self.mock_drone_manager.finish_process(_PidfileType.JOB)
-        self._run_dispatcher() # launches parsing + cleanup
-        self._check_statuses(queue_entry, HqeStatus.PARSING,
-                             HostStatus.CLEANING)
+        self._run_dispatcher() # launches parsing
+        self._check_statuses(queue_entry, HqeStatus.PARSING)
         self._ensure_post_job_process_is_paired(queue_entry, _PidfileType.PARSE)
-        self._finish_parsing_and_cleanup(queue_entry)
+        self._finish_parsing(queue_entry)
 
 
-    def _finish_parsing_and_cleanup(self, queue_entry):
-        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
+    def _finish_parsing(self, queue_entry):
         self.mock_drone_manager.finish_process(_PidfileType.PARSE)
         self._run_dispatcher()
 
@@ -617,6 +635,8 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
     def test_do_not_verify_post_job_cleanup_failure(self):
         queue_entry = self._setup_for_do_not_verify()
+        queue_entry.job.reboot_after = model_attributes.RebootAfter.ALWAYS
+        queue_entry.job.save()
 
         self._run_post_job_cleanup_failure_up_to_repair(queue_entry,
                                                         include_verify=False)
@@ -654,7 +674,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
     def test_job_abort(self):
         self._initialize_test()
         job = self._create_job(hosts=[1])
-        job.run_verify = False
+        job.run_reset = False
         job.save()
 
         self._run_dispatcher() # launches job
@@ -665,7 +685,10 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self.mock_drone_manager.finish_process(_PidfileType.GATHER)
         self._run_dispatcher() # launches parsing + cleanup
         queue_entry = job.hostqueueentry_set.all()[0]
-        self._finish_parsing_and_cleanup(queue_entry)
+        self._finish_parsing(queue_entry)
+        # The abort will cause gathering to launch a cleanup.
+        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
+        self._run_dispatcher()
 
 
     def test_job_abort_queued_synchronous(self):
@@ -714,16 +737,16 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
 
     def test_recover_verifying_hqe_no_special_task(self):
-        # recovery should fail on a Verifing HQE with no corresponding
-        # Verify or Cleanup SpecialTask
+        # recovery should move a Resetting HQE with no corresponding
+        # Verify or Reset SpecialTask back to Queued.
         _, queue_entry = self._make_job_and_queue_entry()
-        queue_entry.status = HqeStatus.VERIFYING
+        queue_entry.status = HqeStatus.RESETTING
         queue_entry.save()
 
         # make some dummy SpecialTasks that shouldn't count
         models.SpecialTask.objects.create(
                 host=queue_entry.host,
-                task=models.SpecialTask.Task.VERIFY,
+                task=models.SpecialTask.Task.RESET,
                 requested_by=models.User.current_user())
         models.SpecialTask.objects.create(
                 host=queue_entry.host,
@@ -732,7 +755,8 @@ class SchedulerFunctionalTest(unittest.TestCase,
                 is_complete=True,
                 requested_by=models.User.current_user())
 
-        self.assertRaises(host_scheduler.SchedulerError, self._initialize_test)
+        self._initialize_test()
+        self._check_statuses(queue_entry, HqeStatus.QUEUED)
 
 
     def _test_recover_verifying_hqe_helper(self, task, pidfile_type):
@@ -780,6 +804,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._initialize_test()
         job, queue_entry = self._make_job_and_queue_entry()
         job.run_verify = False
+        job.run_reset = False
         job.reboot_after = model_attributes.RebootAfter.NEVER
         job.save()
 
@@ -810,20 +835,25 @@ class SchedulerFunctionalTest(unittest.TestCase,
         # test a pretty obscure corner case where a job is aborted while queued,
         # another job is ready to run, and throttling is active. the post-abort
         # cleanup must not be pre-empted by the second job.
+        # This test kind of doesn't make sense anymore after verify+cleanup
+        # were merged into reset.  It should maybe just be removed.
         job1, queue_entry1 = self._make_job_and_queue_entry()
+        queue_entry1.save()
         job2, queue_entry2 = self._make_job_and_queue_entry()
+        job2.reboot_before = model_attributes.RebootBefore.IF_DIRTY
+        job2.save()
 
         self.mock_drone_manager.process_capacity = 0
         self._run_dispatcher() # schedule job1, but won't start verify
         job1.hostqueueentry_set.update(aborted=True)
         self.mock_drone_manager.process_capacity = 100
-        self._run_dispatcher() # cleanup must run here, not verify for job2
+        self._run_dispatcher() # reset must run here, not verify for job2
         self._check_statuses(queue_entry1, HqeStatus.ABORTED,
-                             HostStatus.CLEANING)
-        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
+                             HostStatus.RESETTING)
+        self.mock_drone_manager.finish_process(_PidfileType.RESET)
         self._run_dispatcher() # now verify starts for job2
-        self._check_statuses(queue_entry2, HqeStatus.VERIFYING,
-                             HostStatus.VERIFYING)
+        self._check_statuses(queue_entry2, HqeStatus.RUNNING,
+                             HostStatus.RUNNING)
 
 
     def test_reverify_interrupting_pre_job(self):
@@ -862,7 +892,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._run_dispatcher() # gathering must start
         self.mock_drone_manager.finish_process(_PidfileType.GATHER)
         self._run_dispatcher() # parsing and cleanup
-        self._finish_parsing_and_cleanup(queue_entry)
+        self._finish_parsing(queue_entry)
         self._run_dispatcher() # now reverify runs
         self._check_statuses(queue_entry, HqeStatus.FAILED,
                              HostStatus.VERIFYING)
@@ -898,10 +928,6 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self.mock_drone_manager.finish_process(_PidfileType.VERIFY)
         self._run_dispatcher() # run job
         self._finish_job(queue_entry)
-        # need to explicitly finish host1's post-job cleanup
-        self.mock_drone_manager.finish_specific_process(
-                'hosts/host1/4-cleanup', drone_manager.AUTOSERV_PID_FILE)
-        self._run_dispatcher()
         # the reverify should now be running
         self._check_statuses(queue_entry, HqeStatus.COMPLETED,
                              HostStatus.VERIFYING)
@@ -923,7 +949,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self.mock_drone_manager.process_capacity = 2
         self._run_dispatcher() # verify runs on 1 and 2
         _check_hqe_statuses(HqeStatus.VERIFYING, HqeStatus.VERIFYING,
-                            HqeStatus.VERIFYING)
+                            HqeStatus.QUEUED)
         self.assertEquals(len(self.mock_drone_manager.running_pidfile_ids()), 2)
 
         self.mock_drone_manager.finish_specific_process(
@@ -967,6 +993,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
         job = self._create_job(hosts=[1,2], synchronous=True)
         queue_entry = job.hostqueueentry_set.all()[0]
         job.run_verify = False
+        job.run_reset = False
         job.reboot_after = model_attributes.RebootAfter.NEVER
         job.save()
 
@@ -1056,6 +1083,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
     def test_pre_job_keyvals(self):
         job = self._create_job(hosts=[1])
         job.run_verify = False
+        job.run_reset = False
         job.reboot_before = model_attributes.RebootBefore.NEVER
         job.save()
         models.JobKeyval.objects.create(job=job, key='mykey', value='myvalue')
@@ -1077,16 +1105,13 @@ class SchedulerFunctionalTest(unittest.TestCase,
 # This tests the scheduler functions with archiving step disabled
 class SchedulerFunctionalTestNoArchiving(SchedulerFunctionalTest):
     def _set_global_config_values(self):
-        self.mock_config.set_config_value('SCHEDULER', 'pidfile_timeout_mins',
-                                          1)
-        self.mock_config.set_config_value('SCHEDULER', 'gc_stats_interval_mins',
-                                          999999)
+        super(SchedulerFunctionalTestNoArchiving, self
+                )._set_global_config_values()
         self.mock_config.set_config_value('SCHEDULER', 'enable_archiving',
                                           False)
 
 
-    def _finish_parsing_and_cleanup(self, queue_entry):
-        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
+    def _finish_parsing(self, queue_entry):
         self.mock_drone_manager.finish_process(_PidfileType.PARSE)
         self._run_dispatcher()
 

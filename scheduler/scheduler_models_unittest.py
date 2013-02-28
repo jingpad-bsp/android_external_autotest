@@ -372,7 +372,7 @@ class JobTest(BaseSchedulerModelsTest):
         tasks = self._test_pre_job_tasks_helper(
                             reboot_before=model_attributes.RebootBefore.NEVER)
 
-        self.assertEqual(tasks, [])
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.VERIFY, 1)])
 
 
     def test_run_asynchronous_do_not_reset(self):
@@ -383,7 +383,7 @@ class JobTest(BaseSchedulerModelsTest):
         tasks = self._test_pre_job_tasks_helper(
                             reboot_before=model_attributes.RebootBefore.NEVER)
 
-        self.assertEqual(tasks, [])
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.VERIFY, 1)])
 
 
     def test_run_atomic_group_already_started(self):

@@ -677,9 +677,6 @@ class HostQueueEntry(DBObject):
 
 
     def _do_schedule_pre_job_tasks(self):
-        # Every host goes thru the Resetting stage (which may or may not
-        # actually do anything as determined by get_pre_job_tasks).
-        self.set_status(models.HostQueueEntry.Status.RESETTING)
         self.job.schedule_pre_job_tasks(queue_entry=self)
 
 
@@ -1201,7 +1198,11 @@ class Job(DBObject):
                          host_protections.Protection.DO_NOT_VERIFY)
         if do_not_verify:
             return False
-        return self.run_verify
+        # If RebootBefore is set to NEVER, then we won't run reset because
+        # we can't cleanup, so we need to weaken a Reset into a Verify.
+        weaker_reset = (self.run_reset and
+                self.reboot_before == model_attributes.RebootBefore.NEVER)
+        return self.run_verify or weaker_reset
 
 
     def _should_run_reset(self, queue_entry):
