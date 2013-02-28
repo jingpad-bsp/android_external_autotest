@@ -75,7 +75,10 @@ class UITest(pyauto_test.PyAutoTest):
             self._authServer.stop()
             del self._authServer
         if hasattr(self, '_dnsServer'):
-            self._dnsServer.stop()
+            try:
+                self._dnsServer.stop()
+            except utils.TimeoutError as err:
+                raise error.TestWarn(err)
             del self._dnsServer
 
 
