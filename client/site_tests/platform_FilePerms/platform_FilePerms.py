@@ -54,6 +54,9 @@ class platform_FilePerms(test.test):
         '/sys/fs/cgroup/cpu': {
             'type': 'cgroup',
             'options': standard_rw_options},
+        '/sys/fs/cgroup/freezer': {
+            'type': 'cgroup',
+            'options': standard_rw_options},
         '/sys/fs/fuse/connections': { # crosbug.com/32631
             'type': 'fusectl',
             'options': standard_rw_options},
