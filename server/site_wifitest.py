@@ -100,11 +100,15 @@ class WiFiTest(object):
     _result_dont_care = 3
 
     _capability_5ghz = "5ghz"
+    _capability_multi_ap = "multi_ap"
+    _capability_multi_ap_same_band = "multi_ap_same_band"
 
-    def __init__(self, name, steps, requirements, config):
+    def __init__(self, name, steps, client_requirements, config):
         self.name = name
         self.steps = steps
-        self.test_requirements = (requirements + self.__get_step_requirements())
+        step_req_client, step_req_router = self.__get_step_requirements()
+        self.client_requirements = (client_requirements + step_req_client)
+        self.router_requirements = step_req_router
         self.perf_keyvals = {}
 
         self.cur_frequency   = None
@@ -284,6 +288,7 @@ class WiFiTest(object):
 
         self.init_profile()
         self.client_capabilities = self.__get_client_capabilities()
+        self.router_capabilities = self.__get_router_capabilities()
 
 
     def init_profile(self):
@@ -430,22 +435,44 @@ class WiFiTest(object):
         return caps
 
 
+    def __get_router_capabilities(self):
+        caps = []
+
+        # Find out if this device supports multi-AP
+        system = site_linux_system.LinuxSystem(self.router, {}, '')
+        phymap = system.phys_for_frequency
+        frequencies = phymap.keys()
+        if [freq for freq in frequencies if freq > 5000]:
+            caps.append(WiFiTest._capability_5ghz)
+        if [freq for freq in frequencies if len(phymap[freq]) > 1]:
+            caps.append(WiFiTest._capability_multi_ap_same_band)
+            caps.append(WiFiTest._capability_multi_ap)
+        elif len(system.phy_bus_type) > 1:
+            caps.append(WiFiTest._capability_multi_ap)
+        logging.info("Router system capabilities: %s" % repr(caps))
+        return caps
+
+
     def __get_step_requirements(self):
         # This finds out what additional requirements are implicit based on
         # the steps outlined in the test description.
-        reqs = []
+        client_reqs = set()
+        router_reqs = set()
         for step in self.steps:
             if len(step) < 2 or step[1].__class__ != dict:
                 continue
             method = step[0]
             params = step[1]
-            if method != 'config' or 'channel' not in params:
+            if method != 'config':
                 continue
-            if int(params['channel']) > 5000:
-                reqs.append(WiFiTest._capability_5ghz)
-                break
-        logging.info("Step requirements: %s" % repr(reqs))
-        return reqs
+            if 'channel' in params and int(params['channel']) > 5000:
+                client_reqs.add(WiFiTest._capability_5ghz)
+                router_reqs.add(WiFiTest._capability_5ghz)
+            if 'multi_interface' in params:
+                router_reqs.add(WiFiTest._capability_multi_ap)
+        logging.info("Step requirements: Client: %s, AP: %s" %
+                     (repr(client_reqs), repr(router_reqs)))
+        return list(client_reqs), list(router_reqs)
 
 
     def __add_hook(self, hook, fn):
@@ -486,12 +513,16 @@ class WiFiTest(object):
           - '~': We don't care whether the operation succeeds or fails; this
             is especially useful during cleanup (e.g., deleting profiles).
         """
-        for requirement in self.test_requirements:
+        for requirement in self.client_requirements:
             if not requirement in self.client_capabilities:
-                logging.info("%s: SKIP: "
-                             "client is missing required capability: %s",
-                             self.name, requirement)
-                return
+                raise error.TestNAError(
+                    "%s: client is missing required capability: %s" %
+                    (self.name, requirement))
+        for requirement in self.router_requirements:
+            if not requirement in self.router_capabilities:
+                raise error.TestNAError(
+                    "%s: AP is missing required capability: %s" %
+                    (self.name, requirement))
 
         for step_number, s in enumerate(self.steps):
             method = s[0]
