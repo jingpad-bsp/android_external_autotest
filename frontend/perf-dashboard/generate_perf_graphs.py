@@ -18,6 +18,7 @@ Sample usage:
   python generate_perf_graphs.py -c -v
 
 Run with -h to see the full set of command-line options.
+
 """
 
 import fnmatch
@@ -36,23 +37,20 @@ os.environ['DJANGO_SETTINGS_MODULE'] = _SETTINGS
 import common
 from django.shortcuts import render_to_response
 
-# Paths to files.
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_DATA_DIR = os.path.join(_SCRIPT_DIR, 'data')
-_CURR_PID_FILE = os.path.join(_DATA_DIR, __file__ + '.curr_pid.txt')
 _CHART_CONFIG_FILE = os.path.join(_SCRIPT_DIR, 'croschart_defaults.json')
 _TEMPLATE_DIR = os.path.join(_SCRIPT_DIR, 'templates')
-
-_GRAPH_DIR = os.path.join(_SCRIPT_DIR, '..', 'graphs')
-_GRAPH_DATA_DIR = os.path.join(_GRAPH_DIR, 'data')
-_COMPLETED_ID_FILE = os.path.join(_GRAPH_DATA_DIR, 'job_id_complete.txt')
-_REV_NUM_FILE = os.path.join(_GRAPH_DATA_DIR, 'rev_num.txt')
+_CURR_PID_FILE_NAME = __file__ + '.curr_pid.txt'
+_COMPLETED_ID_FILE_NAME = 'job_id_complete.txt'
+_REV_NUM_FILE_NAME = 'rev_num.txt'
 
 # Values that can be configured through options.
 # TODO(dennisjeffrey): Infer the tip-of-tree milestone dynamically once this
 # issue is addressed: crosbug.com/38564.
-_TOT_MILESTONE = 26
-_OLDEST_MILESTONE_TO_GRAPH = 23
+_TOT_MILESTONE = 27
+_OLDEST_MILESTONE_TO_GRAPH = 25
+_DATA_DIR = _SCRIPT_DIR
+_GRAPH_DIR = _SCRIPT_DIR
 
 # Other values that can only be configured here in the code.
 _SYMLINK_LIST = [
@@ -64,7 +62,8 @@ _SYMLINK_LIST = [
 def set_world_read_permissions(path):
     """Recursively sets the content of |path| to be world-readable.
 
-     @param path: The string path.
+    @param path: The string path.
+
     """
     logging.debug('Setting world-read permissions recursively on %s', path)
     os.chmod(path, 0755)
@@ -80,17 +79,18 @@ def set_world_read_permissions(path):
 
 
 def remove_path(path):
-  """Remove the given path (whether file or directory).
+    """Remove the given path (whether file or directory).
 
-  @param path: The string path.
-  """
-  if os.path.isdir(path):
-      shutil.rmtree(path)
-      return
-  try:
-      os.remove(path)
-  except OSError:
-      pass
+    @param path: The string path.
+
+    """
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+        return
+    try:
+        os.remove(path)
+    except OSError:
+        pass
 
 
 def symlink_force(link_name, target):
@@ -98,6 +98,7 @@ def symlink_force(link_name, target):
 
     @param link_name: The string name of the link to create.
     @param target: The string destination file to which the link should point.
+
     """
     try:
         os.unlink(link_name)
@@ -116,6 +117,7 @@ def mean_and_standard_deviation(data):
     @param data: A list of numerica values.
 
     @return A 2-tuple (mean, standard_deviation) computed from |data|.
+
     """
     n = len(data)
     if n == 0:
@@ -138,6 +140,7 @@ def get_release_from_jobname(jobname):
 
     @return The 4-tuple containing components of the build release number, or
         None if those components cannot be identifies from the |jobname|.
+
     """
     prog = re.compile('r(\d+)-(\d+).(\d+).(\d+)')
     m = prog.search(jobname.lower())
@@ -157,6 +160,7 @@ def is_on_mainline_of_milestone(jobname, milestone):
     @return True, if the given autotest job name is for a release number that
         is either (1) an ancestor of the specified milestone, or (2) is on the
         main branch line of the given milestone.  Returns False otherwise.
+
     """
     r = get_release_from_jobname(jobname)
     m = milestone
@@ -181,6 +185,7 @@ def create_config_js_file(path, test_name):
     @param path: The string path to the directory in which to create the file.
     @param test_name: The string name of the test associated with this config
         file.
+
     """
     config_content = render_to_response(
         os.path.join(_TEMPLATE_DIR, 'config.js'), locals()).content
@@ -190,7 +195,8 @@ def create_config_js_file(path, test_name):
 
 def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
                                 units, better_direction, url, perf_keys,
-                                chart_keys, options, summary_id_to_rev_num):
+                                chart_keys, options, summary_id_to_rev_num,
+                                output_data_dir):
     """Outputs data for a perf test result into appropriate graph data files.
 
     @param test_name: The string name of a test.
@@ -212,6 +218,8 @@ def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
     @param summary_id_to_rev_num: A dictionary mapping a string (representing
         a test/platform/release combination), to the next integer revision
         number to use in the graph data file.
+    @param output_data_dir: A directory in which to output data files.
+
     """
     # A string ID that is assumed to be unique across all charts.
     test_id = test_name + '__' +  graph_name
@@ -237,7 +245,7 @@ def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
     # on a graph.
     start_release = max(release_num[0], options.oldest_milestone)
     for release in xrange(start_release, options.tot_milestone + 1):
-        output_path = os.path.join(_GRAPH_DATA_DIR, 'r%d' % release, platform,
+        output_path = os.path.join(output_data_dir, 'r%d' % release, platform,
                                    test_id)
         summary_file = os.path.join(output_path, graph_name + '-summary.dat')
 
@@ -304,7 +312,7 @@ def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
 
 def process_perf_data_files(file_names, test_name, completed_ids,
                             test_name_to_charts, options,
-                            summary_id_to_rev_num):
+                            summary_id_to_rev_num, output_data_dir):
     """Processes data files for a single test/platform.
 
     Multiple data files may exist if the given test name is associated with one
@@ -325,8 +333,10 @@ def process_perf_data_files(file_names, test_name, completed_ids,
     @param options: An optparse.OptionParser options object.
     @param summary_id_to_rev_num: A dictionary mapping a string (representing
         a test/platform/release combination) to an integer revision number.
+    @param output_data_dir: A directory in which to output data files.
 
     @return The number of newly-added graph data entries.
+
     """
     newly_added_count = 0
     for file_name in file_names:
@@ -361,10 +371,12 @@ def process_perf_data_files(file_names, test_name, completed_ids,
                         output_graph_data_for_entry(
                             test_name, graph_name, job_name, platform,
                             units, better_direction, url, perf_keys,
-                            chart_keys, options, summary_id_to_rev_num)
+                            chart_keys, options, summary_id_to_rev_num,
+                            output_data_dir)
 
                 # Mark this job ID as having been processed.
-                with open(_COMPLETED_ID_FILE, 'a') as fp:
+                with open(os.path.join(output_data_dir,
+                                       _COMPLETED_ID_FILE_NAME), 'a') as fp:
                     fp.write(job_id + '\n')
                 completed_ids[job_id] = True
                 newly_added_count += 1
@@ -372,18 +384,23 @@ def process_perf_data_files(file_names, test_name, completed_ids,
     return newly_added_count
 
 
-def initialize_graph_dir(options):
+def initialize_graph_dir(options, input_dir, output_data_dir):
     """Initialize/populate the directory that will serve the perf graphs.
 
     @param options: An optparse.OptionParser options object.
+    @param input_dir: A directory from which to read previously-extracted
+        perf data.
+    @param output_data_dir: A directory in which to output data files.
+
     """
     charts = simplejson.loads(open(_CHART_CONFIG_FILE, 'r').read())
 
     # Identify all the job IDs already processed in the graphs, so that we don't
     # add that data again.
     completed_ids = {}
-    if os.path.exists(_COMPLETED_ID_FILE):
-        with open(_COMPLETED_ID_FILE, 'r') as fp:
+    completed_id_file = os.path.join(output_data_dir, _COMPLETED_ID_FILE_NAME)
+    if os.path.exists(completed_id_file):
+        with open(completed_id_file, 'r') as fp:
             job_ids = map(lambda x: x.strip(), fp.readlines())
             for job_id in job_ids:
                 completed_ids[job_id] = True
@@ -391,8 +408,9 @@ def initialize_graph_dir(options):
     # Identify the next revision number to use in the graph data files for each
     # test/platform/release combination.
     summary_id_to_rev_num = {}
-    if os.path.exists(_REV_NUM_FILE):
-        with open(_REV_NUM_FILE, 'r') as fp:
+    rev_num_file = os.path.join(output_data_dir, _REV_NUM_FILE_NAME)
+    if os.path.exists(rev_num_file):
+        with open(rev_num_file, 'r') as fp:
             summary_id_to_rev_num = simplejson.loads(fp.read())
 
     test_name_to_charts = {}
@@ -414,7 +432,7 @@ def initialize_graph_dir(options):
         logging.debug('Analyzing/converting data for test %d of %d: %s',
                       i+1, len(test_names), test_name)
 
-        test_data_dir = os.path.join(_DATA_DIR, test_name)
+        test_data_dir = os.path.join(input_dir, test_name)
         if not os.path.exists(test_data_dir):
             logging.warning('No test data directory for test: %s', test_name)
             continue
@@ -428,7 +446,7 @@ def initialize_graph_dir(options):
             # associated with the current test/platform.
             files_to_process = [os.path.join(test_data_dir, file_name)]
             for old_test_name in test_name_to_old_names[test_name]:
-                old_test_file_name = os.path.join(_DATA_DIR, old_test_name,
+                old_test_file_name = os.path.join(input_dir, old_test_name,
                                                   file_name)
                 if os.path.exists(old_test_file_name):
                     logging.debug('(also processing this platform for old test '
@@ -437,11 +455,12 @@ def initialize_graph_dir(options):
 
             newly_added_count += process_perf_data_files(
                 files_to_process, test_name, completed_ids,
-                test_name_to_charts, options, summary_id_to_rev_num)
+                test_name_to_charts, options, summary_id_to_rev_num,
+                output_data_dir)
 
     # Store the latest revision numbers for each test/platform/release
     # combination, to be used on the next invocation of this script.
-    with open(_REV_NUM_FILE, 'w') as fp:
+    with open(rev_num_file, 'w') as fp:
         fp.write(simplejson.dumps(summary_id_to_rev_num, indent=2))
 
     logging.info('Added info for %d new jobs to the graphs!', newly_added_count)
@@ -456,6 +475,7 @@ def create_branch_platform_overview(graph_dir, branch, platform,
     @param platform: The string name of the platform.
     @param branch_to_platform_to_test: A dictionary mapping branch names to
         another dictionary, which maps platform names to a list of test names.
+
     """
     branches = sorted(branch_to_platform_to_test.keys(), reverse=True)
     platform_to_tests = branch_to_platform_to_test[branch]
@@ -510,6 +530,7 @@ def create_comparison_overview(compare_type, graph_dir, test_id, test_dir,
     @param test_dir: The string directory name containing the test data.
     @param branch_to_platform_to_test: A dictionary mapping branch names to
         another dictionary, which maps platform names to a list of test names.
+
     """
     branches = sorted(branch_to_platform_to_test.keys())
     platforms = [x.keys() for x in branch_to_platform_to_test.values()]
@@ -578,6 +599,7 @@ def generate_overview_pages(graph_dir, options):
 
     @param graph_dir: The string directory containing all the graph data.
     @param options: An optparse.OptionParser options object.
+
     """
     # Identify all the milestone names for which we want overview pages.
     branches_dir = os.path.join(graph_dir, 'data')
@@ -635,20 +657,37 @@ def generate_overview_pages(graph_dir, options):
                 branch_to_platform_to_test)
 
 
-def cleanup():
-    """Cleans up when this script is done."""
-    if os.path.isfile(_CURR_PID_FILE):
-        os.remove(_CURR_PID_FILE)
+def cleanup(dir_name):
+    """Cleans up when this script is done.
+
+    @param dir_name: A directory containing files to clean up.
+
+    """
+    curr_pid_file = os.path.join(dir_name, _CURR_PID_FILE_NAME)
+    if os.path.isfile(curr_pid_file):
+        os.remove(curr_pid_file)
 
 
 def main():
     """Main function."""
     parser = optparse.OptionParser()
+    parser.add_option('-i', '--input-dir', metavar='DIR', type='string',
+                      default=_DATA_DIR,
+                      help='Absolute path to the input directory from which to '
+                           'read the raw perf data previously extracted from '
+                           'the database. Assumed to contain a subfolder named '
+                           '"data". Defaults to "%default".')
+    parser.add_option('-o', '--output-dir', metavar='DIR', type='string',
+                      default=_GRAPH_DIR,
+                      help='Absolute path to the output directory in which to '
+                           'write data files to be displayed on perf graphs. '
+                           'Will be written into a subfolder named "graphs". '
+                           'Defaults to "%default".')
     parser.add_option('-t', '--tot-milestone', metavar='MSTONE', type='int',
                       default=_TOT_MILESTONE,
                       help='Tip-of-tree (most recent) milestone number. '
                            'Defaults to milestone %default (R%default).')
-    parser.add_option('-o', '--oldest-milestone', metavar='MSTONE', type='int',
+    parser.add_option('-l', '--oldest-milestone', metavar='MSTONE', type='int',
                       default=_OLDEST_MILESTONE_TO_GRAPH,
                       help='Oldest milestone number to display in the graphs. '
                            'Defaults to milestone %default (R%default).')
@@ -663,34 +702,38 @@ def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',
                         level=log_level)
 
-    if not os.path.isdir(_DATA_DIR):
-        logging.error('Could not find data directory "%s"', _DATA_DIR)
+    input_dir = os.path.join(options.input_dir, 'data')
+    if not os.path.isdir(input_dir):
+        logging.error('Could not find input data directory "%s"', input_dir)
         logging.error('Did you forget to run extract_perf.py first?')
         sys.exit(1)
 
-    common.die_if_already_running(_CURR_PID_FILE, logging)
+    common.die_if_already_running(
+        os.path.join(input_dir, _CURR_PID_FILE_NAME), logging)
 
+    output_dir = os.path.join(options.output_dir, 'graphs')
+    output_data_dir = os.path.join(output_dir, 'data')
     if options.clean:
-      remove_path(_GRAPH_DIR)
-      os.makedirs(_GRAPH_DATA_DIR)
+        remove_path(output_dir)
+        os.makedirs(output_data_dir)
 
-    initialize_graph_dir(options)
+    initialize_graph_dir(options, input_dir, output_data_dir)
 
-    ui_dir = os.path.join(_GRAPH_DIR, 'ui')
+    ui_dir = os.path.join(output_dir, 'ui')
     if not os.path.exists(ui_dir):
         logging.debug('Copying "ui" directory to %s', ui_dir)
         shutil.copytree(os.path.join(_SCRIPT_DIR, 'ui'), ui_dir)
-    doc_dir = os.path.join(_GRAPH_DIR, 'doc')
+    doc_dir = os.path.join(output_dir, 'doc')
     if not os.path.exists(doc_dir):
         logging.debug('Copying "doc" directory to %s', doc_dir)
         shutil.copytree(os.path.join(_SCRIPT_DIR, 'doc'), doc_dir)
 
-    generate_overview_pages(_GRAPH_DIR, options)
-    set_world_read_permissions(_GRAPH_DIR)
+    generate_overview_pages(output_dir, options)
+    set_world_read_permissions(output_dir)
 
-    cleanup()
+    cleanup(input_dir)
     logging.info('All done!')
 
 
 if __name__ == '__main__':
-  main()
+    main()
