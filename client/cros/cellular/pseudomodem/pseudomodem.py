@@ -133,6 +133,11 @@ class VirtualEthernetInterface(object):
             raise Exception('Could not initialize virtual ethernet pair')
         utils.run('sudo route add -host 255.255.255.255 dev ' +
                    PEER_IFACE_NAME)
+
+        # Make sure 'dnsmasq' can receive DHCP requests.
+        utils.run('sudo iptables -I INPUT -p udp --dport 67 -j ACCEPT')
+        utils.run('sudo iptables -I INPUT -p udp --dport 68 -j ACCEPT')
+
         self.StartDHCPServer()
 
     def Teardown(self):
@@ -142,6 +147,14 @@ class VirtualEthernetInterface(object):
                        PEER_IFACE_NAME)
         except:
             pass
+
+        # Remove iptables rules.
+        try:
+            utils.run('sudo iptables -D INPUT -p udp --dport 67 -j ACCEPT')
+            utils.run('sudo iptables -D INPUT -p udp --dport 68 -j ACCEPT')
+        except:
+            pass
+
         self.vif.teardown()
 
     def Restart(self):
