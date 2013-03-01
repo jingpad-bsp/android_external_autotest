@@ -33,6 +33,8 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime
 import common
+from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import error
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 
@@ -536,6 +538,12 @@ def create_job(name, priority, control_file, control_type,
 
     @returns The created Job id number.
     """
+
+    # Force control files to only contain ascii characters.
+    try:
+        control_file.encode('ascii')
+    except UnicodeDecodeError as e:
+        raise error.ControlFileMalformed(str(e))
 
     if image is None:
         return rpc_utils.create_job_common(

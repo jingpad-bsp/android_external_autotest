@@ -66,6 +66,12 @@ def get_control_file_contents_by_name(build, board, ds, suite_name):
     if not control_file_in:
         raise error.ControlFileEmpty(
                 "Fetching %s returned no data." % suite_name)
+    # Force control files to only contain ascii characters.
+    try:
+        control_file_in.encode('ascii')
+    except UnicodeDecodeError as e:
+        raise error.ControlFileMalformed(str(e))
+
     return control_file_in
 
 

@@ -514,6 +514,11 @@ class ControlFileEmpty(CrosDynamicSuiteException):
     pass
 
 
+class ControlFileMalformed(CrosDynamicSuiteException):
+    """Raised when an invalid control file is read."""
+    pass
+
+
 class AsynchronousBuildFailure(CrosDynamicSuiteException):
     """Raised when the dev server throws 500 while finishing staging of a build.
     """
