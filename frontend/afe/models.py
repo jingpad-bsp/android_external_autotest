@@ -1004,6 +1004,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     its results parsed as part of the job.
     drone_set: The set of drones to run this job on
     parent_job: Parent job (optional)
+    test_retry: Number of times to retry test if the test did not complete
+                successfully. (optional, default: 0)
     """
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_timeout_default', default=240)
@@ -1055,6 +1057,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                                             blank=True)
 
     parent_job = dbmodels.ForeignKey('self', blank=True, null=True)
+
+    test_retry = dbmodels.IntegerField(blank=True, default=0)
 
     # custom manager
     objects = JobManager()
@@ -1150,7 +1154,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             created_on=datetime.now(),
             drone_set=drone_set,
             parameterized_job=parameterized_job,
-            parent_job=options.get('parent_job_id'))
+            parent_job=options.get('parent_job_id'),
+            test_retry=options.get('test_retry'))
 
         job.dependency_labels = options['dependencies']
 

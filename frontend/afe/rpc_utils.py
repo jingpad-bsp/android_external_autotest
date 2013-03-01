@@ -645,7 +645,7 @@ def create_job_common(name, priority, control_type, control_file=None,
                       reboot_before=None, reboot_after=None,
                       parse_failed_repair=None, hostless=False, keyvals=None,
                       drone_set=None, parameterized_job=None,
-                      parent_job_id=None):
+                      parent_job_id=None, test_retry=0):
     #pylint: disable-msg=C0111
     """
     Common code between creating "standard" jobs and creating parameterized jobs
@@ -750,7 +750,8 @@ def create_job_common(name, priority, control_type, control_file=None,
                    keyvals=keyvals,
                    drone_set=drone_set,
                    parameterized_job=parameterized_job,
-                   parent_job_id=parent_job_id)
+                   parent_job_id=parent_job_id,
+                   test_retry=test_retry)
     return create_new_job(owner=owner,
                           options=options,
                           host_objects=host_objects,

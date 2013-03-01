@@ -1,10 +1,11 @@
+#pylint: disable-msg=C0111
 #!/usr/bin/python
 
 import datetime, unittest
 import common
+#pylint: disable-msg=W0611
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
-from django.db import connection
 from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils
 from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.client.common_lib import global_config
@@ -110,6 +111,17 @@ class RpcInterfaceTest(unittest.TestCase,
         jobs = rpc_interface.get_jobs(id=job_id)
         self.assertEquals(len(jobs), 1)
         self.assertEquals(jobs[0]['keyvals'], keyval_dict)
+
+
+    def test_test_retry(self):
+        job_id = rpc_interface.create_job(name='flake', priority='Medium',
+                                          control_file='foo',
+                                          control_type='Client',
+                                          hosts=['host1'],
+                                          test_retry=10)
+        jobs = rpc_interface.get_jobs(id=job_id)
+        self.assertEquals(len(jobs), 1)
+        self.assertEquals(jobs[0]['test_retry'], 10)
 
 
     def test_get_jobs_summary(self):

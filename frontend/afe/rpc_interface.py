@@ -33,7 +33,6 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime
 import common
-from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
@@ -502,7 +501,8 @@ def create_job(name, priority, control_file, control_type,
                timeout=None, max_runtime_mins=None, run_verify=True,
                email_list='', dependencies=(), reboot_before=None,
                reboot_after=None, parse_failed_repair=None, hostless=False,
-               keyvals=None, drone_set=None, image=None, parent_job_id=None):
+               keyvals=None, drone_set=None, image=None, parent_job_id=None,
+               test_retry=0):
     """\
     Create and enqueue a job.
 
@@ -534,7 +534,8 @@ def create_job(name, priority, control_file, control_type,
     @param drone_set The name of the drone set to run this test on.
     @param image OS image to install before running job.
     @param parent_job_id id of a job considered to be parent of created job.
-
+    @param test_retry: Number of times to retry test if the test did not
+                       complete successfully. (optional, default: 0)
 
     @returns The created Job id number.
     """

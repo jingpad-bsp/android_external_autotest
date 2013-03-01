@@ -195,7 +195,8 @@ class SuiteTest(mox.MoxTestBase):
                 dependencies=[],
                 keyvals={'build': self._BUILD, 'suite': self._TAG},
                 max_runtime_mins=24*60,
-                parent_job_id=None
+                parent_job_id=None,
+                test_retry=0
                 ).AndReturn(FakeJob())
 
 
@@ -247,6 +248,14 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def schedule_and_expect_these_results(self, suite, results, recorder):
+        """Create mox stubs for call to suite.schedule and
+        job_status.wait_for_results
+
+        @param suite:    suite object for which to stub out schedule(...)
+        @param results:  results object to be returned from
+                         job_stats_wait_for_results(...)
+        @param recorder: mocked recorder object to replay status messages
+        """
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(recorder.record_entry, True)
         for result in results:
