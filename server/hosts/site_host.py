@@ -5,6 +5,7 @@
 import functools
 import logging
 import re
+import socket
 import subprocess
 import time
 import xmlrpclib
@@ -14,6 +15,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
@@ -624,7 +626,8 @@ class SiteHost(remote.RemoteHost):
         self.run('python -c "import cPickle"')
 
 
-    def xmlrpc_connect(self, command, port, command_name=None):
+    def xmlrpc_connect(self, command, port, command_name=None,
+                       ready_test_name=None, timeout_seconds=10):
         """Connect to an XMLRPC server on the host.
 
         The `command` argument should be a simple shell command that
@@ -639,11 +642,25 @@ class SiteHost(remote.RemoteHost):
         responsible for determining whether the server is running
         correctly, and is ready to serve requests.
 
+        Optionally, the caller can pass ready_test_name, a string
+        containing the name of a method to call on the proxy.  This
+        method should take no parameters and return successfully only
+        when the server is ready to process client requests.  When
+        ready_test_name is set, xmlrpc_connect will block until the
+        proxy is ready, and throw a TestError if the server isn't
+        ready by timeout_seconds.
+
         @param command Shell command to start the server.
         @param port Port number on which the server is expected to
                     be serving.
         @param command_name String to use as input to `pkill` to
             terminate the XMLRPC server on the host.
+        @param ready_test_name String containing the name of a
+            method defined on the XMLRPC server.
+        @param timeout_seconds Number of seconds to wait
+            for the server to become 'ready.'  Will throw a
+            TestFail error if server is not ready in time.
+
         """
         self.xmlrpc_disconnect(port)
 
@@ -673,8 +690,29 @@ class SiteHost(remote.RemoteHost):
 
         self._xmlrpc_proxy_map[port] = (command_name, tunnel_proc)
         rpc_url = 'http://localhost:%d' % local_port
-        return xmlrpclib.ServerProxy(rpc_url, allow_none=True)
-
+        proxy = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
+        if ready_test_name is not None:
+            @retry.retry((socket.error, xmlrpclib.ProtocolError),
+                         timeout_min=timeout_seconds/60.0,
+                         delay_sec=0.1)
+            def ready_test():
+                """ Call proxy.ready_test_name(). """
+                getattr(proxy, ready_test_name)()
+            successful = False
+            try:
+                logging.info('Waiting %d seconds for XMLRPC server '
+                             'to start.', timeout_seconds)
+                ready_test()
+                successful = True
+            except retry.TimeoutException:
+                raise error.TestError('Unable to start XMLRPC server after '
+                                      '%d seconds.' % timeout_seconds)
+            finally:
+                if not successful:
+                    logging.error('Failed to start XMLRPC server.')
+                    self.xmlrpc_disconnect(port)
+        logging.info('XMLRPC server started successfully.')
+        return proxy
 
     def xmlrpc_disconnect(self, port):
         """Disconnect from an XMLRPC server on the host.
