@@ -1,3 +1,4 @@
+#pylint: disable-msg=C0111
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -17,6 +18,7 @@ class FakeControlData(object):
         self.experimental = expr
         self.dependencies = []
         self.time = time
+        self.retries = 0
 
 
 class FakeJob(object):

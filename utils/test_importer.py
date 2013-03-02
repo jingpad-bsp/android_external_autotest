@@ -28,6 +28,7 @@ Most options should be fairly self explanatory, use --help to display them.
 
 import common
 import logging, re, os, sys, optparse, compiler
+#pylint: disable-msg=W0611
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 from autotest_lib.client.common_lib import control_data, utils
@@ -35,6 +36,7 @@ from autotest_lib.client.common_lib import logging_config, logging_manager
 
 
 class TestImporterLoggingConfig(logging_config.LoggingConfig):
+    #pylint: disable-msg=C0111
     def configure_logging(self, results_dir=None, verbose=False):
         super(TestImporterLoggingConfig, self).configure_logging(
                                                                use_console=True,
@@ -294,6 +296,8 @@ def _set_attributes_clean(test, data):
     if not test.test_type and str == type(data.test_type):
         test.test_type = test_type[data.test_type.lower()]
 
+    test.test_retry = data.retries
+
 
 def add_label_dependencies(test):
     """
@@ -464,7 +468,9 @@ def update_from_whitelist(whitelist_set, add_experimental, add_noncompliant,
 
 
 def main(argv):
-    """Main function"""
+    """Main function
+    @param argv: List of command line parameters.
+    """
 
     global DRY_RUN
     parser = optparse.OptionParser()

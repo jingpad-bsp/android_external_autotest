@@ -298,7 +298,8 @@ class Suite(object):
             keyvals={constants.JOB_BUILD_KEY: self._build,
                      constants.JOB_SUITE_KEY: self._tag},
             max_runtime_mins=self._max_runtime_mins,
-            parent_job_id=self._suite_job_id)
+            parent_job_id=self._suite_job_id,
+            test_retry=test.retries)
 
         setattr(test_obj, 'test_name', test.name)
 

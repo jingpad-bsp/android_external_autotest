@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# pylint: disable-msg=C0111
 
 import os, unittest
 
@@ -21,6 +22,7 @@ TIME='short'
 TEST_CLASS=u'Kernel'
 TEST_CATEGORY='Stress'
 TEST_TYPE='client'
+RETRIES = 5
 """
 
 
@@ -48,6 +50,7 @@ class ParseControlTest(unittest.TestCase):
         self.assertEquals(cd.test_class, "kernel")
         self.assertEquals(cd.test_category, "stress")
         self.assertEquals(cd.test_type, "client")
+        self.assertEquals(cd.retries, 5)
 
 
 class SetMethodTests(unittest.TestCase):

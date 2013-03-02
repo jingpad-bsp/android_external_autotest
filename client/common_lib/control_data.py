@@ -1,4 +1,4 @@
-#
+# pylint: disable-msg=C0111
 # Copyright 2008 Google Inc. Released under the GPL v2
 
 import compiler, logging, textwrap
@@ -43,6 +43,7 @@ class ControlData(object):
         self.test_parameters = set()
         self.test_category = ''
         self.test_class = ''
+        self.retries = 0
 
         diff = REQUIRED_VARS - set(vars)
         if len(diff) > 0:
@@ -165,6 +166,10 @@ class ControlData(object):
 
     def set_test_parameters(self, val):
         self._set_set('test_parameters', val)
+
+
+    def set_retries(self, val):
+        self._set_int('retries', val)
 
 
 def _extract_const(n):
