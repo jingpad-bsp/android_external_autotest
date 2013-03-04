@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import datetime
 import logging
 import pexpect
 import Queue
@@ -15,6 +16,8 @@ import dli_urllib
 
 # Format Appears as: [Date] [Time] - [Msg Level] - [Message]
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+RPM_CALL_TIMEOUT_MINS = rpm_config.getint('RPM_INFRASTRUCTURE',
+                                          'call_timeout_mins')
 
 
 class RPMController(object):
@@ -139,6 +142,11 @@ class RPMController(object):
         """
         while not self.request_queue.empty():
             request = self.request_queue.get()
+            if (datetime.datetime.utcnow() > (request['start_time'] +
+                    datetime.timedelta(minutes=RPM_CALL_TIMEOUT_MINS)):
+                logging.error('Request has timed out already. Not processing.')
+                request['result_queue'].put(False)
+                continue
             result = self.set_power_state(request['dut'], request['new_state'])
             if not result:
                 logging.error('Request to change %s to state %s failed.',
@@ -163,6 +171,7 @@ class RPMController(object):
         request = {}
         request['dut'] = dut_hostname
         request['new_state'] = new_state
+        request['start_time'] = datetime.datetime.utcnow()
         # Reserve a spot for the result to be stored.
         request['result_queue'] = Queue.Queue()
         # Place in request_queue
