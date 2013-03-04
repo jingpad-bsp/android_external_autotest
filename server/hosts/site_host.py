@@ -395,6 +395,10 @@ class SiteHost(remote.RemoteHost):
                         ' new kernel as successful.'),
                     timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
+            # Kick off the autoreboot script as the _LAB_MACHINE_FILE was
+            # missing on the first boot.
+            self.run('start autoreboot')
+
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(
                 'AUTOSERV', 'client_autodir_paths', type=list):
