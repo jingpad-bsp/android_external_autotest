@@ -9,6 +9,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_config, scheduler_models
+from autotest_lib.site_utils.graphite import stats
 
 # Override default parser with our site parser.
 def parser_path(install_dir):
@@ -84,6 +85,14 @@ class SiteDispatcher(object):
     SiteDispatcher subclasses BaseDispatcher in monitor_db.
     """
     DEFAULT_REQUESTED_BY_USER_ID = 1
+
+
+    _timer = stats.Timer('scheduler')
+
+
+    @_timer.decorate
+    def tick(self):
+        super(SiteDispatcher, self).tick()
 
 
     def _reverify_hosts_where(self, where,

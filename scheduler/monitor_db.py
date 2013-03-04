@@ -6,12 +6,11 @@ Autotest scheduler
 """
 
 
-import common
 import datetime, optparse, os, signal
 import sys, time, traceback, urllib
 import logging, gc
 
-from autotest_lib.scheduler import scheduler_logging_config
+import common
 from autotest_lib.frontend import setup_django_environment
 
 import django.db
@@ -19,12 +18,14 @@ import django.db
 from autotest_lib.client.common_lib import global_config, logging_manager
 from autotest_lib.client.common_lib import host_protections, utils
 from autotest_lib.database import database_connection
-from autotest_lib.frontend.afe import models, rpc_utils, readonly_connection
 from autotest_lib.frontend.afe import model_attributes
+from autotest_lib.frontend.afe import models, rpc_utils, readonly_connection
 from autotest_lib.scheduler import drone_manager, drones, email_manager
 from autotest_lib.scheduler import gc_stats, host_scheduler, monitor_db_cleanup
-from autotest_lib.scheduler import status_server, scheduler_config
+from autotest_lib.scheduler import scheduler_logging_config
 from autotest_lib.scheduler import scheduler_models
+from autotest_lib.scheduler import status_server, scheduler_config
+
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
 PID_FILE_PREFIX = 'monitor_db'
 
@@ -253,6 +254,8 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
 
 
 class BaseDispatcher(object):
+
+
     def __init__(self):
         self._agents = []
         self._last_clean_time = time.time()
