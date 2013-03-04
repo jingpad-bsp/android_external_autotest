@@ -50,7 +50,8 @@ class power_SuspendStress(test.test):
 
     def run_once(self):
         time.sleep(self._init_delay)
-        self._suspender = power_suspend.Suspender(method=self._method)
+        self._suspender = power_suspend.Suspender(
+                self.resultsdir, method=self._method)
         timeout = time.time() + self._duration
         while time.time() < timeout:
             time.sleep(random.randint(0, 3))

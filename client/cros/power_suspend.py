@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, time
+import logging, os, re, shutil, time
 
 import common
 from autotest_lib.client.bin import utils
@@ -27,6 +27,7 @@ class Suspender(object):
     Private attributes:
         _logs: Array of /var/log/messages lines since start of suspend cycle.
         _log_file: Open file descriptor at the end of /var/log/messages.
+        _logdir: Directory to store firmware logs in case of errors.
         _suspend: Set to the sys_power suspend function to use.
         _throw: Set to have SuspendFailure exceptions raised to the caller.
         _reset_pm_print_times: Set to deactivate pm_print_times after the test.
@@ -94,12 +95,13 @@ class Suspender(object):
     # File written by powerd_suspend containing the hwclock time at resume.
     HWCLOCK_FILE = '/var/run/power_manager/root/hwclock-on-resume'
 
-    def __init__(self, method=sys_power.do_suspend,
+    def __init__(self, logdir, method=sys_power.do_suspend,
                  throw=False, device_times=False):
         """Prepare environment for suspending."""
         self.disconnect_3G_time = 0
         self.successes = []
         self.failures = []
+        self._logdir = logdir
         self._suspend = method
         self._throw = throw
         self._reset_pm_print_times = False
@@ -298,6 +300,10 @@ class Suspender(object):
                                 logging.info('Whitelisted FW error: ' + msg)
                                 break
                         else:
+                            firmware_log = os.path.join(self._logdir,
+                                    'firmware.log.' + str(iteration))
+                            shutil.copy('/sys/firmware/log', firmware_log)
+                            logging.info('Saved firmware log: ' + firmware_log)
                             raise sys_power.FirmwareError(msg.strip('\r\n '))
 
                 warning_regex = re.compile(r' kernel: \[.*WARNING:')

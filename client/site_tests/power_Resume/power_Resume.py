@@ -11,7 +11,8 @@ class power_Resume(test.test):
     preserve_srcdir = True
 
     def initialize(self):
-        self._suspender = power_suspend.Suspender(throw=True, device_times=True)
+        self._suspender = power_suspend.Suspender(self.resultsdir,
+                throw=True, device_times=True)
 
 
     def run_once(self, max_devs_returned=10):

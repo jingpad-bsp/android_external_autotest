@@ -14,7 +14,7 @@ class power_UiResume(cros_ui_test.UITest):
         # It's important to log in with a real user. If logged in as
         # guest, powerd will shut down instead of suspending.
         super(power_UiResume, self).initialize(creds=creds)
-        self._suspender = power_suspend.Suspender(
+        self._suspender = power_suspend.Suspender(self.resultsdir,
                 method=sys_power.dbus_suspend, throw=True)
 
 
