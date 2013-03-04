@@ -154,7 +154,7 @@ class Driver(object):
         """
         board, type, milestone, manifest = base_event.ParseBuildName(build_name)
         branch_builds = {task.PickBranchName(type, milestone): [build_name]}
-        logging.info('Testing build R%s-%s on %s', milestone, manifest, board)
+        logging.info('Testing build %s-%s on %s', milestone, manifest, board)
 
         for e in self._events.itervalues():
             if e.keyword in keywords:
