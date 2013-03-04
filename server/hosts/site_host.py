@@ -597,6 +597,10 @@ class SiteHost(remote.RemoteHost):
                 'SERVER', 'gb_diskspace_required', type=int,
                 default=20))
         self.run('update_engine_client --status')
+        # Makes sure python is present, loads and can use built in functions.
+        # We have seen cases where importing cPickle fails with undefined
+        # symbols in cPickle.so.
+        self.run('python -c "import cPickle"')
 
 
     def xmlrpc_connect(self, command, port, command_name=None):
