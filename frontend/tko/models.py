@@ -1,10 +1,10 @@
 from django.db import models as dbmodels, connection
-from django.utils import datastructures
 from autotest_lib.frontend.afe import model_logic, readonly_connection
 
 _quote_name = connection.ops.quote_name
 
 class TempManager(model_logic.ExtendedManager):
+    """A Temp Manager."""
     _GROUP_COUNT_NAME = 'group_count'
 
     def _get_key_unless_is_function(self, field):
@@ -42,19 +42,27 @@ class TempManager(model_logic.ExtendedManager):
 
 
     def _get_column_names(self, cursor):
-        """
-        Gets the column names from the cursor description. This method exists
-        so that it can be mocked in the unit test for sqlite3 compatibility.
+        """Gets the column names from the cursor description.
+
+        This method exists so that it can be mocked in the unit test for
+        sqlite3 compatibility.
+
         """
         return [column_info[0] for column_info in cursor.description]
 
 
     def execute_group_query(self, query, group_by):
-        """
-        Performs the given query grouped by the fields in group_by with the
-        given query's extra select fields added.  Returns a list of dicts, where
-        each dict corresponds to single row and contains a key for each grouped
-        field as well as all of the extra select fields.
+        """Performs the given query grouped by the specified fields.
+
+        The given query's extra select fields are added.
+
+        @param query: The query to perform.
+        @param group_by: The fields by which to group.
+
+        @return A list of dicts, where each dict corresponds to single row and
+            contains a key for each grouped field as well as all of the extra
+            select fields.
+
         """
         sql, params = self._get_group_query_sql(query, group_by)
         cursor = readonly_connection.connection().cursor()
@@ -65,9 +73,12 @@ class TempManager(model_logic.ExtendedManager):
 
 
     def get_count_sql(self, query):
-        """
-        Get the SQL to properly select a per-group count of unique matches for
-        a grouped query.  Returns a tuple (field alias, field SQL)
+        """Get SQL to select a per-group count of unique matches for a query.
+
+        @param query: The query to use.
+
+        @return A tuple (field alias, field SQL).
+
         """
         if query.query.distinct:
             pk_field = self.get_key_on_this_table()
@@ -95,9 +106,14 @@ class TempManager(model_logic.ExtendedManager):
 
 
     def get_num_groups(self, query, group_by):
-        """
-        Returns the number of distinct groups for the given query grouped by the
-        fields in group_by.
+        """Gets the number of distinct groups for a query.
+
+        @param query: The query to use.
+        @param group_by: The fields by which to group.
+
+        @return The number of distinct groups for the given query grouped by
+            the fields in group_by.
+
         """
         sql, params = self._get_num_groups_sql(query, group_by)
         cursor = readonly_connection.connection().cursor()
@@ -106,44 +122,53 @@ class TempManager(model_logic.ExtendedManager):
 
 
 class Machine(dbmodels.Model):
+    """Models a machine."""
     machine_idx = dbmodels.AutoField(primary_key=True)
     hostname = dbmodels.CharField(unique=True, max_length=255)
     machine_group = dbmodels.CharField(blank=True, max_length=240)
     owner = dbmodels.CharField(blank=True, max_length=240)
 
     class Meta:
+        """Metadata for class Machine."""
         db_table = 'tko_machines'
 
 
 class Kernel(dbmodels.Model):
+    """Models a kernel."""
     kernel_idx = dbmodels.AutoField(primary_key=True)
     kernel_hash = dbmodels.CharField(max_length=105, editable=False)
     base = dbmodels.CharField(max_length=90)
     printable = dbmodels.CharField(max_length=300)
 
     class Meta:
+        """Metadata for class Kernel."""
         db_table = 'tko_kernels'
 
 
 class Patch(dbmodels.Model):
+    """Models a patch."""
     kernel = dbmodels.ForeignKey(Kernel, db_column='kernel_idx')
     name = dbmodels.CharField(blank=True, max_length=240)
     url = dbmodels.CharField(blank=True, max_length=900)
     the_hash = dbmodels.CharField(blank=True, max_length=105, db_column='hash')
 
     class Meta:
+        """Metadata for class Patch."""
         db_table = 'tko_patches'
 
 
 class Status(dbmodels.Model):
+    """Models a status."""
     status_idx = dbmodels.AutoField(primary_key=True)
     word = dbmodels.CharField(max_length=30)
 
     class Meta:
+        """Metadata for class Status."""
         db_table = 'tko_status'
 
 
 class Job(dbmodels.Model, model_logic.ModelExtensions):
+    """Models a job."""
     job_idx = dbmodels.AutoField(primary_key=True)
     tag = dbmodels.CharField(unique=True, max_length=100)
     label = dbmodels.CharField(max_length=300)
@@ -157,21 +182,24 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     objects = model_logic.ExtendedManager()
 
     class Meta:
+        """Metadata for class Job."""
         db_table = 'tko_jobs'
 
 
 class JobKeyval(dbmodels.Model):
+    """Models a job keyval."""
     job = dbmodels.ForeignKey(Job)
     key = dbmodels.CharField(max_length=90)
     value = dbmodels.CharField(blank=True, max_length=300)
 
-
     class Meta:
+        """Metadata for class JobKeyval."""
         db_table = 'tko_job_keyvals'
 
 
 class Test(dbmodels.Model, model_logic.ModelExtensions,
            model_logic.ModelWithAttributes):
+    """Models a test."""
     test_idx = dbmodels.AutoField(primary_key=True)
     job = dbmodels.ForeignKey(Job, db_column='job_idx')
     test = dbmodels.CharField(max_length=300)
@@ -200,12 +228,13 @@ class Test(dbmodels.Model, model_logic.ModelExtensions,
         except TestAttribute.DoesNotExist:
             super(Test, self).set_attribute(attribute, value)
 
-
     class Meta:
+        """Metadata for class Test."""
         db_table = 'tko_tests'
 
 
 class TestAttribute(dbmodels.Model, model_logic.ModelExtensions):
+    """Models a test attribute."""
     test = dbmodels.ForeignKey(Test, db_column='test_idx')
     attribute = dbmodels.CharField(max_length=90)
     value = dbmodels.CharField(blank=True, max_length=300)
@@ -214,12 +243,14 @@ class TestAttribute(dbmodels.Model, model_logic.ModelExtensions):
     objects = model_logic.ExtendedManager()
 
     class Meta:
+        """Metadata for class TestAttribute."""
         db_table = 'tko_test_attributes'
 
 
 class IterationAttribute(dbmodels.Model, model_logic.ModelExtensions):
-    # this isn't really a primary key, but it's necessary to appease Django
-    # and is harmless as long as we're careful
+    """Models an iteration attribute."""
+    # This isn't really a primary key, but it's necessary to appease Django
+    # and is harmless as long as we're careful.
     test = dbmodels.ForeignKey(Test, db_column='test_idx', primary_key=True)
     iteration = dbmodels.IntegerField()
     attribute = dbmodels.CharField(max_length=90)
@@ -228,23 +259,27 @@ class IterationAttribute(dbmodels.Model, model_logic.ModelExtensions):
     objects = model_logic.ExtendedManager()
 
     class Meta:
+        """Metadata for class IterationAttribute."""
         db_table = 'tko_iteration_attributes'
 
 
 class IterationResult(dbmodels.Model, model_logic.ModelExtensions):
-    # see comment on IterationAttribute regarding primary_key=True
+    """Models an iteration result."""
+    # See comment on IterationAttribute regarding primary_key=True.
     test = dbmodels.ForeignKey(Test, db_column='test_idx', primary_key=True)
     iteration = dbmodels.IntegerField()
-    attribute = dbmodels.CharField(max_length=90)
+    attribute = dbmodels.CharField(max_length=256)
     value = dbmodels.FloatField(null=True, blank=True)
 
     objects = model_logic.ExtendedManager()
 
     class Meta:
+        """Metadata for class IterationResult."""
         db_table = 'tko_iteration_result'
 
 
 class TestLabel(dbmodels.Model, model_logic.ModelExtensions):
+    """Models a test label."""
     name = dbmodels.CharField(max_length=80, unique=True)
     description = dbmodels.TextField(blank=True)
     tests = dbmodels.ManyToManyField(Test, blank=True,
@@ -254,20 +289,24 @@ class TestLabel(dbmodels.Model, model_logic.ModelExtensions):
     objects = model_logic.ExtendedManager()
 
     class Meta:
+        """Metadata for class TestLabel."""
         db_table = 'tko_test_labels'
 
 
 class SavedQuery(dbmodels.Model, model_logic.ModelExtensions):
-    # TODO: change this to foreign key once DBs are merged
+    """Models a saved query."""
+    # TODO: change this to foreign key once DBs are merged.
     owner = dbmodels.CharField(max_length=80)
     name = dbmodels.CharField(max_length=100)
     url_token = dbmodels.TextField()
 
     class Meta:
+        """Metadata for class SavedQuery."""
         db_table = 'tko_saved_queries'
 
 
 class EmbeddedGraphingQuery(dbmodels.Model, model_logic.ModelExtensions):
+    """Models an embedded graphing query."""
     url_token = dbmodels.TextField(null=False, blank=False)
     graph_type = dbmodels.CharField(max_length=16, null=False, blank=False)
     params = dbmodels.TextField(null=False, blank=False)
@@ -276,17 +315,20 @@ class EmbeddedGraphingQuery(dbmodels.Model, model_logic.ModelExtensions):
     # refresh_time shows the time at which a thread is updating the cached
     # image, or NULL if no one is updating the image. This is used so that only
     # one thread is updating the cached image at a time (see
-    # graphing_utils.handle_plot_request)
+    # graphing_utils.handle_plot_request).
     refresh_time = dbmodels.DateTimeField(editable=False)
     cached_png = dbmodels.TextField(editable=False)
 
     class Meta:
+        """Metadata for class EmbeddedGraphingQuery."""
         db_table = 'tko_embedded_graphing_queries'
 
 
-# views
+# Views.
 
 class TestViewManager(TempManager):
+    """A Test View Manager."""
+
     def get_query_set(self):
         query = super(TestViewManager, self).get_query_set()
 
@@ -499,8 +541,7 @@ class TestViewManager(TempManager):
 
 
     def get_query_set_with_joins(self, filter_data):
-        """
-        Add joins for querying over test-related items.
+        """Add joins for querying over test-related items.
 
         These parameters are supported going forward:
         * test_attribute_fields: list of attribute names.  Each attribute will
@@ -534,6 +575,11 @@ class TestViewManager(TempManager):
         present in extra_where (this is also deprecated):
         * test_labels
         * test_attributes_host_labels
+
+        @param filter_data: Data by which to filter.
+
+        @return A QuerySet.
+
         """
         query_set = self.get_query_set()
 
@@ -607,6 +653,15 @@ class TestViewManager(TempManager):
 
 
     def query_test_ids(self, filter_data, apply_presentation=True):
+        """Queries for test IDs.
+
+        @param filter_data: Data by which to filter.
+        @param apply_presentation: Whether or not to apply presentation
+            parameters.
+
+        @return A list of test IDs.
+
+        """
         query = self.model.query_objects(filter_data,
                                          apply_presentation=apply_presentation)
         dicts = query.values('test_idx')
@@ -614,6 +669,13 @@ class TestViewManager(TempManager):
 
 
     def query_test_label_ids(self, filter_data):
+        """Queries for test label IDs.
+
+        @param filter_data: Data by which to filter.
+
+        @return A list of test label IDs.
+
+        """
         query_set = self.model.query_objects(filter_data)
         query_set = self._add_label_joins(query_set, suffix='_list')
         rows = self._custom_select_query(query_set, ['tko_test_labels_list.id'])
@@ -626,6 +688,7 @@ class TestViewManager(TempManager):
 
 
 class TestView(dbmodels.Model, model_logic.ModelExtensions):
+    """Models a test view."""
     extra_fields = {
             'DATE(job_queued_time)': 'job queued day',
             'DATE(test_finished_time)': 'test finished day',
@@ -692,6 +755,6 @@ class TestView(dbmodels.Model, model_logic.ModelExtensions):
                 filter_data, initial_query=initial_query,
                 apply_presentation=apply_presentation)
 
-
     class Meta:
+        """Metadata for class TestView."""
         db_table = 'tko_test_view_2'
