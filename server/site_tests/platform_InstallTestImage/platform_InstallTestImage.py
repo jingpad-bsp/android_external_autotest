@@ -8,11 +8,11 @@ class platform_InstallTestImage(test.test):
     """Installs a specified test image onto a servo-connected DUT."""
     version = 1
 
-    def run_once(self, host, image):
-        """Install image from URL `image` on `host`.
+    def run_once(self, host, image_url):
+        """Install image from URL `image_url` on `host`.
 
         @param host Host object representing DUT to be re-imaged.
-        @param image URL of a test image to be installed.
+        @param image_url URL of a test image to be installed.
 
         """
-        host.servo_repair(image)
+        host.servo_install(image_url=image_url)

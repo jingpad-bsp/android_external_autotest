@@ -28,24 +28,6 @@ from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import remote
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
-# Importing frontend.afe.models requires a full Autotest
-# installation (with the Django modules), not just the source
-# repository.  Most developers won't have the full installation, so
-# the imports below will fail for them.
-#
-# The fix is to catch import exceptions, and set `models` to `None`
-# on failure.  This has the side effect that
-# SiteHost._get_board_from_afe() will fail:  That will manifest as
-# failures during Repair jobs leaving the DUT as "Repair Failed".
-# In practice, you can't test Repair jobs without a full
-# installation, so that kind of failure isn't expected.
-try:
-    # pylint: disable=W0611
-    from autotest_lib.frontend import setup_django_environment
-    from autotest_lib.frontend.afe import models
-except:
-    models = None
-
 
 def _make_servo_hostname(hostname):
     host_parts = hostname.split('.')
@@ -140,6 +122,7 @@ class SiteHost(remote.RemoteHost):
     """Chromium OS specific subclass of Host."""
 
     _parser = autoserv_parser.autoserv_parser
+    _AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
 
     # Time to wait for new kernel to be marked successful after
     # auto update.
@@ -299,20 +282,29 @@ class SiteHost(remote.RemoteHost):
         return build_pattern % (board, stable_version)
 
 
+    def _host_in_AFE(self):
+        """Check if the host is an object the AFE knows.
+
+        @returns the host object.
+        """
+        return self._AFE.get_hosts(hostname=self.hostname)
+
+
     def clear_cros_version_labels_and_job_repo_url(self):
         """Clear cros_version labels and host attribute job_repo_url."""
-        try:
-            host_model = models.Host.objects.get(hostname=self.hostname)
-        except models.Host.DoesNotExist:
+        if not self._host_in_AFE():
             return
 
-        for label in host_model.labels.iterator():
-            if not label.name.startswith(ds_constants.VERSION_PREFIX):
-                continue
+        host_list = [self.hostname]
+        labels = self._AFE.get_labels(
+                name__startswith=ds_constants.VERSION_PREFIX,
+                host__hostname=self.hostname)
 
-            label.host_set.remove(host_model)
+        for label in labels:
+            label.remove_hosts(hosts=host_list)
 
-        host_model.set_or_delete_attribute('job_repo_url', None)
+        self._AFE.set_host_attribute('job_repo_url', None,
+                                     hostname=self.hostname)
 
 
     def add_cros_version_labels_and_job_repo_url(self, image_name):
@@ -321,19 +313,22 @@ class SiteHost(remote.RemoteHost):
         @param image_name: The name of the image e.g.
                 lumpy-release/R27-3837.0.0
         """
-        try:
-            host_model = models.Host.objects.get(hostname=self.hostname)
-        except models.Host.DoesNotExist:
+        if not self._host_in_AFE():
             return
+
         cros_label = '%s%s' % (ds_constants.VERSION_PREFIX, image_name)
         devserver_url = dev_server.ImageServer.resolve(image_name).url()
-        try:
-            label_model = models.Label.objects.get(name=cros_label)
-        except models.Label.DoesNotExist:
-            label_model = models.Label.objects.create(name=cros_label)
-        host_model.labels.add(label_model)
+
+        labels = self._AFE.get_labels(name=cros_label)
+        if labels:
+            label = labels[0]
+        else:
+            label = self._AFE.create_label(name=cros_label)
+
+        label.add_hosts([self.hostname])
         repo_url = tools.get_package_url(devserver_url, image_name)
-        host_model.set_or_delete_attribute('job_repo_url', repo_url)
+        self._AFE.set_host_attribute('job_repo_url', repo_url,
+                                     hostname=self.hostname)
 
 
     def _try_stateful_update(self, update_url, force_update, updater):
@@ -420,10 +415,10 @@ class SiteHost(remote.RemoteHost):
                 'Update failed. New kernel partition is not active after'
                 ' boot.')
 
-        try:
+        host_attributes = None
+        if self._host_in_AFE():
             host_attributes = site_host_attributes.HostAttributes(self.hostname)
-        except models.Host.DoesNotExist:
-            host_attributes = None
+
         if host_attributes and host_attributes.has_chromeos_firmware:
             # Wait until tries == 0 and success, or until timeout.
             utils.poll_for_condition(
@@ -572,11 +567,10 @@ class SiteHost(remote.RemoteHost):
 
         @returns the label that matches the prefix or 'None'
         """
-        host_model = models.Host.objects.get(hostname=self.hostname)
-        host_label = host_model.labels.get(name__startswith=label_prefix)
-        if not host_label:
-            return None
-        return host_label.name.split(label_prefix, 1)[1]
+        labels = self._AFE.get_labels(name__startswith=label_prefix,
+                                      host__hostname__in=[self.hostname])
+        if labels and len(labels) == 1:
+            return labels[0].name.split(label_prefix, 1)[1]
 
 
     def _get_board_from_afe(self):
@@ -609,11 +603,12 @@ class SiteHost(remote.RemoteHost):
         "repair" version of Chrome OS as defined in the global_config
         under CROS.stable_cros_version.
 
-        @returns True if successful, False if update_engine failed.
+        @raises AutoservRepairMethodNA if the DUT is not reachable.
+        @raises ChromiumOSError if the install failed for some reason.
 
         """
         if not self.is_up():
-            return False
+            raise error.AutoservRepairMethodNA('DUT unreachable for install.')
 
         logging.info('Attempting to reimage machine to repair image.')
         try:
@@ -621,37 +616,94 @@ class SiteHost(remote.RemoteHost):
         except autoupdater.ChromiumOSError as e:
             logging.exception(e)
             logging.info('Repair via install failed.')
-            return False
-
-        return True
+            raise
 
 
-    def servo_repair(self, image_url):
-        """Attempt to repair this host using an attached Servo.
-
-        Re-install the OS on the DUT by 1) installing a test image
-        on a USB storage device attached to the Servo board,
+    def servo_install(self, image_url=None):
+        """
+        Re-install the OS on the DUT by:
+        1) installing a test image on a USB storage device attached to the Servo
+                board,
         2) booting that image in recovery mode, and then
         3) installing the image with chromeos-install.
 
-        @param image_url URL from which to download the test image to
-            be installed the DUT.
+        @param image_url: If specified use as the url to install on the DUT.
+                otherwise boot the currently staged image on the USB stick.
 
+        @raises AutoservError if the image fails to boot.
         """
         self.servo.install_recovery_image(image_url)
         if not self.wait_up(timeout=self.USB_BOOT_TIMEOUT):
-            raise error.AutoservError('DUT failed to boot from USB'
-                                      ' after %d seconds' %
-                                        self.USB_BOOT_TIMEOUT)
-        self.run('chromeos-install --yes',
-                 timeout=self._INSTALL_TIMEOUT)
+            raise error.AutoservRepairFailure(
+                    'DUT failed to boot from USB after %d seconds' %
+                    self.USB_BOOT_TIMEOUT)
+
+        self.run('chromeos-install --yes', timeout=self._INSTALL_TIMEOUT)
         self.servo.power_long_press()
         self.servo.switch_usbkey('host')
         self.servo.power_short_press()
         if not self.wait_up(timeout=self.BOOT_TIMEOUT):
             raise error.AutoservError('DUT failed to reboot installed '
                                       'test image after %d seconds' %
-                                        self.BOOT_TIMEOUT)
+                                      self.BOOT_TIMEOUT)
+
+
+    def servo_repair_reinstall(self, image_url=None):
+        """Reinstall the DUT utilizing servo and a test image.
+
+        Re-install the OS on the DUT by:
+        1) installing a test image on a USB storage device attached to the Servo
+                board,
+        2) booting that image in recovery mode, and then
+        3) installing the image with chromeos-install.
+
+        @param image_url: If specified use as the url to install on the DUT.
+                otherwise use the latest image staged on the devserver for the
+                particular board the DUT has.
+
+        @raises AutoservRepairMethodNA if the device does not have servo
+                support.
+
+        """
+        if not self.servo:
+            raise error.AutoservRepairMethodNA('Repair Reinstall NA: '
+                                               'DUT has no servo support.')
+
+        logging.info('Attempting to recovery servo enabled device with '
+                     'servo_repair_reinstall')
+
+        board = self._get_board_from_afe()
+        if board is None:
+            raise error.AutoservRepairMethodNA('DUT has no board attribute, '
+                                               'cannot be repaired.')
+
+        if not image_url:
+            image_url = dev_server.ImageServer.devserver_url_for_servo(board)
+
+        self.servo_install(image_url)
+
+
+    def _servo_repair_power(self):
+        """Attempt to repair DUT using an attached Servo.
+
+        Attempt to power on the DUT via power_long_press.
+
+        @raises AutoservRepairMethodNA if the device does not have servo
+                support.
+        @raises AutoservRepairFailure if the repair fails for any reason.
+        """
+        if not self.servo:
+            raise error.AutoservRepairMethodNA('Repair Power NA: '
+                                               'DUT has no servo support.')
+
+        logging.info('Attempting to recover servo enabled device by '
+                     'powering it off and on.')
+        self.servo.get_power_state_controller().power_off()
+        self.servo.get_power_state_controller().power_on()
+        if self.wait_up(self.BOOT_TIMEOUT):
+            return
+
+        raise error.AutoservRepairFailure('DUT did not boot after long_press.')
 
 
     def _powercycle_to_repair(self):
@@ -660,16 +712,24 @@ class SiteHost(remote.RemoteHost):
         If the host is not up/repaired after the first powercycle we utilize
         auto fallback to the last good install by powercycling and rebooting the
         host 6 times.
+
+        @raises AutoservRepairMethodNA if the device does not support remote
+                power.
+        @raises AutoservRepairFailure if the repair fails for any reason.
+
         """
+        if not self.has_power():
+            raise error.AutoservRepairMethodNA('Device does not support power.')
+
         logging.info('Attempting repair via RPM powercycle.')
         failed_cycles = 0
         self.power_cycle()
         while not self.wait_up(timeout=self.BOOT_TIMEOUT):
             failed_cycles += 1
             if failed_cycles >= self._MAX_POWER_CYCLE_ATTEMPTS:
-                raise error.AutoservError('Powercycled host %s %d times; '
-                                          'device did not come back online.' %
-                                            (self.hostname, failed_cycles))
+                raise error.AutoservRepairFailure(
+                        'Powercycled host %s %d times; device did not come back'
+                        ' online.' % (self.hostname, failed_cycles))
             self.power_cycle()
         if failed_cycles == 0:
             logging.info('Powercycling was successful first time.')
@@ -690,38 +750,39 @@ class SiteHost(remote.RemoteHost):
         attempted:
           1. Try to re-install to a known stable image using
              auto-update.
-          2. If there's a servo for the DUT, try to re-install via
+          2. If there's a servo for the DUT, try to power the DUT off and
+             on.
+          3. If there's a servo for the DUT, try to re-install via
              the servo.
-          3. If the DUT can be power-cycled via RPM, try to repair
+          4. If the DUT can be power-cycled via RPM, try to repair
              by power-cycling.
 
         As with the parent method, the last operation performed on
         the DUT must be to call `self.verify()`; if that call fails,
         the exception it raises is passed back to the caller.
 
+        @raises AutoservRepairTotalFailure if the repair process fails to
+                fix the DUT.
         """
-        host_board = self._get_board_from_afe()
-        if host_board is None:
-            logging.error('host %s has no board; failing repair',
-                          self.hostname)
-            raise
+        # TODO(scottz): This should use something similar to label_decorator,
+        # but needs to be populated in order so DUTs are repaired with the
+        # least amount of effort.
+        repair_funcs = [self._install_repair, self._servo_repair_power,
+                        self.servo_repair_reinstall,
+                        self._powercycle_to_repair]
+        errors = []
+        for repair_func in repair_funcs:
+            try:
+                repair_func()
+                self.verify()
+                return
+            except Exception as e:
+                logging.warn('Failed to repair device: %s', e)
+                errors.append(str(e))
 
-        if not self._install_repair():
-            # TODO(scottz): All repair pathways should be
-            # executed until we've exhausted all options. Below
-            # we favor servo over powercycle when we really
-            # should be falling back to power if servo fails.
-            if (self.servo and self.servo.recovery_supported()):
-                self.servo_repair(
-                    dev_server.ImageServer.devserver_url_for_servo(host_board))
-            elif (self.has_power() and
-                  host_board in self._RPM_RECOVERY_BOARDS):
-                self._powercycle_to_repair()
-            else:
-                logging.error('host %s has no servo and no RPM control; '
-                              'failing repair', self.hostname)
-                raise
-        self.verify()
+        raise error.AutoservRepairTotalFailure(
+                'All attempts at repairing the device failed:\n%s' %
+                '\n'.join(errors))
 
 
     def close(self):

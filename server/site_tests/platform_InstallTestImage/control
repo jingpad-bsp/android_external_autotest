@@ -33,7 +33,6 @@ servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 def run(machine):
     # Setup the client machine.
     host = hosts.create_host(machine, servo_args=servo_args)
-
     image = args_dict.get("image", None)
     if image is None:
         attributes = host_attributes.host_attributes(machine)
@@ -42,6 +41,6 @@ def run(machine):
             image = dev_server.ImageServer.devserver_url_for_servo(board)
             logging.info("image URL is %s", image)
     job.run_test("platform_InstallTestImage", host=host,
-                 disable_sysinfo=True, image=image)
+                 disable_sysinfo=True, image_url=image)
 
 parallel_simple(run, machines)

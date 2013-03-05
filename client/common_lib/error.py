@@ -439,6 +439,21 @@ class AutoservSubcommandError(AutoservError):
                 (self.func, self.exit_code))
 
 
+class AutoservRepairTotalFailure(AutoservError):
+    """Raised if all attempts to repair the DUT failed."""
+    pass
+
+
+class AutoservRepairFailure(AutoservError):
+    """Raised by a repair method if it is unable to repair a DUT."""
+    pass
+
+
+class AutoservRepairMethodNA(AutoservError):
+    """Raised when for any reason a praticular repair method is NA."""
+    pass
+
+
 class AutoservHardwareRepairRequestedError(AutoservError):
     """
     Exception class raised from Host.repair_full() (or overrides) when software

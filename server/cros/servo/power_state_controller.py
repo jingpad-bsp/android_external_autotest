@@ -116,7 +116,7 @@ class _PowerStateController(object):
         """
         raise NotImplementedError()
 
-    def power_on(self, rec_mode=REC_ON):
+    def power_on(self, rec_mode=REC_OFF):
         """Force the DUT to power on.
 
         Prior to calling this function, the DUT must be powered off,
@@ -133,7 +133,7 @@ class _PowerStateController(object):
         delays.
 
         @param rec_mode Setting of recovery mode to be applied at
-                        power on.
+                        power on. default: REC_OFF aka 'off'
 
         """
         raise NotImplementedError()
@@ -163,7 +163,7 @@ class _AlexController(_PowerStateController):
         self.cold_reset()
 
     @_inherit_docstring(_PowerStateController)
-    def power_on(self, rec_mode=REC_ON):
+    def power_on(self, rec_mode=REC_OFF):
         self._servo.set_nocheck('rec_mode', rec_mode)
         self._servo.power_short_press()
         if rec_mode == REC_ON:
@@ -222,7 +222,7 @@ class _ChromeECController(_PowerStateController):
         self._servo.power_long_press()
 
     @_inherit_docstring(_PowerStateController)
-    def power_on(self, rec_mode=REC_ON):
+    def power_on(self, rec_mode=REC_OFF):
         if rec_mode == REC_ON:
             # Reset the EC to force it back into RO code; this clears
             # the EC_IN_RW signal, so the system CPU will trust the
@@ -259,7 +259,7 @@ class _LinkController(_ChromeECController):
         self._ec.send_command('x86shutdown')
 
     @_inherit_docstring(_ChromeECController)
-    def power_on(self, rec_mode=REC_ON):
+    def power_on(self, rec_mode=REC_OFF):
         if rec_mode == REC_ON:
             self._servo.set('rec_mode', REC_ON)
             self.cold_reset()
