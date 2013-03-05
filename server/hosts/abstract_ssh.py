@@ -384,6 +384,16 @@ class AbstractSSHHost(SiteHost):
 
 
     def ssh_ping(self, timeout=60):
+        """
+        Pings remote host via ssh.
+
+        @param timeout: Time in seconds before giving up.
+                        Defaults to 60 seconds.
+        @raise AutoservSSHTimeout: If the ssh ping times out.
+        @raise AutoservSshPermissionDeniedError: If ssh ping fails due to
+                                                 permissions.
+        @raise AutoservSshPingHostError: For other AutoservRunErrors.
+        """
         try:
             self.run("true", timeout=timeout, connect_timeout=timeout)
         except error.AutoservSSHTimeout:
@@ -399,14 +409,16 @@ class AbstractSSHHost(SiteHost):
                                                  repr(e.result_obj))
 
 
-    def is_up(self):
+    def is_up(self, timeout=60):
         """
         Check if the remote host is up.
 
-        @returns True if the remote host is up, False otherwise
+        @param timeout: timeout in seconds.
+        @returns True if the remote host is up before the timeout expires,
+                 False otherwise.
         """
         try:
-            self.ssh_ping()
+            self.ssh_ping(timeout=timeout)
         except error.AutoservError:
             return False
         else:
@@ -423,13 +435,15 @@ class AbstractSSHHost(SiteHost):
         @param timeout time limit in seconds before returning even
             if the host is not up.
 
-        @returns True if the host was found to be up, False otherwise
+        @returns True if the host was found to be up before the timeout expires,
+                 False otherwise
         """
         if timeout:
             end_time = time.time() + timeout
+            current_time = time.time()
 
-        while not timeout or time.time() < end_time:
-            if self.is_up():
+        while not timeout or current_time < end_time:
+            if self.is_up(timeout=end_time - current_time):
                 try:
                     if self.are_wait_up_processes_up():
                         logging.debug('Host %s is now up', self.hostname)
@@ -437,6 +451,7 @@ class AbstractSSHHost(SiteHost):
                 except error.AutoservError:
                     pass
             time.sleep(1)
+            current_time = time.time()
 
         logging.debug('Host %s is still down after waiting %d seconds',
                       self.hostname, int(timeout + time.time() - end_time))
@@ -455,6 +470,22 @@ class AbstractSSHHost(SiteHost):
 
         If old_boot_id is None then until the machine becomes unreachable the
         method assumes the machine has not yet shut down.
+
+        Based on this definition, the 4 possible permutations of timeout
+        and old_boot_id are:
+        1. timeout and old_boot_id: wait timeout seconds for either the
+                                    host to become unpingable, or the boot id
+                                    to change. In the latter case we've rebooted
+                                    and in the former case we've only shutdown,
+                                    but both cases return True.
+        2. only timeout: wait timeout seconds for the host to become unpingable.
+                         If the host remains pingable throughout timeout seconds
+                         we return False.
+        3. only old_boot_id: wait forever until either the host becomes
+                             unpingable or the boot_id changes. Return true
+                             when either of those conditions are met.
+        4. not timeout, not old_boot_id: wait forever till the host becomes
+                                         unpingable.
 
         @param timeout Time limit in seconds before returning even
             if the host is still up.
@@ -479,9 +510,23 @@ class AbstractSSHHost(SiteHost):
             logging.debug('Host %s pre-shutdown boot_id is %s',
                           self.hostname, old_boot_id)
 
+        # Impose semi real-time deadline constraints, since some clients
+        # (eg: watchdog timer tests) expect strict checking of time elapsed.
+        # Each iteration of this loop is treated as though it atomically
+        # completes within current_time, this is needed because if we used
+        # inline time.time() calls instead then the following could happen:
+        #
+        # while not timeout or time.time() < end_time:      [23 < 30]
+        #    some code.                                     [takes 10 secs]
+        #    try:
+        #        new_boot_id = self.get_boot_id(timeout=end_time - time.time())
+        #                                                   [30 - 33]
+        # The last step will lead to a return True, when in fact the machine
+        # went down at 32 seconds (>30). Hence we need to pass get_boot_id
+        # the same time that allowed us into that iteration of the loop.
         while not timeout or current_time < end_time:
             try:
-                new_boot_id = self.get_boot_id()
+                new_boot_id = self.get_boot_id(timeout=end_time - current_time)
             except error.AutoservError:
                 logging.debug('Host %s is now unreachable over ssh, is down',
                               self.hostname)
