@@ -47,6 +47,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private TextBoxImpl image_url = new TextBoxImpl();
     private TextBox timeout = new TextBox();
     private TextBox maxRuntime = new TextBox();
+    private TextBox testRetry = new TextBox();
     private TextBox emailList = new TextBox();
     private CheckBoxImpl skipVerify = new CheckBoxImpl();
     private RadioChooserDisplay rebootBefore = new RadioChooserDisplay();
@@ -103,6 +104,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         panel.add(image_url, "create_image_url");
         panel.add(timeout, "create_timeout");
         panel.add(maxRuntime, "create_max_runtime");
+        panel.add(testRetry, "create_test_retry");
         panel.add(emailList, "create_email_list");
         panel.add(priorityList, "create_priority");
         panel.add(skipVerify, "create_skip_verify");
@@ -182,6 +184,10 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
     public HasText getMaxRuntime() {
         return maxRuntime;
+    }
+
+    public HasText getTestRetry() {
+        return testRetry;
     }
 
     public HasValue<Boolean> getParseFailedRepair() {

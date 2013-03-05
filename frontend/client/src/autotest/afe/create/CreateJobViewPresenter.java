@@ -54,6 +54,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import java.lang.Math;
+
 public class CreateJobViewPresenter implements TestSelectorListener {
     public static interface Display {
         public CheckBoxPanel.Display getCheckBoxPanelDisplay();
@@ -64,6 +66,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public SimplifiedList getPriorityList();
         public HasText getTimeout();
         public HasText getMaxRuntime();
+        public HasText getTestRetry();
         public HasText getEmailList();
         public ICheckBox getSkipVerify();
         public RadioChooser.Display getRebootBefore();
@@ -145,6 +148,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
 
         display.getTimeout().setText(Utils.jsonToString(jobObject.get("timeout")));
         display.getMaxRuntime().setText(Utils.jsonToString(jobObject.get("max_runtime_mins")));
+        display.getTestRetry().setText(Utils.jsonToString(jobObject.get("test_retry")));
         display.getEmailList().setText(
                 jobObject.get("email_list").isString().stringValue());
 
@@ -358,6 +362,14 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         }
     }
 
+    protected int getMaximumRetriesCount() {
+        int maxRetries = 0;
+        for (JSONObject test : testSelector.getSelectedTests()) {
+            maxRetries = (int) Math.max(maxRetries, test.get("test_retry").isNumber().getValue());
+        }
+        return maxRetries;
+    }
+
     protected void setInputsEnabled() {
         testSelector.setEnabled(true);
         profilersPanel.setEnabled(true);
@@ -528,6 +540,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getTimeout().setText(Utils.jsonToString(repository.getData("job_timeout_default")));
         display.getMaxRuntime().setText(
                 Utils.jsonToString(repository.getData("job_max_runtime_mins_default")));
+        display.getTestRetry().setText("");
         display.getEmailList().setText("");
         testSelector.reset();
         display.getSkipVerify().setValue(false);
@@ -547,12 +560,17 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     }
 
     private void submitJob(final boolean isTemplate) {
-        final int timeoutValue, maxRuntimeValue;
+        final int timeoutValue, maxRuntimeValue, testRetryValue;
         final JSONValue synchCount;
         try {
             timeoutValue = parsePositiveIntegerInput(display.getTimeout().getText(), "timeout");
             maxRuntimeValue = parsePositiveIntegerInput(
                     display.getMaxRuntime().getText(), "max runtime");
+            String testRetryText = display.getTestRetry().getText();
+            if (testRetryText == "")
+                testRetryValue = getMaximumRetriesCount();
+            else
+                testRetryValue = parsePositiveIntegerInput(testRetryText, "test retries");
 
             if (display.getHostless().getValue()) {
                 synchCount = JSONNull.getInstance();
@@ -580,6 +598,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 args.put("synch_count", synchCount);
                 args.put("timeout", new JSONNumber(timeoutValue));
                 args.put("max_runtime_mins", new JSONNumber(maxRuntimeValue));
+                args.put("test_retry", new JSONNumber(testRetryValue));
                 args.put("email_list", new JSONString(display.getEmailList().getText()));
                 args.put("run_verify", JSONBoolean.getInstance(
                         !display.getSkipVerify().getValue()));
