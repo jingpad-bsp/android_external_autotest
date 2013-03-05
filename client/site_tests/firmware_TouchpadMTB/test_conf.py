@@ -443,7 +443,8 @@ def get_gesture_dict():
         Gesture(
             name=ONE_FINGER_PHYSICAL_CLICK,
             variations=(GV.CENTER, GV.BL, GV.BS, GV.BR),
-            prompt='Use one finger to make 1 physical click.',
+            prompt='Use one finger to make 1 physical click on the {0} of '
+                   'the pad.',
             subprompt={
                 GV.CENTER: ('center',),
                 GV.BL: ('bottom left corner',),
@@ -670,8 +671,8 @@ def get_gesture_dict():
             name=FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
             variations=(GV.TLBR, GV.BRTL),
             prompt='A finger moves {0} slowly in 3 seconds. '
-                   'Without the 1st finger leaving the pad, '
-                   'the 2nd finger taps gently for 3 times.',
+                   'Without the 1st finger leaving the pad, the 2nd finger '
+                   'taps the bottom left corner gently for 3 times.',
             subprompt={
                 GV.TLBR: ('from top left to bottom right',),
                 GV.BRTL: ('from bottom right to top left',),
