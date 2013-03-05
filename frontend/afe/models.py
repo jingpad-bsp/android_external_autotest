@@ -567,6 +567,8 @@ class Test(dbmodels.Model, model_logic.ModelExtensions):
                        test dependencies.
     experimental: If this is set to True production servers will ignore the test
     run_verify: Whether or not the scheduler should run the verify stage
+    test_retry: Number of times to retry test if the test did not complete
+                successfully. (optional, default: 0)
     """
     TestTime = enum.Enum('SHORT', 'MEDIUM', 'LONG', start_value=1)
     TestTypes = model_attributes.TestTypes
@@ -586,6 +588,7 @@ class Test(dbmodels.Model, model_logic.ModelExtensions):
     test_type = dbmodels.SmallIntegerField(choices=TestTypes.choices())
     sync_count = dbmodels.IntegerField(default=1)
     path = dbmodels.CharField(max_length=255, unique=True)
+    test_retry = dbmodels.IntegerField(blank=True, default=0)
 
     dependency_labels = (
         dbmodels.ManyToManyField(Label, blank=True,
