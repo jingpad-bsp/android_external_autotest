@@ -1,4 +1,5 @@
 #!/usr/bin/python -u
+#pylint: disable-msg=C0111
 
 """
 Autotest scheduler
@@ -6,11 +7,9 @@ Autotest scheduler
 
 
 import common
-import datetime, errno, optparse, os, pwd, Queue, re, shutil, signal
-import smtplib, socket, stat, subprocess, sys, tempfile, time, traceback, urllib
-import itertools, logging, weakref, gc
-
-import MySQLdb
+import datetime, optparse, os, signal
+import sys, time, traceback, urllib
+import logging, gc
 
 from autotest_lib.scheduler import scheduler_logging_config
 from autotest_lib.frontend import setup_django_environment
@@ -1407,9 +1406,9 @@ class BaseAgentTask(object):
             return
 
         self.started = True
-        logging.info('Recovering process %s for %s at %s'
-                     % (self.monitor.get_process(), type(self).__name__,
-                        self._working_directory()))
+        logging.info('Recovering process %s for %s at %s',
+                     self.monitor.get_process(), type(self).__name__,
+                     self._working_directory())
 
 
     def _check_queue_entry_statuses(self, queue_entries, allowed_hqe_statuses,
