@@ -1,10 +1,9 @@
 #!/usr/bin/python -u
 
-import os, sys, re, subprocess, tempfile
+import os, sys, re, tempfile
 from optparse import OptionParser
 import common
-import MySQLdb, MySQLdb.constants.ER
-from autotest_lib.client.common_lib import global_config, utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.database import database_connection
 
 MIGRATE_TABLE = 'migrate_info'
@@ -17,6 +16,7 @@ _MIGRATIONS_DIRS = {
 _DEFAULT_MIGRATIONS_DIR = 'migrations' # use CWD
 
 class Migration(object):
+    """Represents a database migration."""
     _UP_ATTRIBUTES = ('migrate_up', 'UP_SQL')
     _DOWN_ATTRIBUTES = ('migrate_down', 'DOWN_SQL')
 
@@ -30,6 +30,13 @@ class Migration(object):
 
     @classmethod
     def from_file(cls, filename):
+        """Instantiates a Migration from a file.
+
+        @param filename: Name of a migration file.
+
+        @return An instantiated Migration object.
+
+        """
         version = int(filename[:3])
         name = filename[:-3]
         module = __import__(name, globals(), locals(), [])
@@ -55,14 +62,25 @@ class Migration(object):
 
 
     def migrate_up(self, manager):
+        """Performs an up migration (to a newer version).
+
+        @param manager: A MigrationManager object.
+
+        """
         self._execute_migration(self._UP_ATTRIBUTES, manager)
 
 
     def migrate_down(self, manager):
+        """Performs a down migration (to an older version).
+
+        @param manager: A MigrationManager object.
+
+        """
         self._execute_migration(self._DOWN_ATTRIBUTES, manager)
 
 
 class MigrationManager(object):
+    """Managest database migrations."""
     connection = None
     cursor = None
     migrations_dir = None
@@ -92,14 +110,28 @@ class MigrationManager(object):
 
 
     def get_db_name(self):
+        """Gets the database name."""
         return self._database.get_database_info()['db_name']
 
 
     def execute(self, query, *parameters):
+        """Executes a database query.
+
+        @param query: The query to execute.
+        @param parameters: Associated parameters for the query.
+
+        @return The result of the query.
+
+        """
         return self._database.execute(query, parameters)
 
 
     def execute_script(self, script):
+        """Executes a set of database queries.
+
+        @param script: A string of semicolon-separated queries.
+
+        """
         sql_statements = [statement.strip()
                           for statement in script.split(';')
                           if statement.strip()]
@@ -108,6 +140,7 @@ class MigrationManager(object):
 
 
     def check_migrate_table_exists(self):
+        """Checks whether the migration table exists."""
         try:
             self.execute("SELECT * FROM %s" % MIGRATE_TABLE)
             return True
@@ -118,6 +151,7 @@ class MigrationManager(object):
 
 
     def create_migrate_table(self):
+        """Creates the migration table."""
         if not self.check_migrate_table_exists():
             self.execute("CREATE TABLE %s (`version` integer)" %
                          MIGRATE_TABLE)
@@ -128,6 +162,11 @@ class MigrationManager(object):
 
 
     def set_db_version(self, version):
+        """Sets the database version.
+
+        @param version: The version to which to set the database.
+
+        """
         assert isinstance(version, int)
         self.execute("UPDATE %s SET version=%%s" % MIGRATE_TABLE,
                      version)
@@ -135,6 +174,11 @@ class MigrationManager(object):
 
 
     def get_db_version(self):
+        """Gets the database version.
+
+        @return The database version.
+
+        """
         if not self.check_migrate_table_exists():
             return 0
         rows = self.execute("SELECT * FROM %s" % MIGRATE_TABLE)
@@ -145,6 +189,14 @@ class MigrationManager(object):
 
 
     def get_migrations(self, minimum_version=None, maximum_version=None):
+        """Gets the list of migrations to perform.
+
+        @param minimum_version: The minimum database version.
+        @param maximum_version: The maximum database version.
+
+        @return A list of Migration objects.
+
+        """
         migrate_files = [filename for filename
                          in os.listdir(self.migrations_dir)
                          if re.match(r'^\d\d\d_.*\.py$', filename)]
@@ -161,6 +213,12 @@ class MigrationManager(object):
 
 
     def do_migration(self, migration, migrate_up=True):
+        """Performs a migration.
+
+        @param migration: The Migration to perform.
+        @param migrate_up: Whether to migrate up (if not, then migrates down).
+
+        """
         print 'Applying migration %s' % migration.name, # no newline
         if migrate_up:
             print 'up'
@@ -176,6 +234,11 @@ class MigrationManager(object):
 
 
     def migrate_to_version(self, version):
+        """Performs a migration to a specified version.
+
+        @param version: The version to which to migrate the database.
+
+        """
         current_version = self.get_db_version()
         if current_version == 0 and self._config_section() == 'AUTOTEST_WEB':
             self._migrate_from_base()
@@ -212,6 +275,11 @@ class MigrationManager(object):
 
 
     def confirm_initialization(self):
+        """Confirms with the user that we should initialize the database.
+
+        @raises Exception, if the user chooses to abort the migration.
+
+        """
         if not self.force:
             response = raw_input(
                 'Your %s database does not appear to be initialized.  Do you '
@@ -222,16 +290,19 @@ class MigrationManager(object):
 
 
     def get_latest_version(self):
+        """Gets the latest database version."""
         migrations = self.get_migrations()
         return migrations[-1].version
 
 
     def migrate_to_latest(self):
+        """Migrates the database to the latest version."""
         latest_version = self.get_latest_version()
         self.migrate_to_version(latest_version)
 
 
     def initialize_test_db(self):
+        """Initializes a test database."""
         db_name = self.get_db_name()
         test_db_name = 'test_' + db_name
         # first, connect to no DB so we can create a test DB
@@ -244,6 +315,7 @@ class MigrationManager(object):
 
 
     def remove_test_db(self):
+        """Removes a test database."""
         print 'Removing test DB'
         self.execute('DROP DATABASE ' + self.get_db_name())
         # reset connection back to real DB
@@ -252,11 +324,18 @@ class MigrationManager(object):
 
 
     def get_mysql_args(self):
+        """Returns the mysql arguments as a string."""
         return ('-u %(username)s -p%(password)s -h %(host)s %(db_name)s' %
                 self._database.get_database_info())
 
 
     def migrate_to_version_or_latest(self, version):
+        """Migrates to either a specified version, or the latest version.
+
+        @param version: The version to which to migrate the database,
+            or None in order to migrate to the latest version.
+
+        """
         if version is None:
             self.migrate_to_latest()
         else:
@@ -264,14 +343,21 @@ class MigrationManager(object):
 
 
     def do_sync_db(self, version=None):
+        """Migrates the database.
+
+        @param version: The version to which to migrate the database.
+
+        """
         print 'Migration starting for database', self.get_db_name()
         self.migrate_to_version_or_latest(version)
         print 'Migration complete'
 
 
     def test_sync_db(self, version=None):
-        """\
-        Create a fresh DB and run all migrations on it.
+        """Create a fresh database and run all migrations on it.
+
+        @param version: The version to which to migrate the database.
+
         """
         self.initialize_test_db()
         try:
@@ -287,9 +373,10 @@ class MigrationManager(object):
 
 
     def simulate_sync_db(self, version=None):
-        """\
-        Create a fresh DB, copy the existing DB to it, and then
-        try to synchronize it.
+        """Creates a fresh DB, copies existing DB to it, then synchronizes it.
+
+        @param version: The version to which to migrate the database.
+
         """
         db_version = self.get_db_version()
         # don't do anything if we're already at the latest version
@@ -307,6 +394,7 @@ class MigrationManager(object):
 
 
     def initialize_and_fill_test_db(self):
+        """Initializes and fills up a test database."""
         print 'Dumping existing data'
         dump_fd, dump_file = tempfile.mkstemp('.migrate_dump')
         os.system('mysqldump %s >%s' %
@@ -323,18 +411,18 @@ USAGE = """\
 %s [options] sync|test|simulate|safesync [version]
 Options:
     -d --database   Which database to act on
-    -a --action     Which action to perform"""\
+    -f --force      Don't ask for confirmation
+    --debug         Print all DB queries"""\
     % sys.argv[0]
 
 
 def main():
+    """Main function for the migration script."""
     parser = OptionParser()
     parser.add_option("-d", "--database",
                       help="which database to act on",
                       dest="database",
                       default="AUTOTEST_WEB")
-    parser.add_option("-a", "--action", help="what action to perform",
-                      dest="action")
     parser.add_option("-f", "--force", help="don't ask for confirmation",
                       action="store_true")
     parser.add_option('--debug', help='print all DB queries',
@@ -371,6 +459,15 @@ def main():
 
 
 def get_migration_manager(db_name, debug, force):
+    """Creates a MigrationManager object.
+
+    @param db_name: The database name.
+    @param debug: Whether to print debug messages.
+    @param force: Whether to force migration without asking for confirmation.
+
+    @return A created MigrationManager object.
+
+    """
     database = database_connection.DatabaseConnection(db_name)
     database.debug = debug
     database.reconnect_enabled = False
