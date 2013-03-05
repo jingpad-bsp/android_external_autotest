@@ -232,8 +232,8 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
     @param machines - string - A machine or comma separated list of machines
             for the (-m) flag.
     @param extra_args - list - Additional arguments to pass to autoserv.
-    @param job - Job object - If supplied, -u owner and -l name parameters
-            will be added.
+    @param job - Job object - If supplied, -u owner, -l name, and --test-retry
+            parameters will be added.
     @param queue_entry - A HostQueueEntry object - If supplied and no Job
             object was supplied, this will be used to lookup the Job object.
     """
@@ -245,6 +245,8 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
         if not job:
             job = queue_entry.job
         autoserv_argv += ['-u', job.owner, '-l', job.name]
+        if job.test_retry:
+            autoserv_argv += ['--test-retry='+str(job.test_retry)]
     if verbose:
         autoserv_argv.append('--verbose')
     return autoserv_argv + extra_args
