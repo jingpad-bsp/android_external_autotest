@@ -118,6 +118,12 @@ class Suspender(object):
         hwclock_output = utils.system_output('hwclock -r --debug --utc',
                                              ignore_status=True)
         if hwclock_output.find('Using /dev interface') == -1:
+            logging.debug('/dev/rtc exists: ' + str(os.path.exists('/dev/rtc')))
+            try:
+                open('/dev/rtc')
+                logging.debug('Successfully opened /dev/rtc')
+            except IOError as e:
+                logging.debug('Error opening /dev/rtc ' + str(e))
             raise error.TestError('hwclock cannot find rtc: ' + hwclock_output)
 
         # activate device suspend timing debug output
