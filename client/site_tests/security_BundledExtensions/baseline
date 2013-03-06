@@ -203,6 +203,11 @@
         "effective_host_permissions": [],
         "api_permissions": []
       },
+      { "id": "hiahncppkeponhognffoakpacfndjdhm",
+        "name": "Networks",
+        "effective_host_permissions": ["chrome://resources/*"],
+        "api_permissions": ["networkingPrivate"]
+      },
       { "id": "mlbmkoenclnokonejhlfakkeabdlmpek",
         "name": "TimeScapes",
         "boards": ["link"],
