@@ -6,7 +6,7 @@
 
 """This configuration file defines the gestures to perform."""
 
-from firmware_constants import MF, GV, RC, VAL
+from firmware_constants import GV, RC, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -215,6 +215,7 @@ validator_score_weight = {'CountPacketsValidator': weight_common,
 
 # Define the gesture list that the user needs to perform in the test suite.
 def get_gesture_dict():
+    """Define the dictionary for all gestures."""
     gesture_dict = {
         ONE_FINGER_TRACKING:
         Gesture(
