@@ -592,11 +592,11 @@ class DjangoPackage(ExternalPackage):
 
 class NumpyPackage(ExternalPackage):
     """numpy package, required by matploglib."""
-    version = '1.2.1'
+    version = '1.7.0'
     local_filename = 'numpy-%s.tar.gz' % version
     urls = ('http://downloads.sourceforge.net/project/numpy/NumPy/%(version)s/'
             'numpy-%(version)s.tar.gz' % dict(version=version),)
-    hex_sum = '1aa706e733aea18eaffa70d93c0105718acb66c5'
+    hex_sum = 'ba328985f20390b0f969a5be2a6e1141d5752cf9'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
