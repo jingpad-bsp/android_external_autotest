@@ -5,13 +5,13 @@
 import logging
 import re
 import time
-
 import air_state_verifier
 import base_station_interface
 import cellular
-
+import common
 from autotest_lib.client.bin import utils
 
+POLL_SLEEP=0.2
 
 class Error(Exception):
   pass
@@ -19,9 +19,6 @@ class Error(Exception):
 
 class Timeout(Error):
   pass
-
-
-POLL_SLEEP=0.2
 
 
 class BaseStation8960(base_station_interface.BaseStationInterface):
