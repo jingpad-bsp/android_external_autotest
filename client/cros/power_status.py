@@ -307,6 +307,7 @@ class SysStat(object):
     battery:   A list of BatteryStat objects.
     linepower: A list of LineStat objects.
     """
+    psu_types = ['Mains', 'USB', 'USB_ACA', 'USB_CDP', 'USB_DCP']
 
     def __init__(self):
         power_supply_path = '/sys/class/power_supply/*'
@@ -330,7 +331,7 @@ class SysStat(object):
             power_type = utils.read_one_line(type_path)
             if power_type == 'Battery':
                 self.battery_path = path
-            elif power_type == 'Mains':
+            elif power_type in self.psu_types:
                 self.linepower_path = path
 
         if not self.battery_path or not self.linepower_path:
