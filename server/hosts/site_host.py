@@ -181,10 +181,11 @@ class SiteHost(remote.RemoteHost):
     _DEFAULT_SERVO_URL_FORMAT = ('/static/servo-images/'
                                  '%(board)s_test_image.bin')
 
-    # TODO(jrbarnette):  Servo repair is restricted to x86-alex,
-    # because the existing servo client code won't work on other
-    # boards.  http://crosbug.com/36973
-    _SERVO_REPAIR_WHITELIST = [ 'x86-alex' ]
+    # TODO(jrbarnette):  Servo repair is restricted to specific
+    # boards, because the existing servo client code doesn't account
+    # for board-specific differences in handling for 'cold_reset'.
+    # http://crosbug.com/36973
+    _SERVO_REPAIR_WHITELIST = ('x86-alex', 'lumpy')
 
 
     _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
