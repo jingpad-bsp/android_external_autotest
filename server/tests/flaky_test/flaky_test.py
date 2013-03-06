@@ -2,7 +2,7 @@
 import time
 import random
 
-from autotest_lib.client.bin import test
+from autotest_lib.server import test
 from autotest_lib.client.common_lib import error
 
 class flaky_test(test.test):
