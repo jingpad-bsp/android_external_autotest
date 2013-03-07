@@ -255,25 +255,22 @@ class WiFiTest(object):
         self.client_logfile = client.get("logfile", "/var/log/messages")
         self.ping_stats = {}
 
-        if 'addr' in server:
-            self.server = hosts.SSHHost(server['addr'],
-                                        port=int(server.get('port', 22)))
-            self.server_at = autotest.Autotest(self.server)
-            if self.wifi.force_local_server:
-                # Server WiFi IP is created using a local server address.
-                self.server_wifi_ip = self.wifi.local_server_address(0)
-            else:
-                # if not specified assume the same as the control address
-                self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
-            self.__server_discover_commands(server)
-        else:
-            self.server = None
-            # NB: wifi address must be set if not reachable from control
-            self.server_wifi_ip = server['wifi_addr']
+        if not 'addr' in server:
+            raise error.TestError('All current WiFi tests require a server '
+                                  'reachable on the control network.')
 
         # The 'hosting_server' is a machine which hosts network
         # services, such as OpenVPN or StrongSwan.
-        self.hosting_server = site_linux_server.LinuxServer(self.server, server)
+        self.hosting_server = site_linux_server.LinuxServer(
+                hosts.SSHHost(server['addr'], port=int(server.get('port', 22))),
+                server)
+        if self.wifi.force_local_server:
+            # Server WiFi IP is created using a local server address.
+            self.server_wifi_ip = self.wifi.local_server_address(0)
+        else:
+            # if not specified assume the same as the control address
+            self.server_wifi_ip = server.get('wifi_addr', server_host.ip)
+
 
         # potential bg thread for ping untilstop
         self.ping_thread = None
@@ -334,6 +331,11 @@ class WiFiTest(object):
         self.init_profile()
         self.client_capabilities = self.__get_client_capabilities()
         self.router_capabilities = self.__get_router_capabilities()
+
+
+    @property
+    def server(self):
+        return self.hosting_server.server
 
 
     def init_profile(self):
@@ -404,23 +406,6 @@ class WiFiTest(object):
         if macmatch is not None:
             return macmatch.group(1)
         return None
-
-
-    def __server_discover_commands(self, server):
-        self.server_cmd_netperf = wifi_test_utils.must_be_installed(
-                self.server, server.get('cmd_netperf_client',
-                                        '/usr/bin/netperf'))
-        self.server_cmd_netserv = wifi_test_utils.must_be_installed(
-                self.server, server.get('cmd_netperf_server',
-                                        '/usr/bin/netserver'))
-        self.server_cmd_iperf = wifi_test_utils.must_be_installed(
-                self.server, server.get('cmd_iperf_client',
-                                        '/usr/bin/iperf'))
-        # /usr/bin/ping is preferred, as it is likely to be iputils
-        if wifi_test_utils.is_installed(self.server, '/usr/bin/ping'):
-            self.server_ping_cmd = '/usr/bin/ping'
-        else:
-            self.server_ping_cmd = 'ping'
 
 
     def __get_defssid(self, ipaddr, host):
@@ -1324,38 +1309,21 @@ class WiFiTest(object):
 
     def server_ping(self, params):
         """ Ping the client from the server """
-        if self.server is None:
-            self.__unreachable("server_ping")
-            return
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
         count = params.get('count', self.defpingcount)
-        # set timeout for 3s / ping packet
-        result = self.server.run("%s %s %s" % \
-            (self.server_ping_cmd, wifi_test_utils.ping_args(params),
-             ping_ip), timeout=3*int(count))
-
-        stats = self.__get_pingstats(result.stdout)
+        stats = self.hosting_server.ping(ping_ip, count, params)
         self.write_perf(stats)
         self.__print_pingstats("server_ping ", stats)
 
 
     def server_ping_bg(self, params):
         """ Ping the client from the server """
-        if self.server is None:
-            self.__unreachable("server_ping_bg")
-            return
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
-        cmd = "ping %s %s" % (wifi_test_utils.ping_args(params), ping_ip)
-        self.ping_thread = remote_command.Command(self.server, cmd)
+        self.hosting_server.ping_bg(ping_ip, params)
 
 
     def server_ping_bg_stop(self, params):
-        if self.server is None:
-            self.__unreachable("server_ping_bg_stop")
-            return
-        if self.ping_thread is not None:
-            self.ping_thread.join()
-            self.ping_thread = None
+        self.hosting_server.ping_bg_stop()
 
 
     def client_ping6(self, params):
@@ -1429,14 +1397,16 @@ class WiFiTest(object):
         ip_rules = []
         if mode == 'server':
             server = { 'host': self.client, 'cmd': self.client_cmd_iperf }
-            client = { 'host': self.server, 'cmd': self.server_cmd_iperf,
+            client = { 'host': self.server,
+                       'cmd': self.hosting_server.cmd_iperf,
                        'target': self.client_wifi_ip }
 
             # Open up access from the server into our DUT
             ip_rules.append(self.__firewall_open('tcp', self.server_wifi_ip))
             ip_rules.append(self.__firewall_open('udp', self.server_wifi_ip))
         else:  # mode == 'client'
-            server = { 'host': self.server, 'cmd': self.server_cmd_iperf }
+            server = { 'host': self.server,
+                       'cmd': self.hosting_server.cmd_iperf }
             client = { 'host': self.client, 'cmd': self.client_cmd_iperf,
                        'target': self.server_wifi_ip }
 
@@ -1534,9 +1504,6 @@ class WiFiTest(object):
 
     def server_iperf(self, params):
         """ Run iperf on the server against the client """
-        if self.server is None:
-            self.__unreachable("server_iperf")
-            return
         self.__run_iperf('server', params)
 
 
@@ -1637,14 +1604,16 @@ class WiFiTest(object):
         np_rules = []
         if mode == 'server':
             server = { 'host': self.client, 'cmd': self.client_cmd_netserv }
-            client = { 'host': self.server, 'cmd': self.server_cmd_netperf,
+            client = { 'host': self.server,
+                       'cmd': self.hosting_server.cmd_netperf,
                        'target': self.client_wifi_ip }
 
             # Open up access from the server into our DUT
             np_rules.append(self.__firewall_open('tcp', self.server_wifi_ip))
             np_rules.append(self.__firewall_open('udp', self.server_wifi_ip))
         else:
-            server = { 'host': self.server, 'cmd': self.server_cmd_netserv }
+            server = { 'host': self.server,
+                       'cmd': self.hosting_server.cmd_netserv }
             client = { 'host': self.client, 'cmd': self.client_cmd_netperf,
                        'target': self.server_wifi_ip }
 
@@ -1742,9 +1711,6 @@ class WiFiTest(object):
 
     def server_netperf(self, params):
         """ Run netperf on the server against the client """
-        if self.server is None:
-            self.__unreachable("server_netperf")
-            return
         self.__run_netperf('server', params)
 
 

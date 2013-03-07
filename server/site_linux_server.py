@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
+from autotest_lib.server.cros import remote_command
+from autotest_lib.server.cros import wifi_test_utils
 
 class LinuxServer(site_linux_system.LinuxSystem):
     """
@@ -12,15 +13,68 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
     """
 
+    COMMAND_PING = '/usr/bin/ping'
+    COMMAND_NETPERF = '/usr/bin/netperf'
+    COMMAND_NETSERVER = '/usr/bin/netserver'
+    COMMAND_IPERF = '/usr/bin/iperf'
+
+
     def __init__(self, server, config):
         site_linux_system.LinuxSystem.__init__(self, server, {}, "server")
 
-        self.server                      = server    # Server host.
+        self._server                     = server    # Server host.
         self.vpn_kind                    = None
         self.config                      = config
         self.openvpn_config              = {}
         self.radvd_config                = {'file':'/tmp/radvd-test.conf',
                                             'server':'/usr/sbin/radvd'}
+
+        # Check that tools we require from WiFi test servers exist.
+        self._cmd_netperf = wifi_test_utils.must_be_installed(
+                self._server, LinuxServer.COMMAND_NETPERF)
+        self._cmd_netserver = wifi_test_utils.must_be_installed(
+                self._server, LinuxServer.COMMAND_NETSERVER)
+        self._cmd_iperf = wifi_test_utils.must_be_installed(
+                self._server, LinuxServer.COMMAND_IPERF)
+        # /usr/bin/ping is preferred, as it is likely to be iputils.
+        if wifi_test_utils.is_installed(self._server,
+                                        LinuxServer.COMMAND_PING):
+            self._cmd_ping = LinuxServer.COMMAND_PING
+        else:
+            self._cmd_ping = 'ping'
+
+        self._ping_bg_job = None
+
+
+    @property
+    def cmd_netperf(self):
+        """ @return string full path to start netperf. """
+        return self._cmd_netperf
+
+
+    @property
+    def cmd_netserv(self):
+        """ @return string full path to start netserv. """
+        return self._cmd_netserver
+
+
+    @property
+    def cmd_iperf(self):
+        """ @return string full path to start iperf. """
+        return self._cmd_iperf
+
+
+    @property
+    def cmd_ping(self):
+        """ @return string full path to start ping. """
+        return self._cmd_ping
+
+
+    @property
+    def server(self):
+        """ @return Host object for this remote server. """
+        return self._server
+
 
     def vpn_server_config(self, params):
         """ Configure & launch the server side of the VPN.
@@ -166,6 +220,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
             raise error.TestFail('(internal error): No config case '
                                  'for VPN kind (%s)' % self.vpn_kind)
 
+
     def vpn_server_kill(self, params):
         """ Kill the VPN server. """
         if self.vpn_kind is not None:
@@ -177,6 +232,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
                 raise error.TestFail('(internal error): No kill case '
                                      'for VPN kind (%s)' % self.vpn_kind)
             self.vpn_kind = None
+
 
     def ipv6_server_config(self, params):
         self.ipv6_server_kill({})
@@ -216,6 +272,57 @@ class LinuxServer(site_linux_system.LinuxSystem):
         self.server.run('cat <<EOF >%s\n%s\nEOF\n' % (cfg_file, config))
         self.server.run('%s -C %s\n' % (self.radvd_config['server'], cfg_file))
 
+
     def ipv6_server_kill(self, params):
         self.server.run('pkill %s >/dev/null 2>&1' %
                         self.radvd_config['server'], ignore_status=True)
+
+
+    def ping(self, ping_ip, count, ping_params):
+        """
+        Ping a client from the server.
+
+        Ping |ping_ip| |count| times using options to ping specified in
+        |ping_params|.
+
+        @param ping_ip String containing a client IP address.
+        @param count String number of times to ping the client.
+        @param ping_params dict of settings for ping.
+        @return dict of ping statistics.
+
+        """
+        # set timeout for 3s / ping packet
+        ping_params = ping_params.copy()
+        ping_params['count'] = str(count)
+        cmd = "%s %s %s" % (self.cmd_ping,
+                            wifi_test_utils.ping_args(ping_params),
+                            ping_ip)
+        result = self.server.run(cmd, timeout=3*int(count))
+        return wifi_test_utils.parse_ping_output(result.stdout)
+
+
+    def ping_bg(self, ping_ip, ping_params):
+        """
+        Ping a client from the server in a background thread.
+
+        Ping |ping_ip| using options to ping specified in
+        |ping_params| in the background.  This call does not block.
+
+        @param ping_ip String containing a client IP address.
+        @param ping_params dict of settings for ping.
+
+        """
+        cmd = "%s %s %s" % (self.cmd_ping,
+                            wifi_test_utils.ping_args(ping_params),
+                            ping_ip)
+        self._ping_bg_job = remote_command.Command(self.server, cmd)
+
+
+    def ping_bg_stop(self):
+        """
+        Stop pinging the client in the background.
+
+        """
+        if self._ping_bg_job is not None:
+            self._ping_bg_job.join()
+            self._ping_bg_job = None
