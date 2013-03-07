@@ -172,14 +172,13 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
 
     _BOARD_MANIFESTS = {
         'lumpy': [
+            'lumpy-factory',
             'lumpy-release',
             'lumpy-pgo-release',
-        #    'lumpy64-release',
         ],
-        'x86-zgb': [
-            'x86-zgb-release',
-        #    'x86-zgb_he-release',
-        #    'x86-zgb32-release',
+        'x86-alex': [
+            'x86-alex-release',
+            'x86-alex-release-group',
         ],
     }
 
