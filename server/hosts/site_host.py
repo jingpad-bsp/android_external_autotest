@@ -802,9 +802,11 @@ class SiteHost(remote.RemoteHost):
         rpc_url = 'http://localhost:%d' % local_port
         proxy = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
         if ready_test_name is not None:
+            # retry.retry logs each attempt; calculate delay_sec to
+            # keep log spam to a dull roar.
             @retry.retry((socket.error, xmlrpclib.ProtocolError),
                          timeout_min=timeout_seconds/60.0,
-                         delay_sec=0.1)
+                         delay_sec=min(max(timeout_seconds/20.0, 0.1), 1))
             def ready_test():
                 """ Call proxy.ready_test_name(). """
                 getattr(proxy, ready_test_name)()
