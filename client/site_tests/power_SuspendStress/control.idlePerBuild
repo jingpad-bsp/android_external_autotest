@@ -4,7 +4,7 @@
 
 AUTHOR = "jwerner, chromeos-power"
 NAME = "power_SuspendStress.idlePerBuild"
-#SUITE = "kernel_per-build_regression"
+SUITE = "kernel_per-build_regression"
 PURPOSE = "Run repeated iterations of idle-suspend."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -17,6 +17,6 @@ Runs four minutes of suspend/resume tests where suspend is triggered by idling.
 """
 
 job.parallel([lambda: job.run_test('power_SuspendStress', tag='idlePerBuild',
-                                   method='idle', duration=240, init_delay=20,
+                                   method='idle', duration=240, init_delay=30,
                                    min_suspend=9)],
              [lambda: job.run_test('dummy_IdleSuspend')])
