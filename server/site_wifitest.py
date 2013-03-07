@@ -9,6 +9,7 @@ import fnmatch
 import logging
 import os
 import re
+import signal
 import string
 import threading
 import time
@@ -32,6 +33,7 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import subcommand
 from autotest_lib.server import test
+from autotest_lib.server.cros import remote_command
 
 
 class ScriptNotFound(Exception):
@@ -1200,8 +1202,7 @@ class WiFiTest(object):
         """
         duration = params.get('duration', 0)
         cmd = '%s event -f' % self.client_cmd_iw
-        self.iw_event_thread = HelperThread(self.client, cmd)
-        self.iw_event_thread.start()
+        self.iw_event_thread = remote_command.Command(self.client, cmd)
 
         if duration:
             time.sleep(float(duration))
@@ -1210,7 +1211,6 @@ class WiFiTest(object):
 
     def iw_event_scan_stop(self, params):
         """ Stops the iw event thread """
-        self.client.run('pkill %s' % os.path.basename(self.client_cmd_iw))
         self.iw_event_thread.join()
         self.iw_event_thread_output = self.iw_event_thread.result.stdout
         logging.debug('Output of iw scan is %s' % self.iw_event_thread_output)
@@ -1274,8 +1274,7 @@ class WiFiTest(object):
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
         cmd = "%s %s %s" % \
             (self.client_cmd_ping, self.__ping_args(params), ping_ip)
-        self.ping_thread = HelperThread(self.client, cmd)
-        self.ping_thread.start()
+        self.ping_thread = remote_command.Command(self.client, cmd)
 
 
     def client_ping_bg_stop(self, params):
@@ -1283,9 +1282,7 @@ class WiFiTest(object):
             logging.info("Tried to stop a bg ping, but none was started")
             return
         # Sending SIGINT gives us stats at the end, how nice.
-        self.client.run("pkill -INT %s"
-                % os.path.basename(self.client_cmd_ping))
-        self.ping_thread.join()
+        self.ping_thread.join(signal.SIGINT)
         if "save_stats" in params:
             stats = self.__get_pingstats(self.ping_thread.result.stdout)
             self.ping_stats[params["save_stats"]] = stats
@@ -1365,8 +1362,7 @@ class WiFiTest(object):
             return
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
         cmd = "ping %s %s" % (self.__ping_args(params), ping_ip)
-        self.ping_thread = HelperThread(self.server, cmd)
-        self.ping_thread.start()
+        self.ping_thread = remote_command.Command(self.server, cmd)
 
 
     def server_ping_bg_stop(self, params):
@@ -1374,7 +1370,6 @@ class WiFiTest(object):
             self.__unreachable("server_ping_bg_stop")
             return
         if self.ping_thread is not None:
-            self.server.run("pkill ping")
             self.ping_thread.join()
             self.ping_thread = None
 
@@ -1461,9 +1456,8 @@ class WiFiTest(object):
             client = { 'host': self.client, 'cmd': self.client_cmd_iperf,
                        'target': self.server_wifi_ip }
 
-        iperf_thread = HelperThread(server['host'],
+        iperf_thread = remote_command.Command(server['host'],
             "%s -s %s" % (server['cmd'], iperf_args))
-        iperf_thread.start()
         # NB: block to allow server time to startup
         time.sleep(self.defwaittime)
 
@@ -1476,7 +1470,6 @@ class WiFiTest(object):
         actual_time = time.time() - t0
         logging.info('actual_time: %f', actual_time)
 
-        server['host'].run("pkill iperf", ignore_status=True)
         iperf_thread.join()
 
         # Close up whatever firewall rules we created for iperf
@@ -1694,9 +1687,8 @@ class WiFiTest(object):
             client = { 'host': self.client, 'cmd': self.client_cmd_netperf,
                        'target': self.server_wifi_ip }
 
-        netperf_thread = HelperThread(server['host'],
+        netperf_thread = remote_command.Command(server['host'],
             "%s -p %s" % (server['cmd'],  self.defnetperfport))
-        netperf_thread.start()
         # NB: block to allow server time to startup
         time.sleep(self.defwaittime)
 
@@ -1711,7 +1703,6 @@ class WiFiTest(object):
         actual_time = time.time() - t0
         logging.info('actual_time: %f', actual_time)
 
-        server['host'].run("pkill netserver", ignore_status=True)
         netperf_thread.join()
 
         # Close up whatever firewall rules we created for netperf
@@ -1820,21 +1811,18 @@ class WiFiTest(object):
                                   self.client_netdump_file,
                                   params.get('snaplen', '0'))
         logging.info(cmd)
-        self.client_netdump_thread = HelperThread(self.client, cmd)
-        self.client_netdump_thread.start()
+        self.client_netdump_thread = remote_command.Command(self.client, cmd)
 
 
     def client_stop_capture(self, params):
         if self.client_netdump_thread is not None:
             self.__destroy_netdump_dev()
-            self.client.run("pkill %s" % self.client_cmd_netdump,
-                            ignore_status=True)
+            self.client_netdump_thread.join()
+            self.client_netdump_thread = None
             self.client.get_file(
                 self.client_netdump_file,
                 self.__get_local_file('client_capture_%02d.pcap'))
             self.client.delete_tmp_dir(self.client_netdump_dir)
-            self.client_netdump_thread.join()
-            self.client_netdump_thread = None
         else:
             # Just in case something got leftover from a previous run...
             self.client.run("pkill %s" % self.client_cmd_netdump,
@@ -1867,8 +1855,7 @@ class WiFiTest(object):
                (script_client_file,
                 int(params.get("suspend_time", 5)),
                 params.get("after_command", '')))
-        self.client_suspend_thread = HelperThread(self.client, cmd)
-        self.client_suspend_thread.start()
+        self.client_suspend_thread = remote_command.Command(self.client, cmd)
 
 
     def client_suspend_end(self, params):
@@ -2358,8 +2345,7 @@ class WiFiTest(object):
                 params.get('count', '-1'),
                 params.get('period', '1')))
         logging.info(cmd)
-        self.client_stats_thread = HelperThread(self.client, cmd)
-        self.client_stats_thread.start()
+        self.client_stats_thread = remote_command.Command(self.client, cmd)
 
     def client_stop_statistics(self, params):
         self.client.run('pkill -f site_wlan_statistics.py',
@@ -2393,16 +2379,6 @@ class WiFiTest(object):
         self.client.run('su wpa -s /bin/bash -c "%s roam %s"' %
                         (self.client_cmd_wpa_cli, wifi_mac))
 
-class HelperThread(threading.Thread):
-    # Class that wraps a ping command in a thread so it can run in the bg.
-    def __init__(self, client, cmd):
-        threading.Thread.__init__(self)
-        self.client = client
-        self.cmd = cmd
-
-    def run(self):
-        # NB: set ignore_status as we're always terminated w/ pkill
-        self.result = self.client.run(self.cmd, ignore_status=True)
 
 def __byfile(a, b):
     if a['file'] < b['file']:
