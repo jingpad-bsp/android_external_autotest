@@ -5,8 +5,6 @@ CRITERIA = """
 There are over 1,000 tests and each one has its own pass/failure criteria. Each
 individual test case is written from the system call's manpage.
 """
-SUITE = "kernel_weekly_regression"
-EXPERIMENTAL = "True"
 TIME = "MEDIUM"
 TEST_CATEGORY = "FUNCTIONAL"
 TEST_CLASS = "KERNEL"
