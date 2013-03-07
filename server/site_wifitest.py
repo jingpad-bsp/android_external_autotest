@@ -34,7 +34,7 @@ from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import subcommand
 from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
-
+from autotest_lib.server.cros import wifi_test_utils
 
 class ScriptNotFound(Exception):
     """Raised when site_wlan scripts cannot be found."""
@@ -318,36 +318,22 @@ class WiFiTest(object):
         self.hosting_server.stop_capture({})
 
 
-    def __must_be_installed(self, host, cmd):
-        if self.__is_installed(host, cmd):
-            return cmd
-
-        # Hunt for the equivalent file in /usr/local.
-        cmd_base = os.path.basename(cmd)
-        local_paths = [ '/usr/local/bin', '/usr/local/sbin' ]
-        alternate_path = self.__get_install_path(host, cmd_base, local_paths)
-        if alternate_path:
-            return alternate_path
-
-        raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
-
-
     def __client_discover_commands(self, client):
         self.client_cmd_netdump = client.get('cmd_netdump', 'tcpdump')
         self.client_cmd_ifconfig = client.get('cmd_ifconfig', 'ifconfig')
         self.client_cmd_iw = client.get('cmd_iw', 'iw')
-        self.client_cmd_netperf = self.__must_be_installed(self.client,
-                                        client.get('cmd_netperf_client',
-                                            '/usr/local/bin/netperf'))
-        self.client_cmd_netserv = self.__must_be_installed(self.client,
-                                        client.get('cmd_netperf_server',
-                                            '/usr/local/sbin/netserver'))
-        self.client_cmd_iperf = self.__must_be_installed(self.client,
-                                        client.get('cmd_iperf_client',
-                                            '/usr/local/bin/iperf'))
-        self.client_cmd_ip = self.__must_be_installed(self.client,
-                                        client.get('cmd_ip',
-                                            '/usr/local/sbin/ip'))
+        self.client_cmd_netperf = wifi_test_utils.must_be_installed(
+                self.client, client.get('cmd_netperf_client',
+                                        '/usr/local/bin/netperf'))
+        self.client_cmd_netserv = wifi_test_utils.must_be_installed(
+                self.client, client.get('cmd_netperf_server',
+                                        '/usr/local/sbin/netserver'))
+        self.client_cmd_iperf = wifi_test_utils.must_be_installed(
+                self.client, client.get('cmd_iperf_client',
+                                         '/usr/local/bin/iperf'))
+        self.client_cmd_ip = wifi_test_utils.must_be_installed(
+                self.client, client.get('cmd_ip',
+                                        '/usr/local/sbin/ip'))
         self.client_cmd_iptables = '/sbin/iptables'
         self.client_cmd_flimflam_lib = client.get('flimflam_lib',
                                                   '/usr/local/lib/flimflam')
@@ -378,17 +364,17 @@ class WiFiTest(object):
 
 
     def __server_discover_commands(self, server):
-        self.server_cmd_netperf = self.__must_be_installed(self.server,
-                                        server.get('cmd_netperf_client',
-                                            '/usr/bin/netperf'))
-        self.server_cmd_netserv = self.__must_be_installed(self.server,
-                                        server.get('cmd_netperf_server',
-                                            '/usr/bin/netserver'))
-        self.server_cmd_iperf = self.__must_be_installed(self.server,
-                                        server.get('cmd_iperf_client',
-                                            '/usr/bin/iperf'))
+        self.server_cmd_netperf = wifi_test_utils.must_be_installed(
+                self.server, server.get('cmd_netperf_client',
+                                        '/usr/bin/netperf'))
+        self.server_cmd_netserv = wifi_test_utils.must_be_installed(
+                self.server, server.get('cmd_netperf_server',
+                                        '/usr/bin/netserver'))
+        self.server_cmd_iperf = wifi_test_utils.must_be_installed(
+                self.server, server.get('cmd_iperf_client',
+                                        '/usr/bin/iperf'))
         # /usr/bin/ping is preferred, as it is likely to be iputils
-        if self.__is_installed(self.server, '/usr/bin/ping'):
+        if wifi_test_utils.is_installed(self.server, '/usr/bin/ping'):
             self.server_ping_cmd = '/usr/bin/ping'
         else:
             self.server_ping_cmd = 'ping'
@@ -1133,56 +1119,11 @@ class WiFiTest(object):
             self.name, method)
 
 
-    def __ping_args(self, params):
-        args = ""
-        if 'count' in params:
-            args += " -c %s" % params['count']
-        if 'size' in params:
-            args += " -s %s" % params['size']
-        if 'bcast' in params:
-            args += " -b"
-        if 'flood' in params:
-            args += " -f"
-        if 'interval' in params:
-            args += " -i %s" % params['interval']
-        if 'interface' in params:
-            args += " -I %s" % params['interface']
-        if 'qos' in params:
-            ac = string.lower(params['qos'])
-            if ac == 'be':
-                args += " -Q 0x04"
-            elif ac == 'bk':
-                args += " -Q 0x02"
-            elif ac == 'vi':
-                args += " -Q 0x08"
-            elif ac == 'vo':
-                args += " -Q 0x10"
-            else:
-                args += " -Q %s" % ac
-        return args
-
-
-    def __get_pingstats(self, str):
-        stats = {
-            'frequency' : self.cur_frequency,
-            'phymode'   : self.cur_phymode,
-            'security'  : self.cur_security,
-        }
-        for k in ('xmit', 'recv', 'loss', 'min', 'avg', 'max', 'dev'):
-            stats[k] = '???'
-        m = re.search('([0-9]*) packets transmitted,[ ]*([0-9]*)[ ]'
-            '(packets |)received, ([0-9]*)', str)
-        if m is not None:
-            stats['xmit'] = m.group(1)
-            stats['recv'] = m.group(2)
-            stats['loss'] = m.group(4)
-        m = re.search('(round-trip|rtt) min[^=]*= '
-                      '([0-9.]*)/([0-9.]*)/([0-9.]*)/([0-9.]*)', str)
-        if m is not None:
-            stats['min'] = m.group(2)
-            stats['avg'] = m.group(3)
-            stats['max'] = m.group(4)
-            stats['dev'] = m.group(5)
+    def __get_pingstats(self, ping_output):
+        stats = wifi_test_utils.parse_ping_output(ping_output)
+        stats['frequency'] = self.cur_frequency
+        stats['phymode']   = self.cur_phymode
+        stats['security']  = self.cur_security
         return stats
 
 
@@ -1259,7 +1200,7 @@ class WiFiTest(object):
         count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
         result = self.client.run("%s %s %s" % (
-            self.client_cmd_ping, self.__ping_args(params), ping_ip),
+            self.client_cmd_ping, wifi_test_utils.ping_args(params), ping_ip),
                                  timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
@@ -1273,7 +1214,7 @@ class WiFiTest(object):
         """ Ping the server from the client """
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
         cmd = "%s %s %s" % \
-            (self.client_cmd_ping, self.__ping_args(params), ping_ip)
+            (self.client_cmd_ping, wifi_test_utils.ping_args(params), ping_ip)
         self.ping_thread = remote_command.Command(self.client, cmd)
 
 
@@ -1347,7 +1288,7 @@ class WiFiTest(object):
         count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
         result = self.server.run("%s %s %s" % \
-            (self.server_ping_cmd, self.__ping_args(params),
+            (self.server_ping_cmd, wifi_test_utils.ping_args(params),
              ping_ip), timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
@@ -1361,7 +1302,7 @@ class WiFiTest(object):
             self.__unreachable("server_ping_bg")
             return
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
-        cmd = "ping %s %s" % (self.__ping_args(params), ping_ip)
+        cmd = "ping %s %s" % (wifi_test_utils.ping_args(params), ping_ip)
         self.ping_thread = remote_command.Command(self.server, cmd)
 
 
@@ -1389,7 +1330,7 @@ class WiFiTest(object):
         count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
         result = self.client.run("%s %s %s" % (
-            self.client_cmd_ping6, self.__ping_args(params), ping_ip),
+            self.client_cmd_ping6, wifi_test_utils.ping_args(params), ping_ip),
             timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
@@ -1628,29 +1569,6 @@ class WiFiTest(object):
             # Set iteration prefix for write_perf() to use
             self.prefix = 'rvr_%s_%d' % (proto, step_number)
             self.server_iperf(iperf_params)
-
-
-    def __is_installed(self, host, filename):
-        result = host.run("ls %s" % filename, ignore_status=True)
-        m = re.search(filename, result.stdout)
-        return m is not None
-
-
-    def __get_install_path(self, host, filename, path):
-        if not path:
-            return None
-
-        # A single path entry is the same as testing __is_installed().
-        if len(path) == 1:
-            install_path = os.path.join(path, filename)
-            if self.__is_installed(host, install_path):
-                return install_path
-            return None
-
-        result = host.run("ls {%s}/%s" % (','.join(path), filename),
-                          ignore_status=True)
-        found_path = result.stdout.split('\n')[0]
-        return found_path or None
 
 
     def __firewall_open(self, proto, src):
