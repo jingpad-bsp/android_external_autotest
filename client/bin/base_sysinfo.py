@@ -26,7 +26,7 @@ _DEFAULT_FILES_TO_LOG_AFTER_ITERATION = [
 
 
 class loggable(object):
-    """ Abstract class for representing all things "loggable" by sysinfo. """
+    """Abstract class for representing all things "loggable" by sysinfo."""
     def __init__(self, logf, log_in_keyval):
         self.logf = logf
         self.log_in_keyval = log_in_keyval
@@ -352,7 +352,7 @@ class base_sysinfo(object):
 
 
     def _log_messages(self, logdir):
-        """ Log all of the new data in /var/log/messages. """
+        """Log all of the new data in /var/log/messages."""
         try:
             # log all of the new data in /var/log/messages
             bytes_to_skip = 0

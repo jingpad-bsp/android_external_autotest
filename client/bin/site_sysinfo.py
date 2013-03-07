@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os
+import logging
 
 from autotest_lib.client.common_lib import utils, global_config
 from autotest_lib.client.bin import base_sysinfo
@@ -86,6 +87,150 @@ class purgeable_logdir(logdir):
             utils.system("rm -rf %s/*" % (self.dir))
 
 
+class file_stat(object):
+    """Store the file size and inode, used for retrieving new data in file."""
+    def __init__(self, file_path):
+        """Collect the size and inode information of a file.
+
+        @param file_path: full path to the file.
+
+        """
+        stat = os.stat(file_path)
+        # Start size of the file, skip that amount of bytes when do diff.
+        self.st_size = stat.st_size
+        # inode of the file. If inode is changed, treat this as a new file and
+        # copy the whole file.
+        self.st_ino = stat.st_ino
+
+
+class diffable_logdir(logdir):
+    """Represents a log directory that only new content will be copied.
+
+    An instance of this class should be added in both
+    before_iteration_loggables and after_iteration_loggables. This is to
+    guarantee the file status information is collected when run method is
+    called in before_iteration_loggables, and diff is executed when run
+    method is called in after_iteration_loggables.
+
+    """
+    def __init__(self, directory, additional_exclude=None,
+                 keep_file_hierarchy=True, append_diff_in_name=True):
+        """
+        Constructor of a diffable_logdir instance.
+
+        @param directory: directory to be diffed after an iteration finished.
+        @param additional_exclude: additional dir to be excluded, not used.
+        @param keep_file_hierarchy: true if need to preserve full path, e.g.,
+            sysinfo/var/log/sysstat, v.s. sysinfo/sysstat if it's false.
+        @param append_diff_in_name: true if you want to append '_diff' to the
+            folder name to indicate it's a diff, e.g., var/log_diff. Option
+            keep_file_hierarchy must be true for this to take effect.
+
+        """
+        super(diffable_logdir, self).__init__(directory, additional_exclude)
+        self.additional_exclude = additional_exclude
+        self.keep_file_hierarchy = keep_file_hierarchy
+        self.append_diff_in_name = append_diff_in_name
+        # Init dictionary to store all file status for files in the directory.
+        self._log_stats = {}
+        # Flag used to indicate if the file status was collected.
+        self.file_stats_collected = False
+
+
+    def _get_init_status_of_src_dir(self, src_dir):
+        """Get initial status of files in src_dir folder.
+
+        @param src_dir: directory to be diff-ed.
+
+        """
+        # Dictionary used to store the initial status of files in src_dir.
+        for file_path in self._get_all_files(src_dir):
+            self._log_stats[file_path] = file_stat(file_path)
+        self.file_stats_collected = True
+
+
+    def _get_all_files(self, path):
+        """Get a list of files in given path including subdirectories.
+
+        @param path: root directory.
+        @return: an iterator that iterates through all files in given path
+            including subdirectories.
+
+        """
+        if not os.path.exists(path):
+            yield []
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                yield os.path.join(root, f)
+
+
+    def _copy_new_data_in_file(self, file_path, src_dir, dest_dir):
+        """Copy all new data in a file to target directory.
+
+        @param file_path: full path to the file to be copied.
+        @param src_dir: source directory to do the diff.
+        @param dest_dir: target directory to store new data of src_dir.
+
+        """
+        bytes_to_skip = 0
+        if self._log_stats.has_key(file_path):
+            prev_stat = self._log_stats[file_path]
+            new_stat = os.stat(file_path)
+            if new_stat.st_ino == prev_stat.st_ino:
+                bytes_to_skip = prev_stat.st_size
+            if new_stat.st_size == bytes_to_skip:
+                return
+            elif new_stat.st_size < prev_stat.st_size:
+                # File is modified to a smaller size, copy whole file.
+                bytes_to_skip = 0
+        try:
+            with open(file_path, 'r') as in_log:
+                if bytes_to_skip > 0:
+                    in_log.seek(bytes_to_skip)
+                # Skip src_dir in path, e.g., src_dir/[sub_dir]/file_name.
+                target_path = os.path.join(dest_dir,
+                                           os.path.relpath(file_path, src_dir))
+                target_dir = os.path.dirname(target_path)
+                if not os.path.exists(target_dir):
+                    os.makedirs(target_dir)
+                with open(target_path, "w") as out_log:
+                    out_log.write(in_log.read())
+        except IOError as e:
+            logging.error('Diff %s failed with error: %s', file_path, e)
+
+
+    def _log_diff(self, src_dir, dest_dir):
+        """Log all of the new data in src_dir to dest_dir.
+
+        @param src_dir: source directory to do the diff.
+        @param dest_dir: target directory to store new data of src_dir.
+
+        """
+        if self.keep_file_hierarchy:
+            dir = src_dir.lstrip('/')
+            if self.append_diff_in_name:
+                dir = dir.rstrip('/') + '_diff'
+            dest_dir = os.path.join(dest_dir, dir)
+
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+
+        for src_file in self._get_all_files(src_dir):
+            self._copy_new_data_in_file(src_file, src_dir, dest_dir)
+
+
+    def run(self, log_dir):
+        """Copies new content from self.dir to the destination log_dir.
+
+        @param log_dir: The destination log directory.
+
+        """
+        if not self.file_stats_collected:
+            self._get_init_status_of_src_dir(self.dir)
+        elif os.path.exists(self.dir):
+                self._log_diff(self.dir, log_dir)
+
+
 class site_sysinfo(base_sysinfo.base_sysinfo):
     """Represents site system info."""
     def __init__(self, job_resultsdir):
@@ -97,12 +242,20 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # add in some extra command logging
         self.boot_loggables.add(command("ls -l /boot",
                                         "boot_file_list"))
+
+        # This is added in before and after_iteration_loggables. When run is
+        # called in before_iteration_loggables, it collects file status in
+        # the directory. When run is called in after_iteration_loggables, diff
+        # is executed.
+        diffable_log = diffable_logdir(constants.LOG_DIR)
+
+        self.before_iteration_loggables.add(diffable_log)
         self.before_iteration_loggables.add(
             command(constants.BROWSER_EXE + " --version", "chrome_version"))
+
         self.test_loggables.add(
             purgeable_logdir(
                 os.path.join(constants.CRYPTOHOME_MOUNT_PT, "log")))
-        self.test_loggables.add(logdir("/var/log"))
         # We only want to gather and purge crash reports after the client test
         # runs in case a client test is checking that a crash found at boot
         # (such as a kernel crash) is handled.
@@ -113,6 +266,7 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         self.after_iteration_loggables.add(
             purgeable_logdir(constants.CRASH_DIR,
                              additional_exclude=crash_exclude_string))
+        self.after_iteration_loggables.add(diffable_log)
         self.test_loggables.add(
             logfile(os.path.join(constants.USER_DATA_DIR,
                                  ".Google/Google Talk Plugin/gtbplugin.log")))

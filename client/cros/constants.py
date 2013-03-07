@@ -7,7 +7,7 @@
 # Constants used by other constants.
 USER_DATA_DIR = '/home/chronos'
 WHITELIST_DIR = '/var/lib/whitelist'
-
+LOG_DIR = '/var/log'
 
 # Rest of constants.
 BROWSER = 'chrome'
