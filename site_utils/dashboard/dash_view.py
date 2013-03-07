@@ -37,8 +37,7 @@ from dash_strings import UNKNOWN_TIME_STR
 
 
 GTEST_SUFFIXES = ["audio", "browsertests", "enterprise", "pagecycler", "pyauto",
-                  "pyauto_basic", "pyauto_endurance", "pyauto_perf", "sync",
-                  "video"]
+                  "pyauto_basic", "pyauto_perf", "sync", "video"]
 SUFFIXES_TO_SHOW = ["bvt", "flaky", "hwqual", "regression",
                     KERNELTEST_TAG] + GTEST_SUFFIXES
 SERVER_JOB = "SERVER_JOB"
@@ -80,18 +79,18 @@ class CrashDashView(object):
   def _LookupCrashDict(self, netbook, board, build, test_name=None):
     """Retrieve a leaf level (test_name) or one-up (build) of the crash tree.
 
-    Args:
-      netbook: one of our netbooks with the netbook_ prefix:
-               netbook_DELL_L13, netbook_ANDRETTI, ...
-      board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-      build: a full build string: 0.8.73.0-r3ed8d12f-b719.
-      test_name: test_name of Autotest test.
+    @param netbook: one of our netbooks with the netbook_ prefix:
+        netbook_DELL_L13, netbook_ANDRETTI, ...
+    @param board: one of our boards: x86-generic-full,
+        x86-mario-full-chromeos, ...
+    @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+    @param test_name: test_name of Autotest test.
 
-    Returns:
-      Leaf level tuple of the category list and a dictionary for crash
-      string details indexed on result instance idx.  If no test_name is
-      supplied then the dict will contain crash results for all tests
-      executed in that build (and the category list will be None).
+    @return Leaf level tuple of the category list and a dictionary for crash
+        string details indexed on result instance idx.  If no test_name is
+        supplied then the dict will contain crash results for all tests
+        executed in that build (and the category list will be None).
+
     """
     netbook_dict = self._crashes.setdefault(netbook, {})
     board_dict = netbook_dict.setdefault(board, {})
@@ -108,14 +107,16 @@ class CrashDashView(object):
     that consume it: the waterfall summary view (platform x build) and the
     details view (platform x build x test_name).
 
-    Args:
-      netbook: one of our netbooks with the netbook_ prefix:
-               netbook_DELL_L13, netbook_ANDRETTI, ...
-      board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-      build: a full build string: 0.8.73.0-r3ed8d12f-b719.
-      test_name: test_name of Autotest test.
-      result_idx: unique identifier for a test result instance.
-      job_tag: path base for finding test result file under CAutotest results.
+    @param netbook: one of our netbooks with the netbook_ prefix:
+        netbook_DELL_L13, netbook_ANDRETTI, ...
+    @param board: one of our boards: x86-generic-full, x86-mario-full-chromeos,
+        ...
+    @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+    @param test_name: test_name of Autotest test.
+    @param result_idx: unique identifier for a test result instance.
+    @param job_tag: path base for finding test result file under CAutotest
+        results.
+
     """
     crash_strings = self._LookupCrashDict(netbook, board, build, test_name)[1]
     if result_idx in crash_strings:
@@ -131,13 +132,14 @@ class CrashDashView(object):
 
     Used to hyperlink from a crash summary to it's related details page.
 
-    Args:
-      netbook: one of our netbooks with the netbook_ prefix:
-               netbook_DELL_L13, netbook_ANDRETTI, ...
-      board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-      build: a full build string: 0.8.73.0-r3ed8d12f-b719.
-      test_name: test_name of Autotest test.
-      category: test category (test prefix or job suffix usually)
+    @param netbook: one of our netbooks with the netbook_ prefix:
+        netbook_DELL_L13, netbook_ANDRETTI, ...
+    @param board: one of our boards: x86-generic-full, x86-mario-full-chromeos,
+        ...
+    @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+    @param test_name: test_name of Autotest test.
+    @param category: test category (test prefix or job suffix usually).
+
     """
     categories = self._LookupCrashDict(netbook, board, build, test_name)[0]
     categories.add(category)
@@ -164,17 +166,18 @@ class CrashDashView(object):
     cells on a category summary (kernel) page reflect crashes found only in a
     specific category for a given platform/build combination.
 
-    Args:
-      netbook: one of our netbooks with the netbook_ prefix:
-               netbook_DELL_L13, netbook_ANDRETTI, ...
-      board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-      build: a full build string: 0.8.73.0-r3ed8d12f-b719.
-      category: test category (test prefix or job suffix usually), None for all.
+    @param netbook: one of our netbooks with the netbook_ prefix:
+        netbook_DELL_L13, netbook_ANDRETTI, ...
+    @param board: one of our boards: x86-generic-full, x86-mario-full-chromeos,
+        ...
+    @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+    @param category: test category (test prefix or job suffix usually), None
+        for all.
 
-    Returns:
-      Tuple used in watefall summary views of: crash_details list, a count
-      of crashes and the first category for a hyperlink. The result tuple is
-      ([], 0, None) if no crashes were discovered.
+    @return Tuple used in watefall summary views of: crash_details list, a
+        count of crashes and the first category for a hyperlink. The result
+        tuple is ([], 0, None) if no crashes were discovered.
+
     """
     crashes = []
     n = 0
@@ -199,15 +202,16 @@ class CrashDashView(object):
     The cells on each category details page reflect crashes found only in a
     specific test for a given platform/build combination.
 
-    Args:
-      netbook: one of our netbooks with the netbook_ prefix:
-               netbook_DELL_L13, netbook_ANDRETTI, ...
-      board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-      build: a full build string: 0.8.73.0-r3ed8d12f-b719.
-      test_name: name of a specific test.
+    @param netbook: one of our netbooks with the netbook_ prefix:
+        netbook_DELL_L13, netbook_ANDRETTI, ...
+    @param board: one of our boards: x86-generic-full, x86-mario-full-chromeos,
+        ...
+    @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+    @param test_name: name of a specific test.
 
-    Returns:
-      Tuple used in details views: list of crash details and a count of crashes.
+    @return Tuple used in details views: list of crash details and a count of
+        crashes.
+
     """
     test_crashes = self._LookupCrashDict(netbook, board, build, test_name)[1]
     if not test_crashes:
@@ -221,8 +225,8 @@ class CrashDashView(object):
     Used by the test result summary emailer to include crashes and a link to
     each job with a crash for research.
 
-    Returns:
-      The TestSummaryInfo object that is shared.
+    @return The TestSummaryInfo object that is shared.
+
     """
     return self._test_summaries
 
@@ -381,6 +385,11 @@ class AutotestDashView(object):
       self._last_updated = datetime.datetime.ctime(datetime.datetime.now())
 
     def CrashSetup(self, dash_base_dir):
+      """Set up the crash view.
+
+      @param dash_base_dir: root of the cache directory for crash results.
+
+      """
       self._crashes = CrashDashView(dash_base_dir)
 
     def GetCrashes(self):
@@ -390,8 +399,8 @@ class AutotestDashView(object):
     def SetDashConfig(self, dash_config):
       """Some preprocessing of dash_config.
 
-      Args:
-        dash_config: dictionary of dash config entries.
+      @param dash_config: dictionary of dash config entries.
+
       """
       self._dash_config = dash_config
       if 'customboardfilter' in dash_config:
@@ -401,11 +410,10 @@ class AutotestDashView(object):
     def GetAutotestInfo(self, name):
       """Return author and path of an autotest test.
 
-      Args:
-        name: Autotest test_name.
+      @param name: Autotest test_name.
 
-      Returns:
-        2-Tuple of (author_name, test_path) used to locate test code.
+      @return 2-Tuple of (author_name, test_path) used to locate test code.
+
       """
       name = name.split(".")[0]
       author = ""
@@ -424,21 +432,21 @@ class AutotestDashView(object):
     def netbooks(self):
       """Return a list of known netbooks - some may have not run tests.
 
-      Returns:
-        Unsorted List of all known netbooks (with netbook_ prefix). Some of
-        these may have no tests run against them.
+      @return Unsorted List of all known netbooks (with netbook_ prefix). Some
+          of these may have no tests run against them.
+
       """
       return self._test_tree.keys()
 
     def GetNetbooksWithBoardType(self, board):
       """Return list of netbooks with tests run under board.
 
-      Args:
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
 
-      Returns:
-        Sorted List of netbooks (with netbook_ prefix) that have completed
-        tests associated with the given board.
+      @return Sorted List of netbooks (with netbook_ prefix) that have
+          completed tests associated with the given board.
+
       """
       netbooks = self._test_tree.keys()
       netbooks.sort()
@@ -447,13 +455,13 @@ class AutotestDashView(object):
     def GetNetbooksWithBoardTypeCategory(self, board, category):
       """Return list of netbooks with tests under board and category.
 
-      Args:
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
 
-      Returns:
-        Sorted List of netbooks (with netbook_ prefix) that have completed
-        tests of given category with the given board.
+      @return Sorted List of netbooks (with netbook_ prefix) that have
+          completed tests of given category with the given board.
+
       """
       netbooks = self._build_tree.keys()
       netbooks.sort()
@@ -464,22 +472,21 @@ class AutotestDashView(object):
     def GetBoardTypes(self):
       """Return list of boards found.
 
-      Returns:
-        Unsorted List of all known boards: x86-generic-full,
-        x86-mario-full-chromeos, ...
+      @return Unsorted List of all known boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+
       """
       return self._builds.keys()
 
     def GetNetbookBoardTypes(self, netbook):
       """Return list of boards used in the given netbook.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
 
-      Returns:
-        Unsorted List of boards which have completed tests on the
-        given netbook (with netbook_ prefix).
+      @return Unsorted List of boards which have completed tests on the
+          given netbook (with netbook_ prefix).
+
       """
       if netbook in self._build_tree:
         return self._build_tree[netbook].keys()
@@ -488,8 +495,8 @@ class AutotestDashView(object):
     def GetAllBuilds(self):
       """Return list of all known builds that we used.
 
-      Returns:
-        Unsorted Set of unique builds across all boards.
+      @return Unsorted Set of unique builds across all boards.
+
       """
       results = set()
       for build_dict in self._builds.itervalues():
@@ -501,15 +508,14 @@ class AutotestDashView(object):
         self, board, limit=LAST_N_JOBS_LIMIT, asc=False):
       """Return list of builds with tests run in the given board.
 
-      Args:
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        limit: common to truncate the build list for display.
-        asc: if False, sort descending (tables) else ascending (plots).
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param limit: common to truncate the build list for display.
+      @param asc: if False, sort descending (tables) else ascending (plots).
 
-      Returns:
-        Sorted List of builds from with attempted jobs. These builds may
-        NOT have associated test results if no tests completed on a
-        netbook.
+      @return Sorted List of builds from with attempted jobs. These builds may
+          NOT have associated test results if no tests completed on a netbook.
+
       """
       results = sorted(
           self._builds[board].values(),
@@ -524,17 +530,17 @@ class AutotestDashView(object):
     def GetBuilds(self, netbook, board, category):
       """Return list of builds with tests run in the given netbook.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
 
-      Returns:
-        Sorted List of builds with jobs attempted on the given netbook,
-        board combination with tests attempted in the given category.
-        Again, tests may not have been completed thus there may be
-        no corresponding test results.
+      @return Sorted List of builds with jobs attempted on the given netbook,
+          board combination with tests attempted in the given category.
+          Again, tests may not have been completed thus there may be no
+          corresponding test results.
+
       """
       results = []
       if not netbook in self._build_tree:
@@ -554,29 +560,29 @@ class AutotestDashView(object):
     def GetUICategories(self, netbook, board):
       """Return categories for DASH UI of tests run in netbook - board.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
 
-      Returns:
-        Unsorted List of the UI categories (bvt, desktopui, ...) of tests
-        with completed results run against the given netbook and board.
+      @return Unsorted List of the UI categories (bvt, desktopui, ...) of tests
+          with completed results run against the given netbook and board.
+
       """
       return list(self._ui_categories[netbook][board])
 
     def GetCategories(self, netbook, board, regex=None):
       """Return categories of tests run in netbook - board.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        regex: optional match filter for categories.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param regex: optional match filter for categories.
 
-      Returns:
-        Unsorted List of the categories (bvt, desktopui, ...) of tests
-        with completed results run against the given netbook and board.
+      @return Unsorted List of the categories (bvt, desktopui, ...) of tests
+          with completed results run against the given netbook and board.
+
       """
       if netbook in self._test_tree and board in self._test_tree[netbook]:
         if not regex:
@@ -589,16 +595,16 @@ class AutotestDashView(object):
     def GetTestNames(self, netbook, board, category):
       """Return unique test names run in netbook - board - category.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
 
-      Returns:
-        Unsorted or empty List of test names for building a table
-        listing all tests in the given category with completed results on
-        the given netbook and board.
+      @return Unsorted or empty List of test names for building a table listing
+          all tests in the given category with completed results on the given
+          netbook and board.
+
       """
       if category not in self._test_tree[netbook][board]:
         return []
@@ -607,18 +613,18 @@ class AutotestDashView(object):
     def GetTestNamesInBuild(self, netbook, board, category, build, regex=None):
       """Return the unique test names like GetTestNames() but for 1 build.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a full build string: 0.8.73.0.
-        regex: optional match filter for test name.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param build: a full build string: 0.8.73.0.
+      @param regex: optional match filter for test name.
 
-      Returns:
-        Sorted or empty List of the test names in the given category and
-        given build with completed test results against the given netbook
-        and board.
+      @return Sorted or empty List of the test names in the given category and
+          given build with completed test results against the given netbook
+          and board.
+
       """
       results = []
       try:
@@ -635,19 +641,19 @@ class AutotestDashView(object):
     def GetCategorySummary(self, netbook, board, category, build):
       """Return ngood and ntotal for the given job.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a full build string: 0.8.73.0.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param build: a full build string: 0.8.73.0.
 
-      Returns:
-        4-Tuple:
-        -Boolean: True if the job was attempted
-        -Boolean: True if all server jobs GOOD
-        -Integer: number of tests completed GOOD
-        -Integer: number of tests completed
+      @return 4-Tuple:
+          -Boolean: True if the job was attempted
+          -Boolean: True if all server jobs GOOD
+          -Integer: number of tests completed GOOD
+          -Integer: number of tests completed
+
       """
       ngood = 0
       ntotal = 0
@@ -668,15 +674,16 @@ class AutotestDashView(object):
     def TestDetailIterator(self, netbook, board, category, build):
       """Common iterator for looking through test details.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
 
-      Yields:
-        Using Python generator (yield) mechanism return iterative test details.
+      @return Iterative test details using the Python generator (yield)
+          mechanism.
+
       """
       tests = self.GetTestNamesInBuild(netbook, board, category, build)
       if not tests:
@@ -692,16 +699,16 @@ class AutotestDashView(object):
     def GetCategoryKernel(self, netbook, board, category, build):
       """Return string name of the kernel version like: 2.6.38.3+.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
 
-      Returns:
-        String name of the kernel tested. If multiple kernels tested
-        emit the one most used with a marker string.
+      @return String name of the kernel tested. If multiple kernels tested emit
+          the one most used with a marker string.
+
       """
       kernel_votes = dash_util.SimpleCounter()
       for t in self.TestDetailIterator(netbook, board, category, build):
@@ -711,16 +718,16 @@ class AutotestDashView(object):
     def GetCategoryFailedTests(self, netbook, board, category, build):
       """Return list of failed tests for easy popup display.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param build: a full build string: 0.8.73.0-r3ed8d12f-b719.
 
-      Returns:
-        Tuple including a List of unique test names of failed tests,
-        and a List of unique test names of experimental failed tests.
+      @return Tuple including a List of unique test names of failed tests,
+          and a List of unique test names of experimental failed tests.
+
       """
       failed_tests = set()
       xfailed_tests = set()
@@ -734,20 +741,20 @@ class AutotestDashView(object):
               ', '.join(sorted(xfailed_tests)))
 
     def GetJobTimes(self, netbook, board, category, build):
-      """Return job_start_time,  job_end_time and elapsed for the given job.
+      """Return job_start_time, job_end_time and elapsed for the given job.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a build on this netbook and board.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param build: a build on this netbook and board.
 
-      Returns:
-        3-Tuple of Python datetime.datetime,datetime.datetime,datetime.timedelta
-        for started_datetime, finished_datetime, elapsed_datetime.
-        All are calculated across multiple jobs by looking at completed test
-        results and choosing the earliest start time and the latest finish time.
+      @return 3-Tuple of datetime.datetime,datetime.datetime,datetime.timedelta
+          for started_datetime, finished_datetime, elapsed_datetime. All are
+          calculated across multiple jobs by looking at completed test results
+          and choosing the earliest start time and the latest finish time.
+
       """
       job_started = self._null_datetime
       job_finished = self._null_datetime
@@ -760,7 +767,17 @@ class AutotestDashView(object):
       return job_started, job_finished, job_elapsed
 
     def GetJobTimesNone(self, netbook, board, category, build):
-      """Translate null_datetime from GetJobTimes() to None."""
+      """Translate null_datetime from GetJobTimes() to None.
+
+      @param netbook: same as for GetJobTimes() above.
+      @param board: same as for GetJobTimes() above.
+      @param category: same as for GetJobTimes() above.
+      @param build: same as for GetJobTimes() above.
+
+      @return Same as for GetJobTimes() above, except with null datetimes
+          translated to None.
+
+      """
       job_started, job_finished, job_elapsed = self.GetJobTimes(
           netbook, board, category, build)
       if job_started == self._null_datetime:
@@ -774,17 +791,17 @@ class AutotestDashView(object):
     def GetFormattedJobTimes(self, netbook, board, category, build):
       """Return job_start_time, job_end_time and elapsed in datetime format.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a build on this netbook and board.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param build: a build on this netbook and board.
 
-      Returns:
-        3-Tuple of stringified started_datetime, finished_datetime, and
-        elapsed_datetime. Returns a common string when invalid or no datetime
-        was found.
+      @return 3-Tuple of stringified started_datetime, finished_datetime, and
+          elapsed_datetime. Returns a common string when invalid or no datetime
+          was found.
+
       """
       time_key = (netbook, board, category, build)
       if time_key in self._formatted_time_cache:
@@ -810,20 +827,20 @@ class AutotestDashView(object):
     def GetTestDetails(self, netbook, board, category, test_name, build):
       """Return tests details for a given test_name x build cell.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        category: a test group: bvt, regression, desktopui, graphics, ...
-        test_name: test_name of Autotest test.
-        build: a build on this netbook and board.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param category: a test group: bvt, regression, desktopui, graphics, ...
+      @param test_name: test_name of Autotest test.
+      @param build: a build on this netbook and board.
 
-      Returns:
-        Sorted or empty List of multiple test dictionaries for test instances
-        in the given category that completed on the given netbook and board
-        in the given build. The test dictionaries include common fields
-        'test_name', 'tag', 'hostname', 'status' and an embedded dictionary
-        of varying attributes under 'attr'.
+      @return Sorted or empty List of multiple test dictionaries for test
+          instances in the given category that completed on the given netbook
+          and board in the given build. The test dictionaries include common
+          fields 'test_name', 'tag', 'hostname', 'status' and an embedded
+          dictionary of varying attributes under 'attr'.
+
       """
       test_details = []
       if build in self._test_tree[netbook][board][category][test_name]:
@@ -837,24 +854,24 @@ class AutotestDashView(object):
     def GetTestFromIdx(self, idx):
       """Returns all details about 1 specific instance of 1 test result.
 
-      Args:
-        idx: unique index of the test result.
+      @param idx: unique index of the test result.
 
-      Returns:
-        A Dictionary with attributes for a test result instance including tag.
+      @return A Dictionary with attributes for a test result instance including
+          tag.
+
       """
       return self._tests[str(idx)]
 
     def GetPlatformKeyValTests(self, netbook, board):
       """Return list of tests that have keyvals for a given netbook and board.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
 
-      Returns:
-        None or a sorted list of the test names with keyvals.
+      @return None or a sorted list of the test names with keyvals.
+
       """
       if (not netbook in self._perf_keyvals or
           not board in self._perf_keyvals[netbook]):
@@ -864,14 +881,14 @@ class AutotestDashView(object):
     def GetTestKeys(self, netbook, board, test_name):
       """Return list of test keys with values for a given netbook and board.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        test_name: test_name of Autotest test.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param test_name: test_name of Autotest test.
 
-      Returns:
-        None or a sorted list of the test keys with keyvals.
+      @return None or a sorted list of the test keys with keyvals.
+
       """
       if (not netbook in self._perf_keyvals or
           not board in self._perf_keyvals[netbook] or
@@ -882,23 +899,23 @@ class AutotestDashView(object):
     def GetTestKeyVals(self, netbook, board, test_name):
       """Return keyvals for one test over our queried jobs/builds.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        test_name: test_name of Autotest test.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param test_name: test_name of Autotest test.
 
-      Returns:
-        None or a dictionary of the performance key-values recorded during
-        a completed test with the given netbook, board, test_name. The
-        keyvals are from the overall set of jobs/builds that were discovered
-        when querying the last n jobs/builds. The dictionary has keys of
-        each performance key recorded and build dictionary. The build
-        dictionary has keys of each build with the named performance key
-        recorded and a value of the value list. The value list is a 2-Tuple
-        of Lists. One is a list of the perf values and the other is a list
-        of corresponding test_idx that may be used to look up job/test
-        details from the point in a graphed plot.
+      @return None or a dictionary of the performance key-values recorded during
+          a completed test with the given netbook, board, test_name. The
+          keyvals are from the overall set of jobs/builds that were discovered
+          when querying the last n jobs/builds. The dictionary has keys of
+          each performance key recorded and build dictionary. The build
+          dictionary has keys of each build with the named performance key
+          recorded and a value of the value list. The value list is a 2-Tuple
+          of Lists. One is a list of the perf values and the other is a list
+          of corresponding test_idx that may be used to look up job/test
+          details from the point in a graphed plot.
+
       """
       if (not netbook in self._perf_keyvals or
           not board in self._perf_keyvals[netbook] or
@@ -909,23 +926,23 @@ class AutotestDashView(object):
     def GetTestPerfVals(self, netbook, board, test_name, key):
       """Return values for one test/key over our queried jobs/builds.
 
-      Args:
-        netbook: one of our netbooks with the netbook_ prefix:
-                 netbook_DELL_L13, netbook_ANDRETTI, ...
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
-        test_name: test_name of Autotest test.
-        key: autotest perf key.
+      @param netbook: one of our netbooks with the netbook_ prefix:
+          netbook_DELL_L13, netbook_ANDRETTI, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
+      @param test_name: test_name of Autotest test.
+      @param key: autotest perf key.
 
-      Returns:
-        None or a dictionary of the performance values recorded during
-        a completed test with the given netbook, board, test_name, key. The
-        vals are from the overall set of jobs/builds that were discovered
-        when querying the last n jobs/builds.  The dictionary has keys of
-        each build with the named performance key recorded and a value of
-        the value list. The value list is a 2-Tuple of Lists. One is a
-        list of the perf values and the other is a list of corresponding
-        test_idx that may be used to look up job/test details from the
-        point in a graphed plot.
+      @return None or a dictionary of the performance values recorded during
+          a completed test with the given netbook, board, test_name, key. The
+          vals are from the overall set of jobs/builds that were discovered
+          when querying the last n jobs/builds.  The dictionary has keys of
+          each build with the named performance key recorded and a value of
+          the value list. The value list is a 2-Tuple of Lists. One is a
+          list of the perf values and the other is a list of corresponding
+          test_idx that may be used to look up job/test details from the
+          point in a graphed plot.
+
       """
       keyvals = self.GetTestKeyVals(netbook, board, test_name)
       if keyvals and key in keyvals:
@@ -944,11 +961,11 @@ class AutotestDashView(object):
         x86-generic-full
         x86-mario-r15
 
-      Args:
-        board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
+      @param board: one of our boards: x86-generic-full,
+          x86-mario-full-chromeos, ...
 
-      Returns:
-        (simple_board, release_if_found)
+      @return (simple_board, release_if_found).
+
       """
       m = re.match(self._board_parse, board)
       if m and m.lastindex == 3:
@@ -975,11 +992,10 @@ class AutotestDashView(object):
 
       A test_name defines a category if it has a prefix.
 
-      Args:
-        test_name: test_name from autotest db.
+      @param test_name: test_name from autotest db.
 
-      Returns:
-        Single token test category.
+      @return Single token test category.
+
       """
       if test_name.find(".") > 0:
         test_name = test_name.split(".")[0]
@@ -993,11 +1009,12 @@ class AutotestDashView(object):
     def ParseJobName(self, job_name):
       """Return board - build# and job_suffix from the job_name.
 
-      Args:
-        job_name: complex string created by test_scheduler from a build image.
+      @param job_name: complex string created by test_scheduler from a build
+          image.
 
-      Returns:
-        Tuple of: board, a build#, a job group, and a bool True if experimental.
+      @return Tuple of: board, a build#, a job group, and a bool True if
+          experimental.
+
       """
       #  (x86-zgb)-release/((R19)-1913.0.0-a1-b1539) \
       #   /(bvt)/(network_DisableInterface)
@@ -1048,11 +1065,10 @@ class AutotestDashView(object):
       -(R19-1913.0.0)-a1-b1539
       -(0.8.73.0)-r3ed8d12f-b719.
 
-      Args:
-        build: long/full build string.
+      @param build: long/full build string.
 
-      Returns:
-        The simple numeric build number.
+      @return The simple numeric build number.
+
       """
       for p in [self._shortbuild1_parse, self._shortbuild2_parse]:
         m = re.match(p, build)
@@ -1067,8 +1083,8 @@ class AutotestDashView(object):
     def LoadFromDB(self, job_limit=None):
       """Initial queries from the db for test tables.
 
-      Args:
-        job_limit: Limit query to last n jobs.
+      @param job_limit: Limit query to last n jobs.
+
       """
       diag = dash_util.DebugTiming()
       if not self._autotests:
@@ -1084,8 +1100,8 @@ class AutotestDashView(object):
     def LoadPerfFromDB(self, job_limit=None):
       """Initial queries from db for perf checking.
 
-      Args:
-        job_limit: Limit query to last n jobs.
+      @param job_limit: Limit query to last n jobs.
+
       """
       diag = dash_util.DebugTiming()
       self.LoadFromDB(job_limit)
@@ -1118,11 +1134,10 @@ class AutotestDashView(object):
       and the string is lower-cased for one
       common platform convention.
 
-      Args:
-        netbook: platform from Autotest (e.g. ALEX).
+      @param netbook: platform from Autotest (e.g. ALEX).
 
-      Returns:
-        String with a 'scrubbed' netbook value.
+      @return String with a 'scrubbed' netbook value.
+
       """
       for prefix in LEGACY_PLATFORM_PREFIXES:
         if netbook.startswith(prefix):
@@ -1147,7 +1162,13 @@ class AutotestDashView(object):
         self._build_tree[netbook] = {}
 
     def TranslateSuffix(self, suffix):
-      """Allow processing of suffixes for aligning test suites."""
+      """Allow processing of suffixes for aligning test suites.
+
+      @param suffix: The suffix to process.
+
+      @return The translated suffix.
+
+      """
       if not suffix:
         return suffix
       if suffix.startswith('kernel_'):
@@ -1161,8 +1182,8 @@ class AutotestDashView(object):
     def QueryBuilds(self, job_limit=None):
       """Get the boards and builds (jobs) to use.
 
-      Args:
-        job_limit: Limit query to last n jobs.
+      @param job_limit: Limit query to last n jobs.
+
       """
       query = [
           "SELECT j.id, j.name, complete",
@@ -1448,17 +1469,42 @@ class SummaryRanges(object):
                 n, board, category, b)
 
   def GetBoards(self):
+    """Gets all boards."""
     boards = self._summary_ranges.keys()
     boards.sort()
     return boards
 
   def GetNetbooks(self, board):
+    """Gets all netbooks associated with a board.
+
+    @param board: The associated board.
+
+    @return A list of netbooks associated with the specified board.
+
+    """
     return self._summary_ranges[board][0]
 
   def GetBuildNumbers(self, board):
+    """Gets all build numbers associated with a board.
+
+    @param board: The associated board.
+
+    @return A list of build numbers associated with the specified board.
+
+    """
     return self._summary_ranges[board][1]
 
   def GetKernel(self, board, netbook, build):
+    """Gets the kernel assocaited with a board/netbook/build combination.
+
+    @param board: The associated board.
+    @param netbook: The associated netbook.
+    @param build: The associated build.
+
+    @return The kernel associated with the specified board/netbook/build
+        combination.
+
+    """
     try:
       return self._summary_kernels[board][netbook][build]
     except KeyError:
