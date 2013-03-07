@@ -54,8 +54,8 @@ class Suspender(object):
         'ZGB': 4,
 
         # TODO: Reevaluate these when http://crosbug.com/38225 is fixed
-        'MARIO': 7,
-        'ALEX': 6,
+        'MARIO': 9,
+        'ALEX': 8,
 
         # TODO: Reevaluate this when http://crosbug.com/38239 is fixed
         # edit: bumping this even more to make it work for now...
