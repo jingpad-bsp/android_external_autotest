@@ -157,16 +157,16 @@ class SiteHost(remote.RemoteHost):
     #   time to restart the netwowrk.
     # BOOT_TIMEOUT: Time to allow for boot from power off.  Among
     #   other things, this must account for the 30 second dev-mode
-    #   screen delay and time to start the network,
+    #   screen delay and time to start the network.
     # USB_BOOT_TIMEOUT: Time to allow for boot from a USB device,
     #   including the 30 second dev-mode delay and time to start the
-    #   network,
+    #   network.
     # SHUTDOWN_TIMEOUT: Time to allow for shut down.
     # REBOOT_TIMEOUT: Combination of shutdown and reboot times.
     # _INSTALL_TIMEOUT: Time to allow for chromeos-install.
 
     SLEEP_TIMEOUT = 2
-    RESUME_TIMEOUT = 5
+    RESUME_TIMEOUT = 10
     BOOT_TIMEOUT = 45
     USB_BOOT_TIMEOUT = 150
     SHUTDOWN_TIMEOUT = 5
