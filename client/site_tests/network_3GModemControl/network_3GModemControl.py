@@ -300,14 +300,14 @@ class network_3GModemControl(test.test):
         logging.info('Disconnecting')
         will_autoreconnect = commands.Disconnect()
 
-        # Icera modems behave weirdly if we cancel the operation while the
-        # modem is disconnecting. Work around the issue by waiting until
-        # the disconnect operation completes.
-        # TODO(benchan): Remove this workaround once the issue is addressed
-        # on the modem side.
-        self.EnsureNotConnectingOrDisconnecting()
-
         if not (self.autoconnect and will_autoreconnect):
+            # Icera modems behave weirdly if we cancel the operation while the
+            # modem is disconnecting. Work around the issue by waiting until
+            # the disconnect operation completes.
+            # TODO(benchan): Remove this workaround once the issue is addressed
+            # on the modem side.
+            self.EnsureNotConnectingOrDisconnecting()
+
             self.EnsureEnabled(check_idle=True)
             logging.info('Connecting manually, since AutoConnect was on')
             commands.Connect(simple_connect_props=simple_connect_props)
