@@ -79,7 +79,7 @@ class WiFiTest(object):
       vpn_client_load_tunnel  load 'tun' device for VPN client
       vpn_client_kill         Kill the running VPN client.  Do nothing
                               if not running.
-      vpn_client_config       launch a VPN client to connect with the
+      vpn_client_connect      launch a VPN client to connect with the
                               VPN server
       client_reboot           reboots the client and waits for it to come back.
                               The amount of time to wait can be specified by a
@@ -812,6 +812,45 @@ class WiFiTest(object):
         token_auth = site_eap_certs.auth_pin
         self.__load_tpm_token(token_auth)
 
+
+    def install_nss_certificate(self, params):
+        """ Install an PEM certifcate into the NSS database on the client. """
+        if not 'data' in params:
+            raise error.TestFail('Need a data parameter to install a NSS '
+                                 'certificate')
+        if not 'id' in params:
+            raise error.TestFail('Need an object id to install an NSS '
+                                 'certificate')
+
+        data = params['data']
+        object_id = params['id']
+        pem_path = self.client.run('mktemp').stdout.strip()
+        der_path = self.client.run('mktemp').stdout.strip()
+
+        # Copy the PEM input certificate into a temporary file on the client.
+        self.install_files({ 'system' : 'client',
+                             'files' : { pem_path : data } } )
+
+        # Convert the certificate into DER format
+        self.client.run('openssl x509 -in %s -inform PEM -out %s -outform DER' %
+                        (pem_path, der_path))
+        # Load that stuff into the NSS database.
+        self.client.run('nsscertutil -A -t P,, -i %s -n %s -d sql:%s' %
+                        (der_path, object_id, site_eap_certs.nss_cert_db_path))
+        # Make sure the NSS database remains accessible by the NSS user.
+        self.client.run('chown -R %s: %s' %
+                        (site_eap_certs.nss_cert_db_user,
+                         site_eap_certs.nss_cert_db_path))
+        # Cleanup.
+        self.client.run('rm -f %s %s' % (pem_path, der_path))
+
+
+    def initialize_nss(self, params):
+        """ Initialize the NSS database on the client. """
+        self.client.run('rm -rf %s' % site_eap_certs.nss_cert_db_path)
+        self.client.run('mkdir -p %s' % site_eap_certs.nss_cert_db_path)
+        self.client.run('echo "\n\n" | nsscertutil -N -d sql:%s' %
+                        site_eap_certs.nss_cert_db_path)
 
 
     def connect(self, params):
@@ -1959,7 +1998,7 @@ class WiFiTest(object):
         """
         result = self.client.run('modprobe tun') # When server using tunnel.
 
-    def vpn_client_config(self, params):
+    def vpn_client_connect(self, params):
         """ Configure & launch the VPN client.
 
             Parameters:
@@ -2040,74 +2079,13 @@ class WiFiTest(object):
                                       vpn_host_ip,
                                       password, chapuser, chapsecret))
         elif self.vpn_kind == 'l2tpipsec-cert':
-            label = 'vpn'
-            nss_dir = '/home/chronos/user/.pki/nssdb'
-            ca_nickname = 'test_nickname'
-            pkcs11_lib = 'libchaps.so'
-            slot_id = '07'
-            user_pin = '111111'
-
-            # 'ca_certificate', 'client-certificate' and 'client-key'.
-            cert_pathnames = params.get('files', {})
-            der_pathnames = dict(
-                [[k, v + '.der'] for k, v in cert_pathnames.items()])
-
-            # Set up dummy certificate database.
-            self.client.run('cryptohome --action=unmount')
-            self.client.run('rm -rf %s' % nss_dir)
-            self.client.run('mkdir -p %s' % nss_dir)
-            # Create an empty database with no password.
-            self.client.run('echo "\n\n" | nsscertutil '
-                            '-N '
-                            '-d sql:%s' % nss_dir)
-            self.client.run('nsscertutil '
-                            '-A '
-                            ' -t P,, '
-                            ' -n %s '
-                            ' -i %s '
-                            ' -d sql:%s' %
-                            (ca_nickname,
-                             cert_pathnames['ca-certificate'],
-                             nss_dir))
-
-            # Set up pkcs11.
-            self.client.run('rm -rf /home/chronos/user/.tpm')
-            self.client.run('cryptohome --action=force_pkcs11_init')
-            # TODO(gauravsh): pkcs11_init shouldn't be needed after
-            # force_pkcs11_init.
-            self.client.run('cryptohome --action=pkcs11_init')
-            self.client.run('openssl '
-                            'x509 '
-                            '-in %s '
-                            '-out %s '
-                            '-outform DER' %
-                            (cert_pathnames['client-certificate'],
-                             der_pathnames['client-certificate']))
-            self.client.run('openssl '
-                            'rsa '
-                            '-in %s '
-                            '-out %s '
-                            '-outform DER' %
-                            (cert_pathnames['client-key'],
-                             der_pathnames['client-key']))
-            self.__store_pkcs11_resource(pkcs11_lib,
-                                         user_pin,
-                                         slot_id,
-                                         label,
-                                         der_pathnames['client-certificate'],
-                                         'cert')
-            self.__store_pkcs11_resource(pkcs11_lib,
-                                         user_pin,
-                                         slot_id,
-                                         label,
-                                         der_pathnames['client-key'],
-                                         'privkey')
-
             # vpn_host_ip is self.server.ip because that is the
             # adapter that ipsec listens on.
             vpn_host_ip = params.get('vpn-host-ip', self.server.ip)
             chapuser    = params.get('chapuser'  , None)
             chapsecret  = params.get('chapsecret', None)
+            ca_cert_id  = params.get('cacertid', None)
+
             result = self.client.run('%s/test/connect-vpn '
                                      '--verbose '
                                      'l2tpipsec-cert vpn-name %s vpn-domain '
@@ -2119,12 +2097,11 @@ class WiFiTest(object):
                                      '%s' %  # chapsecret
                                      (self.client_cmd_flimflam_lib,
                                       vpn_host_ip,
-                                      ca_nickname,
-                                      slot_id,
-                                      user_pin,
+                                      ca_cert_id,
+                                      site_eap_certs.cert_1_tpm_key_id,
+                                      site_eap_certs.auth_pin,
                                       chapuser,
                                       chapsecret))
-            self.client.run('pkill pkcsslotd')
         else:
             raise error.TestFail('(internal error): No launch case '
                                  'for VPN kind (%s)' % self.vpn_kind)

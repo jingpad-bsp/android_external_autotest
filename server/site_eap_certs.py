@@ -26,6 +26,10 @@ ca_cert_2_tpm_key_id = "8714"
 cert_2_tpm_key_id = "8715"
 key_2_tpm_key_id = "8716"
 
+cert_1_nss_cert_id = "nss-ca-cert"
+nss_cert_db_path = "/home/chronos/user/.pki/nssdb"
+nss_cert_db_user = "chronos"
+
 auth_pin = "1234"
 
 ca_cert_1 = """-----BEGIN CERTIFICATE-----
