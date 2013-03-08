@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import base64
 import os
 import re
 
@@ -109,6 +110,47 @@ def must_be_installed(host, cmd):
         return alternate_path
 
     raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
+
+
+def get_default_ssid(test_name, ipaddr, host):
+    """
+    Calculate ssid based on test name.
+
+    This lets us track progress by watching beacon frames.  Generate a unique
+    suffix for this SSID based either a unique MAC address on the AP, or
+    failing this, the IP address of the AP.
+
+    @param test_name String name of this test (e.g. network_WiFiMatFunc).
+    @param ipaddr String IP address of the AP in this test.
+    @param host Host object representing the router.
+    @return String 32 character SSID.
+
+    """
+    if test_name.find('network_') == 0:
+        # Many of our tests start with this very uninteresting prefix.
+        # Remove it so we can have more unique substring bytes.
+        test_name = test_name[len('network_'):]
+    address_lines = []
+    if host:
+        address_lines = host.run('/usr/sbin/ip addr show',
+                                 ignore_status=True).stdout.splitlines()
+
+    mac_re = re.compile('link/ether (?P<mac>(([0-9a-f]{2}):?){6}) ',
+                        flags=re.IGNORECASE)
+    for line in address_lines:
+        mac_match = mac_re.search(line)
+        if mac_match:
+            mac_string = mac_match.group('mac')
+            if mac_string not in ['00:00:00:00:00:00', 'ff:ff:ff:ff:ff:ff']:
+                mac_bytes = ''
+                for octet in mac_string.split(':'):
+                    mac_bytes += chr(int(octet, 16))
+                unique_name = base64.b64encode(mac_bytes)
+                break
+    else:
+        unique_name = ipaddr
+    return re.sub('[^a-zA-Z0-9_]', '_', "%s_%s" %
+            (test_name, unique_name))[0:32]
 
 
 def ping_args(params):

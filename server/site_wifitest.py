@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import base64
 import common
 import datetime
 import fnmatch
@@ -145,14 +144,13 @@ class WiFiTest(object):
         server = config['server']
         # NB: server may not be reachable on the control network
 
+        self.router = None
         if not router['addr'].startswith('cisco'):
             self.router = hosts.SSHHost(router['addr'],
                                         port=int(router.get('port',22)))
-            # NB: truncate SSID to 32 characters
-            self.defssid = self.__get_defssid(router['addr'], self.router)[0:32]
-        else:
-            # NB: router address isn't unique enough
-            self.defssid = self.__get_defssid(server['addr'], None)[0:32]
+        self.defssid = wifi_test_utils.get_default_ssid(self.name,
+                                                        router['addr'],
+                                                        self.router)
 
         defaults = config.get('defaults', {})
         self.deftimeout = defaults.get('timeout', 30)
@@ -364,38 +362,6 @@ class WiFiTest(object):
         if macmatch is not None:
             return macmatch.group(1)
         return None
-
-
-    def __get_defssid(self, ipaddr, host):
-        #
-        # Calculate ssid based on test name; this lets us track progress
-        # by watching beacon frames.  Generate a unique suffix for this
-        # SSID based either a unique MAC address on the AP, or failing
-        # this, the IP address of the AP.
-        #
-        address_lines = []
-        if host:
-            # This executes before __server_discover_commands() so we
-            # can't discover the "ip" command.  Instead, we're lenient
-            # about it being missing.
-            address_lines = host.run('/usr/sbin/ip addr show',
-                                     ignore_status=True).stdout.splitlines()
-
-        mac_re = re.compile('link/ether (?P<mac>(([0-9a-f]{2}):?){6}) ',
-                            flags=re.IGNORECASE)
-        for line in address_lines:
-            mac_match = mac_re.search(line)
-            if mac_match:
-                mac_string = mac_match.group('mac')
-                if mac_string not in ['00:00:00:00:00:00', 'ff:ff:ff:ff:ff:ff']:
-                    mac_bytes = ''
-                    for octet in mac_string.split(':'):
-                        mac_bytes += chr(int(octet, 16))
-                    unique_name = base64.b64encode(mac_bytes)
-                    break
-        else:
-            unique_name = ipaddr
-        return re.sub('[^a-zA-Z0-9_]', '_', "%s_%s" % (self.name, unique_name))
 
 
     def __get_client_capabilities(self):
