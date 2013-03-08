@@ -8,6 +8,46 @@ import re
 from autotest_lib.client.common_lib import error
 
 
+def get_server_addr_in_lab(hostname):
+    """
+    If we are in the lab use the names for the server, AKA rspro, and the
+    router as defined in: go/chromeos-lab-hostname-convention
+
+    @param hostname String machine name in wifi cell
+            (e.g. chromeos1-shelf1-host1.cros)
+    @return String server name in cell
+            (e.g. chromeos1-shelf1-host1-rspro.cros)
+
+    """
+    domain = ''
+    machine = hostname
+    if hostname.find('.'):
+        domain_start = hostname.find('.')
+        domain = hostname[domain_start:]
+        machine = hostname[0:domain_start]
+    return '%s-rspro%s' % (machine, domain)
+
+
+def get_router_addr_in_lab(hostname):
+    """
+    If we are in the lab use the names for the server, AKA rspro, and the
+    router as defined in: go/chromeos-lab-hostname-convention
+
+    @param hostname String machine name in wifi cell
+            (e.g. chromeos1-shelf1-host1.cros)
+    @return String router name in cell
+            (e.g. chromeos1-shelf1-host1-router.cros)
+
+    """
+    domain = ''
+    machine = hostname
+    if hostname.find('.'):
+        domain_start = hostname.find('.')
+        domain = hostname[domain_start:]
+        machine = hostname[0:domain_start]
+    return '%s-router%s' % (machine, domain)
+
+
 def is_installed(host, filename):
     """
     Checks if a file exists on a remote machine.

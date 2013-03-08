@@ -106,48 +106,6 @@ class WiFiTest(object):
     _capability_multi_ap_same_band = "multi_ap_same_band"
 
 
-    @staticmethod
-    def get_server_addr_in_lab(hostname):
-        """
-        If we are in the lab use the names for the server, AKA rspro, and the
-        router as defined in: go/chromeos-lab-hostname-convention
-
-        @param hostname String machine name in wifi cell
-                (e.g. chromeos1-shelf1-host1.cros)
-        @return String server name in cell
-                (e.g. chromeos1-shelf1-host1-rspro.cros)
-
-        """
-        domain = ''
-        machine = hostname
-        if hostname.find('.'):
-            domain_start = hostname.find('.')
-            domain = hostname[domain_start:]
-            machine = hostname[0:domain_start]
-        return '%s-rspro%s' % (machine, domain)
-
-
-    @staticmethod
-    def get_router_addr_in_lab(hostname):
-        """
-        If we are in the lab use the names for the server, AKA rspro, and the
-        router as defined in: go/chromeos-lab-hostname-convention
-
-        @param hostname String machine name in wifi cell
-                (e.g. chromeos1-shelf1-host1.cros)
-        @return String router name in cell
-                (e.g. chromeos1-shelf1-host1-router.cros)
-
-        """
-        domain = ''
-        machine = hostname
-        if hostname.find('.'):
-            domain_start = hostname.find('.')
-            domain = hostname[domain_start:]
-            machine = hostname[0:domain_start]
-        return '%s-router%s' % (machine, domain)
-
-
     def __init__(self, name, steps, client_requirements, config):
         self.name = name
         self.steps = steps
@@ -2360,8 +2318,8 @@ def run_test_dir(test_name, job, args, machine):
         # If we are in the lab use the names for the server, AKA rspro,
         # and the router as defined in:
         # go/chromeos-lab-hostname-convention
-        server_addr = WiFiTest.get_server_addr_in_lab(machine)
-        router_addr = WiFiTest.get_router_addr_in_lab(machine)
+        server_addr = wifi_test_utils.get_server_addr_in_lab(machine)
+        router_addr = wifi_test_utils.get_router_addr_in_lab(machine)
     else:
         server_addr = opts.get('server_addr', None)
         router_addr = opts.get('router_addr', None)
