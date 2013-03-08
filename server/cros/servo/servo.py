@@ -11,7 +11,7 @@ import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
-from autotest_lib.server.cros import programmer
+from autotest_lib.server.cros.servo import programmer
 
 class Servo(object):
     """Manages control of a Servo board.

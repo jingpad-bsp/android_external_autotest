@@ -11,13 +11,13 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.server import hosts
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros import chrome_ec
 from autotest_lib.server.cros.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
 from autotest_lib.server.cros.faft_delay_constants import FAFTDelayConstants
+from autotest_lib.server.cros.servo import chrome_ec
 from autotest_lib.server.cros.servo_test import ServoTest
-from autotest_lib.server import hosts
 
 class FAFTSequence(ServoTest):
     """

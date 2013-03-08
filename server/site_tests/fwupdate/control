@@ -5,7 +5,7 @@
 import os
 
 from autotest_lib.server import utils
-from autotest_lib.server.cros import servo
+from autotest_lib.server.cros.servo import servo
 
 AUTHOR = 'Chrome OS Team'
 NAME = 'fwupdate'

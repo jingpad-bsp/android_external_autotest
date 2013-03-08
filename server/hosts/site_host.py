@@ -21,9 +21,9 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import site_host_attributes
-from autotest_lib.server.cros import servo
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import remote
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 

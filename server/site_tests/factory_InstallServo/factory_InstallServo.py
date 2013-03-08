@@ -21,8 +21,8 @@ import glob, logging, os, re, time
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
-from autotest_lib.server.cros import servo
 from autotest_lib.server.cros.factory_install_test import FactoryInstallTest
+from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import ssh_host
 
 
