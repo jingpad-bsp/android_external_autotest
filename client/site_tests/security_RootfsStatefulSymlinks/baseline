@@ -34,6 +34,13 @@
     "group": "root",
     "mode": "0644"
   },
+  "/etc/machine-id": {
+    "can_dangle": false,
+    "destination": "/var/lib/dbus/machine-id",
+    "owner": "root",
+    "group": "root",
+    "mode": "0644"
+  },
   "/etc/opt/chrome/policies": {
     "can_dangle": true,
     "destination": "/home/chronos/user/var/browser-policies",
