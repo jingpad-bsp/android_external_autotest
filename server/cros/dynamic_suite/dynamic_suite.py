@@ -484,11 +484,12 @@ def reimage_and_run(**dargs):
     imager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
                             tko, results_dir=suite_spec.job.resultdir)
 
-    my_job_id = int(tko_utils.get_afe_job_id(dargs['job'].tag))
-    tko_index = dargs['job'].job_model.index
-
-    logging.debug('Determined own job id: %d', my_job_id)
-    logging.debug('Determined own tko index: %d', tko_index)
+    try:
+      my_job_id = int(tko_utils.get_afe_job_id(dargs['job'].tag))
+      logging.debug('Determined own job id: %d', my_job_id)
+    except ValueError:
+      my_job_id = None
+      logging.warning('Could not determine own job id.')
 
     _perform_reimage_and_run(suite_spec, afe, tko, imager,
                              suite_job_id=my_job_id)
