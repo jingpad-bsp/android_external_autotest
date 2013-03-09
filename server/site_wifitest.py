@@ -227,7 +227,7 @@ class WiFiTest(object):
             self.server_wifi_ip = self.wifi.local_server_address(0)
         else:
             # if not specified assume the same as the control address
-            self.server_wifi_ip = server.get('wifi_addr', server_host.ip)
+            self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
 
 
         # potential bg thread for ping untilstop
