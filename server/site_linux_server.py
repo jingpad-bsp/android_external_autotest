@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import re
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import remote_command
@@ -16,6 +19,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
     COMMAND_PING = '/usr/bin/ping'
     COMMAND_NETPERF = '/usr/bin/netperf'
     COMMAND_NETSERVER = '/usr/bin/netserver'
+    COMMAND_IP = '/usr/sbin/ip'
     COMMAND_IPERF = '/usr/bin/iperf'
 
 
@@ -34,6 +38,8 @@ class LinuxServer(site_linux_system.LinuxSystem):
                 self._server, LinuxServer.COMMAND_NETPERF)
         self._cmd_netserver = wifi_test_utils.must_be_installed(
                 self._server, LinuxServer.COMMAND_NETSERVER)
+        self._cmd_ip = wifi_test_utils.must_be_installed(
+                self._server, LinuxServer.COMMAND_IP)
         self._cmd_iperf = wifi_test_utils.must_be_installed(
                 self._server, LinuxServer.COMMAND_IPERF)
         # /usr/bin/ping is preferred, as it is likely to be iputils.
@@ -74,6 +80,45 @@ class LinuxServer(site_linux_system.LinuxSystem):
     def server(self):
         """ @return Host object for this remote server. """
         return self._server
+
+
+    @property
+    def wifi_ip(self):
+        """
+        Returns an IP address pingable from the client DUT.
+
+        Throws an error if no interface is configured with a potentially
+        pingable IP.
+
+        @return String IP address on the WiFi subnet.
+        """
+        addrs = self._get_system_ipv4_addrs(self.server)
+        # Discard loopback IPs and the control network IP.
+        valid_addrs = filter(lambda addr: not addr.startswith('127.0.0') and
+                                          not addr.startswith(self.server.ip),
+                             addrs)
+        if not valid_addrs:
+            raise error.TestFailed('No configured interfaces.')
+        if len(valid_addrs) > 1:
+            logging.warning('Multiple interfaces configured on server; '
+                            'taking first.')
+        return valid_addrs[0]
+
+
+    def _get_system_ipv4_addrs(self, host):
+        """
+        Returns a list of IPs configured on host.
+
+        @param host Host object representing a remote machine.
+        @return list of IPv4 addresses as strings.
+
+        """
+        ip_output = host.run('%s -4 addr show' % self._cmd_ip).stdout
+        lines = [line.strip() for line in ip_output.split('\n')]
+        addr_lines = filter(lambda line: line.startswith('inet '), lines)
+        # Group 1 will be the IP address following 'inet addr:'.
+        regex = re.compile('^inet ([0-9]{1,3}(\\.[0-9]{1,3}){3}).+')
+        return [re.search(regex, line).group(1) for line in addr_lines]
 
 
     def vpn_server_config(self, params):

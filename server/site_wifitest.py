@@ -220,13 +220,6 @@ class WiFiTest(object):
         self.hosting_server = site_linux_server.LinuxServer(
                 hosts.SSHHost(server['addr'], port=int(server.get('port', 22))),
                 server)
-        if self.wifi.force_local_server:
-            # Server WiFi IP is created using a local server address.
-            self.server_wifi_ip = self.wifi.local_server_address(0)
-        else:
-            # if not specified assume the same as the control address
-            self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
-
 
         # potential bg thread for ping untilstop
         self.ping_thread = None
@@ -292,6 +285,15 @@ class WiFiTest(object):
     @property
     def server(self):
         return self.hosting_server.server
+
+
+    @property
+    def server_wifi_ip(self):
+        """ Returns an IP address for the client to ping. """
+        if self.wifi.force_local_server:
+            # Server WiFi IP is created using a local server address.
+            return self.wifi.local_server_address(0)
+        return self.hosting_server.wifi_ip
 
 
     def init_profile(self):
@@ -2265,7 +2267,6 @@ def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
         server_addr = client_attributes.server_addr
     if server_addr is not None:
         server['addr'] = server_addr
-    # TODO(sleffler) check for wifi_addr when no control address
 
     # tag jobs w/ the router's address on the control network
     config['tagname'] = router['addr']

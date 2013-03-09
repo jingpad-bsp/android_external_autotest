@@ -12,7 +12,6 @@
   # machine on router net for ping/netperf
   "server"      : {
 #   "addr"      : "172.22.71.221",       # NB: not reachable
-    "wifi_addr" : "192.168.2.254"
   },
   # configurable wifi/router that can reached by ssh
   "router"      : {
