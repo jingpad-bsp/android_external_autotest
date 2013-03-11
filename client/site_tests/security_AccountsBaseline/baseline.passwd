@@ -42,6 +42,8 @@ watchdog:*:229:229::/dev/null:/bin/false
 devbroker:*:230:230::/dev/null:/bin/false
 xorg:*:231:231::/dev/null:/bin/false
 nfqueue:*:232:232::/dev/null:/bin/false
+tlsdate-dbus:*:233:233::/dev/null:/bin/false
+tlsdate:*:234:234::/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
 fuse-exfat:*:302:302::/dev/null:/bin/false
