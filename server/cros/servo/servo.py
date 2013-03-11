@@ -11,9 +11,12 @@ import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
+from autotest_lib.server.cros.servo import power_state_controller
 from autotest_lib.server.cros.servo import programmer
 
+
 class Servo(object):
+
     """Manages control of a Servo board.
 
     Servo is a board developed by hardware group to aide in the debug and
@@ -22,6 +25,7 @@ class Servo(object):
     class manages setting up and communicating with a servo demon (servod)
     process. It provides both high-level functions for common servo tasks and
     low-level functions for directly setting and reading gpios.
+
     """
 
     # Power button press delays in seconds.
@@ -47,16 +51,23 @@ class Servo(object):
     # Delays to deal with DUT state transitions.
     SLEEP_DELAY = 6
     BOOT_DELAY = 10
-    RECOVERY_BOOT_DELAY = 10
+
+    # Time in seconds to allow the firmware to initialize itself and
+    # present the "INSERT" screen in recovery mode before actually
+    # inserting a USB stick to boot from.
+    _RECOVERY_INSERT_DELAY = 10.0
+
+    # Minimum time in seconds to hold the "cold_reset" or
+    # "warm_reset" signals asserted.
+    _DUT_RESET_DELAY = 0.5
 
     # Time required for the EC to be working after cold reset.
     # Five seconds is at least twice as big as necessary for Alex,
     # and is presumably good enough for all future systems.
     _EC_RESET_DELAY = 5.0
 
-    # Servo-specific delays.
-    MAX_SERVO_STARTUP_DELAY = 10
-    SERVO_SEND_SIGNAL_DELAY = 0.5
+    # Default minimum time interval between 'press' and 'release'
+    # keyboard events.
     SERVO_KEY_PRESS_DELAY = 0.1
 
     # Time between an usb disk plugged-in and detected in the system.
@@ -111,6 +122,7 @@ class Servo(object):
         self._server = None
         self._connect_servod(servo_host, servo_port)
         self._is_localhost = (servo_host == 'localhost')
+        self._power_state = power_state_controller.PowerStateController(self)
 
         # a string, showing what interface (host or dut) the USB device is
         # connected to.
@@ -352,7 +364,7 @@ class Servo(object):
         # After the reset, give the EC the time it needs to
         # re-initialize.
         self.set('cold_reset', 'on')
-        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
+        time.sleep(self._DUT_RESET_DELAY)
         self.set('cold_reset', 'off')
         time.sleep(self._EC_RESET_DELAY)
 
@@ -363,7 +375,7 @@ class Servo(object):
         Has the side effect of restarting the device.
         """
         self.set('warm_reset', 'on')
-        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
+        time.sleep(self._DUT_RESET_DELAY)
         self.set('warm_reset', 'off')
 
 
@@ -480,10 +492,12 @@ class Servo(object):
                                        therefore the DUT will reboot
                                        automatically after installation.
         """
-        # Turn the device off. This should happen before USB key detection, to
-        # prevent a recovery destined DUT from sensing the USB key due to the
-        # autodetection procedure.
-        self.initialize_dut(cold_reset=True)
+        # We're about to start plugging/unplugging the USB key.  We
+        # don't know the state of the DUT, or what it might choose
+        # to do to the device after hotplug.  To avoid surprises,
+        # force the DUT to be off.
+        self._server.hwinit()
+        self._power_state.power_off()
 
         # Set up Servo's usb mux.
         self.set('prtctl4_pwren', 'on')
@@ -518,20 +532,10 @@ class Servo(object):
                                        automatically after installation.
         """
         self.image_to_servo_usb(image_path, make_image_noninteractive)
-
-        # Boot in recovery mode.
-        try:
-            self.enable_recovery_mode()
-            self.power_short_press()
-            time.sleep(Servo.RECOVERY_BOOT_DELAY)
-            self.switch_usbkey('dut')
-            self.disable_recovery_mode()
-        except:
-            # In case anything went wrong we want to make sure to do a clean
-            # reset.
-            self.disable_recovery_mode()
-            self.warm_reset()
-            raise
+        self._power_state.power_on(dev_mode=self._power_state.DEV_OFF,
+                                   rec_mode=self._power_state.REC_ON)
+        time.sleep(self._RECOVERY_INSERT_DELAY)
+        self.switch_usbkey('dut')
 
 
     def _connect_servod(self, servo_host, servo_port):
