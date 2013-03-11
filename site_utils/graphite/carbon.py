@@ -1,15 +1,17 @@
-#!/usr/bin/python
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 import time
-from socket import socket
+import socket
 
 import common
 
 from autotest_lib.client.common_lib import global_config
 
 
+# Pylint locally complains about "No value passed for parameter 'key'" here
+# pylint: disable=E1120
 CARBON_SERVER = global_config.global_config.get_config_value('CROS',
         'CARBON_SERVER')
 CARBON_PORT = global_config.global_config.get_config_value('CROS',
@@ -32,15 +34,15 @@ def send_data(lines, add_time=True, debug=False, process_queue=20):
         time. [defualt: 20]
     @returns True on success, False on failure.
     """
-    sock = socket()
+    sock = socket.socket()
     if add_time:
         now = int(time.time())
         for index in xrange(0, len(lines)):
             lines[index] += ' %d' % now
 
     try:
-      sock.connect( (CARBON_SERVER,CARBON_PORT) )
-    except:
+      sock.connect( (CARBON_SERVER, CARBON_PORT) )
+    except EnvironmentError:
         return False
 
     slices = [lines[i:i+process_queue] for i in range(0, len(lines),
