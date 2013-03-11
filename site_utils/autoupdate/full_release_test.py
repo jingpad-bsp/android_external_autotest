@@ -730,21 +730,26 @@ def parse_args():
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
                       default=_log_verbose,
                       help='verbosity level: %s' % ' '.join(_valid_log_levels))
+    parser.add_option('--all_boards', dest='all_boards', action='store_true',
+                      help='default test run to all known boards')
 
     # Parse arguments.
     opts, args = parser.parse_args()
 
     # Get positional arguments, adding them as option values.
-    if len(args) < 2:
+    if len(args) < 1:
         parser.error('missing arguments')
 
     opts.tested_release = args[0]
     opts.tested_board_list = args[1:]
 
-    # Sanity check board.
-    for board in opts.tested_board_list:
-        if board not in _board_info.get_board_names():
-            parser.error('unknown board (%s)' % board)
+    if opts.all_boards:
+        opts.tested_board_list = _board_info.get_board_names()
+    else:
+        # Sanity check board.
+        for board in opts.tested_board_list:
+            if board not in _board_info.get_board_names():
+                parser.error('unknown board (%s)' % board)
 
     # Sanity check log level.
     if opts.log_level not in _valid_log_levels:
