@@ -4,15 +4,21 @@
 
 import collections
 import logging
+import json
 
 # We need to import common to be able to import chromite and requests.
 import common
+
 from autotest_lib.client.common_lib import global_config
+
 try:
-  from chromite.lib import gdata_lib
-except ImportError as e:
-  gdata_lib = None
-  logging.info("Bug filing disabled. %s", e)
+    __import__('chromite')
+except ImportError, e:
+    have_chromite = False
+    logging.info("Bug filing disabled. %s", e)
+else:
+    from chromite.lib import cros_build_lib, gdata_lib, gs
+    have_chromite = True
 
 
 BUG_CONFIG_SECTION = 'BUG_REPORTING'
@@ -40,6 +46,21 @@ class TestFailure(object):
         BUG_CONFIG_SECTION, 'generic_results_bin', default='')
     _debug_dir = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'debug_dir', default='')
+
+    # gs prefix to perform file like operations (gs://)
+    _gs_file_prefix = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'gs_file_prefix', default='')
+
+    # global configurations needed for buildbot stages link
+    _buildbot_builders = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'buildbot_builders', default='')
+    _build_prefix = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'build_prefix', default='')
+
+    # Number of times to retry if a gs command fails. Defaults to 10,
+    # which is far too long given that we already wait on these files
+    # before starting HWTests.
+    _GS_RETRIES = 1
 
 
     _HTTP_ERROR_THRESHOLD = 400
@@ -78,13 +99,12 @@ class TestFailure(object):
         """
 
         links = self._get_links_for_failure()
-        summary = """
-                  This bug has been automatically filed to track
-                  the failure of %(test)s in the %(suite)s suite on %(build)s.
-                  It failed with a reason of:%(reason)s.
-                  build artifacts: %(build_artifacts)s
-                  results log: %(results_log)s.
-                  """
+        summary = ('This bug has been automatically filed to track the '
+                   'following failure:\nTest: %(test)s.\nSuite: %(suite)s.\n'
+                   'Build: %(build)s.\n\nReason:\n%(reason)s.\n\n'
+                   'build artifacts: %(build_artifacts)s.\n'
+                   'results log: %(results_log)s.\n'
+                   'buildbot stages: %(buildbot_stages)s.\n')
         specifics = {
             'test': self.test,
             'suite': self.suite,
@@ -92,6 +112,7 @@ class TestFailure(object):
             'reason': self.reason,
             'build_artifacts': links.artifacts,
             'results_log': links.results,
+            'buildbot_stages': links.buildbot,
         }
         return summary % specifics
 
@@ -127,14 +148,59 @@ class TestFailure(object):
         return 'NA'
 
 
+    def _get_metadata_dict(self):
+        """
+        Get a dictionary of metadata related to this failure.
+
+        Metadata.json is created in the HWTest Archiving stage, if this file
+        isn't found the call to Cat will timeout after the number of retries
+        specified in the GSContext object. If metadata.json exists we parse
+        a json string of it's contents into a dictionary, which we return.
+
+        @return: a dictionary with the contents of metadata.json.
+        """
+        if not have_chromite:
+            return
+        try:
+            gs_context = gs.GSContext(retries=self._GS_RETRIES)
+            gs_cmd = '%s%s%s/metadata.json' % (self._gs_file_prefix,
+                                               self._chromeos_image_archive,
+                                               self.build)
+            return json.loads(gs_context.Cat(gs_cmd).output)
+        except cros_build_lib.RunCommandError, e:
+            logging.debug(e)
+
+
+    def _link_buildbot_stages(self):
+        """
+        Link to the buildbot page associated with this run of HWTests.
+
+        @return: A link to the buildbot stages page, or 'NA' if we cannot glean
+                 enough information from metadata.json (or it doesn't exist).
+        """
+        metadata = self._get_metadata_dict()
+        if (metadata and
+            metadata.get('builder-name') and
+            metadata.get('build-number')):
+
+            return '%s%s/builds/%s' % (self._buildbot_builders,
+                                       metadata.get('builder-name'),
+                                       metadata.get('build-number'))
+        return 'NA'
+
+
     def _get_links_for_failure(self):
         """
         Get links related to this test failure.
 
         @return: Returns a named tuple of links.
         """
-        links = collections.namedtuple('links', 'results, artifacts')
-        return links(self._link_result_logs(), self._link_build_artifacts())
+        links = collections.namedtuple('links', ('results,'
+                                                 'artifacts,'
+                                                 'buildbot'))
+        return links(self._link_result_logs(),
+                     self._link_build_artifacts(),
+                     self._link_buildbot_stages())
 
 
 class Reporter(object):
@@ -165,7 +231,7 @@ class Reporter(object):
 
 
     def __init__(self):
-        if gdata_lib is None:
+        if not have_chromite:
             logging.warning("Bug filing disabled due to missing imports.")
             return
 
@@ -179,7 +245,7 @@ class Reporter(object):
 
         @return: True if we have a tracker object.
         """
-        return gdata_lib and self._tracker
+        return have_chromite and self._tracker
 
 
     def report(self, failure):
