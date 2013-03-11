@@ -23,7 +23,7 @@
       { "id": "blpcfgokakmgnkcojhhkbfbldkacnbeo",
         "name": "YouTube",
         "effective_host_permissions": [],
-        "api_permissions": ["appNotifications"]
+        "api_permissions": []
       },
       { "id": "ejjicmeblgpmajnghnpcppodonldlgfn",
         "name": "Google Calendar",
@@ -177,7 +177,10 @@
         "api_permissions": ["app.currentWindowInternal",
                             "app.runtime",
                             "app.window",
+                            "fileSystem",
+                            "fileSystem.write",
                             "storage",
+                            "unlimitedStorage",
                             "wallpaperPrivate"]
       },
       { "id": "iadeocfgjdjdmpenejdbfeaocpbikmab",
