@@ -592,5 +592,20 @@
         ]
       }
     ]
+  },
+  {
+    "test_name": "telemetry_ScrollingBenchmark",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "name",
+        "units": "units",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "key1"
+        ]
+      }
+    ]
   }
 ]

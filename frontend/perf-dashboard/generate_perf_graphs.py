@@ -30,6 +30,7 @@ import re
 import shutil
 import simplejson
 import sys
+import urllib
 
 _SETTINGS = 'autotest_lib.frontend.settings'
 os.environ['DJANGO_SETTINGS_MODULE'] = _SETTINGS
@@ -232,13 +233,52 @@ def chart_key_matches_actual_key(chart_key, actual_key):
     return False
 
 
-def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
-                                units, better_direction, url, perf_keys,
-                                chart_keys, options, summary_id_to_rev_num,
-                                output_data_dir):
+def upload_to_chrome_dashboard(data_point_info, platform, test_name,
+                               master_name):
+    """Uploads a set of perf values to Chrome's perf dashboard.
+
+    @param data_point_info: A dictionary containing information about perf
+        data points to plot: key names and values, revision number, chromeOS
+        version number.
+    @param platform: The string name of the associated platform.
+    @param test_name: The string name of the associated test.
+    @param master_name: The string name of the "buildbot master" to use
+        (a concept that exists in Chrome's perf dashboard).
+
+    This function is currently a no-op.  It will be completed as soon as we're
+    ready to start sending actual data to Chrome's perf dashboard.
+    """
+    traces = data_point_info['traces']
+    for perf_key in traces:
+        perf_val = traces[perf_key][0]
+        perf_err = traces[perf_key][1]
+
+        new_dash_entry = {
+            'master': master_name,
+            'bot': platform,
+            'test': '%s/%s' % (test_name, perf_key),
+            'revision': data_point_info['rev'] + 1,  # Don't allow 0.
+            'value': perf_val,
+            'error': perf_err,
+            'supplemental_columns': {
+                'a_cros_build': data_point_info['ver']
+            }
+        }
+        json_string = simplejson.dumps([new_dash_entry], indent=2)
+        params = urllib.urlencode({'data': json_string})
+        # TODO(dennisjeffrey): Upload "params" to Chrome's perf dashboard,
+        # once ready.
+
+
+def output_graph_data_for_entry(test_name, master_name, graph_name, job_name,
+                                platform, units, better_direction, url,
+                                perf_keys, chart_keys, options,
+                                summary_id_to_rev_num, output_data_dir):
     """Outputs data for a perf test result into appropriate graph data files.
 
     @param test_name: The string name of a test.
+    @param master_name: The name of the "buildbot master" to use when uploading
+        perf results to chrome's perf dashboard.
     @param graph_name: The string name of the graph associated with this result.
     @param job_name: The string name of the autotest job associated with this
         test result.
@@ -346,11 +386,14 @@ def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
                 summary_id_to_rev_num[summary_id] = rev + 1
                 entry['rev'] = rev
 
+                upload_to_chrome_dashboard(entry, platform, test_name,
+                                           master_name)
+
                 with open(summary_file, 'a') as f:
                     f.write(simplejson.dumps(entry) + '\n')
 
 
-def process_perf_data_files(file_names, test_name, completed_ids,
+def process_perf_data_files(file_names, test_name, master_name, completed_ids,
                             test_name_to_charts, options,
                             summary_id_to_rev_num, output_data_dir):
     """Processes data files for a single test/platform.
@@ -366,6 +409,8 @@ def process_perf_data_files(file_names, test_name, completed_ids,
     @param file_names: A list of perf data files to process.
     @param test_name: The string name of the test associated with the file name
         to process.
+    @param master_name: The name of the "buildbot master" to use when uploading
+        perf results to chrome's perf dashboard.
     @param completed_ids: A dictionary of already-processed job IDs.
     @param test_name_to_charts: A dictionary mapping test names to a list of
         dictionaries, in which each dictionary contains information about a
@@ -411,8 +456,8 @@ def process_perf_data_files(file_names, test_name, completed_ids,
 
                     if store_entry:
                         output_graph_data_for_entry(
-                            test_name, graph_name, job_name, platform,
-                            units, better_direction, url, perf_keys,
+                            test_name, master_name, graph_name, job_name,
+                            platform, units, better_direction, url, perf_keys,
                             chart_keys, options, summary_id_to_rev_num,
                             output_data_dir)
 
@@ -455,9 +500,14 @@ def initialize_graph_dir(options, input_dir, output_data_dir):
         with open(rev_num_file, 'r') as fp:
             summary_id_to_rev_num = simplejson.loads(fp.read())
 
+    # TODO (dennisjeffrey): If we have to add another "test_name_to_X"
+    # dictionary to the list below, we should simplify this code to create a
+    # single dictionary that maps test names to an object that contains all
+    # the X's as attributes.
     test_name_to_charts = {}
     test_names = set()
     test_name_to_old_names = {}
+    test_name_to_master_name = {}
     # The _CHART_CONFIG_FILE should (and is assumed to) have one entry per
     # test_name.  That entry should declare all graphs associated with the given
     # test_name.
@@ -466,6 +516,8 @@ def initialize_graph_dir(options, input_dir, output_data_dir):
         test_names.add(chart['test_name'])
         test_name_to_old_names[chart['test_name']] = (
             chart.get('old_test_names', []))
+        test_name_to_master_name[chart['test_name']] = (
+            chart.get('master', 'CrosMisc'))
 
     # Scan all database data and format/output only the new data specified in
     # the graph JSON file.
@@ -496,7 +548,8 @@ def initialize_graph_dir(options, input_dir, output_data_dir):
                     files_to_process.append(old_test_file_name)
 
             newly_added_count += process_perf_data_files(
-                files_to_process, test_name, completed_ids,
+                files_to_process, test_name,
+                test_name_to_master_name.get(test_name), completed_ids,
                 test_name_to_charts, options, summary_id_to_rev_num,
                 output_data_dir)
 
