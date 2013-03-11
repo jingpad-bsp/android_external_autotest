@@ -38,3 +38,5 @@
 /usr/lib/xorg/modules/input/syntp_drv.so
 /usr/sbin/iotools
 /usr/sbin/vpd
+# crosbug.com/39745
+/opt/google/chrome/libwidevinecdm.so
