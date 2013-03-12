@@ -70,6 +70,10 @@ _INIT_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
                          'value': '90,90'}]
 _UNMUTE_SPEAKER_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
                                    'value': 'off'}]
+_MUTE_LEFT_MIXER_SETTINGS = [{'name': '"Master Playback Switch"',
+                              'value': 'off,on'}]
+_MUTE_RIGHT_MIXER_SETTINGS = [{'name': '"Master Playback Switch"',
+                               'value': 'on,off'}]
 
 # Logs
 _LABEL_FAIL_LOGS = 'Test fail, find more detail in log.'
@@ -243,13 +247,13 @@ class factory_AudioQuality(test.test):
     def handle_xtalk_left(self, *args):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_LEFT)
-        self.playback_switch(False, True)
+        self._ah.set_mixer_controls(self._mute_left_mixer_settings)
         self.play_tone()
 
     def handle_xtalk_right(self, *args):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_RIGHT)
-        self.playback_switch(True, False)
+        self._ah.set_mixer_controls(self._mute_right_mixer_settings)
         self.play_tone()
 
     def listen_forever(self, sock):
@@ -276,20 +280,6 @@ class factory_AudioQuality(test.test):
 
         self.ui.CallJSFunction('setMessage',
                 'Ready for connection | 準备完成,等待链接')
-
-    def playback_switch(self, left=False, right=False):
-        '''
-        Sets playback switch values.
-
-        Args:
-            left: true to set left channel on.
-            right: true to set right channel on.
-        '''
-        left_switch = 'on' if left else 'off'
-        right_switch = 'on' if right else 'off'
-        mixer_settings = [{'name': "'Master Playback Switch'",
-                           'value': ('%s,%s' % (left_switch, right_switch))}]
-        self._ah.set_mixer_controls(mixer_settings)
 
     def unmute_speaker(self):
         self._ah.set_mixer_controls(self._unmute_speaker_mixer_settings)
@@ -341,6 +331,8 @@ class factory_AudioQuality(test.test):
             dmic_switch_mixer_settings=_DMIC_SWITCH_MIXER_SETTINGS,
             init_mixer_settings=_INIT_MIXER_SETTINGS,
             unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS,
+            mute_right_mixer_settings=_MUTE_RIGHT_MIXER_SETTINGS,
+            mute_left_mixer_settings=_MUTE_LEFT_MIXER_SETTINGS,
             use_sox_loop=False, use_multitone=False):
         factory.console.info('%s run_once' % self.__class__)
 
@@ -363,6 +355,8 @@ class factory_AudioQuality(test.test):
         # Mixer settings for different configurations.
         self._init_mixer_settings = init_mixer_settings
         self._unmute_speaker_mixer_settings = unmute_speaker_mixer_settings
+        self._mute_left_mixer_settings = mute_left_mixer_settings
+        self._mute_right_mixer_settings = mute_right_mixer_settings
         self._dmic_switch_mixer_settings = dmic_switch_mixer_settings
 
         self.ui = UI()
