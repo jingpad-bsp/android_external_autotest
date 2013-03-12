@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, os
+import logging
 
 import common
 
@@ -114,6 +114,9 @@ class TracingConnector(Connector):
     def set_filename(self, filename):
        """ Set the filename.
 
+       The following strings are appended to the filename based on the
+       connection status: _success.trc or _fail.trc
+
        @param filename: The file with which to store the capture.
        """
        self.trace_filename = filename
@@ -130,11 +133,20 @@ class TracingConnector(Connector):
 
         self.set_frequency(frequency)
         self.set_bandwidth(bandwidth)
+        success = True
         try:
             self.capturer.start_capture(self.trace_frequency,
                                         self.trace_bandwidth)
             super(TracingConnector, self).connect(ssid, security, psk)
         except ConnectException, e:
+            success = False
+            logging.info('Connection failed to connect')
+        finally:
             self.capturer.stop_capture()
-            self.capture.get_capture_file(self.filename)
-            raise e
+            if success:
+                filename = self.trace_filename + '_success.trc'
+            else:
+                filename = self.trace_filename + '_fail.trc'
+            self.capturer.get_capture_file(filename)
+            if not success:
+                raise e

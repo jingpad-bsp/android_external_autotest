@@ -24,17 +24,15 @@ class network_WiFiSimpleConnectionServer(test.test):
         self.client_at = autotest.Autotest(self.host)
         self.c = connector.TracingConnector(self.host, capturer)
         self.d = disconnector.Disconnector(self.host)
-
         self.error_list = []
 
 
-    def run_connect_disconnect_test(self, ap):
+    def run_connect_disconnect_test(self, ap, iteration):
         """ Connects to the AP and Navigates to URL.
 
         Args:
-            ssid: The ssid of the AP to connect.
-            security: The security type of the AP to connect.
-            passphrase: The passphrase of the AP to connect.
+            ap: the ap object
+            iteration: the current iteration
 
         Returns:
             None if there are no errors
@@ -46,19 +44,22 @@ class network_WiFiSimpleConnectionServer(test.test):
         frequency = ap['frequency']
         bss = ap['bss']
 
+        self.d.disconnect(ssid)
         self.c.set_frequency(frequency)
-        self.c.set_filename(os.path.join(self.outputdir,
-                            'connect_fail_%s.trc' % bss))
-
+        log_folder = os.path.join(self.outputdir, '%s' % bss)
+        if not os.path.exists(log_folder):
+            os.mkdir(log_folder)
+        self.c.set_filename(os.path.join(log_folder, 'connect_try_%d'
+                                         % (iteration+1)))
+        error = None
         try:
-            self.c.connect(ssid, frequency=frequency, bandwidth='HT40+')
+            self.c.connect(ssid, frequency=frequency)
         except (connector.ConnectException,
                 connector.ConnectFailed,
                 connector.ConnectTimeout) as e:
             error = 'Failed to connect'
         finally:
             self.d.disconnect(ssid)
-
         return error
 
 
@@ -130,7 +131,7 @@ class network_WiFiSimpleConnectionServer(test.test):
                 failure = False
                 for iteration in range(tries):
                     logging.info('Connection try %d' % (iteration + 1))
-                    resp = self.run_connect_disconnect_test(ap)
+                    resp = self.run_connect_disconnect_test(ap, iteration)
                     if resp:
                         failure = True
                         ap_info['failed_connections'].append({'error': resp,
@@ -145,7 +146,6 @@ class network_WiFiSimpleConnectionServer(test.test):
                                   'run: (outside-chroot) <path to chroot tmp '
                                   'directory>/ %s./ chromedriver'
                                   % download_chromium_prebuilt.DOWNLOAD_PATH)
-
         # Install all of the autotest libriaries on the client
         self.client_at.install()
         factory = ap_configurator_factory.APConfiguratorFactory()
