@@ -390,3 +390,22 @@ class AudioHelper(object):
             audio_file_path = '/usr/local/autotest/cros/audio/sine440.wav'
         duration_arg = ('-d %d' % duration_seconds) if duration_seconds else ''
         utils.system('aplay %s %s' % (duration_arg, audio_file_path))
+
+    def play_sine(self, channel, freq=1000, odev='default', duration=10,
+            sample_size=16):
+        '''Generates a sine wave and plays to odev.
+
+        Args:
+          channel: 0 for left, 1 for right; othersize, mono.
+          odev: alsa output device.
+          sample_size: output audio sample size. Default to 16.
+        '''
+        cmd = '%s -b %d -n -t alsa %s synth %d ' % (self.sox_path,
+                sample_size, odev, duration)
+        if channel == 0:
+            cmd += 'sine %d sine 0' % freq
+        elif channel == 1:
+            cmd += 'sine 0 sine %d' % freq
+        else:
+            cmd += 'sine %d' % freq
+        utils.system(cmd)

@@ -123,14 +123,6 @@ class factory_AudioQuality(test.test):
                     self._output_dev]
             self._loop_process = subprocess.Popen(cmdargs)
 
-    def play_tone(self):
-        '''
-        Plays a single tone.
-        '''
-        cmdargs = [self._ah.sox_path, '-n', '-d', 'synth', '10.0', 'sine',
-                '1000.0']
-        self._tone_job = utils.BgJob(' '.join(cmdargs))
-
     def restore_configuration(self):
         '''
         Stops all the running process and restore the mute settings.
@@ -248,13 +240,13 @@ class factory_AudioQuality(test.test):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_LEFT)
         self._ah.set_mixer_controls(self._mute_left_mixer_settings)
-        self.play_tone()
+        self._ah.play_sine(1, 1000, self._output_dev)
 
     def handle_xtalk_right(self, *args):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_RIGHT)
         self._ah.set_mixer_controls(self._mute_right_mixer_settings)
-        self.play_tone()
+        self._ah.play_sine(0, 1000, self._output_dev)
 
     def listen_forever(self, sock):
         fd = sock.fileno()
