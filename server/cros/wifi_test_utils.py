@@ -21,7 +21,7 @@ def get_server_addr_in_lab(hostname):
     """
     domain = ''
     machine = hostname
-    if hostname.find('.'):
+    if hostname.find('.') > 0:
         domain_start = hostname.find('.')
         domain = hostname[domain_start:]
         machine = hostname[0:domain_start]
@@ -41,7 +41,7 @@ def get_router_addr_in_lab(hostname):
     """
     domain = ''
     machine = hostname
-    if hostname.find('.'):
+    if hostname.find('.') > 0:
         domain_start = hostname.find('.')
         domain = hostname[domain_start:]
         machine = hostname[0:domain_start]
