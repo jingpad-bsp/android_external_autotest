@@ -1,0 +1,33 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = "kernel_ltp"
+AUTHOR = "The Chromium OS Authors,chromeos-kernel-test@google.com"
+TIME = "MEDIUM"
+TEST_CATEGORY = "FUNCTIONAL"
+TEST_CLASS = "KERNEL"
+TEST_TYPE = "CLIENT"
+DOC = """
+Convenience control file for running one kernel test.
+Pass the -a arg to run_remote_tests as follows:
+
+./run_remote_tests.sh --remote=10.42.0.10 --use_emerged \
+     -a "test_name_re=cros_sample*"
+     client/site_tests/kernel_LTP/control.one_kernel_test
+"""
+
+# A list of cmdfiles enabled to run.
+cmd_file_list = ['cros_kernel_tests']
+
+# A single expression used in a grep to filter tests from tests.
+kwargs = utils.args_to_dict(args)
+test_name_re = kwargs.get('test_name_re', None)
+if not test_name_re:
+  raise error.TestFail('You are required to supply '
+                       '-a "test_name_re=xxxx" when calling '
+                       'run_remote_tests.sh with control.one_kernel_test')
+
+ltp_args = '-f "%s" -s "%s"' % (','.join(cmd_file_list), test_name_re)
+
+job.run_test('kernel_LTP', args=ltp_args)
