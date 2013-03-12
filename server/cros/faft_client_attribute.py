@@ -71,7 +71,7 @@ class FAFTClientAttribute(object):
             self.broken_rec_mode = True
 
         # Set 'chrome_ec'
-        if platform in ['Link', 'Snow']:
+        if platform in ['Link', 'Snow', 'Spring']:
             self.chrome_ec = True
 
         # Set 'has_lid'
@@ -92,11 +92,11 @@ class FAFTClientAttribute(object):
             self.long_rec_combo = True
 
         # Set 'ec_capability'
-        if platform == 'Link':
+        if platform in ['Link']:
             self.ec_capability = ['adc_ectemp', 'battery', 'charging',
                                         'keyboard', 'lid', 'x86', 'thermal',
                                         'usb', 'peci']
-        elif platform == 'Snow':
+        elif platform in ['Snow', 'Spring']:
             self.ec_capability = ['battery', 'keyboard', 'arm']
 
         # Set 'gbb_version'
@@ -104,17 +104,17 @@ class FAFTClientAttribute(object):
             self.gbb_version = 1.0
 
         # Set 'wp_voltage'
-        if platform == 'Link':
+        if platform in ['Link']:
             self.wp_voltage = 'pp3300'
 
         # Set 'key_matrix_layout'
-        if platform == 'Parrot':
+        if platform in ['Parrot']:
             self.key_matrix_layout = 1
             self.key_checker[4] = [0x47, 'press']
             self.key_checker[5] = [0x47, 'release']
 
         # Set 'key_matrix_layout'
-        if platform == 'Stout':
+        if platform in ['Stout']:
             self.key_matrix_layout = 2
             self.key_checker[4] = [0x43, 'press']
             self.key_checker[5] = [0x43, 'release']
