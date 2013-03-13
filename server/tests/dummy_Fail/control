@@ -1,0 +1,18 @@
+NAME = 'Flaky server side test'
+AUTHOR = 'scottz'
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'General'
+TEST_TYPE = 'server'
+
+
+DOC = """
+Test that always fails. Will be attempted 6 times.
+"""
+
+from autotest_lib.client.common_lib import utils
+def run(machine):
+    host = hosts.create_host(machine)
+    job.run_test('dummy_Fail', disable_sysinfo=True)
+
+job.parallel_simple(run, machines)
