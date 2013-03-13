@@ -1,0 +1,23 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "enterprise_InstallAttributes"
+PURPOSE = "Enterprise install_attributes.pb file creation."
+CRITERIA = "Install attributes file is properly created when device is owned."
+SUITE = "regression"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "Enterprise"
+TEST_TYPE = "client"
+EXPERIMENTAL = "True"
+
+DOC = """
+This test verifies that taking device ownership creates the
+install_attributes.pb file with the correct external attributes and
+internal enterprise properties. Ownership it taken by having the
+first user sign in. Later, ownership will be taken by enrollment.
+"""
+
+job.run_test('enterprise_InstallAttributes')
