@@ -139,9 +139,12 @@ class Servo(object):
             self._sudo_required = utils.system_output('id -u') != '0'
             self._ssh_prefix = ''
         else:
-            common_options = '-o PasswordAuthentication=no'
+            common_options = ('-o BatchMode=yes '
+                              '-o StrictHostKeyChecking=no '
+                              '-o UserKnownHostsFile=/dev/null')
             self._sudo_required = False
-            self._ssh_prefix = 'ssh %s root@%s ' % (common_options, servo_host)
+            self._ssh_prefix = 'ssh -a -x %s root@%s ' % (
+                                common_options, servo_host)
             self._scp_cmd_template = 'scp -r %s ' % common_options
             self._scp_cmd_template += '%s ' + 'root@' + servo_host + ':%s'
 
