@@ -13,18 +13,6 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
        using webdriver."""
 
 
-    def __init__(self, router_dict):
-        super(LinksyseDualBandAPConfigurator, self).__init__(router_dict)
-        self.security_disabled = 'Disabled'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA Personal'
-        self.security_wpa2psk = 'WPA2 Personal'
-        self.security_wpa8021x = 'WPA Enterprise'
-        self.security_wpa28021x = 'WPA2 Enterprise'
-        self.security_wpapskmixed = 'WPA2/WPA Mixed Mode'
-        self.security_wpa8021xmixed = 'WPA2/WPA Enterprise Mixed Mode'
-
-
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
@@ -132,8 +120,8 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
                  (mode & self.mode_g == self.mode_g)) and \
                  (self.current_band != self.band_2ghz):
                 #  b/g, b, g mode only in 2.4Ghz
-                logging.info('Mode \'%s\' is not available for 5Ghz band.'
-                             % mode_name)
+                logging.info('Mode \'%s\' is not available for 5Ghz band.',
+                             mode_name)
                 return
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
@@ -196,7 +184,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
         xpath = '//select[@name="wl0_security_mode"]'
         if self.current_band == self.band_5ghz:
             xpath = '//select[@name="wl1_security_mode"]'
-        self.select_item_from_popup_by_xpath(self.security_disabled, xpath)
+        self.select_item_from_popup_by_xpath('Disabled', xpath)
 
 
     def set_security_wep(self, key_value, authentication):
@@ -213,7 +201,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
             text_field = '//input[@name="wl1_passphrase"]'
             xpath = '//input[@name="wepGenerate1" and @type="button"]'
         self.wait_for_object_by_xpath(popup)
-        self.select_item_from_popup_by_xpath(self.security_wep, popup,
+        self.select_item_from_popup_by_xpath('WEP', popup,
                                              wait_for_xpath=text_field,
                                              alert_handler=self._alert_handler)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
@@ -233,7 +221,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
             popup = '//select[@name="wl1_security_mode"]'
             key_field = '//input[@name="wl1_wpa_psk"]'
         self.wait_for_object_by_xpath(popup)
-        self.select_item_from_popup_by_xpath(self.security_wpapsk, popup,
+        self.select_item_from_popup_by_xpath('WPA Personal', popup,
                                              wait_for_xpath=key_field,
                                              alert_handler=self._alert_handler)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,

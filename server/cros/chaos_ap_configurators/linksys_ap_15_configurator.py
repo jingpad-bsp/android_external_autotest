@@ -14,7 +14,7 @@ class LinksysAP15Configurator(linksys_ap_configurator.LinksysAPConfigurator):
         # Create the mode to popup item mapping
         mode_mapping = {self.mode_b: 'B-Only', self.mode_g: 'G-Only',
                         self.mode_b | self.mode_g: 'Mixed',
-                        self.mode_disabled: 'Disabled'}
+                        'Disabled': 'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode selected %d is not supported by router'

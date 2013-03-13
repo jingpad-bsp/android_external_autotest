@@ -92,7 +92,7 @@ class APConfiguratorFactory(object):
         'Linksyse2500APConfigurator':
             linksyse2500_ap_configurator.Linksyse2500APConfigurator,
         'WesternDigitalN600APConfigurator':
-            westerndigitaln600_ap_configurator.WesternDigitalN600APConfigurator
+            westerndigitaln600_ap_configurator.WesternDigitalN600APConfigurator,
         'Linksyse1000APConfigurator':
             linksyse1000_ap_configurator.Linksyse1000APConfigurator,
         'LinksysWRT160APConfigurator':
@@ -105,14 +105,17 @@ class APConfiguratorFactory(object):
         self.ap_list = []
         for ap in chaos_config:
             configurator = self.configurator_map[ap.get_class()]
-            self.ap_list.append(configurator(ap))
+            self.ap_list.append(configurator(ap_config=ap))
+
 
     def get_ap_configurators(self):
         """Returns all available configurators."""
         return self.ap_list
 
+
     def get_ap_configurator_by_short_name(self, name):
-        """Returns a configurator by short name.
+        """
+        Returns a configurator by short name.
 
         @param name: short name of the configurator
         """
@@ -122,16 +125,47 @@ class APConfiguratorFactory(object):
         return None
 
 
-    def get_aps_with_security_mode(self, security_mode):
-        """Returns all configurators that support a given security mode.
+    def get_aps_with_security_mode(self, security_mode, ap_list=None):
+        """
+        Returns all configurators that support a given security mode.
 
         @param security_mode: desired security mode
+        @param ap_list: the aps to query for the desired security mode.
+
+        @returns a list of APs.
         """
+        if not ap_list:
+          ap_list = self.ap_list
         aps = []
-        for ap in self.ap_list:
+        for ap in ap_list:
             if ap.is_security_mode_supported(security_mode):
                 aps.append(ap)
         return aps
+
+
+    def get_supported_bands_and_channels(self, ap_list=None):
+        """
+        Returns all of the supported bands and channels.
+
+        Format of the return dictionary:
+        {self.band_2GHz : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+         self.band_5ghz : [26, 40, 44, 48, 149, 153, 165]}
+
+        @param ap_list: list of aps to build the supported bands and channels.
+
+        @returns a dictionary of bands and channels.
+        """
+        if not ap_list:
+            ap_list = self.ap_list
+        bands_and_channels = {}
+        for ap in ap_list:
+            bands = ap.get_supported_bands()
+            for band in bands:
+                if band['band'] not in bands_and_channels:
+                    bands_and_channels[band['band']] = set(band['channels'])
+                else:
+                    bands_and_channels[band['band']].union(band['channels'])
+        return bands_and_channels
 
 
     def turn_off_all_routers(self):

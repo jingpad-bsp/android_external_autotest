@@ -11,16 +11,14 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
     """Base class for Netgear WNDR dual band routers."""
 
 
-    def __init__(self, router_dict):
-        super(NetgearDualBandAPConfigurator, self).__init__(router_dict)
+    def __init__(self, ap_config=None):
+        super(NetgearDualBandAPConfigurator, self).__init__(
+              ap_config=ap_config)
         self.mode_54 = 'Up to 54 Mbps'
         self.mode_217 = 'Up to 217 Mbps'
         self.mode_450 = 'Up to 450 Mbps'
         self.mode_130 = 'Up to 130 Mbps'
         self.mode_300 = 'Up to 300 Mbps'
-        self.security_disabled = 'Disabled'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA-PSK [TKIP]'
 
 
     def _alert_handler(self, alert):

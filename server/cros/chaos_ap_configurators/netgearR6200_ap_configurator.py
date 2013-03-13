@@ -10,12 +10,11 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
     """Derived class to control Netgear R6200 router."""
 
 
-    def __init__(self, router_dict):
-        super(NetgearR6200APConfigurator, self).__init__(router_dict)
+    def __init__(self, ap_config=None):
+        super(NetgearR6200APConfigurator, self).__init__(ap_config=ap_config)
         self.mode_173 = 'Up to 173 Mbps'
         self.mode_400 = 'Up to 400 Mbps'
         self.mode_867 = 'Up to 867 Mbps'
-        self.security_wpa2psk = 'WPA2-PSK [AES]'
 
 
     def get_supported_modes(self):

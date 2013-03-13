@@ -25,7 +25,7 @@ except ImportError:
 class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     """Base class for objects to configure access points using webdriver."""
 
-    def __init__(self, ap):
+    def __init__(self, ap_config=None):
         super(APConfigurator, self).__init__()
         self.rpm_client = xmlrpclib.ServerProxy(
             'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
@@ -51,23 +51,15 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.security_type_wpapsk = 2
         self.security_type_wpa2psk = 3
 
-        # Possible security strings
-        self.security_disabled = 'Disabled'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA-Personal'
-        self.security_wpa2psk = 'WPA2-Personal'
-        self.security_wpa8021x = 'WPA-Enterprise'
-        self.security_wpa28021x = 'WPA2-Enterprise'
-
-        self.wep_authentication_open = 'Open'
-        self.wep_authentication_shared = 'Shared Key'
-
-        self.admin_interface_url = ap.get_admin()
-        self.class_name = ap.get_class()
-        self.short_name = ap.get_model()
-        self.mac_address = ap.get_wan_mac()
-        self.host_name = ap.get_wan_host()
-        self.config_data = ap
+        if ap_config:
+            # This allows the ability to build a generic configurator
+            # which can be used to get access to the members above.
+            self.admin_interface_url = ap_config.get_admin()
+            self.class_name = ap_config.get_class()
+            self.short_name = ap_config.get_model()
+            self.mac_address = ap_config.get_wan_mac()
+            self.host_name = ap_config.get_wan_host()
+            self.config_data = ap_config
 
         # Set a default band, this can be overriden by the subclasses
         self.current_band = self.band_2ghz
@@ -84,13 +76,13 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             pass
 
     def add_item_to_command_list(self, method, args, page, priority):
-        """Adds commands to be executed against the AP web UI.
+        """
+        Adds commands to be executed against the AP web UI.
 
-        Args:
-          method: the method to run
-          args: the arguments for the method you want executed
-          page: the page on the web ui where the method should be run against
-          priority: the priority of the method
+        @param method: the method to run
+        @param args: the arguments for the method you want executed
+        @param page: the page on the web ui where to run the method against
+        @param priority: the priority of the method
         """
         self._command_list.append({'method': method,
                                    'args': copy.copy(args),
@@ -114,7 +106,6 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
               implemented by the derived class.
 
         Note: The derived class must implement this method.
-
         """
         raise NotImplementedError
 
@@ -132,12 +123,12 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         Note: The derived class must implement this method.
 
-        Returns:
-          A list of dictionaries as described above
+        @return a list of dictionaries as described above
         """
         raise NotImplementedError
 
     def get_bss(self):
+        """Returns the bss of the AP."""
         if self.current_band == self.band_2ghz:
             return self.config_data.get_bss()
         else:
@@ -154,7 +145,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
 
     def get_supported_modes(self):
-        """Returns a list of dictionaries describing the supported modes.
+        """
+        Returns a list of dictionaries describing the supported modes.
 
         Example: returned is a dictionary of band and a list of modes. The band
                  and modes objects returned must be one of those defined in the
@@ -167,42 +159,63 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         Note: The derived class must implement this method.
 
-        Returns:
-          A list of dictionaries as described above
+        @return a list of dictionaries as described above
         """
         raise NotImplementedError
 
+
+    def is_band_and_channel_supported(self, band, channel):
+        """
+        Returns if a given band and channel are supported.
+
+        @param band: the band to check if supported
+        @param channel: the channel to check if supported
+
+        @return True if combination is supported; False otherwise.
+        """
+        bands = self.get_supported_bands()
+        for current_band in bands:
+            if (current_band['band'] == band and
+                channel in current_band['channels']):
+                return True
+        return False
+
+
     def is_security_mode_supported(self, security_mode):
-        """Returns if a given security_type is supported.
+        """
+        Returns if a given security_type is supported.
 
         Note: The derived class must implement this method.
 
-        Args:
-          security_mode: one of the following modes: self.security_disabled,
+        @param security_mode: one of the following modes:
+                         self.security_disabled,
                          self.security_wep, self.security_wpapsk,
                          self.security_wpa2psk, self.security_wpa8021x,
                          or self.security_wpa28021x
 
-        Returns:
-          True if the security mode provided is supported; False otherwise.
+        @return True if the security mode is supported; False otherwise.
         """
         raise NotImplementedError
 
+
     def navigate_to_page(self, page_number):
-        """Navigates to the page corresponding to the given page number.
+        """
+        Navigates to the page corresponding to the given page number.
 
         This method performs the translation between a page number and a url to
         load. This is used internally by apply_settings.
 
         Note: The derived class must implement this method.
 
-        Args:
-          page_number: Page number of the page to load
+        @param page_number: page number of the page to load
         """
         raise NotImplementedError
 
+
     def power_cycle_router_up(self):
+        """Queues the power cycle up command."""
         self.add_item_to_command_list(self._power_cycle_router_up, (), 1, 0)
+
 
     def _power_cycle_router_up(self):
         """Turns the ap off and then back on again."""
@@ -210,19 +223,26 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.router_on = False
         self._power_up_router()
 
+
     def power_down_router(self):
+        """Queues up the power down command."""
         self.add_item_to_command_list(self._power_down_router, (), 1, 999)
+
 
     def _power_down_router(self):
         """Turns off the power to the ap via the power strip."""
         self.rpm_client.queue_request(self.host_name, 'OFF')
         self.router_on = False
 
+
     def power_up_router(self):
+        """Queues up the power up command."""
         self.add_item_to_command_list(self._power_up_router, (), 1, 0)
 
+
     def _power_up_router(self):
-        """Turns on the power to the ap via the power strip.
+        """
+        Turns on the power to the ap via the power strip.
 
         This method returns once it can navigate to a web page of the ap UI.
         """
@@ -242,100 +262,110 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             # bringing a router back from power off, we need to be patient.
             except:
                 self.driver.refresh()
-                logging.info('Waiting for router %s to come back up.' %
+                logging.info('Waiting for router %s to come back up.',
                              self.get_router_name())
         raise RuntimeError('Unable to load admin page after powering on the '
                            'router: %s' % self.get_router_name)
 
+
     def save_page(self, page_number):
-        """Saves the given page.
+        """
+        Saves the given page.
 
         Note: The derived class must implement this method.
 
-        Args:
-          page_number: Page number of the page to save.
+        @param page_number: Page number of the page to save.
         """
         raise NotImplementedError
+
 
     def set_mode(self, mode, band=None):
-        """Sets the mode.
+        """
+        Sets the mode.
 
         Note: The derived class must implement this method.
 
-        Args:
-          mode: must be one of the modes listed in __init__()
-          band: the band to select
+        @param mode: must be one of the modes listed in __init__()
+        @param band: the band to select
         """
         raise NotImplementedError
+
 
     def set_radio(self, enabled=True):
-        """Turns the radio on and off.
+        """
+        Turns the radio on and off.
 
         Note: The derived class must implement this method.
 
-        Args:
-          enabled: True to turn on the radio; False otherwise
+        @param enabled: True to turn on the radio; False otherwise
         """
         raise NotImplementedError
+
 
     def set_ssid(self, ssid):
-        """Sets the SSID of the wireless network.
+        """
+        Sets the SSID of the wireless network.
 
         Note: The derived class must implement this method.
 
-        Args:
-          ssid: Name of the wireless network
+        @param ssid: name of the wireless network
         """
         raise NotImplementedError
+
 
     def set_channel(self, channel):
-        """Sets the channel of the wireless network.
+        """
+        Sets the channel of the wireless network.
 
         Note: The derived class must implement this method.
 
-        Args:
-          channel: Integer value of the channel
+        @param channel: integer value of the channel
         """
         raise NotImplementedError
 
+
     def set_band(self, band):
-        """Sets the band of the wireless network.
+        """
+        Sets the band of the wireless network.
 
         Currently there are only two possible values for band: 2kGHz and 5kGHz.
         Note: The derived class must implement this method.
 
-        Args:
-          band: Constant describing the band type
+        @param band: Constant describing the band type
         """
         raise NotImplementedError
+
 
     def set_security_disabled(self):
-        """Disables the security of the wireless network.
+        """
+        Disables the security of the wireless network.
 
         Note: The derived class must implement this method.
         """
         raise NotImplementedError
+
 
     def set_security_wep(self, key_value, authentication):
-        """Enabled WEP security for the wireless network.
+        """
+        Enabled WEP security for the wireless network.
 
         Note: The derived class must implement this method.
 
-        Args:
-          key_value: encryption key to use
-          authentication: one of two supported authentication types:
-                          wep_authentication_open or wep_authentication_shared
+        @param key_value: encryption key to use
+        @param authentication: one of two supported authentication types:
+                               wep_authentication_open or
+                               wep_authentication_shared
         """
         raise NotImplementedError
+
 
     def set_security_wpapsk(self, shared_key, update_interval=1800):
         """Enabled WPA using a private security key for the wireless network.
 
         Note: The derived class must implement this method.
 
-        Args:
-          shared_key: shared encryption key to use
-          update_interval: number of seconds to wait before updating
+        @param shared_key: shared encryption key to use
+        @param update_interval: number of seconds to wait before updating
         """
         raise NotImplementedError
 
@@ -344,12 +374,12 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         Note: The derived class must implement this method.
 
-        Args:
-          visible: True for visible; False otherwise
+        @param visible: True for visible; False otherwise
         """
         raise NotImplementedError
 
     def establish_driver_connection(self):
+        """Makes a connection to the webdriver service."""
         if self.driver_connection_established:
             return
         # Load the Auth extension
@@ -396,7 +426,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     direction = 'up'
                     if first_command == self._power_down_router:
                         direction = 'down'
-                    logging.info('Powering %s %s' %
+                    logging.info('Powering %s %s',
                                  (direction, self.short_name))
                     first_command(*sorted_page_commands[0]['args'])
                     sorted_page_commands.pop(0)

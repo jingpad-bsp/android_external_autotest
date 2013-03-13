@@ -13,15 +13,6 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
     """Derived class to control the Trendnet TEW-639GR."""
 
 
-    def __init__(self, router_dict):
-        super(TrendnetAPConfigurator, self).__init__(router_dict)
-        # Overrides
-        self.security_disabled = 'Disable'
-        self.security_wep = 'WEP-OPEN'
-        self.security_wpapsk = 'WPA-PSK'
-        self.security_wpa2psk = 'WPA2-PSK'
-
-
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
@@ -74,6 +65,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
 
     def wait_for_progress_bar(self):
+        """Watch the progress bar and wait for up to two minutes."""
         for i in xrange(240):
             if not self.object_by_id_exist('progressValue'):
                 return
@@ -120,7 +112,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
     def set_radio(self, enabled=True):
         logging.info('Enabling/Disabling the radio is not supported on this '
-                     'router (%s).' % self.get_router_name())
+                     'router (%s).', self.get_router_name())
         return None
 
 
@@ -158,8 +150,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         self.wait_for_object_by_id('security_mode')
-        self.select_item_from_popup_by_id(self.security_disabled,
-                                          'security_mode')
+        self.select_item_from_popup_by_id('Disable', 'security_mode')
 
 
     def set_security_wep(self, key_value, authentication):
@@ -171,7 +162,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         text_field = 'id("WEP1")'
         popup_id = 'security_mode'
         self.wait_for_object_by_id(popup_id)
-        self.select_item_from_popup_by_id(self.security_wep,
+        self.select_item_from_popup_by_id('WEP-OPEN',
                                           popup_id, wait_for_xpath=text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
@@ -184,8 +175,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
         self.wait_for_object_by_id('security_mode')
-        self.select_item_from_popup_by_id(self.security_wpapsk,
-                                          'security_mode',
+        self.select_item_from_popup_by_id('WPA-PSK', 'security_mode',
                                           wait_for_xpath='id("passphrase")')
         self.set_content_of_text_field_by_id(shared_key, 'passphrase')
         self.set_content_of_text_field_by_id(update_interval,

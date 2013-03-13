@@ -9,16 +9,7 @@ import urlparse
 import ap_configurator
 
 class BuffaloAPConfigurator(ap_configurator.APConfigurator):
-
-    def __init__(self, router_dict):
-        super(BuffaloAPConfigurator, self).__init__(router_dict)
-        self.security_disabled = 'Disabled'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA Personal'
-        self.security_wpa2psk = 'WPA2 Personal'
-        self.security_wpa8021x = 'WPA Enterprise'
-        self.security_wpa28021x = 'WPA2 Enterprise'
-
+    """Configurator for Buffalo AP."""
 
     def get_number_of_pages(self):
         return 2
@@ -92,7 +83,7 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
     def set_radio(self, enabled):
         #  We cannot turn off radio on Buffalo.
-        logging.info('This router (%s) does not support radio.' %
+        logging.info('This router (%s) does not support radio.',
                      self.get_router_name())
         return None
 
@@ -123,20 +114,30 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
 
 
-    def set_ch_width(self, channel_wid):
-        self.add_item_to_command_list(self._set_ch_width,(channel_wid,), 1,
+    def set_ch_width(self, channel_width):
+        """
+        Adjusts the channel channel width.
+
+        @param channel_width: the channel width
+        """
+        self.add_item_to_command_list(self._set_ch_width,(channel_width,), 1,
                                       900)
 
 
-    def _set_ch_width(self, channel_wid):
+    def _set_ch_width(self, channel_width):
         channel_width_choice=['Full (20 MHz)', 'Half (10 MHz)',
                               'Quarter (5 MHz)']
         xpath = '//select[@name="ath0_channelbw"]'
-        self.select_item_from_popup_by_xpath(channel_width_choice[channel_wid],
-                                             xpath)
+        self.select_item_from_popup_by_xpath(
+            channel_width_choice[channel_width], xpath)
 
 
     def set_wireless_mode(self, wireles_mo):
+        """
+        Sets the wireless mode.
+
+        @param wireles_mo: the wireless mode.
+        """
         self.add_item_to_command_list(self._set_wireless_mode,
                                       (wireles_mo,), 1, 900)
 
@@ -150,7 +151,7 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        logging.info('This router (%s) does not support multiple bands.' %
+        logging.info('This router (%s) does not support multiple bands.',
                      self.get_router_name())
         return None
 
@@ -161,7 +162,7 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         xpath = '//select[@name="ath0_security_mode"]'
-        self.select_item_from_popup_by_xpath(self.security_disabled, xpath)
+        self.select_item_from_popup_by_xpath('Disabled', xpath)
 
 
     def set_security_wep(self, key_value, authentication):
@@ -175,7 +176,7 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         popup = '//select[@name="ath0_security_mode"]'
         text_field = '//input[@name="ath0_passphrase"]'
         self.wait_for_object_by_xpath(popup)
-        self.select_item_from_popup_by_xpath(self.security_wep, popup,
+        self.select_item_from_popup_by_xpath('WEP', popup,
                                              wait_for_xpath=text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
@@ -191,7 +192,7 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         popup = '//select[@name="ath0_security_mode"]'
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="ath0_wpa_psk"]'
-        self.select_item_from_popup_by_xpath(self.security_wpapsk, popup,
+        self.select_item_from_popup_by_xpath('WPA Personal', popup,
                                              wait_for_xpath=key_field)
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         interval_field='//input[@name="ath0_wpa_gtk_rekey"]'

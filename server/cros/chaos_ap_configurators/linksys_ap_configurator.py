@@ -13,17 +13,6 @@ import ap_configurator
 class LinksysAPConfigurator(ap_configurator.APConfigurator):
     """Derived class to control Linksys WRT54G2 router."""
 
-    def __init__(self, router_dict):
-        super(LinksysAPConfigurator, self).__init__(router_dict)
-        # Overrides
-        self.security_disabled = 'Disabled'
-        self.security_wep = 'WEP'
-        self.security_wpapsk = 'WPA Personal'
-        self.security_wpa2psk = 'WPA2 Personal'
-        self.security_wpa8021x = 'WPA Enterprise'
-        self.security_wpa28021x = 'WPA2 Enterprise'
-        self.mode_disabled = 'Disabled'
-
 
     def get_number_of_pages(self):
         return 2
@@ -82,7 +71,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         # Create the mode to popup item mapping
         mode_mapping = {self.mode_b: 'B-Only', self.mode_g: 'G-Only',
                         self.mode_b | self.mode_g: 'Mixed',
-                        self.mode_disabled: 'Disabled'}
+                        'Disabled': 'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode selected %d is not supported by router'
@@ -102,7 +91,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         xpath = ('//select[@onchange="SelWL()" and @name="Mode"]')
         # To turn off we pick disabled, to turn on we set to G
         if not enabled:
-            self._set_mode(self.mode_disabled)
+            self._set_mode('Disabled')
         else:
             self._set_mode(self.mode_g)
 
@@ -143,7 +132,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         xpath = ('//select[@name="SecurityMode"]')
-        self.select_item_from_popup_by_xpath(self.security_disabled, xpath)
+        self.select_item_from_popup_by_xpath('Disabled', xpath)
 
 
     def set_security_wep(self, key_value, authentication):
@@ -157,7 +146,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         popup = '//select[@name="SecurityMode"]'
         self.wait_for_object_by_xpath(popup)
         text_field = ('//input[@name="wl_passphrase"]')
-        self.select_item_from_popup_by_xpath(self.security_wep, popup,
+        self.select_item_from_popup_by_xpath('WEP', popup,
                                              wait_for_xpath=text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
@@ -179,7 +168,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         popup = '//select[@name="SecurityMode"]'
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="PassPhrase"]'
-        self.select_item_from_popup_by_xpath(self.security_wpapsk, popup,
+        self.select_item_from_popup_by_xpath('WPA Personal', popup,
                                              wait_for_xpath=key_field)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
                                                 abort_check=True)

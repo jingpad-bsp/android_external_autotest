@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
 import common
 
 from autotest_lib.client.common_lib.cros.site_wlan import constants
@@ -138,9 +136,8 @@ class TracingConnector(Connector):
             self.capturer.start_capture(self.trace_frequency,
                                         self.trace_bandwidth)
             super(TracingConnector, self).connect(ssid, security, psk)
-        except ConnectException, e:
+        except (ConnectFailed, ConnectTimeout) as e:
             success = False
-            logging.info('Connection failed to connect')
         finally:
             self.capturer.stop_capture()
             if success:
