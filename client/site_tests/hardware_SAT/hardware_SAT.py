@@ -115,7 +115,7 @@ class hardware_SAT(test.test):
         args += ' -f sat.diskthread.a'  # disk thread
         args += ' -f sat.diskthread.b'
 
-        if utils.get_board() == 'LINK':
+        if utils.get_board() == 'link':
             args += memory_channel_args_sandybridge([
                     ['U1', 'U2', 'U3', 'U4'],
                     ['U6', 'U5', 'U7', 'U8']])  # yes, U6 is actually before U5

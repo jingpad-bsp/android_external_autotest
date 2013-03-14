@@ -9,9 +9,9 @@ from autotest_lib.client.cros import chrome_test
 class audiovideo_VDA(chrome_test.ChromeBinaryTest):
   version = 1
   # Keep a current list of machines that don't support video acceleration.
-  boards_without_VDA = ['ALEX', 'MARIO', 'ZGB']
+  boards_without_VDA = ['x86-alex', 'x86-mario', 'x86-zgb']
   # Keep a current list of machines that use Exynos.
-  boards_with_exynos_VDA = ['DAISY', 'SNOW']
+  boards_with_exynos_VDA = ['daisy', 'daisy_spring']
 
   def run_once(self):
     board = utils.get_board()

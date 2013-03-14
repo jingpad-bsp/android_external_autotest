@@ -1253,15 +1253,9 @@ def get_arch(run_function=run):
 
 def get_board():
     """
-    Get the board name from crossystem. Cached for the lifetime of this script.
+    Get the board name from /etc/lsb-release.
     """
-    if not hasattr(get_board, '_cached'):
-        hwid = system_output('crossystem hwid').split()
-        if hwid[0] in ['ACER', 'SAMS', 'IEC', 'X86']:
-            get_board._cached = hwid[1]
-        else:
-            get_board._cached = hwid[0]
-    return get_board._cached
+    return re.search('BOARD=(.*)', read_file('/etc/lsb-release')).group(1)
 
 
 def get_num_logical_cpus_per_socket(run_function=run):

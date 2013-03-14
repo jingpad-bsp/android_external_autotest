@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import error
 class hardware_SsdDetection(test.test):
     version = 1
     # Keep a list of boards that are expected to ship with hard drive.
-    boards_with_hdd = ['BUTTERFLY', 'KIEV', 'PARROT', 'STOUT']
+    boards_with_hdd = ['butterfly', 'kiev', 'parrot', 'stout']
 
     def setup(self):
         # create a empty srcdir to prevent the error that checks .version file

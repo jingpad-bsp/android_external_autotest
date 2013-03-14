@@ -382,7 +382,7 @@ class SysStat(object):
         on_ac = self.linepower[0].online
         # Butterfly can incorrectly report AC online for some time after
         # unplug. Check battery discharge state to confirm.
-        if utils.get_board() == 'BUTTERFLY':
+        if utils.get_board() == 'butterfly':
             on_ac &= (not self.battery_discharging())
         return on_ac
 

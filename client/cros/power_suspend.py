@@ -48,34 +48,34 @@ class Suspender(object):
     # TODO: migrate to separate file with http://crosbug.com/38148
     _SUSPEND_DELAY = {
         # TODO: Reevaluate this when http://crosbug.com/38460 is fixed
-        'SNOW': 5,
+        'daisy': 5,
 
         # TODO: Reevaluate this when http://crosbug.com/36766 is fixed
-        'ZGB': 4,
+        'x86-zgb': 4,
 
         # TODO: Reevaluate these when http://crosbug.com/38225 is fixed
-        'MARIO': 9,
-        'ALEX': 8,
+        'x86-mario': 9,
+        'x86-alex': 8,
 
         # TODO: Reevaluate this when http://crosbug.com/38239 is fixed
         # edit: bumping this even more to make it work for now...
         # TODO(jwerner): figure out how to deal with the UMH/firmware delays
         # once crosbug/p 16981 and 17115 are solved.
-        'STOUT': 10,
+        'stout': 10,
 
         # These two need high values, because it seems to mitigate their
         # RTC interrupt problem. See http://crosbug.com/36004
-        'LUMPY': 5,
-        'STUMPY': 5,
+        'lumpy': 5,
+        'stumpy': 5,
 
         # RTS5209 card reader takes ~1 second to suspend... really bad staging
         # driver, we'll get a better one with 3.8 rebase, not worth trying to
         # fix this in the meantime. Also on Stout.
-        'BUTTERFLY': 4,
+        'butterfly': 4,
 
         # Hard disk sync and overall just slow
-        'PARROT': 8,
-        'KIEV': 9,
+        'parrot': 8,
+        'kiev': 9,
     }
 
     # alarm/not_before value guaranteed to raise EarlyWakeup in _hwclock_ts
@@ -208,7 +208,7 @@ class Suspender(object):
                     utils.system_output('mosys eventlog list | tail -n %d' %
                     self._RELEVANT_EVENTLOG_LINES, ignore_status=True))
             raise sys_power.EarlyWakeupError('Woke up at %f' % seconds)
-        if utils.get_board() in ['LUMPY', 'STUMPY', 'KIEV']:
+        if utils.get_board() in ['lumpy', 'stumpy', 'kiev']:
             logging.debug('RTC read failure (crosbug/36004), dumping nvram:\n' +
                     utils.system_output('mosys nvram dump', ignore_status=True))
             return None
