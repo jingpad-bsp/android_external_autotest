@@ -43,7 +43,7 @@ class platform_GesturesRegressionTest(test.test):
             board = 'snow'
 
         touchtests = os.path.join(self.autodir, 'deps', TOUCHPAD_TEST)
-        cmd = '%s %s*/*' % (touchtests, board)
+        cmd = '%s --autotest %s*/*' % (touchtests, board)
         output = utils.system_output(cmd)
         if not output:
             raise error.TestError('Can not run the touchtests')
