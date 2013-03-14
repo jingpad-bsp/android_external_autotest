@@ -389,6 +389,11 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
         if test_args:
             raise error.TestFail("Unknown args: %s" % repr(test_args))
 
+        try:
+            restart_swap = True
+            utils.system_output('swapoff /dev/zram0')
+        except:
+            restart_swap = False
         utils.system_output('stop ui')
         if options.want_nop_tests:
             pass
@@ -400,4 +405,6 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
         if options.want_ecryptfs_tests:
             self._ecryptfs()
 
+        if restart_swap:
+            utils.system_output('swapon /dev/zram0')
         utils.system_output('start ui')
