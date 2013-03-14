@@ -10,7 +10,7 @@ CRITERIA = "All tests with SUITE=smoke must pass."
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "suite"
-TEST_TYPE = "Client"
+TEST_TYPE = "Server"
 
 DOC = """
 Smoke tests suite is a subset of BVT able to run in VMs. All of these tests
