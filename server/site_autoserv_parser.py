@@ -20,7 +20,10 @@ class site_autoserv_parser(base_autoserv_parser):
         self.parser.add_option("--image", action="store", type="string",
                                default="",
                                dest="image",
-                               help="Full path of an osimage to install.")
+                               help="Full path of an OS image to install, e.g. "
+                            "http://devserver/update/alex-release/R27-3837.0.0 "
+                            "or a build name: x86-alex-release/R27-3837.0.0 to "
+                            "utilize lab devservers automatically.")
 
 
     def parse_args(self):

@@ -52,6 +52,20 @@ def url_to_version(update_url):
         '/au/.*', '', urlparse.urlparse(update_url).path).split('/')[-1]
 
 
+def url_to_image_name(update_url):
+    """Return the image name based on update_url.
+
+    From a URL like:
+        http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
+    return lumpy-release/R27-3837.0.0
+
+    @param update_url: url to the image to update to.
+    @returns a string representing the image name in the update_url.
+
+    """
+    return '/'.join(urlparse.urlparse(update_url).path.split('/')[-2:])
+
+
 class ChromiumOSUpdater():
     """Helper class used to update DUT with image of desired version."""
     KERNEL_A = {'name': 'KERN-A', 'kernel': 2, 'root': 3}

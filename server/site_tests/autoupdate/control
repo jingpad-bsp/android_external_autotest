@@ -17,30 +17,15 @@ Assumes that a label including the image name has already been created.
 
 @param image_url: the full URL in which to find the update payload.
 @param image_name: the name of the image, used to label the device a.k.a. build
-@param devserver_url: the URL that designates the devserver e.g.
-    http://host:port.
 """
 
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
-vers = 'cros-version:'
-repo_url = None
-if 'devserver_url' in locals() and 'image_name' in locals():
-    from autotest_lib.server.cros.dynamic_suite import constants
-    from autotest_lib.server.cros.dynamic_suite import tools
-    vers = constants.VERSION_PREFIX
-    repo_url = tools.get_package_url(devserver_url, image_name)
-
-AFE = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10, debug=False)
 
 def run(machine):
     host = hosts.create_host(machine, initialize=False)
     host.clear_cros_version_labels_and_job_repo_url()
-
-    if job.run_test('autoupdate', host=host, update_url=image_url):
-        label = AFE.get_labels(name=vers+image_name)[0]
-        label.add_hosts([machine])
-        AFE.set_host_attribute('job_repo_url', repo_url, hostname=machine)
+    job.run_test('autoupdate', host=host, update_url=image_url)
 
 
 job.parallel_simple(run, machines)

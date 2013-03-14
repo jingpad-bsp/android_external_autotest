@@ -300,7 +300,11 @@ class SiteHost(remote.RemoteHost):
 
     def clear_cros_version_labels_and_job_repo_url(self):
         """Clear cros_version labels and host attribute job_repo_url."""
-        host_model = models.Host.objects.get(hostname=self.hostname)
+        try:
+            host_model = models.Host.objects.get(hostname=self.hostname)
+        except models.Host.DoesNotExist:
+            return
+
         for label in host_model.labels.iterator():
             if not label.name.startswith(ds_constants.VERSION_PREFIX):
                 continue
@@ -308,6 +312,27 @@ class SiteHost(remote.RemoteHost):
             label.host_set.remove(host_model)
 
         host_model.set_or_delete_attribute('job_repo_url', None)
+
+
+    def add_cros_version_labels_and_job_repo_url(self, image_name):
+        """Add cros_version labels and host attribute job_repo_url.
+
+        @param image_name: The name of the image e.g.
+                lumpy-release/R27-3837.0.0
+        """
+        try:
+            host_model = models.Host.objects.get(hostname=self.hostname)
+        except models.Host.DoesNotExist:
+            return
+        cros_label = '%s%s' % (ds_constants.VERSION_PREFIX, image_name)
+        devserver_url = dev_server.ImageServer.resolve(image_name).url()
+        try:
+            label_model = models.Label.objects.get(name=cros_label)
+        except models.Label.DoesNotExist:
+            label_model = models.Label.objects.create(name=cros_label)
+        host_model.labels.add(label_model)
+        repo_url = tools.get_package_url(devserver_url, image_name)
+        host_model.set_or_delete_attribute('job_repo_url', repo_url)
 
 
     def _try_stateful_update(self, update_url, force_update, updater):
@@ -397,8 +422,11 @@ class SiteHost(remote.RemoteHost):
                 'Update failed. New kernel partition is not active after'
                 ' boot.')
 
-        host_attributes = site_host_attributes.HostAttributes(self.hostname)
-        if host_attributes.has_chromeos_firmware:
+        try:
+            host_attributes = site_host_attributes.HostAttributes(self.hostname)
+        except models.Host.DoesNotExist:
+            host_attributes = None
+        if host_attributes and host_attributes.has_chromeos_firmware:
             # Wait until tries == 0 and success, or until timeout.
             utils.poll_for_condition(
                 lambda: (updater.get_kernel_tries(new_active_kernel) == 0
@@ -407,6 +435,19 @@ class SiteHost(remote.RemoteHost):
                     'Update failed. Timed out waiting for system to mark'
                     ' new kernel as successful.'),
                 timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
+
+
+    def _stage_build_and_return_update_url(self, image_name):
+        """Stage a build on a devserver and return the update_url.
+
+        @param image_name: a name like lumpy-release/R27-3837.0.0
+        @returns an update URL like:
+            http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
+        """
+        logging.info('Staging requested build: %s', image_name)
+        devserver = dev_server.ImageServer.resolve(image_name)
+        devserver.trigger_download(image_name, synchronous=False)
+        return tools.image_url_pattern() % (devserver.url(), image_name)
 
 
     def machine_install(self, update_url=None, force_update=False,
@@ -418,6 +459,10 @@ class SiteHost(remote.RemoteHost):
         than a full reimage. If the DUT is running a different build, or it
         failed to do a stateful update, full update, including kernel update,
         will be applied to the DUT.
+
+        Once a host enters machine_install its cros_version label will be
+        removed as well as its host attribute job_repo_url (used for
+        package install).
 
         @param update_url: The url to use for the update
                 pattern: http://$devserver:###/update/$build
@@ -436,18 +481,20 @@ class SiteHost(remote.RemoteHost):
 
         """
         if not update_url and self._parser.options.image:
-            update_url = self._parser.options.image
+            requested_build = self._parser.options.image
+            if requested_build.startswith('http://'):
+                update_url = requested_build
+            else:
+                # Try to stage any build that does not start with http:// on
+                # the devservers defined in global_config.ini.
+                update_url = self._stage_build_and_return_update_url(
+                        requested_build)
         elif not update_url and not repair:
             raise autoupdater.ChromiumOSError(
                 'Update failed. No update URL provided.')
         elif not update_url and repair:
-            image_name = self.get_repair_image_name()
-            devserver = dev_server.ImageServer.resolve(image_name)
-            logging.info('Staging repair build: %s', image_name)
-            devserver.trigger_download(image_name, synchronous=False)
-            self.clear_cros_version_labels_and_job_repo_url()
-            update_url = tools.image_url_pattern() % (devserver.url(),
-                                                      image_name)
+            update_url = self._stage_build_and_return_update_url(
+                    self.get_repair_image_name())
 
         if repair:
             # In case the system is in a bad state, we always reboot the machine
@@ -459,6 +506,8 @@ class SiteHost(remote.RemoteHost):
         updater = autoupdater.ChromiumOSUpdater(update_url, host=self,
                                             local_devserver=local_devserver)
         updated = False
+        # Remove cros-version and job_repo_url host attribute from host.
+        self.clear_cros_version_labels_and_job_repo_url()
         # If the DUT is already running the same build, try stateful update
         # first. Stateful update does not update kernel and tends to run much
         # faster than a full reimage.
@@ -498,6 +547,8 @@ class SiteHost(remote.RemoteHost):
 
         if updated:
             self._post_update_processing(updater, inactive_kernel)
+            image_name = autoupdater.url_to_image_name(update_url)
+            self.add_cros_version_labels_and_job_repo_url(image_name)
 
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(

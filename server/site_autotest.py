@@ -5,7 +5,9 @@
 import logging
 import os
 from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import installable_object, autoserv_parser
+from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.constants import JOB_REPO_URL
 
 
@@ -60,13 +62,29 @@ class SiteAutotest(installable_object.InstallableObject):
         repos = super(SiteAutotest, self).get_fetch_location()
 
         if _PARSER.options.image:
-            # The old way.
-            # Add our new repo to the end, the package manager will later
-            # reverse the list of repositories resulting in ours being first.
-            repos.append(_PARSER.options.image.replace(
-                'update', 'static/archive').rstrip('/') + '/autotest')
+            image_opt = _PARSER.options.image
+            if image_opt.startswith('http://'):
+                # A devserver HTTP url was specified, set that as the repo_url.
+                repos.append(image_opt.replace(
+                    'update', 'static/archive').rstrip('/') + '/autotest')
+            else:
+                # An image_name like stumpy-release/R27-3437.0.0 was specified,
+                # set this as the repo_url for the host. If an AFE is not being
+                # run, this will ensure that the installed build uses the
+                # associated artifacts for the test specified when running
+                # autoserv with --image. However, any subsequent tests run on
+                # the host will no longer have the context of the image option
+                # and will revert back to utilizing test code/artifacts that are
+                # currently present in the users source checkout.
+                devserver_url = dev_server.ImageServer.resolve(image_opt).url()
+                repo_url = tools.get_package_url(devserver_url, image_opt)
+                repos.append(repo_url)
         else:
-            # The new way.
+            # No --image option was specified, look for the repo url via
+            # the host attribute. If we are not running with a full AFE
+            # autoserv will fall back to serving packages itself from whatever
+            # source version it is sync'd to rather than using the proper
+            # artifacts for the build on the host.
             found_repo = self._get_fetch_location_from_host_attribute()
             if found_repo is not None:
                 # Add our new repo to the end, the package manager will
