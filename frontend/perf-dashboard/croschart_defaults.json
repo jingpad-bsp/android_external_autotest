@@ -280,11 +280,11 @@
         "better_direction": "higher",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "MFLOPS_ScimarkGui-lu_factoriza",
-          "MFLOPS_ScimarkGui-fast_fourier",
-          "MFLOPS_ScimarkGui-jacobi_sor-M",
-          "MFLOPS_ScimarkGui-monte_carlo_",
-          "MFLOPS_ScimarkGui-sparse_matri"
+          "MFLOPS_ScimarkGui-lu_factoriza*",
+          "MFLOPS_ScimarkGui-fast_fourier*",
+          "MFLOPS_ScimarkGui-jacobi_sor-M*",
+          "MFLOPS_ScimarkGui-monte_carlo_*",
+          "MFLOPS_ScimarkGui-sparse_matri*"
         ]
       },
       {
@@ -293,11 +293,11 @@
         "better_direction": "lower",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "MB_ScimarkGui-lu_factorization",
-          "MB_ScimarkGui-fast_fourier_tra",
+          "MB_ScimarkGui-lu_factorization*",
+          "MB_ScimarkGui-fast_fourier_tra*",
           "MB_ScimarkGui-jacobi_sor-Mem",
-          "MB_ScimarkGui-monte_carlo_inte",
-          "MB_ScimarkGui-sparse_matrix_mu"
+          "MB_ScimarkGui-monte_carlo_inte*",
+          "MB_ScimarkGui-sparse_matrix_mu*"
         ]
       },
       {
@@ -341,11 +341,11 @@
         "better_direction": "higher",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "runsPerSec_Dromaeo-RegularExpr",
+          "runsPerSec_Dromaeo-RegularExpr*",
           "runsPerSec_Dromaeo-Arrays",
-          "runsPerSec_Dromaeo-Base64Encod",
-          "runsPerSec_Dromaeo-CodeEvaluat",
-          "runsPerSec_Dromaeo-Rotating3DC",
+          "runsPerSec_Dromaeo-Base64Encod*",
+          "runsPerSec_Dromaeo-CodeEvaluat*",
+          "runsPerSec_Dromaeo-Rotating3DC*",
           "runsPerSec_Dromaeo-Strings"
         ]
       },
@@ -355,9 +355,9 @@
         "better_direction": "lower",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "frames_YoutubeDroppedFramesSlo",
-          "frames_YoutubeDroppedFramesNor",
-          "frames_YoutubeDroppedFramesFas"
+          "frames_YoutubeDroppedFramesSlo*",
+          "frames_YoutubeDroppedFramesNor*",
+          "frames_YoutubeDroppedFramesFas*"
         ]
       },
       {
@@ -366,7 +366,7 @@
         "better_direction": "lower",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "extrapolation_YoutubeCPUExtrap"
+          "extrapolation_YoutubeCPUExtrap*"
         ]
       },
       {
@@ -384,7 +384,7 @@
         "better_direction": "lower",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "extrapolation_NetflixCPUExtrap"
+          "extrapolation_NetflixCPUExtrap*"
         ]
       },
       {
@@ -422,9 +422,9 @@
         "better_direction": "lower",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "milliseconds_Alexa_usFile_Page",
-          "milliseconds_MozFile_PageCycle",
-          "milliseconds_Moz2File_PageCycl"
+          "milliseconds_Alexa_usFile_Page*",
+          "milliseconds_MozFile_PageCycle*",
+          "milliseconds_Moz2File_PageCycl*"
         ]
       },
       {
@@ -433,10 +433,10 @@
         "better_direction": "lower",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "milliseconds_DhtmlFile_PageCyc",
-          "milliseconds_MoreJSFile_PageCy",
-          "milliseconds_Intl2File_PageCyc",
-          "milliseconds_Intl1File_PageCyc"
+          "milliseconds_DhtmlFile_PageCyc*",
+          "milliseconds_MoreJSFile_PageCy*",
+          "milliseconds_Intl2File_PageCyc*",
+          "milliseconds_Intl1File_PageCyc*"
         ]
       },
       {
@@ -445,7 +445,7 @@
         "better_direction": "lower",
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
-          "milliseconds_BloatFile_PageCyc"
+          "milliseconds_BloatFile_PageCyc*"
         ]
       },
       {

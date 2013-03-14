@@ -43,6 +43,7 @@ _TEMPLATE_DIR = os.path.join(_SCRIPT_DIR, 'templates')
 _CURR_PID_FILE_NAME = __file__ + '.curr_pid.txt'
 _COMPLETED_ID_FILE_NAME = 'job_id_complete.txt'
 _REV_NUM_FILE_NAME = 'rev_num.txt'
+_WILDCARD = '*'
 
 # Values that can be configured through options.
 # TODO(dennisjeffrey): Infer the tip-of-tree milestone dynamically once this
@@ -193,6 +194,44 @@ def create_config_js_file(path, test_name):
         f.write(config_content)
 
 
+def chart_key_matches_actual_key(chart_key, actual_key):
+    """Whether a chart key (with possible wildcard) matches a given actual key.
+
+    A perf key in _CHART_CONFIG_FILE may have wildcards specified to match
+    multiple actual perf keys that a test may measure.  For example, the
+    chart key "metric*" could match 3 different actual perf keys: "meticA",
+    "metricB", and "metricC".  Wildcards are specified with "*" and may occur
+    in any of these formats:
+      1) *metric: Matches perf keys that end with "metric".
+      2) metric*: Matches perf keys that start with "metric".
+      3) *metric*: Matches perf keys that contain "metric".
+      4) metric:  Matches only the perf key "metric" (exact match).
+      5) *: Matches any perf key.
+
+    This function determines whether or not a given chart key (with possible
+    wildcard) matches a given actual key.
+
+    @param chart_key: The chart key string with possible wildcard.
+    @param actual_key: The actual perf key.
+
+    @return True, if the specified chart key matches the actual key, or
+        False otherwise.
+
+    """
+    if chart_key == _WILDCARD:
+        return True
+    elif _WILDCARD not in chart_key:
+        return chart_key == actual_key
+    elif chart_key.startswith(_WILDCARD) and chart_key.endswith(_WILDCARD):
+        return chart_key[len(_WILDCARD):-len(_WILDCARD)] in actual_key
+    elif chart_key.startswith(_WILDCARD):
+        return actual_key.endswith(chart_key[len(_WILDCARD):])
+    elif chart_key.endswith(_WILDCARD):
+        return actual_key.startswith(chart_key[:-len(_WILDCARD)])
+
+    return False
+
+
 def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
                                 units, better_direction, url, perf_keys,
                                 chart_keys, options, summary_id_to_rev_num,
@@ -279,7 +318,8 @@ def output_graph_data_for_entry(test_name, graph_name, job_name, platform,
 
             key_to_vals = {}
             for perf_key in perf_keys:
-                if perf_key[0] in chart_keys:
+                if any([chart_key_matches_actual_key(c, perf_key[0])
+                        for c in chart_keys]):
                     # Replace dashes with underscores so different lines show
                     # up as different colors in the graphs.
                     key = perf_key[0].replace('-', '_')
@@ -363,7 +403,9 @@ def process_perf_data_files(file_names, test_name, completed_ids,
 
                     store_entry = False
                     for chart_key in chart_keys:
-                        if chart_key in [x[0] for x in perf_keys]:
+                        actual_keys = [x[0] for x in perf_keys]
+                        if any([chart_key_matches_actual_key(chart_key, a)
+                                for a in actual_keys]):
                             store_entry = True
                             break
 
