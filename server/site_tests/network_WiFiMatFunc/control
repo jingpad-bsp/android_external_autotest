@@ -9,6 +9,7 @@ TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "Server"
 SYNC_COUNT = 1
+DEPENDENCIES = "wificell"
 DOC = """
 WiFiMatFunc is a suite of 3-machine tests to validate basic WiFi functionality.
 One client, one server, and one programmable WiFi AP/Router are required
