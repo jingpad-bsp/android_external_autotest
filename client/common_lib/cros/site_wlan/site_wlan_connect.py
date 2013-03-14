@@ -92,6 +92,12 @@ class ConnectStateHandler(StateHandler):
           elif (key in ['Passphrase', 'SaveCredentials'] or
               key.startswith('EAP.')):
             set_props[key] = val
+          elif (key == "Security" and
+                val in ['wpa', 'rsn'] and
+                str(prop_val) == 'psk'):
+            # The service entry doesn't differentiate between WPA types before
+            # association.
+            pass
           else:
             self.Debug(
                 'Service key mismatch: %s (desired "%s" != available "%s")' %
