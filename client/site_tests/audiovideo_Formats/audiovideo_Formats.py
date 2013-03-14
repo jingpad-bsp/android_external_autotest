@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Test to verify formats availability for hardware offload.
-"""
+"""Test to verify formats availability for hardware offload."""
 import logging, os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -15,42 +14,45 @@ except ImportError:
   # when run_once runs.
   pass
 
+
 class audiovideo_Formats(test.test):
-    """Test class to verify formats availability for hardware offload.
-    """
+    """Test class to verify formats availability for hardware offload."""
+
     version = 1
     preserve_srcdir = False
-    DAISY_VIDEO_DEC = "/dev/mfc-dec"
-    DAISY_CAPTURE_FORMATS = ["VM12", "NM12"]
-    DAISY_OUTPUT_FORMATS = ["H264", "VP80"]
-    # Values in the dictionary are three-element tuples:
-    #   (the video device, capture formats list, output formats list)
-    FORMATS_DICT = {"DAISY": (DAISY_VIDEO_DEC,
-                              DAISY_CAPTURE_FORMATS,
-                              DAISY_OUTPUT_FORMATS),
-                    "SNOW": (DAISY_VIDEO_DEC, # SNOW=DAISY
-                             DAISY_CAPTURE_FORMATS,
-                             DAISY_OUTPUT_FORMATS)}
+
 
     def setup(self):
         os.chdir(self.srcdir)
         utils.make()
 
-    def run_once(self):
-        """Tests whether the supported image formats are expected.
+
+    def _enum_formats(self, video_device):
+        """Use the v4l2 binary to enum formats.
+
+        Runs the embedded v4l2 binary to enumerate supported
+        capture formats and output formats.
+
+        @param video_device: device interrogated (e.g. /dev/mfc-dec).
+
+        @return a dict of keyvals reflecting the formats supported.
         """
-        item = self.FORMATS_DICT.get(utils.get_board())
-        if item:
-            device = item[0]
-            expected_capture_formats = set(item[1])
-            expected_output_formats = set(item[2])
-            capture_formats = set(v4l2.enum_capture_formats(device))
-            output_formats = set(v4l2.enum_output_formats(device))
-            logging.info("Capture formats=%s", capture_formats)
-            logging.info("Output formats=%s", output_formats)
-            if not (expected_capture_formats <= capture_formats):
-                raise error.TestFail("Missing capture formats: (%s)" %
-                    ", ".join(expected_capture_formats - capture_formats))
-            if not (expected_output_formats <= output_formats):
-                raise error.TestFail("Missing output formats: (%s)" %
-                    ", ".join(expected_output_formats - output_formats))
+        capture_formats = v4l2.enum_capture_formats(video_device)
+        logging.info('Capture formats=%s', capture_formats)
+        output_formats = v4l2.enum_output_formats(video_device)
+        logging.info('Output formats=%s', output_formats)
+
+        capture_keyvals = [('cap_fmt_%s' % c, True) for c in capture_formats]
+        output_keyvals = [('out_fmt_%s' % o, True) for o in output_formats]
+        # Underlying eval command requires True definition included.
+        return dict(capture_keyvals + output_keyvals + [('True', True)])
+
+
+    def run_once(self, video_device=None):
+        """Emit supported image formats as keyvals.
+
+        @param video_device: used by v4l2 binary to enum formats.
+        """
+        if not video_device:
+            raise error.TestError('no video_device supplied to check')
+        self.write_perf_keyval(self._enum_formats(video_device))
