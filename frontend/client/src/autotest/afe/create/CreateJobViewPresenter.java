@@ -99,6 +99,28 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public void onJobCreated(int jobId);
     }
 
+    private interface IPredicate<T> {
+        boolean apply(T item);
+    }
+
+    private IPredicate<Integer> positiveIntegerPredicate = new IPredicate<Integer>() {
+        public boolean apply(Integer item) {
+            return item > 0;
+        }
+    };
+
+    private IPredicate<Integer> nonnegativeIntegerPredicate = new IPredicate<Integer>() {
+        public boolean apply(Integer item) {
+            return item >= 0;
+        }
+    };
+
+    private IPredicate<Integer> anyIntegerPredicate = new IPredicate<Integer>() {
+        public boolean apply(Integer item) {
+            return true;
+        }
+    };
+
     private JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
     private JobCreateListener listener;
 
@@ -570,7 +592,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             if (testRetryText == "")
                 testRetryValue = getMaximumRetriesCount();
             else
-                testRetryValue = parsePositiveIntegerInput(testRetryText, "test retries");
+                testRetryValue = parseNonnegativeIntegerInput(testRetryText, "test retries");
 
             if (display.getHostless().getValue()) {
                 synchCount = JSONNull.getInstance();
@@ -667,12 +689,32 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         this.dependencies = dependencies;
     }
 
+    private int parseNonnegativeIntegerInput(String input, String fieldName) {
+        return parsePredicatedIntegerInput(input, fieldName,
+                                           nonnegativeIntegerPredicate,
+                                           "non-negative");
+    }
+
     private int parsePositiveIntegerInput(String input, String fieldName) {
+        return parsePredicatedIntegerInput(input, fieldName,
+                                           positiveIntegerPredicate,
+                                           "positive");
+    }
+
+    private int parseAnyIntegerInput(String input, String fieldName) {
+        return parsePredicatedIntegerInput(input, fieldName,
+                                           anyIntegerPredicate,
+                                           "integer");
+    }
+
+    private int parsePredicatedIntegerInput(String input, String fieldName,
+                                            IPredicate<Integer> predicate,
+                                            String domain) {
         final int parsedInt;
         try {
             if (input.equals("") ||
-                (parsedInt = Integer.parseInt(input)) <= 0) {
-                    String error = "Please enter a positive " + fieldName;
+                !predicate.apply(parsedInt = Integer.parseInt(input))) {
+                    String error = "Please enter a " + domain + " " + fieldName;
                     NotifyManager.getInstance().showError(error);
                     throw new IllegalArgumentException();
             }
