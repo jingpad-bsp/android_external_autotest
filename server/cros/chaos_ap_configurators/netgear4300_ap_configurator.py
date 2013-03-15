@@ -10,8 +10,8 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
                                 NetgearDualBandAPConfigurator):
     """Derived class to control Netgear WNDR4300 router."""
 
-    def __init__(self, router_dict):
-        super(Netgear4300APConfigurator, self).__init__(router_dict)
+    def __init__(self, ap_config=None):
+        super(Netgear4300APConfigurator, self).__init__(ap_config=ap_config)
         self.mode_216 = 'Up to 216 Mbps'
 
 

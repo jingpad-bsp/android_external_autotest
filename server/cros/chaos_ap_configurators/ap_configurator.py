@@ -440,5 +440,4 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
-        # Webdriver coredumps if we do this, investigating
-        # self.driver.close()
+        self.driver.close()

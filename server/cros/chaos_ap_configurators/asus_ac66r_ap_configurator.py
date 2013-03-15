@@ -8,9 +8,6 @@ import asus_qis_ap_configurator
 class Asus66RAPConfigurator(asus_qis_ap_configurator.AsusQISAPConfigurator):
     """Derives class for Asus RT-AC66R."""
 
-    def __init__(self, router_dict):
-        super(Asus66RAPConfigurator, self).__init__(router_dict)
-        self.mode_auto = 'Auto'
 
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
