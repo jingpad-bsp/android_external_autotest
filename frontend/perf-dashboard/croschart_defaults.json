@@ -607,5 +607,19 @@
         ]
       }
     ]
+  },
+  {
+    "test_name": "platform_GesturesRegressionTest",
+    "graphs": [
+      {
+        "graph_name": "gestures_regression",
+        "units": "points",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "*"
+        ]
+      }
+    ]
   }
 ]
