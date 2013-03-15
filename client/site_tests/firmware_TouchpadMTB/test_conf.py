@@ -693,10 +693,12 @@ def get_gesture_dict():
         DRUMROLL:
         Gesture(
             name=DRUMROLL,
-            variations=None,
-            prompt='Use two fingers to make drum rolls as fast as possible '
-                   'for a total of 5 seconds.',
-            subprompt=None,
+            variations=(GV.FAST, ),
+            prompt='Use two fingers to make drum rolls {0} for a total of '
+                   '5 seconds.',
+            subprompt={
+                GV.FAST: ('as fast as possible',),
+            },
             validators=(
                 CountTrackingIDValidator('>= 5'),
                 DrumrollValidator(drumroll_criteria),
