@@ -40,3 +40,5 @@
 /usr/sbin/vpd
 # crosbug.com/39745
 /opt/google/chrome/libwidevinecdm.so
+# crbug.com/196629
+/usr/bin/futility
