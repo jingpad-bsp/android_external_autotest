@@ -122,7 +122,19 @@ class Servo(object):
         self._server = None
         self._connect_servod(servo_host, servo_port)
         self._is_localhost = (servo_host == 'localhost')
-        self._power_state = power_state_controller.PowerStateController(self)
+        # TODO(jrbarnette):  As of this writing, not all beaglebone
+        # servo hosts support the get_board() function.  For now, we
+        # treat the problem hosts as an unsupported board.  The try
+        # wrapper should be removed once all the hosts are updated.
+        try:
+            board = self._server.get_board()
+            self._power_state = (
+                power_state_controller.create_controller(self, board))
+        except xmlrpclib.Fault as e:
+            logging.error('Failed to create power state controller; '
+                          'check hdctools version on %s.', servo_host)
+            logging.exception(e)
+            self._power_state = None
 
         # a string, showing what interface (host or dut) the USB device is
         # connected to.
@@ -478,6 +490,21 @@ class Servo(object):
             return diff_set.pop()
         else:
             return None
+
+
+    def recovery_supported(self):
+        """Return whether servo-based recovery should work.
+
+        Use of `image_to_servo_usb()` and `install_recovery_image()`
+        relies on DUT-board specific behaviors, and is not supported
+        for all types of board.  Return whether these two operations
+        are expected to succeed for the current DUT.
+
+        @return `True` iff the recovery related methods are supported
+                for this servo and DUT.
+
+        """
+        return self._power_state is not None
 
 
     def image_to_servo_usb(self, image_path=None,

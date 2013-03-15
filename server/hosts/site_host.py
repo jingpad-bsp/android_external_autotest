@@ -181,12 +181,6 @@ class SiteHost(remote.RemoteHost):
     _DEFAULT_SERVO_URL_FORMAT = ('/static/servo-images/'
                                  '%(board)s_test_image.bin')
 
-    # TODO(jrbarnette):  Servo repair is restricted to specific
-    # boards, because the existing servo client code doesn't account
-    # for board-specific differences in handling for 'cold_reset'.
-    # http://crosbug.com/36973
-    _SERVO_REPAIR_WHITELIST = ('x86-alex', 'lumpy')
-
 
     _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
             'rpm_recovery_boards', type=str).split(',')
@@ -714,8 +708,7 @@ class SiteHost(remote.RemoteHost):
             # executed until we've exhausted all options. Below
             # we favor servo over powercycle when we really
             # should be falling back to power if servo fails.
-            if (self.servo and
-                    host_board in self._SERVO_REPAIR_WHITELIST):
+            if (self.servo and self.servo.recovery_supported()):
                 self._servo_repair(host_board)
             elif (self.has_power() and
                   host_board in self._RPM_RECOVERY_BOARDS):
