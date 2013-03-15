@@ -163,6 +163,7 @@ class security_OpenFDs(test.test):
 
         filters.extend([r'0700 /dev/shm/..*',
                         r'0500 /opt/google/chrome/.*.pak',
+                        r'0500 /usr/share/fonts/.*',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters,
                                          permitted_fd_type_check))
