@@ -194,22 +194,32 @@ gesture_names_robot_pause = {
 }
 
 
+# Define the relative segment weights of a validator.
+# For example, LinearityMiddleValidator : LinearityBothEndsValidator = 7 : 3
+segment_weight = {VAL.BEGIN: 0.15,
+                  VAL.MIDDLE: 0.7,
+                  VAL.END: 0.15,
+                  VAL.BOTH_ENDS: 0.15 + 0.15,
+                  VAL.WHOLE: 0.15 + 0.7 + 0.15,
+}
+
+
 # Define the validator score weights
 weight_rare = 1
 weight_common = 2
 weight_critical = 3
-validator_score_weight = {'CountPacketsValidator': weight_common,
-                          'CountTrackingIDValidator': weight_critical,
-                          'DrumrollValidator': weight_rare,
-                          'LinearityValidator': weight_common,
-                          'NoGapValidator': weight_common,
-                          'NoLevelJumpValidator': weight_rare,
-                          'NoReversedMotionValidator': weight_common,
-                          'PhysicalClickValidator': weight_critical,
-                          'PinchValidator': weight_rare,
-                          'RangeValidator': weight_common,
-                          'ReportRateValidator': weight_common,
-                          'StationaryFingerValidator': weight_common,
+validator_weight = {'CountPacketsValidator': weight_common,
+                    'CountTrackingIDValidator': weight_critical,
+                    'DrumrollValidator': weight_rare,
+                    'LinearityValidator': weight_common,
+                    'NoGapValidator': weight_common,
+                    'NoLevelJumpValidator': weight_rare,
+                    'NoReversedMotionValidator': weight_common,
+                    'PhysicalClickValidator': weight_critical,
+                    'PinchValidator': weight_common,
+                    'RangeValidator': weight_common,
+                    'ReportRateValidator': weight_common,
+                    'StationaryFingerValidator': weight_common,
 }
 
 

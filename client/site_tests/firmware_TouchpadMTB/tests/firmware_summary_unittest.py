@@ -10,6 +10,33 @@ import unittest
 import common_unittest_utils
 import firmware_summary
 
+from firmware_constants import VAL
+
+
+# Define the relative segment weights of a validator.
+segment_weight = {VAL.BEGIN: 0.15,
+                  VAL.MIDDLE: 0.7,
+                  VAL.END: 0.15,
+                  VAL.BOTH_ENDS: 0.15 + 0.15,
+                  VAL.WHOLE: 0.15 + 0.7 + 0.15}
+
+# Define the validator score weights
+weight_rare = 1
+weight_common = 10
+weight_critical = 12
+validator_weight = {'CountPacketsValidator': weight_common,
+                    'CountTrackingIDValidator': weight_critical,
+                    'DrumrollValidator': weight_rare,
+                    'LinearityValidator': weight_common,
+                    'NoGapValidator': weight_common,
+                    'NoLevelJumpValidator': weight_rare,
+                    'NoReversedMotionValidator': weight_common,
+                    'PhysicalClickValidator': weight_critical,
+                    'PinchValidator': weight_common,
+                    'RangeValidator': weight_common,
+                    'ReportRateValidator': weight_common,
+                    'StationaryFingerValidator': weight_common}
+
 
 class FirmwareSummaryTest(unittest.TestCase):
     """Unit tests for firmware_summary.FirmwareSummary class."""
@@ -17,11 +44,15 @@ class FirmwareSummaryTest(unittest.TestCase):
     def setUp(self):
         self._test_dir = os.path.join(os.getcwd(), 'tests')
         self._log_dir = os.path.join(self._test_dir, 'logs')
-        summary = firmware_summary.FirmwareSummary(log_dir=self._log_dir)
+        summary = firmware_summary.FirmwareSummary(
+                log_dir=self._log_dir,
+                validator_weight=validator_weight,
+                segment_weight=segment_weight)
         self._validator_average = summary.validator_average
         self._validator_ssd = summary.validator_ssd
         self._validator_summary_score = summary.validator_summary_score
         self._validator_summary_ssd = summary.validator_summary_ssd
+        self._weighted_average = summary.weighted_average
         self.fws = ['fw_11.26', 'fw_11.23']
         self._round_digits = 4
 
@@ -122,7 +153,7 @@ class FirmwareSummaryTest(unittest.TestCase):
         self._test_summary_by_gesture_ssd(validator, gestures, expected_ssd)
 
     def test_summary_by_gesture_ssd_LinearityBothEndsValidator(self):
-        validator = 'LinearityBothEndsValidator'
+        validator = 'Linearity(BothEnds)Validator'
         gestures = ['two_finger_tracking',]
         # The following expected_scores were calculated by hand.
         expected_ssd = {
@@ -132,7 +163,7 @@ class FirmwareSummaryTest(unittest.TestCase):
         self._test_summary_by_gesture_ssd(validator, gestures, expected_ssd)
 
     def test_summary_by_validator_ssd_LinearityBothEndsValidator(self):
-        validator = 'LinearityBothEndsValidator'
+        validator = 'Linearity(BothEnds)Validator'
         # The following expected_scores were calculated by hand.
         expected_ssd = {
             'fw_11.26': 0.2600,
@@ -142,6 +173,18 @@ class FirmwareSummaryTest(unittest.TestCase):
             actual_value_original = self._validator_summary_ssd[validator][fw]
             actual_value = round(actual_value_original, self._round_digits)
             expected_value = expected_ssd[fw]
+            self.assertAlmostEqual(actual_value, expected_value)
+
+    def test_combine_validators(self):
+        # The following expected_scores were calculated by hand.
+        expected_weighted_average = {
+            'fw_11.26': 0.974,
+            'fw_11.23': 0.929,
+        }
+        for fw in self.fws:
+            actual_value_original = self._weighted_average[fw]
+            actual_value = round(actual_value_original, 3)
+            expected_value = expected_weighted_average[fw]
             self.assertAlmostEqual(actual_value, expected_value)
 
 

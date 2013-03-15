@@ -55,8 +55,10 @@ import sys
 
 from common_util import Debug
 from firmware_constants import VLOG
-from test_conf import validator_score_weight, log_root_dir
-from validators import get_short_name
+from test_conf import (log_root_dir, segment_weight, validator_weight)
+from validators import (get_base_name_and_segment,
+                        get_derived_name,
+                        get_validator_name)
 
 
 def _setup_debug(debug_flag):
@@ -70,7 +72,12 @@ def _setup_debug(debug_flag):
 class FirmwareSummary:
     """Summary for touchpad firmware tests."""
 
-    def __init__(self, log_dir=log_root_dir, debug_flag=False):
+    def __init__(self, log_dir=log_root_dir, debug_flag=False,
+                 segment_weight=segment_weight,
+                 validator_weight=validator_weight):
+        """ segment_weight and validator_weight are passed as arguments
+        so that it is possible to assign arbitrary weights in unit tests.
+        """
         if os.path.isdir(log_dir):
             self.log_dir = log_dir
         else:
@@ -80,6 +87,9 @@ class FirmwareSummary:
 
         # Set up the global debug_print function.
         _setup_debug(debug_flag)
+
+        self.segment_weight = segment_weight
+        self.validator_weight = validator_weight
 
         self.logs = self._get_result_logs()
         if not self.logs:
@@ -238,57 +248,93 @@ class FirmwareSummary:
                 self.validator_summary_ssd[validator][fw] = ssd
                 self.validator_summary_count[validator][fw] = count
 
+    def _compute_extended_validator_weight(self, validators):
+        """Compute extended validator weight from validator weight and segment
+        weight. The purpose is to merge the weights of split validators, e.g.
+        Linearity(*)Validator, so that their weights are not counted multiple
+        times.
+
+        Example:
+          validators = ['CountTrackingIDValidator',
+                        'Linearity(BothEnds)Validator',
+                        'Linearity(Middle)Validator',
+                        'NoGapValidator']
+
+          Note that both names of the validators
+                'Linearity(BothEnds)Validator' and
+                'Linearity(Middle)Validator'
+          are created at run time from LinearityValidator and use
+          the relative weights defined by segment_weight.
+
+          validator_weight = {'CountTrackingIDValidator': 12,
+                              'LinearityValidator': 10,
+                              'NoGapValidator': 10}
+
+          segment_weight = {'Middle': 0.7,
+                            'BothEnds': 0.3}
+
+          split_validator = {'Linearity': ['BothEnds', 'Middle'],}
+
+          adjusted_weight of Lineary(*)Validator:
+            Linearity(BothEnds)Validator = 0.3 / (0.3 + 0.7) * 10 = 3
+            Linearity(Middle)Validator =   0.7 / (0.3 + 0.7) * 10 = 7
+
+          extended_validator_weight: {'CountTrackingIDValidator': 12,
+                                      'Linearity(BothEnds)Validator': 3,
+                                      'Linearity(Middle)Validator': 7,
+                                      'NoGapValidator': 10}
+        """
+        extended_validator_weight = {}
+        split_validator = {}
+
+        # Copy the base validator weight into extended_validator_weight.
+        # For the split validators, collect them in split_validator.
+        for v in validators:
+            base_name, segment = get_base_name_and_segment(v)
+            if segment is None:
+                # It is a base validator. Just copy it into the
+                # extended_validaotr_weight dict.
+                extended_validator_weight[v] = self.validator_weight[v]
+            else:
+                # It is a derived validator, e.g., Linearity(BothEnds)Validator
+                # Needs to compute its adjusted weight.
+
+                # Initialize the split_validator for this base_name if not yet.
+                if split_validator.get(base_name) is None:
+                    split_validator[base_name] = []
+
+                # Append this segment name so that we know all segments for
+                # the base_name.
+                split_validator[base_name].append(segment)
+
+        # Compute the adjusted weight for split_validator
+        for base_name in split_validator:
+            name = get_validator_name(base_name)
+            weight_list = [segment_weight[segment]
+                           for segment in split_validator[base_name]]
+            weight_sum = sum(weight_list)
+            for segment in split_validator[base_name]:
+                derived_name = get_derived_name(name, segment)
+                adjusted_weight = (segment_weight[segment] / weight_sum *
+                                   self.validator_weight[name])
+                extended_validator_weight[derived_name] = adjusted_weight
+
+        return extended_validator_weight
+
     def _combine_validators(self):
         """Combine the scores of all validators to get the final weighted score.
-
-        validator_score_weight looks like:
-            {'CountTrackingIDValidator': 3,
-             'DrumrollValidator': 1,
-             'LinearityValidator': 2,
-             'NoGapValidator': 2,
-             ...
-            }
-
-        self.validators looks like:
-            ['CountTrackingIDValidator',
-             'DrumrollValidator',
-             'LinearityBothEndsValidator',
-             'LinearityMiddleValidator',
-             'NoGapValidator',
-             ...
-            ]
-
-        Note that both names of the validators
-             'LinearityBothEndsValidator' and
-             'LinearityMiddleValidator'
-        are created at run time based on LinearityValidator and use
-        the same weight of
-             'LinearityValidator': 2
         """
-        name_weight_tuple = validator_score_weight.items()
-        name_weight_list = list(name_weight_tuple)
-        name_weight_list.sort()
-
-        # Reconstruct validator_score_weight with the validator short name.
-        short_name_weight_dict = dict([(get_short_name(validator_name), weight)
-                for validator_name, weight in name_weight_list])
-
-        validator_name_weight_list = []
-        for validator in self.validators:
-            for name, weight in short_name_weight_dict.items():
-                if validator.startswith(name):
-                    break
-            else:
-                print 'Error: cannot find the weight of %s' % validator
-                sys.exit(-1)
-            validator_name_weight_list.append((validator, weight))
-
-        validators, weights = zip(*validator_name_weight_list)
-
+        extended_validator_weight = self._compute_extended_validator_weight(
+                self.validators)
         self.weighted_average = {}
         for fw in self.fws:
-            scores = [self.validator_summary_score[validator][fw]
-                      for validator in self.validators]
+            # Construct a dictionary from validator to score
+            validator_score = [
+                    (validator, self.validator_summary_score[validator][fw])
+                    for validator in self.validators]
+
+            _, scores = zip(*sorted(validator_score))
+            _, weights = zip(*sorted(extended_validator_weight.items()))
             self.weighted_average[fw] = n.average(scores, weights=weights)
 
     def _print_summary_title(self, summary_title_str):

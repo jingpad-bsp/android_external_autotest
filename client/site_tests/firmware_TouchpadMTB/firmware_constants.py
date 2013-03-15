@@ -155,6 +155,8 @@ VAL.MIDDLE = 'Middle'
 VAL.END = 'End'
 VAL.BOTH_ENDS = 'BothEnds'
 VAL.WHOLE = 'Whole'
+# SEGMENT_LIST is a list of all attributes above
+VAL.SEGMENT_LIST = list(VAL.__dict__.values())
 
 
 class _Vlog(_Constant):

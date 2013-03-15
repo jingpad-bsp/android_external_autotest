@@ -55,6 +55,7 @@ Note that it is also possible to instantiate a validator as
 
 import numpy as n
 import os
+import re
 import sys
 
 import firmware_log
@@ -68,6 +69,9 @@ from touch_device import TouchpadDevice
 
 # Define the ratio of points taken at both ends of a line for edge tests.
 END_PERCENTAGE = 0.1
+
+# Define other constants below.
+VALIDATOR = 'Validator'
 
 
 def validate(packets, gesture, variation):
@@ -105,7 +109,44 @@ def get_short_name(validator_name):
 
     E.g, the short name of LinearityValidator is Linearity.
     """
-    return validator_name.split('Validator')[0]
+    return validator_name.split(VALIDATOR)[0]
+
+
+def get_validator_name(short_name):
+    """Convert the short_name to its corresponding validator name.
+
+    E.g, the validator_name of Linearity is LinearityValidator.
+    """
+    return short_name + VALIDATOR
+
+
+def get_base_name_and_segment(validator_name):
+    """Get the base name and segment of a validator.
+
+    Examples:
+        Ex 1: Linearity(BothEnds)Validator
+            return ('Linearity', 'BothEnds')
+        Ex 2: NoGapValidator
+            return ('NoGap', None)
+    """
+    if '(' in validator_name:
+        result = re.search('(.*)\((.*)\)%s' % VALIDATOR, validator_name)
+        return (result.group(1), result.group(2))
+    else:
+        return (get_short_name(validator_name), None)
+
+
+def get_derived_name(validator_name, segment):
+    """Get the derived name based on segment value.
+
+    Example:
+      validator_name: LinearityValidator
+      segment: Middle
+      derived_name: Linearity(Middle)Validator
+    """
+    short_name = get_short_name(validator_name)
+    derived_name = '%s(%s)%s' % (short_name, segment, VALIDATOR)
+    return derived_name
 
 
 class BaseValidator(object):
@@ -211,7 +252,7 @@ class LinearityValidator(BaseValidator):
                  segments=VAL.WHOLE):
         self._segments = segments
         self.slot = slot
-        name = 'Linearity%sValidator' % segments
+        name = get_derived_name(self.__class__.__name__, segments)
         super(LinearityValidator, self).__init__(criteria_str, mf, device, name)
 
     def _simple_linear_regression(self, ax, ay):
@@ -472,7 +513,7 @@ class NoReversedMotionValidator(BaseValidator):
     def __init__(self, criteria_str, mf=None, device=None, slots=(0,),
                  segments=VAL.MIDDLE):
         self._segments = segments
-        name = 'NoReversedMotion%sValidator' % segments
+        name = get_derived_name(self.__class__.__name__, segments)
         self.slots = (slots,) if isinstance(slots, int) else slots
         parent = super(NoReversedMotionValidator, self)
         parent.__init__(criteria_str, mf, device, name)
