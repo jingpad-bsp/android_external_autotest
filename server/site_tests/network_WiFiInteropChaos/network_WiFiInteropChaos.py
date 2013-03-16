@@ -6,6 +6,7 @@
 
 import logging
 import os
+import time
 
 import common
 
@@ -35,7 +36,6 @@ class network_WiFiInteropChaos(test.test):
             @param ap: ChaosAP instance defined in cros.chaos_config.
             @param tries: number of times to try to connect to the ap.
         """
-
         c = connector.Connector(host)
         d = disconnector.Disconnector(host)
 
@@ -52,6 +52,15 @@ class network_WiFiInteropChaos(test.test):
                 connection_success = True
                 try:
                     self.capturer.start_capture(frequency, bandwidth)
+                    time.sleep(self.capturer.scan_wait_seconds)
+                    command = ('%s "link[0] == 0x80 && wlan host %s" -r %s |'
+                               'wc -l' % (self.capturer._tcpdump, bss,
+                               self.capturer._remote_filename))
+                    count = self.capturer._host.run(command)
+                    if (count == 0):
+                         msg = ('No beacons from bssid %s on freq = %d'
+                                % (bss, frequency))
+                         logging.info(msg)
                     logging.info('Connecting to %s.  Attempt %d', ssid, i+1)
                     c.connect(ssid, security=security, psk=psk)
                     pm.clear_global_profile()
