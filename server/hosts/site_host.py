@@ -624,14 +624,19 @@ class SiteHost(remote.RemoteHost):
         simplified implementation based on the capabilities in the
         Chrome OS test lab.
 
-        Repair follows this sequence:
-          1. If the DUT passes `self.verify()`, do nothing.
-          2. If the DUT can be power-cycled via RPM, try to repair
+        If `self.verify()` fails, the following procedures are
+        attempted:
+          1. Try to re-install to a known stable image using
+             auto-update.
+          2. If there's a servo for the DUT, try to re-install via
+             the servo.
+          3. If the DUT can be power-cycled via RPM, try to repair
              by power-cycling.
 
         As with the parent method, the last operation performed on
         the DUT must be to call `self.verify()`; if that call fails,
         the exception it raises is passed back to the caller.
+
         """
         try:
             self.verify()
@@ -642,20 +647,21 @@ class SiteHost(remote.RemoteHost):
                               self.hostname)
                 raise
 
-            reimage_success = self._install_repair()
-            # TODO(scottz): All repair pathways should be executed until we've
-            # exhausted all options. Below we favor servo over powercycle when
-            # we really should be falling back to power if servo fails.
-            if (not reimage_success and self.servo and
-                    host_board in self._SERVO_REPAIR_WHITELIST):
-                self._servo_repair(host_board)
-            elif (self.has_power() and
-                  host_board in self._RPM_RECOVERY_BOARDS):
-                self._powercycle_to_repair()
-            else:
-                logging.error('host %s has no servo and no RPM control; '
-                              'failing repair', self.hostname)
-                raise
+            if not self._install_repair():
+                # TODO(scottz): All repair pathways should be
+                # executed until we've exhausted all options. Below
+                # we favor servo over powercycle when we really
+                # should be falling back to power if servo fails.
+                if (self.servo and
+                        host_board in self._SERVO_REPAIR_WHITELIST):
+                    self._servo_repair(host_board)
+                elif (self.has_power() and
+                      host_board in self._RPM_RECOVERY_BOARDS):
+                    self._powercycle_to_repair()
+                else:
+                    logging.error('host %s has no servo and no RPM control; '
+                                  'failing repair', self.hostname)
+                    raise
             self.verify()
 
 
