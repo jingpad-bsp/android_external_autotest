@@ -10,6 +10,7 @@ TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 SUITE = "webrtc"
 DEPENDENCIES = "webcam"
+RETRIES=5
 
 DOC = """
 Run the pyauto WebRTC test suite.
