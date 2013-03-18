@@ -14,6 +14,7 @@ See docstring for FlashromHandler class below.
 import hashlib
 import os
 import struct
+import tempfile
 
 class FvSection(object):
     """An object to hold information about a firmware section.
@@ -438,11 +439,15 @@ class FlashromHandler(object):
         blob = self.fum.get_section(self.image, subsection_name)
         return blob
 
-    def _find_ecbin_offset(self, blob):
-        """Return the offset of EC binary from the given firmware blob"""
+    def _find_dtb_offset(self, blob):
+        """Return the offset of DTB blob from the given firmware blob"""
         # The RW firmware is concatenated from u-boot, dtb, and ecbin.
         # Search the magic of dtb to locate the dtb bloc.
-        dtb_offset = blob.find("\xD0\x0D\xFE\xED\x00")
+        return blob.find("\xD0\x0D\xFE\xED\x00")
+
+    def _find_ecbin_offset(self, blob):
+        """Return the offset of EC binary from the given firmware blob"""
+        dtb_offset = self._find_dtb_offset(blob)
         # If the device tree was found, use it. Otherwise assume an index
         # structure.
         if dtb_offset != -1:
@@ -460,7 +465,7 @@ class FlashromHandler(object):
         # We now temporarily use this hack to find the offset.
         # TODO(waihong@chromium.org): Should use fdtget to get the field and
         # fdtput to change it.
-        dtb_offset = blob.find("\xD0\x0D\xFE\xED\x00")
+        dtb_offset = self._find_dtb_offset(blob)
         # If the device tree wasn't found, give up and return an error.
         if dtb_offset == -1:
             return -1
@@ -506,9 +511,9 @@ class FlashromHandler(object):
         """
         # Remove unncessary padding bytes.
         pad = '\xff'
-        ecbin_align = 4
+        align = 4
         ecbin = ecbin.rstrip(pad)
-        ecbin += pad * ((ecbin_align - 1) - (len(ecbin) - 1) % ecbin_align)
+        ecbin += pad * (-len(ecbin) % align)
         ecbin_size = len(ecbin)
 
         # Put the ecbin into the firmware body.
@@ -516,19 +521,34 @@ class FlashromHandler(object):
         ecbin_offset = self._find_ecbin_offset(old_blob)
         pad = old_blob[-1]
         pad_size = len(old_blob) - ecbin_offset - ecbin_size
-        new_blob = old_blob[0 : ecbin_offset] + ecbin + pad * pad_size
 
-        # Modify the ecbin size on dtb.
+        # Update the size of the EC binary on the DTB.
+        dtb_offset = self._find_dtb_offset(old_blob)
+        dtb_blob = old_blob[dtb_offset : ecbin_offset]
+        dtb_size = ecbin_offset - dtb_offset
+        with tempfile.NamedTemporaryFile() as dtb_file:
+            dtb_file.write(dtb_blob)
+            dtb_file.flush()
+            cmd = ["fdtput", "-t lu", dtb_file.name,
+                    "/flash/rw-a-boot/ecbin",
+                    "reg", str(ecbin_offset), str(ecbin_size)]
+            self.chros_if.run_shell_command(' '.join(cmd))
+
+            dtb_file.seek(0)
+            dtb_blob = dtb_file.read()
+            dtb_blob += pad * (-len(dtb_blob) % align)
+            assert len(dtb_blob) == dtb_size, (
+                    'Updating DTB should not change its size.')
+
+        # Update the new DTB.
+        new_blob = old_blob[0 : dtb_offset] + dtb_blob + ecbin + pad * pad_size
+
+        # Also modify the EC binary size in the new format.
         size_offset = self._find_ecbin_size_offset_on_dtb(new_blob)
-        if size_offset != -1:
-            new_blob = (new_blob[0 : size_offset] +
-                        struct.pack('>L', ecbin_size) +
-                        new_blob[size_offset + 4 :])
-        else:
+        if size_offset == -1:
             # The index will have a count, an offset and size for the system
             # firmware, and then an offset and size for the EC binary.
-            new_blob = (new_blob[0 : 4 * 4] +
-                        struct.pack('<I', ecbin_size) +
+            new_blob = (new_blob[0 : 4 * 4] + struct.pack('<I', ecbin_size) +
                         new_blob[5 * 4 :])
 
         self.set_section_body(section, new_blob)
