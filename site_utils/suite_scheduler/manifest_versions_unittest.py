@@ -180,6 +180,9 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
             'x86-alex-release',
             'x86-alex-release-group',
         ],
+        'link': [
+            'link-depthcharge-firmware',
+        ],
     }
 
 

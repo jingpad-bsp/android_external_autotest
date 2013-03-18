@@ -68,8 +68,8 @@ class ManifestVersions(object):
                               'chromeos/manifest-versions.git')
     _ANY_MANIFEST_GLOB_PATTERN = 'build-name/*/pass/'
     _BOARD_MANIFEST_GLOB_PATTERN = 'build-name/%s-*/pass/'
-    _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s-((?:pgo-)?[^-]+)(?:-group)?/'
-                                  r'pass/(\d+)/([0-9.]+)\.xml')
+    _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s-((?:pgo-|depthcharge-)?[^-]+)'
+                                  r'(?:-group)?/pass/(\d+)/([0-9.]+)\.xml')
 
 
     def __init__(self):

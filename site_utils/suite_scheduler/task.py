@@ -14,7 +14,7 @@ class MalformedConfigEntry(Exception):
     pass
 
 
-BARE_BRANCHES = ['factory', 'firmware', 'pgo-release']
+BARE_BRANCHES = ['factory', 'firmware', 'pgo-release', 'depthcharge-firmware']
 
 
 def PickBranchName(type, milestone):
