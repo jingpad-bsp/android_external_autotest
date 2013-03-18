@@ -68,7 +68,7 @@ class ManifestVersions(object):
                               'chromeos/manifest-versions.git')
     _ANY_MANIFEST_GLOB_PATTERN = 'build-name/*/pass/'
     _BOARD_MANIFEST_GLOB_PATTERN = 'build-name/%s-*/pass/'
-    _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s-((?:pgo-|depthcharge-)?[^-]+)'
+    _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s-([^-]+)'
                                   r'(?:-group)?/pass/(\d+)/([0-9.]+)\.xml')
 
 
@@ -159,7 +159,11 @@ class ManifestVersions(object):
         branch_manifests = {}
         for manifest_path in manifest_paths:
             logging.debug('parsing manifest path %s', manifest_path)
-            groups = matcher.match(manifest_path).groups()
+            match = matcher.match(manifest_path)
+            if not match:
+                logging.info('Failed to parse path %s', manifest_path)
+                continue
+            groups = match.groups()
             config_type, milestone, manifest = groups
             branch = branch_manifests.setdefault((config_type, milestone), [])
             branch.append(manifest)

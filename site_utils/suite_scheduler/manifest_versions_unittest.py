@@ -170,18 +170,35 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
                           self.mv.ManifestsSinceDays, days_ago, board)
 
 
+    def testUnparseableManifestPath(self):
+        """Ensure we don't explode if we encounter an unparseable path."""
+        days_ago = 7
+        board = 'link'
+        build_name = 'link-depthcharge-pgo-codename-release-suffix-part-two'
+        manifest = 'build-name/%s/pass/25/1234.0.0.xml' % build_name
+        self._ExpectGlob(['some/paths'])
+        self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
+        manifest_versions._SystemOutput(
+            mox.StrContains('log')).MultipleTimes().AndReturn(manifest)
+        self.mox.ReplayAll()
+        br_man = self.mv.ManifestsSinceDays(days_ago, board)
+        # We should skip the manifest that we passed in, as we can't parse it,
+        # so we should get no manifests back.
+        self.assertEquals(br_man, {})
+
+
     _BOARD_MANIFESTS = {
         'lumpy': [
             'lumpy-factory',
             'lumpy-release',
-            'lumpy-pgo-release',
+#            'lumpy-pgo-release',
         ],
         'x86-alex': [
             'x86-alex-release',
             'x86-alex-release-group',
         ],
         'link': [
-            'link-depthcharge-firmware',
+#            'link-depthcharge-firmware',
         ],
     }
 
