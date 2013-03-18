@@ -4,6 +4,7 @@
 
 from distutils import version
 import logging
+import os
 import urllib2
 import HTMLParser
 import cStringIO
@@ -372,14 +373,22 @@ class ImageServer(DevServer):
                                      "HTTP OK not accompanied by 'Success'." %
                                      image)
 
+    def _get_image_url(self, image):
+        """Returns the url of the directory for this image on the devserver.
 
-    def get_delta_payload_url(self, payload_type, board, release, branch):
+        @param image: the image that was fetched.
+        """
+        url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
+                                              type=str)
+        return (url_pattern % (self.url(), image)).replace(
+                  'update', 'static/archive')
+
+
+    def get_delta_payload_url(self, payload_type, image):
         """Returns a URL to a staged delta payload.
 
         @param payload_type: either 'mton' or 'nton'
-        @param board: the board the payload corresponds to (e.g. 'x86-alex')
-        @param release: the payload target release version (e.g. '2673.0.0')
-        @param branch: the payload target release branch (e.g. 'R22')
+        @param image: the image that was fetched.
 
         @return A fully qualified URL that can be used for downloading the
                 payload.
@@ -390,42 +399,33 @@ class ImageServer(DevServer):
         if payload_type not in ('mton', 'nton'):
             raise DevServerException('invalid delta payload type: %s' %
                                      payload_type)
-        url_pattern = CONFIG.get_config_value(
-                'CROS', 'delta_payload_url_pattern', type=str)
-        return url_pattern % (self.url(), board, branch, release, branch,
-                              release, payload_type)
+        version = os.path.basename(image)
+        base_url = self._get_image_url(image)
+        return base_url + '/%s_%s' % (version, payload_type)
 
 
-    def get_full_payload_url(self, board, release, branch):
+    def get_full_payload_url(self, image):
         """Returns a URL to a staged full payload.
 
-        @param board: the board the payload corresponds to (e.g. 'x86-alex')
-        @param release: the payload target release version (e.g. '2673.0.0')
-        @param branch: the payload target release branch (e.g. 'R22')
+        @param image: the image that was fetched.
 
         @return A fully qualified URL that can be used for downloading the
                 payload.
 
         """
-        url_pattern = CONFIG.get_config_value(
-                'CROS', 'full_payload_url_pattern', type=str)
-        return url_pattern % (self.url(), board, branch, release)
+        return self._get_image_url(image) + '/update.gz'
 
 
-    def get_test_image_url(self, board, release, branch):
+    def get_test_image_url(self, image):
         """Returns a URL to a staged test image.
 
-        @param board: the board to which the image corresponds (e.g. 'x86-alex')
-        @param release: the image release version (e.g. '2673.0.0')
-        @param branch: the image release branch (e.g. 'R22')
+        @param image: the image that was fetched.
 
         @return A fully qualified URL that can be used for downloading the
                 image.
 
         """
-        url_pattern = CONFIG.get_config_value(
-                'CROS', 'test_image_url_pattern', type=str)
-        return url_pattern % (self.url(), board, branch, release)
+        return self._get_image_url(image) + '/chromiumos_test_image.bin'
 
 
     @remote_devserver_call()

@@ -567,8 +567,7 @@ class autoupdate_EndToEndTest(test.test):
                     'image.zip')[0].strip('/')
             try:
                 lorry_devserver.stage_artifacts(image_uri_path, ['test_image'])
-                staged_url = lorry_devserver.get_test_image_url(
-                        board, release, branch)
+                staged_url = lorry_devserver.get_test_image_url(image_uri_path)
             except dev_server.DevServerException, e:
                 raise error.TestError(
                         'failed to stage source test image: %s' % e)
@@ -611,13 +610,12 @@ class autoupdate_EndToEndTest(test.test):
                     lorry_devserver.stage_artifacts(
                             payload_uri_path, ['delta_payloads', 'stateful'])
                     staged_url = lorry_devserver.get_delta_payload_url(
-                            'nton' if is_nton else 'mton',
-                            board, release, branch)
+                            'nton' if is_nton else 'mton', payload_uri_path)
                 else:
                     lorry_devserver.stage_artifacts(
                             payload_uri_path, ['full_payload', 'stateful'])
                     staged_url = lorry_devserver.get_full_payload_url(
-                            board, release, branch)
+                            payload_uri_path)
             except dev_server.DevServerException, e:
                 raise error.TestError('failed to stage test payload: %s' % e)
         else:
@@ -646,7 +644,8 @@ class autoupdate_EndToEndTest(test.test):
             # We want to transform it to the correct omaha url which is
             # <hostname>/update/BRANCH/VERSION.
             image_url_dir = image_url.rpartition('/update.gz')[0]
-            image_url_dir = image_url_dir.replace('/static/', '/update/')
+            image_url_dir = image_url_dir.replace('/static/archive/',
+                                                  '/update/')
             self._host.machine_install(image_url_dir, force_update=True)
 
 
