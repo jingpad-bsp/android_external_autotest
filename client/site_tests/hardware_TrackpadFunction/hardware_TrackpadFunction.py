@@ -22,7 +22,7 @@ TRUE_EQ = ['1', 'on', 'true', 'yes']
 
 # Regular expressions for cmt module related log
 UNLOAD_CMT_RE = r'UnloadModule.*cmt'
-USE_CMT_RE = r'Using input driver.*cmt.*%s'
+USE_CMT_STRING = "Using input driver 'cmt' for '%s'"
 
 # Path to xorg log
 XORG_LOG_PATH = '/var/log/Xorg.0.log'
@@ -32,7 +32,7 @@ class hardware_TrackpadFunction(test.test):
     '''Test to make sure trackpad functions correctly'''
     version = 1
 
-    def udev_from_string(self, device_string):
+    def _udev_from_string(self, device_string):
         # Sample lines:
         # P: /devices/LNXSYSTM:00/LNXPWRBN:00
         # E: UDEV_LOG=3
@@ -45,14 +45,16 @@ class hardware_TrackpadFunction(test.test):
                 properties[args[0]] = args[2]
         return properties
 
-    def udevadm_export_db(self):
+    def _udevadm_export_db(self):
         p = Popen('udevadm info --export-db', shell=True, stdout=PIPE)
         output = p.communicate()[0]
         devs = output.split('\n\n')
-        return [self.udev_from_string(dev) for dev in devs]
+        return [self._udev_from_string(dev) for dev in devs]
 
     def run_once(self):
-        devices = self.udevadm_export_db()
+        """Test if cmt driver is loaded correctly.
+        """
+        devices = self._udevadm_export_db()
         named_devices = [dev for dev in devices if KEY_NAME in dev]
 
         touchpad_devices = []
@@ -94,8 +96,8 @@ class hardware_TrackpadFunction(test.test):
                 name = touchpad_device.get(KEY_NAME).strip('"')
                 with open(XORG_LOG_PATH, 'r') as f:
                     for line in f.readlines():
-                        if re.search(USE_CMT_RE % name, line, re.I):
-                            logging.info('cmt loaded: %s' % line)
+                        if USE_CMT_STRING % name in line:
+                            logging.info('cmt loaded: %s', line)
                             loaded = True
                         if re.search(UNLOAD_CMT_RE, line, re.I):
                             loaded = False
