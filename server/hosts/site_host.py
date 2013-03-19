@@ -326,6 +326,9 @@ class SiteHost(remote.RemoteHost):
         @returns: True if the DUT was updated with stateful update.
 
         """
+        # Stateful update is disabled until lsb-release has rc build info.
+        logging.info('Stateful update only is disabled.')
+        return False
         if not updater.check_version():
             return False
         if not force_update:
