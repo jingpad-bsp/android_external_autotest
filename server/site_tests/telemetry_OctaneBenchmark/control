@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-perf"
-NAME = "Telemetry Scrolling Benchmark"
+NAME = "Telemetry Octane Benchmark"
 SUITE = "perf_v2"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
@@ -11,13 +11,13 @@ TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Scrolling Benchmark.
+This server side test suite executes the Telemetry Octane Benchmark.
 This is part of our effort to support Chrome for Chrome OS performance testing.
 """
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
-    job.run_test("telemetry_ScrollingBenchmark", host=host)
+    job.run_test("telemetry_OctaneBenchmark", host=host)
 
 
 parallel_simple(run_benchmark, machines)

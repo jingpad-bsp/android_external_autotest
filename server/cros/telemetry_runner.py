@@ -14,7 +14,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 
 TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_multipage_benchmarks'
 TELEMETRY_RUN_TESTS_SCRIPT = 'tools/telemetry/run_tests'
-TELEMETRY_TIMEOUT_MINS = 15
+TELEMETRY_TIMEOUT_MINS = 60
 
 # Result Statuses
 SUCCESS_STATUS = 'SUCCESS'

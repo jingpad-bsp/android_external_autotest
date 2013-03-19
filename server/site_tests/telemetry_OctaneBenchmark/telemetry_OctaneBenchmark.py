@@ -6,17 +6,17 @@ from autotest_lib.server import test
 from autotest_lib.server.cros import telemetry_runner
 
 
-class telemetry_ScrollingBenchmark(test.test):
-    """Run the telemetry scrolling benchmark."""
+class telemetry_OctaneBenchmark(test.test):
+    """Run the telemetry octane benchmark."""
     version = 1
 
 
     def run_once(self, host=None):
-        """Run the telemetry scrolling benchmark.
+        """Run the telemetry octane benchmark.
 
         @param host: host we are running telemetry on.
         """
         telemetry = telemetry_runner.TelemetryRunner(host)
-        telemetry.run_telemetry_benchmark('scrolling_benchmark',
-                                          'top_25.json',
+        telemetry.run_telemetry_benchmark('octane',
+                                          'octane.json',
                                           keyval_writer=self)
