@@ -611,7 +611,8 @@ class SiteHost(remote.RemoteHost):
         logging.info('Attempting to reimage machine to repair image.')
         try:
             self.machine_install(repair=True)
-        except autoupdater.ChromiumOSError:
+        except autoupdater.ChromiumOSError as e:
+            logging.exception(e)
             logging.info('Repair via install failed.')
             return False
 
