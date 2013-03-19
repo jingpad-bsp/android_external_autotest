@@ -31,6 +31,7 @@ class FAFTClientAttribute(object):
     broken_warm_reset = False
     broken_rec_mode = False
     chrome_ec = False
+    dark_resume_capable = False
     has_lid = True
     has_keyboard = True
     keyboard_dev = True
@@ -73,6 +74,10 @@ class FAFTClientAttribute(object):
         # Set 'chrome_ec'
         if platform in ['Link', 'Snow', 'Spring']:
             self.chrome_ec = True
+
+        # Set 'dark_resume_capable'
+        if platform in ['Butterfly', 'Link', 'Parrot']:
+            self.dark_resume_capable = True
 
         # Set 'has_lid'
         if platform in ['Stumpy', 'Kiev']:
