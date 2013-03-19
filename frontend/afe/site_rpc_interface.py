@@ -1,3 +1,5 @@
+# pylint: disable-msg=C0111
+
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -14,6 +16,7 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.site_utils.graphite import stats
 
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
@@ -101,6 +104,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
 
     @return: the job ID of the suite; -1 on error.
     """
+    stats.Counter('create_suite_job').increment()
     # All suite names are assumed under test_suites/control.XX.
     suite_name = canonicalize_suite_name(suite_name)
     if type(num) is not int and num is not None:
