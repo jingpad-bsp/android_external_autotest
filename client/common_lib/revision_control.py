@@ -152,14 +152,20 @@ class GitRepo(object):
             self.work_tree = abs_work_tree
 
 
-    def pull(self):
+    def pull(self, rebase=False):
         """
         Pulls into repodir using giturl.
 
+        @param rebase: If true forces git pull to perform a rebase instead of a
+                        merge.
         @raises GitPullError: if pulling from giturl fails.
         """
         logging.info('Updating git repo %s', self.giturl)
-        cmd = 'pull %s ' % self.giturl
+        cmd = 'pull '
+        if rebase:
+            cmd += '--rebase '
+        cmd += self.giturl
+
         rv = self.gitcmd(cmd, True)
         if rv.exit_status != 0:
             logging.error(rv.stderr)
@@ -207,23 +213,18 @@ class GitRepo(object):
             raise GitFetchError(e_msg, rv)
 
 
-    def fetch_and_reset_or_clone(self):
+    def pull_or_clone(self):
         """
-        Fetch all files from master and reset head, clone master if
-        git-dir isn't a  repo yet. This will effectively produce an
-        exact copy of the master, squashing local changes so we don't
-        have to bother about merge conflicts. If however, the repo
-        is empty (i.e the dependent repo cloned an empty master and
-        never pulled subsequently), we won't be able to reset HEAD;
-        so do a pull, since we don't have to worry about merge
-        conflicts anyway.
+        Pulls if the repo is already initialized, clones if it isn't.
         """
+        # TODO beeps: if the user has local changes in the repo they're
+        # pulling into, this could fail on rebase. Currently the only consumer
+        # of this method is external_packages and it makes sense for
+        # build_externals to fail in such a scenario. Investigate ways to get
+        # this to squash local changes using git rev-parse to get the upstream
+        # tracking branch name, and then do a fetch + reset head.
         if self.is_repo_initialized():
-            if self.is_repo_empty():
-                self.pull()
-            else:
-                self.fetch_remote()
-                self.reset_head()
+            self.pull(rebase=True)
         else:
             self.clone()
 

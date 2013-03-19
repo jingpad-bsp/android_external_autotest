@@ -947,8 +947,8 @@ class HdctoolsRepo(_ExternalGitRepo):
                         self.temp_hdctools_dir,
                         self._GIT_URL,
                         None,
-                        self.temp_hdctools_dir)
-        git_repo.fetch_and_reset_or_clone()
+                        abs_work_tree=self.temp_hdctools_dir)
+        git_repo.pull_or_clone()
 
         if git_repo.get_latest_commit_hash():
             return True
@@ -986,7 +986,7 @@ class ChromiteRepo(_ExternalGitRepo):
         local_chromite_dir = os.path.join(install_dir, 'chromite')
         git_repo = revision_control.GitRepo(local_chromite_dir, self._GIT_URL,
                                             abs_work_tree=local_chromite_dir)
-        git_repo.fetch_and_reset_or_clone()
+        git_repo.pull_or_clone()
 
         if git_repo.get_latest_commit_hash():
             return True
@@ -1012,7 +1012,7 @@ class DevServerRepo(_ExternalGitRepo):
         local_devserver_dir = os.path.join(install_dir, 'devserver')
         git_repo = revision_control.GitRepo(local_devserver_dir, self._GIT_URL,
                                             abs_work_tree=local_devserver_dir)
-        git_repo.fetch_and_reset_or_clone()
+        git_repo.pull_or_clone()
 
         if git_repo.get_latest_commit_hash():
             return True
