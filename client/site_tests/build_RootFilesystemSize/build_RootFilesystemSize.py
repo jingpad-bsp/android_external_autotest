@@ -1,12 +1,15 @@
-import commands, math, re
+import commands
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 class build_RootFilesystemSize(test.test):
+    """Test that we have a minimal amount of free space on rootfs."""
     version = 1
 
 
     def run_once(self):
+        """Run the free space on rootfs test."""
+
         # Report the production size
         f = open('/root/bytes-rootfs-prod', 'r')
         self.write_perf_keyval({'bytes_rootfs_prod': float(f.read())})
@@ -26,9 +29,8 @@ class build_RootFilesystemSize(test.test):
 
         self.write_perf_keyval({'bytes_rootfs_test': float(used)})
 
-        # Make sure we have at least 100M free on rootfs as warning if
-        # we are running out.
-        required_free_space = 100 * 1024 * 1024
+        # Warn if we are running out of free space on rootfs.
+        required_free_space = 50 * 1024 * 1024
 
         if int(free) < required_free_space:
           raise error.TestFail('%s bytes free is less than the %s required.' %
