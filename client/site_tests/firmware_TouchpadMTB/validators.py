@@ -149,6 +149,11 @@ def get_derived_name(validator_name, segment):
     return derived_name
 
 
+def init_base_validator(device):
+    """Initialize the device for all the Validators to use"""
+    BaseValidator._device = device
+
+
 class BaseValidator(object):
     """Base class of validators."""
     aggregator = 'fuzzy.average'
@@ -157,19 +162,13 @@ class BaseValidator(object):
     def __init__(self, criteria_str, mf=None, device=None, name=None):
         self.criteria_str = criteria_str
         self.fc = fuzzy.FuzzyCriteria(criteria_str, mf=mf)
-        self.device = self._create_device() if device is None else device
+        self.device = device if device else BaseValidator._device
         self.device_width, self.device_height = self.device.get_dimensions()
         self.packets = None
         self.msg_list = []
         self.log = firmware_log.ValidatorLog()
         self.log.insert_name(name)
         self.log.insert_criteria(criteria_str)
-
-    def _create_device(self):
-        """Create a touchpad device and reuse it."""
-        if BaseValidator._device is None:
-            BaseValidator._device = TouchpadDevice()
-        return BaseValidator._device
 
     def init_check(self, packets=None):
         """Initialization before check() is called."""

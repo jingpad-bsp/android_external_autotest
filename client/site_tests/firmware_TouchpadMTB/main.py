@@ -16,6 +16,7 @@ import mtb
 import test_conf as conf
 import test_flow
 import touch_device
+import validators
 
 from firmware_constants import MODE, OPTIONS
 from report_html import ReportHtml
@@ -36,9 +37,9 @@ def setup_http_data_dir():
         try:
             os.makedirs(http_data_dir)
             msg = 'http data directory created successfully: %s'
-            logging.info(msg % http_data_dir)
+            logging.info(msg, http_data_dir)
         except os.error, e:
-            logging.error('Making the default http data dir: %s.' % e)
+            logging.error('Making the default http data dir: %s.', e)
             exit(-1)
 
 
@@ -70,7 +71,7 @@ if is_pyauto_installed:
                 url = os.path.join('http://localhost:8000', base_url)
                 self.NavigateToURL(url)
                 msg = 'Chrome has navigated to the specified url: %s'
-                logging.info(msg % os.path.join(conf.docroot, base_url))
+                logging.info(msg, os.path.join(conf.docroot, base_url))
             testServer.stop()
 
 
@@ -78,9 +79,12 @@ class firmware_TouchpadMTB:
     """Set up the system for touchpad firmware tests."""
 
     def __init__(self, options):
-        # Create the touchpad device.
-        self.touchpad = touch_device.TouchpadDevice()
+        # Create the touchpad device
+        # If you are going to be testing a touchscreen, set it here
+        self.touchpad = touch_device.TouchpadDevice(
+            is_touchscreen=options[OPTIONS.TOUCHSCREEN])
         self._check_device(self.touchpad)
+        validators.init_base_validator(self.touchpad)
 
         # Create the keyboard device.
         self.keyboard = keyboard_device.KeyboardDevice()
@@ -234,6 +238,8 @@ def _usage_and_exit():
     print '        log_dir is a log sub-directory in %s' % conf.log_root_dir
     print '  -s, --%s' % OPTIONS.SIMPLIFIED
     print '        Use one variation per gesture'
+    print '  -t, --%s' % OPTIONS.TOUCHSCREEN
+    print '        Use the touchscreen instead of a touchpad'
     print
     print 'Example:'
     print '  # Use the robot to perform 3 iterations of the robot gestures.'
@@ -276,7 +282,8 @@ def _parse_options():
                OPTIONS.MODE: MODE.MANUAL,
                OPTIONS.REPLAY: None,
                OPTIONS.RESUME: None,
-               OPTIONS.SIMPLIFIED: False}
+               OPTIONS.SIMPLIFIED: False,
+               OPTIONS.TOUCHSCREEN: False}
 
     # Get the environment OPTIONS
     options_str = os.environ.get('OPTIONS')
@@ -285,13 +292,14 @@ def _parse_options():
 
     options_list = options_str.split()
     try:
-        short_opt = 'hi:m:s'
+        short_opt = 'hi:m:st'
         long_opt = [OPTIONS.HELP,
                     OPTIONS.ITERATIONS + '=',
                     OPTIONS.MODE + '=',
                     OPTIONS.REPLAY + '=',
                     OPTIONS.RESUME + '=',
-                    OPTIONS.SIMPLIFIED]
+                    OPTIONS.SIMPLIFIED,
+                    OPTIONS.TOUCHSCREEN]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
         _parsing_error(str(err))
@@ -321,6 +329,8 @@ def _parse_options():
                 _usage_and_exit()
         elif opt in ('-s', '--%s' % OPTIONS.SIMPLIFIED):
             options[OPTIONS.SIMPLIFIED] = True
+        elif opt in ('-t', '--%s' % OPTIONS.TOUCHSCREEN):
+            options[OPTIONS.TOUCHSCREEN] = True
         else:
             msg = 'This option "%s" is not supported.' % opt
             _parsing_error(opt)

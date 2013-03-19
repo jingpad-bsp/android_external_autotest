@@ -128,6 +128,7 @@ OPTIONS.MODE = 'mode'
 OPTIONS.REPLAY = 'replay'
 OPTIONS.RESUME = 'resume'
 OPTIONS.SIMPLIFIED = 'simplified'
+OPTIONS.TOUCHSCREEN = 'touchscreen'
 
 
 class _RobotControl(_Constant):

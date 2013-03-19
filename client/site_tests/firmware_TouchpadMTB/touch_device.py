@@ -13,24 +13,29 @@ import common_util
 
 class TouchpadDevice:
     """A class about touchpad device properties."""
-
-    def __init__(self, device_node=None):
+    def __init__(self, device_node=None, is_touchscreen=False):
         self.device_info_file = '/proc/bus/input/devices'
         self.device_node = (device_node if device_node
-                                        else self.get_device_node())
+                                else self.get_device_node(is_touchscreen))
 
     def _re_str(self):
         """Get the regular expression search string for a touchpad device."""
         pattern_str = ('touchpad', 'trackpad', 'cyapa')
         return '(?:%s)' % '|'.join(pattern_str)
 
-    def get_device_node(self):
-        """Get the touchpad device node through tpcontrol.
+    def get_device_node(self, is_touchscreen):
+        """Get the touch device node through xinput
+           Touchscreens have a different device name, so this
+           chooses between them.  Otherwise they are the same.
 
-        tpcontrol returns a string like
-                  Device Node (244):      "/dev/input/event8"
+           The resulting string looks like /dev/input/event8
         """
-        cmd = '/opt/google/touchpad/tpcontrol status | grep -i "device node"'
+        cmd = '/opt/google/'
+        if is_touchscreen:
+            cmd = os.path.join(cmd, 'touchscreen/tscontrol')
+        else:
+            cmd = os.path.join(cmd, 'touchpad/tpcontrol')
+        cmd += ' status | grep "Device Node"'
         device_node_str = common_util.simple_system_output(cmd)
         device_node = device_node_str.split(':')[-1].strip().strip('"')
         return device_node
