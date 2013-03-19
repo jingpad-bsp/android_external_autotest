@@ -217,24 +217,18 @@ class LogRotationPauser(object):
         """Make sure that log rotation is disabled."""
         if self._begun:
             return
-        print "in begin " + str(self._begun)
         self._is_nested = (self._run(('[ -r %s ]' %
                                       CLEANUP_LOGS_PAUSED_FILE),
                                      ignore_status=True) == 0)
-        print "in begin is nested: " + str(self._is_nested)
         if self._is_nested:
-            print logging.__file__
             logging.info('File %s was already present' %
                          CLEANUP_LOGS_PAUSED_FILE)
-            print 1
         else:
             self._run('touch ' + CLEANUP_LOGS_PAUSED_FILE)
-            print 2
         self._begun = True
 
 
     def end(self):
-        print "in end" + str(self._begun)
         assert self._begun
         if not self._is_nested:
             self._run('rm -f ' + CLEANUP_LOGS_PAUSED_FILE)
