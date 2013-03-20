@@ -263,32 +263,12 @@ class Reimager(object):
                 timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
         #pylint: disable-msg=C0111
         """
-        Synchronously attempt to reimage some machines.
+        Synchronously wait on reimages to finish.
 
-        Fire off attempts to reimage |num| machines of type |board|, using an
-        image at |url| called |build|.  Wait for completion, polling every
-        10s, and log results with |record| upon completion.
+        If any machines fail that cause needed DEPENDENCIES to not be
+        available, we also error out all of the now-unrunnable tests.
 
-        Unfortunately, we can't rely on the scheduler to pick hosts for
-        us when using dependencies.  The problem is that the scheduler
-        treats all host queue entries as independent, and isn't capable
-        of looking across a set of entries to make intelligent decisions
-        about which hosts to use.  Consider a testbed that has only one
-        'bluetooth'-labeled device, and a set of tests in which some
-        require bluetooth and some could run on any machine.  If we
-        schedule two reimaging jobs, one of which states that it should
-        run on a bluetooth-having machine, the scheduler may choose to
-        run the _other_ reimaging job (which has fewer constraints)
-        on the DUT with the 'bluetooth' label -- thus starving the first
-        reimaging job.  We can't schedule a single job with heterogeneous
-        dependencies, either, as that is unsupported and devolves to the
-        same problem: the scheduler is not designed to make decisions
-        across multiple host queue entries.
-
-        Given this, we'll grab lists of hosts on our own and make our
-        own scheduling decisions.
-
-        @param build: the build to install e.g.
+        @param build: the build being installed e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
@@ -302,8 +282,9 @@ class Reimager(object):
                              with builds that have no dependency information.
         @param timeout_mins: Amount of time in mins to wait before timing out
                              this reimage attempt.
-        @return True if all reimaging jobs succeed, false if they all fail or
-                atleast one is aborted.
+
+        @return True if at least one reimaging jobs succeed, False if they all
+                fail or at least one is aborted.
         """
         begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
         try:
