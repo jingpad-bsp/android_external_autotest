@@ -795,15 +795,21 @@ class SiteHost(remote.RemoteHost):
          1. All conditions tested by the parent version of this
             function.
          2. Sufficient space in /mnt/stateful_partition.
-         3. update_engine answers a simple status request over DBus.
+         3. Sufficient space in /mnt/stateful_partition/encrypted.
+         4. update_engine answers a simple status request over DBus.
 
         """
         super(SiteHost, self).verify_software()
         self.check_diskspace(
             '/mnt/stateful_partition',
             global_config.global_config.get_config_value(
-                'SERVER', 'gb_diskspace_required', type=int,
-                default=20))
+                'SERVER', 'gb_diskspace_required', type=float,
+                default=20.0))
+        self.check_diskspace(
+            '/mnt/stateful_partition/encrypted',
+            global_config.global_config.get_config_value(
+                'SERVER', 'gb_encrypted_diskspace_required', type=float,
+                default=0.1))
         self.run('update_engine_client --status')
         # Makes sure python is present, loads and can use built in functions.
         # We have seen cases where importing cPickle fails with undefined

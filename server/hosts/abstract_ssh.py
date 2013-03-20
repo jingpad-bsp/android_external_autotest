@@ -558,8 +558,8 @@ class AbstractSSHHost(SiteHost):
     # tunable constants for the verify & repair code
     AUTOTEST_GB_DISKSPACE_REQUIRED = get_value("SERVER",
                                                "gb_diskspace_required",
-                                               type=int,
-                                               default=20)
+                                               type=float,
+                                               default=20.0)
 
 
     def verify_connectivity(self):
