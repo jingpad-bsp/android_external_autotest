@@ -3,13 +3,11 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import urlparse
 import ap_configurator
 
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
-from selenium.common.exceptions import WebDriverException
 
 class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
     """Baseclass to control Netgear single band routers."""
@@ -43,7 +41,7 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
-                 'modes': ['g only', 'b and g']}]
+                 'modes': [self.mode_g, self.mode_b | self.mode_g]}]
 
 
     def is_security_mode_supported(self, security_mode):
@@ -98,8 +96,14 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_mode(self, mode):
+        if mode == self.mode_g:
+            mode_popup = 'g only'
+        elif mode == (self.mode_g | self.mode_b):
+            mode_popup = 'b and g'
+        else:
+            raise RuntimeError('Invalid mode passed %x.' % mode)
         xpath = '//select[@name="opmode"]'
-        self.select_item_from_popup_by_xpath(mode, xpath)
+        self.select_item_from_popup_by_xpath(mode_popup, xpath)
 
 
     def set_band(self, band):

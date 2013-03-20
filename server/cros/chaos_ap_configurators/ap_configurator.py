@@ -399,8 +399,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                                'downloaded the prebuild components to the /tmp '
                                'directory in the chroot?  Have you run: '
                                '(outside-chroot) <path to chroot tmp directory>'
-                               '/chromium-webdriver-parts/.chromedriver?\n'
-                               'Exception message: %s' % str(e))
+                               '/chromium-webdriver-parts/.chromedriver?\n')
         self.driver_connection_established = True
 
     def apply_settings(self):
@@ -426,8 +425,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     direction = 'up'
                     if first_command == self._power_down_router:
                         direction = 'down'
-                    logging.info('Powering %s %s',
-                                 (direction, self.short_name))
+                    logging.info('Powering %s %s', direction, self.short_name)
                     first_command(*sorted_page_commands[0]['args'])
                     sorted_page_commands.pop(0)
 
@@ -440,4 +438,9 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
-        self.driver.close()
+        # This may cause chrome to core dump, so when running ./chromedriver
+        # run it in a shell script in a loop.
+        try:
+            self.driver.close()
+        except Exception, e:
+            logging.debug('Webdriver is still crashing, tell yell at team.')

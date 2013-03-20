@@ -67,9 +67,25 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': ['Up to 300 Mbps', 'Up to 150 Mbps',
-                           'Up to 54 Mbps']}]
+        return [{'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]}]
+
+
+    def set_mode(self, mode):
+        # The mode popup changes based on the security mode.  Set to no
+        # security to get the right popup.
+        self.add_item_to_command_list(self._set_security_disabled, (), 1, 799)
+        self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)
+
+
+    def _set_mode(self, mode):
+        if mode == self.mode_g:
+            mode = 'Up to 54 Mbps'
+        elif mode == self.mode_n:
+            mode = 'Up to 150 Mbps'
+        else:
+            raise RuntimeError('Unsupported mode passed.')
+        xpath = '//select[@name="opmode"]'
+        self.select_item_from_popup_by_xpath(mode, xpath)
 
 
     def set_visibility(self, visible=True):
@@ -78,6 +94,12 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
 
     def _set_visibility(self, visible=True):
         xpath = '//input[@name="ssid_bc" and @type="checkbox"]'
+        check_box = self.wait_for_object_by_xpath(xpath)
+        # These check boxes behave different from other APs.
+        value = check_box.is_selected()
+        if (visible and not value) or (not visible and value):
+            check_box.click()
+
         self.set_check_box_selected_by_xpath(xpath, selected=visible,
                                              wait_for_xpath=None,
                                              alert_handler=self._alert_handler)

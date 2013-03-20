@@ -8,11 +8,33 @@ import asus_qis_ap_configurator
 class Asus66RAPConfigurator(asus_qis_ap_configurator.AsusQISAPConfigurator):
     """Derives class for Asus RT-AC66R."""
 
+    def set_mode(self, mode, band=None):
+        self.set_security_disabled() #  To avoid the modal dialog.
+        self.add_item_to_command_list(self._set_mode, (mode, band), 1, 900)
+
+
+    def _set_mode(self, mode, band=None):
+        if band:
+            self._set_band(band)
+        if mode == self.mode_auto:
+            mode_popup = 'Auto'
+        elif mode == self.mode_n:
+            mode_popup = 'N Only'
+        else:
+            raise RuntimeError('Invalid mode passed %x' % mode)
+        xpath = '//select[@name="wl_nmode_x"]'
+        self.select_item_from_popup_by_xpath(mode_popup, xpath,
+              alert_handler=self._invalid_security_handler)
+
+
+    def set_channel(self, channel):
+        self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
+
 
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
-        channel_choices = ['Auto', '01', '02', '03', '04', '05', '06',
-                           '07', '08', '09', '10', '11']
+        channel_choices = ['Auto', '1', '2', '3', '4', '5', '6',
+                           '7', '8', '9', '10', '11']
         xpath = '//select[@name="wl_chanspec"]'
         if self.current_band == self.band_5ghz:
             channel_choices = ['Auto', '36', '40', '44', '48', '149', '153',

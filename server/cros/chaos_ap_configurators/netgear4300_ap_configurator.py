@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 import netgear_WNDR_dual_band_configurator
 from netgear_WNDR_dual_band_configurator import *
 
@@ -9,10 +11,6 @@ from netgear_WNDR_dual_band_configurator import *
 class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
                                 NetgearDualBandAPConfigurator):
     """Derived class to control Netgear WNDR4300 router."""
-
-    def __init__(self, ap_config=None):
-        super(Netgear4300APConfigurator, self).__init__(ap_config=ap_config)
-        self.mode_216 = 'Up to 216 Mbps'
 
 
     def _alert_handler(self, alert):
@@ -26,13 +24,13 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
         #  We ignore warnings that we get when we disable visibility or security
         #  changed to WEP, WPA Personal or WPA Enterprise.
         if 'The WEP security can only be supported on one SSID' in text:
-            logging.info('Alert message:', text)
+            logging.info('Alert message: %s', text)
             alert.accept()
         elif '40 Mhz and 20 Mhz coexistence' in text:
-            logging.info('Alert message:', text)
+            logging.info('Alert message: %s', text)
             alert.accept()
         elif 'WPS is going to become inaccessible' in text:
-            logging.info('Alert message:', text)
+            logging.info('Alert message: %s', text)
             alert.accept()
         else:
             super(Netgear4300APConfigurator, self)._alert_handler(alert)
@@ -46,10 +44,8 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_5ghz,
-                 'modes': [self.mode_130, self.mode_300, self.mode_54]},
-                {'band': self.band_2ghz,
-                 'modes': [self.mode_216, self.mode_450, self.mode_54]}]
+        return [{'band': self.band_5ghz, 'modes': [self.mode_a, self.mode_n]},
+                {'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]}]
 
 
     def logout_from_previous_netgear(self):
@@ -84,6 +80,10 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
                                    alert_handler=self._alert_handler)
 
 
+    def set_channel(self, channel):
+        self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
+
+
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
         channel_choices = ['Auto', '01', '02', '03', '04', '05', '06', '07',
@@ -94,6 +94,12 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
             channel_choices = ['36', '40', '44', '48', '149', '153',
                                '157', '161']
         self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
+
+
+    def set_security_wep(self, key_value, authentication):
+        # The button name seems to differ in various Netgear routers
+        self.add_item_to_command_list(self._set_security_wep,
+                                      (key_value, authentication), 1, 900)
 
 
     def _set_security_wep(self, key_value, authentication):

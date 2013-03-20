@@ -56,6 +56,7 @@ class network_WiFiChaosPSK(test.test):
                 connector.ConnectFailed,
                 connector.ConnectTimeout) as e:
             error = str(e)
+            logging.info('Connection failed, error: %s', error)
         finally:
             self.d.disconnect(ap['ssid'])
         return error
@@ -79,6 +80,12 @@ class network_WiFiChaosPSK(test.test):
             configured_aps = []
             for ap in all_aps:
                 if ap.is_band_and_channel_supported(band, channel):
+                    for mode in  ap.get_supported_modes():
+                        if mode['band'] == band:
+                            for mode_type in mode['modes']:
+                                if (mode_type & self.generic_ap.mode_n !=
+                                    self.generic_ap.mode_n):
+                                    break
                     # Setting the band gets you the bss
                     ap.set_band(band)
                     ap_info = {
@@ -101,6 +108,7 @@ class network_WiFiChaosPSK(test.test):
                     ap.set_radio(enabled=ap_info['radio'])
                     ap.set_ssid(ap_info['ssid'])
                     ap.set_visibility(visible=ap_info['visibility'])
+                    ap.set_mode(mode_type)
                     ap.set_security_wpapsk(self.psk_password)
                     configured_aps.append(ap_info)
                     cartridge.push_configurator(ap)
@@ -138,9 +146,12 @@ class network_WiFiChaosPSK(test.test):
                   self.generic_ap.security_type_wpapsk)
         self.loop_ap_configs_and_test(all_aps, tries)
         logging.info('Client test complete, powering down router')
+
+        cartridge = ap_cartridge.APCartridge()
         for ap in all_aps:
             ap.power_down_router()
-            ap.apply_settings()
+            cartridge.push_configurator(ap)
+        cartridge.run_configurators()
 
         # Test failed if any of the intermediate tests failed.
         if self.error_list:

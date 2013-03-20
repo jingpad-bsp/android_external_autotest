@@ -167,7 +167,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
-        xpath = '//select[@id="channel" and @class="styled3"]'
+        channel_id = 'channel'
         channel_choices = ['Auto', '2.412 GHz - CH 1', '2.417 GHz - CH 2',
                            '2.422 GHz - CH 3', '2.427 GHz - CH 4',
                            '2.432 GHz - CH 5', '2.437 GHz - CH 6',
@@ -175,13 +175,13 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
                            '2.452 GHz - CH 9', '2.457 GHz - CH 10',
                            '2.462 GHz - CH 11']
         if self.current_band == self.band_5ghz:
-            xpath = '//select[@id="channel_Aband" and @class="styled3"]'
+            channel_id = 'channel_Aband'
             channel_choices = ['Auto', '5.180 GHz - CH 36', '5.200 GHz - CH 40',
                                '5.220 GHz - CH 44', '5.240 GHz - CH 48',
                                '5.745 GHz - CH 149', '5.765 GHz - CH 153',
                                '5.785 GHz - CH 157', '5.805 GHz - CH 161',
                                '5.825 GHz - CH 165']
-        self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
+        self.select_item_from_popup_by_id(channel_choices[position], channel_id)
 
 
     def set_channel_width(self, channel_wid):

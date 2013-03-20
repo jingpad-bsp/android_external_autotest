@@ -11,6 +11,14 @@ import ap_configurator
 class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
     """Class to control MediaLink wapr150n router."""
 
+
+    def __init__(self, ap_config=None):
+        super(MediaLinkAPConfigurator, self).__init__(ap_config=ap_config)
+        self.current_mode = self.mode_b
+        self.add_item_to_command_list(self._set_mode, (self.current_mode, ),
+                                      1, 500)
+
+
     def _alert_handler(self, alert):
         text = alert.text
         if 'Please input 10 or 26 characters of wep key1 !' in text:
@@ -74,13 +82,24 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_mode(self, mode):
-        self.add_item_to_command_list(self._set_mode, (mode, ), 1, 900)
+        self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)
 
 
     def _set_mode(self, mode):
+        if mode == self.mode_b:
+            mode_popup = '11b mode'
+        elif mode == self.mode_g:
+            mode_popup = '11g mode'
+        elif mode == (self.mode_b | self.mode_g):
+            mode_popup = '11b/g mixed mode'
+        elif mode == (self.mode_b | self.mode_g | self.mode_n):
+            mode_popup = '11b/g/n mixed mode'
+        else:
+            raise RuntimeError('Invalid mode passed: %x' % mode)
+        self.current_mode = mode
         self._set_radio(enabled=True)
         xpath = '//select[@name="wirelessmode"]'
-        self.select_item_from_popup_by_xpath(mode, xpath)
+        self.select_item_from_popup_by_xpath(mode_popup, xpath)
 
 
     def set_radio(self, enabled=True):
@@ -118,7 +137,10 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
                            '2447MHz (Channel 8)', '2452MHz (Channel 9)',
                            '2457MHz (Channel 10)', '2462MHz (Channel 11)',
                            '2467MHz (Channel 12)', '2472MHz (Channel 13)']
-        xpath = '//select[@name="sz11gChannel"]'
+        if self.current_mode == self.mode_b:
+            xpath = '//select[@name="sz11bChannel"]'
+        else:
+            xpath = '//select[@name="sz11gChannel"]'
         self.select_item_from_popup_by_xpath(channel_choices[position], xpath,
                                              alert_handler=self._alert_handler)
 

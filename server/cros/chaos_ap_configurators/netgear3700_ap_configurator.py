@@ -52,10 +52,8 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_5ghz,
-                 'modes': [self.mode_130, self.mode_300, self.mode_54]},
-                {'band': self.band_2ghz,
-                 'modes': [self.mode_130, self.mode_300, self.mode_54]}]
+        return [{'band': self.band_5ghz, 'modes': [self.mode_a, self.mode_n]},
+                {'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]}]
 
 
     def navigate_to_page(self, page_number):
@@ -66,6 +64,10 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
     def _switch_to_default(self):
         self.driver.switch_to_default_content()
         self._get_settings_page()
+
+
+    def set_channel(self, channel):
+        self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
 
 
     def _set_channel(self, channel):
@@ -79,6 +81,12 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
             channel_choices = ['36', '40', '44', '48', '149', '153',
                                '157', '161']
         self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
+
+
+    def set_security_wep(self, key_value, authentication):
+        # The button name seems to differ in various Netgear routers
+        self.add_item_to_command_list(self._set_security_wep,
+                                      (key_value, authentication), 1, 900)
 
 
     def _set_security_wep(self, value, authentication):

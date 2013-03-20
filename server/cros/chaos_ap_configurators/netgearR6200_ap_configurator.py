@@ -10,18 +10,9 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
     """Derived class to control Netgear R6200 router."""
 
 
-    def __init__(self, ap_config=None):
-        super(NetgearR6200APConfigurator, self).__init__(ap_config=ap_config)
-        self.mode_173 = 'Up to 173 Mbps'
-        self.mode_400 = 'Up to 400 Mbps'
-        self.mode_867 = 'Up to 867 Mbps'
-
-
     def get_supported_modes(self):
-        return [{'band': self.band_5ghz,
-                 'modes': [self.mode_173, self.mode_400, self.mode_867]},
-                {'band': self.band_2ghz,
-                 'modes': [self.mode_54, self.mode_217, self.mode_450]}]
+        return [{'band': self.band_5ghz, 'modes': [self.mode_g, self.mode_n]},
+                {'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]}]
 
 
     def get_supported_bands(self):
@@ -35,6 +26,10 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
         return security_mode in (self.security_type_disabled,
                                  self.security_type_wpa2psk,
                                  self.security_type_wep)
+
+
+    def set_channel(self, channel):
+        self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
 
 
     def _set_channel(self, channel):
@@ -58,7 +53,3 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
         super(NetgearR6200APConfigurator, self).set_security_wep(
         key_value, authentication)
 
-
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
-        self.add_item_to_command_list(self._set_security_wpa2psk,
-                                      (shared_key, update_interval), 1, 900)

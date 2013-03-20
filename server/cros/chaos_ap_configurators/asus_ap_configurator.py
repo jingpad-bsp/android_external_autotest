@@ -88,8 +88,9 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_mode(self, mode, band=None):
-        self.set_security_disabled() #  To avoid the modal dialog.
-        self.add_item_to_command_list(self._set_mode, (mode, band), 1, 900)
+        #  To avoid the modal dialog
+        self.add_item_to_command_list(self._set_security_disabled, (), 1, 799)
+        self.add_item_to_command_list(self._set_mode, (mode, band), 1, 800)
 
 
     def _set_mode(self, mode, band=None):

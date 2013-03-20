@@ -183,11 +183,11 @@ class WebDriverCoreHelpers(object):
         Returns:
           True if the item exists; False otherwise.
         """
+        xpath = 'id("%s")' % element_id
         if self.number_of_items_in_popup_by_xpath(xpath) == 0:
             raise SeleniumTimeoutException('The popup at xpath %s has no items.'
                                            '\n WebDriver exception: %s', xpath,
                                            str(e))
-        xpath = 'id("%s")' % element_id
         self.item_in_popup_by_xpath_exist(item, xpath)
 
 

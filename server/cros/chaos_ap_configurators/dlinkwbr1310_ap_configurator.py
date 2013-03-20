@@ -16,7 +16,7 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
     def _open_landing_page(self):
         page_url = urlparse.urljoin(self.admin_interface_url,'wireless.htm')
-        self.get_url(page_url, page_title='D-LINK CORPORATION')
+        self.get_url(page_url, page_title='D-LINK')
         pwd = '//input[@name="login_pass"]'
         if not self.object_by_xpath_exist(pwd):
             # We are at the config page, done.
@@ -76,13 +76,13 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
     def _set_mode(self, mode_enable=True):
         # For dlinkwbr1310, 802.11g is the only available mode.
-        logging.info('This router (%s) does not support multiple modes.' %
+        logging.info('This router (%s) does not support multiple modes.',
                      self.get_router_name())
         return None
 
 
     def set_radio(self, enabled=True):
-        logging.info('This router (%s) does not support radio.' %
+        logging.info('This router (%s) does not support radio.',
                      self.get_router_name())
         return None
 
@@ -107,7 +107,7 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        logging.info('This router (%s) does not support multiple bands.' %
+        logging.info('This router (%s) does not support multiple bands.',
                      self.get_router_name())
         return None
 
@@ -149,7 +149,7 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
         key_field1 = '//input[@name="wpapsk1"]'
         key_field2 = '//input[@name="wpapsk2"]'
         security_wpapsk = 'Enable WPA-Personal Wireless Security (enhanced)'
-        self.select_item_from_popup_by_xpath(security_wpa2psk, popup,
+        self.select_item_from_popup_by_xpath(security_wpapsk, popup,
                                              wait_for_xpath=key_field1)
         self.set_content_of_text_field_by_xpath(shared_key, key_field1,
                                                 abort_check=False)

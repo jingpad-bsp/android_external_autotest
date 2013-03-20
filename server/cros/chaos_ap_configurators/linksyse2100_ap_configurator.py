@@ -9,6 +9,11 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
                                  LinksyseSingleBandAPConfigurator):
     """Derived class to control Linksys E2100 router."""
 
+
+    def set_mode(self, mode, band=None):
+        self.add_item_to_command_list(self._set_mode, (mode,), 1, 800)
+
+
     def _set_mode(self, mode, band=None):
         mode_mapping = {self.mode_m:'Mixed',
                         self.mode_b | self.mode_g:'BG-Mixed',
@@ -25,19 +30,32 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
                                              alert_handler=self._sec_alert)
 
 
+    def set_ssid(self, ssid):
+        self.add_item_to_command_list(self._set_ssid, (ssid,), 1, 900)
+
+
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
 
 
+    def set_channel(self, channel):
+        self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
+
+
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
         xpath = '//select[@name="wl_schannel"]'
-        channels = ['1 - 2.412 GHz', '2 - 2.417 GHz', '3 - 2.422 GHz',
-                    '4 - 2.427 GHz', '5 - 2.432 GHz', '6 - 2.437 GHz',
-                    '7 - 2.442 GHz', '8 - 2.447 GHz', '9 - 2.452 GHz',
-                    '10 - 2.457 GHz', '11 - 2.462 GHz']
+        channels = ['1 - 2.412GHZ', '2 - 2.417GHZ', '3 - 2.422GHZ',
+                    '4 - 2.427GHZ', '5 - 2.432GHZ', '6 - 2.437GHZ',
+                    '7 - 2.442GHZ', '8 - 2.447GHZ', '9 - 2.452GHZ',
+                    '10 - 2.457GHZ', '11 - 2.462GHZ']
         self.select_item_from_popup_by_xpath(channels[position], xpath)
+
+
+    def set_channel_width(self, channel_wid):
+        self.add_item_to_command_list(self._set_channel_width,(channel_wid,),
+                                      1, 900)
 
 
     def _set_ch_width(self, channel_wid):
@@ -47,9 +65,18 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
                                              xpath)
 
 
+    def set_security_disabled(self):
+        self.add_item_to_command_list(self._set_security_disabled, (), 2, 1000)
+
+
     def _set_security_disabled(self):
         xpath = '//select[@name="security_mode2"]'
         self.select_item_from_popup_by_xpath('Disabled', xpath)
+
+
+    def set_security_wep(self, key_value, authentication):
+        self.add_item_to_command_list(self._set_security_wep,
+                                      (key_value, authentication), 2, 1000)
 
 
     def _set_security_wep(self, key_value, authentication):
@@ -66,6 +93,13 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
         self.click_button_by_xpath(xpath, alert_handler=self._sec_alert)
 
 
+    def set_security_wpapsk(self, shared_key, update_interval=None):
+        # WEP and WPA-Personal are not supported for Wireless-N only mode,
+        # so use WPA2-Personal when in mode_n.
+        self.add_item_to_command_list(self._set_security_psk, (shared_key,
+                                      update_interval, 'WPA Personal'), 2, 900)
+
+
     def _set_security_psk(self, shared_key, update_interval=None,
                           rsn_mode='WPA Personal'):
         popup = '//select[@name="security_mode2"]'
@@ -74,6 +108,10 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
         text = '//input[@name="wl_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,
                                                 abort_check=True)
+
+
+    def set_visibility(self, visible=True):
+        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
 
 
     def _set_visibility(self, visible=True):

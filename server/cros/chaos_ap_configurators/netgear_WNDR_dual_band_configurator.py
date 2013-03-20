@@ -11,16 +11,6 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
     """Base class for Netgear WNDR dual band routers."""
 
 
-    def __init__(self, ap_config=None):
-        super(NetgearDualBandAPConfigurator, self).__init__(
-              ap_config=ap_config)
-        self.mode_54 = 'Up to 54 Mbps'
-        self.mode_217 = 'Up to 217 Mbps'
-        self.mode_450 = 'Up to 450 Mbps'
-        self.mode_130 = 'Up to 130 Mbps'
-        self.mode_300 = 'Up to 300 Mbps'
-
-
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
@@ -39,8 +29,11 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
             alert.accept()
         elif 'recommends that you set the router to a high channel' in text:
             alert.accept()
+        elif 'security authentication cannot work with WPS' in text:
+            alert.accept()
         else:
-            raise RuntimeError('We have an unhandled alert: %s' % text)
+            raise RuntimeError('We have an unhandled alert on AP %s: %s' %
+                               (self.host_name, text))
 
 
     def get_number_of_pages(self):
@@ -56,9 +49,8 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        mode_2Ghz = mode_5Ghz = [self.mode_217, self.mode_450, self.mode_54]
-        return [{'band': self.band_5ghz, 'modes': mode_5Ghz},
-                {'band': self.band_2ghz, 'modes': mode_2Ghz}]
+        return [{'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]},
+                {'band': self.band_5ghz, 'modes': [self.mode_a, self.mode_n]}]
 
 
     def is_security_mode_supported(self, security_mode):
@@ -84,10 +76,19 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_mode(self, mode):
-        self.add_item_to_command_list(self._set_mode, (mode, ), 1, 900)
+        # The mode popup changes based on the security mode.  Set to no
+        # security to get the right popup.
+        self.add_item_to_command_list(self._set_security_disabled, (), 1, 799)
+        self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)
 
 
     def _set_mode(self, mode):
+        if mode == self.mode_g or mode == self.mode_a:
+            mode = 'Up to 54 Mbps'
+        elif mode == self.mode_n:
+            mode = 'Up to 300 Mbps'
+        else:
+            raise RuntimeError('Unsupported mode passed.')
         xpath = '//select[@name="opmode"]'
         if self.current_band == self.band_5ghz:
             xpath = '//select[@name="opmode_an"]'
@@ -197,13 +198,18 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_visibility(self, visible=True):
-        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
+        # This router is very fussy with WPS even if it is not enabled.  It
+        # throws a dialog is visibility is off before you adjust security.
+        # Bump visibilities priority to avoid that warning.
+        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 700)
 
 
     def _set_visibility(self, visible=True):
         xpath = '//input[@name="ssid_bc" and @type="checkbox"]'
         if self.current_band == self.band_5ghz:
             xpath = '//input[@name="ssid_bc_an" and @type="checkbox"]'
-        self.set_check_box_selected_by_xpath(xpath, selected=visible,
-                                             wait_for_xpath=None,
-                                             alert_handler=self._alert_handler)
+        check_box = self.wait_for_object_by_xpath(xpath)
+        # These check boxes behave different from other APs.
+        value = check_box.is_selected()
+        if (visible and not value) or (not visible and value):
+            check_box.click()
