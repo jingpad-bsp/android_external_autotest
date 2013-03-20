@@ -404,14 +404,14 @@ class SiteHost(remote.RemoteHost):
         if not updater.check_version():
             # Print out crossystem to make it easier to debug the rollback.
             logging.debug('Dumping partition table.')
-            self.host.run('cgpt show $(rootdev -s -d)')
+            self.run('cgpt show $(rootdev -s -d)')
             logging.debug('Dumping crossystem for firmware debugging.')
-            self.host.run('crossystem --all')
+            self.run('crossystem --all')
             logging.error('Expected Chromium OS version: %s. '
                           'Found Chromium OS %s',
-                          self.update_version, updater.get_build_id())
-            raise ChromiumOSError('Updater failed on host %s' %
-                                  self.host.hostname)
+                          updater.update_version, updater.get_build_id())
+            raise autoupdater.ChromiumOSError('Updater failed on host %s' %
+                                  self.hostname)
 
         # Figure out newly active kernel.
         new_active_kernel, _ = updater.get_kernel_state()
