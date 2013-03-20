@@ -185,7 +185,8 @@ class RobotWrapper:
 
     def _get_robot_script_dir(self):
         """Get the directory of the robot control scripts."""
-        cmd = 'find %s -name %s' % (conf.robot_lib_path, conf.python_package)
+        cmd = 'find %s -type d -name %s' % (conf.robot_lib_path,
+                                            conf.python_package)
         path = common_util.simple_system_output(cmd)
         if path:
             robot_script_dir = os.path.join(path, conf.gestures_sub_path)

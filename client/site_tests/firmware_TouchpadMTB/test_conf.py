@@ -61,7 +61,7 @@ num_chars_per_row = 28
 
 # Define the path to find the robot gestures library path
 robot_lib_path = '/usr/local/lib*'
-python_package = 'python2.6'
+python_package = 'python*'
 gestures_sub_path = 'site-packages/gestures'
 
 
