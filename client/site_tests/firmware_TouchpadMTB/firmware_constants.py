@@ -31,6 +31,14 @@ AXIS.Y = 'Y'
 AXIS.LIST = [AXIS.X, AXIS.Y]
 
 
+class _DeviceType(_Constant):
+    """Constants about device types."""
+DEV = _DeviceType()
+DEV.TOUCHPAD = 'touchpad'
+DEV.TOUCHSCREEN = 'touchscreen'
+DEV.DEVICE_TYPE_LIST = list(DEV.__dict__.values())
+
+
 class _Fuzzy_MF(_Constant):
     """Constants about fuzzy membership functions."""
     pass

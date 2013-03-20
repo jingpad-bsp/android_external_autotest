@@ -32,7 +32,7 @@ sys.path.append('../../bin/input')
 import input_device
 
 # Include some constants
-from firmware_constants import MODE, OPTIONS, RC
+from firmware_constants import DEV, MODE, OPTIONS, RC
 from linux_input import KEY_D, KEY_M, KEY_X, KEY_ENTER, KEY_SPACE
 
 
@@ -70,6 +70,8 @@ class TestFlow:
         self.iterations = options[OPTIONS.ITERATIONS]
         self.replay_dir = options[OPTIONS.REPLAY]
         self.resume_dir = options[OPTIONS.RESUME]
+        self.device_type = (DEV.TOUCHSCREEN if options[OPTIONS.TOUCHSCREEN]
+                                            else DEV.TOUCHPAD)
         self.gv_count = float('infinity')
         gesture_names = self._get_gesture_names()
         self.gesture_list = GestureList(gesture_names).get_gesture_list()
@@ -103,15 +105,15 @@ class TestFlow:
         """Determine the gesture names based on the mode."""
         if self._is_robot_mode():
             if self.mode == MODE.ROBOT_INT:
-                return conf.gesture_names_robot_interaction
+                return conf.gesture_names_robot_interaction[self.device_type]
             else:
                 # The mode could be MODE.ROBOT or MODE.ROBOT_SIM.
                 # The same gesture names list is used in both modes.
-                return conf.gesture_names_robot
+                return conf.gesture_names_robot[self.device_type]
         elif self.mode == MODE.MANUAL:
-            return conf.gesture_names_manual
+            return conf.gesture_names_manual[self.device_type]
         else:
-            return conf.gesture_names_complete
+            return conf.gesture_names_complete[self.device_type]
 
     def _non_blocking_open(self, filename):
         """Open the file in non-blocing mode."""

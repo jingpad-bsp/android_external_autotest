@@ -6,7 +6,7 @@
 
 """This configuration file defines the gestures to perform."""
 
-from firmware_constants import GV, RC, VAL
+from firmware_constants import DEV, GV, RC, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -93,57 +93,102 @@ DRUMROLL = 'drumroll'
 
 
 # Define the complete list
-gesture_names_complete = [
+gesture_names_complete = {
+    DEV.TOUCHPAD: [
+        ONE_FINGER_TRACKING,
+        ONE_FINGER_TO_EDGE,
+        TWO_FINGER_TRACKING,
+        FINGER_CROSSING,
+        ONE_FINGER_SWIPE,
+        TWO_FINGER_SWIPE,
+        PINCH_TO_ZOOM,
+        ONE_FINGER_TAP,
+        TWO_FINGER_TAP,
+        ONE_FINGER_PHYSICAL_CLICK,
+        TWO_FINGER_PHYSICAL_CLICK,
+        THREE_FINGER_PHYSICAL_CLICK,
+        FOUR_FINGER_PHYSICAL_CLICK,
+        FIVE_FINGER_PHYSICAL_CLICK,
+        STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
+        FAT_FINGER_MOVE_WITH_RESTING_FINGER,
+        DRAG_EDGE_THUMB,
+        TWO_CLOSE_FINGERS_TRACKING,
+        RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+        TWO_FAT_FINGERS_TRACKING,
+        FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
+        DRUMROLL,
+    ],
+    DEV.TOUCHSCREEN: [
+        ONE_FINGER_TRACKING,
+        ONE_FINGER_TO_EDGE,
+        TWO_FINGER_TRACKING,
+        FINGER_CROSSING,
+        ONE_FINGER_SWIPE,
+        TWO_FINGER_SWIPE,
+        PINCH_TO_ZOOM,
+        ONE_FINGER_TAP,
+        TWO_FINGER_TAP,
+        STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
+        FAT_FINGER_MOVE_WITH_RESTING_FINGER,
+        DRAG_EDGE_THUMB,
+        TWO_CLOSE_FINGERS_TRACKING,
+        RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+        TWO_FAT_FINGERS_TRACKING,
+        FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
+        DRUMROLL,
+    ],
+}
+
+
+# Define what gestures the robot can perform.
+# This also defines the order for the robot to perform the gestures.
+# Basically, two-fingers gestures follow one-finger gestures.
+robot_capability_list = [
     ONE_FINGER_TRACKING,
     ONE_FINGER_TO_EDGE,
-    TWO_FINGER_TRACKING,
-    FINGER_CROSSING,
     ONE_FINGER_SWIPE,
-    TWO_FINGER_SWIPE,
-    PINCH_TO_ZOOM,
     ONE_FINGER_TAP,
-    TWO_FINGER_TAP,
     ONE_FINGER_PHYSICAL_CLICK,
+    TWO_FINGER_TRACKING,
+    TWO_FINGER_SWIPE,
+    TWO_FINGER_TAP,
     TWO_FINGER_PHYSICAL_CLICK,
-    THREE_FINGER_PHYSICAL_CLICK,
-    FOUR_FINGER_PHYSICAL_CLICK,
-    FIVE_FINGER_PHYSICAL_CLICK,
-    STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
-    FAT_FINGER_MOVE_WITH_RESTING_FINGER,
-    DRAG_EDGE_THUMB,
-    TWO_CLOSE_FINGERS_TRACKING,
-    RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
-    TWO_FAT_FINGERS_TRACKING,
-    FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
-    DRUMROLL,
 ]
+
+
+def get_gesture_names_for_robot(device):
+    """Get the gesture names that a robot can do for a specified device."""
+    return [gesture for gesture in robot_capability_list
+                    if gesture in gesture_names_complete[device]]
 
 
 # Define the list of one-finger and two-finger gestures to test using the robot.
-gesture_names_robot = [
-    ONE_FINGER_TRACKING,
-    ONE_FINGER_TO_EDGE,
-    ONE_FINGER_SWIPE,
-    ONE_FINGER_TAP,
-    ONE_FINGER_PHYSICAL_CLICK,
-    TWO_FINGER_TRACKING,
-    TWO_FINGER_SWIPE,
-    TWO_FINGER_TAP,
-    TWO_FINGER_PHYSICAL_CLICK,
-]
+gesture_names_robot = {
+    DEV.TOUCHPAD: get_gesture_names_for_robot(DEV.TOUCHPAD),
+    DEV.TOUCHSCREEN: get_gesture_names_for_robot(DEV.TOUCHSCREEN),
+}
 
 
 # Define the gestures to test using the robot with finger interaction.
-gesture_names_robot_interaction = gesture_names_robot + [
-    FINGER_CROSSING,
-    STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
-    RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
-]
+gesture_names_robot_interaction = {
+    DEV.TOUCHPAD: gesture_names_robot[DEV.TOUCHPAD] + [
+        FINGER_CROSSING,
+        STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
+        RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+    ],
+    DEV.TOUCHSCREEN: gesture_names_robot[DEV.TOUCHSCREEN] + [
+        FINGER_CROSSING,
+        STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
+        RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+    ],
+}
 
 
 # Define the manual list which is gesture_names_complete - gesture_names_robot
-gesture_names_manual = [gesture for gesture in gesture_names_complete
-                                if gesture not in gesture_names_robot]
+gesture_names_manual = {}
+for dev in DEV.DEVICE_TYPE_LIST:
+    gesture_names_manual[dev] = list(set(gesture_names_complete[dev]) -
+                                     set(gesture_names_robot[dev]))
 
 
 # Define those gestures that the robot needs to pause so the user
