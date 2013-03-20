@@ -8,6 +8,7 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
+from autotest_lib.server.cros import time_util
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite import host_lock_manager
 
@@ -163,6 +164,9 @@ class PacketCapture(object):
 
 
     def stop_capture(self):
+        """
+        Stops capturing by terminating all running tcpdump processes.
+        """
         try:
             self._host.run('killall tcpdump', timeout=30)
         except Exception as e:
@@ -174,6 +178,8 @@ class PacketCapture(object):
         """
         Retrieves output.pcap.  Puts that file in chroot in:
             /tmp/run_remote_tests.XXXX/testDir/testDir.testName/<local_file>
+
+        @param local_file: a string.
         """
         if self._host:
             self._host.get_file(self._remote_filename, local_file)
@@ -190,6 +196,20 @@ class PacketCapture(object):
         self._delete_files_and_interfaces()
         self._host.run('%s phy0 interface add wlan0 type managed' % self._iw)
         self._host.run('%s wlan0 up' % self._ifconfig)
+
+
+    def get_datetime_float(self):
+        """
+        @returns a float, timestamp since epoch.
+        """
+        return time_util.get_datetime_float(self._host)
+
+
+    def force_tlsdate_restart(self):
+        """
+        Invokes 'tlsdate restart' command.
+        """
+        time_util.force_tlsdate_restart(self._host)
 
 
 class PacketCaptureManager(object):

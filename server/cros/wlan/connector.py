@@ -2,9 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+from math import fabs
+
 import common
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.site_wlan import constants
+from autotest_lib.server.cros import time_util
 from autotest_lib.server.cros.wlan import api_shim
 
 
@@ -77,18 +82,30 @@ class TracingConnector(Connector):
     """
 
     DEFAULT_BANDWIDTH='HT40+'
+    # Maximum tolerable clock skew in second.
+    MAX_OFFSET_IN_SECOND=float(1.0)
 
-    def __init__(self, host, capturer):
+    def __init__(self, host, capturer,
+                 max_offset_in_sec=MAX_OFFSET_IN_SECOND):
         """ Initialization.
 
         @param host: Hostname/ip of the client device running the test.
         @param capturer: A packet_capture instance.
+        @param max_offset_in_sec: A float, number of seconds.
         """
         super(TracingConnector, self).__init__(host)
         self.capturer = capturer
         self.trace_frequency = None
         self.trace_bandwidth = self.DEFAULT_BANDWIDTH
         self.trace_filename = None
+
+        self._host = host
+        if not self._clocks_are_in_sync(max_offset_in_sec):
+            # Attempt to force a clock sync on both DUT and tracer.
+            self._force_tlsdate_restart()
+            logging.debug('Completed tlsdate restart on both DUT and tracer.')
+
+            self._clocks_are_in_sync(max_offset_in_sec, raise_error=True)
 
     def set_frequency(self, frequency):
         """ Set the frequency with which to capture from.
@@ -147,3 +164,48 @@ class TracingConnector(Connector):
             self.capturer.get_capture_file(filename)
             if not success:
                 raise e
+
+    def _get_clock_skew_in_sec(self):
+        """ Both DUT and tracer rely on 'tlsdated' to synchronize their clocks.
+
+        Even if either or both go out of sync with the remote time server,
+        we can still proceed with the test so long as their clocks are
+        reasonably in sync with each other.
+
+        @returns a float, clock skew in seconds.
+
+        @raises TestError: if unable to fetch datetime data from device.
+        """
+        # Get time elapsed since epoch in <seconds>.<nanoseconds>
+        dut_time_epoch_sec = time_util.get_datetime_float(self._host)
+        logging.debug('DUT time is %f sec.', dut_time_epoch_sec)
+
+        tracer_time_epoch_sec = self.capturer.get_datetime_float()
+        logging.debug('Tracer time is %f sec.', tracer_time_epoch_sec)
+
+        return fabs(dut_time_epoch_sec - tracer_time_epoch_sec)
+
+    def _force_tlsdate_restart(self):
+        """ Invokes 'tlsdate restart' command on both DUT and tracer. """
+        time_util.force_tlsdate_restart(self._host)
+        self.capturer.force_tlsdate_restart()
+
+    def _clocks_are_in_sync(self, max_offset_in_sec, raise_error=False):
+        """ Check if DUT and tracer are synchronized in time.
+
+        @param max_offset_in_sec: a float, max. allowed clock skew in seconds.
+        @param raise_error: a boolean, True == raise error.
+
+        @returns a boolean, True == clocks in sync.
+
+        @raises TestError: if clocks out of sync and raise_error == True.
+        """
+        clock_skew_in_sec = self._get_clock_skew_in_sec()
+        logging.info('Clock skew is %f sec.', clock_skew_in_sec)
+        clocks_in_sync = clock_skew_in_sec < max_offset_in_sec
+        if not clocks_in_sync and raise_error:
+            err = ('Clocks on DUT and packet tracer are out of sync '
+                   '(skew = %f sec, max permitted = %f sec)' %
+                   (clock_skew_in_sec, max_offset_in_sec))
+            raise error.TestError(err)
+        return clocks_in_sync
