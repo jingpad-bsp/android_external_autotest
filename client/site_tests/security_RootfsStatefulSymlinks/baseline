@@ -64,14 +64,14 @@
   },
   "/usr/bin/python": {
     "can_dangle": true,
-    "destination": "/usr/local/bin/python2.6",
+    "destination": "/usr/local/bin/python2.7",
     "owner": "root",
     "group": "root",
     "mode": "0755"
   },
   "/usr/bin/python2": {
     "can_dangle": true,
-    "destination": "/usr/local/bin/python2.6",
+    "destination": "/usr/local/bin/python2.7",
     "owner": "root",
     "group": "root",
     "mode": "0755"
