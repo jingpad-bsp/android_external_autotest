@@ -14,7 +14,6 @@ POWER_MANAGER_SETTINGS = {
     'unplugged_dim_ms': 1000,
     'unplugged_off_ms': 5000,
     'unplugged_suspend_ms': 10000,
-    'react_ms': 1000,
     'disable_idle_suspend': 0,
 }
 
