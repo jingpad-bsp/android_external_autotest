@@ -72,7 +72,9 @@ class TestFailure(object):
         @param suite The name of the suite that this test run was a part of.
         @param test The name of the test that this failure is about.
         @param reason The reason that this test failed.
-        @param owner The owner of the test that failed.
+        @param owner The owner of the suite. When we run HWTests on the
+                     waterfall this will be 'chromeos-test', this is
+                     different from the owner of an individual test failure.
         @param hostname The host this test failure occured on.
         @param job_id The id of the test that failed.
         """
@@ -215,6 +217,7 @@ class Reporter(object):
     _password = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'password', default='')
     _SEARCH_MARKER = 'ANCHOR  '
+    _OWNER = 'beeps@chromium.org'
 
 
     def _get_tracker(self, project, user, password):
@@ -264,10 +267,28 @@ class Reporter(object):
         summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
                                     self._SEARCH_MARKER,
                                     failure.search_marker())
-        self._add_issue_to_tracker(issue, summary, failure.bug_title())
+
+        owner = self._get_owner(failure)
+        self._add_issue_to_tracker(issue, summary, failure.bug_title(), owner)
 
 
-    def _add_issue_to_tracker(self, issue, summary, title):
+    def _get_owner(self, failure):
+        """
+        Returns an owner for the given failure.
+
+        @param failure: A failure object for which a bug is about to get filed.
+        @return: A string with the email address of the owner of this failure.
+                 The issue associated with the failure will get assigned to the
+                 owner and they will receive an email from the bug tracker. If
+                 there is no obvious owner for the failure an empty string is
+                 returned.
+        """
+        if not failure.reason:
+            return self._OWNER
+        return ''
+
+
+    def _add_issue_to_tracker(self, issue, summary, title, owner=''):
         """
         Adds an issue to the tracker.
 
@@ -282,7 +303,7 @@ class Reporter(object):
         """
         if issue:
             summary = '%s\n\n%s' % (title, summary)
-            self._tracker.AppendTrackerIssueById(issue.id, summary)
+            self._tracker.AppendTrackerIssueById(issue.id, summary, owner)
             logging.info("Filed comment %s on %s", summary, issue.id)
         else:
             issue = gdata_lib.Issue(title=title, summary=summary,
@@ -291,6 +312,12 @@ class Reporter(object):
             bugid = self._tracker.CreateTrackerIssue(issue)
             logging.info("Filing new bug %s, with summary %s", bugid,
                                                                summary)
+
+            # The tracker api will not allow us to assign an owner to a new bug,
+            # To work around this we must first create a bug and then update it
+            # with an owner.
+            if owner:
+                self._add_issue_to_tracker(issue, '', '', owner)
 
 
     def _find_issue_by_marker(self, marker):
