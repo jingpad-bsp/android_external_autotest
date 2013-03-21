@@ -14,7 +14,7 @@ from autotest_lib.client.common_lib import error, site_utils
 #
 #  We would like to retrieve the test name and its score if it is a success
 #  pattern and give the score of 0.0 if it is a failure pattern.
-SUCCESS_PATTERN = '\|\s*([\w\d.]*/\w+)\s*\|\s*\|\s*success\s\((\d.\d+)\)\s*\|'
+SUCCESS_PATTERN = '\|\s*([\w\d.]*/\w+)\s*\|\s*\|\s*\w+\s\((\d.\d+)\)\s*\|'
 SUCCESS_RE = re.compile(SUCCESS_PATTERN)
 FAILURE_PATTERN = '\|\s*([\w\d.]*/\w+)\s*\|\s*\|\s*failure\s*\|'
 FAILURE_RE = re.compile(FAILURE_PATTERN)
