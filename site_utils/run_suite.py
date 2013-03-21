@@ -19,7 +19,7 @@ from datetime import datetime
 
 import common
 
-from autotest_lib.client.common_lib import global_config, error, utils
+from autotest_lib.client.common_lib import global_config, error, utils, enum
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -28,9 +28,7 @@ from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
 CONFIG = global_config.global_config
 
 # Return code that will be sent back to autotest_rpc_server.py
-OK = 0
-ERROR = 1
-WARNING = 2
+RETURN_CODES = enum.Enum('OK', 'ERROR', 'WARNING')
 
 
 def setup_logging(logfile=None):
@@ -51,6 +49,7 @@ def setup_logging(logfile=None):
 
 
 def parse_options():
+    #pylint: disable-msg=C0111
     usage = "usage: %prog [options]"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b", "--board", dest="board")
@@ -79,6 +78,16 @@ def parse_options():
 
 
 def get_pretty_status(status):
+    """
+    Converts a status string into a pretty-for-printing string.
+
+    @param status: Status to convert.
+
+    @return: Returns pretty string.
+             GOOD    -> [ PASSED ]
+             TEST_NA -> [ INFO ]
+             other   -> [ FAILED ]
+    """
     if status == 'GOOD':
         return '[ PASSED ]'
     elif status == 'TEST_NA':
@@ -86,6 +95,13 @@ def get_pretty_status(status):
     return '[ FAILED ]'
 
 def is_fail_status(status):
+    """
+    Check if the given status corresponds to a failure.
+
+    @param status: The status to check. (string)
+
+    @return: True if status is FAIL or ERROR. False otherwise.
+    """
     # All the statuses tests can have when they fail.
     if status in ['FAIL', 'ERROR']:
         return True
@@ -287,6 +303,9 @@ def _full_test_name(job_id, view):
 
 
 def main():
+    """
+    Entry point for run_suite script.
+    """
     parser, options, args = parse_options()
     log_name = 'run_suite-default.log'
     if not options.mock_job_id:
@@ -331,7 +350,7 @@ def main():
     except (error.LabIsDownException, error.BoardIsDisabledException) as e:
         logging.debug('Error Message: %s', e)
         print str(e)
-        return WARNING
+        return RETURN_CODES.WARNING
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
@@ -349,7 +368,7 @@ def main():
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)
 
-    code = OK
+    code = RETURN_CODES.OK
     while wait and True:
         if not afe.get_jobs(id=job_id, finished=True):
             time.sleep(1)
@@ -385,21 +404,31 @@ def main():
                 if view['status'] == 'TEST_NA':
                     # Didn't run; nothing to do here!
                     continue
-                if code == ERROR:
+                if code == RETURN_CODES.ERROR:
                     # Failed already, no need to worry further.
                     continue
                 if (view['status'] == 'WARN' or
                     (is_fail_status(view['status']) and experimental)):
                     # Failures that produce a warning. Either a test with WARN
                     # status or any experimental test failure.
-                    code = WARNING
+                    code = RETURN_CODES.WARNING
                 else:
-                    code = ERROR
+                    code = RETURN_CODES.ERROR
+
         logging.info(timings)
         logging.info('\n'
                      'Links to test logs:')
         for link in web_links:
             logging.info(link.GenerateTextLink())
+
+        try:
+            returnmessage = RETURN_CODES.get_string(code)
+        except ValueError:
+            returnmessage = 'UNKNOWN'
+        logging.info('\n'
+                     'Will return from run_suite with status:  %s',
+                     returnmessage)
+
         logging.info('\n'
                      'Output below this line is for buildbot consumption:')
         for link in buildbot_links:
