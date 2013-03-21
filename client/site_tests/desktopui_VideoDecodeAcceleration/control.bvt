@@ -8,7 +8,7 @@ PURPOSE = "Verify that video decode acceleration works in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to an mp4 file.
 """
-SUITE = "bvt"
+SUITE = ""
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "audiovideo"
