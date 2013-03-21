@@ -22,7 +22,7 @@ from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
-from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import remote
 from autotest_lib.site_utils.rpm_control_system import rpm_client
@@ -228,6 +228,8 @@ class SiteHost(remote.RemoteHost):
     POWER_CONTROL_VALID_ARGS = (POWER_CONTROL_RPM,
                                 POWER_CONTROL_SERVO,
                                 POWER_CONTROL_MANUAL)
+
+    _RPM_OUTLET_CHANGED = 'outlet_changed'
 
     @staticmethod
     def get_servo_arguments(args_dict):
@@ -730,6 +732,26 @@ class SiteHost(remote.RemoteHost):
         self.xmlrpc_disconnect_all()
 
 
+    def _cleanup_poweron(self):
+        """Special cleanup method to make sure hosts always get power back."""
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        hosts = afe.get_hosts(hostname=self.hostname)
+        if not hosts or not (self._RPM_OUTLET_CHANGED in
+                             hosts[0].attributes):
+            return
+        logging.debug('This host has recently interacted with the RPM'
+                      ' Infrastructure. Ensuring power is on.')
+        try:
+            self.power_on()
+        except rpm_client.RemotePowerException:
+            # If cleanup has completed but there was an issue with the RPM
+            # Infrastructure, log an error message rather than fail cleanup
+            logging.error('Failed to turn Power On for this host after '
+                          'cleanup through the RPM Infrastructure.')
+        afe.set_host_attribute(self._RPM_OUTLET_CHANGED, None,
+                               hostname=self.hostname)
+
+
     def cleanup(self):
         client_at = autotest.Autotest(self)
         self.run('rm -f %s' % constants.CLEANUP_LOGS_PAUSED_FILE)
@@ -744,22 +766,9 @@ class SiteHost(remote.RemoteHost):
             # Since restarting the UI fails fall back to normal Autotest
             # cleanup routines, i.e. reboot the machine.
             super(SiteHost, self).cleanup()
-
-
-    # TODO (sbasi) crosbug.com/35656
-    # Renamed the sitehost cleanup method so we don't go down this pathway.
-    # def cleanup(self):
-    def cleanup_poweron(self):
-        """Special cleanup method to make sure hosts always get power back."""
-        super(SiteHost, self).cleanup()
+        # Check if the rpm outlet was manipulated.
         if self.has_power():
-            try:
-                self.power_on()
-            except rpm_client.RemotePowerException:
-                # If cleanup has completed but there was an issue with the RPM
-                # Infrastructure, log an error message rather than fail cleanup
-                logging.error('Failed to turn Power On for this host after '
-                              'cleanup through the RPM Infrastructure.')
+            self._cleanup_poweron()
 
 
     def reboot(self, **dargs):
@@ -1176,6 +1185,9 @@ class SiteHost(remote.RemoteHost):
         else:
             if not self.has_power():
                 raise error.TestFail('DUT does not have RPM connected.')
+            afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+            afe.set_host_attribute(self._RPM_OUTLET_CHANGED, True,
+                                   hostname=self.hostname)
             rpm_client.set_power(self.hostname, state.upper())
 
 
