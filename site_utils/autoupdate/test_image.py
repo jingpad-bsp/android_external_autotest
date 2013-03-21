@@ -103,6 +103,9 @@ def find_payload_uri(board, release, branch, delta=False,
         pattern = '.*_full_.*'
 
     payload_uri_list = gs_ls(pattern, archive_url, single)
+    if not payload_uri_list:
+        return None if single else []
+
     return payload_uri_list[0] if single else payload_uri_list
 
 
@@ -127,5 +130,8 @@ def find_image_uri(board, release, branch, archive_url=None):
     if not archive_url:
         archive_url = _get_archive_url(board, branch, release)
 
-    image_archive = gs_ls('image.zip', archive_url, single=True)[0]
-    return (image_archive + ZIPFILE_BOUNDARY + 'chromiumos_test_image.bin')
+    image_archive = gs_ls('image.zip', archive_url, single=True)
+    if not image_archive:
+        return None
+
+    return (image_archive[0] + ZIPFILE_BOUNDARY + 'chromiumos_test_image.bin')
