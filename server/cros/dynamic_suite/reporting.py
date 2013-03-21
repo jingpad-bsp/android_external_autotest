@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import cgi
 import collections
-import logging
 import json
+import logging
+import re
 
 # We need to import common to be able to import chromite and requests.
 import common
@@ -324,35 +326,83 @@ class Reporter(object):
         """
         Queries the tracker to find if there is a bug filed for this issue.
 
+        1. 'Escape' the string: cgi.escape is the easiest way to achieve this,
+           though it doesn't handle all html escape characters.
+           eg: replace '"<' with '&quot;&lt;'
+        2. Perform an exact search for the escaped string, if this returns an
+           empty issue list perform a more relaxed query and finally fall back
+           to a query devoid of the reason field. Between these 3 queries we
+           should retrieve the super set of all issues that this marker can be
+           in. In most cases the first search should return a result, examples
+           where this might not be the case are when the reason field contains
+           information that varies between test runs. Since the second search
+           has raw escape characters it will match comments too, and the last
+           should match all similar issues regardless.
+        3. Look through the issues for an exact match between clean versions
+           of the marker and summary; for now 'clean' means bereft of numbers.
+        4. If no match is found look through a list of comments for each issue.
+
         @param marker The marker string to search for to find a duplicate of
                      this issue.
         @return A gdata_lib.Issue instance of the issue that was found, or
                 None if no issue was found.
         """
+        html_escaped_marker = cgi.escape(marker, quote=True)
 
-        # This will return at most 25 matches, as that's how the
-        # code.google.com API limits this query.
-        issues = self._tracker.GetTrackerIssuesByText(
-                self._SEARCH_MARKER + marker)
+        # The tracker frontend stores summaries and comments as html elements,
+        # specifically, a summary turns into a span and a comment into
+        # preformatted text. Eg:
+        # 1. A summary of >& would become <span>&gt;&amp;</span>
+        # 2. A comment of >& would become <pre>&gt;&amp;</pre>
+        # When searching for exact matches in text, the gdata api gets this
+        # feed and parses all <pre> tags unescaping html, then matching your
+        # exact string to that. However it does not unescape all <span> tags,
+        # presumably for reasons of performance. Therefore a search for the
+        # exact string ">&" would match issue 2, but not issue 1, and a search
+        # for "&gt;&amp;" would match issue 1 but not issue 2. This problem is
+        # further exacerbated when we have quotes within our search string,
+        # which is common when the reason field contains a python dictionary.
+        #
+        # Our searching strategy prioritizes exact matches in the summary, since
+        # the first bug thats filed will have a summary with the anchor. If we
+        # do not find an exact match in any summary we search through all
+        # related issues of the same bug/suite in the hope of finding an exact
+        # match in the comments. Note that the comments are returned as
+        # unescaped text.
+        #
+        # TODO beeps: when we start merging issues this could return bloated
+        # results, for now we only search open issues.
+        markers = ['"' + self._SEARCH_MARKER + html_escaped_marker + '"',
+                   self._SEARCH_MARKER + marker,
+                   self._SEARCH_MARKER + marker[:marker.rfind(',')]]
+        for decorated_marker in markers:
+            # This will return at most 25 matches, as that's how the
+            # code.google.com API limits this query.
+            issues = self._tracker.GetTrackerIssuesByText(decorated_marker)
+            if issues:
+                break
 
-        # TODO(milleral) The tracker doesn't support exact text searching, even
-        # with quotes around the search term. Therefore, to hack around this, we
-        # need to filter through the results we get back and search for the
-        # string ourselves.
-        # We could have gotten no results...
         if not issues:
-            return None
+            return
 
-        # We could have gotten some results, but we need to wade through them
-        # to find if there's an actually correct one.
+        # Breadth first, since open issues/failure probably < comments/issue.
+        # If we find more than one issue matching a particular anchor assign
+        # a mystery bug with all relevent information on the owner and return
+        # the first matching issue.
+        clean_marker = re.sub('[0-9]+', '', html_escaped_marker)
+        all_issues = [issue for issue in issues
+                      if clean_marker in re.sub('[0-9]+', '', issue.summary)]
+
+        if len(all_issues) > 1:
+            issue_ids = [issue.id for issue in all_issues]
+            self._add_issue_to_tracker(None,
+                'Query: %s, results: %s' % (marker, issue_ids),
+                'Multiple results for a specific query', owner=self._OWNER)
+        if all_issues:
+            return all_issues[0]
+
+        unescaped_clean_marker = re.sub('[0-9]+', '', marker)
         for issue in issues:
-            if marker in issue.summary:
+            if any(unescaped_clean_marker in re.sub('[0-9]+', '', comment.text)
+                   for comment in issue.comments if comment.text):
                 return issue
-            for comment in issue.comments:
-                # Sometimes, comment.text is None...
-                if comment.text and marker in comment.text:
-                    return issue
-
-        # Or, if we make it this far, we have only gotten similar, but not
-        # actually matching results.
-        return None
