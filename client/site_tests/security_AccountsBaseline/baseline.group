@@ -61,6 +61,9 @@ xorg:x:231:
 nfqueue:x:232:
 tlsdate-dbus:x:233:
 tlsdate:x:234:
+debugd-logs:x:235:
+debugfs-access:x:236:
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
+logs-access:x:401:debugd-logs
