@@ -526,6 +526,14 @@ class SiteHost(remote.RemoteHost):
             # In case the system is in a bad state, we always reboot the
             # machine before machine_install.
             self.reboot(timeout=60, wait=True)
+
+            # TODO(sosa): Remove temporary hack to get rid of bricked machines
+            # that can't update due to a corrupted policy.
+            self.run('rm -rf /var/lib/whitelist')
+            self.run('touch /var/lib/whitelist')
+            self.run('chmod -w /var/lib/whitelist')
+            self.run('restart update-engine')
+
             if updater.run_update(force_update):
                 updated = True
                 # Figure out active and inactive kernel.
