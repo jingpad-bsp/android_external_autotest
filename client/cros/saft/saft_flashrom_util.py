@@ -58,6 +58,9 @@ class LayoutScraper(object):
         "VBLOCK_B": "VBOOTB",
         "FW_MAIN_A": "FVMAIN",
         "FW_MAIN_B": "FVMAINB",
+        # New sections in Depthcharge.
+        "EC_MAIN_A": "ECMAINA",
+        "EC_MAIN_B": "ECMAINB",
         # EC firmware layout
         "EC_RW": "EC_RW",
         }
@@ -265,6 +268,8 @@ class flashrom_util(object):
         Retrieves a section of data based on section_name in layout_map.
         Raises error if unknown section or invalid layout_map.
         """
+        if section_name not in self.firmware_layout:
+            return []
         pos = self.firmware_layout[section_name]
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
             raise TestError('INTERNAL ERROR: invalid layout map: %s.' %
@@ -273,7 +278,7 @@ class flashrom_util(object):
         # Trim down the main firmware body to its actual size since the
         # signing utility uses the size of the input file as the size of
         # the data to sign. Make it the same way as firmware creation.
-        if section_name in ('FVMAIN', 'FVMAINB'):
+        if section_name in ('FVMAIN', 'FVMAINB', 'ECMAINA', 'ECMAINB'):
             align = 4
             pad = blob[-1]
             blob = blob.rstrip(pad)
@@ -291,8 +296,8 @@ class flashrom_util(object):
             raise TestError('INTERNAL ERROR: invalid layout map.')
         if len(data) != pos[1] - pos[0] + 1:
             # Pad the main firmware body since we trimed it down before.
-            if (len(data) < pos[1] - pos[0] + 1 and
-                    section_name in ('FVMAIN', 'FVMAINB')):
+            if (len(data) < pos[1] - pos[0] + 1 and section_name in
+                    ('FVMAIN', 'FVMAINB', 'ECMAINA', 'ECMAINB')):
                 pad = base_image[pos[1]]
                 data = data + pad * (pos[1] - pos[0] + 1 - len(data))
             else:

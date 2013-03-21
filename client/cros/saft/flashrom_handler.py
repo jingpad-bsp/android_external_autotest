@@ -118,6 +118,8 @@ class FlashromHandler(object):
             self.fv_sections = {
                 'a': FvSection('VBOOTA', 'FVMAIN'),
                 'b': FvSection('VBOOTB', 'FVMAINB'),
+                'ec_a': FvSection(None, 'ECMAINA'),
+                'ec_b': FvSection(None, 'ECMAINB'),
                 }
         elif target == 'ec':
             self.fum = flashrom_util_module.flashrom_util(target_is_ec=True)
@@ -154,13 +156,18 @@ class FlashromHandler(object):
             for subsection_name in section.names():
                 if not subsection_name:
                     continue
-                f = open(self.chros_if.state_dir_file(subsection_name), 'wb')
-                f.write(self.fum.get_section(self.image, subsection_name))
-                f.close()
+                blob = self.fum.get_section(self.image, subsection_name)
+                if blob:
+                    f = open(self.chros_if.state_dir_file(subsection_name),
+                             'wb')
+                    f.write(blob)
+                    f.close()
 
-            s = hashlib.sha1()
-            s.update(self.fum.get_section(self.image, section.get_body_name()))
-            section.set_sha(s.hexdigest())
+            blob = self.fum.get_section(self.image, section.get_body_name())
+            if blob:
+                s = hashlib.sha1()
+                s.update(blob)
+                section.set_sha(s.hexdigest())
 
             # If there is no "sig" subsection, skip reading version and flags.
             if not section.get_sig_name():
@@ -235,11 +242,12 @@ class FlashromHandler(object):
         """
 
         for section in self.fv_sections.itervalues():
-            cmd = 'vbutil_firmware --verify %s --signpubkey %s  --fv %s' % (
-                self.chros_if.state_dir_file(section.get_sig_name()),
-                self.pub_key_file,
-                self.chros_if.state_dir_file(section.get_body_name()))
-            self.chros_if.run_shell_command(cmd)
+            if section.get_sig_name():
+                cmd = 'vbutil_firmware --verify %s --signpubkey %s  --fv %s' % (
+                    self.chros_if.state_dir_file(section.get_sig_name()),
+                    self.pub_key_file,
+                    self.chros_if.state_dir_file(section.get_body_name()))
+                self.chros_if.run_shell_command(cmd)
 
     def _modify_section(self, section, delta, body_or_sig=False,
                         corrupt_all=False):
