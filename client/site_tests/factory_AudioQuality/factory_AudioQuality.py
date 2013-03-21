@@ -120,7 +120,7 @@ class factory_AudioQuality(test.test):
             self._loop_process = subprocess.Popen(cmdargs)
         else:
             cmdargs = [self._ah.audioloop_path, '-i', self._input_dev, '-o',
-                    self._output_dev]
+                    self._output_dev, '-c', '10']
             self._loop_process = subprocess.Popen(cmdargs)
 
     def restore_configuration(self):
