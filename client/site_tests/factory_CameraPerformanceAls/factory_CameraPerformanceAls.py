@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8; tab-width: 4; python-indent: 4 -*-
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -401,8 +401,12 @@ class factory_CameraPerformanceAls(test.test):
     def generate_final_result(self):
         self.update_status(mid='end_test')
         self.cam_pass = self.compile_result(self._CAM_TESTS)
-        self.als_pass = self.compile_result(self._ALS_TESTS)
-        result = self.compile_result(self.status_names[:-1], use_untest=False)
+        if self.use_als:
+            self.als_pass = self.compile_result(self._ALS_TESTS)
+            result = self.compile_result(self.status_names[:-1],
+                                         use_untest=False)
+        else:
+            result = self.compile_result(self._CAM_TESTS, use_untest=False)
         self.update_result('result', result)
         self.log("Result in summary:\n%s\n" %
                  pprint.pformat(self.result_dict))
@@ -425,7 +429,8 @@ class factory_CameraPerformanceAls(test.test):
         # Save an image for further analysis in case of the camera
         # performance fail.
         self.update_status(mid='save_to_usb')
-        if (not self.cam_pass) and (self.target is not None):
+        if  (self.target is not None) and (self.log_good_image or
+                                           not self.cam_pass):
             if not self.write_to_usb(self.serial_number + ".bmp",
                                      self.target, _CONTENT_IMG):
                 return False
@@ -452,8 +457,12 @@ class factory_CameraPerformanceAls(test.test):
                 return self.t_fail(prefix + 'UNFINISHED')
             return self.t_fail(prefix + 'FAIL')
         cam_result = get_str(self.cam_pass, 'Camera: ', False)
-        als_result = get_str(self.als_pass, 'ALS: ')
-        self.update_status(msg=cam_result + '<br>' + als_result)
+        if self.use_als:
+            als_result = get_str(self.als_pass, 'ALS: ')
+            self.update_status(msg=cam_result + '<br>' + als_result)
+        else:
+            self.update_status(msg=cam_result)
+
         self.update_pbar(value=100)
 
     def exit_test(self, event):
@@ -468,7 +477,8 @@ class factory_CameraPerformanceAls(test.test):
         self.update_status(mid='start_test')
         if self.type == _TEST_TYPE_AB:
             self.serial_number = event.data.get('sn', '')
-        if not self.setup_fixture():
+
+        if self.talk_to_fixture and not self.setup_fixture():
             self.update_status(mid='fixture_fail')
             self.ui.CallJSFunction("OnRemoveFixtureConnection")
             return
@@ -478,12 +488,15 @@ class factory_CameraPerformanceAls(test.test):
             with leds.Blinker(self._LED_RUNNING_TEST):
                 self.test_camera_performance()
                 self.update_pbar(pid='cam_finish', add=False)
-                self.test_als_calibration()
+                if self.use_als:
+                    self.test_als_calibration()
+                    self.update_pbar(pid='als_finish' + self.type, add=False)
         else:
             self.test_camera_performance()
             self.update_pbar(pid='cam_finish', add=False)
-            self.test_als_calibration()
-        self.update_pbar(pid='als_finish' + self.type, add=False)
+            if self.use_als:
+                self.test_als_calibration()
+                self.update_pbar(pid='als_finish' + self.type, add=False)
 
         self.finalize_test()
 
@@ -734,7 +747,8 @@ class factory_CameraPerformanceAls(test.test):
         self.update_result('als_stat', True)
         return
 
-    def run_once(self, test_type=_TEST_TYPE_FULL, unit_test=False):
+    def run_once(self, test_type = _TEST_TYPE_FULL, unit_test = False,
+                 use_als = True, log_good_image = False):
         '''The entry point of the test.
 
         Args:
@@ -753,14 +767,23 @@ class factory_CameraPerformanceAls(test.test):
                        in the parameter file. The test will replace the
                        captured image with the sample test image and run the
                        camera performance test on it.
+           use_als:    Whether to use the ambient light sensor.
+           log_good_image: Log images that pass that test
+                       (By default, only failed images are logged)
         '''
         factory.log('%s run_once' % self.__class__)
 
         # Initialize variables and environment.
         assert test_type in [_TEST_TYPE_FULL, _TEST_TYPE_AB]
         assert unit_test in [True, False]
+        assert use_als in [True, False]
+        assert log_good_image in [True, False]
         self.type = test_type
         self.unit_test = unit_test
+        self.use_als = use_als
+        self.log_good_image = log_good_image
+
+        self.talk_to_fixture = use_als
         self.config_loaded = False
         self.status_names = self._STATUS_NAMES
         self.status_labels = self._STATUS_LABELS
@@ -773,13 +796,16 @@ class factory_CameraPerformanceAls(test.test):
         usb_monitor.start(subsystem='block', device_type='disk',
                           on_insert=self.on_usb_insert,
                           on_remove=self.on_usb_remove)
-        u2s_monitor = ConnectionMonitor()
-        u2s_monitor.start(subsystem='usb-serial',
-                          on_insert=self.on_u2s_insert,
-                          on_remove=self.on_u2s_remove)
+
+        if self.talk_to_fixture:
+            u2s_monitor = ConnectionMonitor()
+            u2s_monitor.start(subsystem='usb-serial',
+                              on_insert=self.on_u2s_insert,
+                              on_remove=self.on_u2s_remove)
 
         # Startup the UI.
         self.ui = UI()
         self.register_events(['sync_fixture', 'exit_test', 'run_test'])
-        self.ui.CallJSFunction("InitLayout", self.type == _TEST_TYPE_FULL)
+        self.ui.CallJSFunction("InitLayout", self.talk_to_fixture,
+                               self.type == _TEST_TYPE_FULL)
         self.ui.Run()

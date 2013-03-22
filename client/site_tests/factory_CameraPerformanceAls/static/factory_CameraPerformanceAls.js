@@ -11,6 +11,8 @@ var fxtDetecting = '<span class="goofy-label-en">DETECTING</span>' +
 var statIdle = '<span class="color_idle goofy-label-en">IDLE</span>' +
     '<span class="color_idle goofy-label-zh">閒置中</span>';
 
+var useFixture = true;
+
 window.onkeydown = function(event) {
     if (event.keyCode == 13 || event.keyCode == 32) {
         var testButton = document.getElementById("btn_run_test");
@@ -19,7 +21,7 @@ window.onkeydown = function(event) {
     }
 }
 
-function InitLayout(testFull) {
+function InitLayout(talkToFixture, testFull) {
     if (testFull) {
         document.getElementById("test_sn_label").hidden = true;
         document.getElementById("test_sn").hidden = true;
@@ -29,17 +31,27 @@ function InitLayout(testFull) {
         snInputBox.disabled = false;
         snInputBox.autofocus = true;
     }
+
+    useFixture = talkToFixture;
+    if (!talkToFixture) {
+        document.getElementById("fixture_label").hidden = true;
+        document.getElementById("test_fixture").hidden = true;
+        document.getElementById("fixture_status").hidden = true;
+    }
 }
 
 function UpdateTestBottonStatus() {
     var testButton = document.getElementById("btn_run_test");
     var isSnReady = (document.getElementById("test_sn").hidden ||
                      document.getElementById("serial_number").value !== "");
+    var isFixtureReady = (!useFixture ||
+        document.getElementById('fixture_status').innerHTML == fxtAvailable);
+
     testButton.disabled =
         !(isSnReady &&
         document.getElementById('serial_number').validity.valid &&
         document.getElementById('usb_status').innerHTML == USBLoaded &&
-        document.getElementById('fixture_status').innerHTML == fxtAvailable);
+        isFixtureReady);
 }
 
 function OnSnInputBoxClick() {
@@ -60,7 +72,10 @@ function OnUSBInit(pattern) {
     document.getElementById("usb_status").innerHTML = USBLoaded;
     document.getElementById("test_param").className = "panel_good";
     ConfigureSNInputbox(pattern);
-    test.sendTestEvent('sync_fixture', {});
+    if (useFixture)
+        test.sendTestEvent('sync_fixture', {});
+    else
+        UpdateTestBottonStatus();
 }
 
 function OnUSBRemoval() {
