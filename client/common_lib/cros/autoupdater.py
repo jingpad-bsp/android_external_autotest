@@ -346,7 +346,65 @@ class ChromiumOSUpdater():
 
         """
         booted_version = self.get_build_id()
-        return self.update_version and booted_version in self.update_version
+        return (self.update_version and
+                self.update_version.endswith(booted_version))
+
+
+    def check_version_to_confirm_install(self):
+        """Check image running in DUT has the desired version to be installed.
+
+        The method should not be used to check if DUT needs to have a full
+        reimage. Only use it to confirm a image is installed.
+
+        For build from trybot, version retrieved from lsb-release looks like
+        3888.0.2013_03_21_1340. However, for trybot build, self.update_version
+        looks like 'R27-3888.0.0-b711', which does not have the date string and
+        it is complicated to get the date string from update url.
+        Therefore, to make the version verification easiser, the date string is
+        ignored in version retrieved from lsb-release.
+
+        When we are checking if a DUT needs to do a full install, we should NOT
+        use this method to check if the DUT is running the same version, since
+        it may return false positive. For example, if the DUT is running a
+        trybot build with version |3888.0.2013_03_21_1340| and the version to
+        be installed is an official build with version of 3888.0.0,
+        check_version method returns False which is expected. However,
+        check_version_to_confirm_install returns True, which will lead to
+        reimage job fails to install correct image in the DUT.
+
+        On the other hand, when we try to confirm if a build is successfully
+        installed, we should ignore the date string, so a trybot build can be
+        installed successfully when the reimage job calls
+        check_version_to_confirm_install to verify the image version at the end
+        of the job.
+
+        This logic has a bug if a trybot build failed to be installed in a
+        DUT running an older trybot build with same platform number, but
+        different build number (-b###). So to conclusively determine if a
+        tryjob build is imaged successfully, we do need to find out the date
+        string from update url.
+
+        @returns: True if the DUT's image version (without the date string if
+            the image is a trybot build), matches the version that the
+            autoupdater is trying to update to.
+
+        """
+        # Always try the default check_version method first, this prevents
+        # any backward compatibility issue.
+        if self.check_version():
+            return True
+
+        booted_version = self.get_build_id()
+        booted_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '',
+                                        booted_version)
+        # For a DUT running a build from trybot, only matching the version
+        # number is enough to consider versions are matched.
+        if booted_version != booted_version_no_date:
+            return (self.update_version and
+                    booted_version_no_date in self.update_version)
+        else:
+            return (self.update_version and
+                    self.update_version.endswith(booted_version_no_date))
 
 
     def get_build_id(self):

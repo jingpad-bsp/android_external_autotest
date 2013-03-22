@@ -347,9 +347,6 @@ class SiteHost(remote.RemoteHost):
         @returns: True if the DUT was updated with stateful update.
 
         """
-        # Stateful update is disabled until lsb-release has rc build info.
-        logging.info('Stateful update only is disabled.')
-        return False
         if not updater.check_version():
             return False
         if not force_update:
@@ -397,7 +394,7 @@ class SiteHost(remote.RemoteHost):
         self.run('start autoreboot')
 
         # Following the reboot, verify the correct version.
-        if not updater.check_version():
+        if not updater.check_version_to_confirm_install():
             # Print out crossystem to make it easier to debug the rollback.
             logging.debug('Dumping partition table.')
             self.run('cgpt show $(rootdev -s -d)')
