@@ -74,10 +74,11 @@ class platform_FilePerms(test.test):
             'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
                         'mode=755']},
         # Special case, we want to track group/mode too.
+        # gid 236 == debugfs-access
         '/var/run/debugfs_gpu': {
             'type': 'debugfs',
             'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
-                        'gid=216', 'mode=750']},
+                        'gid=236', 'mode=750']},
         '/usr/share/oem': { # crosbug.com/34688
             'type': 'ext4',
             'options': ['ro', 'nosuid', 'nodev', 'noexec', 'relatime']},
