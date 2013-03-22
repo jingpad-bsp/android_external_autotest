@@ -120,7 +120,7 @@ class factory_AudioQuality(test.test):
             self._loop_process = subprocess.Popen(cmdargs)
         else:
             cmdargs = [self._ah.audioloop_path, '-i', self._input_dev, '-o',
-                    self._output_dev, '-c', '10']
+                    self._output_dev, '-c', str(self._loop_buffer_count)]
             self._loop_process = subprocess.Popen(cmdargs)
 
     def restore_configuration(self):
@@ -325,7 +325,7 @@ class factory_AudioQuality(test.test):
             unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS,
             mute_right_mixer_settings=_MUTE_RIGHT_MIXER_SETTINGS,
             mute_left_mixer_settings=_MUTE_LEFT_MIXER_SETTINGS,
-            use_sox_loop=False, use_multitone=False):
+            use_sox_loop=False, use_multitone=False, loop_buffer_count=10):
         factory.console.info('%s run_once' % self.__class__)
 
         self._ah = audio_helper.AudioHelper(self)
@@ -338,6 +338,7 @@ class factory_AudioQuality(test.test):
         self._test_passed = False
         self._use_sox_loop = use_sox_loop
         self._use_multitone = use_multitone
+        self._loop_buffer_count = loop_buffer_count
 
         self._multitone_job = None
         self._sweep_job = None
