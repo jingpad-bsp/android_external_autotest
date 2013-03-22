@@ -24,6 +24,7 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
+from autotest_lib.site_utils.graphite import stats
 
 CONFIG = global_config.global_config
 
@@ -51,6 +52,8 @@ def setup_logging(logfile=None):
 
 
 def parse_options():
+    """ Parse command line options. """
+
     usage = "usage: %prog [options]"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b", "--board", dest="board")
@@ -79,6 +82,13 @@ def parse_options():
 
 
 def get_pretty_status(status):
+    """
+    Buckets input status into either passed, info or failed.
+
+    @param status: Status message to bucket.
+    @return: A string representing the bucket we place
+             the input status in.
+    """
     if status == 'GOOD':
         return '[ PASSED ]'
     elif status == 'TEST_NA':
@@ -86,6 +96,12 @@ def get_pretty_status(status):
     return '[ FAILED ]'
 
 def is_fail_status(status):
+    """
+    Checks if the input status falls into the failure bucket.
+
+    @param status: Status message to bucket.
+    @return: True if the input status represents a failure.
+    """
     # All the statuses tests can have when they fail.
     if status in ['FAIL', 'ERROR']:
         return True
@@ -182,13 +198,48 @@ class Timings(object):
     @var reimage_end_time: the time we finished reimaging devices.
     @var tests_start_time: the time the first test started running.
     """
+
+    # Recorded in create_suite_job as we're staging the components of a
+    # build on the devserver. Only the artifacts necessary to start
+    # installing images onto DUT's will be staged when we record
+    # payload_end_time, the remaining artifacts are downloaded after we kick
+    # off the reimaging job, at which point we record artifact_end_time.
     download_start_time = None
     payload_end_time = None
     artifact_end_time = None
+
+    # The test_start_time, but taken off the view that corresponds to the
+    # suite instead of an individual test.
     suite_start_time = None
-    reimage_times = {}  # {'hostname': (start_time, end_time)}
+
+    # reimaging_times is a dictionary mapping a host name to it's start and
+    # end reimage timings. RecordTiming is invoked with test views, that
+    # correspond to tests in a suite; these tests might've run across
+    # different hosts. Each view that RecordTiming is invoked with creates a
+    # new entry in reimaging_times; When it's time to log reimage timings we
+    # iterate over this dict and create a reimaging_info string. This is a
+    # one time operation and only happens after all the TestViews in a suite
+    # are added to the reimaging_times dictionary.
+    # reimaging_times eg: {'hostname': (start_time, end_time)}
+    reimage_times = {}
+
+    # Earliest and Latest tests in the set of TestViews passed to us.
     tests_start_time = None
     tests_end_time = None
+
+
+    def _GetDatetime(self, timing_string, timing_string_format):
+        """
+        Formats the timing_string according to the timing_string_format.
+
+        @param timing_string: A datetime timing string.
+        @param timing_string_format: Format of the time in timing_string.
+        @return: A datetime object for the given timing string.
+        """
+        try:
+            return datetime.strptime(timing_string, timing_string_format)
+        except TypeError:
+            return None
 
 
     def RecordTiming(self, view):
@@ -225,12 +276,17 @@ class Timings(object):
             self._UpdateLastTestEndTime(end_candidate)
         if 'job_keyvals' in view:
             keyvals = view['job_keyvals']
-            self.download_start_time = keyvals.get(
-                constants.DOWNLOAD_STARTED_TIME)
-            self.payload_end_time = keyvals.get(
-                constants.PAYLOAD_FINISHED_TIME)
-            self.artifact_end_time = keyvals.get(
-                constants.ARTIFACT_FINISHED_TIME)
+            self.download_start_time = self._GetDatetime(
+                keyvals.get(constants.DOWNLOAD_STARTED_TIME),
+                job_status.TIME_FMT)
+
+            self.payload_end_time = self._GetDatetime(
+                keyvals.get(constants.PAYLOAD_FINISHED_TIME),
+                job_status.TIME_FMT)
+
+            self.artifact_end_time = self._GetDatetime(
+                keyvals.get(constants.ARTIFACT_FINISHED_TIME),
+                job_status.TIME_FMT)
 
 
     def _UpdateFirstTestStartTime(self, candidate):
@@ -273,6 +329,55 @@ class Timings(object):
                                            self.tests_start_time,
                                            self.tests_end_time))
 
+    def SendResultsToStatsd(self, suite, build, board):
+        """
+        Sends data to statsd.
+
+        1. Makes a data_key of the form: run_suite.$board.$branch.$suite
+            eg: stats/gauges/<hostname>/run_suite/<board>/<branch>/<suite>/
+        2. Computes timings for several start and end event pairs.
+        3. Computes timings for reimage events for all hosts.
+        4. Sends all timing values to statsd.
+
+        @param suite: scheduled suite that we want to record the results of.
+        @param build: the build that this suite ran on.
+                      eg: 'lumpy-release/R26-3570.0.0'
+        @param board: the board that this suite ran on.
+        """
+        data_key_dict = {
+            'board': board,
+            'branch': build[build.find('/')+1:build.rfind('-')],
+            'suite': suite,
+        }
+        data_key = 'run_suite.%(board)s.%(branch)s.%(suite)s' % data_key_dict
+
+        if self.download_start_time:
+            if self.payload_end_time:
+                stats.Timer(data_key).send('payload_download_time',
+                    (self.payload_end_time -
+                     self.download_start_time).total_seconds())
+
+            if self.artifact_end_time:
+                stats.Timer(data_key).send('artifact_download_time',
+                    (self.artifact_end_time -
+                     self.download_start_time).total_seconds())
+
+        if self.tests_end_time:
+            if self.suite_start_time:
+                stats.Timer(data_key).send('suite_run_time',
+                    (self.tests_end_time -
+                     self.suite_start_time).total_seconds())
+
+            if self.tests_start_time:
+                stats.Timer(data_key).send('tests_run_time',
+                    (self.tests_end_time -
+                     self.tests_start_time).total_seconds())
+
+        for host, (start, end) in self.reimage_times.iteritems():
+            if start and end:
+                stats.Timer(data_key).send(host.replace('.', '_'),
+                    (end - start).total_seconds())
+
 
 def _full_test_name(job_id, view):
     """Generates the full test name for printing to logs.
@@ -287,6 +392,7 @@ def _full_test_name(job_id, view):
 
 
 def main():
+    """ Main method of run_suites. """
     parser, options, args = parse_options()
     log_name = 'run_suite-default.log'
     if not options.mock_job_id:
@@ -395,6 +501,8 @@ def main():
                     code = WARNING
                 else:
                     code = ERROR
+
+        timings.SendResultsToStatsd(options.name, options.build, options.board)
         logging.info(timings)
         logging.info('\n'
                      'Links to test logs:')
