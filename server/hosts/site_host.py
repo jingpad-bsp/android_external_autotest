@@ -532,7 +532,7 @@ class SiteHost(remote.RemoteHost):
             self.run('rm -rf /var/lib/whitelist')
             self.run('touch /var/lib/whitelist')
             self.run('chmod -w /var/lib/whitelist')
-            self.run('restart update-engine')
+            self.run('stop update-engine; start update-engine')
 
             if updater.run_update(force_update):
                 updated = True
@@ -701,31 +701,28 @@ class SiteHost(remote.RemoteHost):
         the exception it raises is passed back to the caller.
 
         """
-        try:
-            self.verify()
-        except:
-            host_board = self._get_board_from_afe()
-            if host_board is None:
-                logging.error('host %s has no board; failing repair',
-                              self.hostname)
-                raise
+        host_board = self._get_board_from_afe()
+        if host_board is None:
+            logging.error('host %s has no board; failing repair',
+                          self.hostname)
+            raise
 
-            if not self._install_repair():
-                # TODO(scottz): All repair pathways should be
-                # executed until we've exhausted all options. Below
-                # we favor servo over powercycle when we really
-                # should be falling back to power if servo fails.
-                if (self.servo and
-                        host_board in self._SERVO_REPAIR_WHITELIST):
-                    self._servo_repair(host_board)
-                elif (self.has_power() and
-                      host_board in self._RPM_RECOVERY_BOARDS):
-                    self._powercycle_to_repair()
-                else:
-                    logging.error('host %s has no servo and no RPM control; '
-                                  'failing repair', self.hostname)
-                    raise
-            self.verify()
+        if not self._install_repair():
+            # TODO(scottz): All repair pathways should be
+            # executed until we've exhausted all options. Below
+            # we favor servo over powercycle when we really
+            # should be falling back to power if servo fails.
+            if (self.servo and
+                    host_board in self._SERVO_REPAIR_WHITELIST):
+                self._servo_repair(host_board)
+            elif (self.has_power() and
+                  host_board in self._RPM_RECOVERY_BOARDS):
+                self._powercycle_to_repair()
+            else:
+                logging.error('host %s has no servo and no RPM control; '
+                              'failing repair', self.hostname)
+                raise
+        self.verify()
 
 
     def close(self):
