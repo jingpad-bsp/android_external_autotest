@@ -149,7 +149,7 @@ class factory_AudioLoop(test.test):
 
                     # Playback sine tone and check the recorded audio frequency.
                     self._ah.loopback_test_channels(noise_file,
-                            lambda ch: self._ah.play_sine(ch, self._freq, output_device,
+                            lambda ch: self._ah.play_sine(ch, output_device, self._freq,
                                                           self._duration),
                             self.check_recorded_audio)
 

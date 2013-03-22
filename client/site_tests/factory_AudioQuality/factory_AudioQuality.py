@@ -240,13 +240,15 @@ class factory_AudioQuality(test.test):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_LEFT)
         self._ah.set_mixer_controls(self._mute_left_mixer_settings)
-        self._ah.play_sine(1, 1000, self._output_dev)
+        cmdargs = self._ah.get_play_sine_args(1, self._output_dev)
+        self._tone_job = utils.BgJob(' '.join(cmdargs))
 
     def handle_xtalk_right(self, *args):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_RIGHT)
         self._ah.set_mixer_controls(self._mute_right_mixer_settings)
-        self._ah.play_sine(0, 1000, self._output_dev)
+        cmdargs = self._ah.get_play_sine_args(0, self._output_dev)
+        self._tone_job = utils.BgJob(' '.join(cmdargs))
 
     def listen_forever(self, sock):
         fd = sock.fileno()

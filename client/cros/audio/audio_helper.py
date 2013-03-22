@@ -391,21 +391,30 @@ class AudioHelper(object):
         duration_arg = ('-d %d' % duration_seconds) if duration_seconds else ''
         utils.system('aplay %s %s' % (duration_arg, audio_file_path))
 
-    def play_sine(self, channel, freq=1000, odev='default', duration=10,
+    def get_play_sine_args(self, channel, odev='default', freq=1000, duration=10,
             sample_size=16):
-        '''Generates a sine wave and plays to odev.
+        '''Gets the command args to generate a sine wav to play to odev.
 
         Args:
-          channel: 0 for left, 1 for right; othersize, mono.
+          channel: 0 for left, 1 for right; otherwize, mono.
           odev: alsa output device.
+          freq: frequency of the generated sine tone.
+          duration: duration of the generated sine tone.
           sample_size: output audio sample size. Default to 16.
         '''
-        cmd = '%s -b %d -n -t alsa %s synth %d ' % (self.sox_path,
-                sample_size, odev, duration)
+        cmdargs = [self.sox_path, '-b', str(sample_size), '-n', '-t', 'alsa',
+                   odev, 'synth', str(duration)]
         if channel == 0:
-            cmd += 'sine %d sine 0' % freq
+            cmdargs += ['sine', str(freq), 'sine', '0']
         elif channel == 1:
-            cmd += 'sine 0 sine %d' % freq
+            cmdargs += ['sine', '0', 'sine', str(freq)]
         else:
-            cmd += 'sine %d' % freq
-        utils.system(cmd)
+            cmdargs += ['sine', str(freq)]
+
+        return cmdargs
+
+    def play_sine(self, channel, odev='default', freq=1000, duration=10,
+            sample_size=16):
+        '''Generates a sine wave and plays to odev.'''
+        cmdargs = get_play_sine_args(channel, odev, freq, duration, sample_size)
+        utils.system(' '.join(cmdargs))
