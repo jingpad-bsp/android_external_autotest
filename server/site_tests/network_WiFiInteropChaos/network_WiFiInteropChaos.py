@@ -56,7 +56,8 @@ class network_WiFiInteropChaos(test.test):
                     command = ('%s "link[0] == 0x80 && wlan host %s" -r %s |'
                                'wc -l' % (self.capturer._tcpdump, bss,
                                self.capturer._remote_filename))
-                    count = self.capturer._host.run(command)
+                    remote_cmd = '( %s ) 2>/dev/null' % command
+                    count = self.capturer._host.run(remote_cmd)
                     if (count == 0):
                          msg = ('No beacons from bssid %s on freq = %d'
                                 % (bss, frequency))
