@@ -74,7 +74,7 @@
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "id": "gbkeegbaiigmenfmjfclcdgdpimamgkj",
+      { "id": "bpmcpldpdmajfigpchkicefoigmkfalc",
         "name": "Chrome Office Viewer",
         "effective_host_permissions": [],
         "api_permissions": ["fileBrowserHandler",
