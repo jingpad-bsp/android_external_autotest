@@ -46,6 +46,7 @@
 /lib/libSegFault.so
 /lib/libthread_db-1.0.so
 /lib/libutil-2.15.so
+/opt/google/chrome/libwidevinecdm.so
 /opt/google/chrome/nacl_helper_bootstrap
 /opt/google/chrome/pepper/libpepflashplayer.so
 /opt/google/chrome/plugins/libgcflashplayer.so
@@ -68,6 +69,7 @@
 /usr/bin/db4.7_stat
 /usr/bin/db4.7_upgrade
 /usr/bin/db4.7_verify
+/usr/bin/futility
 /usr/bin/getent
 /usr/lib64/audit/sotruss-lib.so
 /usr/lib64/gconv/ANSI_X3.110.so
