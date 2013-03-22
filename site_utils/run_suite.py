@@ -14,7 +14,7 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
-import getpass, hashlib, logging, optparse, os, time, sys
+import getpass, hashlib, logging, optparse, os, re, sys, time
 from datetime import datetime
 
 import common
@@ -24,6 +24,8 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
+from autotest_lib.site_utils.suite_scheduler import base_event
+from autotest_lib.site_utils.graphite import stats
 
 CONFIG = global_config.global_config
 
@@ -198,13 +200,48 @@ class Timings(object):
     @var reimage_end_time: the time we finished reimaging devices.
     @var tests_start_time: the time the first test started running.
     """
+
+    # Recorded in create_suite_job as we're staging the components of a
+    # build on the devserver. Only the artifacts necessary to start
+    # installing images onto DUT's will be staged when we record
+    # payload_end_time, the remaining artifacts are downloaded after we kick
+    # off the reimaging job, at which point we record artifact_end_time.
     download_start_time = None
     payload_end_time = None
     artifact_end_time = None
+
+    # The test_start_time, but taken off the view that corresponds to the
+    # suite instead of an individual test.
     suite_start_time = None
-    reimage_times = {}  # {'hostname': (start_time, end_time)}
+
+    # reimaging_times is a dictionary mapping a host name to it's start and
+    # end reimage timings. RecordTiming is invoked with test views, that
+    # correspond to tests in a suite; these tests might've run across
+    # different hosts. Each view that RecordTiming is invoked with creates a
+    # new entry in reimaging_times; When it's time to log reimage timings we
+    # iterate over this dict and create a reimaging_info string. This is a
+    # one time operation and only happens after all the TestViews in a suite
+    # are added to the reimaging_times dictionary.
+    # reimaging_times eg: {'hostname': (start_time, end_time)}
+    reimage_times = {}
+
+    # Earliest and Latest tests in the set of TestViews passed to us.
     tests_start_time = None
     tests_end_time = None
+
+
+    def _GetDatetime(self, timing_string, timing_string_format):
+        """
+        Formats the timing_string according to the timing_string_format.
+
+        @param timing_string: A datetime timing string.
+        @param timing_string_format: Format of the time in timing_string.
+        @return: A datetime object for the given timing string.
+        """
+        try:
+            return datetime.strptime(timing_string, timing_string_format)
+        except TypeError:
+            return None
 
 
     def RecordTiming(self, view):
@@ -241,12 +278,17 @@ class Timings(object):
             self._UpdateLastTestEndTime(end_candidate)
         if 'job_keyvals' in view:
             keyvals = view['job_keyvals']
-            self.download_start_time = keyvals.get(
-                constants.DOWNLOAD_STARTED_TIME)
-            self.payload_end_time = keyvals.get(
-                constants.PAYLOAD_FINISHED_TIME)
-            self.artifact_end_time = keyvals.get(
-                constants.ARTIFACT_FINISHED_TIME)
+            self.download_start_time = self._GetDatetime(
+                keyvals.get(constants.DOWNLOAD_STARTED_TIME),
+                job_status.TIME_FMT)
+
+            self.payload_end_time = self._GetDatetime(
+                keyvals.get(constants.PAYLOAD_FINISHED_TIME),
+                job_status.TIME_FMT)
+
+            self.artifact_end_time = self._GetDatetime(
+                keyvals.get(constants.ARTIFACT_FINISHED_TIME),
+                job_status.TIME_FMT)
 
 
     def _UpdateFirstTestStartTime(self, candidate):
@@ -288,6 +330,105 @@ class Timings(object):
                                            self.artifact_end_time,
                                            self.tests_start_time,
                                            self.tests_end_time))
+
+
+    def _GetDataKeyForStatsd(self, suite, build, board):
+        """
+        Constructs the key used for logging statsd timing data.
+
+        @param suite: scheduled suite that we want to record the results of.
+        @param build: The build string. This string should have a consistent
+            format eg: x86-mario-release/R26-3570.0.0. If the format of this
+            string changes such that we can't determine build_type or branch
+            we give up and use the parametes we're sure of instead (suite,
+            board). eg:
+                1. build = x86-alex-pgo-release/R26-3570.0.0
+                   branch = 26
+                   build_type = pgo-release
+                2. build = lumpy-paladin/R28-3993.0.0-rc5
+                   branch = 28
+                   build_type = paladin
+        @param board: The board that this suite ran on.
+        @return: The key used to log timing information in statsd.
+        """
+        try:
+            _board, build_type, branch = base_event.ParseBuildName(build)[:3]
+        except base_event.ParseBuildNameException as e:
+            logging.error(str(e))
+            branch = 'Unknown'
+            build_type = 'Unknown'
+        else:
+            embedded_str = re.search(r'x86-\w+-(.*)', _board)
+            if embedded_str:
+                build_type = embedded_str.group(1) + '-' + build_type
+
+        data_key_dict = {
+            'board': board,
+            'branch': branch,
+            'build_type': build_type,
+            'suite': suite,
+        }
+        return ('run_suite.%(board)s.%(build_type)s.%(branch)s.%(suite)s'
+                % data_key_dict)
+
+
+    def SendResultsToStatsd(self, suite, build, board):
+        """
+        Sends data to statsd.
+
+        1. Makes a data_key of the form: run_suite.$board.$branch.$suite
+            eg: stats/gauges/<hostname>/run_suite/<board>/<branch>/<suite>/
+        2. Computes timings for several start and end event pairs.
+        3. Computes timings for reimage events for all hosts.
+        4. Sends all timing values to statsd.
+
+        @param suite: scheduled suite that we want to record the results of.
+        @param build: the build that this suite ran on.
+                      eg: 'lumpy-release/R26-3570.0.0'
+        @param board: the board that this suite ran on.
+        """
+        if sys.version_info < (2, 7):
+            logging.error('Sending run_suite perf data to statsd requires'
+                          'python 2.7 or greater.')
+            return
+
+        data_key = self._GetDataKeyForStatsd(suite, build, board)
+
+        # Since we don't want to try subtracting corrupted datetime values
+        # we catch TypeErrors in _GetDatetime and insert None instead. This
+        # means that even if, say, keyvals.get(constants.ARTIFACT_FINISHED_TIME)
+        # returns a corrupt value the member artifact_end_time is set to None.
+        if self.download_start_time:
+            if self.payload_end_time:
+                stats.Timer(data_key).send('payload_download_time',
+                    (self.payload_end_time -
+                     self.download_start_time).total_seconds())
+
+            if self.artifact_end_time:
+                stats.Timer(data_key).send('artifact_download_time',
+                    (self.artifact_end_time -
+                     self.download_start_time).total_seconds())
+
+        if self.tests_end_time:
+            if self.suite_start_time:
+                stats.Timer(data_key).send('suite_run_time',
+                    (self.tests_end_time -
+                     self.suite_start_time).total_seconds())
+
+            if self.tests_start_time:
+                stats.Timer(data_key).send('tests_run_time',
+                    (self.tests_end_time -
+                     self.tests_start_time).total_seconds())
+
+        # The reimage times are the start and end times of the reimage
+        # job (taken directly from the view), converted to datetime objects.
+        # If the reimage job never ran we won't enter the loop and if it didn't
+        # finish for some reason the start and end times are still initialized
+        # to valid datetimes.
+        for host, (start, end) in self.reimage_times.iteritems():
+            if start and end:
+                stats.Timer(data_key).send(host.replace('.', '_'),
+                    (end - start).total_seconds())
 
 
 def _full_test_name(job_id, view):
@@ -415,6 +556,7 @@ def main():
                 else:
                     code = RETURN_CODES.ERROR
 
+        timings.SendResultsToStatsd(options.name, options.build, options.board)
         logging.info(timings)
         logging.info('\n'
                      'Links to test logs:')
