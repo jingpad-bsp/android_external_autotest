@@ -13,15 +13,17 @@ DOC = """
 This test install the BIOS/EC on a specified device.
 This is useful for testing firmware.
 Here is the command to install a given firmware, which is either a raw binary
-or a shallball:
-  run_remote_tests --args='bios_path=<PATH_TO_BIOS_FILE>
-                           bios_name=<NAME_OF_THE_FILE>'
+or a shellball:
+  run_remote_tests --args='fw_path=<PATH_TO_FW_FILE>
+                           fw_name=<NAME_OF_THE_FILE>'
+                           fw_type=<TYPE_OF_FW>
                    --remote=<IP addres>
                    --board=<board name>
                    platform_InstallFW
 or install the local shellball (/usr/sbin/chromeos-firmwareupdate) in the
 current client image:
-  run_remote_tests --args='bios_path=local'
+  run_remote_tests --args='fw_path=local'
+                   --fw_type=<bios/ec>
                    --remote=<IP addres>
                    --board=<board name>
                    platform_InstallFW
@@ -34,21 +36,29 @@ from autotest_lib.client.common_lib import error
 opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])
 
 def run_installfw(machine):
-    # Verify bios path arg.
-    if 'bios_path' not in opts:
-        raise error.TestFail('No --bios_path specified')
-    # Verify bios_name.
-    if 'bios_name' not in opts:
-        if opts['bios_path'] == 'local':
-            opts['bios_name'] = None
-        elif os.path.isfile(opts['bios_path']):
-            opts['bios_name'] = os.path.basename(opts['bios_path'])
-            opts['bios_path'] = os.path.dirname(opts['bios_path'])
+    # Verify FW type in arg.
+    if 'fw_type' not in opts:
+        raise error.TestFail('No --fw_type specified')
+    # Verify fw_type value either 'bios' or 'ec'.
+    if not (opts['fw_type'] == 'bios' or opts['fw_type'] == 'ec'):
+        raise error.TestFail('Wrong --fw_type specified.  '
+                             'Correct FW Options are bios or ec.')
+    # Verify FW path arg.
+    if 'fw_path' not in opts:
+        raise error.TestFail('No --fw_path specified')
+    # Verify fw_name.
+    if 'fw_name' not in opts:
+        if opts['fw_path'] == 'local':
+            opts['fw_name'] = None
+        elif os.path.isfile(opts['fw_path']):
+            opts['fw_name'] = os.path.basename(opts['fw_path'])
+            opts['fw_path'] = os.path.dirname(opts['fw_path'])
         else:
-            raise error.TestFail('No --bios_name specified')
+            raise error.TestFail('No --fw_name specified')
     # Setup the client machine.
     host = hosts.create_host(machine)
-    job.run_test("platform_InstallFW", host=host, bios_path=opts['bios_path'],
-                 bios_name=opts['bios_name'])
+    job.run_test("platform_InstallFW", host=host, fw_path=opts['fw_path'],
+                 fw_type=opts['fw_type'], fw_name=opts['fw_name'],
+                 disable_sysinfo=True)
 
 parallel_simple(run_installfw, machines)
