@@ -609,6 +609,21 @@
     ]
   },
   {
+    "test_name": "telemetry_OctaneBenchmark",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "overall_score",
+        "units": "score",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "score*"
+        ]
+      }
+    ]
+  },
+  {
     "test_name": "platform_GesturesRegressionTest",
     "graphs": [
       {
