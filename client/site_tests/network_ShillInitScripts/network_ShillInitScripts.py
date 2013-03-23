@@ -224,6 +224,11 @@ class network_ShillInitScripts(test.test):
         """ The "--push" argument should be added if the shill is started
             while a user is logged in.
         """
+        os.mkdir('/var/run/shill')
+        os.mkdir('/var/run/shill/user_profiles')
+        self.create_new_shill_user_profile('')
+        os.symlink(self.new_shill_user_profile_dir,
+                   '/var/run/shill/user_profiles/chronos')
         self.touch('/var/run/state/logged-in')
         self.start_shill()
         command_line = self.get_commandline()
