@@ -197,6 +197,7 @@ class network_ShillInitScripts(test.test):
                      self.test_login_flimflam_profile,
                      self.test_login_ignore_flimflam_profile,
                      self.test_login_prefer_old_shill_profile,
+                     self.test_login_multi_profile,
                      self.test_logout):
           test()
           self.stop_shill()
@@ -456,6 +457,38 @@ class network_ShillInitScripts(test.test):
                     'Shill user profile contains our magic header')
         self.assure_method_calls([[ 'PushProfile', '~chronos/shill' ]],
                                  'Only PushProfile is called')
+
+    def test_login_multi_profile(self):
+        """ Login script should create multiple profiles in parallel
+            if called more than once without an intervening logout. If
+            shill is started while all these profiles are present, each
+            of these should be listed in the '--push' command-line
+            argument to shill.
+        """
+        os.mkdir('/var/run/shill')
+        self.create_new_shill_user_profile('')
+        expected_usernames = [ 'chronos', 'user001', 'user002', 'user003' ]
+        created_profiles = []
+        for username in expected_usernames:
+            self.login()
+            profile = "~%s/shill" % username
+            self.assure_method_calls([[ 'PushProfile', profile ]],
+                                     'PushProfile is called for %s' % profile)
+            self.assure_is_link_to('/var/run/shill/user_profiles/%s' % username,
+                                   self.new_shill_user_profile_dir,
+                                   'Shill profile link for %s' % username)
+            created_profiles.append(profile)
+
+        # Start up shill with the data from all the user profiles above
+        # in place.  Shill should be started with instructions to push
+        # each of these profiles.
+        self.touch('/var/run/state/logged-in')
+        self.start_shill()
+        command_line = self.get_commandline()
+        push_argument = '--push=%s' % ','.join(created_profiles)
+        self.assure(push_argument in command_line,
+                    'Shill command line contains push argument: %s' %
+                    repr(command_line))
 
     def test_logout(self):
         os.makedirs('/var/run/shill/user_profiles')
