@@ -63,15 +63,13 @@ class Suspender(object):
         # once crosbug/p 16981 and 17115 are solved.
         'stout': 10,
 
-        # These two need high values, because it seems to mitigate their
+        # Lumpy and Stumpy need high values, because it seems to mitigate their
         # RTC interrupt problem. See http://crosbug.com/36004
-        'lumpy': 5,
-        'stumpy': 5,
 
-        # RTS5209 card reader takes ~1 second to suspend... really bad staging
-        # driver, we'll get a better one with 3.8 rebase, not worth trying to
-        # fix this in the meantime. Also on Stout.
-        'butterfly': 4,
+        # TODO: Reevaluate these when http://crbug.com/223313 is fixed
+        'lumpy': 7,
+        'stumpy': 7,
+        'butterfly': 7,
 
         # Hard disk sync and overall just slow
         'parrot': 8,
