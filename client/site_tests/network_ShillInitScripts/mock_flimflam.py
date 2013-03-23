@@ -47,6 +47,11 @@ class FlimflamManager(dbus.service.Object):
     def PopProfile(self, profile):
         self.add_method_call('PopProfile', profile)
 
+    @dbus.service.method('org.chromium.flimflam.Manager',
+                         in_signature='', out_signature='')
+    def PopAllUserProfiles(self):
+        self.add_method_call('PopAllUserProfiles', '')
+
     def add_method_call(self, method, arg):
         print "Called method %s" % method
         logging.info("Mock Flimflam method %s called with argument %s" %

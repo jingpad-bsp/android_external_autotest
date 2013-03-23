@@ -136,7 +136,7 @@ class network_ShillInitScripts(test.test):
     def assure_method_calls(self, expected_method_calls, assertion_name):
         method_calls = self.mock_flimflam.get_method_calls()
         if len(expected_method_calls) != len(method_calls):
-            self.assure(false, '%s: method call count does not match' %
+            self.assure(False, '%s: method call count does not match' %
                         assertion_name)
         for expected, actual in zip(expected_method_calls, method_calls):
             self.assure(actual.method == expected[0],
@@ -381,6 +381,7 @@ class network_ShillInitScripts(test.test):
             self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
                                       [ 'PushProfile', '~chronos/shill' ]],
                                      'CreateProfile and PushProfile are called')
+            os.unlink('/var/run/shill/user_profiles/chronos')
 
     def test_login_ignore_old_shill_profile(self):
         """ Login script should ignore an old shill user profile if a new one
@@ -467,5 +468,5 @@ class network_ShillInitScripts(test.test):
                     'User profile directory was removed')
         self.assure(not os.path.exists(self.guest_shill_user_profile_dir),
                     'Guest user profile directory was removed')
-        self.assure_method_calls([[ 'PopProfile', '~chronos/shill' ]],
-                                 'PopProfile is called')
+        self.assure_method_calls([[ 'PopAllUserProfiles', '' ]],
+                                 'PopAllUserProfiles is called')
