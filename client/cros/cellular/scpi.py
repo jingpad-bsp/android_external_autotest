@@ -1,17 +1,20 @@
 #!/usr/bin/python
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
-import logging
 
 
 class Error(Exception):
   pass
 
-
-_DefaultAlwaysCheck = False
-
+import logging
+log = logging.getLogger('scpi_driver')
+log.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(name)s - %(message)s' )
+ch.setFormatter(formatter)
+log.addHandler(ch)
 
 class _ErrorCheckerContext(object):
     """Reference-count our error-checking state and only check for
@@ -27,16 +30,16 @@ class _ErrorCheckerContext(object):
     """
 
     def __init__(self, scpi):
-        self.always_check = _DefaultAlwaysCheck
+        self.always_check = False #True for serious debugging
         self.scpi = scpi
         self.depth = 0
-        self.ignore_errors_once = True
+        self.raise_on_error = False
 
     def __enter__(self):
+        log.debug('ErrorCheckerContext Depth: %s'% self.depth)
         if self.depth == 0 or self.always_check:
             errors = self.scpi._WaitAndFetchErrors(
-                raise_on_error=not self.ignore_errors_once)
-            self.ignore_errors_once = False
+                raise_on_error = self.raise_on_error)
         self.depth += 1
         return self
 
@@ -56,22 +59,18 @@ class Scpi(object):
   The SCPI driver must export:  Query, Send, Reset and Close
   """
 
-  def __init__(self, driver, opc_on_stanza=False):
+  def __init__(self, driver, opc_on_stanza = False):
     self.driver = driver
     self.opc_on_stanza = opc_on_stanza
-    self.scpi_logger = logging.getLogger('SCPI')
     self.checker_context = _ErrorCheckerContext(self)
 
   def Query(self, command):
     """Send the SCPI command and return the response."""
-    self.scpi_logger.info('] %s', command)
     response = self.driver.Query(command)
-    self.scpi_logger.info('[ %s', response)
     return response
 
   def Send(self, command):
     """Send the SCPI command."""
-    self.scpi_logger.info('] %s', command)
     self.driver.Send(command)
 
   def Reset(self):
@@ -111,7 +110,7 @@ class Scpi(object):
     errors.reverse()
     return errors
 
-  def _WaitAndFetchErrors(self, raise_on_error=True):
+  def _WaitAndFetchErrors(self, raise_on_error = True):
     """Waits for command completion, returns errors."""
     self.Query('*OPC?')      # Wait for operation complete
     errors = self.RetrieveErrors()
@@ -131,6 +130,7 @@ class Scpi(object):
     Raises:
       Error:  Verification failed
     """
+    self.always_check = False
     with self.checker_context:
         self.Send('%s %s' % (command, arg))
         result = self.Query('%s?' % (command,))
@@ -142,6 +142,7 @@ class Scpi(object):
     with self.checker_context:
         for c in commands:
           if self.opc_on_stanza:
-            self.Query(c + ';*OPC?')
+            self.Send(c)
+            self.Query('*OPC?')
           else:
             self.Send(c)

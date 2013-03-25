@@ -19,7 +19,8 @@ except ValueError:
 
 logging.basicConfig(level=logging.INFO)
 
-driver = prologix_scpi_driver.PrologixScpiDriver(hostname=target,port=1234)
+driver = prologix_scpi_driver.PrologixScpiDriver(
+     hostname=target, port=1234, read_timeout_seconds=10)
 s = scpi.Scpi(driver)
 s.opc_on_stanza = False
 
@@ -31,8 +32,6 @@ while True:
         exit(0)
 
     try:
-        # TODO(rochberg): If our query is in fact an error, then we
-        # will hang waiting for ++read to return.
         if line[-1:] == '?':
             s.Query(line)
         else:

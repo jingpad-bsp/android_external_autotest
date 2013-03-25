@@ -11,7 +11,7 @@ import cellular
 import common
 from autotest_lib.client.bin import utils
 
-POLL_SLEEP=0.2
+POLL_SLEEP = 0.2
 
 class Error(Exception):
   pass
@@ -24,10 +24,19 @@ class Timeout(Error):
 class BaseStation8960(base_station_interface.BaseStationInterface):
   """Wrap an Agilent 8960 Series 10."""
 
-  def __init__(self,
-               scpi_connection):
-    self.c = scpi_connection
+  def __init__(self, scpi_connection, no_initialization=False):
+    """
+    Creates an 8960 call-box object.
+    TODO (byrok): make a factory that returns a call_box, of either
+    a 8960 or a PXT, or a...
 
+    @param scpi_connection:  The scpi port to send commands over
+    @param no_initialization: Don't do anything. Useful for unit testing
+    and debugging when you don't want to run all the usual functions.
+    """
+    self.c = scpi_connection
+    if no_initialization:
+      return
     self.checker_context = self.c.checker_context
     with self.checker_context:
       self._Verify()
@@ -124,7 +133,13 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
     #  TODO(rochberg): Check that we're not already in chosen tech for
     #  speed boost
 
-    self.format = ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology]
+    # Print out a helpful message on a key error.
+    try:
+      self.format = ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology]
+    except KeyError:
+      raise KeyError('%s not in %s '% ( \
+                                technology, \
+                                ConfigDictionaries.TECHNOLOGY_TO_FORMAT) )
     self.technology = technology
 
     self.c.SimpleVerify('SYSTem:APPLication:FORMat', self.format)
