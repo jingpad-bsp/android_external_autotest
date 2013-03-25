@@ -416,5 +416,5 @@ class AudioHelper(object):
     def play_sine(self, channel, odev='default', freq=1000, duration=10,
             sample_size=16):
         '''Generates a sine wave and plays to odev.'''
-        cmdargs = get_play_sine_args(channel, odev, freq, duration, sample_size)
+        cmdargs = self.get_play_sine_args(channel, odev, freq, duration, sample_size)
         utils.system(' '.join(cmdargs))
