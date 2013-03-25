@@ -67,9 +67,9 @@ class perf_expectation_checker(object):
                           self._expectation_file_path, e.errno, e.strerror)
             raise e
         # Must import here to make it work with autotest.
-        import simplejson
+        import json
         try:
-            self._expectations = simplejson.load(expectation_file)
+            self._expectations = json.load(expectation_file)
         except ValueError, e:
             logging.error('ValueError parsing expectations %s(%s): %s',
                           self._expectation_file_path, e.errno, e.strerror)

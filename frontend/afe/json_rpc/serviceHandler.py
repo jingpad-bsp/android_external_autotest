@@ -21,7 +21,7 @@
 
 import traceback
 
-from simplejson import decoder, encoder
+from json import decoder, encoder
 
 def customConvertJson(value):
     """\

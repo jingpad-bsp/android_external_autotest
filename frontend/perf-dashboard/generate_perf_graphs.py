@@ -28,7 +28,7 @@ import optparse
 import os
 import re
 import shutil
-import simplejson
+import json
 import sys
 import urllib
 import urllib2
@@ -315,7 +315,7 @@ def upload_to_chrome_dashboard(data_point_info, platform, test_name,
         }
         if units:
             new_dash_entry['units'] = units
-        json_string = simplejson.dumps([new_dash_entry], indent=2)
+        json_string = json.dumps([new_dash_entry], indent=2)
         params = urllib.urlencode({'data': json_string})
         fp = None
         try:
@@ -411,7 +411,7 @@ def output_graph_data_for_entry(test_name, master_name, graph_name, job_name,
               'important': False,
             }]
             with open(os.path.join(output_path, 'graphs.dat'), 'w') as f:
-                f.write(simplejson.dumps(graphs, indent=2))
+                f.write(json.dumps(graphs, indent=2))
 
             # Add symlinks to the plotting code.
             for slink, target in _SYMLINK_LIST:
@@ -468,7 +468,7 @@ def output_graph_data_for_entry(test_name, master_name, graph_name, job_name,
                 # Output data point to be displayed on the current (deprecated)
                 # dashboard.
                 with open(summary_file, 'a') as f:
-                    f.write(simplejson.dumps(entry) + '\n')
+                    f.write(json.dumps(entry) + '\n')
 
 
 def process_perf_data_files(file_names, test_name, master_name, completed_ids,
@@ -505,7 +505,7 @@ def process_perf_data_files(file_names, test_name, master_name, completed_ids,
     for file_name in file_names:
         with open(file_name, 'r') as fp:
             for line in fp.readlines():
-                info = simplejson.loads(line.strip())
+                info = json.loads(line.strip())
                 job_id = info[0]
                 job_name = info[1]
                 platform = info[2]
@@ -559,7 +559,7 @@ def initialize_graph_dir(options, input_dir, output_data_dir):
     @param output_data_dir: A directory in which to output data files.
 
     """
-    charts = simplejson.loads(open(_CHART_CONFIG_FILE, 'r').read())
+    charts = json.loads(open(_CHART_CONFIG_FILE, 'r').read())
 
     # Identify all the job IDs already processed in the graphs, so that we don't
     # add that data again.
@@ -577,7 +577,7 @@ def initialize_graph_dir(options, input_dir, output_data_dir):
     rev_num_file = os.path.join(output_data_dir, _REV_NUM_FILE_NAME)
     if os.path.exists(rev_num_file):
         with open(rev_num_file, 'r') as fp:
-            summary_id_to_rev_num = simplejson.loads(fp.read())
+            summary_id_to_rev_num = json.loads(fp.read())
 
     # TODO (dennisjeffrey): If we have to add another "test_name_to_X"
     # dictionary to the list below, we should simplify this code to create a
@@ -635,7 +635,7 @@ def initialize_graph_dir(options, input_dir, output_data_dir):
     # Store the latest revision numbers for each test/platform/release
     # combination, to be used on the next invocation of this script.
     with open(rev_num_file, 'w') as fp:
-        fp.write(simplejson.dumps(summary_id_to_rev_num, indent=2))
+        fp.write(json.dumps(summary_id_to_rev_num, indent=2))
 
     logging.info('Added info for %d new jobs to the graphs!', newly_added_count)
 

@@ -1,5 +1,5 @@
 import operator, unittest
-import simplejson
+import json
 from django.test import client
 from autotest_lib.frontend.afe import frontend_test_utils, models as afe_models
 
@@ -53,7 +53,7 @@ class ResourceTestCase(unittest.TestCase,
         if 'data' in kwargs:
             kwargs.setdefault('content_type', 'application/json')
             if kwargs['content_type'] == 'application/json':
-                kwargs['data'] = simplejson.dumps(kwargs['data'])
+                kwargs['data'] = json.dumps(kwargs['data'])
 
         if uri.startswith('http://'):
             full_uri = uri
@@ -72,7 +72,7 @@ class ResourceTestCase(unittest.TestCase,
             return response.content
 
         try:
-            return simplejson.loads(response.content)
+            return json.loads(response.content)
         except ValueError:
             self.fail('Invalid reponse body: %s' % response.content)
 

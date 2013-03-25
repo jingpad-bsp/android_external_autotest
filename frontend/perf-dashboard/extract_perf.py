@@ -21,7 +21,7 @@ import logging
 import optparse
 import os
 import re
-import simplejson
+import json
 import sys
 import time
 
@@ -118,7 +118,7 @@ def write_perf_info_to_disk(job_id, result_dict, test_dir, output_dir):
     result_out.append(perf_items)
     file_name = os.path.join(test_dir, result_dict['platform'] + '.txt')
     with open(file_name, 'a') as fp:
-        fp.write(simplejson.dumps(result_out) + '\n')
+        fp.write(json.dumps(result_out) + '\n')
 
     with open(os.path.join(output_dir, _COMPLETED_ID_FILE_NAME), 'a') as fp:
         fp.write(job_id + '\n')
@@ -246,7 +246,7 @@ def extract_new_perf_data(cursor, output_dir, options):
     """
     charts = {}
     with open(_CHART_CONFIG_FILE, 'r') as fp:
-        charts = simplejson.loads(fp.read())
+        charts = json.loads(fp.read())
 
     # Compute the oldest date for the perf values that we want to consider.
     oldest_db_lookup_date = (

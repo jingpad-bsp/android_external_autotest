@@ -707,19 +707,6 @@ class RequestsPackage(ExternalPackage):
                         ExternalPackage._build_and_install_current_dir_setup_py)
 
 
-class SimplejsonPackage(ExternalPackage):
-    """simplejson package"""
-    version = '2.0.9'
-    local_filename = 'simplejson-%s.tar.gz' % version
-    urls = ('http://pypi.python.org/packages/source/s/simplejson/' +
-            local_filename,)
-    hex_sum = 'b5b26059adbe677b06c299bed30557fcb0c7df8c'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_setup_py)
-
-
 class Httplib2Package(ExternalPackage):
     """httplib2 package"""
     version = '0.6.0'

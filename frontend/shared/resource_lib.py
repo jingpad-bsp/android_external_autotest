@@ -3,7 +3,7 @@ from django import http
 import django.core.exceptions
 from django.core import urlresolvers
 from django.utils import datastructures
-import simplejson
+import json
 from autotest_lib.frontend.shared import exceptions, query_lib
 from autotest_lib.frontend.afe import model_logic
 
@@ -203,7 +203,7 @@ class Resource(object):
         query_parameters = self._query_parameters_response()
         if query_parameters:
             content['query_parameters'] = query_parameters
-        encoded_content = simplejson.dumps(content)
+        encoded_content = json.dumps(content)
         return http.HttpResponse(encoded_content,
                                  content_type=_JSON_CONTENT_TYPE)
 
@@ -214,7 +214,7 @@ class Resource(object):
         raw_data = self._request.raw_post_data
         if content_type == _JSON_CONTENT_TYPE:
             try:
-                raw_dict = simplejson.loads(raw_data)
+                raw_dict = json.loads(raw_data)
             except ValueError, exc:
                 raise exceptions.BadRequest('Error decoding request body: '
                                             '%s\n%r' % (exc, raw_data))
@@ -228,7 +228,7 @@ class Resource(object):
                 value = values[-1] # take last value if multiple were given
                 try:
                     # attempt to parse numbers, booleans and nulls
-                    raw_dict[key] = simplejson.loads(value)
+                    raw_dict[key] = json.loads(value)
                 except ValueError:
                     # otherwise, leave it as a string
                     raw_dict[key] = value

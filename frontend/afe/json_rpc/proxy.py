@@ -73,9 +73,9 @@ class ServiceProxy(object):
         return ServiceProxy(self.__serviceURL, name, self.__headers)
 
     def __call__(self, *args, **kwargs):
-        # pull in simplejson imports lazily so that the library isn't required
+        # pull in json imports lazily so that the library isn't required
         # unless you actually need to do encoding and decoding
-        from simplejson import decoder, encoder
+        from json import decoder, encoder
 
         postdata = encoder.JSONEncoder().encode({"method": self.__serviceName,
                                                 'params': args + (kwargs,),

@@ -10,7 +10,7 @@ import logging
 import os
 import optparse
 import pprint
-import simplejson
+import json
 import sys
 
 
@@ -49,7 +49,7 @@ def GatherBoardSystemsReleases(release_count):
 def ReadInputFile(input_file):
   """Read the input file into a string list."""
   f = open(input_file, 'r')
-  chart_list = simplejson.load(f)
+  chart_list = json.load(f)
   f.close()
   return chart_list
 

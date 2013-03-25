@@ -29,7 +29,7 @@ THE SOFTWARE.
 """
 
 import re
-import simplejson
+import json
 
 _HTML_DOCUMENT_TEMPLATE = """
 <!DOCTYPE html>
@@ -134,7 +134,7 @@ class JsonToHtmlMiddleware(object):
         if request.GET.get('alt', None) != 'json-html':
             return response
 
-        json_value = simplejson.loads(response.content)
+        json_value = json.loads(response.content)
         html = JsonHtmlFormatter().json_to_html(json_value)
         response.content = html
         response['Content-type'] = 'text/html'

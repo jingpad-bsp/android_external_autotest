@@ -4,6 +4,7 @@
 
 import logging
 import os
+import urllib2
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import installable_object, autoserv_parser
@@ -43,7 +44,7 @@ class SiteAutotest(installable_object.InstallableObject):
                 if hosts and JOB_REPO_URL in hosts[0].attributes:
                     return hosts[0].attributes[JOB_REPO_URL]
                 logging.warning("No %s for %s", JOB_REPO_URL, self.host)
-        except ImportError:
+        except (ImportError, urllib2.URLError):
             logging.warning('Not attempting to look for %s', JOB_REPO_URL)
             pass
         return None
