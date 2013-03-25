@@ -143,7 +143,7 @@ class RPMController(object):
         while not self.request_queue.empty():
             request = self.request_queue.get()
             if (datetime.datetime.utcnow() > (request['start_time'] +
-                    datetime.timedelta(minutes=RPM_CALL_TIMEOUT_MINS)):
+                    datetime.timedelta(minutes=RPM_CALL_TIMEOUT_MINS))):
                 logging.error('Request has timed out already. Not processing.')
                 request['result_queue'].put(False)
                 continue
