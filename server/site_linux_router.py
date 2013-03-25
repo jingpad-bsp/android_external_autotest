@@ -39,19 +39,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
         self.defssid = defssid
+        self.default_config = {
+            'ssid': defssid,
+            'hw_mode': 'g',
+            'ctrl_interface': '/tmp/hostapd-test.control',
+            'logger_syslog': '-1',
+            'logger_syslog_level': '0'
+        }
         self.hostapd = {
             'configured': False,
             'config_file': "/tmp/hostapd-test-%s.conf",
             'log_file': "/tmp/hostapd-test-%s.log",
             'log_count': 0,
             'driver': "nl80211",
-            'conf': {
-                'ssid': defssid,
-                'hw_mode': 'g',
-                'ctrl_interface': '/tmp/hostapd-test.control',
-                'logger_syslog': '-1',
-                'logger_syslog_level': '0'
-            }
+            'conf': self.default_config.copy()
         }
         self.station = {
             'configured': False,
@@ -108,8 +109,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     def destroy(self, params):
         """ Destroy a previously created device """
-        # For linux, this is the same as deconfig.
         self.deconfig(params)
+        self.hostapd['conf'] = self.default_config.copy()
 
     def has_local_server(self):
         return bool(self.local_servers)

@@ -1,0 +1,37 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Purpose: This test verfies that DUT can connect to an open 802.11b network,
+# then to the same BSS after it has changed to be a WPA network.
+
+{ "name":"ChangeBSSecurity",
+  "steps":[             # Channel 1,6,11
+    [ "create",         { "type":"hostap" } ],
+
+    [ "config",         { "channel":"2412", "mode":"11b" } ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
+
+    [ "config",         { "channel":"2412", "mode":"11g",
+                          "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
+                          "wpa_pairwise":"CCMP",
+                          "wpa_passphrase":"chromeos" } ],
+    [ "connect",        { "security":"wpa", "psk":"chromeos" } ],
+    [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
+
+    # We need a "destroy" here to reset the WPA configuration above, otheriwse
+    # it will be inherited below.
+    [ "destroy" ],
+    [ "create",         { "type":"hostap" } ],
+
+    [ "config",         { "channel":"2412", "mode":"11b" } ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
+
+    [ "destroy" ],
+  ],
+}
