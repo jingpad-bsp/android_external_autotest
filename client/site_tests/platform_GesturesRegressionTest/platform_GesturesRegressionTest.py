@@ -18,6 +18,7 @@ SUCCESS_PATTERN = '\|\s*([\w\d.]*/\w+)\s*\|\s*\|\s*\w+\s\((\d.\d+)\)\s*\|'
 SUCCESS_RE = re.compile(SUCCESS_PATTERN)
 FAILURE_PATTERN = '\|\s*([\w\d.]*/\w+)\s*\|\s*\|\s*failure\s*\|'
 FAILURE_RE = re.compile(FAILURE_PATTERN)
+COLOR_CODE_RE = re.compile("\x1B\[[0-9;]*[mK]")
 TOUCHPAD_TEST = os.path.join('touchpad-tests', 'touchtests')
 
 
@@ -44,7 +45,7 @@ class platform_GesturesRegressionTest(test.test):
 
         touchtests = os.path.join(self.autodir, 'deps', TOUCHPAD_TEST)
         cmd = '%s --autotest %s*/*' % (touchtests, board)
-        output = utils.system_output(cmd)
+        output = COLOR_CODE_RE.sub('', utils.system_output(cmd))
         if not output:
             raise error.TestError('Can not run the touchtests')
 
