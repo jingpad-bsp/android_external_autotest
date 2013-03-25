@@ -212,7 +212,7 @@ class Reporter(object):
 
     _api_key = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'api_key', default='')
-    _PREDEFINED_LABELS = ['Test-Support', 'autofiled']
+    _PREDEFINED_LABELS = ['Test-Support']
     _OWNER = 'beeps@chromium.org'
 
 
@@ -299,7 +299,26 @@ class Reporter(object):
                  + self._PREDEFINED_LABELS)
 
 
-    def _create_bug_report(self, summary, title, name, owner):
+    def _resolve_slotvals(self, override, **kwargs):
+        """
+        Override the default issue configuration with a suite specific
+        configuration when one is specified in the suite's bug_template.
+        The bug_template is specified in the suite control file.
+
+        TODO(beeps): crbug.com/226124. Modify gdata_lib to support cclist,
+        explore the possibility of specifying comments, id in the template.
+
+        @param override: Suite specific dictionary with issue config operations.
+        @param kwargs: Keyword args containing the default issue config options.
+        @return: A dictionary which contains the suite specific options, and the
+                 default option when a suite specific option isn't specified.
+        """
+        if override:
+            kwargs.update((k,v) for k,v in override.iteritems() if v)
+        return kwargs
+
+
+    def _create_bug_report(self, summary, title, name, owner, bug_template):
         """
         Creates a new bug report.
 
@@ -308,12 +327,13 @@ class Reporter(object):
         @param name: Failing Test name, used to assigning labels.
         @param owner: The owner of the new bug.
         """
-        labels = self._get_labels(name.lower())
-        issue = gdata_lib.Issue(title=title,
-                                summary=summary,
-                                labels=labels,
-                                status='Untriaged',
-                                owner='')
+        issue_options = self._resolve_slotvals(
+            bug_template, title=title,
+            summary=summary, labels=self._get_labels(name.lower()),
+            status='Untriaged', owner=owner)
+        issue_options.get('labels').append('autofiled')
+
+        issue = gdata_lib.Issue(**issue_options)
         bugid = self._tracker.CreateTrackerIssue(issue)
         logging.info('Filing new bug %s, with summary %s', bugid, summary)
 
@@ -435,13 +455,15 @@ class Reporter(object):
                 return issue
 
 
-    def report(self, failure):
+    def report(self, failure, bug_template={}):
         """
         Report a failure to the bug tracker. If this failure has already
         happened, post a comment on the existing bug about it occurring again.
         If this is a new failure, create a new bug about it.
 
         @param failure A TestFailure instance about the failure.
+        @param bug_template: A template dictionary specifying the default bug
+                             filing options for failures in this suite.
         """
         if not self._check_tracker():
             logging.error("Can't file %s", failure.bug_title())
@@ -458,4 +480,4 @@ class Reporter(object):
             self._modify_bug_report(issue.id, comment, owner)
         else:
             self._create_bug_report(summary, failure.bug_title(),
-                                    failure.test, owner)
+                                    failure.test, owner, bug_template)

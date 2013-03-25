@@ -324,7 +324,8 @@ class SuiteSpec(object):
                  max_runtime_mins=24*60, firmware_reimage=False,
                  try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
                  suite_dependencies=None,
-                 reimage_type=constants.REIMAGE_TYPE_OS, **dargs):
+                 reimage_type=constants.REIMAGE_TYPE_OS,
+                 bug_template={}, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -361,6 +362,8 @@ class SuiteSpec(object):
                                    set of dependencies at job creation time.
         @param reimage_type: A string identifying the type of reimaging that
                              should be done before running tests.
+        @param bug_template: A template dictionary specifying the default bug
+                             filing options for failures in this suite.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -394,6 +397,7 @@ class SuiteSpec(object):
         self.try_job_timeout_mins = try_job_timeout_mins
         self.suite_dependencies = suite_dependencies
         self.reimage_type = reimage_type
+        self.bug_template = bug_template
 
 
 def skip_reimage(g):
@@ -615,6 +619,6 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
 
     # Sit around and wait for some test results.
     if reimage_successful:
-        suite.wait(spec.job.record_entry)
+        suite.wait(spec.job.record_entry, spec.bug_template)
     else:
         suite.abort()

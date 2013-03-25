@@ -365,7 +365,7 @@ class Suite(object):
                    'Exception while scheduling suite').record_result(record)
 
 
-    def wait(self, record):
+    def wait(self, record, bug_template={}):
         """
         Polls for the job statuses, using |record| to print status when each
         completes.
@@ -373,6 +373,8 @@ class Suite(object):
         @param record: callable that records job status.
                  prototype:
                    record(base_job.status_log_entry)
+        @param bug_template: A template dictionary specifying the default bug
+                             filing options for failures in this suite.
         """
         if self._file_bugs:
             bug_reporter = reporting.Reporter()
@@ -400,7 +402,7 @@ class Suite(object):
                                                     hostname=result.hostname,
                                                     job_id=result.id)
 
-                    bug_reporter.report(failure)
+                    bug_reporter.report(failure, bug_template)
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,

@@ -3,6 +3,7 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import httplib
 import logging
 
 import common
@@ -47,7 +48,7 @@ class ProjectHostingApiClient():
         """
         try:
             return request.execute()
-        except HttpError, e:
+        except (HttpError, httplib.HTTPException) as e:
             msg = 'Unable to execute your request. '
             if hasattr(e, 'content') and 'keyInvalid' in e.content:
                 msg += 'Your credentials have been revoked.'
@@ -165,6 +166,12 @@ class ProjectHostingApiClient():
         # retrieve each one from the field options dictionary, even if we're
         # really only asking for one field.
         issue_options = issue_options_dict.get('issuesConfig')
+        if issue_options is None:
+            logging.error('The IssueConfig field does not contain issue '
+                          'configuration as a member anymore; The project '
+                          'hosting api might have changed.')
+            return []
+
         return filter(None, [self._get_cros_labels(each)
                       for each in self._get_property_values(issue_options)
                       if isinstance(each, dict)])

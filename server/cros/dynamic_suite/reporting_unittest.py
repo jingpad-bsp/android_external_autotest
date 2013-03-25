@@ -27,6 +27,13 @@ class ReportingTest(mox.MoxTestBase):
         'job_id':'myjob',
     }
 
+    bug_template = {
+        'labels': ['Cr-Internals-WebRTC'],
+        'owner': 'myself',
+        'status': 'Fixed',
+        'summary': 'This is a short summary',
+        'title': None,
+    }
 
     def _get_failure(self):
         """
@@ -74,10 +81,12 @@ class ReportingTest(mox.MoxTestBase):
             return 'autofiled' in issue.labels
 
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, '_get_labels')
         self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
 
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
+        reporting.Reporter._get_labels(mox.IgnoreArg()).AndReturn([])
         reporting.TestFailure.bug_summary().AndReturn('')
         tracker = self.mox.CreateMock(gdata_lib.TrackerComm)
         self._stub_out_tracker(tracker)
@@ -116,3 +125,38 @@ class ReportingTest(mox.MoxTestBase):
 
         reporting.Reporter().report(self._get_failure())
 
+
+    def testSuiteIssueConfig(self):
+        """Test that the suite bug template values are not overridden."""
+
+        def check_suite_options(issue):
+            """
+            Checks to see if the options specified in bug_template reflect in
+            the issue we're about to file, and that the autofiled label was not
+            lost in the process.
+
+            @param issue: issue to check labels on.
+            """
+            assert('autofiled' in issue.labels)
+            for k, v in self.bug_template.iteritems():
+                if v and getattr(issue, k) is not v:
+                    return False
+            return True
+
+        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, '_get_labels')
+        self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
+
+        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+            None)
+        reporting.Reporter._get_labels(mox.IgnoreArg()).AndReturn(['Test'])
+        reporting.TestFailure.bug_summary().AndReturn('Summary')
+        tracker = self.mox.CreateMock(gdata_lib.TrackerComm)
+        self._stub_out_tracker(tracker)
+
+        self.mox.StubOutWithMock(tracker, 'CreateTrackerIssue')
+        tracker.CreateTrackerIssue(mox.Func(check_suite_options))
+
+        self.mox.ReplayAll()
+
+        reporting.Reporter().report(self._get_failure(), self.bug_template)
