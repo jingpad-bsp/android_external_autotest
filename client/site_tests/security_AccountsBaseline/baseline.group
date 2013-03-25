@@ -63,6 +63,7 @@ tlsdate-dbus:x:233:
 tlsdate:x:234:
 debugd-logs:x:235:
 debugfs-access:x:236:
+shill-crypto:x:237:
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:

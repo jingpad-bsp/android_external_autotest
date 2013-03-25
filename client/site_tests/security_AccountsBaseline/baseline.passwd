@@ -46,6 +46,7 @@ tlsdate-dbus:*:233:233::/dev/null:/bin/false
 tlsdate:*:234:234::/dev/null:/bin/false
 debugd-logs:*:235:235::/dev/null:/bin/false
 debugfs-access:*:236:236::/dev/null:/bin/false
+shill-crypto:*:237:237::/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
 fuse-exfat:*:302:302::/dev/null:/bin/false
