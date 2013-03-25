@@ -20,6 +20,40 @@ class AutodirNotFoundError(Exception):
     """No Autotest installation could be found."""
 
 
+class AutotestFailure(Exception):
+    """Gereric exception class for failures during a test run."""
+
+
+class AutotestAbort(AutotestFailure):
+    """
+    AutotestAborts are thrown when the DUT seems fine,
+    and the test doesn't give us an explicit reason for
+    failure; In this case we have no choice but to abort.
+    """
+
+
+class AutotestDeviceError(AutotestFailure):
+    """
+    Exceptions that inherit from AutotestDeviceError
+    are thrown when we can determine the current
+    state of the DUT and conclude that it probably
+    lead to the test failing; these exceptions lead
+    to failures instead of aborts.
+    """
+
+
+class AutotestDeviceNotPingable(AutotestDeviceError):
+    """Error for when a DUT becomes unpingable."""
+
+
+class AutotestDeviceNotSSHable(AutotestDeviceError):
+    """Error for when a DUT is pingable but not SSHable."""
+
+
+class AutotestDeviceRebooted(AutotestDeviceError):
+    """Error for when a DUT rebooted unexpectedly."""
+
+
 class BaseAutotest(installable_object.InstallableObject):
     """
     This class represents the Autotest program.
@@ -584,33 +618,68 @@ class _BaseRun(object):
         return bool(re.match(r'^\t*GOOD\t----\treboot\.start.*$', last_line))
 
 
+    def _diagnose_dut(self, old_boot_id=None):
+        """
+        Run diagnostic checks on a DUT.
+
+        1. ping: A dead host will not respond to pings.
+        2. ssh (happens with 3.): DUT hangs usually fail in authentication
+            but respond to pings.
+        3. Check if a reboot occured: A healthy but unexpected reboot leaves the
+            host running with a new boot id.
+
+        This method will always raise an exception from the AutotestFailure
+        family and should only get called when the reason for a test failing
+        is ambiguous.
+
+        @raises AutotestDeviceNotPingable: If the DUT doesn't respond to ping.
+        @raises AutotestDeviceNotSSHable: If we cannot SSH into the DUT.
+        @raises AutotestDeviceRebooted: If the boot id changed.
+        @raises AutotestAbort: If none of the above exceptions were raised.
+            Since we have no recourse we must abort at this stage.
+        """
+        msg = 'Autotest client terminated unexpectedly: '
+        if utils.ping(self.host.hostname, tries=1, deadline=1) != 0:
+            msg += 'DUT is no longer pingable, it may have rebooted or hung.\n'
+            raise AutotestDeviceNotPingable(msg)
+
+        if old_boot_id:
+            try:
+                new_boot_id = self.host.get_boot_id(timeout=60)
+            except Exception as e:
+                msg += ('DUT is pingable but not SSHable, it most likely'
+                        ' sporadically rebooted during testing. %s\n', str(e))
+                raise AutotestDeviceNotSSHable(msg)
+            else:
+                if new_boot_id != old_boot_id:
+                    msg += 'DUT rebooted during the test run.\n'
+                    raise AutotestDeviceRebooted(msg)
+
+            msg += ('DUT is pingable, SSHable and did NOT restart '
+                    'un-expectedly. We probably lost connectivity during the '
+                    'test.')
+        else:
+            msg += ('DUT is pingable, could not determine if an un-expected '
+                    'reboot occured during the test.')
+
+        raise AutotestAbort(msg)
+
+
     def log_unexpected_abort(self, stderr_redirector, old_boot_id=None):
         """
-        Logs that something unexpected happened, then tries to
-        diagnose the failure.
+        Logs that something unexpected happened, then tries to diagnose the
+        failure. The purpose of this function is only to close out the status
+        log with the appropriate error message, not to critically terminate
+        the program.
 
         @param stderr_redirector: log stream.
         @param old_boot_id: boot id used to infer if a reboot occured.
         """
         stderr_redirector.flush_all_buffers()
-        msg = 'Autotest client terminated unexpectedly \n'
-        if utils.ping(self.host.hostname, tries=1, deadline=1) != 0:
-            msg += 'DUT is no longer pingable, it may have rebooted or hung. \n'
-            self.host.job.record('END ABORT', None, None, msg)
-            return
-
-        if old_boot_id:
-            try:
-                new_boot_id = self.host.get_boot_id(timeout=60)
-            except Exception:
-                msg += ('DUT is pingable but not SSHable, it most likely'
-                        ' sporadically rebooted during testing.\n')
-            else:
-                if new_boot_id != old_boot_id:
-                    msg += 'DUT rebooted during the test run.\n'
-                else:
-                    msg += 'connection was lost during the test.\n'
-        self.host.job.record('END ABORT', None, None, msg)
+        try:
+            self._diagnose_dut(old_boot_id)
+        except AutotestFailure as e:
+            self.host.job.record('END ABORT', None, None, str(e))
 
 
     def _execute_in_background(self, section, timeout):
@@ -798,14 +867,36 @@ class _BaseRun(object):
                         raise
                     continue
 
-                # if we reach here, something unexpected happened
-                self.log_unexpected_abort(logger, boot_id)
+                # If a test fails without probable cause we try to bucket it's
+                # failure into one of 2 categories. If we can determine the
+                # current state of the device and it is suspicious, we close the
+                # status lines indicating a failure. If we either cannot
+                # determine the state of the device, or it appears totally
+                # healthy, we give up and abort.
+                try:
+                    self._diagnose_dut(boot_id)
+                except AutotestDeviceError as e:
+                    # The status lines of the test are pretty much tailed to
+                    # our log, with indentation, from the client job on the DUT.
+                    # So if the DUT goes down unexpectedly we'll end up with a
+                    # malformed status log unless we manually unwind the status
+                    # stack. Ideally we would want to write a nice wrapper like
+                    # server_job methods run_reboot, run_group but they expect
+                    # reboots and we don't.
+                    self.host.job.record('FAIL', None, None, str(e))
+                    self.host.job.record('END FAIL', None, None)
+                    self.host.job.record('END GOOD', None, None)
+                    return
+                except AutotestAbort as e:
+                    self.host.job.record('ABORT', None, None, str(e))
+                    self.host.job.record('END ABORT', None, None)
 
-                # give the client machine a chance to recover from a crash
-                self.host.wait_up(self.host.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
-                msg = ("Aborting - unexpected final status message from "
-                       "client on %s: %s\n") % (self.host.hostname, last)
-                raise error.AutotestRunError(msg)
+                    # give the client machine a chance to recover from a crash
+                    self.host.wait_up(
+                        self.host.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
+                    msg = ("Aborting - unexpected final status message from "
+                           "client on %s: %s\n") % (self.host.hostname, last)
+                    raise error.AutotestRunError(msg)
         finally:
             logger.close()
             if not self.background:
