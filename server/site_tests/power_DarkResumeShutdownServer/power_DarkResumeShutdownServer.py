@@ -98,8 +98,8 @@ class power_DarkResumeShutdownServer(test.test):
         # powerd_suspend and make the RTC alarm optional
         host.run('( sleep 1 ; /usr/bin/powerd_dbus_suspend ) > /dev/null 2>&1 <'
                  ' /dev/null &')
-        time.sleep()
-        host.power_off(host.POWER_CONTROL_MANUAL)
+        time.sleep(SUSPEND_WAIT_SECONDS)
+        host.power_off()
 
         # wait for power manager to give up and shut down
         logging.info('waiting for power off')
