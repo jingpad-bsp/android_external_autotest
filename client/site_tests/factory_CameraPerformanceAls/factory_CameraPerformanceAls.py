@@ -29,6 +29,7 @@ import autotest_lib.client.cros.camera.renderer as renderer
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.event_log import Log
 from cros.factory.test import factory
 from cros.factory.test import leds
 from cros.factory.test import test_ui
@@ -410,6 +411,7 @@ class factory_CameraPerformanceAls(test.test):
         self.update_result('result', result)
         self.log("Result in summary:\n%s\n" %
                  pprint.pformat(self.result_dict))
+        Log('cam_performance_test_result', **self.result_dict)
         self.update_pbar(pid='end_test')
 
     def write_to_usb(self, filename, content, content_type=_CONTENT_TXT):
@@ -586,8 +588,19 @@ class factory_CameraPerformanceAls(test.test):
         if not self.test_camera_functionality():
             return
 
+        # Export log to both cros.factory.event_log and text log
+        visual_data = {}
+
+        def log_visual_data(value, event_key, log_text_fmt):
+            self.log(log_text_fmt % value)
+            visual_data[event_key] = value
+
+        def finish_log_visual_data():
+            Log('cam_performance_visual_analysis', **visual_data)
+
         # Check the captured test pattern image validity.
         self.update_status(mid='check_vc')
+
         success, tar_data = camperf.CheckVisualCorrectness(
             self.target, self.ref_data, **self.config['cam_vc'])
         self.analyzed = self.target_colorful.copy()
@@ -597,15 +610,18 @@ class factory_CameraPerformanceAls(test.test):
 
         self.update_result('cam_vc', success)
         if hasattr(tar_data, 'shift'):
-            self.log('Image shift percentage: %f\n' % tar_data.shift)
-            self.log('Image tilt: %f degrees\n' % tar_data.tilt)
+            log_visual_data(float(tar_data.shift), 'image_shift',
+                            'Image shift percentage: %f')
+            log_visual_data(float(tar_data.tilt), 'image_tilt',
+                            'Image tilt: %f degrees')
         if not success:
             if hasattr(tar_data, 'sample_corners'):
-                self.log('Found corners count: %d\n' %
-                         tar_data.sample_corners.shape[0])
+                log_visual_data(int(tar_data.sample_corners.shape[0]),
+                                'corners', 'Found corners count: %d')
             if hasattr(tar_data, 'edges'):
-                self.log('Found square edges count: %d\n' %
-                         tar_data.edges.shape[0])
+                log_visual_data(int(tar_data.edges.shape[0]), 'edges',
+                                'Found square edges count: %d')
+
             self.log('Visual correctness: %s\n' % tar_data.msg)
             return
         self.update_pbar(pid='check_vc')
@@ -617,8 +633,8 @@ class factory_CameraPerformanceAls(test.test):
 
         self.update_result('cam_ls', success)
         if tar_ls.check_low_freq:
-            self.log('Low-frequency response value: %f\n' %
-                                   tar_ls.response)
+            log_visual_data(float(tar_ls.response), 'ls_low_freq',
+                            'Low-frequency response value: %f')
         if not success:
             self.log('Lens shading: %s\n' % tar_ls.msg)
             return
@@ -636,11 +652,14 @@ class factory_CameraPerformanceAls(test.test):
                             scale=self.config['preview']['scale'])
 
         self.update_result('cam_mtf', success)
-        self.log('MTF value: %f\n' % tar_mtf.mtf)
+        log_visual_data(float(tar_mtf.mtf), 'median_MTF', 'MTF value: %f')
         if hasattr(tar_mtf, 'min_mtf'):
-            self.log('Lowest MTF value: %f\n' % tar_mtf.min_mtf)
+            log_visual_data(float(tar_mtf.min_mtf), 'lowest_MTF',
+                            'Lowest MTF value: %f')
         if not success:
             self.log('Sharpness: %s\n' % tar_mtf.msg)
+
+        finish_log_visual_data()
         self.update_pbar(pid='check_mtf')
         return
 
