@@ -14,6 +14,7 @@ your shadow_config.ini to localhost.
 import logging
 import optparse
 import os
+import re
 import subprocess
 import sys
 
@@ -41,6 +42,11 @@ _autoupdate_suite_name = 'au'
 _default_dump_dir = os.path.realpath(
         os.path.join(os.path.dirname(__file__), '..', '..', 'server',
                      'site_tests', _autotest_test_name))
+# Matches delta format name and returns groups for branches and release numbers.
+_delta_re = version_re = re.compile(
+        'chromeos_'
+        '(?P<s_branch>R[0-9]+)-(?P<s_release>[0-9.]+)_'
+        '(?P<t_branch>R[0-9]+)-(?P<t_release>[0-9.]+)_[\w.]+')
 
 
 class FullReleaseTestError(BaseException):
@@ -255,9 +261,16 @@ class TestConfigGenerator(object):
         self.archive_url = archive_url
 
 
-    def _get_source_uri(self, release):
-        """Returns the source uri for a given release or None if not found."""
-        branch = get_release_branch(release)
+    def _get_source_uri(self, release, branch=None):
+        """Returns the source uri for a given release or None if not found.
+
+        Args:
+            release: required release number.
+            branch: optional branch. If not set, we use release_config to find
+                    it.
+        """
+        if not branch:
+            branch = get_release_branch(release)
 
         # If we're looking for our own image, use the target archive_url if set.
         archive_url = None
@@ -336,6 +349,25 @@ class TestConfigGenerator(object):
                           source_release, self.tested_release, source_branch,
                           target_branch, source_uri, payload_uri)
 
+    @staticmethod
+    def _parse_delta_filename(filename):
+        """Parses a delta payload name into its four components.
+
+        Args:
+            filename: Delta filename to parse e.g.
+                      'chromeos_R27-3905.0.0_R27-3905.0.0_stumpy_delta_dev.bin'
+
+        Returns: tuple with source_branch, source_release, target_branch and
+                 target_release.
+        """
+        match = _delta_re.match(filename)
+        if not match:
+            logging.warn('filename %s did not match delta format', filename)
+            return None
+
+        return (match.group('s_branch'), match.group('s_release'),
+                match.group('t_branch'), match.group('t_release'))
+
 
     def generate_test_image_npo_nmo_list(self):
         """Generates N+1/N-1 test configurations with test images.
@@ -365,11 +397,10 @@ class TestConfigGenerator(object):
         for payload_uri in payload_uri_list:
             # Infer the source and target release versions.
             file_name = os.path.basename(payload_uri)
-            source_release, target_release = (
-                    [version.split('-')[1]
-                     for version in file_name.split('_')[1:3]])
+            source_branch, source_release, _, target_release = (
+                    self._parse_delta_filename(file_name))
 
-            source_uri = self._get_source_uri(source_release)
+            source_uri = self._get_source_uri(source_release, source_branch)
             if not source_uri:
                 logging.warning('cannot find source for %s, %s', self.board,
                                 source_release)
