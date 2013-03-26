@@ -221,9 +221,9 @@ class Servo(object):
         Args:
           secs: Time in seconds to simulate the keypress.
         """
-        self.set_nocheck('pwr_button', 'press')
-        time.sleep(secs)
-        self.set_nocheck('pwr_button', 'release')
+        self.set_get_all(['pwr_button:press',
+                          'sleep:%.4f' % secs,
+                          'pwr_button:release'])
         # TODO(tbroch) Different systems have different release times on the
         # power button that this loop addresses.  Longer term we may want to
         # make this delay platform specific.
@@ -376,11 +376,11 @@ class Servo(object):
         This has the side effect of shutting off the device.  The
         device is guaranteed to be off at the end of this call.
         """
+        self.set_get_all(['cold_reset:on',
+                          'sleep:%.4f' % self._DUT_RESET_DELAY,
+                          'cold_reset:off'])
         # After the reset, give the EC the time it needs to
         # re-initialize.
-        self.set('cold_reset', 'on')
-        time.sleep(self._DUT_RESET_DELAY)
-        self.set('cold_reset', 'off')
         time.sleep(self._EC_RESET_DELAY)
 
 
@@ -389,9 +389,9 @@ class Servo(object):
 
         Has the side effect of restarting the device.
         """
-        self.set('warm_reset', 'on')
-        time.sleep(self._DUT_RESET_DELAY)
-        self.set('warm_reset', 'off')
+        self.set_get_all(['warm_reset:on',
+                          'sleep:%.4f' % self._DUT_RESET_DELAY,
+                          'warm_reset:off'])
 
 
     def _get_xmlrpclib_exception(self, xmlexc):
@@ -450,6 +450,39 @@ class Servo(object):
             err_msg = "Setting '%s' to '%s' :: %s" % \
                 (gpio_name, gpio_value, self._get_xmlrpclib_exception(e))
             raise error.TestFail(err_msg)
+
+
+    def set_get_all(self, controls):
+        """Set &| get one or more control values.
+
+        @param controls: list of strings, controls to set &| get.
+
+        @raise: error.TestError in case error occurs setting/getting values.
+        """
+        rv = []
+        try:
+            rv = self._server.set_get_all(controls)
+        except xmlrpclib.Fault as e:
+            # TODO(waihong): Remove the following backward compatibility when
+            # the new versions of hdctools are deployed.
+            if 'not supported' in str(e):
+                logging.warning('The servod is too old that set_get_all '
+                        'not supported. Use set and get instead.')
+                for control in controls:
+                    if ':' in control:
+                        (name, value) = control.split(':')
+                        if name == 'sleep':
+                            time.sleep(float(value))
+                        else:
+                            self.set_nocheck(name, value)
+                        rv.append(True)
+                    else:
+                        rv.append(self.get(name))
+            else:
+                err_msg = "Problem with '%s' :: %s" % \
+                    (controls, self._get_xmlrpclib_exception(e))
+                raise error.TestFail(err_msg)
+        return rv
 
 
     # TODO(waihong) It may fail if multiple servo's are connected to the same
