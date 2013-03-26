@@ -45,4 +45,4 @@ class fwupdate(test.test):
         self._servo.program_bootprom(
             self._board,
             os.path.join(self.tmpd.name, self._ap_image))
-        self._servo.cold_reset()
+        self._servo.get_power_state_controller().cold_reset()

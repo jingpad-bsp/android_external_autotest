@@ -191,7 +191,7 @@ class firmware_FAFTSetup(FAFTSequence):
     def reboot_to_rec_mode(self):
         if self._spec_check:
             self.servo.enable_recovery_mode()
-            self.servo.cold_reset()
+            self.servo.get_power_state_controller().cold_reset()
             self.servo.disable_recovery_mode()
         else:
             self.enable_rec_mode_and_reboot()

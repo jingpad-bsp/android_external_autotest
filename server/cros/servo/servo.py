@@ -52,20 +52,6 @@ class Servo(object):
     SLEEP_DELAY = 6
     BOOT_DELAY = 10
 
-    # Time in seconds to allow the firmware to initialize itself and
-    # present the "INSERT" screen in recovery mode before actually
-    # inserting a USB stick to boot from.
-    _RECOVERY_INSERT_DELAY = 10.0
-
-    # Minimum time in seconds to hold the "cold_reset" or
-    # "warm_reset" signals asserted.
-    _DUT_RESET_DELAY = 0.5
-
-    # Time required for the EC to be working after cold reset.
-    # Five seconds is at least twice as big as necessary for Alex,
-    # and is presumably good enough for all future systems.
-    _EC_RESET_DELAY = 5.0
-
     # Default minimum time interval between 'press' and 'release'
     # keyboard events.
     SERVO_KEY_PRESS_DELAY = 0.1
@@ -126,15 +112,15 @@ class Servo(object):
         # servo hosts support the get_board() function.  For now, we
         # treat the problem hosts as an unsupported board.  The try
         # wrapper should be removed once all the hosts are updated.
+        board = None
         try:
             board = self._server.get_board()
-            self._power_state = (
-                power_state_controller.create_controller(self, board))
         except xmlrpclib.Fault as e:
             logging.error('Failed to create power state controller; '
                           'check hdctools version on %s.', servo_host)
             logging.exception(e)
-            self._power_state = None
+        self._power_state = (
+            power_state_controller.create_controller(self, board))
 
         # a string, showing what interface (host or dut) the USB device is
         # connected to.
@@ -160,6 +146,15 @@ class Servo(object):
             self._scp_cmd_template = 'scp -r %s ' % common_options
             self._scp_cmd_template += '%s ' + 'root@' + servo_host + ':%s'
 
+    def get_power_state_controller():
+        """Return the power state controller for this Servo.
+
+        The power state controller provides board-independent
+        interfaces for reset, power-on, power-off operations.
+
+        """
+        return self._power_state
+
     def initialize_dut(self, cold_reset=False):
         """Initializes a dut for testing purposes.
 
@@ -168,22 +163,22 @@ class Servo(object):
         is already on, it stays on.  If the DUT is powered off
         before initialization, its state afterward is unspecified.
 
-        If cold reset is requested, the DUT is guaranteed to be off
-        at the end of initialization, regardless of its initial
-        state.
-
         Rationale:  Basic initialization of servo sets the lid open,
         when there is a lid.  This operation won't affect powered on
         units; however, setting the lid open may power on a unit
-        that's off, depending on factors outside the scope of this
-        function.
+        that's off, depending on the board type and previous state
+        of the device.
+
+        If `cold_reset` is a true value, cold reset will be applied
+        to the DUT.  Cold reset will force the DUT to power off;
+        however, the final state of the DUT depends on the board type.
 
         @param cold_reset If True, cold reset the device after
                           initialization.
         """
         self._server.hwinit()
         if cold_reset:
-            self.cold_reset()
+            self._power_state.cold_reset()
 
 
     def is_localhost(self):
@@ -370,30 +365,6 @@ class Servo(object):
         time.sleep(Servo.BOOT_DELAY)
 
 
-    def cold_reset(self):
-        """Perform a cold reset of the EC.
-
-        This has the side effect of shutting off the device.  The
-        device is guaranteed to be off at the end of this call.
-        """
-        self.set_get_all(['cold_reset:on',
-                          'sleep:%.4f' % self._DUT_RESET_DELAY,
-                          'cold_reset:off'])
-        # After the reset, give the EC the time it needs to
-        # re-initialize.
-        time.sleep(self._EC_RESET_DELAY)
-
-
-    def warm_reset(self):
-        """Perform a warm reset of the device.
-
-        Has the side effect of restarting the device.
-        """
-        self.set_get_all(['warm_reset:on',
-                          'sleep:%.4f' % self._DUT_RESET_DELAY,
-                          'warm_reset:off'])
-
-
     def _get_xmlrpclib_exception(self, xmlexc):
         """Get meaningful exception string from xmlrpc.
 
@@ -537,7 +508,7 @@ class Servo(object):
                 for this servo and DUT.
 
         """
-        return self._power_state is not None
+        return self._power_state.recovery_supported()
 
 
     def image_to_servo_usb(self, image_path=None,
@@ -595,9 +566,7 @@ class Servo(object):
                                        automatically after installation.
         """
         self.image_to_servo_usb(image_path, make_image_noninteractive)
-        self._power_state.power_on(dev_mode=self._power_state.DEV_OFF,
-                                   rec_mode=self._power_state.REC_ON)
-        time.sleep(self._RECOVERY_INSERT_DELAY)
+        self._power_state.power_on(rec_mode=power_state_controller.REC_ON)
         self.switch_usbkey('dut')
 
 

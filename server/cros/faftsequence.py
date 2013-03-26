@@ -1172,7 +1172,7 @@ class FAFTSequence(ServoTest):
             logging.info('broken_warm_reset is True. Cold rebooting instead.')
             self.cold_reboot()
         else:
-            self.servo.warm_reset()
+            self.servo.get_power_state_controller().warm_reset()
 
 
     def cold_reboot(self):
@@ -1187,7 +1187,7 @@ class FAFTSequence(ServoTest):
             time.sleep(self.delay.ec_boot_to_pwr_button)
             self.servo.set('pwr_button', 'release')
         else:
-            self.servo.cold_reset()
+            self.servo.get_power_state_controller().cold_reset()
 
 
     def sync_and_warm_reboot(self):
