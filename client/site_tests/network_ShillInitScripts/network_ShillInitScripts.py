@@ -23,8 +23,6 @@ class network_ShillInitScripts(test.test):
     save_directories = [ '/var/cache/shill',
                          '/var/cache/flimflam',
                          '/var/run/shill',
-                         '/home/chronos/user/shill',
-                         '/home/chronos/user/flimflam',
                          '/var/run/state/logged-in',
                          '/var/run/dhcpcd',
                          '/var/lib/dhcpcd',
@@ -32,8 +30,6 @@ class network_ShillInitScripts(test.test):
     fake_user = 'not-a-real-user@chromium.org'
     saved_config = '/tmp/network_ShillInitScripts_saved_config.tgz'
     cryptohome_path_command = 'cryptohome-path'
-    flimflam_user_profile = '/home/chronos/user/flimflam/flimflam.profile'
-    old_shill_user_profile = '/home/chronos/user/shill/shill.profile'
     guest_shill_user_profile_dir = '/var/run/shill/guest_user_profile/shill'
     magic_header = '# --- shill init file test magic header ---'
 
@@ -66,13 +62,18 @@ class network_ShillInitScripts(test.test):
     def start_test(self):
         self.stop_shill()
 
-        # Deduce the cryptohome directory name for our fake user.
-        self.cryptohome_dir = utils.system_output(
+        # Deduce the root cryptohome directory name for our fake user.
+        self.root_cryptohome_dir = utils.system_output(
             '%s system %s' % (self.cryptohome_path_command, self.fake_user))
 
-        # Just in case this hash actually exists, add this to the list of
+        # Deduce the user cryptohome directory name for our fake user.
+        self.user_cryptohome_dir = utils.system_output(
+            '%s user %s' % (self.cryptohome_path_command, self.fake_user))
+
+        # Just in case this hash actually exists, add these to the list of
         # saved directories.
-        self.save_directories.append(self.cryptohome_dir)
+        self.save_directories.append(self.root_cryptohome_dir)
+        self.save_directories.append(self.user_cryptohome_dir)
 
         # Archive the system state we will be modifying, then remove them.
         utils.system('tar zcvf %s --directory / --ignore-failed-read %s'
@@ -82,10 +83,22 @@ class network_ShillInitScripts(test.test):
                      ignore_status=True)
 
         # Create the fake user's system cryptohome directory.
-        os.mkdir(self.cryptohome_dir)
-        self.new_shill_user_profile_dir = ('%s/shill' % self.cryptohome_dir)
+        os.mkdir(self.root_cryptohome_dir)
+        self.new_shill_user_profile_dir = ('%s/shill' %
+                                           self.root_cryptohome_dir)
         self.new_shill_user_profile = ('%s/shill.profile' %
                                        self.new_shill_user_profile_dir)
+
+        # Create the fake user's user cryptohome directory.
+        os.mkdir(self.user_cryptohome_dir)
+        self.flimflam_user_profile_dir = ('%s/flimflam' %
+                                          self.user_cryptohome_dir)
+        self.flimflam_user_profile = ('%s/flimflam.profile' %
+                                      self.flimflam_user_profile_dir)
+        self.old_shill_user_profile_dir = ('%s/shill' %
+                                           self.user_cryptohome_dir)
+        self.old_shill_user_profile = ('%s/shill.profile' %
+                                       self.old_shill_user_profile_dir)
 
         # Start a mock flimflam instance to accept and log DBus calls.
         self.mock_flimflam = mock_flimflam.MockFlimflam()
@@ -93,7 +106,8 @@ class network_ShillInitScripts(test.test):
 
     def erase_state(self):
         utils.system('rm -rf %s' % ' '.join(self.save_directories))
-        os.mkdir(self.cryptohome_dir)
+        os.mkdir(self.root_cryptohome_dir)
+        os.mkdir(self.user_cryptohome_dir)
 
     def end_test(self):
         self.mock_flimflam.quit()
@@ -105,7 +119,8 @@ class network_ShillInitScripts(test.test):
 
     def assure(self, must_be_true, assertion_name):
         if not must_be_true:
-            raise error.TestFail('Assertion failed: %s' % assertion_name)
+            raise error.TestFail('%s: Assertion failed: %s' %
+                                 (self.test_name, assertion_name))
 
     def assure_path_owner(self, path, owner):
         self.assure(pwd.getpwuid(os.stat(path).st_uid)[0] == owner,
@@ -157,11 +172,11 @@ class network_ShillInitScripts(test.test):
         self.create_file_with_contents(self.new_shill_user_profile, contents)
 
     def create_old_shill_user_profile(self, contents):
-        os.mkdir('/home/chronos/user/shill')
+        os.mkdir(self.old_shill_user_profile_dir)
         self.create_file_with_contents(self.old_shill_user_profile, contents)
 
     def create_flimflam_user_profile(self, contents):
-        os.mkdir('/home/chronos/user/flimflam')
+        os.mkdir(self.flimflam_user_profile_dir)
         self.create_file_with_contents(self.flimflam_user_profile, contents)
 
     def file_contents(self, filename):
@@ -199,6 +214,7 @@ class network_ShillInitScripts(test.test):
                      self.test_login_prefer_old_shill_profile,
                      self.test_login_multi_profile,
                      self.test_logout):
+          self.test_name = test.__name__
           test()
           self.stop_shill()
           self.erase_state()
@@ -341,7 +357,7 @@ class network_ShillInitScripts(test.test):
         self.login()
         self.assure(not os.path.exists(self.old_shill_user_profile),
                     'Old shill user profile no longer exists')
-        self.assure(not os.path.exists('/home/chronos/user/shill'),
+        self.assure(not os.path.exists(self.old_shill_user_profile_dir),
                     'Old shill user profile directory no longer exists')
         self.assure_exists(self.new_shill_user_profile,
                            'New shill profile')
@@ -370,12 +386,12 @@ class network_ShillInitScripts(test.test):
                                      self.make_special_file,
                                      os.mkdir,
                                      self.make_bad_owner):
-            os.mkdir('/home/chronos/user/shill')
+            os.mkdir(self.old_shill_user_profile_dir)
             file_creation_method(self.old_shill_user_profile)
             self.login()
             self.assure(not os.path.exists(self.old_shill_user_profile),
                         'Old shill user profile no longer exists')
-            self.assure(not os.path.exists('/home/chronos/user/shill'),
+            self.assure(not os.path.exists(self.old_shill_user_profile_dir),
                         'Old shill user profile directory no longer exists')
             self.assure(not os.path.exists(self.new_shill_user_profile),
                         'New shill profile was not created')
@@ -411,7 +427,7 @@ class network_ShillInitScripts(test.test):
         self.login()
         self.assure(not os.path.exists(self.flimflam_user_profile),
                     'Flimflam user profile no longer exists')
-        self.assure(not os.path.exists('/home/chronos/user/flimflam'),
+        self.assure(not os.path.exists(self.flimflam_user_profile_dir),
                     'Flimflam user profile directory no longer exists')
         self.assure_exists(self.new_shill_user_profile,
                            'New shill profile')
