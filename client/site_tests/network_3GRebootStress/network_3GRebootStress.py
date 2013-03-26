@@ -7,10 +7,10 @@ import dbus, logging, os, random, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
+from autotest_lib.client.cros.cellular import mm
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
-import mm
 
 
 class ResetAuthorizedContext(object):
@@ -28,6 +28,10 @@ class ResetAuthorizedContext(object):
 
 class network_3GRebootStress(test.test):
     version = 1
+
+    def IsCromo(self, modem_manager):
+        path = modem_manager.path
+        return path.startswith('/org/chromium')
 
     def CountModems(self):
         count = len(mm.EnumerateDevices(''))
@@ -47,12 +51,15 @@ class network_3GRebootStress(test.test):
     def FindUsbDevicePath(self, modem_manager, modem_path):
         logging.info('Modem path: %s' % modem_path)
 
-        props = modem_manager.Properties(modem_path)
+        modem_obj = modem_manager.GetModem(modem_path)
+        props = modem_obj.GetModemProperties()
         net_device = props['Device']
         logging.info('Network device: %s' % net_device)
-
-        usb_interface_path = os.path.realpath('/sys/class/net/%s/device'
-                                              % net_device)
+        if self.IsCromo(modem_manager):
+            usb_interface_path = os.path.realpath('/sys/class/net/%s/device'
+                                                  % net_device)
+        else:
+            usb_interface_path = os.path.realpath(net_device)
         self.usb_device_path, _ = usb_interface_path.rsplit('/', 1)
         logging.info('USB device path: %s' % self.usb_device_path)
 
