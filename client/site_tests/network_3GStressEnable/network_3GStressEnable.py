@@ -36,24 +36,12 @@ class network_3GStressEnable(test.test):
         self.EnableDevice(False)
         time.sleep(settle)
 
-    def FindDevice(self, names):
-        for name in names:
-            self.device = self.flim.FindElementByNameSubstring('Device',
-                                                               name)
-            if self.device:
-                return True
-            self.device = self.flim.FindElementByPropertySubstring('Device',
-                                                              'Interface',
-                                                               name)
-            if self.device:
-                return True
-        return False
-
-    def run_once(self, names=['usb', 'wwan'], cycles=3, min=15, max=25):
+    def run_once(self, cycles=3, min=15, max=25):
         self.flim = flimflam.FlimFlam(dbus.SystemBus())
-        if not self.FindDevice(names):
-            raise error.TestFail('No device found.')
-        service = self.flim.FindElementByNameSubstring('Service', 'cellular')
+        self.device = self.flim.FindCellularDevice()
+        if not self.device:
+            raise error.TestFail('Failed to find a cellular device.')
+        service = self.flim.FindCellularService()
         if service:
             # If cellular's already up, take it down to start.
             try:
