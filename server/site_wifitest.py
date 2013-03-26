@@ -240,6 +240,9 @@ class WiFiTest(object):
         self.client.wlan_mac = self.__get_interface_mac(self.client,
                                                         self.client_wlanif)
 
+        # Make sure powersave mode is off by default.
+        self.client_powersave_off([])
+
         # Synchronize time on all devices
         self.time_sync([])
 
