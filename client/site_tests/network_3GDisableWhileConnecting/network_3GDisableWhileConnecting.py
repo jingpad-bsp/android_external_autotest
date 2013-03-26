@@ -130,6 +130,10 @@ class FlimflamDisableTester(DisableTester):
     self.flimflam = flimflam.FlimFlam()
     self.flimflam.SetDebugTags(
         'dbus+service+device+modem+cellular+portal+network+manager')
+
+    # ModemManager may be in an illegal state if this test is run multiple
+    # times in succession. Sleep here to make sure that ResetAllModems suceeds.
+    time.sleep(5)
     network.ResetAllModems(self.flimflam)
 
     self.cellular_device = self.flimflam.FindCellularDevice()
