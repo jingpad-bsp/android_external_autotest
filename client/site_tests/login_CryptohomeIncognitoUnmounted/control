@@ -9,6 +9,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+RETRIES = 1
 
 DOC = """
 This test checks that, after logging in incognito, a cryptohome was mounted on
