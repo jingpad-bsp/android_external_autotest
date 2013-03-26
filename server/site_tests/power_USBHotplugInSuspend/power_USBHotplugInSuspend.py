@@ -70,8 +70,10 @@ class power_USBHotplugInSuspend(test.test):
         self._switch_usbkey_power(insert)
 
         # Wait for the client to come back up (suspend time + some slack time).
-        if not self._host.wait_up(timeout=_SUSPEND_TIME +
-                                  self._host.RESUME_TIMEOUT):
+        # TODO(beeps): Combine the two timeouts in wait_up after
+        # crbug.com/221785 is resolved.
+        time.sleep(_SUSPEND_TIME)
+        if not self._host.wait_up(self._host.RESUME_TIMEOUT):
             raise error.TestError('Client failed to resume.')
 
         # Get the set of devices plugged in and make sure the change was
