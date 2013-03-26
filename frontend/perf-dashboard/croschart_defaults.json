@@ -686,21 +686,6 @@
     ]
   },
   {
-    "test_name": "telemetry_OctaneBenchmark",
-    "master": "ChromiumPerf",
-    "graphs": [
-      {
-        "graph_name": "overall_score",
-        "units": "score",
-        "better_direction": "higher",
-        "info_url": "../../../../../scripts/doc/default.html",
-        "keys": [
-          "score*"
-        ]
-      }
-    ]
-  },
-  {
     "test_name": "platform_GesturesRegressionTest",
     "master": "chromeos.touchpad",
     "graphs": [
@@ -711,6 +696,41 @@
         "info_url": "../../../../../scripts/doc/default.html",
         "keys": [
           "*"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "telemetry_Benchmarks.octane",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "overall_score",
+        "units": "score",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY--score*"
+        ]
+      },
+      {
+        "graph_name": "individual_scores",
+        "units": "score",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY--CodeLoad*",
+          "TELEMETRY--Crypto*",
+          "TELEMETRY--DeltaBlue*",
+          "TELEMETRY--EarleyBoyer*",
+          "TELEMETRY--Gameboy*",
+          "TELEMETRY--Mandreel*",
+          "TELEMETRY--NavierStokes*",
+          "TELEMETRY--PdfJS*",
+          "TELEMETRY--RayTrace*",
+          "TELEMETRY--RegExp*",
+          "TELEMETRY--Richards*",
+          "TELEMETRY--Splay*"
         ]
       }
     ]

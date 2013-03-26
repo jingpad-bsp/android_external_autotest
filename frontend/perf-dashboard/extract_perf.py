@@ -109,7 +109,8 @@ def write_perf_info_to_disk(job_id, result_dict, test_dir, output_dir):
     @param output_dir: The output directory in which results are being written.
 
     """
-    result_out = [job_id, result_dict['job_name'], result_dict['platform']]
+    result_out = [job_id, result_dict['job_name'], result_dict['platform'],
+                  result_dict['chrome_version']]
     perf_items = []
     for perf_key in result_dict['perf_keys']:
         for perf_val in result_dict['perf_keys'][perf_key]:
@@ -173,6 +174,18 @@ def extract_perf_for_job_id(cursor, job_id, unexpected_job_names, test_dir,
 
     if 'platform' not in result:
         return False
+
+    # Get the Chrome version number associated with this job ID.
+    query = ('SELECT DISTINCT value FROM tko_test_attributes '
+             'INNER JOIN tko_perf_view_2 USING (test_idx) '
+             'INNER JOIN tko_jobs USING (job_idx) '
+             'WHERE afe_job_id=%s AND attribute="CHROME_VERSION"')
+    cursor.execute(query, job_id)
+    cursor_results = cursor.fetchall()
+    assert len(cursor_results) <= 1, \
+           'Expected the Chrome version number to be unique for afe_job_id ' \
+           '%s, but got multiple instead: %s' % (job_id, cursor_results)
+    result['chrome_version'] = cursor_results[0][0] if cursor_results else ''
 
     write_perf_info_to_disk(job_id, result, test_dir, output_dir)
     return True

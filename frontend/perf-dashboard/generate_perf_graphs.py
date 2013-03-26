@@ -31,6 +31,7 @@ import shutil
 import simplejson
 import sys
 import urllib
+import urllib2
 
 _SETTINGS = 'autotest_lib.frontend.settings'
 os.environ['DJANGO_SETTINGS_MODULE'] = _SETTINGS
@@ -45,6 +46,9 @@ _CURR_PID_FILE_NAME = __file__ + '.curr_pid.txt'
 _COMPLETED_ID_FILE_NAME = 'job_id_complete.txt'
 _REV_NUM_FILE_NAME = 'rev_num.txt'
 _WILDCARD = '*'
+_TELEMETRY_PERF_KEY_IDENTIFIER = 'TELEMETRY'
+_TELEMETRY_PERF_KEY_DELIMITER = '--'
+_NEW_DASH_UPLOAD_URL = 'http://chromeperf.appspot.com/add_point'
 
 # Values that can be configured through options.
 # TODO(dennisjeffrey): Infer the tip-of-tree milestone dynamically once this
@@ -238,41 +242,90 @@ def upload_to_chrome_dashboard(data_point_info, platform, test_name,
     """Uploads a set of perf values to Chrome's perf dashboard.
 
     @param data_point_info: A dictionary containing information about perf
-        data points to plot: key names and values, revision number, chromeOS
-        version number.
+        data points to plot: key names and values, chrome(OS) version numbers.
     @param platform: The string name of the associated platform.
     @param test_name: The string name of the associated test.
     @param master_name: The string name of the "buildbot master" to use
         (a concept that exists in Chrome's perf dashboard).
 
-    This function is currently a no-op.  It will be completed as soon as we're
-    ready to start sending actual data to Chrome's perf dashboard.
     """
+
+    # Start slow - only upload results for one bot, one test right now.
+    # TODO(dennisjeffrey): Expand this to include other platforms/tests once
+    # we've proven ourselves with a single bot/test.  Longer-term, the
+    # check below will be completely removed as soon as we're ready to upload
+    # the full suite of perf results to the new dashboard.  The check is only
+    # in place temporarily to allow a subset of results to be uploaded until
+    # we're ready to upload everything.
+    if platform != 'lumpy' or test_name != 'telemetry_Benchmarks.octane':
+        return
+
+    # Generate a warning and return if any expected values in |data_point_info|
+    # are missing.
+    for expected_val in ['chrome_ver', 'traces', 'ver']:
+        if (expected_val not in data_point_info or
+            not data_point_info[expected_val]):
+            logging.warning('Did not upload data point for test "%s", '
+                            'platform "%s": missing value for "%s"',
+                            test_name, platform, expected_val)
+            return
+
     traces = data_point_info['traces']
     for perf_key in traces:
         perf_val = traces[perf_key][0]
         perf_err = traces[perf_key][1]
 
+        units = None
+        if perf_key.startswith(_TELEMETRY_PERF_KEY_IDENTIFIER):
+            # The perf key is associated with a Telemetry test, and has a
+            # specially-formatted perf key that encodes a graph_name,
+            # trace_name, and units.  Example Telemetry perf key:
+            # "TELEMETRY--DeltaBlue--DeltaBlue--score__bigger_is_better_"
+            graph_name, trace_name, units = (
+                perf_key.split(_TELEMETRY_PERF_KEY_DELIMITER)[1:])
+            # The Telemetry test name is the name of the tag that has been
+            # appended to |test_name|.  For example, autotest name
+            # "telemetry_Benchmarks.octane" corresponds to Telemetry test name
+            # "octane" on chrome's new perf dashboard.
+            test_name = test_name[test_name.find('.') + 1:]
+
         new_dash_entry = {
             'master': master_name,
-            'bot': platform,
-            'test': '%s/%s' % (test_name, perf_key),
-            'revision': data_point_info['rev'] + 1,  # Don't allow 0.
+            'bot': 'cros-' + platform,  # Prefix to make clear it's chromeOS.
+            'test': '%s/%s/%s' % (test_name, graph_name, trace_name),
             'value': perf_val,
             'error': perf_err,
             'supplemental_columns': {
-                'a_cros_build': data_point_info['ver']
+                'r_cros_version': data_point_info['ver'],
+                'r_chrome_version': data_point_info['chrome_ver'],
             }
         }
+        if units:
+            new_dash_entry['units'] = units
         json_string = simplejson.dumps([new_dash_entry], indent=2)
         params = urllib.urlencode({'data': json_string})
-        # TODO(dennisjeffrey): Upload "params" to Chrome's perf dashboard,
-        # once ready.
+        fp = None
+        try:
+            fp = urllib2.urlopen(_NEW_DASH_UPLOAD_URL, params)
+            errors = fp.read().strip()
+            if errors:
+                raise urllib2.URLError(errors)
+        except urllib2.URLError, e:
+            # TODO(dennisjeffrey): If the live dashboard is currently down,
+            # cache results and retry them later when the live dashboard is
+            # back up.  For now we skip the current upload if the live
+            # dashboard is down.
+            logging.exception('Error uploading to new dashboard, skipping '
+                              'upload attempt: %s', e)
+            return
+        finally:
+            if fp:
+                fp.close()
 
 
 def output_graph_data_for_entry(test_name, master_name, graph_name, job_name,
-                                platform, units, better_direction, url,
-                                perf_keys, chart_keys, options,
+                                platform, chrome_ver, units, better_direction,
+                                url, perf_keys, chart_keys, options,
                                 summary_id_to_rev_num, output_data_dir):
     """Outputs data for a perf test result into appropriate graph data files.
 
@@ -284,6 +337,8 @@ def output_graph_data_for_entry(test_name, master_name, graph_name, job_name,
         test result.
     @param platform: The string name of the platform associated with this test
         result.
+    @param chrome_ver: The string Chrome version number associated with this
+        test result.
     @param units: The string name of the units displayed on this graph.
     @param better_direction: A String representing whether better perf results
         are those that are "higher" or "lower".
@@ -355,14 +410,13 @@ def output_graph_data_for_entry(test_name, master_name, graph_name, job_name,
             entry = {}
             entry['traces'] = {}
             entry['ver'] = build_num
+            entry['chrome_ver'] = chrome_ver
 
             key_to_vals = {}
             for perf_key in perf_keys:
                 if any([chart_key_matches_actual_key(c, perf_key[0])
                         for c in chart_keys]):
-                    # Replace dashes with underscores so different lines show
-                    # up as different colors in the graphs.
-                    key = perf_key[0].replace('-', '_')
+                    key = perf_key[0]
                     if key not in key_to_vals:
                         key_to_vals[key] = []
                     # There are some cases where results for
@@ -386,9 +440,20 @@ def output_graph_data_for_entry(test_name, master_name, graph_name, job_name,
                 summary_id_to_rev_num[summary_id] = rev + 1
                 entry['rev'] = rev
 
-                upload_to_chrome_dashboard(entry, platform, test_name,
-                                           master_name)
+                # Upload data point to the new performance dashboard (only
+                # for the tip-of-tree branch).
+                if release == options.tot_milestone:
+                    upload_to_chrome_dashboard(entry, platform, test_name,
+                                               master_name)
 
+                # For each perf key, replace dashes with underscores so
+                # different lines show up as different colors in the graphs.
+                for orig_key in entry['traces'].keys():
+                    new_key = orig_key.replace('-', '_')
+                    entry['traces'][new_key] = entry['traces'].pop(orig_key)
+
+                # Output data point to be displayed on the current (deprecated)
+                # dashboard.
                 with open(summary_file, 'a') as f:
                     f.write(simplejson.dumps(entry) + '\n')
 
@@ -431,7 +496,8 @@ def process_perf_data_files(file_names, test_name, master_name, completed_ids,
                 job_id = info[0]
                 job_name = info[1]
                 platform = info[2]
-                perf_keys = info[3]
+                chrome_ver = info[3]
+                perf_keys = info[4]
 
                 # Skip this job ID if it's already been processed.
                 if job_id in completed_ids:
@@ -457,9 +523,9 @@ def process_perf_data_files(file_names, test_name, master_name, completed_ids,
                     if store_entry:
                         output_graph_data_for_entry(
                             test_name, master_name, graph_name, job_name,
-                            platform, units, better_direction, url, perf_keys,
-                            chart_keys, options, summary_id_to_rev_num,
-                            output_data_dir)
+                            platform, chrome_ver, units, better_direction, url,
+                            perf_keys, chart_keys, options,
+                            summary_id_to_rev_num, output_data_dir)
 
                 # Mark this job ID as having been processed.
                 with open(os.path.join(output_data_dir,
