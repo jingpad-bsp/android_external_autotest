@@ -5,7 +5,6 @@
 import dbus
 import logging
 import random
-import subprocess
 import time
 
 from autotest_lib.client.bin import test, utils
@@ -25,6 +24,11 @@ import flimflam
 # Number of seconds we wait for the cellular service to perform an action.
 DEVICE_TIMEOUT=45
 SERVICE_TIMEOUT=75
+
+# Number of times and seconds between modem state checks to ensure that the
+# modem is not in a temporary transition state.
+NUM_MODEM_STATE_CHECKS=2
+MODEM_STATE_CHECK_PERIOD_SECONDS=5
 
 
 class TechnologyCommands():
@@ -188,11 +192,16 @@ class network_3GModemControl(test.test):
             error.TestFail if it timed out waiting for the modem to finish
             connecting or disconnecting.
         """
-        utils.poll_for_condition(
-            lambda: not self.modem.IsConnectingOrDisconnecting(),
-            error.TestFail('Timed out waiting for modem to finish connecting ' +
-                           'or disconnecting.'),
-            timeout=SERVICE_TIMEOUT)
+        # Shill retries a failed connect attempt with a different APN so
+        # check a few times to ensure the modem is not in between connect
+        # attempts.
+        for _ in range(NUM_MODEM_STATE_CHECKS):
+            utils.poll_for_condition(
+                lambda: not self.modem.IsConnectingOrDisconnecting(),
+                error.TestFail('Timed out waiting for modem to finish ' +
+                               'connecting or disconnecting.'),
+                timeout=SERVICE_TIMEOUT)
+            time.sleep(MODEM_STATE_CHECK_PERIOD_SECONDS)
 
     def EnsureDisabled(self):
         """
