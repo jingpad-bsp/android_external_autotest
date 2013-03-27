@@ -9,7 +9,8 @@ RETRIES = 5
 
 
 DOC = """
-Test that always fails. Will be attempted 6 times.
+Test that always fails. Despite having nonzero RETRIES, will fail
+after first run due to failure not being of type TestFailRetry.
 """
 
 from autotest_lib.client.common_lib import utils

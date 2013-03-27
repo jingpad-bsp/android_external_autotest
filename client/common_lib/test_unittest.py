@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+#pylint: disable-msg=C0111
 """Unit Tests for autotest.client.common_lib.test"""
 
 __author__ = 'gps@google.com (Gregory P. Smith)'
@@ -8,6 +8,7 @@ import unittest
 import common
 from autotest_lib.client.common_lib import test
 from autotest_lib.client.common_lib.test_utils import mock
+from autotest_lib.client.common_lib import error as common_lib_error
 
 class TestTestCase(unittest.TestCase):
     class _neutered_base_test(test.base_test):
@@ -109,7 +110,8 @@ class Test_base_test_execute(TestTestCase):
                                                           error)
             info_str = 'Run %s failed with %s' % (run, error)
             # On the final run we do not emit this message.
-            if run != self.test.job.test_retry:
+            if run != self.test.job.test_retry and isinstance(error,
+                                               common_lib_error.TestFailRetry):
                 self.test.job.record.expect_call('INFO', None, None, info_str)
 
 
@@ -124,8 +126,31 @@ class Test_base_test_execute(TestTestCase):
         after_hook = self.god.create_mock_function('after_hook')
         self.test.register_before_iteration_hook(before_hook)
         self.test.register_after_iteration_hook(after_hook)
-        error = Exception('fail')
+        error = common_lib_error.TestFailRetry('fail')
         self._setup_failed_test_calls(self.test.job.test_retry+1, error)
+        try:
+            self.test._call_run_once_with_retry([], False, None, (1, 2),
+                                                {'arg': 'val'})
+        except Exception as err:
+            if err != error:
+                raise
+        self.god.check_playback()
+
+
+    def test_call_run_once_with_retry_exception_unretryable(self):
+        """
+        Test call_run_once_with_retry duplicating a test that will always fail
+        with a non-retryable exception.
+        """
+        self.test.job.test_retry = 5
+        self.god.stub_function(self.test, 'drop_caches_between_iterations')
+        self.god.stub_function(self.test, 'run_once')
+        before_hook = self.god.create_mock_function('before_hook')
+        after_hook = self.god.create_mock_function('after_hook')
+        self.test.register_before_iteration_hook(before_hook)
+        self.test.register_after_iteration_hook(after_hook)
+        error = common_lib_error.TestFail('fail')
+        self._setup_failed_test_calls(1, error)
         try:
             self.test._call_run_once_with_retry([], False, None, (1, 2),
                                                 {'arg': 'val'})
@@ -155,7 +180,7 @@ class Test_base_test_execute(TestTestCase):
         self.test.register_after_iteration_hook(after_hook)
         self.god.stub_function(self.test.job, 'record')
         # tests the test._call_run_once implementation
-        error = Exception('fail')
+        error = common_lib_error.TestFailRetry('fail')
         self._setup_failed_test_calls(num_to_fail, error)
         # Passing call
         self.test._call_run_once.expect_call([], False, None, (1, 2),

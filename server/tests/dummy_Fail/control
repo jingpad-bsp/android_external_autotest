@@ -7,7 +7,7 @@ TEST_TYPE = 'server'
 
 
 DOC = """
-Test that always fails. Will be attempted 6 times.
+Test that always fails.
 """
 
 from autotest_lib.client.common_lib import utils

@@ -10,6 +10,6 @@ class flaky_test(test.test):
 
     def run_once(self, seconds=1):
         if random.randint(0,1):
-            raise error.TestFail('Flaky test failed intentionally.')
+            raise error.TestFailRetry('Flaky test failed intentionally.')
 
         time.sleep(seconds)

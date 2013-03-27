@@ -16,6 +16,8 @@
 #       src             eg. tests/<test>/src
 #       tmpdir          eg. tmp/<tempname>_<testname.tag>
 
+#pylint: disable-msg=C0111
+
 import fcntl, os, re, sys, shutil, tempfile, time, traceback
 import logging
 
@@ -212,7 +214,7 @@ class base_test(object):
                 self._call_run_once(constraints, profile_only,
                                     postprocess_profiled_run, args, dargs)
                 break
-            except Exception as err:
+            except error.TestFailRetry as err:
                 if retry_run == max_runs:
                     raise
                 self.job.record('INFO', None, None, 'Run %s failed with %s' % (

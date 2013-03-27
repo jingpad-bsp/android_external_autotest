@@ -1,3 +1,5 @@
+#pylint: disable-msg=C0111
+
 """
 Internal global error types
 """
@@ -221,6 +223,12 @@ class TestWarn(TestBaseException):
     """Indicates that bad things (may) have happened, but not an explicit
     failure."""
     exit_status = "WARN"
+
+
+class TestFailRetry(TestFail):
+    """Indicates that the test failed, but in a manner that may be retried
+    if test retries are enabled for this test."""
+    exit_status = "FAIL"
 
 
 class UnhandledTestError(TestError):

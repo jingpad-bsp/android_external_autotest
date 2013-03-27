@@ -8,7 +8,7 @@ SUITE = 'dummyflake, dummyclientretries'
 
 
 DOC = """
-Test that randomly fails half the time. Will be attempted 3 times.
+Test that randomly fails half the time.
 """
 
 job.run_test('flaky_test', seconds=1)
