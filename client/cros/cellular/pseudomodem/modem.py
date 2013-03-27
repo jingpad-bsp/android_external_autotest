@@ -8,17 +8,18 @@ This class serves as the abstract base class of all fake modem implementations.
 
 """
 
-import bearer
 import dbus
 import dbus.types
 import dbus_std_ifaces
-import disable_machine
-import enable_machine
 import gobject
 import logging
+import time
+
+import bearer
+import disable_machine
+import enable_machine
 import mm1
 import modem_simple
-import time
 
 ALLOWED_BEARER_PROPERTIES = [
     'apn',
@@ -31,21 +32,6 @@ ALLOWED_BEARER_PROPERTIES = [
 ]
 
 class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
-    # TODO(armansito): Implement something similar to a delegate interface
-    # that can be provided by tests to fine tune the state transitions.
-    # The delegate should be able to receive callbacks between state
-    # transitions
-    class StateMachine(object):
-        def __init__(self, modem):
-            self.modem = modem
-            self.cancelled = False
-
-        def Step(self):
-            raise NotImplementedError()
-
-        def Cancel(self):
-            self.cancelled = True
-
     def __init__(self, bus=None,
                  device='pseudomodem0',
                  name='/Modem/0',

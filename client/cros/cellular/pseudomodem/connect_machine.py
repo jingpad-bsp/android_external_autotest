@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import logging
+import subprocess
+
 import mm1
-import modem
 import pseudomodem
 import state_machine
-import subprocess
 
 class ConnectMachine(state_machine.StateMachine):
     def __init__(self, modem, properties, return_cb, raise_cb):
@@ -95,6 +95,8 @@ class ConnectMachine(state_machine.StateMachine):
         return True
 
     def _GetBearerToActivate(self):
+        # Import modem here to avoid circular imports.
+        import modem
         bearer = None
         bearer_path = None
         bearer_props = {}
@@ -113,7 +115,8 @@ class ConnectMachine(state_machine.StateMachine):
             logging.info(('ConnectMachine: No matching bearer found, '
                 'creating brearer with properties: ' +
                 str(self.connect_props)))
-            bearer_path = self._modem.CreateBearer(bearer_props)
+            bearer_path = self._modem.CreateBearer(self.connect_props)
+
         return bearer_path
 
     def _HandleConnectingState(self):

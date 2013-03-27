@@ -14,6 +14,7 @@ import dbus
 import dbus.service
 import dbus.types
 import logging
+
 import mm1
 
 class MMPropertyError(mm1.MMError):
@@ -150,6 +151,10 @@ class DBusProperties(dbus.service.Object):
                 ("Property '%s' not implemented for "
                 "interface '%s'.") %
                 (property_name, interface_name))
+        if props[property_name] == value:
+            logging.info("Property '%s' already has value '%s'. Ignoring." %
+                         (property_name, value))
+            return
         props[property_name] = value
         changed = { property_name : value }
         inv = self._InvalidatedPropertiesForChangedValues(changed)

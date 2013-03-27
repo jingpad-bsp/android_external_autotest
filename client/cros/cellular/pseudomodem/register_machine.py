@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+
 import mm1
 import state_machine
 
@@ -19,6 +20,8 @@ class RegisterMachine(state_machine.StateMachine):
         if state == mm1.MM_MODEM_STATE_SEARCHING:
             logging.info('RegisterMachine: Setting state to ENABLED.')
             self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED, reason)
+            self._modem.SetRegistrationState(
+                mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
         self._modem.register_step = None
 
     def _HandleEnabledState(self):
@@ -38,6 +41,8 @@ class RegisterMachine(state_machine.StateMachine):
             logging.error('An error occurred during network scan: ' + str(e))
             self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
                 mm1.MODEM_STATE_CHANGE_REASON_UNKNOWN)
+            self._modem.SetRegistrationState(
+                mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
             raise
         logging.info('RegisterMachine: Found networks: ' + str(self._networks))
         return True

@@ -12,12 +12,11 @@ import optparse
 import os
 import signal
 import subprocess
-import sys
 import time
 
 import mm1
-import modemmanager
 import modem_3gpp
+import modemmanager
 import sim
 
 import common
@@ -304,11 +303,27 @@ class PseudoModemManager(object):
         pass
 
 
-def Start(options):
-    # TODO(armansito): Use options here to figure out the correct
-    # modem to create
-    sim_obj = sim.SIM(sim.SIM.Carrier(), mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-    with PseudoModemManager(sim=sim_obj, detach=False, logfile=options.logfile):
+def Start(use_cdma=False):
+    """
+    Runs the pseudomodem in script mode. This function is called only by the
+    main function.
+
+    Args:
+        use_cdma -- If True, the pseudo modem manager will be initialized with
+                    an instance of modem_cdma.ModemCdma, otherwise the default
+                    modem will be used, which is an instance of
+                    modem_3gpp.Modem3gpp.
+
+    """
+    if use_cdma:
+        # Import modem_cdma here to avoid circular imports.
+        import modem_cdma
+        m = modem_cdma.ModemCdma(modem_cdma.ModemCdma.CdmaNetwork())
+        s = None
+    else:
+        m = None
+        s = sim.SIM(sim.SIM.Carrier(), mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+    with PseudoModemManager(modem=m, sim=s, detach=False, logfile=None):
         pass
 
 def main():
@@ -320,23 +335,27 @@ def main():
       Use --help for info.
 
     """
+
+    # TODO(armansito): Correctly utilize the below options.
+    # See crbug.com/238430.
+
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option('-c', '--carrier', dest='carrier_name',
-                      default=DEFAULT_CARRIER,
-                      metavar='<carrier name>',
-                      help='<carrier name> := anything')
-    parser.add_option('-l', '--logfile', dest='logfile',
-                      default=None,
-                      metavar='<filename>',
-                      help='<filename> := filename for logging output')
-    parser.add_option('-t', '--technology', dest='tech',
-                      default='3GPP',
-                      metavar='<technology>',
-                      help='<technology> := 3GPP|CDMA|LTE')
+    parser.add_option('-f', '--family', dest='family',
+                      metavar='<family>',
+                      help='<family> := 3GPP|CDMA')
 
-    options = parser.parse_args()[0]
+    (opts, args) = parser.parse_args()
+    if not opts.family:
+        print "A mandatory option '--family' is missing\n"
+        parser.print_help()
+        return
 
-    Start(options)
+    family = opts.family
+    if family not in [ '3GPP', 'CDMA' ]:
+        print 'Unsupported family: ' + family
+        return
+
+    Start(family == 'CDMA')
 
 
 if __name__ == '__main__':

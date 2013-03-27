@@ -2,15 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import connect_machine
 import dbus
 import dbus.types
-import disconnect_machine
-import gobject
 import logging
+
+import connect_machine
+import disconnect_machine
 import mm1
 import modem
-import pseudomodem
 import register_machine
 
 class Modem3gpp(modem.Modem):
@@ -85,8 +84,7 @@ class Modem3gpp(modem.Modem):
         return ip
 
     def SetRegistrationState(self, state):
-        self.SetUInt32(
-            mm1.I_MODEM_3GPP, 'RegistrationState', dbus.types.UInt32(state))
+        self.SetUInt32(mm1.I_MODEM_3GPP, 'RegistrationState', state)
 
     @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s')
     def Register(self, operator_id, *args):
