@@ -4,6 +4,8 @@
 
 import time
 
+from autotest_lib.server.cros.servo import chrome_ec
+
 
 def _inherit_docstring(cls):
     """Decorator to propagate a docstring to a subclass's method.
@@ -169,7 +171,50 @@ class _AlexController(_PowerStateController):
             self._servo.set('rec_mode', REC_OFF)
 
 
+class _LinkController(_PowerStateController):
+
+    """Power-state controller for Link.
+
+    For Link, the 'cold_reset' signal restarts the DUT.  Recovery
+    mode is triggered by simulating keyboard recovery through the
+    Chrome EC.
+
+    """
+
+    _RESET_HOLD_TIME = 0.1
+
+    _EC_RESET_DELAY = 0.0
+    _EC_CONSOLE_DELAY = 1.2
+
+    @_inherit_docstring(_PowerStateController)
+    def __init__(self, servo):
+        super(_LinkController, self).__init__(servo)
+        self._ec = chrome_ec.ChromeEC(servo)
+
+    @_inherit_docstring(_PowerStateController)
+    def recovery_supported(self):
+        return True
+
+    @_inherit_docstring(_PowerStateController)
+    def power_off(self):
+        self.cold_reset()
+        time.sleep(self._EC_CONSOLE_DELAY)
+        self._servo.power_long_press()
+
+    @_inherit_docstring(_PowerStateController)
+    def power_on(self, rec_mode=REC_ON):
+        if rec_mode == REC_ON:
+            self.cold_reset()
+            time.sleep(self._EC_CONSOLE_DELAY)
+            self.cold_reset()
+            self._ec.reboot("ap-off")
+            time.sleep(self._EC_CONSOLE_DELAY)
+            self._ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
+        self._servo.power_short_press()
+
+
 _CONTROLLER_BOARD_MAP = {
+    'link': _LinkController,
     'lumpy': _AlexController,
     'x86-alex': _AlexController
 }
