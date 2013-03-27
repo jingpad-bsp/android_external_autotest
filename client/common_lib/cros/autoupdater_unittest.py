@@ -52,21 +52,22 @@ class TestAutoUpdater(mox.MoxTestBase):
         updater.update_version = '3880.0.0'
         self.assertFalse(updater.check_version_to_confirm_install())
 
+        self.mox.UnsetStubs()
         self.mox.StubOutWithMock(updater, 'get_build_id')
         updater.get_build_id().MultipleTimes().AndReturn(
-                                                '3880.0.2013_03_21_1340')
+                                                '1234.0.2013_03_21_1340')
         self.mox.ReplayAll()
 
-        updater.update_version = '3880.0.0'
+        updater.update_version = '1234.0.0'
         self.assertFalse(updater.check_version())
 
-        updater.update_version = '3881.0.0'
+        updater.update_version = '3333.0.0'
         self.assertFalse(updater.check_version())
 
-        updater.update_version = '3880.0.0'
+        updater.update_version = '1234.0.0'
         self.assertTrue(updater.check_version_to_confirm_install())
 
-        updater.update_version = '3881.0.0'
+        updater.update_version = '3333.0.0'
         self.assertFalse(updater.check_version_to_confirm_install())
 
 
