@@ -129,3 +129,8 @@ class power_DarkResumeShutdownServer(test.test):
 
             # restart powerd to pick up old retry settings
             host.run('restart powerd')
+
+        # make sure that the machine is not suspended and that the power is on
+        # when exiting the test
+        host.servo.ctrl_key()
+        host.power_on()
