@@ -30,6 +30,9 @@ SERVICE_TIMEOUT=75
 NUM_MODEM_STATE_CHECKS=2
 MODEM_STATE_CHECK_PERIOD_SECONDS=5
 
+# Number of seconds to sleep after a connect request in slow-connect mode.
+SLOW_CONNECT_WAIT_SECONDS=20
+
 
 class TechnologyCommands():
     """Control the modem mostly using flimflam Technology interfaces."""
@@ -55,8 +58,9 @@ class TechnologyCommands():
 
 class ModemCommands():
     """Control the modem using modem manager DBUS interfaces."""
-    def __init__(self, modem):
+    def __init__(self, modem, slow_connect):
         self.modem = modem
+        self.slow_connect = slow_connect
 
     def Enable(self):
         self.modem.Enable(True)
@@ -67,6 +71,8 @@ class ModemCommands():
     def Connect(self, simple_connect_props):
         logging.debug('Connecting with properties: %r' % simple_connect_props)
         self.modem.Connect(simple_connect_props)
+        if self.slow_connect:
+            time.sleep(SLOW_CONNECT_WAIT_SECONDS)
 
     def Disconnect(self):
         """
@@ -91,9 +97,10 @@ class ModemCommands():
 
 class DeviceCommands():
     """Control the modem using flimflam device interfaces."""
-    def __init__(self, flim, device):
+    def __init__(self, flim, device, slow_connect):
         self.flim = flim
         self.device = device
+        self.slow_connect = slow_connect
         self.service = None
 
     def GetService(self):
@@ -112,6 +119,8 @@ class DeviceCommands():
 
     def Connect(self, **kwargs):
         self.GetService().Connect()
+        if self.slow_connect:
+            time.sleep(SLOW_CONNECT_WAIT_SECONDS)
 
     def Disconnect(self):
         """
@@ -282,7 +291,7 @@ class network_3GModemControl(test.test):
         commands.Enable()
         self.EnsureEnabled(check_idle=not self.autoconnect)
 
-        simple_connect_props = {'number': r'#777', 'apn': self.FindAPN()}
+        simple_connect_props = {'number': r'#777'}
 
         # Icera modems behave weirdly if we cancel the operation while the
         # modem is connecting. Work around the issue by waiting until the
@@ -326,14 +335,10 @@ class network_3GModemControl(test.test):
         commands.Disable()
         self.EnsureDisabled()
 
-    def FindAPN(self):
-        return cell_tools.FindLastGoodAPN(self.flim.FindCellularService(),
-                                          default='epc.tmobile.com')
-
     def run_once(self, autoconnect,
                  pseudo_modem=False,
                  mixed_iterations=2,
-                 config=None, technology=None):
+                 config=None, technology=None, slow_connect=False):
         # Use a backchannel so that flimflam will restart when the
         # test is over.  This ensures flimflam is in a known good
         # state even if this test fails.
@@ -369,10 +374,11 @@ class network_3GModemControl(test.test):
                 manager, modem_path = mm.PickOneModem('')
                 self.modem = manager.GetModem(modem_path)
 
-                modem_commands = ModemCommands(self.modem)
+                modem_commands = ModemCommands(self.modem, slow_connect)
                 technology_commands = TechnologyCommands(self.flim,
                                                          modem_commands)
-                device_commands = DeviceCommands(self.flim, self.device)
+                device_commands = DeviceCommands(self.flim, self.device,
+                                                 slow_connect)
 
                 with cell_tools.AutoConnectContext(self.device, self.flim,
                                                    autoconnect):
