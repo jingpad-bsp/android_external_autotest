@@ -169,6 +169,8 @@ class FirmwareWindow(object):
 
     def __init__(self, size=None, prompt_size=None, result_size=None,
                  image_size=None):
+        self._upload_choice = False
+
         # Create a new window
         self.win = gtk.Window(gtk.WINDOW_TOPLEVEL)
         if size:
@@ -264,10 +266,12 @@ class FirmwareWindow(object):
         """Set an image in the image frame."""
         self.image_frame.set_from_file(filename)
 
-    def stop(self):
+    def stop(self, upload_choice=False):
         """Quit the window."""
         gtk.main_quit()
+        self._upload_choice = upload_choice
 
     def main(self):
         """Main function of the window."""
         gtk.main()
+        return self._upload_choice

@@ -33,7 +33,7 @@ import input_device
 
 # Include some constants
 from firmware_constants import DEV, MODE, OPTIONS, RC
-from linux_input import KEY_D, KEY_M, KEY_X, KEY_ENTER, KEY_SPACE
+from linux_input import KEY_D, KEY_M, KEY_X, KEY_Y, KEY_ENTER, KEY_SPACE
 
 
 # Define the Test Flow Keypress (TFK) codes for test flow
@@ -45,6 +45,7 @@ TFK.EXIT = KEY_X
 TFK.MORE = KEY_M
 TFK.SAVE = KEY_SPACE
 TFK.SAVE2 = KEY_ENTER
+TFK.YES = KEY_Y
 
 
 class TestFlow:
@@ -84,6 +85,9 @@ class TestFlow:
         self.robot = robot_wrapper.RobotWrapper(self.board, self.mode)
         self.robot_waiting = False
         self._rename_old_log_and_html_files()
+        self._prepare_to_exit = False
+        self._upload_choice = None
+        self._set_static_prompt_messages()
 
     def __del__(self):
         self.system_device.close()
@@ -136,13 +140,27 @@ class TestFlow:
         self.system_device = open(self.device_node)
         self.system_device = self._non_blocking_open(self.device_node)
 
-    def _get_prompt_next(self):
-        """Prompt for next gesture."""
-        prompt = ("Press SPACE to save this file and go to next test,\n"
-                  "      'm'   to save this file and record again,\n"
-                  "      'd'   to delete this file and try again,\n"
-                  "      'x'   to discard this file and exit.")
-        return prompt
+    def _set_static_prompt_messages(self):
+        """Set static prompt messages."""
+        # Prompt for next gesture.
+        self._prompt_next = (
+                "Press SPACE to save this file and go to next test,\n"
+                "      'm'   to save this file and record again,\n"
+                "      'd'   to delete this file and try again,\n"
+                "      'x'   to discard this file and exit.")
+
+        # Prompt to see test result through timeout callback.
+        self._prompt_result = (
+                "Perform the gesture now.\n"
+                "See the test result on the right after finger lifted.\n"
+                "Or press 'x' to exit.")
+
+        # Prompt the user to choose whether to upload data or not.
+        self._prompt_for_uploading_data = (
+                "You have not completed all of the gestures yet. "
+                "Do you want to upload the incomplete gesture data "
+                "to google storage server? \n"
+                "Press 'y' to upload them, and any other key otherwise. \n")
 
     def _get_prompt_abnormal_gestures(self, warn_msg):
         """Prompt for next gesture."""
@@ -177,25 +195,11 @@ class TestFlow:
                   "%s\n") % pause_msg
         return prompt
 
-    def _get_prompt_result(self):
-        """Prompt to see test result through timeout callback."""
-        prompt = ("Perform the gesture now.\n"
-                  "See the test result on the right after finger lifted.\n"
-                  "Or press 'x' to exit.")
-        return prompt
-
-    def _get_prompt_result_for_keyboard(self):
-        """Prompt to see test result using keyboard."""
-        prompt = ("Press SPACE to see the test result,\n"
-                  "      'd'   to delete this file and try again,\n"
-                  "      'x'   to exit.")
-        return prompt
-
     def _get_prompt_no_data(self):
         """Prompt to remind user of performing gestures."""
         prompt = ("You need to perform the specified gestures "
                   "before pressing SPACE.\n")
-        return prompt + self._get_prompt_result()
+        return prompt + self._prompt_result
 
     def _get_record_cmd(self):
         """Get the device event record command."""
@@ -386,7 +390,7 @@ class TestFlow:
 
     def _prompt_and_action(self):
         """Set the prompt and perform the action if in robot mode."""
-        self.win.set_prompt(self._get_prompt_result())
+        self.win.set_prompt(self._prompt_result)
         # Have the robot perform the gesture if it is in ROBOT mode.
         if self._is_robot_mode():
             prompt_msg = self._get_prompt_robot_pause()
@@ -425,7 +429,7 @@ class TestFlow:
             self._final_scores(self.scores)
             self.output.stop()
             self.output.report_html.stop()
-            self.win.stop()
+            self.win.stop(upload_choice=True)
         self.packets = None
 
     def _handle_user_choice_discard_after_parsing(self):
@@ -438,10 +442,15 @@ class TestFlow:
 
     def _handle_user_choice_exit_after_parsing(self):
         """Handle user choice to exit after the gesture file is parsed."""
+        if self._upload_choice is None:
+            self.win.set_prompt(self._prompt_for_uploading_data, color='red')
+            self._prepare_to_exit = True
+            return
+
         self._stop_record_and_rm_file()
         self.output.stop()
         self.output.report_html.stop()
-        self.win.stop()
+        self.win.stop(upload_choice=self._upload_choice)
 
     def check_for_wrong_number_of_fingers(self, details):
         flag_found = False
@@ -481,7 +490,7 @@ class TestFlow:
                 prompt = self._get_prompt_abnormal_gestures(error)
                 color = 'red'
             else:
-                prompt = self._get_prompt_next()
+                prompt = self._prompt_next
                 color = 'black'
 
             self.output.print_window(msg_list)
@@ -509,6 +518,9 @@ class TestFlow:
         """
         choice = self.keyboard.get_key_press_event(fd)
         if choice:
+            if self._prepare_to_exit:
+                self._upload_choice = (choice == TFK.YES)
+                choice = TFK.EXIT
             self._handle_keyboard_event(choice)
         return True
 
@@ -537,13 +549,13 @@ class TestFlow:
                 self._handle_user_choice_exit_after_parsing()
             # The user presses any wrong key.
             else:
-                self.win.set_prompt(self._get_prompt_next(), color='red')
+                self.win.set_prompt(self._prompt_next, color='red')
         else:
             if choice == TFK.EXIT:
                 self._handle_user_choice_exit_before_parsing()
             # The user presses any wrong key.
             else:
-                self.win.set_prompt(self._get_prompt_result(), color='red')
+                self.win.set_prompt(self._prompt_result, color='red')
 
     def _get_all_gesture_variations(self, simplified):
         """Get all variations for all gestures."""

@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 
+import cros_gs
 import firmware_utils
 import firmware_window
 import keyboard_device
@@ -79,6 +80,12 @@ class firmware_TouchpadMTB:
     """Set up the system for touchpad firmware tests."""
 
     def __init__(self, options):
+        # Get the board name
+        self.board = firmware_utils.get_board()
+
+        # Set up gsutil package
+        self.gs = cros_gs.get_or_install_gsutil(self.board)
+
         # Create the touchpad device
         # If you are going to be testing a touchscreen, set it here
         self.touchpad = touch_device.TouchpadDevice(
@@ -162,10 +169,9 @@ class firmware_TouchpadMTB:
             touchpad_firmware_report-lumpy-fw_11.25-20121016_080924.html
         """
         firmware_str = 'fw_' + self.touchpad.get_firmware_version()
-        board = firmware_utils.get_board()
         curr_time = firmware_utils.get_current_time_str()
         fname = conf.filename.sep.join([conf.report_basename,
-                                        board,
+                                        self.board,
                                         firmware_str,
                                         mode,
                                         curr_time])
@@ -206,7 +212,10 @@ class firmware_TouchpadMTB:
 
     def main(self):
         """A helper to enter gtk main loop."""
-        fw.win.main()
+        upload_choice = fw.win.main()
+        if upload_choice:
+            print 'Uploading %s to %s ...' % (self.log_dir, self.gs.bucket)
+            self.gs.upload(self.log_dir)
         firmware_utils.start_power_management()
         if is_pyauto_installed:
             setup_http_data_dir()
