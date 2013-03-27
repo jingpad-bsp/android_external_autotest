@@ -177,6 +177,7 @@
         "api_permissions": ["app.currentWindowInternal",
                             "app.runtime",
                             "app.window",
+                            "alarms",
                             "fileSystem",
                             "fileSystem.write",
                             "storage",
