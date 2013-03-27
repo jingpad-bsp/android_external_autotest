@@ -1905,8 +1905,21 @@ class WiFiTest(object):
 
 
     def scan(self, params):
-        self.client.run("%s dev %s scan" %
-                        (self.client_cmd_iw, self.client_wlanif))
+        scan_params = ''
+        frequencies = params.get('freq', [])
+        if frequencies:
+           scan_params += ' freq %s' % ' '.join(frequencies)
+        ssids = params.get('ssid', [])
+        if ssids:
+           scan_params += ' ssid "%s"' % '" "'.join(ssids)
+        result = self.client.run("%s dev %s scan%s" %
+                                 (self.client_cmd_iw, self.client_wlanif,
+                                  scan_params))
+        scan_lines = result.stdout.splitlines()
+        for ssid in ssids:
+            if ssid and ('\tSSID: %s' % ssid) not in scan_lines:
+                raise error.TestFail('SSID %s is not in scan results: %s' %
+                                     (ssid, result.stdout))
 
 
     def time_sync(self, params):
