@@ -4,10 +4,13 @@
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import backchannel
 
 import logging, re, socket, string, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
 import random
+
+from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -75,7 +78,7 @@ class network_3GSafetyDance(test.test):
         self.ops[n]()
         time.sleep(random.randint(5, 20) / 10.0)
 
-    def run_once(self, name='usb', ops=30, seed=None):
+    def run_once_internal(self, ops=30, seed=None):
         if not seed:
             seed = int(time.time())
         self.okerrors = [
@@ -90,11 +93,9 @@ class network_3GSafetyDance(test.test):
                      self.disconnect ]
         self.flim = flimflam.FlimFlam()
         self.manager = flimflam.DeviceManager(self.flim)
-        self.device = self.flim.FindElementByNameSubstring('Device', name)
+        self.device = self.flim.FindCellularDevice()
         if not self.device:
-            self.device = self.flim.FindElementByPropertySubstring('Device',
-                                                                   'Interface',
-                                                                   name)
+            raise error.TestFail('Could not find cellular device.')
 
         # Ensure that auto connect is turned off so that flimflam does
         # not interfere with running the test
@@ -151,3 +152,16 @@ class network_3GSafetyDance(test.test):
                 if service:
                     logging.info('Re-enabling AutoConnect.')
                     service.SetProperty("AutoConnect", dbus.Boolean(1))
+
+    def run_once(self, ops=30, seed=None, pseudo_modem=False):
+        # Use a backchannel so that flimflam will restart when the
+        # test is over.  This ensures flimflam is in a known good
+        # state even if this test fails.
+        with backchannel.Backchannel():
+            fake_sim = sim.SIM(
+                sim.SIM.Carrier('att'),
+                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+            with pseudomodem.TestModemManagerContext(pseudo_modem,
+                                                     ['cromo', 'modemmanager'],
+                                                     fake_sim):
+                self.run_once_internal(ops, seed)
