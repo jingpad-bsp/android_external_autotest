@@ -258,11 +258,37 @@ class TestFlow:
         self.gesture_image_name = filepath + '.png'
         return filepath
 
+    def _close_gesture_file(self):
+        """Close the gesture file."""
+        if self.gesture_file.closed:
+            return
+
+        filename = self.gesture_file.name
+        self.gesture_file.close()
+
+        # Strip off the header of the gesture file.
+        #
+        # Input driver version is 1.0.1
+        # Input device ID: bus 0x18 vendor 0x0 product 0x0 version 0x0
+        # Input device name: "Atmel maXTouch Touchpad"
+        # ...
+        # Testing ... (interrupt to exit)
+        # Event: time 519.855, type 3 (EV_ABS), code 57 (ABS_MT_TRACKING_ID),
+        #                                       value 884
+        #
+        tmp_filename = filename + '.tmp'
+        os.rename(filename, tmp_filename)
+        with open(tmp_filename) as src_f:
+            with open(filename, 'w') as dst_f:
+                for line in src_f:
+                    if line.startswith('Event:'):
+                        dst_f.write(line)
+        os.remove(tmp_filename)
+
     def _stop_record_and_post_image(self):
         """Terminate the recording process."""
         if self.record_new_file:
-            if not self.gesture_file.closed:
-                self.gesture_file.close()
+            self._close_gesture_file()
             self.screen_shot.dump_root(self._get_gesture_image_name())
             self.record_proc.terminate()
             self.record_proc.wait()
@@ -469,7 +495,7 @@ class TestFlow:
 
     def _handle_user_choice_exit_before_parsing(self):
         """Handle user choice to exit before the gesture file is parsed."""
-        self.gesture_file.close()
+        self._close_gesture_file()
         self._handle_user_choice_exit_after_parsing()
 
     def _is_parsing_gesture_file_done(self):
