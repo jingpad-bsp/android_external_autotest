@@ -1,13 +1,13 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
-NAME = "graphics"
+AUTHOR = "ihf|sabercrombie|marcheu@chromium.org"
+NAME = "graphics_per-build"
 PURPOSE = "Test graphics functionality."
 CRITERIA = "All tests with SUITE=graphics should complete and not hang."
 
-TIME = "LONG"
+TIME = "MEDIUM"
 TEST_CATEGORY = "Graphics"
 TEST_CLASS = "suite"
 TEST_TYPE = "Server"
@@ -15,15 +15,10 @@ TEST_TYPE = "Server"
 DOC = """
 This is the graphics test suite. It should consist of functional and stressful
 graphics tests. In general we don't want these tests to hang the system,
-although this may happen especially with piglit. For functionality contact
-suite owners: ihf|sabercrombie|marcheu@chromium.org
+although this may happen especially with piglit.
 
 Tests should be run in order of increasing likeness of hanging the system
-graphics_GLAPICheck                     < 1 minute runtime
-graphics_Sanity                         < 1 minute
-graphics_SanAngeles                       3 minutes
-graphics_GLBench                          5 minutes
-graphics_Piglit                      10..15 minutes on OpenGL/Intel only
+graphics_WebGLConformance                 5 minutes
 
 The machine should reboot after finishing the suite or timing out.
 
