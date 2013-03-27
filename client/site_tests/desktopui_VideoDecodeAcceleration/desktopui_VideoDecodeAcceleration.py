@@ -25,13 +25,16 @@ class desktopui_VideoDecodeAcceleration(cros_ui_test.UITest):
         super(desktopui_VideoDecodeAcceleration, self).cleanup()
 
 
-    def run_once(self):
+    def run_once(self, video_file):
         """Tests whether VDA works by verifying histogram for the loaded video.
+
+        @param video_file: Sample video file to be loaded in Chrome.
         """
         import pyauto
 
-        self.pyauto.NavigateToURL('chrome://histograms/Media.Gpu')
-        self.pyauto.AppendTab(pyauto.GURL('http://localhost:8000/video.mp4'))
+        self.pyauto.NavigateToURL('chrome://histograms')
+        self.pyauto.AppendTab(pyauto.GURL('http://localhost:8000/%s' %
+                                          video_file))
 
         # Waiting for histogram updated for the test video.
         wait_time = 0 # seconds
