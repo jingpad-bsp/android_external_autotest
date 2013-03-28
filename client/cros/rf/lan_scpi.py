@@ -4,9 +4,9 @@
 # found in the LICENSE file.
 
 
-'''
+"""
 SCPI-over-TCP controller.
-'''
+"""
 
 
 import inspect
@@ -20,13 +20,13 @@ from contextlib import contextmanager
 
 
 class Error(Exception):
-    '''
+    """
     A SCPI error.
 
     Properties:
         error_id: The numeric SCPI error code, if any.
         error_msg: The SCPI error message, if any.
-    '''
+    """
     def __init__(self, msg, error_id=None, error_msg=None):
         super(Error, self).__init__(msg)
         self.error_id = error_id
@@ -38,14 +38,14 @@ class TimeoutError(Error):
 
 
 MAX_LOG_LENGTH = 800
-def _TruncateForLogging(msg):
+def _truncate_for_logging(msg):
     if len(msg) > MAX_LOG_LENGTH:
         msg = msg[0:MAX_LOG_LENGTH] + '<truncated>'
     return msg
 
 
 @contextmanager
-def Timeout(secs):
+def timeout(secs):
     def handler(signum, frame):
         raise TimeoutError('Timeout')
 
@@ -64,9 +64,9 @@ def Timeout(secs):
 
 
 class LANSCPI(object):
-    '''A SCPI-over-TCP controller.'''
+    """A SCPI-over-TCP controller."""
     def __init__(self, host, port=5025, timeout=6, retries=10):
-        '''
+        """
         Connects to a device using SCPI-over-TCP.
 
         Parameters:
@@ -74,7 +74,7 @@ class LANSCPI(object):
             port: Port to connect to.
             timeout: Timeout in seconds.  (Uses the ALRM signal.)
             retries: maximum attemptis to connect to the host.
-        '''
+        """
         self.timeout = timeout
         self.logger = logging.getLogger('SCPI')
         self.host = host
@@ -84,7 +84,7 @@ class LANSCPI(object):
             try:
                 self.logger.info('Connecting to %s:%d [try %d/%d]...' % (
                                  host, port, times, retries))
-                self._Connect()
+                self._connect()
                 return
             except Exception as e:
                 time.sleep(1)
@@ -94,10 +94,10 @@ class LANSCPI(object):
         raise Error('Failed to connect %s:%d after %d tries' % (
                     host, port, retries))
 
-    def _Connect(self):
+    def _connect(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        with Timeout(self.timeout):
+        with timeout(self.timeout):
             self.logger.debug('] Connecting to %s:%d...' % (
                     self.host, self.port))
             self.socket.connect((self.host, self.port))
@@ -107,24 +107,24 @@ class LANSCPI(object):
 
         self.logger.debug('Connected')
 
-        self.id = self.Query('*IDN?')
+        self.id = self.query('*IDN?')
 
-    def Close(self):
+    def close(self):
         self.logger.debug('Destroying')
         self.rfile.close()
         self.wfile.close()
         self.socket.close()
 
-    def Reopen(self):
-        '''
+    def reopen(self):
+        """
         Closes and reopens the connection.
-        '''
-        self.Close()
+        """
+        self.close()
         time.sleep(1)
-        self._Connect()
+        self._connect()
 
-    def Send(self, commands, wait=True):
-        '''
+    def send(self, commands, wait=True):
+        """
         Sends a command or series of commands.
 
         Args:
@@ -132,23 +132,23 @@ class LANSCPI(object):
                 just a single command.
             wait: If True, issues an *OPC? command after the final
                 command to block until all commands have completed.
-        '''
+        """
         if type(commands) == str:
-            self.Send([commands], wait)
+            self.send([commands], wait)
             return
 
-        self._WriteLine('*CLS')
+        self._write_line('*CLS')
         for command in commands:
             if command[-1] == '?':
-                raise Error('Called Send with query %r' % command)
-            self._WriteLine(command)
-            self._WriteLine('SYST:ERR?')
+                raise Error('Called send with query %r' % command)
+            self._write_line(command)
+            self._write_line('SYST:ERR?')
 
         errors = []
         error_id = None
         error_msg = None
         for i in range(len(commands)):
-            ret = self._ReadLine()
+            ret = self._read_line()
             if ret != '+0,"No error"':
                 errors.append(
                     'Issuing command %r: %r' % (commands[i], ret))
@@ -164,13 +164,13 @@ class LANSCPI(object):
             raise Error('; '.join(errors), error_id, error_msg)
 
         if wait:
-            self._WriteLine('*OPC?')
-            ret = self._ReadLine()
+            self._write_line('*OPC?')
+            ret = self._read_line()
             if int(ret) != 1:
                 raise Error('Expected 1 after *OPC? but got %r' % ret)
 
-    def Query(self, command, format=None):
-        '''
+    def query(self, command, format=None):
+        """
         Issues a query, returning the result.
 
         Args:
@@ -180,17 +180,17 @@ class LANSCPI(object):
                 function from the "Formatters" section at the bottom of this
                 file, or any other function that accepts a single string
                 argument.
-        '''
+        """
         if '?' not in command:
-            raise Error('Called Query with non-query %r' % command)
-        self._WriteLine('*CLS')
-        self._WriteLine(command)
+            raise Error('Called query with non-query %r' % command)
+        self._write_line('*CLS')
+        self._write_line(command)
 
-        self._WriteLine('*ESR?')
-        self._WriteLine('SYST:ERR?')
+        self._write_line('*ESR?')
+        self._write_line('SYST:ERR?')
 
-        line1 = self._ReadLine()
-        line2 = self._ReadLine()
+        line1 = self._read_line()
+        line2 = self._read_line()
         # On success, line1 is the queried value and line2 is the status
         # register.  On failure, line1 is the status register and line2
         # is the error string.  We do this to make sure that we can
@@ -199,7 +199,7 @@ class LANSCPI(object):
             raise Error('Error issuing command %r: %r' % (command, line2))
 
         # Success!  Get SYST:ERR, which should be +0
-        line3 = self._ReadLine()
+        line3 = self._read_line()
         if line3 != '+0,"No error"':
             raise Error('Error issuing command %r: %r' % (command, line3))
 
@@ -207,19 +207,19 @@ class LANSCPI(object):
             line1 = format(line1)
         return line1
 
-    def Quote(self, string):
-        '''
+    def quote(self, string):
+        """
         Quotes a string.
-        '''
+        """
         # TODO(jsalz): Use the real IEEE 488.2 string format.
         return '"%s"' % string
 
-    def _ReadLine(self):
-        '''
+    def _read_line(self):
+        """
         Reads a single line, timing out in self.timeout seconds.
-        '''
+        """
 
-        with Timeout(self.timeout):
+        with timeout(self.timeout):
             if not self.timeout:
                 self.logger.debug('[ (waiting)')
             ch = self.rfile.read(1)
@@ -248,7 +248,7 @@ class LANSCPI(object):
                     raise Error('Expected newline at end of binary data')
 
                 if self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.debug('[binary %r' % _TruncateForLogging(ret))
+                    self.logger.debug('[binary %r' % _truncate_for_logging(ret))
                 return ret
             elif ch == '\n':
                 # Empty line
@@ -257,15 +257,21 @@ class LANSCPI(object):
             else:
                 ret = ch + self.rfile.readline().rstrip('\n')
                 if self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.debug('[ %s' % _TruncateForLogging(ret))
+                    self.logger.debug('[ %s' % _truncate_for_logging(ret))
                 return ret
 
-    def _WriteLine(self, command):
-        '''
+    def _write_line(self, command):
+        """
         Writes a single line.
-        '''
-        if '\n' in command:
-            raise Error('Newline in command: %r' % command)
+        """
+        in_quote = False
+        for c in command:
+            if c == '"':
+                in_quote = not in_quote
+            elif c == '\n' and not in_quote:
+                raise Error('Newline in command: %r' % command)
+        if in_quote:
+            raise Error('Unterminated quote in command: %r' % command)
         self.logger.debug('] %s' % command)
         print >>self.wfile, command
 
@@ -276,15 +282,15 @@ class LANSCPI(object):
 
 FLOATS = lambda s: [float(f) for f in s.split(",")]
 
-def BINARY_FLOATS(bin):
+def binary_floats(bin):
     if len(bin) % 4:
         raise Error('Binary float data contains %d bytes '
                     '(not a multiple of 4)' % len(bin))
     return struct.unpack('>' + 'f' * (len(bin)/4), bin)
 
-def BINARY_FLOATS_WITH_LENGTH(expected_length):
+def binary_floats_with_length(expected_length):
     def formatter(bin):
-        ret = BINARY_FLOATS(bin)
+        ret = binary_floats(bin)
         if len(ret) == 1 and math.isnan(ret[0]):
             raise Error('Unable to retrieve array')
         if len(ret) != expected_length:
