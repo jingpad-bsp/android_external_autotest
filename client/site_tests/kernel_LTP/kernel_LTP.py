@@ -47,13 +47,16 @@ class kernel_LTP(test.test):
     #           job.run_test('ltp', '-f math -s float_bessel')
     #      -for the math and memory management cmdfiles:
     #           job.run_test('ltp', '-f math,mm')
-    def run_once(self, args='', script='runltp'):
+    def run_once(self, args='', script='runltp', select_tests=None):
         """A test wrapper for running tests/scripts under $LTPROOT.
 
         For ChromeOS $LTPROOT is the repo under src/third_party/ltp.
 
         @param args: arguments to be passed to 'script' (usually runltp).
         @param script: LTP script to run.
+        @param select_tests: comma-separated list of names of tests
+                             (executable files under ltp/testcases/bin) to run.
+                             Used for running and debugging during development.
         """
         # In case the user wants to run a test script other than runltp
         # though runltp is the common case.
@@ -71,6 +74,20 @@ class kernel_LTP(test.test):
         dep = self._DEP
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
+
+        # Setup a fake runtest/testcase file if only running one test.
+        if select_tests:
+            # Selected files must exist under testcases/bin.
+            testcase_bin_dir = os.path.join(dep_dir, 'testcases', 'bin')
+            select_tests = select_tests.split(',')
+            for select_test in select_tests:
+                test_bin_file = os.path.join(testcase_bin_dir, select_test)
+                if not os.path.isfile(test_bin_file):
+                    raise error.TestFail('%s not found.' % test_bin_file)
+            with open(os.path.join(dep_dir, 'runtest', 'cros_suite'), 'w') as f:
+                for select_test in select_tests:
+                    f.write('%s %s\n' % (select_test, select_test))
+            args += ' -f cros_suite'
 
         cmd = '%s %s' % (os.path.join(dep_dir, script), args)
         result = utils.run(cmd, ignore_status=True)
