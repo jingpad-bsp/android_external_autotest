@@ -100,6 +100,8 @@ class network_WiFiChaosPSK(test.test):
                         'visibility': True,
                         'security': 'psk',
                         'psk': self.psk_password,
+                        'brand': ap.config_data.get_brand,
+                        'model': ap.config_data.get_model,
                     }
 
                     logging.info('Using ssid %s', ap_info['ssid'])
@@ -115,18 +117,19 @@ class network_WiFiChaosPSK(test.test):
             cartridge.run_configurators()
 
             for ap in configured_aps:
-                logging.info('Client connecting to ssid %s', ap['ssid'])
-                ap_info['failed_iterations'] = []
+                logging.info('Client connecting to ssid %s (bss: %s)',
+                             ap['ssid'], ap['bss'])
+                ap['failed_iterations'] = []
                 failure = False
                 for iteration in range(tries):
                     logging.info('Connection try %d', (iteration + 1))
                     resp = self.run_connect_disconnect_test(ap, iteration)
                     if resp:
                         failure = True
-                        error_dict = {'error': resp, 'try': iteration}
-                        ap_info['failed_iterations'].append(error_dict)
+                        error_dict = {'error': resp, 'try': (iteration + 1)}
+                        ap['failed_iterations'].append(error_dict)
                 if failure:
-                    self.error_list.append(ap_info)
+                    self.error_list.append(ap)
 
 
     def run_once(self, tries=1):

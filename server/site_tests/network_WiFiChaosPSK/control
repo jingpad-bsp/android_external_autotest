@@ -22,6 +22,6 @@ def wifi_chaos_psk(machine):
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
         job.run_test('network_WiFiChaosPSK', host=host, tries=10,
-                     capturer=capturer, disable_sysinfo=True)
+                     capturer=capturer, disable_sysinfo=False)
 
 parallel_simple(wifi_chaos_psk, machines)
