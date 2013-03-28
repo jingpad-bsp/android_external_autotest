@@ -50,6 +50,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
             self._cmd_ping = 'ping'
 
         self._ping_bg_job = None
+        self._wifi_ip = None
 
 
     @property
@@ -92,17 +93,20 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
         @return String IP address on the WiFi subnet.
         """
-        addrs = self._get_system_ipv4_addrs(self.server)
-        # Discard loopback IPs and the control network IP.
-        valid_addrs = filter(lambda addr: not addr.startswith('127.0.0') and
-                                          not addr.startswith(self.server.ip),
-                             addrs)
-        if not valid_addrs:
-            raise error.TestFailed('No configured interfaces.')
-        if len(valid_addrs) > 1:
-            logging.warning('Multiple interfaces configured on server; '
-                            'taking first.')
-        return valid_addrs[0]
+        if not self._wifi_ip:
+            addrs = self._get_system_ipv4_addrs(self.server)
+            # Discard loopback IPs and the control network IP.
+            valid_addrs = filter(
+                    lambda addr: not addr.startswith('127.0.0') and
+                                 not addr.startswith(self.server.ip),
+                    addrs)
+            if not valid_addrs:
+                raise error.TestFailed('No configured interfaces.')
+            if len(valid_addrs) > 1:
+                logging.warning('Multiple interfaces configured on server; '
+                                'taking first.')
+            self._wifi_ip = valid_addrs[0]
+        return self._wifi_ip
 
 
     def _get_system_ipv4_addrs(self, host):
@@ -114,11 +118,14 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
         """
         ip_output = host.run('%s -4 addr show' % self._cmd_ip).stdout
-        lines = [line.strip() for line in ip_output.split('\n')]
-        addr_lines = filter(lambda line: line.startswith('inet '), lines)
-        # Group 1 will be the IP address following 'inet addr:'.
-        regex = re.compile('^inet ([0-9]{1,3}(\\.[0-9]{1,3}){3}).+')
-        return [re.search(regex, line).group(1) for line in addr_lines]
+        regex = re.compile('^inet ([0-9]{1,3}(\\.[0-9]{1,3}){3})')
+        ips = []
+        for line in ip_output.splitlines():
+            ip = re.search(regex, line.strip())
+            if ip:
+                # Group 1 will be the IP address following 'inet addr:'.
+                ips.append(ip.group(1))
+        return ips
 
 
     def vpn_server_config(self, params):
