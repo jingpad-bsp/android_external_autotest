@@ -8,12 +8,12 @@ PURPOSE = "Stress-test all connman 3G operations."
 CRITERIA = """
 This test will fail if any DBus call times out or flimflam crashes.
 """
-SUITE = "network3g"
+SUITE = "network3g_tmobile"
 TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:y3300, carrier:tmobile"
+DEPENDENCIES = "modem:y3300"
 
 DOC = """
   Stress-tests all connman 3G operations.
@@ -22,4 +22,4 @@ DOC = """
   these 3G operations must return a convincing result (EINPROGRESS or no error).
 """
 
-job.run_test('network_3GSafetyDance', tag='y3300_tmobile')
+job.run_test('network_3GSafetyDance', tag='y3300')

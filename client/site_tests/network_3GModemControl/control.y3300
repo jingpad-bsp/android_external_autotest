@@ -8,12 +8,12 @@ PURPOSE = "Verify commands sent to a modem manager are reflected in flimflam."
 CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
 """
-SUITE = "network3g"
+SUITE = "network3g_tmobile"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:y3300, carrier:tmobile"
+DEPENDENCIES = "modem:y3300"
 
 DOC = """
   Tests that commands sent to ModemManager or cromo are reflected in flimflam.
@@ -24,6 +24,6 @@ DOC = """
 """
 
 job.run_test('network_3GModemControl', autoconnect=False,
-             tag='no-autoconnect-y3300_tmobile')
+             tag='no-autoconnect-y3300')
 job.run_test('network_3GModemControl', autoconnect=True,
-             tag='autoconnect-y3300_tmobile')
+             tag='autoconnect-y3300')
