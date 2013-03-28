@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import re
 
-from autotest_lib.client.common_lib import utils, global_config
+from autotest_lib.client.common_lib import error, utils, global_config
 from autotest_lib.client.bin import base_sysinfo
 from autotest_lib.client.cros import constants
 
@@ -160,7 +161,16 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
             keyval[lsb_key] = lsb_dict[lsb_key]
 
         # get the hwid (hardware ID)
-        keyval["hwid"] = utils.system_output('crossystem hwid')
+        # TODO(dennisjeffrey): Remove the try/except around the call to
+        # "crossystem hwid" after this bug is fixed: crbug.com/223728.
+        try:
+            keyval["hwid"] = utils.system_output('crossystem hwid')
+        except error.CmdError:
+            other_hwid_command = 'cat /sys/devices/platform/chromeos_acpi/HWID'
+            additional_info = utils.system_output(other_hwid_command)
+            logging.info('Output of "%s": %s', other_hwid_command,
+                         additional_info)
+            raise
 
         # get the chrome version
         keyval["CHROME_VERSION"] = self._get_chrome_version()
