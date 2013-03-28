@@ -31,14 +31,11 @@ To invoke this test locally with an attached servo board:
 where ARGLIST is a whitespace separated list of the following key=value pairs.
 Values pertaining to the test case include:
 
-  board=BOARD        type of board tested (e.g. 'x86-alex')
   name=TAG           name tag for the test (e.g. 'nmo', 'npo' or 'fsi')
   image_type=test|mp      type of images used, either 'test' or 'mp'
   update_type=full|delta  type of update being applied, either 'full' or 'delta'
   source_release=REL      source image release version (e.g. 2672.0.0)
   target_release=REL      target image release version (e.g. 2673.0.0)
-  source_branch=BR        source image release branch (e.g. R22)
-  target_branch=BR        target image release branch (e.g. R22)
   source_image_uri=URI    URI of the source image / payload. Image must be used
                           if use_servo specified.
   target_payload_uri=URI  URI of the target payload
@@ -57,8 +54,7 @@ enable public key authentication in your sshd config.
 """
 
 TEST_CONF_KEYS = (
-    'board', 'name', 'image_type', 'update_type',
-    'source_release', 'target_release', 'source_branch', 'target_branch',
+    'name', 'image_type', 'update_type', 'source_release', 'target_release',
     'source_image_uri', 'target_payload_uri')
 
 
@@ -85,9 +81,9 @@ def run_test(machine):
     try:
         job.run_test(
                 "autoupdate_EndToEndTest",
-                tag='%s_%s_%s_%s' % (
-                        test_conf['board'], test_conf['name'],
-                        test_conf['image_type'], test_conf['update_type']),
+                tag='%s_%s_%s' % (
+                        test_conf['name'], test_conf['image_type'],
+                        test_conf['update_type']),
                 host=host, test_conf=test_conf, use_servo=use_servo)
     except Exception as e:
         if not issubclass(type(e), error.TestBaseException):

@@ -68,6 +68,14 @@ class ExpectedUpdateEvent(object):
         """
         if not (actual_attr_val and
                 str(actual_attr_val) == str(expected_attr_val)):
+            if ('version' in attr_name and actual_attr_val and expected_attr_val
+                    in actual_attr_val):
+                # We allow for version like 2940.0.0 in 2940.0.0-a1 to allow
+                # this test to pass for developer images and non-release images.
+                logging.info("Expected version %s in %s but doesn't "
+                             "match exactly")
+                return True
+
             logging.error(
                     'actual %s (%s) not as expected (%s)',
                     attr_name, actual_attr_val, expected_attr_val)
@@ -545,15 +553,12 @@ class autoupdate_EndToEndTest(test.test):
         return self._host.run('rootdev -s', timeout=10).stdout.strip()
 
 
-    def stage_image(self, lorry_devserver, image_uri, board, release, branch):
+    def stage_image(self, lorry_devserver, image_uri):
         """Stage a Chrome OS image on Lorry/devserver.
 
         @param lorry_devserver: instance of client.common_lib.dev_server to use
                                 to reach the devserver instance for this build.
         @param image_uri: The uri of the image.
-        @param board: The board for the image.
-        @param release: The given version string for the build e.g. 3729.0.0.
-        @param branch: The given chrome branch for the build e.g. R28.
         @return URL of the staged image on the server.
 
         @raise error.TestError if there's a problem with staging.
@@ -581,16 +586,12 @@ class autoupdate_EndToEndTest(test.test):
         return staged_url
 
 
-    def stage_payload(self, lorry_devserver, payload_uri, board, release,
-                      branch, is_delta, is_nton):
+    def stage_payload(self, lorry_devserver, payload_uri, is_delta, is_nton):
         """Stage an update target payload on Lorry/devserver.
 
         @param lorry_devserver: instance of client.common_lib.dev_server to use
                                 to reach the devserver instance for this build.
         @param payload_uri: The uri of the payload.
-        @param board: The board for the image.
-        @param release: The given version string for the build e.g. 3729.0.0.
-        @param branch: The given chrome branch for the build e.g. R28.
         @param is_delta: If true, this payload is a delta payload.
         @param is_nton: If true, this payload is an nplus1 payload.
 
@@ -660,19 +661,14 @@ class autoupdate_EndToEndTest(test.test):
         source_url = None
         if self._use_servo:
             source_url = self.stage_image(
-                    lorry_devserver, test_conf['source_image_uri'],
-                    test_conf['board'], test_conf['source_release'],
-                    test_conf['source_branch'])
+                    lorry_devserver, test_conf['source_image_uri'])
         else:
             source_url = self.stage_payload(
-                    lorry_devserver, test_conf['source_image_uri'],
-                    test_conf['board'], test_conf['source_release'],
-                    test_conf['source_branch'], False, False)
+                    lorry_devserver, test_conf['source_image_uri'], False,
+                    False)
 
         return source_url, self.stage_payload(
                 lorry_devserver, test_conf['target_payload_uri'],
-                test_conf['board'], test_conf['target_release'],
-                test_conf['target_branch'],
                 test_conf['update_type'] == 'delta',
                 test_conf['target_release'] == test_conf['source_release'])
 

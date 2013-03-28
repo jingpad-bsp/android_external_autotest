@@ -35,8 +35,14 @@ class TestImageError(BaseException):
     pass
 
 
-def _get_archive_url(board, branch, release):
-    """Returns the gs archive_url for the respective arguments."""
+def get_archive_url(board, branch, release):
+    """Returns the gs archive_url for the respective arguments.
+
+    @param board: the platform name (string)
+    @param release: the release version (string), without milestone and
+                    attempt/build counters
+    @param branch: the release's branch name
+    """
     archive_base = global_config.global_config.get_config_value(
             'CROS', 'image_storage_server')
     archive_base = archive_base.rstrip('/') # Remove any trailing /'s.
@@ -45,7 +51,6 @@ def _get_archive_url(board, branch, release):
     # once we switch to using artifacts from gs://chromeos-images/
     # (see chromium-os:38222)
     board = re.sub('-he$', '_he', board)
-
     return ARCHIVE_URL_FORMAT % dict(
             archive_base=archive_base, board=board, branch=branch,
             release=release)
@@ -68,25 +73,23 @@ def gs_ls(pattern, archive_url, single):
                 pattern, archive_url, err_str=__name__, single_item=single,
                 timeout=1)
         # Convert to the format our clients expect (full archive path).
-        return ['/'.join([archive_url, u]) for u in uri_list]
+        if uri_list:
+            return ['/'.join([archive_url, u]) for u in uri_list]
+
+        return []
     except gsutil_util.PatternNotSpecific as e:
         raise TestImageError(str(e))
     except gsutil_util.GSUtilError:
         return []
 
 
-def find_payload_uri(board, release, branch, delta=False,
-                     single=False, archive_url=None):
+def find_payload_uri(archive_url, delta=False, single=False):
     """Finds test payloads corresponding to a given board/release.
 
-    @param board: the platform name (string)
-    @param release: the release version (string), without milestone and
-           attempt/build counters
-    @param branch: the release's branch name
+    @param archive_url: Archive_url directory to find the payload.
     @param delta: if true, seek delta payloads to the given release
     @param single: if true, expect a single match and return it, otherwise
            None
-    @param archive_url: Optional archive_url directory to find the payload.
 
     @return A (possibly empty) list of URIs, or a single (possibly None) URI if
             |single| is True.
@@ -94,9 +97,6 @@ def find_payload_uri(board, release, branch, delta=False,
     @raise TestImageError if an error has occurred.
 
     """
-    if not archive_url:
-        archive_url = _get_archive_url(board, branch, release)
-
     if delta:
         pattern = '.*_delta_.*'
     else:
@@ -109,14 +109,10 @@ def find_payload_uri(board, release, branch, delta=False,
     return payload_uri_list[0] if single else payload_uri_list
 
 
-def find_image_uri(board, release, branch, archive_url=None):
+def find_image_uri(archive_url):
     """Returns a URI to a test image.
 
-    @param board: the platform name (string)
-    @param release: the release version (string), without milestone and
-           attempt/build counters
-    @param branch: the release's branch name
-    @param archive_url: Optional archive_url directory to find the payload.
+    @param archive_url: archive_url directory to find the payload.
 
     @return A URI to the desired image if found, None otherwise. It will most
             likely be a file inside an image archive (image.zip), in which case
@@ -127,9 +123,6 @@ def find_image_uri(board, release, branch, archive_url=None):
     @raise TestImageError if an error has occurred.
 
     """
-    if not archive_url:
-        archive_url = _get_archive_url(board, branch, release)
-
     image_archive = gs_ls('image.zip', archive_url, single=True)
     if not image_archive:
         return None

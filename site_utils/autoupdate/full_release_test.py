@@ -43,10 +43,13 @@ _default_dump_dir = os.path.realpath(
         os.path.join(os.path.dirname(__file__), '..', '..', 'server',
                      'site_tests', _autotest_test_name))
 # Matches delta format name and returns groups for branches and release numbers.
-_delta_re = version_re = re.compile(
+_delta_re = re.compile(
         'chromeos_'
-        '(?P<s_branch>R[0-9]+)-(?P<s_release>[0-9.]+)_'
-        '(?P<t_branch>R[0-9]+)-(?P<t_release>[0-9.]+)_[\w.]+')
+        '(?P<s_branch>R[0-9]+)-(?P<s_release>[0-9a-z.\-]+)_'
+        '(?P<t_branch>R[0-9]+)-(?P<t_release>[0-9a-z.\-]+)_[\w.]+')
+# Extracts just the main version from a version that may contain attempts or
+# a release candidate suffix i.e. 3928.0.0-a2 -> base_version=3928.0.0.
+_version_re = re.compile('(?P<base_version>[0-9.]+)(?:\-[a-z]+[0-9]+])*')
 
 
 class FullReleaseTestError(BaseException):
@@ -123,8 +126,8 @@ class TestConfig(object):
 
     """
     def __init__(self, board, name, use_mp_images, is_delta_update,
-                 source_release, target_release, source_branch, target_branch,
-                 source_image_uri, target_payload_uri):
+                 source_release, target_release, source_image_uri,
+                 target_payload_uri):
         """Initialize a test configuration.
 
         @param board: the board being tested (e.g. 'x86-alex')
@@ -133,8 +136,6 @@ class TestConfig(object):
         @param is_delta_update: whether this is a delta update test (Boolean)
         @param source_release: the source image version (e.g. '2672.0.0')
         @param target_release: the target image version (e.g. '2673.0.0')
-        @param source_branch: the source release branch (e.g. 'R22')
-        @param target_branch: the target release branch (e.g. 'R22')
         @param source_image_uri: source image URI ('gs://...')
         @param target_payload_uri: target payload URI ('gs://...')
 
@@ -145,8 +146,6 @@ class TestConfig(object):
         self.is_delta_update = is_delta_update
         self.source_release = source_release
         self.target_release = target_release
-        self.source_branch = source_branch
-        self.target_branch = target_branch
         self.source_image_uri = source_image_uri
         self.target_payload_uri = target_payload_uri
 
@@ -161,7 +160,7 @@ class TestConfig(object):
 
     def _unique_name_suffix(self):
         """Unique name suffix for the test config given the target version."""
-        return '%s_%s-%s' % (self.name, self.source_branch, self.source_release)
+        return '%s_%s' % (self.name, self.source_release)
 
 
     def get_autotest_name(self):
@@ -170,8 +169,8 @@ class TestConfig(object):
         Returns a job name that conforms to the suite naming style assuming
         'au' is the suite name.
         """
-        return '%s-release/%s-%s/au/%s.%s' % (
-                self.board, self.target_branch, self.target_release,
+        return '%s-release/%s/au/%s.%s' % (
+                self.board, self.target_release,
                 _autotest_test_name, self._unique_name_suffix())
 
 
@@ -187,10 +186,10 @@ class TestConfig(object):
 
     def __str__(self):
         """Short textual representation w/o image/payload URIs."""
-        return ('[%s/%s/%s/%s/%s-%s -> %s-%s]' %
+        return ('[%s/%s/%s/%s/%s -> %s]' %
                 (self.board, self.name, self.get_image_type(),
-                 self.get_update_type(), self.source_branch,
-                 self.source_release, self.target_branch, self.target_release))
+                 self.get_update_type(), self.source_release,
+                 self.target_release))
 
 
     def __repr__(self):
@@ -204,14 +203,11 @@ class TestConfig(object):
         template = "%s%s'%s'" if is_quote_val else "%s%s%s"
         return delim.join(
                 [template % (key, assign, val) for key, val in [
-                        ('board', self.board),
                         ('name', self.name),
                         ('image_type', self.get_image_type()),
                         ('update_type', self.get_update_type()),
                         ('source_release', self.source_release),
                         ('target_release', self.target_release),
-                        ('source_branch', self.source_branch),
-                        ('target_branch', self.target_branch),
                         ('source_image_uri', self.source_image_uri),
                         ('target_payload_uri', self.target_payload_uri),
                         ('SUITE', _autoupdate_suite_name)]])
@@ -258,7 +254,11 @@ class TestConfigGenerator(object):
         self.test_npo = test_npo
         self.src_as_payload = src_as_payload
         self.use_mp_images = use_mp_images
-        self.archive_url = archive_url
+        if archive_url:
+          self.archive_url = archive_url
+        else:
+          self.archive_url = test_image.get_archive_url(
+                  board, get_release_branch(tested_release), tested_release)
 
 
     def _get_source_uri(self, release, branch=None):
@@ -274,16 +274,16 @@ class TestConfigGenerator(object):
 
         # If we're looking for our own image, use the target archive_url if set.
         archive_url = None
-        if release == self.tested_release:
+        if self.tested_release in release:
             archive_url = self.archive_url
+        else:
+            archive_url = test_image.get_archive_url(self.board, branch,
+                                                     release)
 
         if self.src_as_payload:
-            return test_image.find_payload_uri(
-                    self.board, release, branch, single=True,
-                    archive_url=archive_url)
+            return test_image.find_payload_uri(archive_url, single=True)
         else:
-            return test_image.find_image_uri(
-                    self.board, release, branch, archive_url=archive_url)
+            return test_image.find_image_uri(archive_url)
 
 
     def generate_mp_image_npo_nmo_list(self):
@@ -342,12 +342,13 @@ class TestConfigGenerator(object):
         @param source_uri:  URI of the source image/payload.
 
         """
-        # Get branch tags.
-        source_branch = get_release_branch(source_release)
-        target_branch = get_release_branch(self.tested_release)
-        return TestConfig(self.board, name, self.use_mp_images, is_delta_update,
-                          source_release, self.tested_release, source_branch,
-                          target_branch, source_uri, payload_uri)
+        # Pass only the base versions without any build specific suffixes.
+        source_version = _version_re.match(source_release).group('base_version')
+        target_version = _version_re.match(self.tested_release).group(
+                'base_version')
+        return TestConfig(
+                self.board, name, self.use_mp_images, is_delta_update,
+                source_version, target_version, source_uri, payload_uri)
 
     @staticmethod
     def _parse_delta_filename(filename):
@@ -391,27 +392,25 @@ class TestConfigGenerator(object):
         found = set()
         test_list = []
         payload_uri_list = test_image.find_payload_uri(
-                self.board, self.tested_release,
-                get_release_branch(self.tested_release), delta=True,
-                archive_url=self.archive_url)
+                self.archive_url, delta=True)
         for payload_uri in payload_uri_list:
             # Infer the source and target release versions.
             file_name = os.path.basename(payload_uri)
             source_branch, source_release, _, target_release = (
                     self._parse_delta_filename(file_name))
 
+            # For trybots and other non-release builders, the actual version
+            # may contain attempts or end in other characters.
+            if not target_release.startswith(self.tested_release):
+                raise FullReleaseTestError(
+                        'unexpected delta target release: %s != %s (%s)',
+                        target_release, self.tested_release, self.board)
+
             source_uri = self._get_source_uri(source_release, source_branch)
             if not source_uri:
                 logging.warning('cannot find source for %s, %s', self.board,
                                 source_release)
                 continue
-
-            # With test images, the target release version is always the same as
-            # the tested release (no upversioning performed for N+1).
-            if target_release != self.tested_release:
-                raise FullReleaseTestError(
-                        'unexpected delta target release: %s != %s (%s)',
-                        target_release, self.tested_release, self.board)
 
             # Determine delta type, make sure it was not already discovered.
             delta_type = 'npo' if source_release == target_release else 'nmo'
@@ -456,9 +455,7 @@ class TestConfigGenerator(object):
 
         # Find the full payload for the target release.
         tested_payload_uri = test_image.find_payload_uri(
-                self.board, self.tested_release,
-                get_release_branch(self.tested_release), single=True,
-                archive_url=self.archive_url)
+                self.archive_url, single=True)
         if not tested_payload_uri:
             logging.warning("cannot find full payload for %s, %s; no '%s' tests"
                             " generated", self.board, self.tested_release, name)
@@ -589,7 +586,6 @@ def generate_test_list(args):
 
     for board in args.tested_board_list:
         test_list_for_board = []
-
         generator = TestConfigGenerator(
                 board, args.tested_release,
                 args.test_nmo, args.test_npo, src_as_payload,
@@ -773,6 +769,8 @@ def parse_args():
 
     opts.tested_release = args[0]
     opts.tested_board_list = args[1:]
+    if not opts.tested_board_list:
+        parser.error('No boards listed.')
 
     if opts.all_boards:
         opts.tested_board_list = _board_info.get_board_names()
