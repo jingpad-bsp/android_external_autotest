@@ -9,8 +9,16 @@ from autotest_lib.client.common_lib import error
 import logging, time
 import dbus, dbus.mainloop.glib, gobject
 
+from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim, modem_3gpp
+
 from autotest_lib.client.cros import flimflam_test_path, network
 import flimflam, mm
+
+class FailConnectModem3gpp(modem_3gpp.Modem3gpp):
+    """Custom fake Modem3gpp, that always fails to connect."""
+    def Connect(self, properties, return_cb, raise_cb):
+        logging.info('Connect call will fail.')
+        raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED))
 
 
 class network_3GFailedConnect(test.test):
@@ -54,12 +62,18 @@ class network_3GFailedConnect(test.test):
         for ii in xrange(connect_count):
             self.ConnectTo3GNetwork(config_timeout=15)
 
-    def run_once(self, connect_count=4):
+    def run_once(self, connect_count=4, pseudo_modem=False):
         with backchannel.Backchannel():
-            self.flim = flimflam.FlimFlam()
-            self.device_manager = flimflam.DeviceManager(self.flim)
-            try:
-                self.device_manager.ShutdownAllExcept('cellular')
-                self.run_once_internal(connect_count)
-            finally:
-                self.device_manager.RestoreDevices()
+            fake_sim = sim.SIM(sim.SIM.Carrier('att'),
+                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+            with pseudomodem.TestModemManagerContext(pseudo_modem,
+                                                     ['cromo', 'modemmanager'],
+                                                     sim=fake_sim,
+                                                     modem=FailConnectModem3gpp()):
+                self.flim = flimflam.FlimFlam()
+                self.device_manager = flimflam.DeviceManager(self.flim)
+                try:
+                    self.device_manager.ShutdownAllExcept('cellular')
+                    self.run_once_internal(connect_count)
+                finally:
+                    self.device_manager.RestoreDevices()
