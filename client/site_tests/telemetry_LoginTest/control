@@ -1,0 +1,18 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Lab Infrastructure Team"
+NAME = "telemetry_LoginTest"
+PURPOSE = "Login through telemetry."
+SUITE = ""
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "login"
+TEST_TYPE = "client"
+
+DOC = """
+This is a test that checks that login completed successfully through telemetry.
+"""
+
+job.run_test('telemetry_LoginTest')
