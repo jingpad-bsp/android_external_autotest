@@ -109,7 +109,8 @@ class ReportingTest(mox.MoxTestBase):
         tracker = self.mox.CreateMock(gdata_lib.TrackerComm)
         self._stub_out_tracker(tracker)
 
-        tracker.AppendTrackerIssueById(self._FAKE_ISSUE_ID, mox.IgnoreArg())
+        tracker.AppendTrackerIssueById(self._FAKE_ISSUE_ID, mox.IgnoreArg(),
+                                       mox.IgnoreArg())
 
         self.mox.ReplayAll()
 
