@@ -16,7 +16,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
        using webdriver."""
 
 
-    def __init__(self, ap_config):
+    def __init__(self, ap_config=None):
         super(WesternDigitalN600APConfigurator, self).__init__(ap_config=
                                                                ap_config)
         self.current_band = self.band_2ghz

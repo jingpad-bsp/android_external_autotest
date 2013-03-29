@@ -11,8 +11,8 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
     """Derived class to control the Trendnet TEW-731BR."""
 
 
-    def __init__(self, router_dict):
-        super(Trendnet731brAPConfigurator, self).__init__(router_dict)
+    def __init__(self, ap_config=None):
+        super(Trendnet731brAPConfigurator, self).__init__(ap_config=ap_config)
 
 
     def navigate_to_page(self, page_number):

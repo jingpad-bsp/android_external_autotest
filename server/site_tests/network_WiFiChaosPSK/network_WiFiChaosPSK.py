@@ -100,8 +100,8 @@ class network_WiFiChaosPSK(test.test):
                         'visibility': True,
                         'security': 'psk',
                         'psk': self.psk_password,
-                        'brand': ap.config_data.get_brand,
-                        'model': ap.config_data.get_model,
+                        'brand': ap.config_data.get_brand(),
+                        'model': ap.get_router_short_name(),
                     }
 
                     logging.info('Using ssid %s', ap_info['ssid'])
