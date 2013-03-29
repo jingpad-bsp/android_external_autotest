@@ -6,7 +6,7 @@ import os, re, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_utils, service_stopper
+from autotest_lib.client.cros import service_stopper
 
 class graphics_SyncControlTest(test.test):
     """Confirms that infrastructure for aligning graphics operations in the
