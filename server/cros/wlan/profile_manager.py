@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, os
+import os
 
 import common
 
@@ -26,10 +26,10 @@ class ProfileManager(api_shim.ApiShim):
 
     def __init__(self, host):
         super(ProfileManager, self).__init__(host)
-        self._pop_profile = os.path.join(self._script, 'pop-profile')
-        self._rm_profile = os.path.join(self._script, 'rm-profile')
-        self._push_profile = os.path.join(self._script, 'push-profile')
-        self._create_profile = os.path.join(self._script, 'create-profile')
+        self._pop_profile = os.path.join(self._script, 'profile pop')
+        self._rm_profile = os.path.join(self._script, 'profile remove')
+        self._push_profile = os.path.join(self._script, 'profile push')
+        self._create_profile = os.path.join(self._script, 'profile create')
 
 
     def __enter__(self):

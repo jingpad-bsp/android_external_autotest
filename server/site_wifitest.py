@@ -868,7 +868,7 @@ class WiFiTest(object):
         print "%s: %s" % (self.name, result)
 
         print "\nENTRIES:"
-        result = self.client.run('%s/test/list-entries' %
+        result = self.client.run('%s/test/profile list-entries' %
                         (self.client_cmd_flimflam_lib),
                         ignore_status=True)
         print "%s: %s" % (self.name, result)
@@ -1768,19 +1768,19 @@ class WiFiTest(object):
 
     def profile_create(self, params):
         """ Create a profile with the specified name """
-        self.client.run('%s/test/create-profile %s' %
+        self.client.run('%s/test/profile create %s' %
                         (self.client_cmd_flimflam_lib, params['name']))
         self.created_profiles.append(params['name'])
 
     def profile_remove(self, params, ignore_status=False):
         """ Remove the specified profile """
-        self.client.run('%s/test/rm-profile %s' %
+        self.client.run('%s/test/profile remove %s' %
                         (self.client_cmd_flimflam_lib, params['name']),
                          ignore_status=ignore_status)
 
     def profile_push(self, params):
         """ Push the specified profile on the stack """
-        self.client.run('%s/test/push-profile %s' %
+        self.client.run('%s/test/profile push %s' %
                         (self.client_cmd_flimflam_lib, params['name']))
 
     def profile_pop(self, params, ignore_status=False):
@@ -1788,11 +1788,11 @@ class WiFiTest(object):
             if no name is specified.
         """
         if 'name' in params:
-            self.client.run('%s/test/pop-profile %s' %
+            self.client.run('%s/test/profile pop %s' %
                             (self.client_cmd_flimflam_lib, params['name']),
                             ignore_status=ignore_status)
         else:
-            self.client.run('%s/test/pop-profile' %
+            self.client.run('%s/test/profile pop' %
                             (self.client_cmd_flimflam_lib),
                             ignore_status=ignore_status)
 
@@ -1800,7 +1800,7 @@ class WiFiTest(object):
     def profile_cleanup(self):
         """ Cleanup all profiles """
         # Pop and remove all profiles on the stack until 'default' is found.
-        self.client.run('%s/test/clean-profiles' %
+        self.client.run('%s/test/profile clean' %
                         (self.client_cmd_flimflam_lib))
         # Some profiles may still in profile storage but not on the stack,
         # invoke 'profile_remove' for self.created_profiles to make sure that
