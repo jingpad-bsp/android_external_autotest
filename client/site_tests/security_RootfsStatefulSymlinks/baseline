@@ -55,6 +55,13 @@
     "group": "root",
     "mode": "0644"
   },
+  "/etc/strongswan.conf": {
+    "can_dangle": true,
+    "destination": "/mnt/stateful_partition/etc/strongswan.conf",
+    "owner": "ipsec",
+    "group": "ipsec",
+    "mode": "0644"
+  },
   "/usr/bin/python": {
     "can_dangle": true,
     "destination": "/usr/local/bin/python2.6",
