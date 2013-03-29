@@ -45,7 +45,7 @@ class graphics_SyncControlTest(test.test):
                 "Failed: graphics_SyncControlTest with {0}".format(ret))
 
     def cleanup(self):
-        if self.x_pid:
+        if hasattr(self, 'x_pid') and self.x_pid:
             utils.system("kill {0}".format(self.x_pid), ignore_status=True)
-        if self._services:
+        if hasattr(self, '_services') and self._services:
             self._services.restore_services()
