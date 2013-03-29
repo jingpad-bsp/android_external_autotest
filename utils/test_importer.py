@@ -496,12 +496,14 @@ def main(argv):
     parser.add_option('-E', '--add-experimental',
                       dest='add_experimental', action='store_true',
                       default=True,
-                      help='Add experimental tests to frontend')
+                      help='Add experimental tests to frontend, works only '
+                           'with -A (--add-all) option')
     parser.add_option('-N', '--add-noncompliant',
                       dest='add_noncompliant', action='store_true',
                       default=False,
                       help='Add non-compliant tests (i.e. tests that do not '
-                           'define all required control variables)')
+                           'define all required control variables), works '
+                           'only with -A (--add-all) option')
     parser.add_option('-p', '--profile-dir', dest='profile_dir',
                       help='Directory to recursively check for profiles')
     parser.add_option('-t', '--tests-dir', dest='tests_dir',
@@ -525,6 +527,16 @@ def main(argv):
     DRY_RUN = options.dry_run
     if DRY_RUN:
         logging.getLogger().setLevel(logging.WARN)
+
+    if len(argv) > 1 and options.add_noncompliant and not options.add_all:
+        logging.error('-N (--add-noncompliant) must be ran with option -A '
+                      '(--add-All).')
+        return 1
+
+    if len(argv) > 1 and options.add_experimental and not options.add_all:
+        logging.error('-E (--add-experimental) must be ran with option -A '
+                      '(--add-All).')
+        return 1
 
     # Make sure autotest_dir is the absolute path
     options.autotest_dir = os.path.abspath(options.autotest_dir)
