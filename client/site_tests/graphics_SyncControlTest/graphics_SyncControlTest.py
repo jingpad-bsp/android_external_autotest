@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, re, time
+import os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -24,18 +24,14 @@ class graphics_SyncControlTest(test.test):
 
         hz = {'daisy' : 59.9}
 
-        exefile = os.path.join(self.autodir, 'deps/glbench/synccontroltest')
-        cmd = "DISPLAY=:1 " + exefile
+        cmd = os.path.join(self.autodir, 'deps/glbench/synccontroltest')
         board = utils.get_current_board()
         if board in hz:
             cmd = cmd + " --vsync {0:.2f}".format(hz[board])
+        cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; kill $!' % cmd
 
         self._services = service_stopper.ServiceStopper(['ui'])
         self._services.stop_services()
-        x_summary = utils.system_output('X :1 & echo "XPID=$!"',
-                                            ignore_status=True)
-        self.x_pid = re.match(r"XPID=(\d+)", x_summary).group(1)
-        time.sleep(1)
 
         # synccontroltest exits with a non zero status if a deviation above
         # 200uS us is detected.
@@ -45,7 +41,5 @@ class graphics_SyncControlTest(test.test):
                 "Failed: graphics_SyncControlTest with {0}".format(ret))
 
     def cleanup(self):
-        if hasattr(self, 'x_pid') and self.x_pid:
-            utils.system("kill {0}".format(self.x_pid), ignore_status=True)
         if hasattr(self, '_services') and self._services:
             self._services.restore_services()
