@@ -102,9 +102,14 @@ def must_be_installed(host, cmd):
     if is_installed(host, cmd):
         return cmd
 
-    # Hunt for the equivalent file in /usr/local.
+    # Hunt for the equivalent file in a bunch of places.
     cmd_base = os.path.basename(cmd)
-    local_paths = [ '/usr/local/bin', '/usr/local/sbin' ]
+    local_paths = ['/bin',
+                   '/sbin',
+                   '/usr/bin',
+                   '/usr/sbin',
+                   '/usr/local/bin',
+                   '/usr/local/sbin']
     alternate_path = get_install_path(host, cmd_base, local_paths)
     if alternate_path:
         return alternate_path
