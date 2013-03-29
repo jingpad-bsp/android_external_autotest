@@ -1,0 +1,28 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "chromeos-perf"
+NAME = "Telemetry Dromaeo Dom Benchmarks"
+SUITE = "perf_v2"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "performance"
+TEST_TYPE = "server"
+
+DOC = """
+This server side test suite executes the Telemetry Dromaeo Dom Benchmarks.
+This is part of our effort to support Chrome for Chrome OS performance testing.
+"""
+
+def run_benchmark(machine):
+    host = hosts.create_host(machine)
+    dom_page_sets = ["dromaeo/domcoreattr.json",
+                     "dromaeo/domcoremodify.json",
+                     "dromaeo/domcorequery.json",
+                     "dromaeo/domcoretraverse.json"]
+    job.run_test("telemetry_Benchmarks", host=host,
+                 benchmark="dromaeo", page_sets=dom_page_sets)
+
+
+parallel_simple(run_benchmark, machines)

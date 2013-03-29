@@ -3,21 +3,22 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-perf"
-NAME = "Telemetry Octane Benchmark"
+NAME = "Telemetry Dom Benchmark"
 SUITE = "perf_v2"
 TIME = "LONG"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "suite"
+TEST_CATEGORY = "Benchmark"
+TEST_CLASS = "performance"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Octane Benchmark.
-This is part of our effort to support Chrome for Chrome OS performance testing.
+This server side test suite executes the Telemetry page_cycler on the Dom
+pageset. This is part of Chrome for Chrome OS performance testing.
 """
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
-    job.run_test("telemetry_OctaneBenchmark", host=host)
+    job.run_test("telemetry_Benchmarks", host=host, benchmark="page_cycler",
+                 page_sets=["page_cycler/dom.json"])
 
 
 parallel_simple(run_benchmark, machines)
