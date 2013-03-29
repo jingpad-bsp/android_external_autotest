@@ -34,7 +34,7 @@ class graphics_SyncControlTest(test.test):
         self._services.stop_services()
         x_summary = utils.system_output('X :1 & echo "XPID=$!"',
                                             ignore_status=True)
-        self.x_pid = re.match(r"XPID=(\d+)", x_summary).group(0)
+        self.x_pid = re.match(r"XPID=(\d+)", x_summary).group(1)
         time.sleep(1)
 
         # synccontroltest exits with a non zero status if a deviation above
