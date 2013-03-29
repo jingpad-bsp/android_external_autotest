@@ -156,6 +156,7 @@
         "api_permissions": ["fileBrowserHandler",
                             "fileBrowserHandlerInternal",
                             "fileBrowserPrivate",
+                            "mediaGalleriesPrivate",
                             "mediaPlayerPrivate",
                             "metricsPrivate",
                             "tabs",
