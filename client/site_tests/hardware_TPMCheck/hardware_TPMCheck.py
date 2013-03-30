@@ -8,8 +8,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
 
 
-KV_MATCH_RE = re.compile('([^ ]+) (.*)')
-
 # Expected results of 'tpmc getX' commands.
 TPMC_EXPECTED = {
     'getvf': # volatile (ST_CLEAR) flags
@@ -40,26 +38,6 @@ def __run_tpmc_cmd(subcommand):
     return utils.system_output(cmd, ignore_status=True).strip()
 
 
-def set_from_keyval_output(out):
-    """Parse space-separated key-val output into a set of tuples.
-
-    Stuff the key-vals into tuples in a set to be later compared.
-
-    e.g.  deactivated 0
-          disableForceClear 0
-          ==>  set(('deactivated', '0'), ('disableForceClear', '0'))
-
-    @param out: multiple lines of space-separated key-val pairs.
-    @return set of key-val tuples.
-    """
-    results = set()
-    for linecr in out.splitlines():
-        match = KV_MATCH_RE.match(linecr.strip())
-        if match:
-            results.add((match.group(1), match.group(2)))
-    return results
-
-
 def check_tpmc(subcommand, expected):
     """Runs tpmc command and checks the output against an expected result.
 
@@ -77,7 +55,7 @@ def check_tpmc(subcommand, expected):
         if (not re.match(expected, out)):
             raise error.TestError('%s: %s' % (error_msg, out))
     else:
-        result_set = set_from_keyval_output(__run_tpmc_cmd(subcommand))
+        result_set = utils.set_from_keyval_output(__run_tpmc_cmd(subcommand))
         if set(expected) <= result_set:
             return
         raise error.TestError('%s: expected=%s.' %

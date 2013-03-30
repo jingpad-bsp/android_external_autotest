@@ -309,3 +309,27 @@ def parse_cmd_output(command, run_method=utils.run):
         if key_value:
             result[key_value.group('key')] = key_value.group('value')
     return result
+
+
+def set_from_keyval_output(out, delimiter=' '):
+    """Parse delimiter-separated key-val output into a set of tuples.
+
+    Output is expected to be multiline text output from a command.
+    Stuffs the key-vals into tuples in a set to be later compared.
+
+    e.g.  deactivated 0
+          disableForceClear 0
+          ==>  set(('deactivated', '0'), ('disableForceClear', '0'))
+
+    @param out: multiple lines of space-separated key-val pairs.
+    @param delimiter: character that separates key from val. Usually a
+                      space but may be '=' or something else.
+    @return set of key-val tuples.
+    """
+    results = set()
+    kv_match_re = re.compile('([^ ]+)%s(.*)' % delimiter)
+    for linecr in out.splitlines():
+        match = kv_match_re.match(linecr.strip())
+        if match:
+            results.add((match.group(1), match.group(2)))
+    return results
