@@ -4,14 +4,12 @@
 
 import logging
 import os
-import shutil
 import time
 import urllib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros import cros_ui, cros_ui_test
-from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
@@ -56,7 +54,7 @@ class power_Consumption(cros_ui_test.UITest):
         # Find the battery capacity to report expected battery life in hours
         batinfo = self._power_status.battery[0]
         self.energy_full_design = batinfo.energy_full_design
-        logging.info("energy_full_design = %0.3f Wh" % self.energy_full_design)
+        logging.info("energy_full_design = %0.3f Wh", self.energy_full_design)
 
         self._do_xset()
 
