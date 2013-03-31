@@ -72,6 +72,7 @@ ERROR_EMAIL_MSG_FORMAT = 'Error occured when offloading %s:\n%s'
 
 
 class TimeoutException(Exception):
+  """Exception raised by the timeout_handler."""
   pass
 
 
@@ -79,6 +80,9 @@ def timeout_handler(_signum, _frame):
   """
   Called by the SIGALRM if the offloading process has timed out.
 
+  @param _signum: Signal number of the signal that was just caught.
+                  14 for SIGALRM.
+  @param _frame: Current stack frame.
   @raise TimeoutException: Automatically raises so that the time out is caught
                            by the try/except surrounding the Popen call.
   """
@@ -133,12 +137,19 @@ def offload_hosts_sub_dir(queue):
       if not os.path.isdir(dir_path):
         continue
       job_id = os.path.basename(dir_path).split('-')[0]
-      if not is_job_complete.is_special_task_complete(job_id):
-        logging.debug('Special Task %s is not yet complete; skipping.',
-                      dir_path)
-        continue
-      logging.debug('Processing %s', dir_path)
-      queue.put(functools.partial(offload_dir, dir_path, dir_path))
+
+      try:
+        if is_job_complete.is_special_task_complete(job_id):
+          logging.debug('Processing %s', dir_path)
+          queue.put(functools.partial(offload_dir, dir_path, dir_path))
+        else:
+          logging.debug('Special Task %s is not yet complete; skipping.',
+                        dir_path)
+      except is_job_complete.DatabaseAnomaly as e:
+        email_subject = ERROR_EMAIL_SUBJECT_FORMAT % socket.gethostname()
+        email_msg = ERROR_EMAIL_MSG_FORMAT % (dir_path, str(e))
+        email_manager.manager.send_email(NOTIFY_ADDRESS, email_subject,
+                                         email_msg)
 
 
 def offload_job_results(queue, process_all):
@@ -330,6 +341,7 @@ def parse_options():
 
 
 def main():
+  """Main method of gs_offloader."""
   options = parse_options()
 
   if options.process_all:

@@ -2,17 +2,14 @@
 
 import common
 import logging
-import _mysql_exceptions
 import sys
-from autotest_lib.database import database_connection
 from autotest_lib.server import frontend
 
-DB_CONFIG_SECTION = 'AUTOTEST_WEB'
-SPECIAL_TASKS_SQL_CMD = 'SELECT is_complete FROM afe_special_tasks WHERE id=%s'
-
 _AFE = frontend.AFE(debug=False)
-_DATABASE = database_connection.DatabaseConnection(DB_CONFIG_SECTION)
-_DATABASE.connect()
+
+
+class DatabaseAnomaly(Exception):
+    """Raised when we observe a database anomaly."""
 
 
 def is_job_complete(job_id):
@@ -20,12 +17,10 @@ def is_job_complete(job_id):
     Check if a job is no longer active.
 
     @param job_id: afe job id like 123 from 123-scottza
-    @return True if job is complete and False if it is not
+    @return: An empty list if the job isn't complete.
+             A list containing the job details, if it is.
     """
-    if not _AFE.run('get_jobs', finished=True, id=job_id):
-        return False
-
-    return True
+    return _AFE.run('get_jobs', finished=True, id=job_id)
 
 
 def is_special_task_complete(job_id):
@@ -40,19 +35,11 @@ def is_special_task_complete(job_id):
     if not job_id.isdigit():
         logging.error('Job_id: %s is not a number returning False.', job_id)
         return False
-    try:
-        query_results = _DATABASE.execute(SPECIAL_TASKS_SQL_CMD, job_id,
-                                          try_reconnecting=True)
-    except _mysql_exceptions.OperationalError:
-        logging.error('Database query failed for job_id: %s.', job_id)
-        return False
-    # Check if no table rows are returned.
-    if not query_results:
-        logging.error('Job_id: %s is not a valid special task id.', job_id)
-        return False
-    # Return the only column in the first (only) row.
-    # 1 means done, 0 means running.
-    return query_results[0][0]
+
+    task = _AFE.run('get_special_tasks', id=job_id)
+    if not task:
+        raise DatabaseAnomaly('Special Task %s not found in database.' % job_id)
+    return task[0].get('is_complete')
 
 
 if __name__ == '__main__':
