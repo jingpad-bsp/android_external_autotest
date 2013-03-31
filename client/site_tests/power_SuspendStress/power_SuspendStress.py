@@ -4,9 +4,9 @@
 
 import logging, numpy, random, time
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_suspend, service_stopper, sys_power
+from autotest_lib.client.cros import power_suspend, sys_power
 
 
 class power_SuspendStress(test.test):
@@ -81,8 +81,8 @@ class power_SuspendStress(test.test):
                 if type(failure) is sys_power.FirmwareError: firmware += 1
                 if type(failure) is sys_power.EarlyWakeupError: early += 1
             if abort <= self._tolerated_aborts and total == abort:
-                logging.warn('Ignoring %d aborted suspends (below threshold).'
-                             % abort)
+                logging.warn('Ignoring %d aborted suspends (below threshold).',
+                             abort)
                 return
             if total == 1:
                 # just throw it as is, makes aggregation on dashboards easier
