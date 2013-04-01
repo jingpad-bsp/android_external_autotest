@@ -10,6 +10,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros import cros_ui, cros_ui_test
+from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
