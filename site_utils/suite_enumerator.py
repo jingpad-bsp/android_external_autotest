@@ -82,7 +82,8 @@ def main():
         control_path = os.path.join(options.autotest_dir, 'test_suites',
                                     'control.' + args[0])
         if not os.path.exists(control_path):
-            print ('Warning! control file is missing: %s' % control_path)
+            print >> sys.stderr, ('Warning! control file is missing: %s' %
+                                  control_path)
 
 
 if __name__ == "__main__":
