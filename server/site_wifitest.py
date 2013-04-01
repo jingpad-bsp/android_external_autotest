@@ -9,8 +9,8 @@ import logging
 import os
 import re
 import signal
-import string
-import threading
+import stat
+import tempfile
 import time
 import traceback
 
@@ -30,7 +30,6 @@ from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server import site_linux_system
 from autotest_lib.server import site_linux_vm_router
-from autotest_lib.server import subcommand
 from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
@@ -643,25 +642,23 @@ class WiFiTest(object):
 
     def insert_file(self, host, filename, contents):
         """
-        If config files are too big, the "host.run()" never returns.
-        As a workaround, break the file up into lines and append the
-        file piece by piece
-        """
-        host.run('rm -f %s >/dev/null 2>&1' % filename, ignore_status=True)
-        content_lines = contents.splitlines()
-        while content_lines:
-            buflist = []
-            buflen = 0
-            while content_lines and buflen + len(content_lines[0]) < 200:
-                line = content_lines.pop(0)
-                buflen += len(line) + 1
-                buflist.append(line)
+        Send a byte string to a file on a remote host.
 
-            if not buflist:
-                raise error.TestFail('Cert profile: line too long: %s' %
-                                         content_lines[0])
-            host.run('cat <<EOF >>%s\n%s\nEOF\n' %
-                     (filename, '\n'.join(buflist)))
+        @param host host object representing a remote machine.
+        @param filename string path on remote machine to copy to.
+        @param contents raw contents of the file to be created
+
+        """
+        # Write the contents to local disk first so we can use the easy
+        # built in mechanism to do this.
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(contents)
+            f.flush()
+            os.chmod(f.name, stat.S_IRUSR | stat.S_IWUSR |
+                             stat.S_IRGRP | stat.S_IWGRP |
+                             stat.S_IROTH | stat.S_IWOTH)
+            host.send_file(f.name, filename, delete_dest=True)
+
 
     def install_files(self, params):
         """ Install files on the client or router with the provided
