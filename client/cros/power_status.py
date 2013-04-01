@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ctypes, fcntl, glob, logging, math, numpy, os, struct, threading, time
+import collections, ctypes, fcntl, glob, logging, math, numpy, os, struct
+import threading, time
 
 import common
 from autotest_lib.client.bin import utils
@@ -520,7 +521,7 @@ class CPUIdleStats(AbstractStats):
     # currently not factored out.
 
     def _read_stats(self):
-        cpuidle_stats = {'C0': 0}
+        cpuidle_stats = collections.defaultdict(int)
         cpuidle_path = '/sys/devices/system/cpu/cpu*/cpuidle'
         epoch_usecs = int(time.time() * 1000 * 1000)
         cpus = glob.glob(cpuidle_path)
@@ -528,13 +529,14 @@ class CPUIdleStats(AbstractStats):
         for cpu in cpus:
             state_path = os.path.join(cpu, 'state*')
             states = glob.glob(state_path)
+            cpuidle_stats['C0'] += epoch_usecs
 
             for state in states:
                 if not int(utils.read_one_line(os.path.join(state, 'latency'))):
                     # C0 state. Kernel stats aren't right, so calculate by
                     # subtracting all other states from total time (using epoch
-                    # timer since we calculate differences in the end anyway)
-                    cpuidle_stats['C0'] += epoch_usecs
+                    # timer since we calculate differences in the end anyway).
+                    # NOTE: Only x86 lists C0 under cpuidle, ARM does not.
                     continue
 
                 name = utils.read_one_line(os.path.join(state, 'name'))
@@ -549,10 +551,7 @@ class CPUIdleStats(AbstractStats):
                         % (usecs, state) + '... skipping.')
                     continue
 
-                if name in cpuidle_stats:
-                    cpuidle_stats[name] += usecs
-                else:
-                    cpuidle_stats[name] = usecs
+                cpuidle_stats[name] += usecs
 
         return cpuidle_stats
 
