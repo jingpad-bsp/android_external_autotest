@@ -17,7 +17,7 @@ def get_server_addr_in_lab(hostname):
     @param hostname String machine name in wifi cell
             (e.g. chromeos1-shelf1-host1.cros)
     @return String server name in cell
-            (e.g. chromeos1-shelf1-host1-rspro.cros)
+            (e.g. chromeos1-shelf1-host1-server.cros)
 
     """
     domain = ''
@@ -26,7 +26,7 @@ def get_server_addr_in_lab(hostname):
         domain_start = hostname.find('.')
         domain = hostname[domain_start:]
         machine = hostname[0:domain_start]
-    return '%s-rspro%s' % (machine, domain)
+    return '%s-server%s' % (machine, domain)
 
 
 def get_router_addr_in_lab(hostname):
