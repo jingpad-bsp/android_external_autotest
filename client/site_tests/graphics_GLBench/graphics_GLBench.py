@@ -7,7 +7,7 @@ import os
 import pprint
 import urllib2
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, utils
 
 # to run this test manually on a test target
@@ -95,6 +95,11 @@ class graphics_GLBench(test.test):
                            'us_swap_glsimple',
                            'us_swap_nogl', ])
 
+  # TODO(djkurtz): restore triangle_setup on arm when crbug.com/225296 is fixed
+  blacklist = ''
+  if utils.get_arch().startswith('arm'):
+    blacklist += ' --blacklist="triangle_setup"'
+
   def setup(self):
     self.job.setup_dep(['glbench'])
 
@@ -102,6 +107,8 @@ class graphics_GLBench(test.test):
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
     self.job.install_pkg(dep, 'dep', dep_dir)
+
+    options += self.blacklist
 
     # Run the test, saving is optional and helps with debugging
     # and reference image management. If unknown images are
