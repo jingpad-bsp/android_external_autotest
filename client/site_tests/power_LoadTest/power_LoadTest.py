@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
 from autotest_lib.client.cros import httpd, power_status, power_utils
 from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
 import flimflam
 
@@ -185,6 +186,10 @@ class power_LoadTest(cros_ui_test.UITest):
             logging.info("Assuming no keyboard backlight due to :: %s", str(e))
             kblight = None
 
+        self._services = service_stopper.ServiceStopper(
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._services.stop_services()
+
         for i in range(self._loop_count):
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
@@ -192,10 +197,9 @@ class power_LoadTest(cros_ui_test.UITest):
             # Installing the extension will also fire it up.
             ext_id = self.pyauto.InstallExtension(ext_path)
 
-            # stop powerd
-            utils.system('stop powerd', ignore_status=True)
-
             # reset X settings since X gets restarted upon login
+            # TODO(tbroch) This requirement is likely no longer true.  Deprecate
+            # after testing.
             self._do_xset()
 
             # reset backlight level since powerd might've modified it
@@ -322,11 +326,11 @@ class power_LoadTest(cros_ui_test.UITest):
 
 
     def cleanup(self):
-        # re-enable powerd
-        utils.system('start powerd', ignore_status=True)
-
         if self._backlight:
             self._backlight.restore()
+        if self._services:
+            self._services.restore_services()
+
         # cleanup backchannel interface
         if self._backchannel:
             self._backchannel.teardown()
