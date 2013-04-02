@@ -2,18 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'The Chromium OS Audiovideo Team, chromeos-audio@google.com'
 NAME = 'audiovideo_LineOutToMicInLoopback'
 PURPOSE = 'Test that audio played to line out can be heard at mic in.'
 CRITERIA = """
 Check if the audio played to line out is heard by arecord at mic in.
 """
-TIME='MEDIUM'
+SUITE = 'audio'
+TIME = 'SHORT'
 TEST_CATEGORY = 'PLAYBACKCAPTURE'
 TEST_CLASS = "audiovideo"
 TEST_TYPE = 'client'
 
 DOC = """
+Test that audio playback and capture are working.
+
 NOTE: For this test to pass you need to have the line out looped back to mic-in.
 This can be through a 3.5mm male-to-male cable or a loopback dongle depending on
 your device.
