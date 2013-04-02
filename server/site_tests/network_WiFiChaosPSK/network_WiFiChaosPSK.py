@@ -132,6 +132,17 @@ class network_WiFiChaosPSK(test.test):
                     self.error_list.append(ap)
 
 
+    def power_down(self, all_aps):
+        """
+        Power down APs
+        """
+        cartridge = ap_cartridge.APCartridge()
+        for ap in all_aps:
+            ap.power_down_router()
+            cartridge.push_configurator(ap)
+        cartridge.run_configurators()
+
+
     def run_once(self, tries=1):
         """
         Main entry function for autotest.
@@ -147,14 +158,11 @@ class network_WiFiChaosPSK(test.test):
         self.client_at.install()
         all_aps = self.factory.get_aps_with_security_mode(
                   self.generic_ap.security_type_wpapsk)
+        self.power_down(all_aps)
         self.loop_ap_configs_and_test(all_aps, tries)
         logging.info('Client test complete, powering down router')
+        self.power_down(all_aps)
 
-        cartridge = ap_cartridge.APCartridge()
-        for ap in all_aps:
-            ap.power_down_router()
-            cartridge.push_configurator(ap)
-        cartridge.run_configurators()
 
         # Test failed if any of the intermediate tests failed.
         if self.error_list:
