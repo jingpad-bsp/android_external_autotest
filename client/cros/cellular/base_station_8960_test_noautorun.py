@@ -2,22 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common
-from autotest_lib.client.cros.cellular import labconfig
-import base_station_8960
-import logging
-import prologix_scpi_driver
-import scpi
 import unittest
 
-log = logging.getLogger('base_station_8960_test')
-log.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter(' %(name)s - %(message)s')
-ch.setFormatter(formatter)
-log.handlers = [ch]
-log.propagate = False
+import common
+from autotest_lib.client.cros.cellular import scpi
+from autotest_lib.client.cros.cellular import cellular_logging
+from autotest_lib.client.cros.cellular import base_station_8960
+from autotest_lib.client.cros.cellular import prologix_scpi_driver
+from autotest_lib.client.cros.cellular import labconfig
+
+log = cellular_logging.SetupCellularLogging('base_station_8960_test')
 
 config = labconfig.Configuration(['--cell', 'mtv', '--technology', 'CDMA'])
 

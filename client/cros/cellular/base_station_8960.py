@@ -5,21 +5,17 @@
 import logging
 import re
 import time
-import air_state_verifier
-import base_station_interface
-import cellular
 import common
+from autotest_lib.client.cros.cellular import cellular_logging
+from autotest_lib.client.cros.cellular import cellular_system_error
+from autotest_lib.client.cros.cellular import air_state_verifier
+from autotest_lib.client.cros.cellular import base_station_interface
+from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.bin import utils
 
 POLL_SLEEP = 0.2
 
-class Error(Exception):
-    pass
-
-
-class Timeout(Error):
-    pass
-
+log = cellular_logging.SetupCellularLogging('base_station_8960')
 
 class BaseStation8960(base_station_interface.BaseStationInterface):
     """Wrap an Agilent 8960 Series 10."""
@@ -46,7 +42,8 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
     def _Verify(self):
         idn = self.c.Query('*IDN?')
         if '8960 Series 10 E5515C' not in idn:
-            raise Error('Not actually an 8960:  *IDN? says ' + idn)
+            raise cellular_system_error.BadGpibCommand(
+                'Not actually an 8960:  *IDN? says ' + idn)
 
     def _Reset(self):
         self.c.Reset()
@@ -175,9 +172,10 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         self.c.SendStanza(['CALL:OPERating:MODE OFF'])
         # Make sure the call status goes to idle before continuing.
         utils.poll_for_condition(
-            lambda: self._IsIdle(),
+            self._IsIdle,
             timeout=cellular.DEFAULT_TIMEOUT,
-            exception=Error('8960 did not enter IDLE state'))
+            exception=cellular_system_error.BadState(
+                '8960 did not enter IDLE state'))
 
     def SupportedTechnologies(self):
         return [
@@ -202,7 +200,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
               cause a return
             timeout: in seconds.
         Returns: state
-        Raises:  Error.Timeout
+        Raises:  cellular_system_error.Timeout
         """
         start = time.time()
         while time.time() - start <= timeout:
@@ -215,7 +213,8 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         if state in interested:
             return state
 
-        raise Timeout('Timed out waiting for state in %s.  State was %s' %
+        raise cellular_system_error.Timeout(
+            'Timed out waiting for state in %s.  State was %s' %
                       (interested, state))
 
 def _Parse(command_sequence):

@@ -3,18 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import cellular_logging
+import cellular_system_error
 
-class Error(Exception):
-    pass
+log = cellular_logging.SetupCellularLogging('scpi_driver')
 
-import logging
-log = logging.getLogger('scpi_driver')
-log.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(name)s - %(message)s' )
-ch.setFormatter(formatter)
-log.addHandler(ch)
 
 class _ErrorCheckerContext(object):
     """Reference-count our error-checking state and only check for
@@ -30,16 +23,16 @@ class _ErrorCheckerContext(object):
     """
 
     def __init__(self, scpi):
-        self.always_check = False #True for serious debugging
+        self.always_check = True  # True for serious debugging
         self.scpi = scpi
         self.depth = 0
-        self.raise_on_error = False
+        self.raise_on_error = True
 
     def __enter__(self):
-        log.debug('ErrorCheckerContext Depth: %s'% self.depth)
+        log.debug('ErrorCheckerContext Depth: %s' % self.depth)
         if self.depth == 0 or self.always_check:
             errors = self.scpi._WaitAndFetchErrors(
-                raise_on_error = self.raise_on_error)
+                raise_on_error=False)  # Never raise when clearing old errors
         self.depth += 1
         return self
 
@@ -59,7 +52,7 @@ class Scpi(object):
     The SCPI driver must export:  Query, Send, Reset and Close
     """
 
-    def __init__(self, driver, opc_on_stanza = False):
+    def __init__(self, driver, opc_on_stanza=False):
         self.driver = driver
         self.opc_on_stanza = opc_on_stanza
         self.checker_context = _ErrorCheckerContext(self)
@@ -112,12 +105,12 @@ class Scpi(object):
         errors.reverse()
         return errors
 
-    def _WaitAndFetchErrors(self, raise_on_error = True):
+    def _WaitAndFetchErrors(self, raise_on_error=True):
         """Waits for command completion, returns errors."""
         self.Query('*OPC?')      # Wait for operation complete
         errors = self.RetrieveErrors()
         if errors and raise_on_error:
-            raise Error('\n'.join(errors))
+            raise cellular_system_error.BadScpiCommand('\n'.join(errors))
         return errors
 
     def SimpleVerify(self, command, arg):
@@ -137,8 +130,8 @@ class Scpi(object):
             self.Send('%s %s' % (command, arg))
             result = self.Query('%s?' % (command,))
             if result != arg:
-                raise Error('Error on %s: sent %s, got %s' % (
-                            command, arg, result))
+                raise cellular_system_error.BadScpiCommand(
+                    'Error on %s: sent %s, got %s' % (command, arg, result))
 
     def SendStanza(self, commands):
         """

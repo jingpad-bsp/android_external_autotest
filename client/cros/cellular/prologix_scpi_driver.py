@@ -3,9 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
+import cellular_system_error
+import cellular_logging
+import os
 import select
 import socket
+import traceback
 
 
 class PrologixScpiDriver:
@@ -24,6 +27,7 @@ class PrologixScpiDriver:
         is wrong such that running in auto=0 mode leaves us hanging if
         we issue '*RST;*OPC?'
     """
+    all_open_connections = {}
 
     def __init__(self, hostname, port=1234, gpib_address=14,
                  read_timeout_seconds=30, connect_timeout_seconds=5):
@@ -37,29 +41,25 @@ class PrologixScpiDriver:
             connect_timeout_seconds: the read time out for the socket to the
                 prologix box
         """
-        self.scpi_logger = logging.getLogger('prologix')
-        self.scpi_logger.setLevel(logging.DEBUG)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
+        logger_name = 'prologix'
         s = 'IP:%s GPIB:%s: ' % (hostname, gpib_address)
-        formatter = logging.Formatter('%(asctime)s %(filename)s %(lineno)d ' +
-                                      s + ' %(name)s - %(message)s')
-        ch.setFormatter(formatter)
-        # Replaces all handlers with this one. Otherwise, on each creation of
-        # this object type, we add one more handler. This setup could be done
-        # outside the class, but then it runs at import time. And we need the
-        # hostname and GPIB address.
-        self.scpi_logger.handlers = [ch]
-        # Don't pass this up to other loggers. True here will print duplicates
-        # to the log.
-        self.scpi_logger.propagate = False
+        formatter_string = '%(asctime)s %(filename)s %(lineno)d ' + s + \
+                           '- %(message)s'
+        self.scpi_logger = cellular_logging.SetupCellularLogging(
+            logger_name, formatter_string)
 
+        self.connection_key = "%s:%s" % (hostname, port)
+        self.connection_data = {self.connection_key: traceback.format_stack()}
+        if self.connection_key in self.all_open_connections.keys():
+            raise cellular_system_error.BadState(
+              'IP network connection to '
+              'prologix is already in use. : %s ' % self.all_open_connections)
+        self.all_open_connections[self.connection_key] = self.connection_data
         self.socket = connect_to_port(hostname, port, connect_timeout_seconds)
         self.read_timeout_seconds = read_timeout_seconds
         self.socket.setblocking(0)
         self.SetAuto(1)
-        # We may need this later.
-        #self._AddCarrigeReturnsToResponses()
+        self._AddCarrigeReturnsToResponses()
         self.SetGpibAddress(gpib_address)
         self.scpi_logger.debug('set read_timeout_seconds: %s ' %
                                self.read_timeout_seconds)
@@ -67,16 +67,14 @@ class PrologixScpiDriver:
     def __del__(self):
         self.Close()
 
-#   This function is commented for now. The PXT may need to the Prologix
-#   adapter to append a newline to each GPIB response.
-#   def _AddCarrigeReturnsToResponses(self):
-#     """
-#     Have the prologix box add a line feed to each response.
-#     Some instruments may need this.
-#     """
-#     pass
-#     self.Send('++eot_enable 1')
-#     self.Send('++eot_char 10')
+    def _AddCarrigeReturnsToResponses(self):
+        """
+        Have the prologix box add a line feed to each response.
+        Some instruments may need this.
+        """
+        pass
+        self.Send('++eot_enable 1')
+        self.Send('++eot_char 10')
 
     def SetAuto(self, auto):
         """Controls Prologix read-after-write (aka 'auto') mode."""
@@ -86,6 +84,13 @@ class PrologixScpiDriver:
 
     def Close(self):
         """Closes the socket."""
+        try:
+            self.scpi_logger.error('Closing prologix devices at : %s ' %
+                                   self.connection_key)
+            self.all_open_connections.pop(self.connection_key)
+        except KeyError:
+            self.scpi_logger.error('Closed %s more then once' %
+                                   self.connection_key)
         try:
             self.socket.close()
         except AttributeError:  # Maybe we close before we finish building.
@@ -98,7 +103,7 @@ class PrologixScpiDriver:
             self.Send('++addr %s' % gpib_address)
             read_back_value = self._DirectQuery('++addr')
             try:
-                if (int(read_back_value) == int(gpib_address)):
+                if int(read_back_value) == int(gpib_address):
                     break
             except ValueError:
                 # If we read a string, don't raise, just try again.
@@ -116,8 +121,8 @@ class PrologixScpiDriver:
             self.scpi_logger.error('sending SCPI command %s failed. ' %
                                    command)
             self.scpi_logger.exception(e)
-            raise SystemError('Sending SCPI command failed. ' +
-                              'Instrument stopped talking?')
+            raise SystemError('Sending SCPI command failed. '
+                              'Did the instrument stopped talking?')
 
     def Reset(self):
         """Sends a standard SCPI reset and waits for it to complete."""
@@ -151,11 +156,19 @@ class PrologixScpiDriver:
                 'But there was not data to read from the instrument.' \
                 'Does that command return a result?' \
                 'Bad GPIB port number, or timeout too short?'
-        raise SystemError(s)
+        raise cellular_system_error.Timeout(s)
 
     def Query(self, command):
         """Send a GPIB command and return the response."""
         #self.SetAuto(1) #maybe useful?
+
+        s = list(self.scpi_logger.findCaller())
+        s[0] = os.path.basename(s[0])
+
+        s = list(self.scpi_logger.findCaller())
+        s[0] = os.path.basename(s[0])
+        self.scpi_logger.debug('caller :' + str(s) + command)
+
         self.Send(command)
         if not self.auto:
             self.Send('++read eoi')
@@ -181,8 +194,8 @@ def connect_to_port(hostname, port, connect_timeout_seconds):
         try:
             s = socket.socket(af, socktype, proto)
         except socket.error as msg:
-            raise SystemError('Failed to make a new socket object. ' +
-                              str(msg))
+            raise cellular_system_error.SocketTimeout(
+                'Failed to make a new socket object. ' + str(msg))
         try:
             s.settimeout(connect_timeout_seconds)
             s.connect(sa)

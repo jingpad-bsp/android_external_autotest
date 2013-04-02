@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-class Error(Exception):
-    pass
+import cellular_system_error
 
 
 class AirStateVerifierPermissive(object):
@@ -41,5 +40,5 @@ class AirStateVerifierBasestation(object):
     def AssertDataStatusIn(self, expected):
         actual = self.base_station.GetUeDataStatus()
         if actual not in expected:
-            raise Error('Expected UE in status %s, got %s' %
-                        (expected, actual))
+            raise cellular_system_error.BadState(
+                'expected UE in status %s, got %s' % (expected, actual))
