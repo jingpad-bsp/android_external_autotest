@@ -327,6 +327,7 @@ class AudioHelper(object):
             sox_output: The output from sox stat command.
 
         Raises:
+            error.TestError if RMS amplitude can't be parsed.
             error.TestFail if the RMS amplitude of the recording isn't above
                 the threshold.
         """
@@ -340,7 +341,7 @@ class AudioHelper(object):
         logging.info('Got audio RMS value of %f. Minimum pass is %f.' %
                      (rms_val, self._sox_threshold))
         if rms_val < self._sox_threshold:
-            raise error.TestError(
+            raise error.TestFail(
                 'Audio RMS value %f too low. Minimum pass is %f.' %
                 (rms_val, self._sox_threshold))
 
