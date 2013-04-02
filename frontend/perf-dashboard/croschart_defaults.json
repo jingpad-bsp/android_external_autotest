@@ -89,6 +89,37 @@
     ]
   },
   {
+    "test_name": "power_Consumption",
+    "graphs": [
+      {
+        "graph_name": "system_pwr(VIDEO)",
+        "units": "watts",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "vid1080_h264_fs_system_pwr",
+          "vid1080_h264_system_pwr",
+          "vid1080_vp8_system_pwr",
+          "vid400p_h264_fs_system_pwr",
+          "vid400p_h264_system_pwr",
+          "vid400p_vp8_system_pwr"
+        ]
+      },
+      {
+        "graph_name": "system_pwr(OTHER)",
+        "units": "watts",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "AboutBlank_system_pwr",
+          "BallsDHTML_system_pwr",
+          "BallsFlex_system_pwr,",
+          "PosterCircle_system_pwr"
+        ]
+      }
+    ]
+  },
+  {
     "test_name": "power_LoadTest.WIFI",
     "graphs": [
       {
