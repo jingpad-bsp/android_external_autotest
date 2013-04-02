@@ -69,12 +69,12 @@
     [ "wait_service",   { "run_timeout":10,      # Wait up to 10 seconds
                           "debug":True,          # Output all state changes
                           "states": [            # Wait for non-ready state
-                            ('TopSSID094', '-ready')
+                            ("TopSSID094", "idle")
                           ] } ],
     [ "wait_service",   { "run_timeout":10,      # Wait up to 10 seconds
                           "debug":True,          # Output all state changes
                           "states": [            # Wait for "ready" state
-                            ('BottomSSID094', 'ready')
+                            ("BottomSSID094", "online")
                           ] } ],
 
     # Cleanup.

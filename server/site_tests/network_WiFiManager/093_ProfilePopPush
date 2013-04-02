@@ -65,13 +65,9 @@
 
     [ "wait_service",   { "run_timeout":10,      # Wait up to 10 seconds
                           "debug":True,          # Output all state changes
-                          "states": [            # Wait for non-ready state
-                            ('TopSSID093', '-ready')
-                          ] } ],
-    [ "wait_service",   { "run_timeout":10,      # Wait up to 10 seconds
-                          "debug":True,          # Output all state changes
-                          "states": [            # Wait for "ready" state
-                            ('BottomSSID093', 'ready')  # TODO: not ready
+                          "states": [
+                            ("TopSSID093", "idle"),
+                            ("BottomSSID093", "online")
                           ] } ],
 
     [ "disconnect",     { "ssid":"BottomSSID093" } ],
@@ -84,8 +80,8 @@
 
     [ "wait_service",   { "run_timeout":10,      # Wait up to 10 seconds
                           "debug":True,          # Output all state changes
-                          "states": [            # Wait for non-ready state
-                            ('TopSSID093', 'ready')
+                          "states": [
+                            ("TopSSID093", "online")
                           ] } ],
 
     # Cleanup.
