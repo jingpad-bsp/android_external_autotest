@@ -12,15 +12,19 @@ import common
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.site_utils import phapi_lib
-from gdata import client
+
+# Try importing the essential bug reporting libraries. Chromite and gdata_lib
+# are unless they can import gdata too.
 try:
     __import__('chromite')
+    __import__('gdata')
 except ImportError, e:
-    have_chromite = False
+    fundamental_libs = False
     logging.info("Bug filing disabled. %s", e)
 else:
     from chromite.lib import cros_build_lib, gdata_lib, gs
-    have_chromite = True
+    from gdata import client
+    fundamental_libs = True
 
 
 BUG_CONFIG_SECTION = 'BUG_REPORTING'
@@ -150,7 +154,7 @@ class TestFailure(object):
 
         @return: a dictionary with the contents of metadata.json.
         """
-        if not have_chromite:
+        if not fundamental_libs:
             return
         try:
             gs_context = gs.GSContext(retries=self._GS_RETRIES)
@@ -226,7 +230,7 @@ class Reporter(object):
 
 
     def __init__(self):
-        if not have_chromite:
+        if not fundamental_libs:
             logging.warning("Bug filing disabled due to missing imports.")
             return
 
@@ -239,7 +243,7 @@ class Reporter(object):
 
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
-        return have_chromite and self._tracker
+        return fundamental_libs and self._tracker
 
 
     def _get_owner(self, failure):
