@@ -1,6 +1,15 @@
+from autotest_lib.site_utils.graphite import stats
+
 def cleanup(machine):
-    host = hosts.create_host(machine, initialize=False, auto_monitor=False)
-    host.cleanup()
+    timer = None
+    try:
+        host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        timer = stats.Timer('cleanup_time.%s' % host._get_board_from_afe())
+        timer.start()
+        host.cleanup()
+    finally:
+        if timer:
+            timer.stop()
 
 
 job.parallel_simple(cleanup, machines, log=False)

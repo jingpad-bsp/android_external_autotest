@@ -1,13 +1,21 @@
+from autotest_lib.site_utils.graphite import stats
+
 def verify(machine):
     print 'Initializing host ' + machine
+    timer = None
     try:
         host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        timer = stats.Timer('verify_time.%s' % host._get_board_from_afe())
+        timer.start()
         host.verify()
         job.record('GOOD', None, 'verify', '%s verified successfully' % machine)
     except Exception, e:
         msg = 'verify failed: %s' % e
         job.record('FAIL', None, 'verify', msg)
         raise
+    finally:
+        if timer:
+            timer.stop()
 
 
 job.parallel_simple(verify, machines)
