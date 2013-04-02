@@ -143,7 +143,53 @@
     ]
   },
   {
+    "test_name": "power_LoadTest.WIFI_1hr",
+    "graphs": [
+      {
+        "graph_name": "energy_rate",
+        "units": "watts",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "w_energy_rate"
+        ]
+      },
+      {
+        "graph_name": "battery_life",
+        "units": "min",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "minutes_battery_life"
+        ]
+      }
+    ]
+  },
+  {
     "test_name": "power_LoadTest.WIRED",
+    "graphs": [
+      {
+        "graph_name": "energy_rate",
+        "units": "watts",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "w_energy_rate"
+        ]
+      },
+      {
+        "graph_name": "battery_life",
+        "units": "min",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "minutes_battery_life"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "power_LoadTest.WIRED_1hr",
     "graphs": [
       {
         "graph_name": "energy_rate",
