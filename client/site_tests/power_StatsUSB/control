@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_StatsUSB"
+SUITE = "power_build"
 PURPOSE = "Measure time USB devices spend in active state."
 CRITERIA = "This test is a benchmark."
 TIME = "SHORT"

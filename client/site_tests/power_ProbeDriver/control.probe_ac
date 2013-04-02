@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_ProbeDriver"
+SUITE = "power_build"
 PURPOSE = "Confirm that AC driver is loaded and functioning."
 CRITERIA = """\
 Plug AC before run this test.
@@ -26,4 +27,4 @@ This is a sample test that probes sysfs and makes sure that AC driver
 is loaded and functioning.
 """
 
-job.run_test('power_ProbeDriver', power_supply_class='Mains')
+job.run_test('power_ProbeDriver', test_which='Mains')
