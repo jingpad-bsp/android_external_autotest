@@ -324,7 +324,7 @@ class OmahaDevserver(object):
             time.sleep(self._WAIT_SLEEP_INTERVAL)
             current_time = time.time()
         else:
-            self.log_output()
+            self.dump_devserver_log()
             return False
 
 
@@ -337,10 +337,13 @@ class OmahaDevserver(object):
         return '%s:%s' % (self._omaha_host, self._omaha_port)
 
 
-    def log_output(self):
-        """Logs the output of the devserver log to logging.error."""
+    def dump_devserver_log(self, logging_level=logging.ERROR):
+        """Dump the devserver log to the autotest log.
+
+        @param logging_level: logging level (from logging) to log the output.
+        """
         if self._devserver_pid:
-            logging.error(self._devserver_ssh.run_output(
+            logging.log(logging_level, self._devserver_ssh.run_output(
                     'cat %s' % self._devserver_output))
 
 
@@ -379,7 +382,9 @@ class OmahaDevserver(object):
             raise error.TestError('no running omaha/devserver')
 
         logging.info('killing omaha/devserver')
+        logging.debug('Final devserver log before killing')
         self._kill_devserver_pid(self._devserver_pid)
+        self.dump_devserver_log(logging.DEBUG)
         self._devserver_ssh.run('rm -f %s' % self._devserver_output)
 
 
