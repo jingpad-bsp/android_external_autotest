@@ -8,7 +8,6 @@ import fnmatch
 import logging
 import os
 import re
-import signal
 import stat
 import tempfile
 import time
@@ -33,6 +32,7 @@ from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.server.cros.wlan import wifi_client
 
 class ScriptNotFound(Exception):
     """Raised when site_wlan scripts cannot be found."""
@@ -201,7 +201,9 @@ class WiFiTest(object):
         # associates to the router.
         #
         client = config['client']
-        self.client = hosts.create_host(client['addr'])
+
+        self.client_proxy = wifi_client.WiFiClient(
+                hosts.create_host(client['addr']))
         self.client_at = autotest.Autotest(self.client)
         self.client_wifi_ip = None            # client's IP address on wifi net
         self.client_wifi_device_path = None   # client's flimflam wifi path
@@ -285,13 +287,20 @@ class WiFiTest(object):
 
 
     @property
+    def client(self):
+        """ @return host object representing the DUT. """
+        return self.client_proxy.client
+
+
+    @property
     def server(self):
+        """ @return host object representing the server. """
         return self.hosting_server.server
 
 
     @property
     def server_wifi_ip(self):
-        """ Returns an IP address for the client to ping. """
+        """ @return string IPv4 address for the client to ping. """
         if self.wifi.force_local_server:
             # Server WiFi IP is created using a local server address.
             return self.wifi.local_server_address(0)
@@ -342,7 +351,6 @@ class WiFiTest(object):
         self.client_cmd_iptables = '/sbin/iptables'
         self.client_cmd_flimflam_lib = client.get('flimflam_lib',
                                                   '/usr/local/lib/flimflam')
-        self.client_cmd_ping = client.get('cmd_ping', 'ping')
         self.client_cmd_ping6 = client.get('cmd_ping6', 'ping6')
         self.client_cmd_wpa_cli = client.get('cmd_wpa_cli', 'wpa_cli')
 
@@ -1171,7 +1179,12 @@ class WiFiTest(object):
 
 
     def client_ping(self, params):
-        """ Ping the server from the client """
+        """
+        Ping the server from the client.
+
+        @param params dict of parameters used to form ping arguments.
+
+        """
         if 'ping_ip' in params:
             ping_ip = params['ping_ip']
         else:
@@ -1190,86 +1203,47 @@ class WiFiTest(object):
             else:
                 raise error.TestFail('Unknown ping destination "%s"' %
                                      ping_dest)
-        count = params.get('count', self.defpingcount)
-        # set timeout for 3s / ping packet
-        result = self.client.run("%s %s %s" % (
-            self.client_cmd_ping, wifi_test_utils.ping_args(params), ping_ip),
-                                 timeout=3*int(count))
-
-        stats = self.__get_pingstats(result.stdout)
-        if "save_stats" in params:
-            self.ping_stats[params["save_stats"]] = stats
+        count = int(params.get('count', self.defpingcount))
+        save_stats = params.get('save_stats', None)
+        stdout = self.client_proxy.ping(ping_ip,
+                                        params,
+                                        save_stats=save_stats,
+                                        count=count)
+        stats = self.__get_pingstats(stdout)
         self.write_perf(stats)
         self.__print_pingstats("client_ping ", stats)
 
 
     def client_ping_bg(self, params):
-        """ Ping the server from the client """
+        """
+        Ping the server from the client in the background of the test.
+
+        @param params dict of parameters used to form ping arguments.
+
+        """
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
-        cmd = "%s %s %s" % \
-            (self.client_cmd_ping, wifi_test_utils.ping_args(params), ping_ip)
-        self.ping_thread = remote_command.Command(self.client, cmd)
+        self.client_proxy.ping_bg(ping_ip, params)
 
 
     def client_ping_bg_stop(self, params):
-        if self.ping_thread is None:
-            logging.info("Tried to stop a bg ping, but none was started")
-            return
-        # Sending SIGINT gives us stats at the end, how nice.
-        self.ping_thread.join(signal.SIGINT)
-        if "save_stats" in params:
-            stats = self.__get_pingstats(self.ping_thread.result.stdout)
-            self.ping_stats[params["save_stats"]] = stats
-        self.ping_thread = None
+        """
+        Stop a client background ping.
+
+        @param params dict May contain key 'save_stats' which maps to a
+                string key to save the statistics from the background ping
+                under.
+
+        """
+        self.client_proxy.ping_bg_stop(save_stats=params.get('save_stats',
+                                                             None))
 
 
     def assert_ping_similarity(self, params):
         """ Assert that two specified sets of ping parameters are 'similar' """
         if "stats0" not in params or "stats1" not in params:
             raise error.TestFail("Missing ping statistics keys")
-        stats0 = self.ping_stats[params["stats0"]]
-        stats1 = self.ping_stats[params["stats1"]]
-        if "dev" not in stats0 or "dev" not in stats1:
-            raise error.TestFail("Missing standard dev from ping stats")
-        if "min" not in stats0 or "min" not in stats1:
-            raise error.TestFail("Missing max rtt from ping stats")
-        if "avg" not in stats0 or "avg" not in stats1:
-            raise error.TestFail("Missing avg rtt from ping stats")
-        if "max" not in stats0 or "max" not in stats1:
-            raise error.TestFail("Missing max rtt from ping stats")
-        avg0 = float(stats0["avg"])
-        max0 = float(stats0["max"])
-        avg1 = float(stats1["avg"])
-        max1 = float(stats1["max"])
-        # This check is meant to assert that ping latency remains 'similar'
-        # during WiFi background scans.  APs typically send beacons every 100ms,
-        # (the period is configurable) so bgscan algorithms like to sit in a
-        # channel for 100ms to see if they can catch a beacon.
-        #
-        # Assert that the maximum latency is under 200 ms + whatever the
-        # average was for the other sample.  This allows us to go off chanel,
-        # but forces us to serve some real traffic when we go back on.
-        # We'll do this check symmetrically because we don't actually know
-        # which is the control distribution and which is the potentially dirty
-        # distribution.
-        if max0 > 200 + avg1 or max1 > 200 + avg0:
-            logging.error(
-                    "Ping0 min/avg/max/dev = {0}/{1}/{2}/{3}".format(
-                        stats0["min"],
-                        stats0["avg"],
-                        stats0["max"],
-                        stats0["dev"],
-                        )
-                    )
-            logging.error(
-                    "Ping1 min/avg/max/dev = {0}/{1}/{2}/{3}".format(
-                        stats1["min"],
-                        stats1["avg"],
-                        stats1["max"],
-                        stats1["dev"],
-                        )
-                    )
-            raise error.TestFail("Significant difference in rtt due to bgscan")
+        self.client_proxy.assert_ping_similarity(params["stats0"],
+                                                 params["stats1"])
 
 
     def server_ping(self, params):

@@ -1,0 +1,158 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import logging
+import signal
+
+from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import remote_command
+from autotest_lib.server.cros import wifi_test_utils
+
+
+class WiFiClient(object):
+    """ WiFiClient is a thin layer of logic over a remote DUT in wifitests. """
+
+    DEFAULT_PING_COUNT = 10
+    COMMAND_PING = 'ping'
+
+    @property
+    def client(self):
+        """ @return host object representing a remote DUT. """
+        return self._client
+
+
+    def __init__(self, client_host):
+        """
+        Construct a WiFiClient.
+
+        @param client_host host object representing a remote host.
+
+        """
+        super(WiFiClient, self).__init__()
+        self._ping_thread = None
+        self._client = client_host
+        self._ping_stats = {}
+
+
+    def ping(self, ping_ip, ping_args, save_stats=None, count=None):
+        """
+        Ping an address from the client and return the command output.
+
+        @param ping_ip string IPv4 address for the client to ping.
+        @param ping_args dict of parameters understood by
+                wifi_test_utils.ping_args().
+        @param save_stats string Key to save statistics of this ping
+                run under for later similarity assertion.
+        @param count int number of times to ping the address.
+        @return string raw output of the ping command
+
+        """
+        if not count:
+            count = self.DEFAULT_PING_COUNT
+        # Timeout is 3s / ping packet.
+        timeout = 3 * count
+        result = self.client.run('%s %s %s' %
+                                 (self.COMMAND_PING,
+                                  wifi_test_utils.ping_args(ping_args),
+                                  ping_ip),
+                                 timeout=timeout)
+        if save_stats:
+            stats = wifi_test_utils.parse_ping_output(ping_output)
+            self._ping_stats[save_stats] = stats
+        return result.stdout
+
+
+    def ping_bg(self, ping_ip, ping_args):
+        """
+        Ping an address from the client in the background.
+
+        Only one instance of a background ping is supported at a time.
+
+        @param ping_ip string IPv4 address for the client to ping.
+        @param ping_args dict of parameters understood by
+                wifi_test_utils.ping_args().
+
+        """
+        if self._ping_thread is not None:
+            raise error.TestFail('Tried to start a background ping without '
+                                 'stopping an earlier ping.')
+        cmd = '%s %s %s' % (self.COMMAND_PING,
+                            wifi_test_utils.ping_args(ping_args),
+                            ping_ip)
+        self._ping_thread = remote_command.Command(
+                self.client, cmd, pkill_argument=self.COMMAND_PING)
+
+
+    def ping_bg_stop(self, save_stats=None):
+        """
+        Stop pinging an address from the client in the background.
+
+        Clean up state from a previous call to ping_bg.  If requested,
+        statistics from the background ping run may be saved.
+
+        @param save_stats string Key to save ping statistics under for
+                later comparison, or None if no statistics should be
+                saved.
+
+        """
+        if self._ping_thread is None:
+            logging.info('Tried to stop a bg ping, but none was started')
+            return
+        # Sending SIGINT gives us stats at the end, how nice.
+        self._ping_thread.join(signal.SIGINT)
+        if save_stats:
+            stats = wifi_test_utils.parse_ping_output(
+                    self._ping_thread.result.stdout)
+            self._ping_stats[save_stats] = stats
+        self._ping_thread = None
+
+
+    def assert_ping_similarity(self, key1, key2):
+        """
+        Assert that two specified sets of ping results are 'similar'.
+
+        @param key1 string key given previously as a value for save_stats.
+        @param key2 string key given previously as a value for save_stats.
+
+        """
+        stats0 = self._ping_stats[key1]
+        stats1 = self._ping_stats[key2]
+        if 'dev' not in stats0 or 'dev' not in stats1:
+            raise error.TestFail('Missing standard dev from ping stats')
+        if 'min' not in stats0 or 'min' not in stats1:
+            raise error.TestFail('Missing max rtt from ping stats')
+        if 'avg' not in stats0 or 'avg' not in stats1:
+            raise error.TestFail('Missing avg rtt from ping stats')
+        if 'max' not in stats0 or 'max' not in stats1:
+            raise error.TestFail('Missing max rtt from ping stats')
+        try:
+            avg0 = float(stats0['avg'])
+            max0 = float(stats0['max'])
+            avg1 = float(stats1['avg'])
+            max1 = float(stats1['max'])
+        except ValueError:
+            raise error.TestFail('Failed to parse ping statistics from avg/max '
+                                 'pairs: %s/%s %s/%s',
+                                 stats0['avg'], stats0['max'],
+                                 stats1['avg'], stats1['max'])
+        # This check is meant to assert that ping latency remains 'similar'
+        # during WiFi background scans.  APs typically send beacons every 100ms,
+        # (the period is configurable) so bgscan algorithms like to sit in a
+        # channel for 100ms to see if they can catch a beacon.
+        #
+        # Assert that the maximum latency is under 200 ms + whatever the
+        # average was for the other sample.  This allows us to go off chanel,
+        # but forces us to serve some real traffic when we go back on.
+        # We'll do this check symmetrically because we don't actually know
+        # which is the control distribution and which is the potentially dirty
+        # distribution.
+        if max0 > 200 + avg1 or max1 > 200 + avg0:
+            for name, stats in zip([key1, key2], [stats0, stats1]):
+                logging.error('Ping %s min/avg/max/dev = %s/%s/%s/%s',
+                              name,
+                              stats['min'],
+                              stats['avg'],
+                              stats['max'],
+                              stats['dev'])
+            raise error.TestFail('Significant difference in rtt due to bgscan')
