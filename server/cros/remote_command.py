@@ -7,6 +7,7 @@ import os
 import pipes
 import threading
 
+from autotest_lib.client.common_lib import error
 
 class _HelperThread(threading.Thread):
     """Make a thread to run the command in."""
@@ -53,20 +54,23 @@ class Command(object):
 
         """
         if pkill_argument is None:
-            pkill_argument = os.path.basename(cmd)
+            # Attempt to guess what a suitable pkill argument would look like.
+            pkill_argument = os.path.basename(cmd.split()[0])
         self._command_name = pipes.quote(pkill_argument)
         self._host = host
         self._thread = _HelperThread(self._host, cmd)
         self._thread.start()
 
 
-    def join(self, signal=None):
+    def join(self, signal=None, timeout=5.0):
         """
         Kills the remote command and waits until it dies.  Takes an optional
         signal argument to control which signal to send the process to be
         killed.
 
         @param signal Signal string to give to pkill (e.g. SIGNAL_INT).
+        @param timeout float number of seconds to wait for join to finish.
+
         """
         if signal is None:
             signal_arg = ''
@@ -78,7 +82,10 @@ class Command(object):
         # Ignore status because the command may have exited already
         self._host.run("pkill %s %s" % (signal_arg, self._command_name),
                        ignore_status=True)
-        self._thread.join()
+        self._thread.join(timeout)
+        if self._thread.isAlive():
+            raise error.TestFail('Failed to kill remote command: %s' %
+                                 self._command_name)
 
 
     def __enter__(self):
