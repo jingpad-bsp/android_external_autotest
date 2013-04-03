@@ -42,12 +42,16 @@ eap_reauth_period=10
     CA_CERTIFICATE_FILE = 'ca.crt'
     CONFIG_FILE = 'hostapd.conf'
     CONTROL_DIRECTORY = 'hostapd.ctl'
+    EAP_PASSWORD = 'password'
+    EAP_PHASE2 = 'MSCHAPV2'
+    EAP_TYPE = 'PEAP'
+    EAP_USERNAME = 'test'
     HOSTAPD_EXECUTABLE = 'hostapd'
     HOSTAPD_CLIENT_EXECUTABLE = 'hostapd_cli'
     SERVER_CERTIFICATE_FILE = 'server.crt'
     SERVER_PRIVATE_KEY_FILE = 'server.key'
-    USER_AUTHENTICATION_DATA = """* PEAP
-"test"\tMSCHAPV2\t"password"\t[2]
+    USER_AUTHENTICATION_TEMPLATE = """* %(type)s
+"%(username)s"\t%(phase2)s\t"%(password)s"\t[2]
 """
     USER_FILE = 'hostapd.eap_user'
     # This is the default group MAC address to which EAP challenges
@@ -96,13 +100,20 @@ eap_reauth_period=10
             'server_key': self.SERVER_PRIVATE_KEY_FILE,
             'user_file': self.USER_FILE
         }
+        authentication_params = {
+            'password': self.EAP_PASSWORD,
+            'phase2': self.EAP_PHASE2,
+            'username': self.EAP_USERNAME,
+            'type': self.EAP_TYPE
+        }
         for filename, contents in (
                 ( self.CA_CERTIFICATE_FILE, site_eap_certs.ca_cert_1 ),
                 ( self.CONFIG_FILE, self.CONFIG_TEMPLATE % config_params),
                 ( self.SERVER_CERTIFICATE_FILE, site_eap_certs.server_cert_1 ),
                 ( self.SERVER_PRIVATE_KEY_FILE,
                   site_eap_certs.server_private_key_1 ),
-                ( self.USER_FILE, self.USER_AUTHENTICATION_DATA )):
+                ( self.USER_FILE,
+                  self.USER_AUTHENTICATION_TEMPLATE % authentication_params )):
             config_file = '%s/%s' % (self._config_directory, filename)
             with open(config_file, 'w') as f:
                 f.write(contents)
