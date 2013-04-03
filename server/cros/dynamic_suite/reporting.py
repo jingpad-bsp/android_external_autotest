@@ -8,10 +8,10 @@ import json
 import logging
 import re
 
+# We need to import common to be able to import chromite and requests.
 import common
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.site_utils import phapi_lib
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
 # are unless they can import gdata too.
@@ -31,11 +31,11 @@ BUG_CONFIG_SECTION = 'BUG_REPORTING'
 
 
 class TestFailure(object):
-    """
-    Wrap up all information needed to make an intelligent report about a
-    test failure. Each TestFailure has a search marker associated with it
-    that can be used to find reports of the same error.
-    """
+    """Wrap up all information needed to make an intelligent report about a
+    test failure.
+
+    Each TestFailure has a search marker associated with it that can be used to
+    find reports of the same error."""
 
     # global configurations needed for build artifacts
     _gs_domain = global_config.global_config.get_config_value(
@@ -94,12 +94,17 @@ class TestFailure(object):
 
 
     def bug_title(self):
-        """Combines information about this failure into a title string."""
+        """Converts information about a failure into a string appropriate to
+        be the title of a bug."""
         return '[%s] %s failed on %s' % (self.suite, self.test, self.build)
 
 
     def bug_summary(self):
-        """Combines information about this failure into a summary string."""
+        """
+        Converts information about this failure into a string appropriate
+        to be the summary of this bug. Includes the reason field and links
+        to the build artifacts and results.
+        """
 
         links = self._get_links_for_failure()
         summary = ('This bug has been automatically filed to track the '
@@ -108,7 +113,6 @@ class TestFailure(object):
                    'build artifacts: %(build_artifacts)s.\n'
                    'results log: %(results_log)s.\n'
                    'buildbot stages: %(buildbot_stages)s.\n')
-
         specifics = {
             'test': self.test,
             'suite': self.suite,
@@ -122,19 +126,28 @@ class TestFailure(object):
 
 
     def search_marker(self):
-        """Return an Anchor that we can use to dedupe this exact failure."""
+        """When filing a report about this failure, include the returned line in
+        the report to provide a way to search for this exact failure."""
         return "%s(%s,%s,%s)" % ('TestFailure', self.suite,
-                                 self.test, self.reason)
+                                    self.test, self.reason)
 
 
     def _link_build_artifacts(self):
-        """Returns an url to build artifacts on google storage."""
+        """
+        Link to the build artifacts.
+
+        @return: url to build artifacts on google storage.
+        """
         return (self._gs_domain + self._arg_prefix +
                 self._chromeos_image_archive + self.build)
 
 
     def _link_result_logs(self):
-        """Returns an url to test logs on google storage."""
+        """
+        Link to test failure logs.
+
+        @return: url to test logs on google storage.
+        """
         if self.job_id and self.owner and self.hostname:
             path_to_object = '%s-%s/%s/%s' % (self.job_id, self.owner,
                                               self.hostname, self._debug_dir)
@@ -178,15 +191,18 @@ class TestFailure(object):
             metadata.get('builder-name') and
             metadata.get('build-number')):
 
-            return ('%s%s/builds/%s' %
-                        (self._buildbot_builders,
-                         metadata.get('builder-name'),
-                         metadata.get('build-number'))).replace(' ', '%20')
+            return '%s%s/builds/%s' % (self._buildbot_builders,
+                                       metadata.get('builder-name'),
+                                       metadata.get('build-number'))
         return 'NA'
 
 
     def _get_links_for_failure(self):
-        """Returns a named tuple of links related to this failure."""
+        """
+        Get links related to this test failure.
+
+        @return: Returns a named tuple of links.
+        """
         links = collections.namedtuple('links', ('results,'
                                                  'artifacts,'
                                                  'buildbot'))
@@ -196,10 +212,8 @@ class TestFailure(object):
 
 
 class Reporter(object):
-    """
-    Files external reports about bug failures that happened inside
-    autotest.
-    """
+    """Files external reports about bug failures that happened inside of
+    autotest."""
 
 
     _project_name = global_config.global_config.get_config_value(
@@ -209,15 +223,11 @@ class Reporter(object):
     _password = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'password', default='')
     _SEARCH_MARKER = 'ANCHOR  '
-
-    _api_key = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'api_key', default='')
-    _PREDEFINED_LABELS = ['Test-Support', 'autofiled']
     _OWNER = 'beeps@chromium.org'
 
 
     def _get_tracker(self, project, user, password):
-        """Returns an initialized tracker object."""
+        """ Gets an initialized tracker object. """
         if project and user and password:
             creds = gdata_lib.Creds()
             creds.SetCreds(user, password)
@@ -236,14 +246,32 @@ class Reporter(object):
 
         self._tracker = self._get_tracker(self._project_name,
                                           self._username, self._password)
-        self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                                 self._api_key,
-                                 self._project_name)
 
 
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
         return fundamental_libs and self._tracker
+
+
+    def report(self, failure):
+        """
+        Report about a failure on the bug tracker. If this failure has already
+        happened, post a comment on the existing bug about it occurring again.
+        If this is a new failure, create a new bug about it.
+
+        @param failure A TestFailure instance about the failure.
+        """
+        if not self._check_tracker():
+            logging.error("Can't file %s", failure.bug_title())
+            return
+
+        issue = self._find_issue_by_marker(failure.search_marker())
+        summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
+                                    self._SEARCH_MARKER,
+                                    failure.search_marker())
+
+        owner = self._get_owner(failure)
+        self._add_issue_to_tracker(issue, summary, failure.bug_title(), owner)
 
 
     def _get_owner(self, failure):
@@ -262,91 +290,36 @@ class Reporter(object):
         return ''
 
 
-    def _get_labels(self, test_name):
+    def _add_issue_to_tracker(self, issue, summary, title, owner=''):
         """
-        Creates labels for an issue.
+        Adds an issue to the tracker.
 
-        Does a simple check to see if any of the areas listed in the
-        projects pre-defined labels are embedded in the name of the
-        failing test.
+        Either file a new issue or append a comment to an existing issue.
 
-        @param test_name: name of the failing test.
-        @return: a list of labels.
-        """
-        def match_area(test_name, test_area):
-            """
-            Matches the prefix of a test name to an area, and then the suffix
-            of the area (if any) to the test name. Both parts of the test name
-            don't need to be in the area, this function prioritizes the first
-            half of the test name. A helical match is needed to allow situations
-            like the third example:
-
-            kernel_Video matches kernel, kernel-video but not kernel-audio.
-            network_Ping matches Systems-Network.
-            kernel_ConfigVerify matches kernel, but would also match both
-                                kernel-config and kernel-verify.
-
-            @param test_name: lower case test name.
-            @param test_area: lower case Cr-OS area from tracker.
-            """
-            return (test_name[:test_name.find('_')] in test_area
-                    and (not '-' in test_area or
-                         test_area[test_area.find('-')+1:] in test_name))
-
-        cros_areas = self._phapi_client.get_areas()
-        return (['Cr-OS-%s' % area for area in cros_areas
-                 if match_area(test_name, area.lower())]
-                 + self._PREDEFINED_LABELS)
-
-
-    def _create_bug_report(self, summary, title, name, owner):
-        """
-        Creates a new bug report.
-
+        @param issue: The new issue.
         @param summary: A summary of the failure.
-        @param title: Title of the bug.
-        @param name: Failing Test name, used to assigning labels.
-        @param owner: The owner of the new bug.
+        @param title: Title of the bug. If a bug already exists the summary gets
+            prefixed with the title.
+
+        @return: None
         """
-        labels = self._get_labels(name.lower())
-        issue = gdata_lib.Issue(title=title,
-                                summary=summary,
-                                labels=labels,
-                                status='Untriaged',
-                                owner='')
-        bugid = self._tracker.CreateTrackerIssue(issue)
-        logging.info('Filing new bug %s, with summary %s', bugid, summary)
+        if issue:
+            summary = '%s\n\n%s' % (title, summary)
+            self._tracker.AppendTrackerIssueById(issue.id, summary, owner)
+            logging.info("Filed comment %s on %s", summary, issue.id)
+        else:
+            issue = gdata_lib.Issue(title=title, summary=summary,
+                labels=['Test-Support', 'autofiled'],
+                status='Untriaged', owner='')
+            bugid = self._tracker.CreateTrackerIssue(issue)
+            logging.info("Filing new bug %s, with summary %s", bugid,
+                                                               summary)
 
-        # The tracker api will not allow us to assign an owner to a new bug,
-        # To work around this we must first create a bug and then update it
-        # with an owner. crbug.com/221757.
-        if owner:
-            self._modify_bug_report(issue.id, owner=owner)
-
-
-    def _modify_bug_report(self, issue_id, comment='', owner=''):
-        """
-        Modifies an existing bug report with a new comment or owner.
-
-        We'll catch a RequestError in at least the following cases:
-        1. If the bug report isn't really updated.
-        Eg: Update a bug with the same owner it's assigned to, without any
-            comment.
-        2. If the new owner of the bug is invalid:
-        Eg: owner='beeps@'.
-
-        Note owner='---' will un-assign without an exception on the chromium
-        tracker; owner='' will not un-assign an issue. New issues created with
-        owner='' will automatically get an owner='---'.
-
-        @param issue_id: Id of the issue to update with.
-        @param comment: Comment to update the issue with.
-        @param owner: Owner the issue with issue_id needs to get assigned to.
-        """
-        try:
-            self._tracker.AppendTrackerIssueById(issue_id, comment, owner)
-        except client.RequestError as e:
-            logging.debug(e)
+            # The tracker api will not allow us to assign an owner to a new bug,
+            # To work around this we must first create a bug and then update it
+            # with an owner.
+            if owner:
+                self._add_issue_to_tracker(issue, '', '', owner)
 
 
     def _find_issue_by_marker(self, marker):
@@ -433,29 +406,3 @@ class Reporter(object):
             if any(unescaped_clean_marker in re.sub('[0-9]+', '', comment.text)
                    for comment in issue.comments if comment.text):
                 return issue
-
-
-    def report(self, failure):
-        """
-        Report a failure to the bug tracker. If this failure has already
-        happened, post a comment on the existing bug about it occurring again.
-        If this is a new failure, create a new bug about it.
-
-        @param failure A TestFailure instance about the failure.
-        """
-        if not self._check_tracker():
-            logging.error("Can't file %s", failure.bug_title())
-            return
-
-        issue = self._find_issue_by_marker(failure.search_marker())
-        owner = self._get_owner(failure)
-        summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
-                                    self._SEARCH_MARKER,
-                                    failure.search_marker())
-
-        if issue:
-            comment = '%s\n\n%s' % (failure.bug_title(), summary)
-            self._modify_bug_report(issue.id, comment, owner)
-        else:
-            self._create_bug_report(summary, failure.bug_title(),
-                                    failure.test, owner)
