@@ -15,13 +15,15 @@ support the PSK security.  This test must be run in the Chaos lab.
 """
 
 from autotest_lib.server import packet_capture
+from autotest_lib.server.cros.chaos_lib import chaos_base_test
 
 def wifi_chaos_psk(machine):
     host = hosts.create_host(machine)
 
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
-        job.run_test('network_WiFiChaosPSK', host=host, tries=10,
-                     capturer=capturer, disable_sysinfo=False)
+        helper = chaos_base_test.WiFiChaosConnectionTest(host, capturer)
+        job.run_test('network_WiFiChaosPSK', host=host, helper=helper,
+                     tries=10, disable_sysinfo=False)
 
 parallel_simple(wifi_chaos_psk, machines)
