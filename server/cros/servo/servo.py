@@ -146,7 +146,7 @@ class Servo(object):
             self._scp_cmd_template = 'scp -r %s ' % common_options
             self._scp_cmd_template += '%s ' + 'root@' + servo_host + ':%s'
 
-    def get_power_state_controller():
+    def get_power_state_controller(self):
         """Return the power state controller for this Servo.
 
         The power state controller provides board-independent
