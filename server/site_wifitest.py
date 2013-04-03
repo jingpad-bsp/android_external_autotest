@@ -16,12 +16,12 @@ import traceback
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
 from autotest_lib.server import site_attenuator
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_cisco_router
-from autotest_lib.server import site_eap_certs
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_host_route
 from autotest_lib.server import site_linux_bridge_router
