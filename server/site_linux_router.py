@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, time
+import logging
+import re
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
 
@@ -85,26 +87,43 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def create(self, params):
-        """ Create a wifi device of the specified type """
+        """
+        Create a wifi device of the specified type.
+
+        @param params dict containing the device type under key 'type'.
+
+        """
+        self.create_wifi_device(params['type'])
+
+
+    def create_wifi_device(self, device_type='hostap'):
+        """
+        Create a wifi device of the specified type.
+
+        Defaults to creating a hostap managed device.
+
+        @param device_type string device type.
+
+        """
         #
         # AP mode is handled entirely by hostapd so we only
         # have to setup others (mapping the bsd type to what
         # iw wants)
         #
         # map from bsd types to iw types
-        self.apmode = params['type'] in ("ap", "hostap")
+        self.apmode = device_type in ('ap', 'hostap')
         if not self.apmode:
-            self.station['type'] = params['type']
+            self.station['type'] = device_type
         self.phytype = {
-            "sta"       : "managed",
-            "monitor"   : "monitor",
-            "adhoc"     : "adhoc",
-            "ibss"      : "ibss",
-            "ap"        : "managed",     # NB: handled by hostapd
-            "hostap"    : "managed",     # NB: handled by hostapd
-            "mesh"      : "mesh",
-            "wds"       : "wds",
-        }[params['type']]
+            'sta'       : 'managed',
+            'monitor'   : 'monitor',
+            'adhoc'     : 'adhoc',
+            'ibss'      : 'ibss',
+            'ap'        : 'managed',     # NB: handled by hostapd
+            'hostap'    : 'managed',     # NB: handled by hostapd
+            'mesh'      : 'mesh',
+            'wds'       : 'wds',
+        }[device_type]
 
 
     def destroy(self, params):
