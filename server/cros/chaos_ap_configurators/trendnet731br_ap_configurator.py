@@ -14,7 +14,6 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
     def __init__(self, ap_config=None):
         super(Trendnet731brAPConfigurator, self).__init__(ap_config=ap_config)
 
-
     def navigate_to_page(self, page_number):
         # Navigate to login page before opening any other page
         self.navigate_to_login_page()
@@ -71,29 +70,36 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
         mode_mapping = {self.mode_b | self.mode_g | self.mode_n:
-                        '2.4GHz 802.11b/g/n mixed mode',
-                        self.mode_n: '2.4GHz 802.11n only mode',
-                        self.mode_b: '2.4GHz 802.11b only mode',
-                        self.mode_g: '2.4GHz 802.11g only mode',
+                        '2.4Ghz 802.11b/g/n mixed mode',
+                        self.mode_n: '2.4Ghz 802.11n only mode',
+                        self.mode_b: '2.4Ghz 802.11b only mode',
+                        self.mode_g: '2.4Ghz 802.11g only mode',
                         self.mode_b | self.mode_g:
-                        '2.4GHz 802.11b/g mixed mode'}
+                        '2.4Ghz 802.11b/g mixed mode'}
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
                                ' %s.', hex(mode), self.get_router_name())
-
+        self.select_item_from_popup_by_id(mode_name, 'dot11_mode')
 
     def get_supported_bands(self):
             return [{'band': self.band_2ghz, 'channels': range(1, 12)}]
 
 
+    def _set_channel(self, channel):
+        position = self._get_channel_popup_position(channel)
+        channel_choices = ['1', '2', '3', '4', '5',
+                           '6', '7', '8', '9', '10', '11']
+        self.select_item_from_popup_by_id(channel_choices[position],
+                                          'wlan0_channel_t')
+
     def _set_visibility(self, visible=True):
         # value=1 is visible; value=0 is invisible
         int_value = int(visible)
-        xpath = ('//input[@value="%d" and @name="wlan0_ssid_broadcast"]'
-                 % int_value)
+        xpath = ('//input[@value="%d" and @name="wlan0_ssid_broadcast"]' %
+                  int_value)
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
 

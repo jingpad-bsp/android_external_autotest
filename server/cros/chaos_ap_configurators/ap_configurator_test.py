@@ -100,6 +100,7 @@ class ConfiguratorTest(unittest.TestCase):
             self.ap.set_band(band['band'])
             # Set to the second available channel
             self.ap.set_channel(band['channels'][1])
+            self.ap.apply_settings()
 
 
     def test_visibility(self):
