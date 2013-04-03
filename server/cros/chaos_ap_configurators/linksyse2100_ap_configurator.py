@@ -46,7 +46,8 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
         xpath = '//select[@name="wl_schannel"]'
-        channels = ['1 - 2.412GHZ', '2 - 2.417GHZ', '3 - 2.422GHZ',
+        channels = ['Auto',
+                    '1 - 2.412GHZ', '2 - 2.417GHZ', '3 - 2.422GHZ',
                     '4 - 2.427GHZ', '5 - 2.432GHZ', '6 - 2.437GHZ',
                     '7 - 2.442GHZ', '8 - 2.447GHZ', '9 - 2.452GHZ',
                     '10 - 2.457GHZ', '11 - 2.462GHZ']
