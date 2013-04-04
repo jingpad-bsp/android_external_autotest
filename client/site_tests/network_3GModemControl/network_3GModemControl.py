@@ -291,7 +291,7 @@ class network_3GModemControl(test.test):
         commands.Enable()
         self.EnsureEnabled(check_idle=not self.autoconnect)
 
-        simple_connect_props = {'number': r'#777'}
+        simple_connect_props = {'number': r'#777', 'apn': self.FindAPN()}
 
         # Icera modems behave weirdly if we cancel the operation while the
         # modem is connecting. Work around the issue by waiting until the
@@ -334,6 +334,10 @@ class network_3GModemControl(test.test):
         logging.info('Disabling')
         commands.Disable()
         self.EnsureDisabled()
+
+    def FindAPN(self):
+        return cell_tools.FindLastGoodAPN(self.flim.FindCellularService(),
+                                          default='None')
 
     def run_once(self, autoconnect,
                  pseudo_modem=False,
@@ -386,8 +390,10 @@ class network_3GModemControl(test.test):
                     self.flim.DisableTechnology('cellular')
                     self.EnsureDisabled()
 
-                    self.TestCommands(technology_commands)
+                    # Run the device commands test first to make sure we have
+                    # a valid APN needed to connect using the modem commands.
                     self.TestCommands(device_commands)
+                    self.TestCommands(technology_commands)
                     self.TestCommands(modem_commands)
 
                     # Run several times using commands mixed from each type
