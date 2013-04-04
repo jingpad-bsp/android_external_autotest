@@ -5,17 +5,17 @@
 import datetime
 import fnmatch
 import logging
-import math
 import os
 import re
 import shutil
-import StringIO
 import utils
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 class platform_BootPerf(test.test):
+    """Test to gather recorded boot time statistics."""
+
     version = 2
 
 
@@ -85,7 +85,7 @@ class platform_BootPerf(test.test):
             hertz = int(utils.read_one_line(freq_file_path)) * 1000.0
         except IOError:
             logging.info('Test is unable to read "%s", no calculating the '
-                         'vboot times.' % freq_file_path)
+                         'vboot times.', freq_file_path)
             return
         try:
             out = utils.system_output('crossystem')
@@ -139,8 +139,8 @@ class platform_BootPerf(test.test):
         file_handle.close()
         if (last_shutdown_time != None and last_boot_was_reboot and
             kernel_start_time != None):
-            logging.info('Kernel start time: %s, last shutdown time: %s' %
-                         (kernel_start_time, last_shutdown_time))
+            logging.info('Kernel start time: %s, last shutdown time: %s',
+                         kernel_start_time, last_shutdown_time)
             delta = kernel_start_time - last_shutdown_time
             # There is no guarantee that we will have gotten a shutdown
             # log message/time.  It's possible to not get any kill messages
@@ -158,6 +158,17 @@ class platform_BootPerf(test.test):
 
 
     def run_once(self, last_boot_was_reboot=False):
+        """Gather boot time statistics.
+
+        Every shutdown and boot creates files with summary statistics
+        for time elapsed and disk usage.  Gather the values reported for
+        shutdown, boot time and network startup time, and record them as
+        perf keyvals.
+
+        @param last_boot_was_reboot TODO(jrbarnette) This seems to serve
+                no useful purpose.
+
+        """
         # Parse key metric files and generate key/value pairs
         results = {}
 
@@ -178,10 +189,6 @@ class platform_BootPerf(test.test):
 
         # Copy over the boot time results and gather those.
         self.__copy_timestamp_files()
-
-        # Ensure we've completed the OOBE flow.
-        if not os.path.exists('/home/chronos/.oobe_completed'):
-            raise error.TestError('OOBE not completed.')
 
         uptime_files = [
             # N.B.  Keyval attribute names go into a database that
