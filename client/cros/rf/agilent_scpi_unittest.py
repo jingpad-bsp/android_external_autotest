@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import rf_common
 import unittest
 
+import common
 from autotest_lib.client.cros.rf.agilent_scpi import Interpolate
 from autotest_lib.client.cros.rf.agilent_scpi import CheckTraceValid
 from autotest_lib.client.cros.rf.lan_scpi import Error

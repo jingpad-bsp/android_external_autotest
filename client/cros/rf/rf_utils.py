@@ -4,10 +4,9 @@
 
 import logging
 import re
-import rf_common
 
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.bin import utils
+import common
+from autotest_lib.client.common_lib import error, utils
 from cros.factory.utils import net_utils
 
 def SetEthernetIp(ip, interface=None):
