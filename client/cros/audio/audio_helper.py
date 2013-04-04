@@ -8,6 +8,7 @@ import os
 import re
 import tempfile
 import threading
+import time
 
 from glob import glob
 
@@ -361,6 +362,11 @@ class AudioHelper(object):
         cmd = '%s -n %s' % (self.loopback_latency_path, noise_threshold)
 
         output = utils.system_output(cmd)
+
+        # Sleep for a short while to make sure device is not busy anymore
+        # after called loopback_latency.
+        time.sleep(.1)
+
         measured_latency = None
         reported_latency = None
         for line in output.split('\n'):
