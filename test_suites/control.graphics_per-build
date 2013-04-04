@@ -5,7 +5,7 @@
 AUTHOR = "ihf|sabercrombie|marcheu@chromium.org"
 NAME = "graphics_per-build"
 PURPOSE = "Test graphics functionality."
-CRITERIA = "All tests with SUITE=graphics should complete and not hang."
+CRITERIA = "All tests with SUITE=graphics_per-build should complete."
 
 TIME = "MEDIUM"
 TEST_CATEGORY = "Graphics"
@@ -35,6 +35,6 @@ import common
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='graphics', job=job, pool=pool,
+    build=build, board=board, name='graphics_per-build', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
     file_bugs=file_bugs, skip_reimage=dynamic_suite.skip_reimage(globals()))
