@@ -249,17 +249,22 @@ class ImageServer(DevServer):
 
 
     @classmethod
-    def devserver_url_for_servo(cls, build):
+    def devserver_url_for_servo(cls, board):
         """Returns the devserver url for use with servo recovery.
 
-        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514).
+        @param board: The board (e.g. 'x86-mario').
         """
-        # To simplify manual steps on the server side, we ignore the
-        # board type and hard-code the server as first in the list.
+        # Ideally, for load balancing we'd select the server based
+        # on the board.  For now, to simplify manual steps on the
+        # server side, we ignore the board type and hard-code the
+        # server as first in the list.
         #
         # TODO(jrbarnette) Once we have automated selection of the
         # build for recovery, we should revisit this.
-        return cls.servers()[0]
+        url_pattern = CONFIG.get_config_value('CROS',
+                                              'servo_url_pattern',
+                                              type=str)
+        return url_pattern % (cls.servers()[0], board)
 
 
     class ArtifactUrls(object):

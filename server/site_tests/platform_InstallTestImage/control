@@ -27,8 +27,6 @@ servo:
                      platform_InstallTestImage
 """
 
-DEFAULT_URL_FORMAT = '/static/servo-images/%s_test_image.bin'
-
 args_dict = utils.args_to_dict(args)
 servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 
@@ -41,8 +39,7 @@ def run(machine):
         attributes = host_attributes.host_attributes(machine)
         if hasattr(attributes, 'board'):
             board = attributes.board
-            server = dev_server.ImageServer.devserver_url_for_servo(board)
-            image = server + (DEFAULT_URL_FORMAT % board)
+            image = dev_server.ImageServer.devserver_url_for_servo(board)
             logging.info("image URL is %s", image)
     job.run_test("platform_InstallTestImage", host=host,
                  disable_sysinfo=True, image=image)

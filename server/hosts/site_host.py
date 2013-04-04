@@ -185,9 +185,6 @@ class SiteHost(remote.RemoteHost):
     _USB_POWER_TIMEOUT = 5
     _POWER_CYCLE_TIMEOUT = 10
 
-    _DEFAULT_SERVO_URL_FORMAT = ('/static/servo-images/'
-                                 '%(board)s_test_image.bin')
-
 
     _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
             'rpm_recovery_boards', type=str).split(',')
@@ -628,19 +625,19 @@ class SiteHost(remote.RemoteHost):
         return True
 
 
-    def _servo_repair(self, board):
+    def servo_repair(self, image_url):
         """Attempt to repair this host using an attached Servo.
 
         Re-install the OS on the DUT by 1) installing a test image
         on a USB storage device attached to the Servo board,
         2) booting that image in recovery mode, and then
-        3) installing the image.
+        3) installing the image with chromeos-install.
+
+        @param image_url URL from which to download the test image to
+            be installed the DUT.
 
         """
-        server = dev_server.ImageServer.devserver_url_for_servo(board)
-        image = server + (self._DEFAULT_SERVO_URL_FORMAT %
-                          { 'board': board })
-        self.servo.install_recovery_image(image)
+        self.servo.install_recovery_image(image_url)
         if not self.wait_up(timeout=self.USB_BOOT_TIMEOUT):
             raise error.AutoservError('DUT failed to boot from USB'
                                       ' after %d seconds' %
@@ -648,7 +645,7 @@ class SiteHost(remote.RemoteHost):
         self.run('chromeos-install --yes',
                  timeout=self._INSTALL_TIMEOUT)
         self.servo.power_long_press()
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        self.servo.switch_usbkey('host')
         self.servo.power_short_press()
         if not self.wait_up(timeout=self.BOOT_TIMEOUT):
             raise error.AutoservError('DUT failed to reboot installed '
@@ -714,7 +711,8 @@ class SiteHost(remote.RemoteHost):
             # we favor servo over powercycle when we really
             # should be falling back to power if servo fails.
             if (self.servo and self.servo.recovery_supported()):
-                self._servo_repair(host_board)
+                self.servo_repair(
+                    dev_server.ImageServer.devserver_url_for_servo(host_board))
             elif (self.has_power() and
                   host_board in self._RPM_RECOVERY_BOARDS):
                 self._powercycle_to_repair()
