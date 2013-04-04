@@ -356,33 +356,34 @@ class ChromiumOSUpdater():
         The method should not be used to check if DUT needs to have a full
         reimage. Only use it to confirm a image is installed.
 
-        For build from trybot, version retrieved from lsb-release looks like
-        3888.0.2013_03_21_1340. However, for trybot build, self.update_version
-        looks like 'R27-3888.0.0-b711', which does not have the date string and
-        it is complicated to get the date string from update url.
-        Therefore, to make the version verification easiser, the date string is
-        ignored in version retrieved from lsb-release.
+        The method is designed to verify version for following 4 scenarios with
+        samples of version to update to and expected booted version:
+        1. trybot paladin build.
+        update version: trybot-lumpy-paladin/R27-3837.0.0-b123
+        booted version: 3837.0.2013_03_21_1340
+
+        2. trybot release build.
+        update version: trybot-lumpy-release/R27-3837.0.0-b456
+        booted version: 3837.0.0
+
+        3. buildbot official release build.
+        update version: lumpy-release/R27-3837.0.0
+        booted version: 3837.0.0
+
+        4. non-official paladin rc build.
+        update version: lumpy-paladin/R27-3878.0.0-rc7
+        booted version: 3837.0.0-rc7
 
         When we are checking if a DUT needs to do a full install, we should NOT
         use this method to check if the DUT is running the same version, since
-        it may return false positive. For example, if the DUT is running a
-        trybot build with version |3888.0.2013_03_21_1340| and the version to
-        be installed is an official build with version of 3888.0.0,
-        check_version method returns False which is expected. However,
-        check_version_to_confirm_install returns True, which will lead to
-        reimage job fails to install correct image in the DUT.
+        it may return false positive for a DUT running trybot paladin build to
+        be updated to another trybot paladin build.
 
-        On the other hand, when we try to confirm if a build is successfully
-        installed, we should ignore the date string, so a trybot build can be
-        installed successfully when the reimage job calls
-        check_version_to_confirm_install to verify the image version at the end
-        of the job.
-
-        This logic has a bug if a trybot build failed to be installed in a
-        DUT running an older trybot build with same platform number, but
-        different build number (-b###). So to conclusively determine if a
-        tryjob build is imaged successfully, we do need to find out the date
-        string from update url.
+        TODO: This logic has a bug if a trybot paladin build failed to be
+        installed in a DUT running an older trybot paladin build with same
+        platform number, but different build number (-b###). So to conclusively
+        determine if a tryjob paladin build is imaged successfully, we may need
+        to find out the date string from update url.
 
         @returns: True if the DUT's image version (without the date string if
             the image is a trybot build), matches the version that the
@@ -394,17 +395,29 @@ class ChromiumOSUpdater():
         if self.check_version():
             return True
 
+        if not self.update_version:
+            return False
+
+        # Remove R#- and -b# at the end of build version
+        stripped_version = re.sub(r'(R\d+-|-b\d+)', '', self.update_version)
+
         booted_version = self.get_build_id()
-        booted_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '',
-                                        booted_version)
-        # For a DUT running a build from trybot, only matching the version
-        # number is enough to consider versions are matched.
-        if booted_version != booted_version_no_date:
-            return (self.update_version and
-                    booted_version_no_date in self.update_version)
+
+        is_release_build = '-release/' in url_to_image_name(self.update_url)
+        is_rc_build = '-rc' in self.update_version
+
+        if is_release_build or is_rc_build:
+            # Versioned build, i.e., rc or release build.
+            return stripped_version == booted_version
         else:
-            return (self.update_version and
-                    self.update_version.endswith(booted_version_no_date))
+            # Replace date string with 0 in booted_version
+            booted_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '0',
+                                            booted_version)
+            if booted_version == booted_version_no_date:
+                logging.error('A paladin build is expected. Version "%s" is ' +
+                              'not a paladin build.', booted_version)
+                return False
+            return stripped_version == booted_version_no_date
 
 
     def get_build_id(self):

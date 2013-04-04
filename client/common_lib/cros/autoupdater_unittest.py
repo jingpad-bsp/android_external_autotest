@@ -24,50 +24,162 @@ class TestAutoUpdater(mox.MoxTestBase):
                          expected_value)
 
 
-    def testCheckVersion(self):
+    def testCheckVersion_1(self):
         """Test version check methods work for any build.
 
         Test two methods used to check version, check_version and
-        check_version_to_confirm_install, work for both official build and
-        non-official builds.
+        check_version_to_confirm_install, for:
+        1. trybot paladin build.
+        update version: trybot-lumpy-paladin/R27-3837.0.0-b123
+        booted version: 3837.0.2013_03_21_1340
 
         """
-        update_url = ('http://172.22.50.205:8082/update/lumpy-release/'
-                      'R27-3880.0.0')
+        update_url = ('http://172.22.50.205:8082/update/trybot-lumpy-paladin/'
+                      'R27-1111.0.0-b123')
         updater = autoupdater.ChromiumOSUpdater(update_url)
-
-        self.mox.StubOutWithMock(updater, 'get_build_id')
-        updater.get_build_id().MultipleTimes().AndReturn('3880.0.0-rc1')
-        self.mox.ReplayAll()
-
-        updater.update_version = '3880.0.0-rc1'
-        self.assertTrue(updater.check_version())
-
-        updater.update_version = '3880.0.0-rc10'
-        self.assertFalse(updater.check_version())
-
-        updater.update_version = '3880.0.0-rc1'
-        self.assertTrue(updater.check_version_to_confirm_install())
-
-        updater.update_version = '3880.0.0'
-        self.assertFalse(updater.check_version_to_confirm_install())
 
         self.mox.UnsetStubs()
         self.mox.StubOutWithMock(updater, 'get_build_id')
         updater.get_build_id().MultipleTimes().AndReturn(
-                                                '1234.0.2013_03_21_1340')
+                                                    '1111.0.2013_03_21_1340')
         self.mox.ReplayAll()
 
-        updater.update_version = '1234.0.0'
         self.assertFalse(updater.check_version())
-
-        updater.update_version = '3333.0.0'
-        self.assertFalse(updater.check_version())
-
-        updater.update_version = '1234.0.0'
         self.assertTrue(updater.check_version_to_confirm_install())
 
-        updater.update_version = '3333.0.0'
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('1111.0.0-rc1')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('1111.0.0')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+    def testCheckVersion_2(self):
+        """Test version check methods work for any build.
+
+        Test two methods used to check version, check_version and
+        check_version_to_confirm_install, for:
+        2. trybot release build.
+        update version: trybot-lumpy-release/R27-3837.0.0-b456
+        booted version: 3837.0.0
+
+        """
+        update_url = ('http://172.22.50.205:8082/update/trybot-lumpy-release/'
+                      'R27-2222.0.0-b456')
+        updater = autoupdater.ChromiumOSUpdater(update_url)
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn(
+                                                    '2222.0.2013_03_21_1340')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('2222.0.0-rc1')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('2222.0.0')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertTrue(updater.check_version_to_confirm_install())
+
+
+    def testCheckVersion_3(self):
+        """Test version check methods work for any build.
+
+        Test two methods used to check version, check_version and
+        check_version_to_confirm_install, for:
+        3. buildbot official release build.
+        update version: lumpy-release/R27-3837.0.0
+        booted version: 3837.0.0
+
+        """
+        update_url = ('http://172.22.50.205:8082/update/lumpy-release/'
+                      'R27-3333.0.0')
+        updater = autoupdater.ChromiumOSUpdater(update_url)
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn(
+                                                    '3333.0.2013_03_21_1340')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('3333.0.0-rc1')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('3333.0.0')
+        self.mox.ReplayAll()
+
+        self.assertTrue(updater.check_version())
+        self.assertTrue(updater.check_version_to_confirm_install())
+
+
+    def testCheckVersion_4(self):
+        """Test version check methods work for any build.
+
+        Test two methods used to check version, check_version and
+        check_version_to_confirm_install, for:
+        4. non-official paladin rc build.
+        update version: lumpy-paladin/R27-3837.0.0-rc7
+        booted version: 3837.0.0-rc7
+
+        """
+        update_url = ('http://172.22.50.205:8082/update/lumpy-paladin/'
+                      'R27-4444.0.0-rc7')
+        updater = autoupdater.ChromiumOSUpdater(update_url)
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn(
+                                                    '4444.0.2013_03_21_1340')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('4444.0.0-rc7')
+        self.mox.ReplayAll()
+
+        self.assertTrue(updater.check_version())
+        self.assertTrue(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('4444.0.0')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
         self.assertFalse(updater.check_version_to_confirm_install())
 
 
