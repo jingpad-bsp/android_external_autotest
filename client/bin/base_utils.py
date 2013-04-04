@@ -664,7 +664,7 @@ def unload_module(module_name):
 
     @param module_name: Name of the module we want to remove.
     """
-    l_raw = utils.system_output("/sbin/lsmod").splitlines()
+    l_raw = utils.system_output("/bin/lsmod").splitlines()
     lsmod = [x for x in l_raw if x.split()[0] == module_name]
     if len(lsmod) > 0:
         line_parts = lsmod[0].split()
@@ -680,7 +680,7 @@ def unload_module(module_name):
 
 def module_is_loaded(module_name):
     module_name = module_name.replace('-', '_')
-    modules = utils.system_output('/sbin/lsmod').splitlines()
+    modules = utils.system_output('/bin/lsmod').splitlines()
     for module in modules:
         if module.startswith(module_name) and module[len(module_name)] == ' ':
             return True
@@ -688,7 +688,7 @@ def module_is_loaded(module_name):
 
 
 def get_loaded_modules():
-    lsmod_output = utils.system_output('/sbin/lsmod').splitlines()[1:]
+    lsmod_output = utils.system_output('/bin/lsmod').splitlines()[1:]
     return [line.split(None, 1)[0] for line in lsmod_output]
 
 
