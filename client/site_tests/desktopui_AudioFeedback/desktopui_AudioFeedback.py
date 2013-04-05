@@ -2,9 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, tempfile
+import logging
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, httpd
 from autotest_lib.client.cros.audio import audio_helper
@@ -41,6 +40,7 @@ _DEFAULT_CAPTURE_GAIN = 2500
 
 
 class desktopui_AudioFeedback(cros_ui_test.UITest):
+    """Verifies if youtube playback can be captured."""
     version = 1
 
     def initialize(self,
@@ -82,17 +82,18 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         self._testServer.run()
 
     def run_once(self):
+        """Entry point of this test."""
         self._ah.set_volume_levels(self._volume_level, self._capture_gain)
         if not self._ah.check_loopback_dongle():
             raise error.TestError('Audio loopback dongle is in bad state.')
 
         # Record a sample of "silence" to use as a noise profile.
-        with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
-            logging.info('Noise file: %s' % noise_file.name)
-            self._ah.record_sample(noise_file.name)
+        noise_file_name = self._ah.create_wav_file("noise")
+        self._ah.record_sample(noise_file_name)
 
-            # Play the same video to test all channels.
-            self.play_video(lambda: self._ah.loopback_test_channels(noise_file))
+        # Play the same video to test all channels.
+        self.play_video(lambda: self._ah.loopback_test_channels(
+                noise_file_name))
 
     def play_video(self, player_ready_callback):
         """Plays a Youtube video to record audio samples.
@@ -102,7 +103,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
 
            @param player_ready_callback: callback when yt player is ready.
         """
-        logging.info('Playing back youtube media file %s.' % self._test_url)
+        logging.info('Playing back youtube media file %s.', self._test_url)
         self.pyauto.NavigateToURL(self._test_url)
 
         # Default automation timeout is 45 seconds.

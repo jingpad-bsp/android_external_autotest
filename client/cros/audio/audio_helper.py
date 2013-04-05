@@ -6,7 +6,6 @@
 import logging
 import os
 import re
-import tempfile
 import threading
 import time
 
@@ -292,35 +291,34 @@ class AudioHelper(object):
         logging.info('Command %s recording now' % cmd_rec)
         utils.system(cmd_rec)
 
-    def loopback_test_channels(self, noise_file, loopback_callback=None,
+    def loopback_test_channels(self, noise_file_name, loopback_callback=None,
                                check_recorded_callback=None):
         '''Tests loopback on all channels.
 
         Args:
-            noise_file: The file contains the pre-recorded noise.
+            noise_file_name: Name of the file contains the pre-recorded noise.
             loopback_callback: The callback to do the loopback for one channel.
         '''
         for channel in xrange(self._num_channels):
-            # Temp file for the final noise-reduced file.
-            with tempfile.NamedTemporaryFile(mode='w+t') as reduced_file:
-                # Temp file that records before noise reduction.
-                with tempfile.NamedTemporaryFile(mode='w+t') as tmpfile:
-                    record_thread = RecordSampleThread(self, tmpfile.name)
-                    record_thread.start()
-                    if loopback_callback:
-                        loopback_callback(channel)
-                    record_thread.join()
+            reduced_file_name = self.create_wav_file("reduced-%d" % channel)
+            record_file_name = self.create_wav_file("record-%d" % channel)
 
-                    self.noise_reduce_file(tmpfile.name, noise_file.name,
-                            reduced_file.name)
+            record_thread = RecordSampleThread(self, record_file_name)
+            record_thread.start()
+            if loopback_callback:
+                loopback_callback(channel)
+            record_thread.join()
 
-                sox_output = self.sox_stat_output(reduced_file.name, channel)
+            self.noise_reduce_file(record_file_name, noise_file_name,
+                    reduced_file_name)
 
-                # Use injected check recorded callback if any.
-                if check_recorded_callback:
-                    check_recorded_callback(sox_output)
-                else:
-                    self.check_recorded(sox_output)
+            sox_output = self.sox_stat_output(reduced_file_name, channel)
+
+            # Use injected check recorded callback if any.
+            if check_recorded_callback:
+                check_recorded_callback(sox_output)
+            else:
+                self.check_recorded(sox_output)
 
     def check_recorded(self, sox_output):
         """Checks if the calculated RMS value is expected.
@@ -426,3 +424,14 @@ class AudioHelper(object):
         '''Generates a sine wave and plays to odev.'''
         cmdargs = self.get_play_sine_args(channel, odev, freq, duration, sample_size)
         utils.system(' '.join(cmdargs))
+
+    def create_wav_file(self, prefix=""):
+        '''Creates a unique name for wav file.
+
+           The created file name will be preserved in autotest result directory
+           for future analysis.
+
+           @param prefix: specified file name prefix.
+        '''
+        filename = "%s-%s.wav" % (prefix, time.time())
+        return os.path.join(self._test.resultsdir, filename)
