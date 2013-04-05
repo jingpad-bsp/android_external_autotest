@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
 import logging
 import time
 
@@ -12,7 +11,7 @@ from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import hostapd_server
 from autotest_lib.client.cros import virtual_ethernet_pair
 
-import flimflam
+import shill_proxy
 
 class network_8021xEapDetection(test.test):
     """The 802.1x EAP detection class.
@@ -33,17 +32,19 @@ class network_8021xEapDetection(test.test):
         @return true if the "EAP detected" flag is set, false otherwise.
 
         """
-        flim = flimflam.FlimFlam(dbus.SystemBus())
-        device = flim.FindElementByNameSubstring('Device', interface_name)
+        device = self._shill_proxy.find_object('Device',
+                                               {'Name' : interface_name})
         if device is None:
             raise error.TestFail('Device was not found.')
         device_properties = device.GetProperties(utf8_strings=True)
         logging.info('Device properties are %r', device_properties)
-        return bool(device_properties[self.DETECTION_FLAG])
+        return shill_proxy.dbus2primitive(
+                device_properties[self.DETECTION_FLAG])
 
 
     def run_once(self):
         """Test main loop."""
+        self._shill_proxy = shill_proxy.ShillProxy()
         with virtual_ethernet_pair.VirtualEthernetPair(
                 peer_interface_name=self.INTERFACE_NAME,
                 peer_interface_ip=None) as ethernet_pair:
