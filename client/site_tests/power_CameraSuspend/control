@@ -4,7 +4,7 @@
 
 AUTHOR = "spang, chromeos-kernel"
 NAME = "power_CameraSuspend"
-SUITE = "kernel_per-build_regression"
+SUITE = ""  # Removed from kernel_per-build_regression
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"

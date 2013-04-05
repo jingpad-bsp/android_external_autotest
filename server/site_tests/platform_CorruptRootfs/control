@@ -4,7 +4,7 @@
 
 NAME = "platform_CorruptRootfs"
 AUTHOR = "chromeos-kernel,taysom"
-SUITE = "kernel_per-build_benchmarks"
+SUITE = ""  # Removed from kernel_per-build_benchmarks
 EXPERIMENTAL = "True"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
