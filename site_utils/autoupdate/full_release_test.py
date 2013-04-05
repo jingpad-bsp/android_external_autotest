@@ -721,10 +721,12 @@ def get_job_url(server, job_id):
 
 def parse_args():
     parser = optparse.OptionParser(
-            usage='Usage: %prog [options] RELEASE BOARD...',
+            usage='Usage: %prog [options] RELEASE [BOARD...]',
             description='Schedule Chrome OS release update tests on given '
                         'board(s).')
 
+    parser.add_option('--all_boards', dest='all_boards', action='store_true',
+                      help='default test run to all known boards')
     parser.add_option('--archive_url', metavar='URL',
                       help='Use this archive url to find the target payloads.')
     parser.add_option('--dump', default=False, action='store_true',
@@ -757,8 +759,6 @@ def parse_args():
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
                       default=_log_verbose,
                       help='verbosity level: %s' % ' '.join(_valid_log_levels))
-    parser.add_option('--all_boards', dest='all_boards', action='store_true',
-                      help='default test run to all known boards')
 
     # Parse arguments.
     opts, args = parser.parse_args()
@@ -769,8 +769,11 @@ def parse_args():
 
     opts.tested_release = args[0]
     opts.tested_board_list = args[1:]
-    if not opts.tested_board_list:
+    if not opts.tested_board_list and not opts.all_boards:
         parser.error('No boards listed.')
+    if opts.tested_board_list and opts.all_boards:
+        parser.error('--all_boards should not be used with individual board '
+                     'arguments".')
 
     if opts.all_boards:
         opts.tested_board_list = _board_info.get_board_names()
