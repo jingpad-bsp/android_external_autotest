@@ -92,17 +92,20 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
             self._ah.record_sample(noise_file.name)
 
             # Play the same video to test all channels.
-            self._ah.loopback_test_channels(noise_file,
-                    lambda channel: self.play_video())
+            self.play_video(lambda: self._ah.loopback_test_channels(noise_file))
 
-    def play_video(self):
+    def play_video(self, player_ready_callback):
         """Plays a Youtube video to record audio samples.
 
            Skipping initial 60 seconds so we can ignore initial silence
            in the video.
+
+           @param player_ready_callback: callback when yt player is ready.
         """
         logging.info('Playing back youtube media file %s.' % self._test_url)
         self.pyauto.NavigateToURL(self._test_url)
+
+        # Default automation timeout is 45 seconds.
         if not self.pyauto.WaitUntil(lambda: self.pyauto.ExecuteJavascript("""
                     player_status = document.getElementById('player_status');
                     window.domAutomationController.send(player_status.innerHTML);
@@ -114,3 +117,5 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
             ytplayer.playVideo();
             window.domAutomationController.send('');
         """)
+        if player_ready_callback:
+            player_ready_callback()

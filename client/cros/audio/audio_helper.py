@@ -292,7 +292,7 @@ class AudioHelper(object):
         logging.info('Command %s recording now' % cmd_rec)
         utils.system(cmd_rec)
 
-    def loopback_test_channels(self, noise_file, loopback_callback,
+    def loopback_test_channels(self, noise_file, loopback_callback=None,
                                check_recorded_callback=None):
         '''Tests loopback on all channels.
 
@@ -307,7 +307,8 @@ class AudioHelper(object):
                 with tempfile.NamedTemporaryFile(mode='w+t') as tmpfile:
                     record_thread = RecordSampleThread(self, tmpfile.name)
                     record_thread.start()
-                    loopback_callback(channel)
+                    if loopback_callback:
+                        loopback_callback(channel)
                     record_thread.join()
 
                     self.noise_reduce_file(tmpfile.name, noise_file.name,
