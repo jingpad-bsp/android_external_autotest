@@ -63,6 +63,8 @@ class AudioHelper(object):
     def setup_deps(self, deps):
         '''
         Sets up audio related dependencies.
+
+        @param deps: List of dependencies to set up.
         '''
         for dep in deps:
             if dep == 'test_tones':
@@ -92,6 +94,8 @@ class AudioHelper(object):
     def cleanup_deps(self, deps):
         '''
         Cleans up environments which has been setup for dependencies.
+
+        @param deps: List of dependencies to clean up.
         '''
         for dep in deps:
             if dep == 'sox':
@@ -104,10 +108,13 @@ class AudioHelper(object):
     def set_volume_levels(self, volume, capture):
         '''
         Sets the volume and capture gain through cras_test_client
+
+        @param volume: The playback volume to set.
+        @param capture: The capture gain to set.
         '''
-        logging.info('Setting volume level to %d' % volume)
+        logging.info('Setting volume level to %d', volume)
         utils.system('/usr/bin/cras_test_client --volume %d' % volume)
-        logging.info('Setting capture gain to %d' % capture)
+        logging.info('Setting capture gain to %d', capture)
         utils.system('/usr/bin/cras_test_client --capture_gain %d' % capture)
         utils.system('/usr/bin/cras_test_client --dump_server_info')
         utils.system('/usr/bin/cras_test_client --mute 0')
@@ -117,11 +124,9 @@ class AudioHelper(object):
         '''
         Gets the mixer jack status.
 
-        Args:
-            jack_reg_exp: The regular expression to match jack control name.
+        @param jack_reg_exp: The regular expression to match jack control name.
 
-        Returns:
-            None if the control does not exist, return True if jack control
+        @return None if the control does not exist, return True if jack control
             is detected plugged, return False otherwise.
         '''
         output = utils.system_output('amixer -c0 controls', retain_output=True)
@@ -143,6 +148,7 @@ class AudioHelper(object):
             return None
 
     def get_hp_jack_status(self):
+        '''Gets the status of headphone jack'''
         status = self.get_mixer_jack_status(_HP_JACK_CONTROL_RE)
         if status is not None:
             return status
@@ -160,6 +166,7 @@ class AudioHelper(object):
             return None
 
     def get_mic_jack_status(self):
+        '''Gets the status of mic jack'''
         status = self.get_mixer_jack_status(_MIC_JACK_CONTROL_RE)
         if status is not None:
             return status
@@ -201,8 +208,8 @@ class AudioHelper(object):
         # assert the latency accuracy here.
         latency = self.loopback_latency_check(n=4000)
         if latency:
-            logging.info('Got latency measured %d, reported %d' %
-                    (latency[0], latency[1]))
+            logging.info('Got latency measured %d, reported %d',
+                    latency[0], latency[1])
         else:
             logging.warning('Latency check fail.')
             return False
@@ -212,11 +219,14 @@ class AudioHelper(object):
     def set_mixer_controls(self, mixer_settings={}, card='0'):
         '''
         Sets all mixer controls listed in the mixer settings on card.
+
+        @param mixer_settings: Mixer settings to set.
+        @param card: Index of audio card to set mixer settings for.
         '''
-        logging.info('Setting mixer control values on %s' % card)
+        logging.info('Setting mixer control values on %s', card)
         for item in mixer_settings:
-            logging.info('Setting %s to %s on card %s' %
-                         (item['name'], item['value'], card))
+            logging.info('Setting %s to %s on card %s',
+                         item['name'], item['value'], card)
             cmd = 'amixer -c %s cset name=%s %s'
             cmd = cmd % (card, item['name'], item['value'])
             try:
@@ -224,9 +234,16 @@ class AudioHelper(object):
             except error.CmdError:
                 # A card is allowed not to support all the controls, so don't
                 # fail the test here if we get an error.
-                logging.info('amixer command failed: %s' % cmd)
+                logging.info('amixer command failed: %s', cmd)
 
     def sox_stat_output(self, infile, channel):
+        '''Executes sox stat command.
+
+        @param infile: Input file name.
+        @param channel: The selected channel.
+
+        @return The output of sox stat command
+        '''
         sox_mixer_cmd = self.get_sox_mixer_cmd(infile, channel)
         stat_cmd = '%s -c 1 %s - -n stat 2>&1' % (self.sox_path,
                 self._sox_format)
@@ -234,12 +251,25 @@ class AudioHelper(object):
         return utils.system_output(sox_cmd, retain_output=True)
 
     def get_audio_rms(self, sox_output):
+        '''Gets the audio RMS value from sox stat output
+
+        @param sox_output: Output of sox stat command.
+
+        @return The RMS value parsed from sox stat output.
+        '''
         for rms_line in sox_output.split('\n'):
             m = _SOX_RMS_AMPLITUDE_RE.match(rms_line)
             if m is not None:
                 return float(m.group(1))
 
     def get_rough_freq(self, sox_output):
+        '''Gets the rough audio frequency from sox stat output
+
+        @param sox_output: Output of sox stat command.
+
+        @return The rough frequency value parsed from sox stat output.
+        '''
+
         for rms_line in sox_output.split('\n'):
             m = _SOX_ROUGH_FREQ_RE.match(rms_line)
             if m is not None:
@@ -247,6 +277,11 @@ class AudioHelper(object):
 
 
     def get_sox_mixer_cmd(self, infile, channel):
+        '''Gets sox mixer command to reduce channel.
+
+        @param infile: Input file name.
+        @param channel: The selected channel to take effect.
+        '''
         # Build up a pan value string for the sox command.
         if channel == 0:
             pan_values = '1'
@@ -265,14 +300,12 @@ class AudioHelper(object):
         '''Runs the sox command to noise-reduce in_file using
            the noise profile from noise_file.
 
-        Args:
-            in_file: The file to noise reduce.
-            noise_file: The file containing the noise profile.
-                        This can be created by recording silence.
-            out_file: The file contains the noise reduced sound.
+        @param in_file: The file to noise reduce.
+        @param noise_file: The file containing the noise profile.
+            This can be created by recording silence.
+        @param out_file: The file contains the noise reduced sound.
 
-        Returns:
-            The name of the file containing the noise-reduced data.
+        @return The name of the file containing the noise-reduced data.
         '''
         prof_cmd = '%s -c 2 %s %s -n noiseprof' % (self.sox_path,
                 _SOX_FORMAT, noise_file)
@@ -283,21 +316,21 @@ class AudioHelper(object):
     def record_sample(self, tmpfile):
         '''Records a sample from the default input device.
 
-        Args:
-            duration: How long to record in seconds.
-            tmpfile: The file to record to.
+        @param duration: How long to record in seconds.
+        @param tmpfile: The file to record to.
         '''
         cmd_rec = self._rec_cmd + ' %s' % tmpfile
-        logging.info('Command %s recording now' % cmd_rec)
+        logging.info('Command %s recording now', cmd_rec)
         utils.system(cmd_rec)
 
     def loopback_test_channels(self, noise_file_name, loopback_callback=None,
                                check_recorded_callback=None):
         '''Tests loopback on all channels.
 
-        Args:
-            noise_file_name: Name of the file contains the pre-recorded noise.
-            loopback_callback: The callback to do the loopback for one channel.
+        @param noise_file_name: Name of the file contains pre-recorded noise.
+        @param loopback_callback: The callback to do the loopback for
+            one channel.
+        @param check_recorded_callback: The callback to check recorded file.
         '''
         for channel in xrange(self._num_channels):
             reduced_file_name = self.create_wav_file("reduced-%d" % channel)
@@ -323,12 +356,10 @@ class AudioHelper(object):
     def check_recorded(self, sox_output):
         """Checks if the calculated RMS value is expected.
 
-        Args:
-            sox_output: The output from sox stat command.
+        @param sox_output: The output from sox stat command.
 
-        Raises:
-            error.TestError if RMS amplitude can't be parsed.
-            error.TestFail if the RMS amplitude of the recording isn't above
+        @raises error.TestError if RMS amplitude can't be parsed.
+        @raises error.TestFail if the RMS amplitude of the recording isn't above
                 the threshold.
         """
         rms_val = self.get_audio_rms(sox_output)
@@ -338,8 +369,8 @@ class AudioHelper(object):
             raise error.TestError(
                 'Failed to generate an audio RMS value from playback.')
 
-        logging.info('Got audio RMS value of %f. Minimum pass is %f.' %
-                     (rms_val, self._sox_threshold))
+        logging.info('Got audio RMS value of %f. Minimum pass is %f.',
+                     rms_val, self._sox_threshold)
         if rms_val < self._sox_threshold:
             raise error.TestFail(
                 'Audio RMS value %f too low. Minimum pass is %f.' %
@@ -349,11 +380,9 @@ class AudioHelper(object):
         '''
         Checks loopback latency.
 
-        Args:
-            args: additional arguments for loopback_latency.
+        @param args: additional arguments for loopback_latency.
 
-        Returns:
-            A tuple containing measured and reported latency in uS.
+        @return A tuple containing measured and reported latency in uS.
             Return None if no audio detected.
         '''
         noise_threshold = str(args['n']) if args.has_key('n') else '400'
@@ -391,6 +420,9 @@ class AudioHelper(object):
 
         If |audio_file_path|=None, plays a default audio file.
         If |duration_seconds|=None, plays audio file in its entirety.
+
+        @param duration_seconds: Duration to play sound.
+        @param audio_file_path: Path to the audio file.
         '''
         if not audio_file_path:
             audio_file_path = '/usr/local/autotest/cros/audio/sine440.wav'
@@ -401,12 +433,11 @@ class AudioHelper(object):
             sample_size=16):
         '''Gets the command args to generate a sine wav to play to odev.
 
-        Args:
-          channel: 0 for left, 1 for right; otherwize, mono.
-          odev: alsa output device.
-          freq: frequency of the generated sine tone.
-          duration: duration of the generated sine tone.
-          sample_size: output audio sample size. Default to 16.
+        @param channel: 0 for left, 1 for right; otherwize, mono.
+        @param odev: alsa output device.
+        @param freq: frequency of the generated sine tone.
+        @param duration: duration of the generated sine tone.
+        @param sample_size: output audio sample size. Default to 16.
         '''
         cmdargs = [self.sox_path, '-b', str(sample_size), '-n', '-t', 'alsa',
                    odev, 'synth', str(duration)]
@@ -421,17 +452,24 @@ class AudioHelper(object):
 
     def play_sine(self, channel, odev='default', freq=1000, duration=10,
             sample_size=16):
-        '''Generates a sine wave and plays to odev.'''
+        '''Generates a sine wave and plays to odev.
+
+        @param channel: 0 for left, 1 for right; otherwize, mono.
+        @param odev: alsa output device.
+        @param freq: frequency of the generated sine tone.
+        @param duration: duration of the generated sine tone.
+        @param sample_size: output audio sample size. Default to 16.
+        '''
         cmdargs = self.get_play_sine_args(channel, odev, freq, duration, sample_size)
         utils.system(' '.join(cmdargs))
 
     def create_wav_file(self, prefix=""):
         '''Creates a unique name for wav file.
 
-           The created file name will be preserved in autotest result directory
-           for future analysis.
+        The created file name will be preserved in autotest result directory
+        for future analysis.
 
-           @param prefix: specified file name prefix.
+        @param prefix: specified file name prefix.
         '''
         filename = "%s-%s.wav" % (prefix, time.time())
         return os.path.join(self._test.resultsdir, filename)
