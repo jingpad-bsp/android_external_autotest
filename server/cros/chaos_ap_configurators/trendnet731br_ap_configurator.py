@@ -4,15 +4,10 @@
 
 import trendnet_ap_configurator
 
-from selenium.common.exceptions import WebDriverException
 
 class Trendnet731brAPConfigurator(trendnet_ap_configurator.
                                   TrendnetAPConfigurator):
     """Derived class to control the Trendnet TEW-731BR."""
-
-
-    def __init__(self, ap_config=None):
-        super(Trendnet731brAPConfigurator, self).__init__(ap_config=ap_config)
 
     def navigate_to_page(self, page_number):
         # Navigate to login page before opening any other page
@@ -28,6 +23,9 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
 
 
     def navigate_to_login_page(self):
+        """
+        We need to login first in order to configure settings.
+        """
         self.get_url(self.admin_interface_url, page_title='Login')
         self.wait_for_object_by_id('login_n')
         self.set_content_of_text_field_by_id('admin', 'login_n',
@@ -47,7 +45,6 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
          elif page_number == 2:
             xpath = ('//input[@type="button" and @value="Apply"]')
          self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
-         self.wait_for_progress_bar()
          xpath = ('//input[@type="button" and @value="Continue"]')
          self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
@@ -118,6 +115,7 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
         self.set_content_of_text_field_by_id(shared_key,
                                              'wlan0_psk_pass_phrase')
         self.set_content_of_text_field_by_id(shared_key, 'wpapsk2')
+
 
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and

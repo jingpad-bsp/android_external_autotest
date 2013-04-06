@@ -13,6 +13,7 @@ import asus_qis_ap_configurator
 import belkin_ap_configurator
 import belkinF9K_ap_configurator
 import buffalo_ap_configurator
+import buffalo_wzr_d1800h_ap_configurator
 import dlink_ap_configurator
 import dlink_dir655_ap_configurator
 import dlinkwbr1310_ap_configurator
@@ -59,6 +60,8 @@ class APConfiguratorFactory(object):
             dlink_dir655_ap_configurator.DLinkDIR655APConfigurator,
         'BuffaloAPConfigurator':
             buffalo_ap_configurator.BuffaloAPConfigurator,
+        'BuffalowzrAPConfigurator':
+            buffalo_wzr_d1800h_ap_configurator.BuffalowzrAPConfigurator,
         'AsusAPConfigurator':
             asus_ap_configurator.AsusAPConfigurator,
         'AsusQISAPConfigurator':
