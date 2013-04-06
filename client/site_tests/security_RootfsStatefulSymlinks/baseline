@@ -8,24 +8,24 @@
   },
   "/etc/ipsec.conf": {
     "can_dangle": true,
-    "destination": "/mnt/stateful_partition/etc/ipsec.conf",
-    "owner": "ipsec",
+    "destination": "/var/run/l2tpipsec_vpn/current/ipsec.conf",
+    "owner": "root",
     "group": "ipsec",
-    "mode": "0644"
+    "mode": "0640"
   },
   "/etc/ipsec.d/cacerts/cacert.der": {
     "can_dangle": true,
-    "destination": "/mnt/stateful_partition/etc/cacert.der",
-    "owner": "ipsec",
+    "destination": "/var/run/l2tpipsec_vpn/current/cacert.der",
+    "owner": "root",
     "group": "ipsec",
-    "mode": "0644"
+    "mode": "0640"
   },
   "/etc/ipsec.secrets": {
     "can_dangle": true,
-    "destination": "/mnt/stateful_partition/etc/ipsec.secrets",
-    "owner": "ipsec",
+    "destination": "/var/run/l2tpipsec_vpn/current/ipsec.secrets",
+    "owner": "root",
     "group": "ipsec",
-    "mode": "0600"
+    "mode": "0640"
   },
   "/etc/localtime": {
     "can_dangle": false,
@@ -57,10 +57,10 @@
   },
   "/etc/strongswan.conf": {
     "can_dangle": true,
-    "destination": "/mnt/stateful_partition/etc/strongswan.conf",
-    "owner": "ipsec",
+    "destination": "/var/run/l2tpipsec_vpn/current/strongswan.conf",
+    "owner": "root",
     "group": "ipsec",
-    "mode": "0644"
+    "mode": "0640"
   },
   "/usr/bin/python": {
     "can_dangle": true,
