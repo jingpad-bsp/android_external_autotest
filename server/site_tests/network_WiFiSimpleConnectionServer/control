@@ -24,7 +24,16 @@ def wifi_ssid_compat(machine):
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
         helper = chaos_base_test.WiFiChaosConnectionTest(host, capturer)
-        job.run_test('network_WiFiSimpleConnectionServer', host=host,
-                     helper=helper, tries=10, disable_sysinfo=True)
+        all_aps = helper.factory.get_ap_configurators()
+        # TODO(tgao): lock batch of APs and loop here crosbug.com/222939
+        # For dual-band AP, we can only configure and test one band at a time.
+        # Hence the use of nested for loops below.
+        for band, channel in helper.get_bands_and_channels():
+            for ap_info in helper.config_aps(all_aps, band, channel):
+                # Group test output by SSID
+                mod_ssid = ap_info['ssid'].replace(' ', '_')
+                job.run_test('network_WiFiSimpleConnectionServer', host=host,
+                             helper=helper, ap_info=ap_info, tries=10,
+                             disable_sysinfo=True, tag=mod_ssid)
 
 parallel_simple(wifi_ssid_compat, machines)

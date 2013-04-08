@@ -29,7 +29,6 @@ class WiFiChaosConnectionTest(object):
     @attribute generic_ap: a generic APConfigurator object.
     @attribute factory: an APConfiguratorFactory object.
     @attribute psk_password: a string, password used for PSK authentication.
-    @attribute outputdir: a string, directory to store test output.
 
     @attribute LOG_FILES: a string, log files to record per-run data.
     @attribute PSK: a string, WiFi Pre-Shared Key (Personal) mode.
@@ -52,15 +51,6 @@ class WiFiChaosConnectionTest(object):
         self.generic_ap = ap_configurator.APConfigurator()
         self.factory = ap_configurator_factory.APConfiguratorFactory()
         self.psk_password = ''
-        self.outputdir = None  # Value set by test case.
-
-
-    def set_outputdir(self, path):
-        """Sets output directory to store logs.
-
-        @param path: a string, directory path.
-        """
-        self.outputdir = path
 
 
     def _mark_line_count(self, logs, key):
@@ -78,11 +68,11 @@ class WiFiChaosConnectionTest(object):
 
 
     # TODO(krisr): utilize incremental logging provided by lab team
-    def _log_to_files(self, logs, log_folder, iteration):
+    def _log_to_files(self, logs, log_dir, iteration):
         """Log run-specific data to LOG_FILES.
 
         @param logs: a dict containing log file attributes.
-        @param log_folder: a string, returned by _create_log_folder().
+        @param log_dir: a string, directory to store test output.
         @param iteration: an integer, current iteration (1-indexed).
         """
         logs = self._mark_line_count(logs, 'end')
@@ -90,7 +80,7 @@ class WiFiChaosConnectionTest(object):
             line_count = log['end'] - log['start']
             cmd = 'tail -n %d %s' % (line_count, log['file'])
             output = self.host.run(cmd).stdout
-            file_path = os.path.join(log_folder, os.path.basename(log['file']))
+            file_path = os.path.join(log_dir, os.path.basename(log['file']))
             file_path += '_%d' % iteration
             with open(file_path, 'w') as f:
                 f.write(output)
@@ -122,30 +112,18 @@ class WiFiChaosConnectionTest(object):
             self.disconnector.disconnect(ap_info['ssid'])
 
 
-    def _create_log_folder(self, bss):
-        """Creates folder to store logs for a BSS.
-
-        @param bss: a string, BSS ID of an AP.
-
-        @returns log_folder: a string, log directory.
-        """
-        log_folder = os.path.join(self.outputdir, bss)
-        if not os.path.exists(log_folder):
-            os.mkdir(log_folder)
-        return log_folder
-
-
-    def run_ap_test(self, ap_info, tries):
+    def run_ap_test(self, ap_info, tries, log_dir):
         """Runs test on a configured AP.
 
         @param ap_info: a dict of attributes of a specific AP.
         @param tries: an integer, number of connection attempts.
+        @param log_dir: a string, directory to store test logs.
         """
         ap_info['failed_iterations'] = []
         # Make iteration 1-indexed
         for iteration in range(1, tries+1):
             logging.info('Connection try %d', iteration)
-            filename = os.path.join(ap_info['log_folder'],
+            filename = os.path.join(log_dir,
                                     'connect_try_%d' % iteration)
             self.connector.set_filename(filename)
 
@@ -154,7 +132,7 @@ class WiFiChaosConnectionTest(object):
             if resp:
                 ap_info['failed_iterations'].append({'error': resp,
                                                      'try': iteration})
-            self._log_to_files(logs, ap_info['log_folder'], iteration)
+            self._log_to_files(logs, log_dir, iteration)
 
         if ap_info['failed_iterations']:
             self.error_list.append(ap_info)
@@ -194,6 +172,7 @@ class WiFiChaosConnectionTest(object):
         # settings to multiple APs in parallel, see config_aps().
 
         return {
+            'configurator': ap,
             'bss': ap.get_bss(),
             'band': band,
             'channel': channel,
@@ -224,13 +203,14 @@ class WiFiChaosConnectionTest(object):
                         return mode_type
 
 
-    def config_aps(self, aps, band, channel, security):
+    def config_aps(self, aps, band, channel, security=''):
         """Configures a list of APs.
 
         @param aps: a list of APConfigurator objects.
         @param band: a string, 2.4GHz or 5GHz.
         @param channel: an integer.
-        @param security: a string, AP security method.
+        @param security: a string, AP security method. Defaults to empty string
+                         (i.e. open system). Other possible value is self.PSK.
 
         @returns a list of dicts, each a return by _config_one_ap().
         """
@@ -251,16 +231,14 @@ class WiFiChaosConnectionTest(object):
         return configured_aps
 
 
-    def loop_ap_configs_and_test(self, aps, tries, security=''):
-        """Loops through different bands and run test on each AP in aps.
+    def get_bands_and_channels(self):
+        """Returns band and channel config for a generic dual-band AP.
 
         Test on channel 5 for 2.4GHz band and channel 48 for 5GHz band.
 
-        @param aps: a list of APConfigurator objects.
-        @param tries: an integer, number of connection attempts.
-        @param security: a string, AP security method.
+        @returns a list of tuples, (band, channel).
         """
-        # Check the times on the server and DUT
+        # Log server and DUT times
         dt = datetime.now()
         logging.info('Server time: %s', dt.strftime('%a %b %d %H:%M:%S %Y'))
         logging.info('DUT time: %s', self.host.run('date').stdout.strip())
@@ -269,11 +247,7 @@ class WiFiChaosConnectionTest(object):
         # TODO(tgao): support passing in channel params someday?
         channels = [5, 48]
 
-        for band, channel in zip(bands, channels):
-            configured_aps = self.config_aps(aps, band, channel, security)
-            for ap_info in configured_aps:
-                ap_info['log_folder'] = self._create_log_folder(ap_info['bss'])
-                self.run_ap_test(ap_info, tries)
+        return zip(bands, channels)
 
 
     def check_webdriver_available(self):
@@ -285,16 +259,13 @@ class WiFiChaosConnectionTest(object):
             raise error.TestError(err)
 
 
-    def power_down(self, aps):
-        """Powers down aps.
+    def power_down(self, ap):
+        """Powers down ap.
 
-        @param aps: a list of APConfigurator objects.
+        @param ap: an APConfigurator object.
         """
-        cartridge = ap_cartridge.APCartridge()
-        for ap in aps:
-            ap.power_down_router()
-            cartridge.push_configurator(ap)
-        cartridge.run_configurators()
+        ap.power_down_router()
+        ap.apply_settings()
 
 
     def check_test_error(self):

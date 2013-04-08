@@ -13,25 +13,22 @@ class network_WiFiSimpleConnectionServer(test.test):
     version = 1
 
 
-    def run_once(self, host, helper, tries=1):
+    def run_once(self, host, helper, ap_info, tries=1):
         """ Main entry function for autotest.
 
         @param host: an Autotest host object, DUT.
         @param helper: a WiFiChaosConnectionTest object, ready to use.
+        @param ap_info: a dict of attributes of a specific AP.
         @param tries: an integer, number of connection attempts.
         """
         helper.check_webdriver_available()
 
-        # Install all of the autotest libriaries on the client
+        # Install all of the autotest libraries on the client
         client_at = autotest.Autotest(host)
         client_at.install()
 
-        helper.set_outputdir(self.outputdir)
-        all_aps = helper.factory.get_ap_configurators()
-        helper.power_down(all_aps)
+        helper.run_ap_test(ap_info, tries, self.outputdir)
 
-        helper.loop_ap_configs_and_test(all_aps, tries)
-        logging.info('Client test complete, powering down routers.')
-        helper.power_down(all_aps)
-
+        logging.info('Client test complete, powering down router.')
+        helper.power_down(ap_info['configurator'])
         helper.check_test_error()
