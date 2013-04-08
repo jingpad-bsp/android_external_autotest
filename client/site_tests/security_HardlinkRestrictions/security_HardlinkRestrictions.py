@@ -170,8 +170,11 @@ class security_HardlinkRestrictions(test.test):
         # Prepare list of directories to clean up.
         self._rmdir = []
 
-        # Verify Yama exists and has hardlink restrictions enabled.
-        sysctl = "/proc/sys/kernel/yama/protected_nonaccess_hardlinks"
+        # Verify hardlink restrictions sysctl exists and is enabled.
+        sysctl = "/proc/sys/fs/protected_hardlinks"
+        if (not os.path.exists(sysctl)):
+            # Fall back to looking for Yama link restriction sysctl.
+            sysctl = "/proc/sys/kernel/yama/protected_nonaccess_hardlinks"
         self.check(os.path.exists(sysctl), "%s exists" % (sysctl), fatal=True)
         self.check(open(sysctl).read() == '1\n', "%s enabled" % (sysctl),
                    fatal=True)

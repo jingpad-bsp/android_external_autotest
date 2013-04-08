@@ -243,8 +243,11 @@ class security_SymlinkRestrictions(test.test):
         # Prepare list of directories to clean up.
         self._rmdir = []
 
-        # Verify Yama exists and has symlink restrictions enabled.
-        sysctl = "/proc/sys/kernel/yama/protected_sticky_symlinks"
+        # Verify symlink restrictions sysctl exists and is enabled.
+        sysctl = "/proc/sys/fs/protected_symlinks"
+        if (not os.path.exists(sysctl)):
+            # Fall back to looking for Yama link restriction sysctl.
+            sysctl = "/proc/sys/kernel/yama/protected_sticky_symlinks"
         self.check(os.path.exists(sysctl), "%s exists" % (sysctl), fatal=True)
         self.check(open(sysctl).read() == '1\n', "%s enabled" % (sysctl),
                    fatal=True)
