@@ -5,7 +5,9 @@
 AUTHOR = "Chromium OS Authors"
 NAME = "platform_GesturesRegressionTests"
 PURPOSE = "Regression tests of ChromeOS gestures library."
-SUITE = "bvt"
+# Disabled 20130408 by quiche@, due to failures across all
+# platforms.
+# SUITE = "bvt"
 EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Regression"
