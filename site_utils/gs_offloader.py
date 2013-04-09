@@ -12,7 +12,6 @@ successful copy, the local results directory is deleted.
 
 __author__ = 'dalecurtis@google.com (Dale Curtis)'
 
-import functools
 import logging
 import os
 import re
@@ -23,8 +22,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import threading
-import Queue
 
 from optparse import OptionParser
 
@@ -33,6 +30,7 @@ import common
 import is_job_complete
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.scheduler import email_manager
+from chromite.lib import parallel
 
 # Google Storage bucket URI to store results in.
 GS_URI = 'gs://chromeos-autotest-results/'
@@ -141,7 +139,7 @@ def offload_hosts_sub_dir(queue):
       try:
         if is_job_complete.is_special_task_complete(job_id):
           logging.debug('Processing %s', dir_path)
-          queue.put(functools.partial(offload_dir, dir_path, dir_path))
+          queue.put([dir_path, dir_path])
         else:
           logging.debug('Special Task %s is not yet complete; skipping.',
                         dir_path)
@@ -188,7 +186,7 @@ def offload_job_results(queue, process_all):
       # os.system(CLEAN_CMD % dir_entry)
       # TODO(scottz): Monitor offloading and make sure chrome logs are
       # no longer an issue.
-      queue.put(functools.partial(offload_dir, dir_entry))
+      queue.put([dir_entry])
 
 
 def offload_dir(dir_entry, dest_path=''):
@@ -247,25 +245,7 @@ def offload_dir(dir_entry, dest_path=''):
     stderr_file.close()
 
 
-def offloading_thread(queue):
-  """
-  Thread that continuously pulls arguments to |offload_dir| from the queue
-  and calls |offload_dir| with them.
-
-  @param queue A thread-safe queue of arguments to |offload_dir|.
-  @return NEVER!
-  """
-  while True:
-    try:
-      work = queue.get()
-      work()
-    except Exception as e:  # pylint: disable=W0703
-      logging.debug(str(e))
-    finally:
-      queue.task_done()
-
-
-def offload_files(results_dir, process_all, process_hosts_only, threads):
+def offload_files(results_dir, process_all, process_hosts_only, processes):
   """
   Offload files to Google Storage or the RSYNC_HOST_PATH host if USE_RSYNC is
   True.
@@ -280,7 +260,7 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
                       files in results or just the larger test job files.
   @param process_hosts_only: Indicates whether we only want to process files
                              in the hosts subdirectory.
-  @param threads The number of uploading threads to kick off.
+  @param processes:  The number of uploading processes to kick off.
   """
   # Nice our process (carried to subprocesses) so we don't kill the system.
   os.nice(NICENESS)
@@ -291,27 +271,14 @@ def offload_files(results_dir, process_all, process_hosts_only, threads):
   logging.debug('Looking for Autotest results in %s', results_dir)
   signal.signal(signal.SIGALRM, timeout_handler)
 
-  # Create a work queue with a buffers space equal to the number of threads.
-  # This is done so that emptying out the queue won't take long for a graceful
-  # exit, and so that if we have many results, we don't consume huge amounts of
-  # memory.
-  queue = Queue.Queue(maxsize=threads)
-  threadpool = []
-  for i in range(0, threads):  # pylint: disable = W0612
-    thread = threading.Thread(target=offloading_thread, args=(queue,))
-    # Setting worker threads as daemons means that the program will exit if
-    # the main thread exits.
-    thread.daemon = True
-    thread.start()
-    threadpool.append(thread)
-
   while True:
-    if process_hosts_only:
-      # Only offload the hosts/ sub directory.
-      offload_hosts_sub_dir(queue)
-    else:
-      offload_job_results(queue, process_all)
-    queue.join()
+    with parallel.BackgroundTaskRunner(
+        offload_dir, processes=processes) as queue:
+      if process_hosts_only:
+        # Only offload the hosts/ sub directory.
+        offload_hosts_sub_dir(queue)
+      else:
+        offload_job_results(queue, process_all)
     time.sleep(SLEEP_TIME_SECS)
 
 
@@ -329,8 +296,8 @@ def parse_options():
                     action='store_true',
                     help='Offload only the special tasks result files located'
                          'in the results/hosts subdirectory')
-  parser.add_option('-t', '--threads', dest='threads', type='int',
-                    default=1, help='Number of threads to use.')
+  parser.add_option('-p', '--parallelism', dest='parallelism', type='int',
+                    default=1, help='Number of parallel workers to use.')
   options = parser.parse_args()[0]
   if options.process_all and options.process_hosts_only:
     parser.print_help()
@@ -357,7 +324,7 @@ def main():
   logging.basicConfig(filename=log_filename, level=logging.DEBUG,
                       format=LOGGING_FORMAT)
   offload_files(RESULTS_DIR, options.process_all, options.process_hosts_only,
-                options.threads)
+                options.parallelism)
 
 
 if __name__ == '__main__':
