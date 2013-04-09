@@ -17,6 +17,7 @@ from autotest_lib.server.cros.chaos_ap_configurators import \
     download_chromium_prebuilt
 from autotest_lib.server.cros.chaos_config import ChaosAP
 from autotest_lib.server.cros.wlan import connector, disconnector
+from autotest_lib.server.cros.wlan import profile_manager
 
 
 class WiFiChaosConnectionTest(object):
@@ -96,20 +97,22 @@ class WiFiChaosConnectionTest(object):
         self.disconnector.disconnect(ap_info['ssid'])
         self.connector.set_frequency(ap_info['frequency'])
 
-        try:
-            self.connector.connect(
-                ap_info['ssid'],
-                security=ap_info.get('security', ''),
-                psk=ap_info.get(self.PSK, ''),
-                frequency=ap_info['frequency'])
-        except (connector.ConnectException,
-                connector.ConnectFailed,
-                connector.ConnectTimeout) as e:
-            error = str(e)
-            logging.error(error)
-            return error
-        finally:
-            self.disconnector.disconnect(ap_info['ssid'])
+        # Use profile manager to prevent fallback connections.
+        with profile_manager.ProfileManager(self.host) as pm:
+            try:
+                self.connector.connect(
+                    ap_info['ssid'],
+                    security=ap_info.get('security', ''),
+                    psk=ap_info.get(self.PSK, ''),
+                    frequency=ap_info['frequency'])
+            except (connector.ConnectException,
+                    connector.ConnectFailed,
+                    connector.ConnectTimeout) as e:
+                error = str(e)
+                logging.error(error)
+                return error
+            finally:
+                self.disconnector.disconnect(ap_info['ssid'])
 
 
     def run_ap_test(self, ap_info, tries, log_dir):
