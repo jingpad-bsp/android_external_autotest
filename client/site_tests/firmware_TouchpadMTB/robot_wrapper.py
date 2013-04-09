@@ -5,6 +5,7 @@
 """A wrapper for robot manipulation."""
 
 import os
+import re
 
 import common_util
 import test_conf as conf
@@ -15,6 +16,7 @@ from firmware_constants import GV, MODE
 # Define the robot control script names.
 SCRIPT_LINE = 'line.py'
 SCRIPT_CLICK = 'click.py'
+SCRIPT_RAPID_TAPS = 'rapid_taps.py'
 SCRIPT_REPLAY = 'run_program.py'
 
 # Define constants for coordinates.
@@ -68,6 +70,7 @@ class RobotWrapper:
         self._robot_script_name_dict = {
             self._get_control_command_line: SCRIPT_LINE,
             self._get_control_command_click: SCRIPT_CLICK,
+            self._get_control_command_rapid_taps: SCRIPT_RAPID_TAPS,
             self._get_control_command_replay: SCRIPT_REPLAY,
         }
 
@@ -87,6 +90,7 @@ class RobotWrapper:
                     self._get_control_command_click,
             conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
                     self._get_control_command_line,
+            conf.RAPID_TAPS: self._get_control_command_rapid_taps,
         }
 
         self._line_dict = {
@@ -210,6 +214,11 @@ class RobotWrapper:
         else:
             return None
 
+    def _get_num_taps(self, gesture):
+        """Determine the number of times to tap."""
+        matches = re.match('[^0-9]*([0-9]*)[^0-9]*', gesture)
+        return matches.group(1) if matches else None
+
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
         # Determine whether this is a basic tracking gesture or a swipe.
@@ -267,6 +276,29 @@ class RobotWrapper:
         para = (robot_script, self._board, location_str, tap_or_click)
         control_cmd = 'python %s %s %s %s' % para
         return control_cmd
+
+    def _get_control_command_rapid_taps(self, robot_script, gesture, variation):
+        """Get robot control command for the rapid tap gestures."""
+        location = None
+        for element in variation:
+            location = self._location_dict.get(element)
+            if location:
+                location_str = ' '.join(map(str, location))
+                break
+
+        if location is None:
+            msg = 'Cannot determine the location parameters from %s %s.'
+            self._raise_error(msg % (gesture, variation))
+
+        num_taps = self._get_num_taps(gesture)
+        if not num_taps:
+            msg = 'Cannot determine the number of taps to do from %s.'
+            self._raise_error(msg % gesture)
+
+        para = (robot_script, self._board, location_str, num_taps)
+        control_cmd = 'python %s %s %s %s' % para
+        return control_cmd
+
 
     def _get_control_command_replay(self, robot_script, gesture, variation):
         """Get robot control command for replaying the existent gestures."""

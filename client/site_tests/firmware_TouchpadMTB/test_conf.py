@@ -90,6 +90,7 @@ TWO_FAT_FINGERS_TRACKING = 'two_fat_fingers_tracking'
 FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS = \
         'first_finger_tracking_and_second_finger_taps'
 DRUMROLL = 'drumroll'
+RAPID_TAPS = 'rapid_taps_20'
 
 
 # Define the complete list
@@ -117,6 +118,7 @@ gesture_names_complete = {
         TWO_FAT_FINGERS_TRACKING,
         FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
         DRUMROLL,
+        RAPID_TAPS,
     ],
     DEV.TOUCHSCREEN: [
         ONE_FINGER_TRACKING,
@@ -136,6 +138,7 @@ gesture_names_complete = {
         TWO_FAT_FINGERS_TRACKING,
         FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
         DRUMROLL,
+        RAPID_TAPS,
     ],
 }
 
@@ -149,6 +152,7 @@ robot_capability_list = [
     ONE_FINGER_SWIPE,
     ONE_FINGER_TAP,
     ONE_FINGER_PHYSICAL_CLICK,
+    RAPID_TAPS,
     TWO_FINGER_TRACKING,
     TWO_FINGER_SWIPE,
     TWO_FINGER_TAP,
@@ -765,6 +769,28 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('>= 5'),
                 DrumrollValidator(drumroll_criteria),
+            ),
+            timeout = 2000,
+        ),
+
+        RAPID_TAPS:
+        Gesture(
+            name=RAPID_TAPS,
+            variations=(GV.TL, GV.BR, GV.CENTER),
+            prompt='Tap the {0} of the touchpad 20 times quickly',
+            subprompt={
+                GV.TL: ('top left corner',),
+                GV.TS: ('top edge',),
+                GV.TR: ('top right corner',),
+                GV.LS: ('left edge',),
+                GV.CENTER: ('center',),
+                GV.RS: ('right edge',),
+                GV.BL: ('bottom left corner',),
+                GV.BS: ('bottom edge',),
+                GV.BR: ('bottom right corner',),
+            },
+            validators=(
+                CountTrackingIDValidator('== 20'),
             ),
             timeout = 2000,
         ),
