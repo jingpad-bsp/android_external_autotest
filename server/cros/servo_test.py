@@ -184,15 +184,23 @@ class ServoTest(test.test):
         self._launch_client()
         logging.info('Server: Relaunched remote %s.', 'faft')
 
-    def wait_for_client_offline(self, timeout=60):
+    def wait_for_client_offline(self, timeout=60, orig_boot_id=''):
         """Wait for the client to come offline.
 
         @param timeout: Time in seconds to wait the client to come offline.
+        @param orig_boot_id: A string containing the original boot id.
         """
         # Wait for the client to come offline.
         while timeout > 0 and self._ping_test(self._client.ip, timeout=1):
             time.sleep(1)
             timeout -= 1
+
+        # As get_boot_id() requires DUT online. So we move the comparison here.
+        if timeout == 0 and orig_boot_id:
+            if self._client.get_boot_id() != orig_boot_id:
+                logging.warn('Reboot done very quickly.')
+                return
+
         assert timeout, 'Timed out waiting for client offline.'
         logging.info('Server: Client machine is offline.')
 

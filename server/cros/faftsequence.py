@@ -1469,8 +1469,9 @@ class FAFTSequence(ServoTest):
 
         # Don't run reboot_action and firmware_action if no_reboot is True.
         if not no_reboot:
+            boot_id = self._client.get_boot_id()
             self._call_action(test['reboot_action'])
-            self.wait_for_client_offline()
+            self.wait_for_client_offline(orig_boot_id=boot_id)
             self._call_action(test['firmware_action'])
 
             try:
