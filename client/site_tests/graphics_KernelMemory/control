@@ -17,7 +17,6 @@ TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
 SUITE = "kernel_per-build_regression"
-EXPERIMENTAL = "True"
 
 DOC = """
 Reads from sysfs to determine kernel gem objects and memory info.

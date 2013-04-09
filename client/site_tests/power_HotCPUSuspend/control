@@ -9,7 +9,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 Suspend the system with lots of CPU activity.
