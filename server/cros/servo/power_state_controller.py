@@ -175,16 +175,17 @@ class _LinkController(_PowerStateController):
 
     """Power-state controller for Link.
 
-    For Link, the 'cold_reset' signal restarts the DUT.  Recovery
-    mode is triggered by simulating keyboard recovery through the
-    Chrome EC.
+    Link has a Chrome EC, with a custom command for power_off(), and
+    hardware support for the 'rec_mode' signal.
 
     """
 
     _RESET_HOLD_TIME = 0.1
-
     _EC_RESET_DELAY = 0.0
-    _EC_CONSOLE_DELAY = 1.2
+
+    # Time in seconds to allow the BIOS and EC to detect the
+    # 'rec_mode' signal after cold reset.
+    _RECOVERY_DETECTION_DELAY = 2.5
 
     @_inherit_docstring(_PowerStateController)
     def __init__(self, servo):
@@ -197,20 +198,17 @@ class _LinkController(_PowerStateController):
 
     @_inherit_docstring(_PowerStateController)
     def power_off(self):
-        self.cold_reset()
-        time.sleep(self._EC_CONSOLE_DELAY)
-        self._servo.power_long_press()
+        self._ec.send_command('x86shutdown')
 
     @_inherit_docstring(_PowerStateController)
     def power_on(self, rec_mode=REC_ON):
         if rec_mode == REC_ON:
+            self._servo.set('rec_mode', REC_ON)
             self.cold_reset()
-            time.sleep(self._EC_CONSOLE_DELAY)
-            self.cold_reset()
-            self._ec.reboot("ap-off")
-            time.sleep(self._EC_CONSOLE_DELAY)
-            self._ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
-        self._servo.power_short_press()
+            time.sleep(self._RECOVERY_DETECTION_DELAY)
+            self._servo.set('rec_mode', REC_OFF)
+        else:
+            self._servo.power_short_press()
 
 
 _CONTROLLER_BOARD_MAP = {
