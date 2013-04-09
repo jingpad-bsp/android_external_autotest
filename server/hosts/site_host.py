@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import functools
+import httplib
 import logging
 import os
 import re
@@ -881,7 +882,9 @@ class SiteHost(remote.RemoteHost):
         if ready_test_name is not None:
             # retry.retry logs each attempt; calculate delay_sec to
             # keep log spam to a dull roar.
-            @retry.retry((socket.error, xmlrpclib.ProtocolError),
+            @retry.retry((socket.error,
+                          xmlrpclib.ProtocolError,
+                          httplib.BadStatusLine),
                          timeout_min=timeout_seconds/60.0,
                          delay_sec=min(max(timeout_seconds/20.0, 0.1), 1))
             def ready_test():
