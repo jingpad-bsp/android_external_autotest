@@ -171,25 +171,24 @@ class _AlexController(_PowerStateController):
             self._servo.set('rec_mode', REC_OFF)
 
 
-class _LinkController(_PowerStateController):
+class _ChromeECController(_PowerStateController):
 
-    """Power-state controller for Link.
+    """Power-state controller for systems with a Chrome EC.
 
-    Link has a Chrome EC, with a custom command for power_off(), and
-    hardware support for the 'rec_mode' signal.
+    For these systems, after releasing 'cold_reset' the DUT is left
+    powered on.  Recovery mode is triggered by simulating keyboard
+    recovery by issuing commands to the EC.
 
     """
 
     _RESET_HOLD_TIME = 0.1
     _EC_RESET_DELAY = 0.0
 
-    # Time in seconds to allow the BIOS and EC to detect the
-    # 'rec_mode' signal after cold reset.
-    _RECOVERY_DETECTION_DELAY = 2.5
+    _EC_CONSOLE_DELAY = 1.2
 
     @_inherit_docstring(_PowerStateController)
     def __init__(self, servo):
-        super(_LinkController, self).__init__(servo)
+        super(_ChromeECController, self).__init__(servo)
         self._ec = chrome_ec.ChromeEC(servo)
 
     @_inherit_docstring(_PowerStateController)
@@ -198,9 +197,48 @@ class _LinkController(_PowerStateController):
 
     @_inherit_docstring(_PowerStateController)
     def power_off(self):
-        self._ec.send_command('x86shutdown')
+        self.cold_reset()
+        time.sleep(self._EC_CONSOLE_DELAY)
+        self._servo.power_long_press()
 
     @_inherit_docstring(_PowerStateController)
+    def power_on(self, rec_mode=REC_ON):
+        if rec_mode == REC_ON:
+            # Reset the EC to force it back into RO code; this clears
+            # the EC_IN_RW signal, so the system CPU will trust the
+            # upcoming recovery mode request.
+            self.cold_reset()
+            # Restart the EC, but leave the system CPU off...
+            self._ec.reboot('ap-off')
+            time.sleep(self._EC_CONSOLE_DELAY)
+            # ... and tell the EC to tell the CPU we're in recovery mode.
+            self._ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
+        self._servo.power_short_press()
+
+
+class _DaisyController(_ChromeECController):
+    """Power-state controller for Snow/Daisy systems."""
+    _EC_CONSOLE_DELAY = 0.4
+
+
+class _LinkController(_ChromeECController):
+
+    """Power-state controller for Link.
+
+    Link has a Chrome EC, but the hardware supports the rec_mode
+    signal.
+
+    """
+
+    # Time in seconds to allow the BIOS and EC to detect the
+    # 'rec_mode' signal after cold reset.
+    _RECOVERY_DETECTION_DELAY = 2.5
+
+    @_inherit_docstring(_ChromeECController)
+    def power_off(self):
+        self._ec.send_command('x86shutdown')
+
+    @_inherit_docstring(_ChromeECController)
     def power_on(self, rec_mode=REC_ON):
         if rec_mode == REC_ON:
             self._servo.set('rec_mode', REC_ON)
@@ -212,6 +250,7 @@ class _LinkController(_PowerStateController):
 
 
 _CONTROLLER_BOARD_MAP = {
+    'daisy': _DaisyController,
     'link': _LinkController,
     'lumpy': _AlexController,
     'x86-alex': _AlexController
