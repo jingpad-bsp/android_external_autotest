@@ -48,6 +48,10 @@ class ExternalPackage(object):
     beneath our own autotest/site-packages directory.
 
     Base Class.  Subclass this to define packages.
+    Note: Unless your subclass has a specific reason to, it should not
+    re-install the package every time build_externals is invoked, as this
+    happens periodically through the scheduler. To avoid doing so the is_needed
+    method needs to return an appropriate value.
 
     Attributes:
       @attribute urls - A tuple of URLs to try fetching the package from.
@@ -99,9 +103,22 @@ class ExternalPackage(object):
 
 
     def is_needed(self, unused_install_dir):
-        """@returns True if self.module_name needs to be built and installed.
+        """
+        Check to see if we need to reinstall a package. This is contingent on:
+        1. Module name: If the name of the module is different from the package,
+            the class that installs it needs to specify a module_name string,
+            so we can try importing the module.
+
+        2. Installed version: If the module doesn't contain a __version__ the
+            class that installs it needs to override the
+            _get_installed_version_from_module method to return an appropriate
+            version string.
+
+        3. Version/Minimum version: The class that installs the package should
+            contain a version string, and an optional minimum version string.
 
         @param unused_install_dir: install directory, not used.
+        @returns True if self.module_name needs to be built and installed.
         """
         if not self.module_name or not self.version:
             logging.warning('version and module_name required for '
@@ -822,6 +839,7 @@ class GoogleAPIClientPackage(ExternalPackage):
     Pulls the Python Google API client library.
     """
     version = '1.1'
+    module_name = 'apiclient'
     url_filename = 'google-api-python-client-%s.tar.gz' % version
     local_filename = url_filename
     urls = ('https://google-api-python-client.googlecode.com/files/%s' % (
@@ -831,6 +849,27 @@ class GoogleAPIClientPackage(ExternalPackage):
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
                         ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class GFlagsPackage(ExternalPackage):
+    """
+    Gets the Python GFlags client library.
+    """
+    # gflags doesn't contain a proper version
+    version = '2.0'
+    url_filename = 'python-gflags-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('https://python-gflags.googlecode.com/files/%s' % (
+        url_filename),)
+    hex_sum = 'db309e6964b102ff36de319ce551db512a78281e'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+    def _get_installed_version_from_module(self, module):
+        return self.version
 
 
 class DnsPythonPackage(ExternalPackage):
