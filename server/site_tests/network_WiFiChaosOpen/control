@@ -16,6 +16,7 @@ in the AP compatibility lab.
 """
 
 from autotest_lib.server import packet_capture
+from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.chaos_lib import chaos_base_test
 
 def wifi_chaos_open(machine):
@@ -24,19 +25,26 @@ def wifi_chaos_open(machine):
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
         helper = chaos_base_test.WiFiChaosConnectionTest(host, capturer)
-        all_aps = helper.factory.get_ap_configurators()
-        # Power down all of the APs because some can get grumpy
-        # if they are configured several times and remain on.
-        helper.power_down_aps(all_aps)
-        # TODO(tgao): lock batch of APs and loop here crosbug.com/222939
-        # For dual-band AP, we can only configure and test one band at a time.
-        # Hence the use of nested for loops below.
-        for band, channel in helper.get_bands_and_channels():
-            for ap_info in helper.config_aps(all_aps, band, channel):
-                # Group test output by SSID
-                mod_ssid = ap_info['ssid'].replace(' ', '_')
-                job.run_test('network_WiFiChaosOpen', host=host,
-                             helper=helper, ap_info=ap_info, tries=10,
-                             disable_sysinfo=False, tag=mod_ssid)
+        with ap_batch_locker.ApBatchLockerManager(ap_spec={}) as batch_locker:
+            while batch_locker.has_more_aps():
+                # Specify batch_size=<number>. Default is 15.
+                ap_batch = batch_locker.get_ap_batch()
+                if not ap_batch:
+                    logging.info('No more APs to test.')
+                    break
+
+                # Power down all of the APs because some can get grumpy
+                # if they are configured several times and remain on.
+                helper.power_down_aps(ap_batch)
+
+                # For dual-band AP, we can only configure and test one band
+                # at a time. Hence the use of nested for loops below.
+                for band, channel in helper.get_bands_and_channels():
+                    for ap_info in helper.config_aps(ap_batch, band, channel):
+                        # Group test output by SSID
+                        mod_ssid = ap_info['ssid'].replace(' ', '_')
+                        job.run_test('network_WiFiChaosOpen', host=host,
+                                     helper=helper, ap_info=ap_info, tries=2,
+                                     disable_sysinfo=False, tag=mod_ssid)
 
 parallel_simple(wifi_chaos_open, machines)
