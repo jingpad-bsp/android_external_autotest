@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-perf"
-NAME = "Telemetry Kraken Benchmark"
+NAME = "Telemetry Dromaeo Core Attr Benchmark"
 SUITE = "perf_v2"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -11,14 +11,15 @@ TEST_CLASS = "performance"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Kraken Benchmark.
-This is part of Chrome for Chrome OS performance testing.
+This server side test suite executes the Telemetry Dromaeo Dom Core Attr
+Benchmark.  This is part of Chrome for Chrome OS performance testing.
 """
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
-    job.run_test("telemetry_Benchmarks", host=host, benchmark="kraken",
-                 page_sets=["kraken.json"], tag="kraken")
+    job.run_test("telemetry_Benchmarks", host=host, benchmark="dromaeo",
+                 page_sets=["dromaeo/domcoreattr.json"],
+                 tag="dromaeo_domcoreattr")
 
 
 parallel_simple(run_benchmark, machines)

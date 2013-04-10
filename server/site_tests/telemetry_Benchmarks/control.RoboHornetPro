@@ -18,7 +18,7 @@ This is part of Chrome for Chrome OS performance testing.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host, benchmark="robohornetpro",
-                 page_sets=["robohornetpro.json"])
+                 page_sets=["robohornetpro.json"], tag="robohornetpro")
 
 
 parallel_simple(run_benchmark, machines)

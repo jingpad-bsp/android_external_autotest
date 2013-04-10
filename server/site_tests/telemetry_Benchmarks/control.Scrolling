@@ -18,7 +18,8 @@ This is part of Chrome for Chrome OS performance testing.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="scrolling_benchmark", page_sets=["top_25.json"])
+                 benchmark="scrolling_benchmark", page_sets=["top_25.json"],
+                 tag="scrolling_benchmark")
 
 
 parallel_simple(run_benchmark, machines)
