@@ -46,6 +46,13 @@ class _ChromeTestBase(cros_ui_test.UITest):
 
 
     def initialize(self, nuke_browser_norestart=True, skip_deps=False):
+        """
+        Initialize the chrome test binary.
+
+        @param nuke_browser_no_restart: nuke the current browser process and
+            make sure it doesn't restart by writing to a magic file.
+        @param skip_deps: skip the installation of dependencies (eg: pyauto).
+        """
         # Make sure Chrome minidumps are written locally.
         # Requires UI restart to take effect. It'll be done by parent's
         # initialize().
@@ -160,15 +167,28 @@ class ChromeBinaryTest(_ChromeTestBase):
         return all_tests
 
 
-    def run_chrome_binary_test(self, test_to_run, extra_params='', prefix=''):
-        """Run chrome binary test."""
+    def run_chrome_binary_test(self, test_to_run, extra_params='', prefix='',
+                               as_chronos=True):
+        """
+        Run chrome binary test.
+
+        @param test_to_run: The name of the browser test binary.
+        @param extra_params: Arguments for the browser test.
+        @param prefix: Prefix to the command that invokes the test binary.
+        @param as_chronos: Boolean indicating if the tests should run in a
+            chronos shell.
+        """
         try:
             os.chdir(self.home_dir)
             cmd = '%s/%s %s' % (self.test_binary_dir, test_to_run, extra_params)
             cmd = 'HOME=%s CR_SOURCE_ROOT=%s %s' % (self.home_dir,
                                                     self.cr_source_dir,
                                                     prefix + cmd)
-            cros_ui.xsystem_as(cmd)
+            if as_chronos:
+                cros_ui.xsystem_as(cmd)
+            else:
+                cros_ui.xsystem(cmd)
+
         except error.CmdError as e:
             logging.debug(e)
             raise error.TestFail('%s failed!' % test_to_run)
