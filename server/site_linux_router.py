@@ -126,7 +126,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         }[device_type]
 
 
-    def destroy(self, params):
+    def destroy(self, params={}):
         """ Destroy a previously created device """
         self.deconfig(params)
         self.hostapd['conf'] = self.default_config.copy()
@@ -205,7 +205,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             # remove non-hostapd config item from params
             params.pop('multi_interface')
         elif self.hostapd['configured'] or self.station['configured']:
-            self.deconfig({})
+            self.deconfig()
 
         local_server = params.pop('local_server', False)
 
@@ -378,7 +378,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             raise NotImplementedError("non-ibss station")
 
         if self.station['configured'] or self.hostapd['configured']:
-            self.deconfig({})
+            self.deconfig()
 
         local_server = params.pop('local_server', False)
         mode = None
@@ -504,7 +504,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return parts[parts.index('link/ether') + 1]
 
 
-    def deconfig(self, params):
+    def deconfig(self, params={}):
         """ De-configure the AP (will also bring wlan down) """
 
         if not self.hostapd['configured'] and not self.station['configured']:
