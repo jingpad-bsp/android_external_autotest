@@ -14,6 +14,8 @@ import pango
 import firmware_utils
 import test_conf as conf
 
+from firmware_constants import TFK
+
 
 TITLE = "Touchpad Firmware Test"
 
@@ -103,15 +105,23 @@ class ResultFrame(BaseFrame):
 
     It consists of:
       - A frame
+      - a scrolled window
       - a label showing the test result
     """
+    SCROLL_STEP = 100.0
 
     def __init__(self, label=None, size=None):
         super(ResultFrame, self).__init__(label, size)
 
+        # Create a scrolled window widget
+        self.scrolled_window = gtk.ScrolledWindow()
+        self.scrolled_window.set_policy(gtk.POLICY_AUTOMATIC,
+                                        gtk.POLICY_AUTOMATIC)
+        self.frame.add(self.scrolled_window)
+
         # Create a vertical packing box.
         self.vbox = gtk.VBox(False, 0)
-        self.frame.add(self.vbox)
+        self.scrolled_window.add_with_viewport(self.vbox)
 
         # Create a label to show the gesture name
         self.result = gtk.Label()
@@ -119,6 +129,15 @@ class ResultFrame(BaseFrame):
 
         # Show all widgets added to this frame
         self.frame.show_all()
+
+        # Get the vertical and horizontal adjustments
+        self.vadj = self.scrolled_window.get_vadjustment()
+        self.hadj = self.scrolled_window.get_hadjustment()
+
+        self._scroll_func_dict = {TFK.UP: self._scroll_up,
+                                  TFK.DOWN: self._scroll_down,
+                                  TFK.LEFT: self._scroll_left,
+                                  TFK.RIGHT: self._scroll_right}
 
     def _calc_result_font_size(self):
         """Calculate the font size so that it does not overflow."""
@@ -134,6 +153,42 @@ class ResultFrame(BaseFrame):
         markup_str = '<b><span foreground="%s" size="%d"> %s </span></b>'
         font_size = self._calc_result_font_size()
         self.result.set_markup(markup_str % (color, font_size, mod_text))
+
+    def _calc_inc_value(self, adj):
+        """Calculate new increased value of the specified adjustement object."""
+        value = adj.get_value()
+        new_value = min(value + self.SCROLL_STEP, adj.upper - adj.page_size)
+        return new_value
+
+    def _calc_dec_value(self, adj):
+        """Calculate new decreased value of the specified adjustement object."""
+        value = adj.get_value()
+        new_value = max(value - self.SCROLL_STEP, adj.lower)
+        return new_value
+
+    def _scroll_down(self):
+        """Scroll the scrolled_window down."""
+        self.vadj.set_value(self._calc_inc_value(self.vadj))
+
+    def _scroll_up(self):
+        """Scroll the scrolled_window up."""
+        self.vadj.set_value(self._calc_dec_value(self.vadj))
+
+    def _scroll_right(self):
+        """Scroll the scrolled_window to the right."""
+        self.hadj.set_value(self._calc_inc_value(self.hadj))
+
+    def _scroll_left(self):
+        """Scroll the scrolled_window to the left."""
+        self.hadj.set_value(self._calc_dec_value(self.hadj))
+
+    def scroll(self, choice):
+        """Scroll the result frame using the choice key."""
+        scroll_method = self._scroll_func_dict.get(choice)
+        if scroll_method:
+            scroll_method()
+        else:
+            print 'Warning: the key choice "%s" is not legal!' % choice
 
 
 class ImageFrame(BaseFrame):
@@ -265,6 +320,10 @@ class FirmwareWindow(object):
     def set_image(self, filename):
         """Set an image in the image frame."""
         self.image_frame.set_from_file(filename)
+
+    def scroll(self, choice):
+        """Scroll the result frame using the choice key."""
+        self.result_frame.scroll(choice)
 
     def stop(self, upload_choice=False):
         """Quit the window."""

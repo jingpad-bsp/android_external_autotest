@@ -32,20 +32,7 @@ sys.path.append('../../bin/input')
 import input_device
 
 # Include some constants
-from firmware_constants import DEV, MODE, OPTIONS, RC
-from linux_input import KEY_D, KEY_M, KEY_X, KEY_Y, KEY_ENTER, KEY_SPACE
-
-
-# Define the Test Flow Keypress (TFK) codes for test flow
-class _TFK(firmware_constants._Constant):
-    pass
-TFK = _TFK()
-TFK.DISCARD = KEY_D
-TFK.EXIT = KEY_X
-TFK.MORE = KEY_M
-TFK.SAVE = KEY_SPACE
-TFK.SAVE2 = KEY_ENTER
-TFK.YES = KEY_Y
+from firmware_constants import DEV, MODE, OPTIONS, RC, TFK
 
 
 class TestFlow:
@@ -511,6 +498,10 @@ class TestFlow:
         """Is parsing the gesture file done?"""
         return self.packets is not None
 
+    def _is_arrow_key(self, choice):
+        """Is this an arrow key?"""
+        return (choice in TFK.ARROW_KEY_LIST)
+
     def user_choice_callback(self, fd, condition):
         """A callback to handle the key pressed by the user.
 
@@ -526,7 +517,9 @@ class TestFlow:
 
     def _handle_keyboard_event(self, choice):
         """Handle the keyboard event."""
-        if self.robot_waiting:
+        if self._is_arrow_key(choice):
+            self.win.scroll(choice)
+        elif self.robot_waiting:
             # The user wants the robot to start its action.
             if choice in (TFK.SAVE, TFK.SAVE2):
                 self.robot_waiting = False

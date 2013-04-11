@@ -5,6 +5,13 @@
 """Define constants for firmware touchpad MTB tests."""
 
 
+import sys
+
+sys.path.append('../../bin/input')
+from linux_input import (KEY_D, KEY_M, KEY_X, KEY_Y, KEY_ENTER, KEY_SPACE,
+                         KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT)
+
+
 class _ConstantError(AttributeError):
     """A constant error exception."""
     pass
@@ -153,6 +160,23 @@ RC.PER_GESTURE = 'per_gesture'
 # e.g., the FINGER_CROSSING gesture requires putting down and lifting up
 # a metal finger repeatedly per variation.
 RC.PER_VARIATION = 'per_variation'
+
+
+class _TFK(_Constant):
+    """The Test Flow Keypress (TFK) codes for test flow"""
+    pass
+TFK = _TFK()
+TFK.DISCARD = KEY_D
+TFK.EXIT = KEY_X
+TFK.MORE = KEY_M
+TFK.SAVE = KEY_SPACE
+TFK.SAVE2 = KEY_ENTER
+TFK.YES = KEY_Y
+TFK.UP = KEY_UP
+TFK.DOWN = KEY_DOWN
+TFK.LEFT = KEY_LEFT
+TFK.RIGHT = KEY_RIGHT
+TFK.ARROW_KEY_LIST = [TFK.UP, TFK.DOWN, TFK.LEFT, TFK.RIGHT]
 
 
 class _Validator(_Constant):
