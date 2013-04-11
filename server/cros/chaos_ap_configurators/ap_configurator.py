@@ -429,7 +429,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     direction = 'up'
                     if first_command == self._power_down_router:
                         direction = 'down'
-                    logging.info('Powering %s %s', direction, self.short_name)
+                    logging.info('Powering %s %s', direction,
+                                 self.get_router_name())
                     first_command(*sorted_page_commands[0]['args'])
                     sorted_page_commands.pop(0)
 

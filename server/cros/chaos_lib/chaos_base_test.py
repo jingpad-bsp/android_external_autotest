@@ -157,7 +157,6 @@ class WiFiChaosConnectionTest(object):
         ssid = '_'.join([ap.get_router_short_name(),
                          str(channel),
                          str(band).replace('.', '_')])
-        logging.info('Using ssid %s', ssid)
 
         ap.power_up_router()
         ap.set_channel(channel)
@@ -220,7 +219,7 @@ class WiFiChaosConnectionTest(object):
         configured_aps = []
         cartridge = ap_cartridge.APCartridge()
         for ap in aps:
-            logging.info('Testing band %s and channel %s', band, channel)
+            logging.info('Configuring AP %s', ap.get_router_name())
             if not ap.is_band_and_channel_supported(band, channel):
                 continue
 
@@ -271,13 +270,25 @@ class WiFiChaosConnectionTest(object):
         ap.apply_settings()
 
 
+    def power_down_aps(self, aps):
+        """Powers down a list of aps.
+
+        @param aps: a list of APConfigurator objects.
+        """
+        cartridge = ap_cartridge.APCartridge()
+        for ap in aps:
+            ap.power_down_router()
+            cartridge.push_configurator(ap)
+        cartridge.run_configurators()
+
+
     def check_test_error(self):
         """Checks if any intermediate test failed.
 
         @raises TestFail: if self.error_list is not empty.
         """
         if self.error_list:
-            msg = 'Failed with the following AP\'s:\n'
+            msg = '\nFailed with the following errors:\n'
             msg += pprint.pformat(self.error_list)
             raise error.TestFail(msg)
 
