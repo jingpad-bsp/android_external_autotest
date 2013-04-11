@@ -4,7 +4,10 @@
 
 """File containing class to build all available ap_configurators."""
 
+import logging
+
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
+from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
 from autotest_lib.server.cros.chaos_config import ChaosAPList
 
 import asus_ap_configurator
@@ -41,9 +44,21 @@ import westerndigitaln600_ap_configurator
 
 
 class APConfiguratorFactory(object):
-    """Class that instantiates all available APConfigurators."""
+    """Class that instantiates all available APConfigurators.
 
-    configurator_map = {
+    @attribute CONFIGURATOR_MAP: a dict of strings, mapping to model-specific
+                                 APConfigurator objects.
+    @attribute BANDS: a string, bands supported by an AP.
+    @attribute MODES: a string, 802.11 modes supported by an AP.
+    @attribute SECURITIES: a string, security methods supported by an AP.
+    @attribute ap_list: a list of APConfigurator objects.
+    @attribute generic_ap: a generic APConfigurator object.
+    @attribute valid_modes: a set of hex numbers.
+    @attribute valid_securities: a set of strings.
+    @attribute valid_bands: a set of strings.
+    """
+
+    CONFIGURATOR_MAP = {
         'LinksysAPConfigurator':
             linksys_ap_configurator.LinksysAPConfigurator,
         'LinksysAP15Configurator':
@@ -108,73 +123,194 @@ class APConfiguratorFactory(object):
             linksyswrt160_ap_configurator.LinksysWRT160APConfigurator,
     }
 
+    BANDS = 'bands'
+    MODES = 'modes'
+    SECURITIES = 'securities'
+
+
     def __init__(self):
         chaos_config = ChaosAPList(static_config=False)
 
         self.ap_list = []
         for ap in chaos_config:
-            configurator = self.configurator_map[ap.get_class()]
+            configurator = self.CONFIGURATOR_MAP[ap.get_class()]
             self.ap_list.append(configurator(ap_config=ap))
 
+        # Used to fetch AP attributes such as bands, modes, securities
+        self.generic_ap = ap_configurator.APConfigurator()
+        # All possible values for 802.11 mode
+        self.valid_modes = set([
+            self.generic_ap.mode_a,
+            self.generic_ap.mode_auto,
+            self.generic_ap.mode_b,
+            self.generic_ap.mode_d,
+            self.generic_ap.mode_g,
+            self.generic_ap.mode_m,
+            self.generic_ap.mode_n,
+            ])
+        # All possible values for security method
+        self.valid_securities = set([
+            self.generic_ap.security_type_disabled,
+            self.generic_ap.security_type_wep,
+            self.generic_ap.security_type_wpapsk,
+            self.generic_ap.security_type_wpa2psk,
+            ])
+        # All possible values for bands
+        self.valid_bands = set([
+            self.generic_ap.band_2ghz,
+            self.generic_ap.band_5ghz,
+            ])
 
-    def get_ap_configurators(self):
-        """Returns all available configurators."""
-        return self.ap_list
 
+    def get_ap_configurators(self, spec=None):
+        """Returns available configurators meeting spec.
 
-    def get_ap_configurator_by_short_name(self, name):
+        Caller may request APs based on the following attributes:
+         - BANDS, a list of strings, bands supported.
+         - MODES, a list of hex numbers, 802.11 modes supported.
+         - SECURITIES, a list of strings, security methods supported.
+
+        Interpretation rules:
+         - if an attribute is not present in spec, it's not used to select APs.
+         - caller should only specify an attribute s/he cares about testing.
+         - in case of a list of (>1) strings, logical AND is applied, e.g.
+           dual-band (2.4GHz AND 5GHz).
+         - if multiple attributes are specified, logical AND is applied.
+           Evaluation order is securities, then bands, then modes (which could
+           depend on bands as input).
+
+        Sample spec values and expected returns:
+        1. spec = None or empty dict
+           Return all APs
+        2. spec = dict(bands=['2.4GHz', '5GHz'])
+           Return all dual-band APs
+        3. spec = dict(modes=[0x00010, 0x00100], securities=[2])
+           Return all APs which support both 802.11b AND 802.11g modes AND
+           PSK security
+
+        @param spec: a dict of AP attributes, see explanation above.
+        @returns aps: a list of APConfigurator objects. Or None.
         """
-        Returns a configurator by short name.
+        aps = self.ap_list
+        if not spec:
+            logging.info('No spec included, return all APs')
+            return aps
 
-        @param name: short name of the configurator
+        securities = spec.get(self.SECURITIES, None)
+        bands = spec.get(self.BANDS, None)
+        modes = spec.get(self.MODES, None)
+
+        if securities:
+            logging.info('Select APs by securities: %r', securities)
+            aps = self._get_aps_with_securities(securities, aps)
+        if aps and bands:
+            logging.info('Select APs by bands: %r', bands)
+            aps = self._get_aps_with_bands(bands, aps)
+        if aps and modes:
+            logging.info('Select APs by modes: %r', modes)
+            aps = self._get_aps_with_modes(modes, aps)
+
+        return aps
+
+
+    def _cleanup_ap_spec(self, key, value):
+        """Validates AP attribute.
+
+        @param key: a string, one of BANDS, SECURITIES or MODES.
+        @param value: a list of strings, values of key.
+
+        @returns a list of strings, valid values for key. Or None.
         """
-        for ap in self.ap_list:
-            if ap.get_router_short_name() == name:
-                return ap
-        return None
+        attr_dict = {
+            self.BANDS: self.valid_bands,
+            self.MODES: self.valid_modes,
+            self.SECURITIES: self.valid_securities,
+            }
+
+        invalid_value = set(value).difference(attr_dict[key])
+        if invalid_value:
+            logging.warning('Ignored invalid %s: %r', key, invalid_value)
+            value = list(set(value) - invalid_value)
+            logging.info('Remaining valid value for %s = %r', key, value)
+
+        return value
 
 
-    def get_aps_with_security_mode(self, security_mode, ap_list=None):
+    def _get_aps_with_modes(self, modes, ap_list):
+        """Returns all configurators that support a given 802.11 mode.
+
+        @param mode: a list of hex numbers, 802.11 modes. Valid values in
+                     self.valid_modes.
+        @param ap_list: a list of APConfigurator objects.
+
+        @returns aps: a list of APs. Or None.
         """
-        Returns all configurators that support a given security mode.
+        modes = self._cleanup_ap_spec(self.MODES, modes)
+        if not modes:
+            logging.warning('No valid modes found.')
+            return None
 
-        @param security_mode: desired security mode
-        @param ap_list: the aps to query for the desired security mode.
-
-        @returns a list of APs.
-        """
-        if not ap_list:
-          ap_list = self.ap_list
         aps = []
         for ap in ap_list:
-            if ap.is_security_mode_supported(security_mode):
+            bands_and_modes = ap.get_supported_modes()
+            # FIXME(tgao): would mixing modes across bands cause any issue?
+            ap_modes = set()
+            for d in bands_and_modes:
+                if self.MODES in d:
+                    ap_modes = ap_modes.union(set(d[self.MODES]))
+            if set(modes).issubset(ap_modes):
+                logging.debug('Found ap by mode = %r', ap.host_name)
                 aps.append(ap)
         return aps
 
 
-    def get_supported_bands_and_channels(self, ap_list=None):
+    def _get_aps_with_securities(self, securities, ap_list):
+        """Returns all configurators that support a given security mode.
+
+        @param securities: a list of integers, security mode. Valid values in
+                           self.valid_securities.
+        @param ap_list: a list of APConfigurator objects.
+
+        @returns aps: a list of APs. Or None.
         """
-        Returns all of the supported bands and channels.
+        securities = self._cleanup_ap_spec(self.SECURITIES, securities)
+        if not securities:
+            logging.warning('No valid security found.')
+            return None
 
-        Format of the return dictionary:
-        {self.band_2GHz : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-         self.band_5ghz : [26, 40, 44, 48, 149, 153, 165]}
-
-        @param ap_list: list of aps to build the supported bands and channels.
-
-        @returns a dictionary of bands and channels.
-        """
-        if not ap_list:
-            ap_list = self.ap_list
-        bands_and_channels = {}
+        aps = []
         for ap in ap_list:
-            bands = ap.get_supported_bands()
-            for band in bands:
-                if band['band'] not in bands_and_channels:
-                    bands_and_channels[band['band']] = set(band['channels'])
-                else:
-                    bands_and_channels[band['band']].union(band['channels'])
-        return bands_and_channels
+            for security in securities:
+                if not ap.is_security_mode_supported(security):
+                    break
+            else:  # ap supports all securities
+                logging.debug('Found ap by security = %r', ap.host_name)
+                aps.append(ap)
+        return aps
+
+
+    def _get_aps_with_bands(self, bands, ap_list):
+        """Returns all APs that support bands.
+
+        @param bands: a list of strings, bands supported. Valid values in
+                      self.valid_bands.
+        @param ap_list: a list of APConfigurator objects.
+
+        @returns aps: a list of APs. Or None.
+        """
+        bands = self._cleanup_ap_spec(self.BANDS, bands)
+        if not bands:
+            logging.warning('No valid bands found.')
+            return None
+
+        aps = []
+        for ap in ap_list:
+            bands_and_channels = ap.get_supported_bands()
+            ap_bands = [d['band'] for d in bands_and_channels if 'band' in d]
+            if set(bands).issubset(set(ap_bands)):
+                logging.debug('Found ap by band = %r', ap.host_name)
+                aps.append(ap)
+        return aps
 
 
     def turn_off_all_routers(self):

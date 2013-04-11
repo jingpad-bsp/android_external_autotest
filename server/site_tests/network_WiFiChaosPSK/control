@@ -23,8 +23,8 @@ def wifi_chaos_psk(machine):
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
         helper = chaos_base_test.WiFiChaosConnectionTest(host, capturer)
-        all_aps = helper.factory.get_aps_with_security_mode(
-                      helper.generic_ap.security_type_wpapsk)
+        all_aps = helper.factory.get_ap_configurators(
+                      dict(securities=[helper.generic_ap.security_type_wpapsk]))
         # Power down all of the APs because some can get grumpy
         # if they are configured several times and remain on.
         helper.power_down_aps(all_aps)
