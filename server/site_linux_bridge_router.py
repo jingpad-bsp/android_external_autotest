@@ -58,7 +58,7 @@ class LinuxBridgeRouter(site_linux_router.LinuxRouter):
                             (self.cmd_ip, self.bridgeif))
 
 
-    def deconfig(self, params):
+    def deconfig(self, params={}):
         """ De-configure the AP (will also bring wlan and the bridge down) """
 
         site_linux_router.LinuxRouter.deconfig(self, params)
