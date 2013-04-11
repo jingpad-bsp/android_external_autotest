@@ -105,51 +105,109 @@ def is_fail_status(status):
     @return: True if status is FAIL or ERROR. False otherwise.
     """
     # All the statuses tests can have when they fail.
-    if status in ['FAIL', 'ERROR']:
+    if status in ['FAIL', 'ERROR', 'ABORT']:
         return True
     return False
 
 
-def get_view_info(suite_job_id, view):
+def get_view_info(suite_job_id, view, build, suite):
     """
     Parse a view for the slave job name and job_id.
 
     @param suite_job_id: The job id of our master suite job.
     @param view: Test result view.
-    @return A tuple job_name, experimental of the slave test run
-            described by view.
+    @param build: build passed in via the -b option.
+        eg: lumpy-release/R28-3947.0.0
+    @param suite: suite passed in via the -s option.
+        eg: dummy
+    @return A tuple job_name, experimental, name of the slave test run
+            described by view. eg:
+            experimental_dummy_Pass fails: (1130-owner, True, dummy_Pass)
+            experimental_dummy_Pass aborts: (1130-owner, True,
+                                             experimental_dummy_Pass)
+            dummy_Fail: (1130-owner, False, dummy_Fail.Error)
     """
     # By default, we are the main suite job since there is no
     # keyval entry for our job_name.
     job_name = '%s-%s' % (suite_job_id, getpass.getuser())
     experimental = False
+    test_name = ''
     if 'job_keyvals' in view:
-        # The job name depends on whether it's experimental or not.
+        # For a test invocation like:
+        # NAME = "dummy_Fail"
+        # job.run_test('dummy_Fail', tag='Error', to_throw='TestError')
+        # we will:
+        # Record a keyval of the jobs test_name field: dummy_Fail
+        # On success, yield a tko status with the tagged name:
+        #    dummy_Fail.Error
+        # On abort, yield a status (not from tko) with the job name:
+        #   /build/suite/dummy_Fail.Error
+        # Note the last 2 options include the tag. The tag is seperated
+        # from the rest of the name with a '.'. The tag or test name can
+        # also include a /, and we must isolate the tag before we compare it
+        # to the hashed keyval. Based on this we have the following cases:
+        # 1. Regular test failure with or without a tag '.': std_job_name is
+        #    set to the view test_name, after removing the tag.
+        # 2. Regular test Aborts: we know that dynamic_suite inserted a name
+        #    like build/suite/test.name (eg:
+        #    lumpy-release/R28-3947.0.0/dummy/dummy_Fail.Error), so we
+        #    intersect the build/suite/ string we already have with the
+        #    test_name in the view. The name of the aborted test is
+        #    instrumental in generating the job_name, which is used in
+        #    creating a link to the logs.
+        # 3. Experimental tests, Aborts and Failures: The test view
+        #    corresponding to the afe_job_id of the suite job contains
+        #    stubs for each test in this suite. The names of these jobs
+        #    will contain an experimental prefix if they were aborted;
+        #    If they failed the same names will not contain an experimental
+        #    prefix but we would have hashed the name with a prefix. Eg:
+        #       Test name = experimental_pass
+        #       keyval contains: hash(experimental_pass)
+        #       Fail/Pass view['test_name'] = pass
+        #       Abort view['test_name'] = board/build/experimental_pass
+        #    So we need to add the experimental prefix only if the test was
+        #    aborted. Everything else is the same as [2].
+        # 4. Experimental server job failures: eg verify passes, something on
+        #    the DUT crashes, the experimental server job fails to ssh in. We
+        #    need to manually set the experimental flag in this case because the
+        #    server job name isn't recorded in the keyvals. For a normal suite
+        #    the views will contain: SERVER_JOB, try_new_image, test_name. i.e
+        #    the test server jobs should be handled transparently and only the
+        #    suite server job should appear in the view. If a server job fails
+        #    (for an experimental test or otherwise) we insert the server job
+        #    entry into the tko database instead. Put more generally we insert
+        #    the last stage we knew about into the db record associated with
+        #    that suites afe_job_id. This could lead to a view containing:
+        #    SERVER_JOB, try_new_image,
+        #    lumpy-release/R28-4008.0.0/bvt/experimental_pass_SERVER_JOB.
         if view['test_name'].startswith(Reimager.JOB_NAME):
             std_job_name = Reimager.JOB_NAME
-        elif job_status.view_is_for_infrastructure_fail(view):
-            std_job_name = view['test_name']
         else:
-            std_job_name = view['test_name'].split('.')[0]
-        exp_job_name = constants.EXPERIMENTAL_PREFIX + std_job_name
+            # Neither of these operations will stomp on a pristine string.
+            test_name = view['test_name'].replace('%s/%s/'% (build, suite), '')
+            std_job_name = test_name.split('.')[0]
 
+        if (job_status.view_is_for_infrastructure_fail(view) and
+            std_job_name.startswith(constants.EXPERIMENTAL_PREFIX)):
+                experimental = True
+
+        if std_job_name.startswith(constants.EXPERIMENTAL_PREFIX):
+            exp_job_name = std_job_name
+        else:
+            exp_job_name = constants.EXPERIMENTAL_PREFIX + std_job_name
         std_job_hash = hashlib.md5(std_job_name).hexdigest()
         exp_job_hash = hashlib.md5(exp_job_name).hexdigest()
 
+        # In the experimental abort case both these clauses can evaluate
+        # to True.
         if std_job_hash in view['job_keyvals']:
             job_name = view['job_keyvals'][std_job_hash]
-        elif exp_job_hash in view['job_keyvals']:
+        if exp_job_hash in view['job_keyvals']:
             experimental = True
             job_name = view['job_keyvals'][exp_job_hash]
 
-        # For backward compatibility.
-        if std_job_name in view['job_keyvals']:
-            job_name = view['job_keyvals'][std_job_name]
-        elif exp_job_name in view['job_keyvals']:
-            experimental = True
-            job_name = view['job_keyvals'][exp_job_name]
-
-    return job_name, experimental
+    # If the name being returned is the test name it needs to include the tag
+    return job_name, experimental, std_job_name if not test_name else test_name
 
 
 class LogLink(object):
@@ -431,16 +489,24 @@ class Timings(object):
                     (end - start).total_seconds())
 
 
-def _full_test_name(job_id, view):
-    """Generates the full test name for printing to logs.
+def _full_test_name(job_id, view, build, suite):
+    """
+    Generates the full test name for printing to logs and generating a link to
+    the results.
 
     @param job_id: the job id.
     @param view: the view for which we are generating the name.
+    @param build: the build for this invocation of run_suite.
+    @param suite: the suite for this invocation of run_suite.
     @return The test name, possibly with a descriptive prefix appended.
     """
-    job_name, experimental = get_view_info(job_id, view)
-    prefix = constants.EXPERIMENTAL_PREFIX if experimental else ''
-    return prefix + view['test_name']
+    experimental, test_name = get_view_info(job_id, view, build, suite)[1:]
+
+    # If an experimental test is aborted get_view_info returns a name which
+    # includes the prefix.
+    prefix = constants.EXPERIMENTAL_PREFIX if (experimental and
+        not test_name.startswith(constants.EXPERIMENTAL_PREFIX)) else ''
+    return prefix + test_name
 
 
 def main():
@@ -515,7 +581,8 @@ def main():
             time.sleep(1)
             continue
         views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
-        width = max((len(_full_test_name(job_id, view)) for view in views)) + 3
+        width = max((len(_full_test_name(job_id, view, options.build,
+            options.name)) for view in views)) + 3
 
         relevant_views = filter(job_status.view_is_relevant, views)
         if not relevant_views:
@@ -530,8 +597,10 @@ def main():
             if job_status.view_is_for_suite_prep(view):
                 view['test_name'] = 'Suite prep'
 
-            job_name, experimental = get_view_info(job_id, view)
-            test_view = _full_test_name(job_id, view).ljust(width)
+            job_name, experimental = get_view_info(job_id, view, options.build,
+                options.name)[:2]
+            test_view = _full_test_name(job_id, view, options.build,
+                options.name).ljust(width)
             logging.info("%s%s", test_view, get_pretty_status(view['status']))
             link = LogLink(test_view, job_name)
             web_links.append(link)
@@ -548,6 +617,10 @@ def main():
                 if code == RETURN_CODES.ERROR:
                     # Failed already, no need to worry further.
                     continue
+
+                # Any non experimental test that has a status other than WARN
+                # or GOOD will result in the tree closing. Experimental tests
+                # will not close the tree, even if they have been aborted.
                 if (view['status'] == 'WARN' or
                     (is_fail_status(view['status']) and experimental)):
                     # Failures that produce a warning. Either a test with WARN
