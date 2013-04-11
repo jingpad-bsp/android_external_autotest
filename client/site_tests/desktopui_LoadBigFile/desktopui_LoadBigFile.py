@@ -28,7 +28,7 @@ class desktopui_LoadBigFile(cros_ui_test.UITest):
         if chromeos_board == 'stumpy' or chromeos_board == 'lumpy':
             multiplier = 2
         for i in xrange(500000 * multiplier):
-            file_handle.write('large amount of data that is irrelavent.\n')
+            file_handle.write('large amount of data that is irrelevant.\n')
         file_handle.write('End of The Project\n')
         file_handle.flush()
         file_handle.close()
