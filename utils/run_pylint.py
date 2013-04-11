@@ -299,7 +299,7 @@ def main():
                             open(pylint_rc).read())
     else:
         presubmit_files = os.environ.get('PRESUBMIT_FILES')
-        if presubmit_files:
+        if presubmit_files is not None:
             args_list = presubmit_files.split('\n')
         else:
             check_dir('.', pylint_base_opts)
