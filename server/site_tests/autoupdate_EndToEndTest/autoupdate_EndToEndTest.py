@@ -667,15 +667,21 @@ class autoupdate_EndToEndTest(test.test):
         if self._use_servo:
             source_url = self.stage_image(
                     lorry_devserver, test_conf['source_image_uri'])
+            logging.info('test image for source image staged at %s', source_url)
         else:
             source_url = self.stage_payload(
                     lorry_devserver, test_conf['source_image_uri'], False,
                     False)
+            logging.info('full payload for source image staged at %s',
+                         source_url)
 
-        return source_url, self.stage_payload(
+        target_url = self.stage_payload(
                 lorry_devserver, test_conf['target_payload_uri'],
                 test_conf['update_type'] == 'delta',
                 test_conf['target_release'] == test_conf['source_release'])
+        logging.info('%s payload for update test staged at %s',
+                     test_conf['update_type'], target_url)
+        return source_url, target_url
 
 
     def initialize(self):

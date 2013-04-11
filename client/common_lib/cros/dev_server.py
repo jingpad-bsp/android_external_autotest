@@ -406,7 +406,7 @@ class ImageServer(DevServer):
                                      payload_type)
         version = os.path.basename(image)
         base_url = self._get_image_url(image)
-        return base_url + '/%s_%s' % (version, payload_type)
+        return base_url + '/au/%s_%s/update.gz' % (version, payload_type)
 
 
     def get_full_payload_url(self, image):
