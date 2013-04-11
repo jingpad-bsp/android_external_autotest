@@ -6,9 +6,13 @@ import logging
 
 import common
 
-import statsd
-from autotest_lib.client.common_lib import global_config
+try:
+    import statsd
+except ImportError:
+    logging.error('import statsd failed, no stats will be reported.')
+    import statsd_mock as statsd
 
+from autotest_lib.client.common_lib import global_config
 
 # Pylint locally complains about "No value passed for parameter 'key'" here
 # pylint: disable=E1120
