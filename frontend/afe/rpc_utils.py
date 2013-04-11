@@ -166,10 +166,12 @@ def get_host_query(multiple_labels, exclude_only_if_needed_labels,
                             'afe_hosts_labels_exclude_AG.label_id IN (%s)'
                             % atomic_group_label_ids),
                     suffix='_exclude_AG', exclude=True)
-
-    assert 'extra_args' not in filter_data
-    filter_data['extra_args'] = extra_host_filters(multiple_labels)
-    return models.Host.query_objects(filter_data, initial_query=query)
+    try:
+        assert 'extra_args' not in filter_data
+        filter_data['extra_args'] = extra_host_filters(multiple_labels)
+        return models.Host.query_objects(filter_data, initial_query=query)
+    except models.Label.DoesNotExist as e:
+        return models.Host.objects.none()
 
 
 class InconsistencyException(Exception):
