@@ -290,6 +290,8 @@ class WiFiChaosConnectionTest(object):
         if self.error_list:
             msg = '\nFailed with the following errors:\n'
             msg += pprint.pformat(self.error_list)
+            # This is shared across tests; reset for the next AP.
+            self.error_list = []
             raise error.TestFail(msg)
 
 
