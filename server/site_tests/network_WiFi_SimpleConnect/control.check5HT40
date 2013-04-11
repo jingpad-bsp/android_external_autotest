@@ -1,0 +1,26 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'wiley@chromium.com'
+NAME = 'network_WiFi_SimpleConnect'
+TIME = 'SHORT'
+TEST_TYPE = 'Server'
+
+DOC = """
+This test verifies that DUT can connect to an open 802.11n network
+on 5 GHz channel (40MHz-channel with the second 20MHz chunk of the 40MHz
+channel on the channel below the center channel).
+"""
+
+
+def run(machine):
+    channels = [{'channel': '5240', 'ht40-': None, 'puren': None}]
+    host = hosts.create_host(machine)
+    job.run_test('network_WiFi_SimpleConnect',
+                 host=host,
+                 raw_cmdline_args=args,
+                 additional_params=channels)
+
+
+parallel_simple(run, machines)
