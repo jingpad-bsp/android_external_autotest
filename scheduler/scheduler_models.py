@@ -453,9 +453,6 @@ class HostQueueEntry(DBObject):
         else:
             self.atomic_group = None
 
-        self.queue_log_path = os.path.join(self.job.tag(),
-                                           'queue.log.' + str(self.id))
-
 
     @classmethod
     def clone(cls, template):
@@ -497,22 +494,14 @@ class HostQueueEntry(DBObject):
     def set_host(self, host):
         if host:
             logging.info('Assigning host %s to entry %s', host.hostname, self)
-            self.queue_log_record('Assigning host ' + host.hostname)
             self.update_field('host_id', host.id)
             self.block_host(host.id)
         else:
             logging.info('Releasing host from %s', self)
-            self.queue_log_record('Releasing host')
             self.unblock_host(self.host.id)
             self.update_field('host_id', None)
 
         self.host = host
-
-
-    def queue_log_record(self, log_line):
-        now = str(datetime.datetime.now())
-        _drone_manager.write_lines_to_file(self.queue_log_path,
-                                           [now + ' ' + log_line])
 
 
     def block_host(self, host_id):
@@ -1150,12 +1139,6 @@ class Job(DBObject):
         not_yet_run = self._not_yet_run_entries()
         if not_yet_run.count() < self.synch_count:
             self._stop_all_entries()
-
-
-    def write_to_machines_file(self, queue_entry):
-        hostname = queue_entry.host.hostname
-        file_path = os.path.join(self.tag(), '.machines')
-        _drone_manager.write_lines_to_file(file_path, [hostname])
 
 
     def _next_group_name(self, group_name=''):

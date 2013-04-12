@@ -1921,10 +1921,6 @@ class QueueTask(AbstractQueueTask):
             self._write_host_keyvals(queue_entry.host)
             queue_entry.host.set_status(models.Host.Status.RUNNING)
             queue_entry.host.update_field('dirty', 1)
-        if self.job.synch_count == 1 and len(self.queue_entries) == 1:
-            # TODO(gps): Remove this if nothing needs it anymore.
-            # A potential user is: tko/parser
-            self.job.write_to_machines_file(self.queue_entries[0])
 
 
     def _finish_task(self):

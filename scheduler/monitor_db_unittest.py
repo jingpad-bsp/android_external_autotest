@@ -146,12 +146,6 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
                            '_do_schedule_pre_job_tasks',
                            hqe__do_schedule_pre_job_tasks_stub)
 
-        def hqe_queue_log_record_stub(self, log_line):
-            """No-Op to avoid calls down to the _drone_manager during tests."""
-
-        self.god.stub_with(scheduler_models.HostQueueEntry, 'queue_log_record',
-                           hqe_queue_log_record_stub)
-
 
     def _record_job_scheduled(self, job_id, host_id):
         record = (job_id, host_id)
