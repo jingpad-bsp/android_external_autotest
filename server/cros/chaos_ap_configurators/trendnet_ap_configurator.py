@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Derived class to control the Trendnet TEW-639GR."""
+
 import logging
 import time
 import urlparse
@@ -111,8 +113,8 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('Enabling/Disabling the radio is not supported on this '
-                     'router (%s).', self.get_router_name())
+        logging.debug('Enabling/Disabling the radio is not supported on this '
+                      'router (%s).', self.get_router_name())
         return None
 
 

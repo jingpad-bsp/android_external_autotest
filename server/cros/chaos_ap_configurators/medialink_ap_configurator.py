@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Class to control MediaLink wapr150n router."""
+
 import logging
 import urlparse
 
@@ -81,7 +83,7 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
         self.wait_for_object_by_xpath('//input[@type="button" and @value="OK"]')
 
 
-    def set_mode(self, mode):
+    def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)
 
 
@@ -146,8 +148,8 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        logging.info('This router %s does not support multiple bands.',
-                     self.get_router_name())
+        logging.debug('This router %s does not support multiple bands.',
+                      self.get_router_name())
         return None
 
 
@@ -166,8 +168,8 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wep(self, key_value, authentication):
-        logging.info('This router %s does not support WEP authentication type:'
-                     ' %s', self.get_router_name(), authentication)
+        logging.debug('This router %s does not support WEP authentication type:'
+                      ' %s', self.get_router_name(), authentication)
         popup = '//select[@name="security_mode"]'
         text_field = '//input[@name="wep_key_1"]'
         self.select_item_from_popup_by_xpath('Mixed WEP', popup,
@@ -183,7 +185,7 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
         if update_interval < 600 | update_interval > 7200:
-            logging.info('Invalid update interval, setting it to 1800.')
+            logging.debug('Invalid update interval, setting it to 1800.')
             update_interval = 1800
         popup = '//select[@name="security_mode"]'
         key_field = '//input[@name="passphrase"]'

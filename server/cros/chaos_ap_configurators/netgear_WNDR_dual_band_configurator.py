@@ -2,13 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Base class for NetgearWNDR dual band routers."""
+
 import urlparse
 
 import ap_configurator
 
 
 class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
-    """Base class for Netgear WNDR dual band routers."""
+    """Base class for NetgearWNDR dual band routers."""
 
 
     def _alert_handler(self, alert):
@@ -75,14 +77,14 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
                                    alert_handler=self._alert_handler)
 
 
-    def set_mode(self, mode):
+    def set_mode(self, mode, band=None):
         # The mode popup changes based on the security mode.  Set to no
         # security to get the right popup.
         self.add_item_to_command_list(self._set_security_disabled, (), 1, 799)
         self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)
 
 
-    def _set_mode(self, mode):
+    def _set_mode(self, mode, band=None):
         if mode == self.mode_g or mode == self.mode_a:
             mode = 'Up to 54 Mbps'
         elif mode == self.mode_n:
@@ -107,7 +109,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
     def _set_ssid(self, ssid):
         xpath = '//input[@name="ssid"]'
         if self.current_band == self.band_5ghz:
-           xpath = '//input[@name="ssid_an"]'
+            xpath = '//input[@name="ssid_an"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
 
 
@@ -177,12 +179,13 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath(button, alert_handler=self._alert_handler)
 
 
-    def set_security_wpapsk(self, shared_key):
+    def set_security_wpapsk(self, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key,), 1, 900)
 
 
-    def _set_security_wpapsk(self, shared_key):
+    def _set_security_wpapsk(self, shared_key, update_interval=None):
+        # Update Interval is not supported.
         xpath = ('//input[@name="security_type" and @value="WPA-PSK"]')
         text = '//input[@name="passphrase"]'
         if self.current_band == self.band_5ghz:

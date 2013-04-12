@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Derived class to control the Trendnet TEW-731BR."""
+
 import trendnet_ap_configurator
 
 
@@ -40,13 +42,13 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
 
 
     def save_page(self, page_number):
-         if page_number == 1:
+        if page_number == 1:
             xpath = ('//input[@type="button" and @value="Apply"]')
-         elif page_number == 2:
+        elif page_number == 2:
             xpath = ('//input[@type="button" and @value="Apply"]')
-         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
-         xpath = ('//input[@type="button" and @value="Continue"]')
-         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
+        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
+        xpath = ('//input[@type="button" and @value="Continue"]')
+        self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
 
     def _set_security_disabled(self):
@@ -82,7 +84,7 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
         self.select_item_from_popup_by_id(mode_name, 'dot11_mode')
 
     def get_supported_bands(self):
-            return [{'band': self.band_2ghz, 'channels': range(1, 12)}]
+        return [{'band': self.band_2ghz, 'channels': range(1, 12)}]
 
 
     def _set_channel(self, channel):

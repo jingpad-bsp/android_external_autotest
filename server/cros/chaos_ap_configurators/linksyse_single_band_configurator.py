@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Base class for objects to configure Linksys single band access points
+   using webdriver."""
+
 import logging
 import urlparse
 
@@ -31,7 +34,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
             raise RuntimeError('Invalid characters used for key renewal. '
                                'Error: %s' % text)
         else:
-           raise RuntimeError('Invalid handler')
+            raise RuntimeError('Invalid handler')
 
 
     def get_number_of_pages(self):
@@ -106,7 +109,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
         # a alert dialog.
         ssid_field = self.driver.find_element_by_xpath(xpath)
         try:
-            ssid_field.send_keys("\t");
+            ssid_field.send_keys('\t')
             return
         except WebDriverException, e:
             message = str(e)
@@ -131,6 +134,11 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_channel_width(self, channel_wid):
+        """
+        Adjusts the channel channel width.
+
+        @param channel_width: the channel width
+        """
         self.add_item_to_command_list(self._set_channel_width,(channel_wid,),
                                       1, 900)
 
@@ -143,12 +151,12 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('set_radio is not supported in Linksys single band AP.')
+        logging.debug('set_radio is not supported in Linksys single band AP.')
         return None
 
 
     def set_band(self, enabled=True):
-        logging.info('set_band is not supported in Linksys single band AP.')
+        logging.debug('set_band is not supported in Linksys single band AP.')
         return None
 
 
@@ -192,6 +200,11 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_security_wpa2psk(self, shared_key, update_interval=None):
+        """Enabled WPA2 using a private security key for the wireless network.
+
+        @param shared_key: shared encryption key to use
+        @param update_interval: number of seconds to wait before updating
+        """
         # WEP and WPA-Personal are not supported for Wireless-N only mode,
         # so use WPA2-Personal when in mode_n.
         self.add_item_to_command_list(self._set_security_psk, (shared_key,
@@ -201,7 +214,7 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
     def _set_security_psk(self, shared_key, upadate_interval=None,
                           rsn_mode='WPA Personal'):
         """Common method to set wpapsk and wpa2psk modes."""
-        logging.info('update_interval is not supported.')
+        logging.debug('update_interval is not supported.')
         popup = '//select[@name="wl0_security_mode"]'
         self.select_item_from_popup_by_xpath(rsn_mode, popup,
                                              alert_handler=self._sec_alert)

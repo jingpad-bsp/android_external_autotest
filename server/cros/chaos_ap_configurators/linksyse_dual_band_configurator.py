@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Base class for objects to configure Linksys dual band access points
+   using webdriver."""
+
 import logging
 import urlparse
 
@@ -112,7 +115,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
             mode_name = mode_mapping[mode]
             if (mode & self.mode_a) and (self.current_band != self.band_5ghz):
                 #  a mode only in 5Ghz
-                logging.info('Mode \'a\' is not available for 2.4Ghz band.')
+                logging.debug('Mode \'a\' is not available for 2.4Ghz band.')
                 return
             elif ((mode & (self.mode_b | self.mode_g) ==
                   (self.mode_b | self.mode_g)) or
@@ -120,8 +123,8 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
                  (mode & self.mode_g == self.mode_g)) and \
                  (self.current_band != self.band_2ghz):
                 #  b/g, b, g mode only in 2.4Ghz
-                logging.info('Mode \'%s\' is not available for 5Ghz band.',
-                             mode_name)
+                logging.debug('Mode \'%s\' is not available for 5Ghz band.',
+                              mode_name)
                 return
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
@@ -130,7 +133,7 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('set_radio is not supported in Linksys dual band AP.')
+        logging.debug('set_radio is not supported in Linksys dual band AP.')
         return None
 
 

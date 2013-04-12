@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Baseclass to control Netgear single band routers."""
+
 import logging
 import urlparse
 import ap_configurator
@@ -66,7 +68,7 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('set_radio is not supported in this router.')
+        logging.debug('set_radio is not supported in this router.')
         return None
 
 
@@ -91,11 +93,11 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
 
 
-    def set_mode(self, mode):
+    def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode,), 1, 900)
 
 
-    def _set_mode(self, mode):
+    def _set_mode(self, mode, band=None):
         if mode == self.mode_g:
             mode_popup = 'g only'
         elif mode == (self.mode_g | self.mode_b):
@@ -107,7 +109,7 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        logging.info('The router has just one band.')
+        logging.debug('The router has just one band.')
         return None
 
 
@@ -138,11 +140,12 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
 
-    def set_security_wpapsk(self, key):
+    def set_security_wpapsk(self, key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk, (key,), 1, 900)
 
 
-    def _set_security_wpapsk(self, key):
+    def _set_security_wpapsk(self, key, update_interval=None):
+        # Update Interval is not supported.
         xpath = '//input[@name="security_type" and @value="WPA-PSK"]'
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
         xpath = '//input[@name="passphrase"]'
@@ -150,5 +153,5 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_visibility(self, visible=True):
-        logging.info('set_visibility is not supported in this router.')
+        logging.debug('set_visibility is not supported in this router.')
         return None

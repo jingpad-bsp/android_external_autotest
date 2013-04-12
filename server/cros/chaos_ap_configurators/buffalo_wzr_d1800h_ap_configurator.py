@@ -7,8 +7,6 @@ import urlparse
 
 import ap_configurator
 
-from selenium.common.exceptions import WebDriverException
-
 
 class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
     """Base class for Buffalo WZR router."""
@@ -63,11 +61,11 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         try:
             if self.driver.find_element_by_xpath(apply_set):
                 self.click_button_by_xpath(apply_set)
-        except WebDriverException, e:
-            logging.info('Settings have not been changed.'
-                         'There is a webdriver exception: "%s".' , str(e))
+        except:
+            logging.debug('Settings have not been changed.')
         complete = '//input[@type="button"]'
         self.wait_for_object_by_xpath(complete, wait_time=40)
+        # Give some time for router to save changes.
         if self.driver.find_element_by_xpath(complete):
             self.click_button_by_xpath(complete)
 
@@ -79,15 +77,15 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
 
     def set_mode(self, mode, band=None):
         # We cannot set mode in Buffalo WZR.
-        logging.info('This router (%s) does not support setting mode.' ,
-                     self.get_router_name())
+        logging.debug('This router (%s) does not support setting mode.' ,
+                      self.get_router_name())
         return None
 
 
-    def set_radio(self, enabled):
+    def set_radio(self, enabled=True):
         #  We cannot turn off radio on Buffalo WZR.
-        logging.info('This router (%s) does not support radio.' ,
-                     self.get_router_name())
+        logging.debug('This router (%s) does not support radio.' ,
+                      self.get_router_name())
         return None
 
 
@@ -151,11 +149,6 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         default = self.driver.switch_to_default_content()
 
 
-    def set_radio(self, enabled=True):
-        logging.info('set_radio is not supported in Buffalo WZR.')
-        return None
-
-
     def set_band(self, band):
         if band == self.band_5ghz:
             self.current_band = self.band_5ghz
@@ -206,13 +199,13 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         default = self.driver.switch_to_default_content()
 
 
-    def set_security_wpapsk(self, shared_key):
+    def set_security_wpapsk(self, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key,), 2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key):
-        logging.info('update_interval is not supported.')
+    def _set_security_wpapsk(self, shared_key, update_interval=None):
+        logging.debug('update_interval is not supported.')
         self._switch_frame()
         xpath = '//span[@class="WLAN11G"]'
         if self.current_band == self.band_5ghz:
@@ -228,5 +221,5 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_visibility(self, visible=True):
-        logging.info('SSID broadcast is not supported for Buffalo WZR')
+        logging.debug('SSID broadcast is not supported for Buffalo WZR')
         return None
