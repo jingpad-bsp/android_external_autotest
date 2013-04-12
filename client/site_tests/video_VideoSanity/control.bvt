@@ -1,20 +1,22 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project"
-NAME = "desktopui_VideoSanity"
+NAME = "video_VideoSanity"
 PURPOSE = "Verify that Chrome media and video works"
 CRITERIA = """
 This test will fail if Chrome media is not enable or video doesn't play.
 """
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
-TEST_CLASS = "desktopui"
+TEST_CLASS = "audiovideo"
 TEST_TYPE = "client"
+EXPERIMENTAL = "True"
 
 DOC = """
 This test verify the media elements and video sanity.
 """
 
-job.run_test('desktopui_VideoSanity')
+job.run_test('video_VideoSanity')

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "desktopui_VideoDecodeAcceleration"
+NAME = "video_VideoDecodeAcceleration"
 PURPOSE = "Verify that VP8 video decode acceleration works in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to a webm file.
@@ -20,4 +20,4 @@ DOC = """
 This test verifies VP8 video decode acceleration works.
 """
 
-job.run_test('desktopui_VideoDecodeAcceleration', video_file='video.webm')
+job.run_test('video_VideoDecodeAcceleration', video_file='video.webm')

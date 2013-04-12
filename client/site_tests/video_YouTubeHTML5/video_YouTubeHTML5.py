@@ -13,7 +13,7 @@ PLAYER_PLAYING_STATE = 'Playing'
 PLAYER_PAUSE_STATE = 'Paused'
 PLAYER_ENDED_STATE = 'Ended'
 
-class desktopui_YouTubeHTML5(cros_ui_test.UITest):
+class video_YouTubeHTML5(cros_ui_test.UITest):
     """This test verify the YouTube HTML5 video.
 
     - verify the video playback.
@@ -23,7 +23,7 @@ class desktopui_YouTubeHTML5(cros_ui_test.UITest):
     version = 1
 
     def initialize(self):
-        super(desktopui_YouTubeHTML5, self).initialize()
+        super(video_YouTubeHTML5, self).initialize()
         self._driver = self.pyauto.NewWebDriver()
         self._video_duration = 0
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
@@ -32,7 +32,7 @@ class desktopui_YouTubeHTML5(cros_ui_test.UITest):
     def cleanup(self):
         if self._testServer:
             self._testServer.stop()
-        super(desktopui_YouTubeHTML5, self).cleanup()
+        super(video_YouTubeHTML5, self).cleanup()
 
     def video_current_time(self):
         """Returns video's current playback time.

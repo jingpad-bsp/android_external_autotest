@@ -11,7 +11,7 @@ WAIT_TIMEOUT_S = 5
 PLAYBACK_TEST_TIME_S = 5
 MEDIA_SUPPORT_AVAILABLE = 'maybe'
 
-class desktopui_VideoSanity(cros_ui_test.UITest):
+class video_VideoSanity(cros_ui_test.UITest):
     """This test verify the media elements and video sanity.
 
     - verify support for mp4, ogg and webm media.
@@ -20,7 +20,7 @@ class desktopui_VideoSanity(cros_ui_test.UITest):
     version = 1
 
     def initialize(self):
-        super(desktopui_VideoSanity, self).initialize('$default')
+        super(video_VideoSanity, self).initialize('$default')
         self._driver = self.pyauto.NewWebDriver()
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
@@ -28,7 +28,7 @@ class desktopui_VideoSanity(cros_ui_test.UITest):
     def cleanup(self):
         if self._testServer:
             self._testServer.stop()
-        super(desktopui_VideoSanity, self).cleanup()
+        super(video_VideoSanity, self).cleanup()
 
     def video_current_time(self):
         """Returns video's current playback time.

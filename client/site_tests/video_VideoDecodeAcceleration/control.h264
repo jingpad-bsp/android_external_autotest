@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "desktopui_VideoDecodeAcceleration"
+NAME = "video_VideoDecodeAcceleration"
 PURPOSE = "Verify that H.264 video decode acceleration works in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to an mp4 file.
@@ -20,4 +20,4 @@ DOC = """
 This test verifies H.264 video decode acceleration works.
 """
 
-job.run_test('desktopui_VideoDecodeAcceleration', video_file='video.mp4')
+job.run_test('video_VideoDecodeAcceleration', video_file='video.mp4')

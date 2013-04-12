@@ -9,12 +9,12 @@ from autotest_lib.client.cros import cros_ui_test, httpd
 
 WAIT_TIMEOUT_S = 10
 
-class desktopui_VideoDecodeAcceleration(cros_ui_test.UITest):
+class video_VideoDecodeAcceleration(cros_ui_test.UITest):
     """This test verifies VDA works in Chrome."""
     version = 1
 
     def initialize(self):
-        super(desktopui_VideoDecodeAcceleration, self).initialize('$default')
+        super(video_VideoDecodeAcceleration, self).initialize('$default')
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 
@@ -22,7 +22,7 @@ class desktopui_VideoDecodeAcceleration(cros_ui_test.UITest):
     def cleanup(self):
         if self._testServer:
             self._testServer.stop()
-        super(desktopui_VideoDecodeAcceleration, self).cleanup()
+        super(video_VideoDecodeAcceleration, self).cleanup()
 
 
     def run_once(self, video_file):
