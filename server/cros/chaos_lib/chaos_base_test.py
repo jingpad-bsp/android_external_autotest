@@ -253,11 +253,18 @@ class WiFiChaosConnectionTest(object):
 
 
     def check_webdriver_available(self):
-        """Verifies webdriver binary is installed and running."""
-        if download_chromium_prebuilt.download_chromium_prebuilt_binaries():
-            err = ('The binaries were just downloaded. From outside chroot, '
+        """Verifies webdriver binary is installed and running.
+
+        Webdriver binary must be started manually from outside chroot.
+
+        @raises TestError: if failed to download and install webdriver binary.
+        """
+        try:
+            download_chromium_prebuilt.download_chromium_prebuilt_binaries()
+        except IOError as e:
+            err = ('Download failed: %s. Once resolved, from outside chroot, '
                    'run: <path to chroot directory>%s/chromedriver' %
-                   download_chromium_prebuilt.DOWNLOAD_PATH)
+                   (e, download_chromium_prebuilt.DOWNLOAD_PATH))
             raise error.TestError(err)
 
 

@@ -14,7 +14,6 @@ sys.path.append(os.path.join(
 from utils import common
 
 import ap_configurator_factory
-import download_chromium_prebuilt
 
 
 class ConfiguratorTest(unittest.TestCase):
@@ -27,18 +26,27 @@ class ConfiguratorTest(unittest.TestCase):
     This test does not verify that everything works.
 
     This class provides a fast way to test without having to run_remote_test
-    because chances are you don't need a ChromeOS device.  You will need to run
-    this like:
-    $ PYTHONPATH=../../../client/deps/pyauto_dep/test_src/third_party/ \
-      webdriver/pylib/ python ap_configurator_test.py
+    because chances are you don't need a ChromeOS device.  You will need to
+     - (inside chroot) download and install Chromium prebuilt binaries
+     - (outside chroot) launch chromedriver binary
+
+    Then launch this unit test from outside chroot:
+      $ cd ~/chromeos/src/third_party/autotest/files
+      $ python utils/unittest_suite.py \
+        server.cros.chaos_ap_configurators.ap_configurator_test --debug
     """
 
     def setUp(self):
-        if download_chromium_prebuilt.download_chromium_prebuilt_binaries():
-            self.fail('The binaries were just downloaded.  Please run: '
-                      '(outside-chroot) <path to chroot tmp directory>/'
-                      '%s./chromedriver',
-                      download_chromium_prebuilt.DOWNLOAD_PATH)
+        # Disable check for prebuilt binaries b/c of the discrepancy below:
+        #  - this check expects binary path from inside the chroot
+        #  - this unit test only works from outside the chroot
+
+        #if download_chromium_prebuilt.download_chromium_prebuilt_binaries():
+        #    self.fail(
+        #        'Please download and install Chromium binaries inside chroot. '
+        #        'Then from outside chroot run: <path to chroot tmp directory>/'
+        #        '%s' % download_chromium_prebuilt.DOWNLOAD_PATH)
+
         factory = ap_configurator_factory.APConfiguratorFactory()
         # Set self.ap to the one you want to test against.
         self.ap = factory.get_ap_configurator_by_short_name('linksys e1200')
