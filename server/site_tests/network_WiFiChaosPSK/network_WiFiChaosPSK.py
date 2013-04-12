@@ -21,7 +21,6 @@ class network_WiFiChaosPSK(test.test):
         @param ap_info: a dict of attributes of a specific AP.
         @param tries: an integer, number of connection attempts.
         """
-        helper.check_webdriver_available()
         # Override PSK password in base helper class
         helper.psk_password = 'chromeos'
 

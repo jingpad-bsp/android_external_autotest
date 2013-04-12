@@ -52,6 +52,7 @@ class WiFiChaosConnectionTest(object):
         self.generic_ap = ap_configurator.APConfigurator()
         self.factory = ap_configurator_factory.APConfiguratorFactory()
         self.psk_password = ''
+        download_chromium_prebuilt.check_webdriver_ready()
 
 
     def _mark_line_count(self, logs, key):
@@ -250,22 +251,6 @@ class WiFiChaosConnectionTest(object):
         channels = [5, 48]
 
         return zip(bands, channels)
-
-
-    def check_webdriver_available(self):
-        """Verifies webdriver binary is installed and running.
-
-        Webdriver binary must be started manually from outside chroot.
-
-        @raises TestError: if failed to download and install webdriver binary.
-        """
-        try:
-            download_chromium_prebuilt.download_chromium_prebuilt_binaries()
-        except IOError as e:
-            err = ('Download failed: %s. Once resolved, from outside chroot, '
-                   'run: <path to chroot directory>%s/chromedriver' %
-                   (e, download_chromium_prebuilt.DOWNLOAD_PATH))
-            raise error.TestError(err)
 
 
     def power_down(self, ap):

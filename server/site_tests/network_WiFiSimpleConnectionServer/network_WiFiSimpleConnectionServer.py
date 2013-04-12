@@ -21,8 +21,6 @@ class network_WiFiSimpleConnectionServer(test.test):
         @param ap_info: a dict of attributes of a specific AP.
         @param tries: an integer, number of connection attempts.
         """
-        helper.check_webdriver_available()
-
         # Install all of the autotest libraries on the client
         client_at = autotest.Autotest(host)
         client_at.install()
