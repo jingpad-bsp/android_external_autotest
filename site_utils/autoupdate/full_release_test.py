@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 import common
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.server import frontend
 from autotest_lib.site_utils.autoupdate import board as board_util
 from autotest_lib.site_utils.autoupdate import release as release_util
@@ -50,6 +51,8 @@ _delta_re = re.compile(
 # Extracts just the main version from a version that may contain attempts or
 # a release candidate suffix i.e. 3928.0.0-a2 -> base_version=3928.0.0.
 _version_re = re.compile('(?P<base_version>[0-9.]+)(?:\-[a-z]+[0-9]+])*')
+
+_name_re = re.compile('\s*NAME\s*=')
 
 
 class FullReleaseTestError(BaseException):
@@ -158,7 +161,7 @@ class TestConfig(object):
         return 'delta' if self.is_delta_update else 'full'
 
 
-    def _unique_name_suffix(self):
+    def unique_name_suffix(self):
         """Unique name suffix for the test config given the target version."""
         return '%s_%s' % (self.name, self.source_release)
 
@@ -171,7 +174,7 @@ class TestConfig(object):
         """
         return '%s-release/%s/au/%s.%s' % (
                 self.board, self.target_release,
-                _autotest_test_name, self._unique_name_suffix())
+                _autotest_test_name, self.unique_name_suffix())
 
 
     def get_control_file_name(self):
@@ -181,7 +184,7 @@ class TestConfig(object):
         A unique name suffix is used to keep from collisions per target
         release/board.
         """
-        return 'control.%s' % self._unique_name_suffix()
+        return 'control.%s' % self.unique_name_suffix()
 
 
     def __str__(self):
@@ -644,6 +647,23 @@ def generate_full_control_file(test, env, control_code):
 
     @returns parameterized control file based on args.
     """
+    def add_name_suffix(code):
+        """Replace NAME = in the control file with unique name for build."""
+        new_code = []
+        original_name = control_data.parse_control_string(code).name
+        for line in code.splitlines():
+            if _name_re.match(line):
+                new_code.append('NAME = "%s.%s"' % (original_name,
+                                                    test.unique_name_suffix()))
+            else:
+                new_code.append(line)
+
+        # Splitlines and rejoining strips the trailing line. Trailing line
+        # is needed by autotest.
+        new_code.append('')
+        return '\n'.join(new_code)
+
+    control_code = add_name_suffix(control_code)
     return test.get_code_args() + env.get_code_args() + control_code
 
 
