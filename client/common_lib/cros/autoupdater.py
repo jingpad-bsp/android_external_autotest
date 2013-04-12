@@ -374,6 +374,10 @@ class ChromiumOSUpdater():
         update version: lumpy-paladin/R27-3878.0.0-rc7
         booted version: 3837.0.0-rc7
 
+        5. chrome-perf build.
+        update version: lumpy-chrome-perf/R28-3837.0.0-b2996
+        booted version: 3837.0.0
+
         When we are checking if a DUT needs to do a full install, we should NOT
         use this method to check if the DUT is running the same version, since
         it may return false positive for a DUT running trybot paladin build to
@@ -403,21 +407,27 @@ class ChromiumOSUpdater():
 
         booted_version = self.get_build_id()
 
-        is_release_build = '-release/' in url_to_image_name(self.update_url)
-        is_rc_build = '-rc' in self.update_version
+        is_trybot_paladin_build = re.match(r'.+trybot-.+-paladin',
+                                           self.update_url)
 
-        if is_release_build or is_rc_build:
-            # Versioned build, i.e., rc or release build.
-            return stripped_version == booted_version
-        else:
-            # Replace date string with 0 in booted_version
-            booted_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '0',
-                                            booted_version)
-            if booted_version == booted_version_no_date:
-                logging.error('A paladin build is expected. Version "%s" is ' +
-                              'not a paladin build.', booted_version)
+        # Replace date string with 0 in booted_version
+        booted_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '0',
+                                        booted_version)
+        has_date_string = booted_version != booted_version_no_date
+
+        if is_trybot_paladin_build:
+            if not has_date_string:
+                logging.error('A trybot paladin build is expected. Version ' +
+                              '"%s" is not a paladin build.', booted_version)
                 return False
             return stripped_version == booted_version_no_date
+        else:
+            if has_date_string:
+                logging.error('Unexpected date found in a non trybot paladin' +
+                              ' build.')
+                return False
+            # Versioned build, i.e., rc or release build.
+            return stripped_version == booted_version
 
 
     def get_build_id(self):

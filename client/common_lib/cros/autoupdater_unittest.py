@@ -183,5 +183,45 @@ class TestAutoUpdater(mox.MoxTestBase):
         self.assertFalse(updater.check_version_to_confirm_install())
 
 
+    def testCheckVersion_5(self):
+        """Test version check methods work for any build.
+
+        Test two methods used to check version, check_version and
+        check_version_to_confirm_install, for:
+        5. chrome-perf build.
+        update version: lumpy-chrome-perf/R28-3837.0.0-b2996
+        booted version: 3837.0.0
+
+        """
+        update_url = ('http://172.22.50.205:8082/update/lumpy-chrome-perf/'
+                      'R28-4444.0.0-b2996')
+        updater = autoupdater.ChromiumOSUpdater(update_url)
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn(
+                                                    '4444.0.2013_03_21_1340')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('4444.0.0-rc7')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater, 'get_build_id')
+        updater.get_build_id().MultipleTimes().AndReturn('4444.0.0')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertTrue(updater.check_version_to_confirm_install())
+
+
 if __name__ == '__main__':
   unittest.main()
