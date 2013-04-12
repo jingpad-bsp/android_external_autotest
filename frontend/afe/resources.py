@@ -436,6 +436,7 @@ class ExecutionInfo(resource_lib.Resource):
             'dependencies': [],
             'machines_per_execution': 1,
             'run_verify': bool(_job_fields['run_verify'].default),
+            'run_reset': bool(_job_fields['run_reset'].default),
             'timeout_hrs': _job_fields['timeout'].default,
             'maximum_runtime_mins': _job_fields['max_runtime_mins'].default,
             'cleanup_before_job':
@@ -477,6 +478,7 @@ class ExecutionInfo(resource_lib.Resource):
                                  in job.dependency_labels.all()],
                 'machines_per_execution': job.synch_count,
                 'run_verify': bool(job.run_verify),
+                'run_reset': bool(job.run_reset),
                 'timeout_hrs': job.timeout,
                 'maximum_runtime_mins': job.max_runtime_mins,
                 'cleanup_before_job':
@@ -686,6 +688,7 @@ class Job(resource_lib.InstanceEntry):
                 max_runtime_mins=execution_info.get('maximum_runtime_mins'),
                 synch_count=execution_info.get('machines_per_execution'),
                 run_verify=execution_info.get('run_verify'),
+                run_reset=execution_info.get('run_reset'),
                 email_list=input_dict.get('email_list', None),
                 dependencies=execution_info.get('dependencies', ()),
                 reboot_before=execution_info.get('cleanup_before_job'),

@@ -50,6 +50,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private TextBox testRetry = new TextBox();
     private TextBox emailList = new TextBox();
     private CheckBoxImpl skipVerify = new CheckBoxImpl();
+    private CheckBoxImpl skipReset = new CheckBoxImpl();
     private RadioChooserDisplay rebootBefore = new RadioChooserDisplay();
     private RadioChooserDisplay rebootAfter = new RadioChooserDisplay();
     private CheckBox parseFailedRepair = new CheckBox();
@@ -108,6 +109,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         panel.add(emailList, "create_email_list");
         panel.add(priorityList, "create_priority");
         panel.add(skipVerify, "create_skip_verify");
+        panel.add(skipReset, "create_skip_reset");
         panel.add(rebootBefore, "create_reboot_before");
         panel.add(rebootAfter, "create_reboot_after");
         panel.add(parseFailedRepair, "create_parse_failed_repair");
@@ -216,6 +218,10 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
     public ICheckBox getSkipVerify() {
         return skipVerify;
+    }
+
+    public ICheckBox getSkipReset() {
+      return skipReset;
     }
 
     public IButton getSubmitJobButton() {

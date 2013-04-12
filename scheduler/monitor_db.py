@@ -516,7 +516,8 @@ class BaseDispatcher(object):
         """
         self._assert_host_has_no_agent(special_task)
 
-        special_agent_task_classes = (CleanupTask, VerifyTask, RepairTask)
+        special_agent_task_classes = (CleanupTask, VerifyTask, RepairTask,
+                                      ResetTask)
         for agent_task_class in special_agent_task_classes:
             if agent_task_class.TASK_TYPE == special_task.task:
                 return agent_task_class(task=special_task)
@@ -614,7 +615,8 @@ class BaseDispatcher(object):
         # reorder tasks by priority
         task_priority_order = [models.SpecialTask.Task.REPAIR,
                                models.SpecialTask.Task.CLEANUP,
-                               models.SpecialTask.Task.VERIFY]
+                               models.SpecialTask.Task.VERIFY,
+                               models.SpecialTask.Task.RESET]
         def task_priority_key(task):
             return task_priority_order.index(task.task)
         return sorted(queued_tasks, key=task_priority_key)
@@ -1595,6 +1597,24 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
                 _drone_manager.unregister_pidfile(self.monitor.pidfile_id)
 
 
+    def remove_special_tasks(self, special_task_to_remove, keep_last_one=False):
+        """Remove a type of special task in all tasks, keep last one if needed.
+
+        @param special_task_to_remove: type of special task to be removed, e.g.,
+            models.SpecialTask.Task.VERIFY.
+        @param keep_last_one: True to keep the last special task if its type is
+            the same as of special_task_to_remove.
+
+        """
+        queued_special_tasks = models.SpecialTask.objects.filter(
+            host__id=self.host.id,
+            task=special_task_to_remove,
+            is_active=False, is_complete=False, queue_entry=None)
+        if keep_last_one:
+            queued_special_tasks = queued_special_tasks.exclude(id=self.task.id)
+        queued_special_tasks.delete()
+
+
 class RepairTask(SpecialAgentTask):
     TASK_TYPE = models.SpecialTask.Task.REPAIR
 
@@ -1729,12 +1749,8 @@ class VerifyTask(PreJobTask):
 
         # Delete any queued manual reverifies for this host.  One verify will do
         # and there's no need to keep records of other requests.
-        queued_verifies = models.SpecialTask.objects.filter(
-            host__id=self.host.id,
-            task=models.SpecialTask.Task.VERIFY,
-            is_active=False, is_complete=False, queue_entry=None)
-        queued_verifies = queued_verifies.exclude(id=self.task.id)
-        queued_verifies.delete()
+        self.remove_special_tasks(models.SpecialTask.Task.VERIFY,
+                                  keep_last_one=True)
 
 
     def epilog(self):
@@ -1764,7 +1780,7 @@ class CleanupTask(PreJobTask):
         logging.info("starting cleanup task for host: %s", self.host.hostname)
         self.host.set_status(models.Host.Status.CLEANING)
         if self.queue_entry:
-            self.queue_entry.set_status(models.HostQueueEntry.Status.VERIFYING)
+            self.queue_entry.set_status(models.HostQueueEntry.Status.CLEANING)
 
 
     def _finish_epilog(self):
@@ -1794,6 +1810,52 @@ class CleanupTask(PreJobTask):
             self.host.set_status(models.Host.Status.READY)
 
         self._finish_epilog()
+
+
+class ResetTask(PreJobTask):
+    """Task to reset a DUT, including cleanup and verify."""
+    # note this can also run post-job, but when it does, it's running standalone
+    # against the host (not related to the job), so it's not considered a
+    # PostJobTask
+
+    TASK_TYPE = models.SpecialTask.Task.RESET
+
+
+    def __init__(self, task, recover_run_monitor=None):
+        super(ResetTask, self).__init__(task, ['--reset'])
+        self._set_ids(host=self.host, queue_entries=[self.queue_entry])
+
+
+    def prolog(self):
+        super(ResetTask, self).prolog()
+        logging.info('starting reset task for host: %s',
+                     self.host.hostname)
+        self.host.set_status(models.Host.Status.RESETTING)
+        if self.queue_entry:
+            self.queue_entry.set_status(models.HostQueueEntry.Status.RESETTING)
+
+        # Delete any queued cleanups for this host.
+        self.remove_special_tasks(models.SpecialTask.Task.CLEANUP,
+                                  keep_last_one=False)
+
+        # Delete any queued reverifies for this host.
+        self.remove_special_tasks(models.SpecialTask.Task.VERIFY,
+                                  keep_last_one=False)
+
+        # Only one reset is needed.
+        self.remove_special_tasks(models.SpecialTask.Task.RESET,
+                                  keep_last_one=True)
+
+
+    def epilog(self):
+        super(ResetTask, self).epilog()
+
+        if self.success:
+            self.host.update_field('dirty', 0)
+            self.host.set_status(models.Host.Status.READY)
+
+            if self.queue_entry:
+                self.queue_entry.on_pending()
 
 
 class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
@@ -2112,14 +2174,14 @@ class GatherLogsTask(PostJobTask):
         else:
             final_success = False
             num_tests_failed = 0
-
         reboot_after = self._job.reboot_after
         do_reboot = (
                 # always reboot after aborted jobs
                 self._final_status() == models.HostQueueEntry.Status.ABORTED
                 or reboot_after == model_attributes.RebootAfter.ALWAYS
                 or (reboot_after == model_attributes.RebootAfter.IF_ALL_TESTS_PASSED
-                    and final_success and num_tests_failed == 0))
+                    and final_success and num_tests_failed == 0)
+                or num_tests_failed > 0)
 
         for queue_entry in self.queue_entries:
             if do_reboot:

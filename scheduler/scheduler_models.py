@@ -677,9 +677,9 @@ class HostQueueEntry(DBObject):
 
 
     def _do_schedule_pre_job_tasks(self):
-        # Every host goes thru the Verifying stage (which may or may not
+        # Every host goes thru the Resetting stage (which may or may not
         # actually do anything as determined by get_pre_job_tasks).
-        self.set_status(models.HostQueueEntry.Status.VERIFYING)
+        self.set_status(models.HostQueueEntry.Status.RESETTING)
         self.job.schedule_pre_job_tasks(queue_entry=self)
 
 
@@ -757,7 +757,8 @@ class HostQueueEntry(DBObject):
                            Status.WAITING):
             assert not dispatcher.get_agents_for_entry(self)
             self.host.set_status(models.Host.Status.READY)
-        elif self.status == Status.VERIFYING:
+        elif (self.status == Status.VERIFYING or
+              self.status == Status.RESETTING):
             models.SpecialTask.objects.create(
                     task=models.SpecialTask.Task.CLEANUP,
                     host=models.Host.objects.get(id=self.host.id),
@@ -828,7 +829,7 @@ class Job(DBObject):
                'run_verify', 'email_list', 'reboot_before', 'reboot_after',
                'parse_failed_repair', 'max_runtime_hrs', 'drone_set_id',
                'parameterized_job_id', 'max_runtime_mins', 'parent_job_id',
-               'test_retry')
+               'test_retry', 'run_reset')
     _timer = stats.Timer("scheduler_models.Job")
 
     # This does not need to be a column in the DB.  The delays are likely to
@@ -1202,6 +1203,15 @@ class Job(DBObject):
         return self.run_verify
 
 
+    def _should_run_reset(self, queue_entry):
+        can_verify = (queue_entry.host.protection !=
+                         host_protections.Protection.DO_NOT_VERIFY)
+        can_reboot = self.reboot_before != model_attributes.RebootBefore.NEVER
+        return (can_reboot and can_verify and (self.run_reset or
+                (self._should_run_cleanup(queue_entry) and
+                 self._should_run_verify(queue_entry))))
+
+
     def _queue_special_task(self, queue_entry, task):
         """
         Create a special task and associate it with a host queue entry.
@@ -1231,12 +1241,18 @@ class Job(DBObject):
         task_queued = False
         hqe_model = models.HostQueueEntry.objects.get(id=queue_entry.id)
 
-        if self._should_run_cleanup(queue_entry):
-            self._queue_special_task(hqe_model, models.SpecialTask.Task.CLEANUP)
+        if self._should_run_reset(queue_entry):
+            self._queue_special_task(hqe_model, models.SpecialTask.Task.RESET)
             task_queued = True
-        if self._should_run_verify(queue_entry):
-            self._queue_special_task(hqe_model, models.SpecialTask.Task.VERIFY)
-            task_queued = True
+        else:
+            if self._should_run_cleanup(queue_entry):
+                self._queue_special_task(hqe_model,
+                                         models.SpecialTask.Task.CLEANUP)
+                task_queued = True
+            if self._should_run_verify(queue_entry):
+                self._queue_special_task(hqe_model,
+                                         models.SpecialTask.Task.VERIFY)
+                task_queued = True
 
         if not task_queued:
             queue_entry.on_pending()

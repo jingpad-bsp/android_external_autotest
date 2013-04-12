@@ -256,7 +256,8 @@ public class HostDetailView extends DetailView
         selectionManager.setSelectableRowFilter(this);
         jobsTable.setWidgetFactory(selectionManager);
         tableDecorator.addTableActionsPanel(this, true);
-        tableDecorator.addControl("Show verifies, repairs and cleanups", showSpecialTasks);
+        tableDecorator.addControl("Show verifies, repairs, cleanups and resets",
+                                  showSpecialTasks);
         addWidget(tableDecorator, "view_host_jobs_table");
 
         showSpecialTasks.addClickHandler(new ClickHandler() {

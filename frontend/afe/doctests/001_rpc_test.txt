@@ -156,7 +156,8 @@ True
 ...           'test_type': 'Client',
 ...           'test_class': 'Kernel',
 ...           'test_time': 'SHORT',
-...           'run_verify': 1,
+...           'run_verify': 0,
+...           'run_reset': 1,
 ...           'test_category': 'Functional',
 ...           'path': '/my/path',
 ...           'test_retry': 0}]
@@ -188,7 +189,7 @@ True
 ...           'login': 'showard',
 ...           'access_level': 1,
 ...           'reboot_before': 'If dirty',
-...           'reboot_after': 'Always',
+...           'reboot_after': 'Never',
 ...           'drone_set': None,
 ...           'show_experimental': False}]
 True
@@ -541,10 +542,11 @@ True
 ...         'timeout': 24,
 ...         'max_runtime_mins': 1440,
 ...         'max_runtime_hrs' : 72,
-...         'run_verify': True,
+...         'run_verify': False,
+...         'run_reset': True,
 ...         'email_list': '',
 ...         'reboot_before': 'If dirty',
-...         'reboot_after': 'Always',
+...         'reboot_after': 'Never',
 ...         'parse_failed_repair': True,
 ...         'drone_set': drone_set,
 ...         'parameterized_job': None,

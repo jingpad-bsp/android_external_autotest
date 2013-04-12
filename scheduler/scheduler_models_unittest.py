@@ -256,13 +256,15 @@ class JobTest(BaseSchedulerModelsTest):
         self.god.stub_with(models.SpecialTask.objects, 'create', _mock_create)
 
 
-    def _test_pre_job_tasks_helper(self):
+    def _test_pre_job_tasks_helper(self,
+                            reboot_before=model_attributes.RebootBefore.ALWAYS):
         """
         Calls HQE._do_schedule_pre_job_tasks() and returns the created special
         task
         """
         self._tasks = []
         queue_entry = scheduler_models.HostQueueEntry.fetch('id = 1')[0]
+        queue_entry.job.reboot_before = reboot_before
         queue_entry._do_schedule_pre_job_tasks()
         return self._tasks
 
@@ -320,7 +322,7 @@ class JobTest(BaseSchedulerModelsTest):
 
         tasks = self._test_pre_job_tasks_helper()
 
-        self._check_special_tasks(tasks, [(models.SpecialTask.Task.VERIFY, 1)])
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.RESET, 1)])
 
 
     def test_run_asynchronous_skip_verify(self):
@@ -330,7 +332,7 @@ class JobTest(BaseSchedulerModelsTest):
 
         tasks = self._test_pre_job_tasks_helper()
 
-        self.assertEquals(tasks, [])
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.RESET, 1)])
 
 
     def test_run_synchronous_verify(self):
@@ -338,7 +340,7 @@ class JobTest(BaseSchedulerModelsTest):
 
         tasks = self._test_pre_job_tasks_helper()
 
-        self._check_special_tasks(tasks, [(models.SpecialTask.Task.VERIFY, 1)])
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.RESET, 1)])
 
 
     def test_run_synchronous_skip_verify(self):
@@ -348,7 +350,40 @@ class JobTest(BaseSchedulerModelsTest):
 
         tasks = self._test_pre_job_tasks_helper()
 
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.RESET, 1)])
+
+
+    def test_run_asynchronous_do_not_reset(self):
+        job = self._create_job(hosts=[1, 2])
+        job.run_reset = False
+        job.run_verify = False
+        job.save()
+
+        tasks = self._test_pre_job_tasks_helper()
+
         self.assertEquals(tasks, [])
+
+
+    def test_run_synchronous_do_not_reset_no_RebootBefore(self):
+        job = self._create_job(hosts=[1, 2], synchronous=True)
+        job.reboot_before = model_attributes.RebootBefore.NEVER
+        job.save()
+
+        tasks = self._test_pre_job_tasks_helper(
+                            reboot_before=model_attributes.RebootBefore.NEVER)
+
+        self.assertEqual(tasks, [])
+
+
+    def test_run_asynchronous_do_not_reset(self):
+        job = self._create_job(hosts=[1, 2], synchronous=False)
+        job.reboot_before = model_attributes.RebootBefore.NEVER
+        job.save()
+
+        tasks = self._test_pre_job_tasks_helper(
+                            reboot_before=model_attributes.RebootBefore.NEVER)
+
+        self.assertEqual(tasks, [])
 
 
     def test_run_atomic_group_already_started(self):
@@ -371,34 +406,29 @@ class JobTest(BaseSchedulerModelsTest):
         tasks = self._test_pre_job_tasks_helper()
 
         self._check_special_tasks(tasks, [
-                (models.SpecialTask.Task.CLEANUP, None),
-                (models.SpecialTask.Task.VERIFY, None),
+                (models.SpecialTask.Task.RESET, None)
             ])
 
 
-    def _test_reboot_before_if_dirty_helper(self, expect_reboot):
+    def _test_reboot_before_if_dirty_helper(self):
         job = self._create_job(hosts=[1])
         job.reboot_before = model_attributes.RebootBefore.IF_DIRTY
         job.save()
 
         tasks = self._test_pre_job_tasks_helper()
-
-        task_types = []
-        if expect_reboot:
-            task_types.append((models.SpecialTask.Task.CLEANUP, None))
-        task_types.append((models.SpecialTask.Task.VERIFY, None))
+        task_types = [(models.SpecialTask.Task.RESET, None)]
 
         self._check_special_tasks(tasks, task_types)
 
 
     def test_reboot_before_if_dirty(self):
         models.Host.smart_get(1).update_object(dirty=True)
-        self._test_reboot_before_if_dirty_helper(True)
+        self._test_reboot_before_if_dirty_helper()
 
 
     def test_reboot_before_not_dirty(self):
         models.Host.smart_get(1).update_object(dirty=False)
-        self._test_reboot_before_if_dirty_helper(False)
+        self._test_reboot_before_if_dirty_helper()
 
 
     def test_next_group_name(self):

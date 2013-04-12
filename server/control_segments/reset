@@ -1,0 +1,27 @@
+import sys
+
+from autotest_lib.site_utils.graphite import stats
+
+def reset(machine):
+    print 'Starting to reset host ' + machine
+    timer = None
+    try:
+        host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        timer = stats.Timer('reset_time.%s' %
+                            host._get_board_from_afe())
+        timer.start()
+        # Assume cleanup always runs first.
+        host.cleanup()
+        host.verify()
+        job.record('GOOD', None, 'reset',
+                   '%s is reset successfully' % machine)
+    except Exception as e:
+        msg = 'reset failed: %s' % e
+        job.record('FAIL', None, 'reset', msg)
+        raise
+    finally:
+        if timer:
+            timer.stop()
+
+
+job.parallel_simple(reset, machines)

@@ -343,9 +343,10 @@ class JobTest(AfeResourceTestCase):
         self.assertEquals(info['control_file'], self.CONTROL_FILE_CONTENTS)
         self.assertEquals(info['is_server'], False)
         self.assertEquals(info['cleanup_before_job'], 'Never')
-        self.assertEquals(info['cleanup_after_job'], 'Always')
+        self.assertEquals(info['cleanup_after_job'], 'Never')
         self.assertEquals(info['machines_per_execution'], 1)
-        self.assertEquals(info['run_verify'], True)
+        self.assertEquals(info['run_verify'], False)
+        self.assertEquals(info['run_reset'], True)
 
 
     def test_queue_entries(self):

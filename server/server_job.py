@@ -1,3 +1,5 @@
+# pylint: disable-msg=C0111
+
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -39,6 +41,7 @@ VERIFY_CONTROL_FILE = _control_segment_path('verify')
 REPAIR_CONTROL_FILE = _control_segment_path('repair')
 PROVISION_CONTROL_FILE = _control_segment_path('provision')
 VERIFY_JOB_REPO_URL_CONTROL_FILE = _control_segment_path('verify_job_repo_url')
+RESET_CONTROL_FILE = _control_segment_path('reset')
 
 
 # by default provide a stub that generates no site data
@@ -334,6 +337,7 @@ class base_server_job(base_job.base_job):
 
 
     def verify(self):
+        """Verify machines are all ssh-able."""
         if not self.machines:
             raise error.AutoservError('No machines specified to verify')
         if self.resultdir:
@@ -346,6 +350,26 @@ class base_server_job(base_job.base_job):
             self._execute_code(VERIFY_CONTROL_FILE, namespace, protect=False)
         except Exception, e:
             msg = ('Verify failed\n' + str(e) + '\n' + traceback.format_exc())
+            self.record('ABORT', None, None, msg)
+            raise
+
+
+    def reset(self):
+        """Reset machines by first cleanup then verify each machine."""
+        if not self.machines:
+            raise error.AutoservError('No machines specified to reset.')
+        if self.resultdir:
+            os.chdir(self.resultdir)
+
+        try:
+            namespace = {'machines' : self.machines, 'job' : self,
+                         'ssh_user' : self._ssh_user,
+                         'ssh_port' : self._ssh_port,
+                         'ssh_pass' : self._ssh_pass}
+            self._execute_code(RESET_CONTROL_FILE, namespace, protect=False)
+        except Exception as e:
+            msg = ('Reset failed\n' + str(e) + '\n' +
+                   traceback.format_exc())
             self.record('ABORT', None, None, msg)
             raise
 
@@ -878,6 +902,10 @@ class base_server_job(base_job.base_job):
         @param update_func - a function that updates the list of uncollected
             logs. Should take one parameter, the list to be updated.
         """
+        # Skip log collection if file _uncollected_log_file does not exist.
+        if not (self._uncollected_log_file and
+                os.path.exists(self._uncollected_log_file)):
+            return
         if self._uncollected_log_file:
             log_file = open(self._uncollected_log_file, "r+")
             fcntl.flock(log_file, fcntl.LOCK_EX)

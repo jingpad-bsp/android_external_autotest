@@ -21,7 +21,7 @@ from autotest_lib.client.common_lib import control_data
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
-DEFAULT_REBOOT_AFTER = model_attributes.RebootBefore.ALWAYS
+DEFAULT_REBOOT_AFTER = model_attributes.RebootBefore.NEVER
 
 
 class AclAccessViolation(Exception):
@@ -359,7 +359,7 @@ class Host(model_logic.ModelWithInvalid, dbmodels.Model,
     dirty: true if the host has been used without being rebooted
     """
     Status = enum.Enum('Verifying', 'Running', 'Ready', 'Repairing',
-                       'Repair Failed', 'Cleaning', 'Pending',
+                       'Repair Failed', 'Cleaning', 'Pending', 'Resetting',
                        string_values=True)
     Protection = host_protections.Protection
 
@@ -576,6 +576,7 @@ class Test(dbmodels.Model, model_logic.ModelExtensions):
                        test dependencies.
     experimental: If this is set to True production servers will ignore the test
     run_verify: Whether or not the scheduler should run the verify stage
+    run_reset: Whether or not the scheduler should run the reset stage
     test_retry: Number of times to retry test if the test did not complete
                 successfully. (optional, default: 0)
     """
@@ -588,7 +589,7 @@ class Test(dbmodels.Model, model_logic.ModelExtensions):
     dependencies = dbmodels.CharField(max_length=255, blank=True)
     description = dbmodels.TextField(blank=True)
     experimental = dbmodels.BooleanField(default=True)
-    run_verify = dbmodels.BooleanField(default=True)
+    run_verify = dbmodels.BooleanField(default=False)
     test_time = dbmodels.SmallIntegerField(choices=TestTime.choices(),
                                            default=TestTime.MEDIUM)
     test_type = dbmodels.SmallIntegerField(
@@ -596,6 +597,7 @@ class Test(dbmodels.Model, model_logic.ModelExtensions):
     sync_count = dbmodels.IntegerField(default=1)
     path = dbmodels.CharField(max_length=255, unique=True)
     test_retry = dbmodels.IntegerField(blank=True, default=0)
+    run_reset = dbmodels.BooleanField(default=True)
 
     dependency_labels = (
         dbmodels.ManyToManyField(Label, blank=True,
@@ -1000,6 +1002,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     submitted_on: date of job submission
     synch_count: how many hosts should be used per autoserv execution
     run_verify: Whether or not to run the verify phase
+    run_reset: Whether or not to run the reset phase
     timeout: hours from queuing time until job times out
     max_runtime_hrs: DEPRECATED - hours from job starting time until job
                      times out
@@ -1044,7 +1047,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     created_on = dbmodels.DateTimeField()
     synch_count = dbmodels.IntegerField(null=True, default=1)
     timeout = dbmodels.IntegerField(default=DEFAULT_TIMEOUT)
-    run_verify = dbmodels.BooleanField(default=True)
+    run_verify = dbmodels.BooleanField(default=False)
     email_list = dbmodels.CharField(max_length=250, blank=True)
     dependency_labels = (
             dbmodels.ManyToManyField(Label, blank=True,
@@ -1069,6 +1072,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     parent_job = dbmodels.ForeignKey('self', blank=True, null=True)
 
     test_retry = dbmodels.IntegerField(blank=True, default=0)
+
+    run_reset = dbmodels.BooleanField(default=True)
 
     # custom manager
     objects = JobManager()
@@ -1165,7 +1170,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             drone_set=drone_set,
             parameterized_job=parameterized_job,
             parent_job=options.get('parent_job_id'),
-            test_retry=options.get('test_retry'))
+            test_retry=options.get('test_retry'),
+            run_reset=options.get('run_reset'))
 
         job.dependency_labels = options['dependencies']
 
@@ -1540,7 +1546,8 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
     queue_entry: Host queue entry waiting on this task (or None, if task was not
                  started in preparation of a job)
     """
-    Task = enum.Enum('Verify', 'Cleanup', 'Repair', string_values=True)
+    Task = enum.Enum('Verify', 'Cleanup', 'Repair', 'Reset',
+                     string_values=True)
 
     host = dbmodels.ForeignKey(Host, blank=False, null=False)
     task = dbmodels.CharField(max_length=64, choices=Task.choices(),

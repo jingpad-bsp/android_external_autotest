@@ -69,6 +69,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public HasText getTestRetry();
         public HasText getEmailList();
         public ICheckBox getSkipVerify();
+        public ICheckBox getSkipReset();
         public RadioChooser.Display getRebootBefore();
         public RadioChooser.Display getRebootAfter();
         public HasValue<Boolean> getParseFailedRepair();
@@ -175,6 +176,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 jobObject.get("email_list").isString().stringValue());
 
         display.getSkipVerify().setValue(!jobObject.get("run_verify").isBoolean().booleanValue());
+        display.getSkipReset().setValue(!jobObject.get("run_reset").isBoolean().booleanValue());
         rebootBefore.setSelectedChoice(Utils.jsonToString(jobObject.get("reboot_before")));
         rebootAfter.setSelectedChoice(Utils.jsonToString(jobObject.get("reboot_after")));
         display.getParseFailedRepair().setValue(
@@ -384,6 +386,24 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         }
     }
 
+    public void handleSkipReset() {
+        boolean shouldSkipReset = false;
+        for (JSONObject test : testSelector.getSelectedTests()) {
+            boolean runReset = test.get("run_reset").isBoolean().booleanValue();
+            if (!runReset) {
+                shouldSkipReset = true;
+                break;
+            }
+        }
+
+        if (shouldSkipReset) {
+            display.getSkipReset().setValue(true);
+            display.getSkipReset().setEnabled(false);
+        } else {
+            display.getSkipReset().setEnabled(true);
+        }
+    }
+
     protected int getMaximumRetriesCount() {
         int maxRetries = 0;
         for (JSONObject test : testSelector.getSelectedTests()) {
@@ -396,6 +416,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         testSelector.setEnabled(true);
         profilersPanel.setEnabled(true);
         handleSkipVerify();
+        handleSkipReset();
         display.getKernel().setEnabled(true);
         display.getKernelCmdline().setEnabled(true);
         display.getImageUrl().setEnabled(true);
@@ -565,7 +586,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getTestRetry().setText("");
         display.getEmailList().setText("");
         testSelector.reset();
-        display.getSkipVerify().setValue(false);
+        display.getSkipVerify().setValue(true);
+        display.getSkipReset().setValue(false);
         profilersPanel.reset();
         setInputsEnabled();
         controlTypeSelect.setControlType(TestSelector.CLIENT_TYPE);
@@ -624,6 +646,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 args.put("email_list", new JSONString(display.getEmailList().getText()));
                 args.put("run_verify", JSONBoolean.getInstance(
                         !display.getSkipVerify().getValue()));
+                args.put("run_reset", JSONBoolean.getInstance(
+                        !display.getSkipReset().getValue()));
                 args.put("is_template", JSONBoolean.getInstance(isTemplate));
                 args.put("dependencies", getSelectedDependencies());
                 args.put("reboot_before", new JSONString(rebootBefore.getSelectedChoice()));

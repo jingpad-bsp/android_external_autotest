@@ -215,7 +215,7 @@ class diffable_logdir(logdir):
         if collect_init_status:
             self._get_init_status_of_src_dir(self.dir)
         elif os.path.exists(self.dir):
-                self._log_diff(self.dir, log_dir)
+            self._log_diff(self.dir, log_dir)
 
 
 class purgeable_logdir(logdir):

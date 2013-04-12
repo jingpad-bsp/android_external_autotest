@@ -1,3 +1,5 @@
+# pylint: disable-msg=C0111
+
 import os, sys, optparse
 
 from autotest_lib.client.common_lib import host_protections, utils
@@ -76,6 +78,10 @@ class base_autoserv_parser(object):
                                help="cleanup all machines after the job")
         self.parser.add_option("--provision", action="store",
                                help="Labels to provision the machine to.")
+        self.parser.add_option("-T", "--reset", action="store_true",
+                               default=False,
+                               help="Reset (cleanup and verify) all machines"
+                               "after the job")
         self.parser.add_option("-n", action="store_true",
                                dest="no_tee", default=False,
                                help="no teeing the status to stdout/err")

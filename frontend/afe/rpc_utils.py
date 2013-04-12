@@ -8,7 +8,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime, os, inspect
 import django.http
-from autotest_lib.frontend.afe import models, model_logic, model_attributes
+from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.client.common_lib import control_data
 
 NULL_DATETIME = datetime.datetime.max
@@ -648,7 +648,7 @@ def create_job_common(name, priority, control_type, control_file=None,
                       reboot_before=None, reboot_after=None,
                       parse_failed_repair=None, hostless=False, keyvals=None,
                       drone_set=None, parameterized_job=None,
-                      parent_job_id=None, test_retry=0):
+                      parent_job_id=None, test_retry=0, run_reset=True):
     #pylint: disable-msg=C0111
     """
     Common code between creating "standard" jobs and creating parameterized jobs
@@ -753,7 +753,8 @@ def create_job_common(name, priority, control_type, control_file=None,
                    drone_set=drone_set,
                    parameterized_job=parameterized_job,
                    parent_job_id=parent_job_id,
-                   test_retry=test_retry)
+                   test_retry=test_retry,
+                   run_reset=run_reset)
     return create_new_job(owner=owner,
                           options=options,
                           host_objects=host_objects,

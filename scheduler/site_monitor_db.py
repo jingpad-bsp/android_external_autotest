@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+#pylint: disable-msg=C0111
+
 import os
 import logging
 
@@ -13,6 +15,10 @@ from autotest_lib.site_utils.graphite import stats
 
 # Override default parser with our site parser.
 def parser_path(install_dir):
+    """Return site implementation of parser.
+
+    @param install_dir: installation directory.
+    """
     return os.path.join(install_dir, 'tko', 'site_parse')
 
 
@@ -135,7 +141,7 @@ class SiteDispatcher(object):
         """
         This is an altered version of _reverify_hosts_where the class to
         models.SpecialTask.objects.create passes in an argument for
-        requested_by, in order to allow the Cleanup task to be created
+        requested_by, in order to allow the Reset task to be created
         properly.
         """
         full_where='locked = 0 AND invalid = 0 AND ' + where
@@ -154,22 +160,24 @@ class SiteDispatcher(object):
                 user = models.User.objects.get(
                         id=SiteDispatcher.DEFAULT_REQUESTED_BY_USER_ID)
             models.SpecialTask.objects.create(
-                    task=models.SpecialTask.Task.CLEANUP,
+                    task=models.SpecialTask.Task.RESET,
                     host=models.Host.objects.get(id=host.id),
                     requested_by=user)
 
 
     def _check_for_unrecovered_verifying_entries(self):
+        # Verify is replaced by Reset.
         queue_entries = scheduler_models.HostQueueEntry.fetch(
-                where='status = "%s"' % models.HostQueueEntry.Status.VERIFYING)
+                where='status = "%s"' % models.HostQueueEntry.Status.RESETTING)
         for queue_entry in queue_entries:
             special_tasks = models.SpecialTask.objects.filter(
                     task__in=(models.SpecialTask.Task.CLEANUP,
-                              models.SpecialTask.Task.VERIFY),
+                              models.SpecialTask.Task.VERIFY,
+                              models.SpecialTask.Task.RESET),
                     queue_entry__id=queue_entry.id,
                     is_complete=False)
             if special_tasks.count() == 0:
-                logging.error('Unrecovered Verifying host queue entry: %s. '
+                logging.error('Unrecovered Resetting host queue entry: %s. '
                               'Setting status to Queued.', str(queue_entry))
                 # Essentially this host queue entry was set to be Verifying
                 # however no special task exists for entry. This occurs if the
