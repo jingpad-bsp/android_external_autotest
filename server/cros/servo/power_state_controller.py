@@ -171,6 +171,26 @@ class _AlexController(_PowerStateController):
             self._servo.set('rec_mode', REC_OFF)
 
 
+class _StumpyController(_AlexController):
+
+    """Power-state controller for Stumpy."""
+
+    @_inherit_docstring(_AlexController)
+    def power_off(self):
+        # In test images in the lab, the 'autoreboot' upstart job will
+        # commonly configure the unit so that it reboots after cold
+        # reset.  Since we mustn't rely on the OS, we can't know for
+        # sure whether the unit will be on or off after cold reset.
+        #
+        # Fortunately, the autoreboot setting only applies through one
+        # reset.  So, after one reset, the unit may be on or off, but
+        # autoreboot is disabled.  We can be sure to be off after a
+        # second reset as long as it happens before the unit has a
+        # chance to run the autoreboot job.
+        self.cold_reset()
+        self.cold_reset()
+
+
 class _ChromeECController(_PowerStateController):
 
     """Power-state controller for systems with a Chrome EC.
@@ -253,6 +273,7 @@ _CONTROLLER_BOARD_MAP = {
     'daisy': _DaisyController,
     'link': _LinkController,
     'lumpy': _AlexController,
+    'stumpy': _StumpyController,
     'x86-alex': _AlexController
 }
 
