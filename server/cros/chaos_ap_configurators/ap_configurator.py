@@ -163,6 +163,13 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
+    def is_visibility_supported(self):
+        """
+        Returns if AP supports setting the visibility (SSID broadcast).
+
+        @return True if supported; False otherwise.
+        """
+        return True
 
     def is_band_and_channel_supported(self, band, channel):
         """
