@@ -9,7 +9,7 @@ import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
-from cros.factory.goofy.event_log_watcher import EventLogWatcher
+from cros.factory.event_log_watcher import EventLogWatcher
 from cros.factory.test import shopfloor
 
 class factory_SyncEventLogs(test.test):
