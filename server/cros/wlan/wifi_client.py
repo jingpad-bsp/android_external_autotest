@@ -43,6 +43,65 @@ class WiFiClient(object):
         """
         return self._host
 
+    @property
+    def command_ifconfig(self):
+        """@return string path to ifconfig command."""
+        return self._command_ifconfig
+
+
+    @property
+    def command_ip(self):
+        """@return string path to ip command."""
+        return self._command_ip
+
+
+    @property
+    def command_iperf(self):
+        """@return string path to iperf command."""
+        return self._command_iperf
+
+
+    @property
+    def command_iptables(self):
+        """@return string path to iptables command."""
+        return self._command_iptables
+
+
+    @property
+    def command_iw(self):
+        """@return string path to iw command."""
+        return self._command_iw
+
+
+    @property
+    def command_netdump(self):
+        """@return string path to netdump command."""
+        return self._command_netdump
+
+
+    @property
+    def command_netperf(self):
+        """@return string path to netperf command."""
+        return self._command_netperf
+
+
+    @property
+    def command_netserv(self):
+        """@return string path to netserv command."""
+        return self._command_netserv
+
+
+    @property
+    def command_ping6(self):
+        """@return string path to ping6 command."""
+        return self._command_ping6
+
+
+    @property
+    def command_wpa_cli(self):
+        """@return string path to wpa_cli command."""
+        return self._command_wpa_cli
+
 
     def __init__(self, client_host):
         """
@@ -65,6 +124,20 @@ class WiFiClient(object):
                 constants.SHILL_XMLRPC_SERVER_PORT,
                 constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
                 constants.SHILL_XMLRPC_SERVER_READY_METHOD)
+        self._command_ifconfig = 'ifconfig'
+        self._command_ip = wifi_test_utils.must_be_installed(
+                self.host, '/usr/local/sbin/ip')
+        self._command_iperf = wifi_test_utils.must_be_installed(
+                self.host, '/usr/local/bin/iperf')
+        self._command_iptables = '/sbin/iptables'
+        self._command_iw = 'iw'
+        self._command_netdump = 'tcpdump'
+        self._command_netperf = wifi_test_utils.must_be_installed(
+                self.host, '/usr/local/bin/netperf')
+        self._command_netserv = wifi_test_utils.must_be_installed(
+                self.host, '/usr/local/sbin/netserver')
+        self._command_ping6 = 'ping6'
+        self._command_wpa_cli = 'wpa_cli'
 
 
     def close(self):
@@ -93,11 +166,11 @@ class WiFiClient(object):
         timeout = 3 * count
         ping_args = ping_args.copy()
         ping_args['count'] = count
-        result = self.client.run('%s %s %s' %
-                                 (self.COMMAND_PING,
-                                  wifi_test_utils.ping_args(ping_args),
-                                  ping_ip),
-                                 timeout=timeout)
+        result = self.host.run(
+                '%s %s %s' % (self.COMMAND_PING,
+                              wifi_test_utils.ping_args(ping_args),
+                              ping_ip),
+                timeout=timeout)
         if save_stats:
             stats = wifi_test_utils.parse_ping_output(ping_output)
             self._ping_stats[save_stats] = stats
@@ -121,7 +194,7 @@ class WiFiClient(object):
                             wifi_test_utils.ping_args(ping_args),
                             ping_ip)
         self._ping_thread = remote_command.Command(
-                self.client, cmd, pkill_argument=self.COMMAND_PING)
+                self.host, cmd, pkill_argument=self.COMMAND_PING)
 
 
     def ping_bg_stop(self, save_stats=None):

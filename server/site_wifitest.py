@@ -16,6 +16,7 @@ import traceback
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import site_eap_certs
+from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
 from autotest_lib.server import site_attenuator
@@ -228,18 +229,21 @@ class WiFiTest(object):
         # potential bg thread for client network monitoring
         self.client_netdump_thread = None
         self.client_stats_thread = None
-        self.__client_discover_commands(client)
+        # TODO(wiley) Fix the actual FLIMFLAM_TEST_PATH rather than this hack.
+        self.client_cmd_flimflam_lib = ('/usr/local' +
+                                        constants.FLIMFLAM_TEST_PATH)
 
         self.firewall_rules = []
         self.host_route_args = {}
 
         # interface name on client
-        devs = wifi_test_utils.get_wlan_devs(self.client, self.client_cmd_iw)
+        devs = wifi_test_utils.get_wlan_devs(self.client,
+                                             self.client_proxy.command_iw)
         if len(devs) == 0:
             raise error.TestFail('No wlan devices found on %s' % client['addr'])
         self.client_wlanif = client.get('wlandev', devs[0])
         self.client.wlan_mac = wifi_test_utils.get_interface_mac(
-                self.client, self.client_wlanif, self.client_cmd_ip)
+                self.client, self.client_wlanif, self.client_proxy.command_ip)
 
         # Make sure powersave mode is off by default.
         self.client_powersave_off([])
@@ -276,8 +280,8 @@ class WiFiTest(object):
             self.__add_hook('config', self.client_start_statistics)
 
         self.ethernet_mac_address = None
-        mac_string = wifi_test_utils.get_interface_mac(self.client, 'eth0',
-                                                       self.client_cmd_ip)
+        mac_string = wifi_test_utils.get_interface_mac(
+                self.client, 'eth0', self.client_proxy.command_ip)
         if mac_string:
           pieces = mac_string.split(":")
           self.ethernet_mac_address = "".join(pieces)
@@ -331,29 +335,6 @@ class WiFiTest(object):
         self.host_route_cleanup({})
         self.wifi.stop_capture({})
         self.hosting_server.stop_capture({})
-
-
-    def __client_discover_commands(self, client):
-        self.client_cmd_netdump = client.get('cmd_netdump', 'tcpdump')
-        self.client_cmd_ifconfig = client.get('cmd_ifconfig', 'ifconfig')
-        self.client_cmd_iw = client.get('cmd_iw', 'iw')
-        self.client_cmd_netperf = wifi_test_utils.must_be_installed(
-                self.client, client.get('cmd_netperf_client',
-                                        '/usr/local/bin/netperf'))
-        self.client_cmd_netserv = wifi_test_utils.must_be_installed(
-                self.client, client.get('cmd_netperf_server',
-                                        '/usr/local/sbin/netserver'))
-        self.client_cmd_iperf = wifi_test_utils.must_be_installed(
-                self.client, client.get('cmd_iperf_client',
-                                         '/usr/local/bin/iperf'))
-        self.client_cmd_ip = wifi_test_utils.must_be_installed(
-                self.client, client.get('cmd_ip',
-                                        '/usr/local/sbin/ip'))
-        self.client_cmd_iptables = '/sbin/iptables'
-        self.client_cmd_flimflam_lib = client.get('flimflam_lib',
-                                                  '/usr/local/lib/flimflam')
-        self.client_cmd_ping6 = client.get('cmd_ping6', 'ping6')
-        self.client_cmd_wpa_cli = client.get('cmd_wpa_cli', 'wpa_cli')
 
 
     def __get_client_capabilities(self):
@@ -569,7 +550,7 @@ class WiFiTest(object):
     def __get_interface_addresses(self, host, ifname, ip_version):
         addresses = []
         result = host.run("%s -%d addr show dev %s" %
-                          (self.client_cmd_ip, ip_version, ifname))
+                          (self.client_proxy.command_ip, ip_version, ifname))
         for line in result.stdout.splitlines():
             addr_match = re.search("inet\S* (\S*)", line)
             if addr_match is not None:
@@ -847,13 +828,13 @@ class WiFiTest(object):
         """ Display profile information -- for debugging. """
 
         print "\nSERVICES:"
-        result = self.client.run('%s/test/list-services' %
+        result = self.client.run('%s/list-services' %
                         (self.client_cmd_flimflam_lib),
                         ignore_status=True)
         print "%s: %s" % (self.name, result)
 
         print "\nENTRIES:"
-        result = self.client.run('%s/test/profile list-entries' %
+        result = self.client.run('%s/profile list-entries' %
                         (self.client_cmd_flimflam_lib),
                         ignore_status=True)
         print "%s: %s" % (self.name, result)
@@ -1012,7 +993,8 @@ class WiFiTest(object):
     def __client_check_iw_link(self, param, want):
         """ Verify negotiated station mode parameter """
         result = self.client.run("%s dev %s link" %
-                                 (self.client_cmd_iw, self.client_wlanif))
+                                 (self.client_proxy.command_iw,
+                                  self.client_wlanif))
         find_re = re.compile("\s*%s:\s*(.*\S)\s*$" % param)
         find_results = filter(bool, map(find_re.match,
                                         result.stdout.splitlines()))
@@ -1123,7 +1105,7 @@ class WiFiTest(object):
                       is called.
         """
         duration = params.get('duration', 0)
-        cmd = '%s event -f' % self.client_cmd_iw
+        cmd = '%s event -f' % self.client_proxy.command_iw
         self.iw_event_thread = remote_command.Command(self.client, cmd)
 
         if duration:
@@ -1251,7 +1233,8 @@ class WiFiTest(object):
             ping_ip = params['ping_ip']
         else:
             result = self.client.run('%s -6 route show dev %s default' %
-                                     (self.client_cmd_ip, self.client_wlanif))
+                                     (self.client_proxy.command_ip,
+                                      self.client_wlanif))
             router_match = re.search('via (\S*)', result.stdout)
             if not router_match:
                 raise error.TestFail('Cannot find default router')
@@ -1259,8 +1242,10 @@ class WiFiTest(object):
             params.setdefault('interface', self.client_wlanif)
         count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
-        result = self.client.run("%s %s %s" % (
-            self.client_cmd_ping6, wifi_test_utils.ping_args(params), ping_ip),
+        result = self.client.run(
+                "%s %s %s" % (self.client_proxy.command_ping6,
+                              wifi_test_utils.ping_args(params),
+                              ping_ip),
             timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
@@ -1315,7 +1300,8 @@ class WiFiTest(object):
 
         ip_rules = []
         if mode == 'server':
-            server = { 'host': self.client, 'cmd': self.client_cmd_iperf }
+            server = { 'host': self.client,
+                       'cmd': self.client_proxy.command_iperf }
             client = { 'host': self.server,
                        'cmd': self.hosting_server.cmd_iperf,
                        'target': self.client_wifi_ip }
@@ -1326,7 +1312,8 @@ class WiFiTest(object):
         else:  # mode == 'client'
             server = { 'host': self.server,
                        'cmd': self.hosting_server.cmd_iperf }
-            client = { 'host': self.client, 'cmd': self.client_cmd_iperf,
+            client = { 'host': self.client,
+                       'cmd': self.client_proxy.command_iperf,
                        'target': self.server_wifi_ip }
 
         iperf_thread = remote_command.Command(server['host'],
@@ -1502,17 +1489,19 @@ class WiFiTest(object):
 
     def __firewall_open(self, proto, src):
         rule = 'INPUT -s %s/32 -p %s -m %s -j ACCEPT' % (src, proto, proto)
-        result = self.client.run('%s -S INPUT' % self.client_cmd_iptables)
+        result = self.client.run('%s -S INPUT' %
+                                 self.client_proxy.command_iptables)
         if '-A %s ' % rule in result.stdout.splitlines():
             return None
-        self.client.run('%s -A %s' % (self.client_cmd_iptables, rule))
+        self.client.run('%s -A %s' % (self.client_proxy.command_iptables, rule))
         self.firewall_rules.append(rule)
         return rule
 
 
     def __firewall_close(self, rule):
         if rule in self.firewall_rules:
-            self.client.run('%s -D %s' % (self.client_cmd_iptables, rule))
+            self.client.run('%s -D %s' % (self.client_proxy.command_iptables,
+                                          rule))
             self.firewall_rules.remove(rule)
 
     def firewall_cleanup(self, params):
@@ -1522,7 +1511,8 @@ class WiFiTest(object):
     def __run_netperf(self, mode, params):
         np_rules = []
         if mode == 'server':
-            server = { 'host': self.client, 'cmd': self.client_cmd_netserv }
+            server = { 'host': self.client,
+                       'cmd': self.client_proxy.command_netserv }
             client = { 'host': self.server,
                        'cmd': self.hosting_server.cmd_netperf,
                        'target': self.client_wifi_ip }
@@ -1533,7 +1523,8 @@ class WiFiTest(object):
         else:
             server = { 'host': self.server,
                        'cmd': self.hosting_server.cmd_netserv }
-            client = { 'host': self.client, 'cmd': self.client_cmd_netperf,
+            client = { 'host': self.client,
+                       'cmd': self.client_proxy.command_netperf,
                        'target': self.server_wifi_ip }
 
         netperf_thread = remote_command.Command(server['host'],
@@ -1634,16 +1625,20 @@ class WiFiTest(object):
 
 
     def __create_netdump_dev(self, devname='mon0'):
-        self.client.run("%s dev %s del" % (self.client_cmd_iw, devname),
+        self.client.run("%s dev %s del" % (self.client_proxy.command_iw,
+                                           devname),
                         ignore_status=True)
         self.client.run("%s dev %s interface add %s type monitor" %
-                        (self.client_cmd_iw, self.client_wlanif, devname))
-        self.client.run("%s %s up" % (self.client_cmd_ifconfig, devname))
+                        (self.client_proxy.command_iw, self.client_wlanif,
+                         devname))
+        self.client.run("%s %s up" % (self.client_proxy.command_ifconfig,
+                                      devname))
         return devname
 
 
     def __destroy_netdump_dev(self, devname='mon0'):
-        self.client.run("%s dev %s del" % (self.client_cmd_iw, devname))
+        self.client.run("%s dev %s del" % (self.client_proxy.command_iw,
+                                           devname))
 
 
     def client_start_capture(self, params):
@@ -1653,9 +1648,10 @@ class WiFiTest(object):
         self.client_netdump_dir = self.client.get_tmp_dir()
         self.client_netdump_file = os.path.join(self.client_netdump_dir,
                                                 "client.pcap")
-        cmd = "%s -i %s -w %s -s %s" % (self.client_cmd_netdump, devname,
-                                  self.client_netdump_file,
-                                  params.get('snaplen', '0'))
+        cmd = "%s -i %s -w %s -s %s" % (self.client_proxy.command_netdump,
+                                        devname,
+                                        self.client_netdump_file,
+                                        params.get('snaplen', '0'))
         logging.info(cmd)
         self.client_netdump_thread = remote_command.Command(self.client, cmd)
 
@@ -1671,7 +1667,7 @@ class WiFiTest(object):
             self.client.delete_tmp_dir(self.client_netdump_dir)
         else:
             # Just in case something got leftover from a previous run...
-            self.client.run("pkill %s" % self.client_cmd_netdump,
+            self.client.run("pkill %s" % self.client_proxy.command_netdump,
                             ignore_status=True)
 
 
@@ -1719,19 +1715,19 @@ class WiFiTest(object):
 
     def profile_create(self, params):
         """ Create a profile with the specified name """
-        self.client.run('%s/test/profile create %s' %
+        self.client.run('%s/profile create %s' %
                         (self.client_cmd_flimflam_lib, params['name']))
         self.created_profiles.append(params['name'])
 
     def profile_remove(self, params, ignore_status=False):
         """ Remove the specified profile """
-        self.client.run('%s/test/profile remove %s' %
+        self.client.run('%s/profile remove %s' %
                         (self.client_cmd_flimflam_lib, params['name']),
                          ignore_status=ignore_status)
 
     def profile_push(self, params):
         """ Push the specified profile on the stack """
-        self.client.run('%s/test/profile push %s' %
+        self.client.run('%s/profile push %s' %
                         (self.client_cmd_flimflam_lib, params['name']))
 
     def profile_pop(self, params, ignore_status=False):
@@ -1739,11 +1735,11 @@ class WiFiTest(object):
             if no name is specified.
         """
         if 'name' in params:
-            self.client.run('%s/test/profile pop %s' %
+            self.client.run('%s/profile pop %s' %
                             (self.client_cmd_flimflam_lib, params['name']),
                             ignore_status=ignore_status)
         else:
-            self.client.run('%s/test/profile pop' %
+            self.client.run('%s/profile pop' %
                             (self.client_cmd_flimflam_lib),
                             ignore_status=ignore_status)
 
@@ -1751,7 +1747,7 @@ class WiFiTest(object):
     def profile_cleanup(self):
         """ Cleanup all profiles """
         # Pop and remove all profiles on the stack until 'default' is found.
-        self.client.run('%s/test/profile clean' %
+        self.client.run('%s/profile clean' %
                         (self.client_cmd_flimflam_lib))
         # Some profiles may still in profile storage but not on the stack,
         # invoke 'profile_remove' for self.created_profiles to make sure that
@@ -1763,7 +1759,7 @@ class WiFiTest(object):
         if self.client_wifi_device_path:
             return self.client_wifi_device_path
         ret = []
-        result = self.client.run('%s/test/list-devices' %
+        result = self.client.run('%s/list-devices' %
                                  self.client_cmd_flimflam_lib)
         device_path = None
         for line in result.stdout.splitlines():
@@ -1780,13 +1776,13 @@ class WiFiTest(object):
     def enable_wifi(self, params):
         wifi = self.__get_wifi_device_path()
         if wifi:
-            self.client.run('%s/test/enable-device %s' %
+            self.client.run('%s/enable-device %s' %
                             (self.client_cmd_flimflam_lib, wifi))
 
     def disable_wifi(self, params):
         wifi = self.__get_wifi_device_path()
         if wifi:
-            self.client.run('%s/test/disable-device %s' %
+            self.client.run('%s/disable-device %s' %
                             (self.client_cmd_flimflam_lib, wifi))
 
 
@@ -1794,7 +1790,8 @@ class WiFiTest(object):
         result = self.client.run('%s dev %s link; '
                                  '%s dev %s station dump; '
                                  '%s dev %s survey dump' %
-                                 ((self.client_cmd_iw, self.client_wlanif) * 3))
+                                 ((self.client_proxy.command_iw,
+                                   self.client_wlanif) * 3))
         current_frequency = None
         link_frequency = None
         signal_info = {}
@@ -1840,7 +1837,7 @@ class WiFiTest(object):
             opts += " BgscanSignalThreshold=%s" % signal
         if params.get('method', None):
             opts += " BgscanMethod=%s" % params['method']
-        self.client.run('%s/test/set-bgscan --interface %s %s' %
+        self.client.run('%s/set-bgscan --interface %s %s' %
                         (self.client_cmd_flimflam_lib, self.client_wlanif,
                          opts))
 
@@ -1864,7 +1861,8 @@ class WiFiTest(object):
         if ssids:
            scan_params += ' ssid "%s"' % '" "'.join(ssids)
         result = self.client.run("%s dev %s scan%s" %
-                                 (self.client_cmd_iw, self.client_wlanif,
+                                 (self.client_proxy.command_iw,
+                                  self.client_wlanif,
                                   scan_params))
         scan_lines = result.stdout.splitlines()
         for ssid in ssids:
@@ -1942,7 +1940,7 @@ class WiFiTest(object):
             if remote_cert_tls is not None:
                 remote_cert_tls_option = "--remote-cert-tls " + remote_cert_tls
 
-            result = self.client.run('%s/test/connect-vpn '
+            result = self.client.run('%s/connect-vpn '
                                      '--verbose '
                                      '%s '
                                      'openvpn vpn-name %s vpn-domain '
@@ -1962,7 +1960,7 @@ class WiFiTest(object):
             password    = params.get('password'  , None)
             chapuser    = params.get('chapuser'  , None)
             chapsecret  = params.get('chapsecret', None)
-            result = self.client.run('%s/test/connect-vpn '
+            result = self.client.run('%s/connect-vpn '
                                      '--verbose '
                                      'l2tpipsec-psk vpn-name %s vpn-domain '
                                      '%s '  # password
@@ -1979,7 +1977,7 @@ class WiFiTest(object):
             chapsecret  = params.get('chapsecret', None)
             ca_cert_id  = params.get('cacertid', None)
 
-            result = self.client.run('%s/test/connect-vpn '
+            result = self.client.run('%s/connect-vpn '
                                      '--verbose '
                                      'l2tpipsec-cert vpn-name %s vpn-domain '
                                      '%s '   # CACertNSS
@@ -2118,7 +2116,8 @@ class WiFiTest(object):
 
         if 'default_route' in params:
             result = self.client.run('%s -6 route show dev %s default' %
-                                     (self.client_cmd_ip, self.client_wlanif))
+                                     (self.client_proxy.command_ip,
+                                      self.client_wlanif))
 
             found = bool('default' in result.stdout)
             expected = bool(params['default_route'])
@@ -2164,7 +2163,7 @@ class WiFiTest(object):
         args = ''
         for var, val in params.iteritems():
             args += ' %s %s' % (var, val)
-        self.client.run('%s/test/configure-service %s %s' %
+        self.client.run('%s/configure-service %s %s' %
                         (self.client_cmd_flimflam_lib, guid, args))
 
     def client_roam(self, params):
@@ -2174,7 +2173,7 @@ class WiFiTest(object):
         # user does not have a valid shell, so without specifying one, the
         # "su" command will fail.
         self.client.run('su wpa -s /bin/bash -c "%s roam %s"' %
-                        (self.client_cmd_wpa_cli, wifi_mac))
+                        (self.client_proxy.command_wpa_cli, wifi_mac))
 
 
 def __byfile(a, b):
