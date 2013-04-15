@@ -3,7 +3,8 @@
   | 插上网路线后按下S键开始测试
 </h1>
 <br>
-<div>FA utility:<br>
+<div onClick="toggleFAUtility()">Click to toggle FA utility:</div>
+<div id="fa-utility" style="display: none">
   <input type="radio" id="loop_0"
       onClick="testCommand('loop_0')">
     No audio looping

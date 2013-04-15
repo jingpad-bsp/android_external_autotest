@@ -6,6 +6,7 @@ window.onkeydown = function(event) {
 }
 
 var active = 'loop_0';
+var display_fa_utility = false;
 
 function setMessage(msg) {
   document.getElementById("message").innerHTML = msg;
@@ -23,4 +24,14 @@ function restore() {
     document.getElementById(active).checked = false;
   testCommand('loop_0');
   document.getElementById('loop_0').checked = true;
+}
+
+function toggleFAUtility() {
+  if (display_fa_utility) {
+    document.getElementById('fa-utility').style.display = 'none';
+    display_fa_utility = false;
+  } else {
+    document.getElementById('fa-utility').style.display = 'block';
+    display_fa_utility = true;
+  }
 }
