@@ -51,6 +51,8 @@ SWIPE = 'swipe'
 TAP = 'tap'
 CLICK = 'click'
 
+CALIBRATION_FILE = 'calibrated_dimensions.py'
+
 
 class RobotWrapperError(Exception):
     """An exception class for the robot_wrapper module."""
@@ -60,7 +62,7 @@ class RobotWrapperError(Exception):
 class RobotWrapper:
     """A class to wrap and manipulate the robot library."""
 
-    def __init__(self, board, mode):
+    def __init__(self, board, mode, should_calibrate=True):
         self._board = board
         self._mode = mode
         self._robot_script_dir = self._get_robot_script_dir()
@@ -174,6 +176,26 @@ class RobotWrapper:
         }
 
         self._build_robot_script_paths()
+
+
+        # If the robot is actually connected, we should calibrate the Z height
+        # for this device immediately.  This generates a file that over-rides
+        # the values found in the device description
+            self._calibrate_z(should_calibrate)
+
+    def _calibrate_z(self, should_calibrate):
+        """ Clear any old calibration files and possibly generate a new one """
+        if os.path.isfile(CALIBRATION_FILE):
+            os.remove(CALIBRATION_FILE)
+
+        if self._is_robot_action_mode() and should_calibrate:
+            calibrate_script = os.path.join(self._robot_script_dir,
+                                            'calibrate_z.py')
+            calibrate_cmd = 'python %s %s' % (calibrate_script, self._board)
+            common_util.simple_system(calibrate_cmd)
+
+            if not os.path.isfile(CALIBRATION_FILE):
+                self._raise_error('Z calibration failed')
 
     def _is_robot_action_mode(self):
         """Is it in robot action mode?
