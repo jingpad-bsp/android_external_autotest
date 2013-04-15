@@ -234,12 +234,12 @@ class WiFiTest(object):
         self.host_route_args = {}
 
         # interface name on client
-        devs = self.__get_wlan_devs(self.client)
+        devs = wifi_test_utils.get_wlan_devs(self.client, self.client_cmd_iw)
         if len(devs) == 0:
             raise error.TestFail('No wlan devices found on %s' % client['addr'])
         self.client_wlanif = client.get('wlandev', devs[0])
-        self.client.wlan_mac = self.__get_interface_mac(self.client,
-                                                        self.client_wlanif)
+        self.client.wlan_mac = wifi_test_utils.get_interface_mac(
+                self.client, self.client_wlanif, self.client_cmd_ip)
 
         # Make sure powersave mode is off by default.
         self.client_powersave_off([])
@@ -276,9 +276,10 @@ class WiFiTest(object):
             self.__add_hook('config', self.client_start_statistics)
 
         self.ethernet_mac_address = None
-        string = self.__get_interface_mac(self.client, "eth0")
-        if string:
-          pieces = string.split(":")
+        mac_string = wifi_test_utils.get_interface_mac(self.client, 'eth0',
+                                                       self.client_cmd_ip)
+        if mac_string:
+          pieces = mac_string.split(":")
           self.ethernet_mac_address = "".join(pieces)
 
         self.init_profile()
@@ -353,27 +354,6 @@ class WiFiTest(object):
                                                   '/usr/local/lib/flimflam')
         self.client_cmd_ping6 = client.get('cmd_ping6', 'ping6')
         self.client_cmd_wpa_cli = client.get('cmd_wpa_cli', 'wpa_cli')
-
-    def __get_wlan_devs(self, host):
-        ret = []
-        result = host.run("%s dev" % self.client_cmd_iw)
-        current_if = None
-        for line in result.stdout.splitlines():
-            ifmatch = re.search("Interface (\S*)", line)
-            if ifmatch is not None:
-                current_if = ifmatch.group(1)
-            elif ('type managed' in line or 'type IBSS' in line) and current_if:
-                ret.append(current_if)
-        logging.info("Found wireless interfaces %s" % str(ret))
-        return ret
-
-
-    def __get_interface_mac(self, host, ifname):
-        result = host.run("%s link show %s" % (self.client_cmd_ip, ifname))
-        macmatch = re.search("link/ether (\S*)", result.stdout)
-        if macmatch is not None:
-            return macmatch.group(1)
-        return None
 
 
     def __get_client_capabilities(self):

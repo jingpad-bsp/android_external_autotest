@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import base64
+import logging
 import os
 import re
 
@@ -220,3 +221,40 @@ def parse_ping_output(ping_output):
         stats['max'] = m.group(4)
         stats['dev'] = m.group(5)
     return stats
+
+
+def get_wlan_devs(host, command_iw):
+    """Get a list of WiFi devices.
+
+    @param host host object representing a remote machine.
+    @param command_iw string path to 'iw' executable on host
+    @return list of string wifi device names. (e.g. ['mlan0']).
+
+    """
+    ret = []
+    result = host.run('%s dev' % command_iw)
+    current_if = None
+    for line in result.stdout.splitlines():
+        ifmatch = re.search('Interface (\S*)', line)
+        if ifmatch is not None:
+            current_if = ifmatch.group(1)
+        elif ('type managed' in line or 'type IBSS' in line) and current_if:
+            ret.append(current_if)
+    logging.info('Found wireless interfaces %r', ret)
+    return ret
+
+
+def get_interface_mac(host, ifname, command_ip):
+    """Get the MAC address of a given interface on host.
+
+    @param host host object representing remote machine.
+    @param ifname string interface name.
+    @param command_ip string ip command on host.
+    @return string MAC address for interface on host.
+
+    """
+    result = host.run("%s link show %s" % (command_ip, ifname))
+    macmatch = re.search("link/ether (\S*)", result.stdout)
+    if macmatch is not None:
+        return macmatch.group(1)
+    return None
