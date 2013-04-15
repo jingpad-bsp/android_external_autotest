@@ -135,7 +135,8 @@ class ServoTest(test.test):
             except (socket.error,
                     xmlrpclib.ProtocolError,
                     httplib.BadStatusLine) as e:
-                logging.info('caught exception %s', e)
+                logging.info('caught: %s %s, tries left: %s',
+                             repr(e), str(e), timeout)
                 # The client RPC server may not come online fast enough. Retry.
                 timeout -= 1
                 rpc_error = e
@@ -164,10 +165,9 @@ class ServoTest(test.test):
 
         New remote processes will be launched if their used flags are enabled.
 
-        Args:
-            install_deps: If True, install the Autotest dependency when ready.
-            timeout: Time in seconds to wait for the client SSH daemon to
-              come up.
+        @param install_deps: If True, install Autotest dependency when ready.
+        @param timeout: Time in seconds to wait for the client SSH daemon to
+                        come up.
         """
         # Ensure old ssh connections are terminated.
         self._terminate_all_ssh()
@@ -185,8 +185,7 @@ class ServoTest(test.test):
     def wait_for_client_offline(self, timeout=60):
         """Wait for the client to come offline.
 
-        Args:
-          timeout: Time in seconds to wait the client to come offline.
+        @param timeout: Time in seconds to wait the client to come offline.
         """
         # Wait for the client to come offline.
         while timeout > 0 and self._ping_test(self._client.ip, timeout=1):
