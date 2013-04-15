@@ -46,13 +46,22 @@ class WiFiChaosConnectionTest(object):
         @param capturer: a PacketCaptureManager object, packet tracer.
         """
         self.host = host
-        self.connector = connector.TracingConnector(self.host, capturer)
+        self.capturer = capturer
+        self.connector = connector.TracingConnector(self.host, self.capturer)
         self.disconnector = disconnector.Disconnector(self.host)
         self.error_list = []
         self.generic_ap = ap_configurator.APConfigurator()
         self.factory = ap_configurator_factory.APConfiguratorFactory()
         self.psk_password = ''
         download_chromium_prebuilt.check_webdriver_ready()
+
+
+    def __repr__(self):
+        """@returns class name, DUT name and packet tracer name."""
+        return 'class: %s, DUT: %s, capturer: %s' % (
+                self.__class__.__name__,
+                self.host.hostname,
+                self.capturer)
 
 
     def _mark_line_count(self, logs, key):
@@ -102,10 +111,10 @@ class WiFiChaosConnectionTest(object):
         with profile_manager.ProfileManager(self.host) as pm:
             try:
                 self.connector.connect(
-                    ap_info['ssid'],
-                    security=ap_info.get('security', ''),
-                    psk=ap_info.get(self.PSK, ''),
-                    frequency=ap_info['frequency'])
+                        ap_info['ssid'],
+                        security=ap_info.get('security', ''),
+                        psk=ap_info.get(self.PSK, ''),
+                        frequency=ap_info['frequency'])
             except (connector.ConnectException,
                     connector.ConnectFailed,
                     connector.ConnectTimeout) as e:
@@ -174,20 +183,18 @@ class WiFiChaosConnectionTest(object):
         # DO NOT apply_settings() here. Cartridge is used to apply config
         # settings to multiple APs in parallel, see config_aps().
 
-        return {
-            'configurator': ap,
-            'bss': ap.get_bss(),
-            'band': band,
-            'channel': channel,
-            'frequency': ChaosAP.FREQUENCY_TABLE[channel],
-            'radio': True,
-            'ssid': ssid,
-            'visibility': True,
-            'security': security,
-            self.PSK: self.psk_password,
-            'brand': ap.config_data.get_brand(),
-            'model': ap.get_router_short_name(),
-            }
+        return {'configurator': ap,
+                'bss': ap.get_bss(),
+                'band': band,
+                'channel': channel,
+                'frequency': ChaosAP.FREQUENCY_TABLE[channel],
+                'radio': True,
+                'ssid': ssid,
+                'visibility': True,
+                'security': security,
+                self.PSK: self.psk_password,
+                'brand': ap.config_data.get_brand(),
+                'model': ap.get_router_short_name()}
 
 
     def _get_mode_type(self, ap, band):

@@ -64,6 +64,11 @@ class PacketCapture(object):
         self.manager = host_lock_manager.HostLockManager()
 
 
+    def __repr__(self):
+        """@returns class name and capturer name."""
+        return 'class: %s, host: %s' % (self.__class__.__name__, self._host)
+
+
     def allocate_packet_capture_machine(self):
         """
         Allocates a machine to capture packets.  Locks it so nobody else can
@@ -84,6 +89,7 @@ class PacketCapture(object):
 
         self.manager.add([self._host.hostname])
         self.manager.lock()  # Lock the host so nobody else can use it.
+        logging.info('Allocated packet tracer: %s', self._host.hostname)
 
 
     def _delete_files_and_interfaces(self):
@@ -115,7 +121,7 @@ class PacketCapture(object):
         self._delete_files_and_interfaces()
 
         if not self._host:
-          return
+            return
 
         # TODO(wdg): If this first command fails, mark the machine as broken.
         self._host.run('%s phy0 interface add %s type monitor' %
@@ -129,10 +135,10 @@ class PacketCapture(object):
         start_cmd = '%s %s set freq %s' % (self._iw, self._monitor_iface,
                                            str(self._freq))
         if ht40:
-          if ht40 in ('HT20', 'HT40+', 'HT40-'):
-            start_cmd = ' '.join([start_cmd, ht40])
-          else:
-            logging.error('Illegal ht40 parameter: %s, ignoring', ht40)
+            if ht40 in ('HT20', 'HT40+', 'HT40-'):
+                start_cmd = ' '.join([start_cmd, ht40])
+            else:
+                logging.error('Illegal ht40 parameter: %s, ignoring', ht40)
         self._host.run(start_cmd)
 
         # Launch a separate process to do the tcpdump.  Redirection in the
@@ -226,7 +232,7 @@ class PacketCaptureManager(object):
     def __enter__(self):
         self._capturer = PacketCapture()
         self._hosts_locked_by = host_lock_manager.HostsLockedBy(
-            self._capturer.manager)
+                self._capturer.manager)
         self._hosts_locked_by.__enter__()
         return self._capturer
 
@@ -236,5 +242,5 @@ class PacketCaptureManager(object):
             self._hosts_locked_by.__exit__(exit_type, exit_value,
                                            exit_traceback)
         if self._capturer:
-          self._capturer.stop_capture()
-          self._capturer.done_capturing()
+            self._capturer.stop_capture()
+            self._capturer.done_capturing()
