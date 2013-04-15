@@ -389,7 +389,7 @@ class AudioHelper(object):
 
         cmd = '%s -n %s' % (self.loopback_latency_path, noise_threshold)
 
-        output = utils.system_output(cmd)
+        output = utils.system_output(cmd, retain_output=True)
 
         # Sleep for a short while to make sure device is not busy anymore
         # after called loopback_latency.
