@@ -80,6 +80,7 @@
         "api_permissions": ["fileBrowserHandler",
                             "fileBrowserHandlerInternal",
                             "metricsPrivate",
+                            "streamsPrivate",
                             "unlimitedStorage"
                            ]
       },
@@ -114,7 +115,8 @@
         "effective_host_permissions": [],
         "api_permissions": ["app.currentWindowInternal",
                             "app.runtime",
-                            "app.window"]
+                            "app.window",
+                            "storage"]
       },
       { "id": "felcaaldnbdncclmgdcncolpebgiejap",
         "name": "Google Sheets",
