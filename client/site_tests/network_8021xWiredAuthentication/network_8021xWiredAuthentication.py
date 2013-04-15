@@ -8,11 +8,14 @@ import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import site_eap_certs
-from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import hostapd_server
 from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.cros import virtual_ethernet_pair
 
+# This hacks the path so that we can import shill_proxy.
+# pylint: disable=W0611
+from autotest_lib.client.cros import flimflam_test_path
+# pylint: enable=W0611
 import shill_proxy
 
 class network_8021xWiredAuthentication(test.test):
@@ -62,35 +65,20 @@ class network_8021xWiredAuthentication(test.test):
                 device_properties[self.AUTHENTICATION_FLAG])
 
 
-    def find_ethernet_service(self, interface_name):
-        """Finds the corresponding service object for an ethernet
-        interface.
-
-        @param interface_name string The name of the associated interface
-
-        @return Service object representing the associated service.
-
-        """
-        device = self.get_device(interface_name)
-        device_path = shill_proxy.dbus2primitive(device.object_path)
-        return self._shill_proxy.find_object('Service', {'Device': device_path})
-
-
     def configure_credentials(self, interface_name):
-        """Adds authentication properties to the Ethernet service.
+        """Adds authentication properties to the Ethernet EAP service.
 
         @param interface_name string The name of the associated interface
 
         """
-        service = self.find_ethernet_service(interface_name)
-        service.SetProperty('EAP.EAP', hostapd_server.HostapdServer.EAP_TYPE)
-        service.SetProperty('EAP.InnerEAP',
-                            'auth=%s' % hostapd_server.HostapdServer.EAP_PHASE2)
-        service.SetProperty('EAP.Identity',
-                            hostapd_server.HostapdServer.EAP_USERNAME)
-        service.SetProperty('EAP.Password',
-                            hostapd_server.HostapdServer.EAP_PASSWORD)
-        service.SetProperty('EAP.CACertPEM', site_eap_certs.ca_cert_1)
+        service = self._shill_proxy.manager.ConfigureService({
+            'Type': 'etherneteap',
+            'EAP.EAP': hostapd_server.HostapdServer.EAP_TYPE,
+            'EAP.InnerEAP': 'auth=%s' % hostapd_server.HostapdServer.EAP_PHASE2,
+            'EAP.Identity': hostapd_server.HostapdServer.EAP_USERNAME,
+            'EAP.Password': hostapd_server.HostapdServer.EAP_PASSWORD,
+            'EAP.CACertPEM': site_eap_certs.ca_cert_1
+        })
 
 
     def run_once(self):
