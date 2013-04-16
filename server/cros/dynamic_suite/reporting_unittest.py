@@ -4,7 +4,7 @@
 
 import mox
 
-from autotest_lib.server.cros.dynamic_suite import reporting
+from autotest_lib.server.cros.dynamic_suite import job_status, reporting
 from chromite.lib import gdata_lib
 
 
@@ -25,6 +25,7 @@ class ReportingTest(mox.MoxTestBase):
         'owner':'user',
         'hostname':'myhost',
         'job_id':'myjob',
+        'status': 'FAIL',
     }
 
     bug_template = {
@@ -41,13 +42,15 @@ class ReportingTest(mox.MoxTestBase):
 
         @return: a failure object initialized with values from test_report.
         """
-        return reporting.TestFailure(build=self.test_report.get('build'),
-                                     suite=self.test_report.get('suite'),
-                                     test=self.test_report.get('test'),
-                                     reason=self.test_report.get('reason'),
-                                     owner=self.test_report.get('owner'),
-                                     hostname=self.test_report.get('hostname'),
-                                     job_id=self.test_report.get('job_id'))
+        expected_result = job_status.Status(self.test_report.get('status'),
+            self.test_report.get('test'),
+            reason=self.test_report.get('reason'),
+            job_id=self.test_report.get('job_id'),
+            owner=self.test_report.get('owner'),
+            hostname=self.test_report.get('hostname'))
+
+        return reporting.TestFailure(self.test_report.get('build'),
+            self.test_report.get('suite'), expected_result)
 
 
     def _stub_out_tracker(self, mock_tracker=None):

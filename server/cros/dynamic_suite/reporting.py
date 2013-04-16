@@ -11,6 +11,7 @@ import re
 import common
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.site_utils import phapi_lib
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
@@ -71,26 +72,28 @@ class TestFailure(object):
 
     _HTTP_ERROR_THRESHOLD = 400
 
-    def __init__(self, build, suite, test, reason, owner, hostname, job_id):
+    def __init__(self, build, suite, result):
         """
         @param build The build type, of the form <board>/<milestone>-<release>.
                      ie. x86-mario-release/R25-4321.0.0
         @param suite The name of the suite that this test run was a part of.
-        @param test The name of the test that this failure is about.
-        @param reason The reason that this test failed.
-        @param owner The owner of the suite. When we run HWTests on the
-                     waterfall this will be 'chromeos-test', this is
-                     different from the owner of an individual test failure.
-        @param hostname The host this test failure occured on.
-        @param job_id The id of the test that failed.
+        @param result: The status of the job associated with this failure.
+                       This contains the status, job id, test name, hostname
+                       and reason for failure.
         """
         self.build = build
         self.suite = suite
-        self.test = test
-        self.reason = reason
-        self.owner = owner
-        self.hostname = hostname
-        self.job_id = job_id
+        self.test = result.test_name
+        self.reason = result.reason
+        self.owner = result.owner
+        self.hostname = result.hostname
+        self.job_id = result.id
+
+        # Aborts, server/client job failures or a test failure without a
+        # reason field need lab attention.
+        self.lab_error = (job_status.is_for_infrastructure_fail(result) or
+            result.is_worse_than(job_status.Status("ERROR", "")) or
+            not result.reason)
 
 
     def bug_title(self):
@@ -200,8 +203,6 @@ class Reporter(object):
     Files external reports about bug failures that happened inside
     autotest.
     """
-
-
     _project_name = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'project_name', default='')
     _username = global_config.global_config.get_config_value(
@@ -215,6 +216,10 @@ class Reporter(object):
     _PREDEFINED_LABELS = ['Test-Support']
     _OWNER = 'beeps@chromium.org'
 
+    _LAB_ERROR_TEMPLATE = {
+        'labels': ['Hardware-Lab'],
+        'owner': _OWNER,
+    }
 
     def _get_tracker(self, project, user, password):
         """Returns an initialized tracker object."""
@@ -257,7 +262,7 @@ class Reporter(object):
                  there is no obvious owner for the failure an empty string is
                  returned.
         """
-        if not failure.reason:
+        if failure.lab_error:
             return self._OWNER
         return ''
 
@@ -442,9 +447,11 @@ class Reporter(object):
 
         if len(all_issues) > 1:
             issue_ids = [issue.id for issue in all_issues]
-            self._add_issue_to_tracker(None,
+            self._create_bug_report(
                 'Query: %s, results: %s' % (marker, issue_ids),
-                'Multiple results for a specific query', owner=self._OWNER)
+                'Multiple results for a specific query', '',
+                self._OWNER, self._LAB_ERROR_TEMPLATE)
+
         if all_issues:
             return all_issues[0]
 
@@ -470,14 +477,20 @@ class Reporter(object):
             return
 
         issue = self._find_issue_by_marker(failure.search_marker())
-        owner = self._get_owner(failure)
         summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
                                     self._SEARCH_MARKER,
                                     failure.search_marker())
 
         if issue:
             comment = '%s\n\n%s' % (failure.bug_title(), summary)
-            self._modify_bug_report(issue.id, comment, owner)
-        else:
-            self._create_bug_report(summary, failure.bug_title(),
-                                    failure.test, owner, bug_template)
+            self._modify_bug_report(issue.id, comment)
+            return
+
+        if failure.lab_error:
+            if bug_template.get('labels'):
+                self._LAB_ERROR_TEMPLATE['labels'] += bug_template.get('labels')
+            bug_template = self._LAB_ERROR_TEMPLATE
+
+        self._create_bug_report(summary, failure.bug_title(),
+                                failure.test, self._get_owner(failure),
+                                bug_template)

@@ -374,6 +374,25 @@ class SuiteTest(mox.MoxTestBase):
         Confirm that all the necessary predicates are passed on to the
         bug reporter when a test fails.
         """
+
+        def check_result(result):
+            """
+            Checks to see if the status passed to the bug reporter contains all
+            the arguments required to file bugs.
+
+            @param result: The result we get when a test fails.
+            """
+            expected_result = job_status.Status('FAIL',
+                                                test_predicates.testname,
+                                                reason=test_predicates.reason,
+                                                job_id=test_fallout.job_id,
+                                                owner=test_fallout.username,
+                                                hostname=test_fallout.hostname)
+
+            return all(result.__dict__.get(k) == v for k,v in
+                       expected_result.__dict__.iteritems()
+                       if 'timestamp' not in str(k))
+
         self.suite = self._createSuiteWithMockedTestsAndControlFiles(
                          file_bugs=True)
 
@@ -389,16 +408,11 @@ class SuiteTest(mox.MoxTestBase):
             self.recorder)
 
         self.mox.StubOutWithMock(reporting, 'TestFailure')
-        reporting.TestFailure(build=self._BUILD,
-                              hostname=test_fallout.hostname,
-                              job_id=test_fallout.job_id,
-                              owner=test_fallout.username,
-                              reason=test_predicates.reason,
-                              suite=mox.IgnoreArg(),
-                              test=test_predicates.testname)
+        reporting.TestFailure(self._BUILD, mox.IgnoreArg(),
+                              mox.Func(check_result))
 
         self.mox.StubOutWithMock(reporting.Reporter, 'report')
-        reporting.Reporter.report(mox.IgnoreArg())
+        reporting.Reporter.report(mox.IgnoreArg(), mox.IgnoreArg())
 
         self.mox.ReplayAll()
 

@@ -394,13 +394,9 @@ class Suite(object):
                 # have laying around in memory across several objects here.
                 worse = result.is_worse_than(job_status.Status("WARN", ""))
                 if self._file_bugs and worse:
-                    failure = reporting.TestFailure(build=self._build,
-                                                    suite=self._tag,
-                                                    test=result.test_name,
-                                                    reason=result.reason,
-                                                    owner=result.owner,
-                                                    hostname=result.hostname,
-                                                    job_id=result.id)
+                    failure = reporting.TestFailure(self._build,
+                                                    self._tag,
+                                                    result)
 
                     bug_reporter.report(failure, bug_template)
         except Exception:  # pylint: disable=W0703
