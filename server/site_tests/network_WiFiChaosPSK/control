@@ -23,6 +23,7 @@ def wifi_chaos_psk(machine):
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
         helper = chaos_base_test.WiFiChaosConnectionTest(host, capturer)
+        helper.psk_password = 'chromeos'
         all_aps = helper.factory.get_ap_configurators(
                       dict(securities=[helper.generic_ap.security_type_wpapsk]))
         # Power down all of the APs because some can get grumpy
@@ -32,7 +33,8 @@ def wifi_chaos_psk(machine):
         # For dual-band AP, we can only configure and test one band at a time.
         # Hence the use of nested for loops below.
         for band, channel in helper.get_bands_and_channels():
-            for ap_info in helper.config_aps(all_aps, band, channel):
+            for ap_info in helper.config_aps(all_aps, band, channel,
+                                             security=helper.PSK):
                 # Group test output by SSID
                 mod_ssid = ap_info['ssid'].replace(' ', '_')
                 job.run_test('network_WiFiChaosPSK', host=host,

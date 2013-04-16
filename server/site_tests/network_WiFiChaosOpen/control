@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network_WiFiSimpleConnectionServer"
+NAME = "network_WiFiChaosOpen"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
@@ -18,13 +18,16 @@ in the AP compatibility lab.
 from autotest_lib.server import packet_capture
 from autotest_lib.server.cros.chaos_lib import chaos_base_test
 
-def wifi_ssid_compat(machine):
+def wifi_chaos_open(machine):
     host = hosts.create_host(machine)
 
     with packet_capture.PacketCaptureManager() as capturer:
         capturer.allocate_packet_capture_machine()
         helper = chaos_base_test.WiFiChaosConnectionTest(host, capturer)
         all_aps = helper.factory.get_ap_configurators()
+        # Power down all of the APs because some can get grumpy
+        # if they are configured several times and remain on.
+        helper.power_down_aps(all_aps)
         # TODO(tgao): lock batch of APs and loop here crosbug.com/222939
         # For dual-band AP, we can only configure and test one band at a time.
         # Hence the use of nested for loops below.
@@ -32,8 +35,8 @@ def wifi_ssid_compat(machine):
             for ap_info in helper.config_aps(all_aps, band, channel):
                 # Group test output by SSID
                 mod_ssid = ap_info['ssid'].replace(' ', '_')
-                job.run_test('network_WiFiSimpleConnectionServer', host=host,
+                job.run_test('network_WiFiChaosOpen', host=host,
                              helper=helper, ap_info=ap_info, tries=10,
-                             disable_sysinfo=True, tag=mod_ssid)
+                             disable_sysinfo=False, tag=mod_ssid)
 
-parallel_simple(wifi_ssid_compat, machines)
+parallel_simple(wifi_chaos_open, machines)

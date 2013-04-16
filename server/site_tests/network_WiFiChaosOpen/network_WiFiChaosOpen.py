@@ -7,8 +7,8 @@ import logging
 from autotest_lib.server import autotest, test
 
 
-class network_WiFiSimpleConnectionServer(test.test):
-    """ Dynamic Chaos test. """
+class network_WiFiChaosOpen(test.test):
+    """ Dynamic Chaos test for open networks. """
 
     version = 1
 
