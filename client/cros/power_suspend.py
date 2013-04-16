@@ -164,12 +164,28 @@ class Suspender(object):
         self._logs = []
 
 
-    def _update_logs(self):
-        """Read all lines logged since last reset into log cache."""
-        self._logs += self._log_file.readlines()
+    def _update_logs(self, retries=11):
+        """
+        Read all lines logged since last reset into log cache. Block until last
+        powerd_suspend resume message was read, raise if it takes too long.
+        """
+        finished_regex = re.compile(r'powerd_suspend\[\d+\]: Resume finished')
+        for retry in xrange(retries + 1):
+            lines = self._log_file.readlines()
+            if lines:
+                if self._logs and self._logs[-1][-1] != '\n':
+                    # Reassemble line that was cut in the middle
+                    self._logs[-1] += lines.pop(0)
+                self._logs += lines
+            for line in reversed(self._logs):
+                if (finished_regex.search(line)):
+                    return
+            time.sleep(0.005 * 2**retry)
+
+        raise error.TestError("Sanity check failed: did not try to suspend.")
 
 
-    def _ts(self, name, retries=50, sleep_seconds=0.2):
+    def _ts(self, name, retries=11):
         """Searches logs for last timestamp with a given suspend message."""
         # Occasionally need to retry due to races from process wakeup order
         for retry in xrange(retries + 1):
@@ -181,14 +197,14 @@ class Suspender(object):
                         return float(words[1])
             except IOError:
                 pass
-            time.sleep(sleep_seconds)
+            time.sleep(0.005 * 2**retry)
 
         raise error.TestError('Could not find %s entry.' % name)
 
 
-    def _hwclock_ts(self, not_before, retries=10):
+    def _hwclock_ts(self, not_before, retries=11):
         """Read the RTC resume timestamp saved by powerd_suspend."""
-        for _ in xrange(retries + 1):
+        for retry in xrange(retries + 1):
             early_wakeup = False
             if os.path.exists(self.HWCLOCK_FILE):
                 match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
@@ -200,7 +216,7 @@ class Suspender(object):
                     if seconds >= not_before:
                         return seconds
                     early_wakeup = True
-            time.sleep(0.2)
+            time.sleep(0.005 * 2**retry)
         if early_wakeup:
             logging.debug('Early wakeup, dumping eventlog if it exists:\n' +
                     utils.system_output('mosys eventlog list | tail -n %d' %
@@ -304,8 +320,6 @@ class Suspender(object):
                 abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
                         r'|powerd_suspend\[.*Cancel suspend at kernel')
                 unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
-                start_regex = re.compile(r'powerd_suspend\[\d+\]: Going to sus')
-                start_found = False
                 # TODO(scottz): warning_monitor crosbug.com/38092
                 self._update_logs()
                 for i in xrange(len(self._logs)):
@@ -326,11 +340,6 @@ class Suspender(object):
                                 cros_logging.strip_timestamp(line))
                     if unknown_regex.search(line):
                         raise sys_power.SuspendFailure('Unidentified problem.')
-                    if not start_found and start_regex.search(line):
-                        start_found = True
-                if not start_found:
-                    raise error.TestError('Sanity check failed: system did not '
-                            'actually try to suspend.')
 
                 hwclock_ts = self._hwclock_ts(alarm)
                 if hwclock_ts:
@@ -343,7 +352,6 @@ class Suspender(object):
             kernel_down = (self._ts('end_suspend_time') -
                            self._ts('start_suspend_time'))
             kernel_up = self._ts('end_resume_time') - start_resume
-            self._update_logs()
             devices_up = self._device_resume_time()
             total_up = hwclock_ts - alarm
             firmware_up = self._firmware_resume_time()
