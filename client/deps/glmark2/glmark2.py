@@ -17,6 +17,10 @@ def setup(tarball, topdir):
     srcdir = os.path.join(topdir, 'src')
     utils.extract_tarball_to_dir(tarball, srcdir)
     os.chdir(srcdir)
+    patches = ['0001-Fix-Clang-syntax-checking.patch']
+    for patch in patches:
+        utils.system('patch -p1 < ../%s' % patch)
+
     # glmark2 does not have any runtime option to specify its data dir, so we
     # have to set the prefix dir to where it's being run on target machine.
     # And we can only install glmark2 to inside the build sandbox (destdir), so

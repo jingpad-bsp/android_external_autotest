@@ -1,0 +1,10 @@
+--- glmark2-2012.03/src/scene-buffer.cpp.bak	2013-04-16 15:42:41.983677754 -0700
++++ glmark2-2012.03/src/scene-buffer.cpp	2013-04-16 15:45:01.464548755 -0700
+@@ -183,7 +183,6 @@
+     double wave_k_;
+     double wave_period_;
+     double wave_full_period_;
+-    double wave_fill_;
+     double wave_velocity_;
+ 
+     std::vector<double> displacement_;
