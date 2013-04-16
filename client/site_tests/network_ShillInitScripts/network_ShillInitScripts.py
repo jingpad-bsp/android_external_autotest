@@ -31,6 +31,7 @@ class network_ShillInitScripts(test.test):
     saved_config = '/tmp/network_ShillInitScripts_saved_config.tgz'
     cryptohome_path_command = 'cryptohome-path'
     guest_shill_user_profile_dir = '/var/run/shill/guest_user_profile/shill'
+    guest_shill_user_log_dir = '/var/run/shill/guest_user_profile/shill_logs'
     magic_header = '# --- shill init file test magic header ---'
 
     def start_shill(self):
@@ -69,6 +70,10 @@ class network_ShillInitScripts(test.test):
         # Deduce the user cryptohome directory name for our fake user.
         self.user_cryptohome_dir = utils.system_output(
             '%s user %s' % (self.cryptohome_path_command, self.fake_user))
+
+        # Deduce the directory for memory log storage.
+        self.user_cryptohome_log_dir = ('%s/shill_logs' %
+                                        self.root_cryptohome_dir)
 
         # Just in case this hash actually exists, add these to the list of
         # saved directories.
@@ -308,6 +313,11 @@ class network_ShillInitScripts(test.test):
         self.assure_is_link_to('/var/run/shill/user_profiles/chronos',
                                self.new_shill_user_profile_dir,
                                'Shill profile link')
+        self.assure_is_dir(self.user_cryptohome_log_dir,
+                           'shill user log directory')
+        self.assure_is_link_to('/var/run/shill/log',
+                               self.user_cryptohome_log_dir,
+                               'Shill logs link')
         self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
                                   [ 'PushProfile', '~chronos/shill' ]],
                                  'CreateProfile and PushProfile are called')
@@ -333,6 +343,11 @@ class network_ShillInitScripts(test.test):
         self.assure_is_link_to('/var/run/shill/user_profiles/chronos',
                                self.guest_shill_user_profile_dir,
                                'Shill profile link')
+        self.assure_is_dir(self.guest_shill_user_log_dir,
+                           'shill guest user log directory')
+        self.assure_is_link_to('/var/run/shill/log',
+                               self.guest_shill_user_log_dir,
+                               'Shill logs link')
         self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
                                   [ 'PushProfile', '~chronos/shill' ]],
                                  'CreateProfile and PushProfile are called')
@@ -493,6 +508,10 @@ class network_ShillInitScripts(test.test):
             self.assure_is_link_to('/var/run/shill/user_profiles/%s' % username,
                                    self.new_shill_user_profile_dir,
                                    'Shill profile link for %s' % username)
+            # Despite multiple logins, the log directory remains the same.
+            self.assure_is_link_to('/var/run/shill/log',
+                                   self.user_cryptohome_log_dir,
+                                   'Shill log link for %s' % username)
             created_profiles.append(profile)
 
         # Start up shill with the data from all the user profiles above
@@ -509,6 +528,7 @@ class network_ShillInitScripts(test.test):
     def test_logout(self):
         os.makedirs('/var/run/shill/user_profiles')
         os.makedirs(self.guest_shill_user_profile_dir)
+        os.makedirs(self.guest_shill_user_log_dir)
         self.touch('/var/run/state/logged-in')
         self.logout()
         self.assure(not os.path.exists('/var/run/state/logged-in'),
@@ -517,5 +537,7 @@ class network_ShillInitScripts(test.test):
                     'User profile directory was removed')
         self.assure(not os.path.exists(self.guest_shill_user_profile_dir),
                     'Guest user profile directory was removed')
+        self.assure(not os.path.exists(self.guest_shill_user_log_dir),
+                    'Guest user log directory was removed')
         self.assure_method_calls([[ 'PopAllUserProfiles', '' ]],
                                  'PopAllUserProfiles is called')
