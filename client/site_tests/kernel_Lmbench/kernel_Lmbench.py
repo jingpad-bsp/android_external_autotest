@@ -76,7 +76,8 @@ class kernel_Lmbench(test.test):
         os.chdir(self.srcdir)
         patches = ['0001-Fix-build-issues-with-lmbench.patch',
                    '0002-Changing-shebangs-on-lmbench-scripts.patch',
-                   '0003-makefile.patch']
+                   '0003-makefile.patch',
+                   '0004-clang-syntax.patch']
         for patch in patches:
             utils.system('patch -p1 < ../%s' % patch)
         # Set OS='' to avoid create a host-specific bin directory
