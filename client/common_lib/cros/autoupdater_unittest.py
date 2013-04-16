@@ -223,5 +223,41 @@ class TestAutoUpdater(mox.MoxTestBase):
         self.assertTrue(updater.check_version_to_confirm_install())
 
 
+    def testUpdateStateful(self):
+        """Tests that we call the stateful update script with the correct args.
+        """
+        self.mox.StubOutWithMock(autoupdater.ChromiumOSUpdater, '_run')
+        update_url = ('http://172.22.50.205:8082/update/lumpy-chrome-perf/'
+                      'R28-4444.0.0-b2996')
+        static_update_url = ('http://172.22.50.205:8082/static/archive/'
+                             'lumpy-chrome-perf/R28-4444.0.0-b2996')
+
+        # Test with clobber=False.
+        autoupdater.ChromiumOSUpdater._run(
+                mox.And(
+                        mox.StrContains(autoupdater.REMOTE_STATEUL_UPDATE_PATH),
+                        mox.StrContains(static_update_url),
+                        mox.Not(mox.StrContains('--stateful_change=clean'))),
+                timeout=600)
+
+        self.mox.ReplayAll()
+        updater = autoupdater.ChromiumOSUpdater(update_url)
+        updater.update_stateful(clobber=False)
+        self.mox.VerifyAll()
+
+        # Test with clobber=True.
+        self.mox.ResetAll()
+        autoupdater.ChromiumOSUpdater._run(
+                mox.And(
+                        mox.StrContains(autoupdater.REMOTE_STATEUL_UPDATE_PATH),
+                        mox.StrContains(static_update_url),
+                        mox.StrContains('--stateful_change=clean')),
+                timeout=600)
+        self.mox.ReplayAll()
+        updater = autoupdater.ChromiumOSUpdater(update_url)
+        updater.update_stateful(clobber=True)
+        self.mox.VerifyAll()
+
+
 if __name__ == '__main__':
   unittest.main()

@@ -247,7 +247,11 @@ class ChromiumOSUpdater():
             raise update_error
 
 
-    def _update_stateful(self):
+    def update_stateful(self, clobber=True):
+        """Updates the stateful partition.
+
+        @param clobber: If True, a clean stateful installation.
+        """
         logging.info('Updating stateful partition...')
         # For production devservers we create a static tree of payloads rooted
         # at archive.
@@ -260,8 +264,11 @@ class ChromiumOSUpdater():
 
         # Attempt stateful partition update; this must succeed so that the newly
         # installed host is testable after update.
-        statefuldev_cmd = [self.get_stateful_update_script()]
-        statefuldev_cmd += [statefuldev_url, '--stateful_change=clean', '2>&1']
+        statefuldev_cmd = [self.get_stateful_update_script(), statefuldev_url]
+        if clobber:
+            statefuldev_cmd.append('--stateful_change=clean')
+
+        statefuldev_cmd.append('2>&1')
         try:
             self._run(' '.join(statefuldev_cmd), timeout=600)
         except error.AutoservRunError:
@@ -309,7 +316,7 @@ class ChromiumOSUpdater():
         try:
             updaters = [
                 multiprocessing.process.Process(target=self._update_root),
-                multiprocessing.process.Process(target=self._update_stateful)
+                multiprocessing.process.Process(target=self.update_stateful)
                 ]
             if not update_root:
                 logging.info('Root update is skipped.')

@@ -502,7 +502,7 @@ class SiteHost(remote.RemoteHost):
             force_update = True
 
         updater = autoupdater.ChromiumOSUpdater(update_url, host=self,
-                                            local_devserver=local_devserver)
+                                                local_devserver=local_devserver)
         updated = False
         # Remove cros-version and job_repo_url host attribute from host.
         self.clear_cros_version_labels_and_job_repo_url()

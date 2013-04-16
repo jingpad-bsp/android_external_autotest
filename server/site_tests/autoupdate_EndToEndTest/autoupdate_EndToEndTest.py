@@ -635,6 +635,16 @@ class autoupdate_EndToEndTest(test.test):
         return staged_url
 
 
+    def _payload_to_update_url(self, payload_url):
+        """Given a payload url, returns the Update Engine update url for it."""
+         # image_url is of the format that is in the devserver i.e.
+        # <hostname>/static/archive/...LABEL/update.gz.
+        # We want to transform it to the correct omaha url which is
+        # <hostname>/update/...LABEL.
+        update_url = payload_url.rpartition('/update.gz')[0]
+        return update_url.replace('/static/archive/', '/update/')
+
+
     def _install_source_image(self, image_url):
         """Prepare the specified host with the image."""
         if self._use_servo:
@@ -645,14 +655,8 @@ class autoupdate_EndToEndTest(test.test):
                 self._install_mp_image(image_url)
 
         else:
-            # image_url is of the format that is in the devserver i.e.
-            # <hostname>/static/BRANCH/VERSION/update.gz.
-            # We want to transform it to the correct omaha url which is
-            # <hostname>/update/BRANCH/VERSION.
-            image_url_dir = image_url.rpartition('/update.gz')[0]
-            image_url_dir = image_url_dir.replace('/static/archive/',
-                                                  '/update/')
-            self._host.machine_install(image_url_dir, force_update=True)
+            self._host.machine_install(self._payload_to_update_url(image_url),
+                                       force_update=True)
 
 
     def _stage_images_onto_devserver(self, lorry_devserver, test_conf):
@@ -815,6 +819,10 @@ class autoupdate_EndToEndTest(test.test):
         if use_servo:
             self._servo_dut_reboot()
         else:
+            # Stateful from source may not be compatible with target. Update it.
+            update_url = self._payload_to_update_url(target_payload_url)
+            updater = autoupdater.ChromiumOSUpdater(update_url, host=self._host)
+            updater.update_stateful(clobber=False)
             self._host.reboot()
 
         # Trigger a second update check (again, test vs MP).
