@@ -24,6 +24,25 @@ Format your code for an 80 character wide screen.
 Indentation is now 4 spaces, as opposed to hard tabs (which it used to be).
 This is the Python standard.
 
+For hanging indentation, use 8 spaces plus all args should be on the new line.
+
+     # Either of the following hanging indentation is considered acceptable.
+YES: return 'class: %s, host: %s, args = %s' % (
+             self.__class__.__name__, self.hostname, self.args)
+
+YES: return 'class: %s, host: %s, args = %s' % (
+             self.__class__.__name__,
+             self.hostname,
+             self.args)
+
+     # Do not use 4 spaces for hanging indentation
+NO:  return 'class: %s, host: %s, args = %s' % (
+         self.__class__.__name__, self.hostname, self.args)
+
+     # Do put all args on new line
+NO:  return 'class: %s, host: %s, args = %s' % (self.__class__.__name__,
+             self.hostname, self.args)
+
 Don't leave trailing whitespace, or put whitespace on blank lines.
 Leave TWO blank lines between functions - this is Python, there are no clear
 function end markers, and we need help.
