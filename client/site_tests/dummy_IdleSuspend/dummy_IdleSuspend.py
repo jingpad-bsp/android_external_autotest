@@ -18,7 +18,7 @@ class dummy_IdleSuspend(cros_ui_test.UITest):
 
     _IDLE_TIMINGS = {
         'disable_idle_suspend': 0,
-        'react_ms': 2000,
+        'ignore_external_policy': 1,
         'unplugged_dim_ms': 4000,
         'unplugged_off_ms': 6000,
         'unplugged_suspend_ms': 8000,

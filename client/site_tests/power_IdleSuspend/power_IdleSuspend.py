@@ -15,6 +15,7 @@ POWER_MANAGER_SETTINGS = {
     'unplugged_off_ms': 5000,
     'unplugged_suspend_ms': 10000,
     'disable_idle_suspend': 0,
+    'ignore_external_policy': 1,
 }
 
 SUSPEND_TIMEOUT_MS = 30000

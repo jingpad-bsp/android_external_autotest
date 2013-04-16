@@ -44,14 +44,14 @@ class power_BacklightControl(test.test):
         status = power_status.get_status()
         status.assert_battery_state(5)
 
-        prefs = { 'disable_als'          : 1,
-                  'react_ms'             : 30000,
-                  'plugged_dim_ms'       : 7200000,
-                  'plugged_off_ms'       : 9000000,
-                  'plugged_suspend_ms'   : 18000000,
-                  'unplugged_dim_ms'     : 7200000,
-                  'unplugged_off_ms'     : 9000000,
-                  'unplugged_suspend_ms' : 18000000 }
+        prefs = { 'disable_als'            : 1,
+                  'ignore_external_policy' : 1,
+                  'plugged_dim_ms'         : 7200000,
+                  'plugged_off_ms'         : 9000000,
+                  'plugged_suspend_ms'     : 18000000,
+                  'unplugged_dim_ms'       : 7200000,
+                  'unplugged_off_ms'       : 9000000,
+                  'unplugged_suspend_ms'   : 18000000 }
         self._pref_change = power_utils.PowerPrefChanger(prefs)
 
         keyvals = {}

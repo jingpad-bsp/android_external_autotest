@@ -22,14 +22,14 @@ class power_AudioDetector(cros_ui_test.UITest):
         dim_ms = min(10000, gap_ms)
         off_ms = min(20000, gap_ms * 2)
         suspend_ms = min(30000, gap_ms * 3)
-        prefs = { 'disable_idle_suspend' : 0,
-                  'react_ms'             : react_ms,
-                  'plugged_dim_ms'       : dim_ms,
-                  'plugged_off_ms'       : off_ms,
-                  'plugged_suspend_ms'   : suspend_ms,
-                  'unplugged_dim_ms'     : dim_ms,
-                  'unplugged_off_ms'     : off_ms,
-                  'unplugged_suspend_ms' : suspend_ms }
+        prefs = { 'disable_idle_suspend'   : 0,
+                  'ignore_external_policy' : 1,
+                  'plugged_dim_ms'         : dim_ms,
+                  'plugged_off_ms'         : off_ms,
+                  'plugged_suspend_ms'     : suspend_ms,
+                  'unplugged_dim_ms'       : dim_ms,
+                  'unplugged_off_ms'       : off_ms,
+                  'unplugged_suspend_ms'   : suspend_ms }
         self._pref_change = power_utils.PowerPrefChanger(prefs)
 
         # Audio loop time should be significantly shorter than |run_time_sec|
