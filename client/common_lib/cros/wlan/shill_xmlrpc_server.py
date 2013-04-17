@@ -5,16 +5,12 @@
 # found in the LICENSE file.
 
 import dbus
-import errno
 import functools
 import logging
 import logging.handlers
-import select
-import signal
-import threading
-import SimpleXMLRPCServer
 
 import common
+from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.common_lib.cros.wlan import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 
@@ -199,69 +195,12 @@ class ShillXmlRpcDelegate(object):
         return True
 
 
-class ShillXmlRpcServer(threading.Thread):
-    """Simple XMLRPC server implementation.
-
-    In theory, Python should provide a sane XMLRPC server implementation as
-    part of its standard library.  In practice the provided implementation
-    doesn't handle signals, not even EINTR.  As a result, we have this class.
-
-    Usage:
-
-    server = ShillXmlRpcServer(('localhost', 43212))
-    server.run()
-
-    """
-    def __init__(self, addr=None):
-        """Construct a ShillXmlRpcServer.
-
-        @param addr tuple of (string ip adresss, int local port number).
-
-        """
-        super(ShillXmlRpcServer, self).__init__()
-        self._delegate = ShillXmlRpcDelegate()
-        if addr is None:
-            addr = ('localhost', constants.SHILL_XMLRPC_SERVER_PORT)
-        logging.info('Binding server to %s', addr)
-        self._server = SimpleXMLRPCServer.SimpleXMLRPCServer(addr)
-        self._server.register_introspection_functions()
-        self._server.register_instance(self._delegate)
-        signal.signal(signal.SIGTERM, self._handle_signal)
-        signal.signal(signal.SIGINT, self._handle_signal)
-        self._keep_running = True
-
-
-    def run(self):
-        """Block and handle many XmlRpc requests."""
-        logging.info("ShillXmlRpcServer starting...")
-        while self._keep_running:
-            try:
-                self._server.handle_request()
-            except select.error as v:
-                # In a cruel twist of fate, the python library doesn't handle
-                # this kind of error.
-                if v[0] != errno.EINTR:
-                    raise
-        logging.info("ShillXmlRpcServer exited.")
-
-
-    def _handle_signal(self, _signum, _frame):
-        """Handle a process signal by gracefully quitting.
-
-        SimpleXMLRPCServer helpfully exposes a method called shutdown() which
-        clears a flag similar to _keep_running, and then blocks until it sees
-        the server shut down.  Unfortunately, if you call that function from
-        a signal handler, the server will just hang, since the process is
-        paused for the signal, causing a deadlock.  Thus we are reinventing the
-        wheel.
-
-        """
-        self._keep_running = False
-
-
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
     logging.getLogger().addHandler(handler)
     logging.debug('shill_xmlrpc_server main...')
-    ShillXmlRpcServer().run()
+    server = xmlrpc_server.XmlRpcServer('localhost',
+                                         constants.SHILL_XMLRPC_SERVER_PORT)
+    server.register_delegate(ShillXmlRpcDelegate())
+    server.run()
