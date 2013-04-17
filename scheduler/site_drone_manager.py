@@ -5,12 +5,16 @@ import logging
 
 from autotest_lib.client.common_lib import global_config, error
 from autotest_lib.scheduler import drones, scheduler_config
+from autotest_lib.site_utils.graphite import stats
 
 HOSTS_JOB_SUBDIR = 'hosts/'
 PARSE_LOG = '.parse.log'
 
 
 class SiteDroneManager(object):
+
+
+    _timer = stats.Timer('drone_manager')
 
 
     def copy_to_results_repository(self, process, source_path,
@@ -69,3 +73,13 @@ class SiteDroneManager(object):
                               hostname, e)
                 return
             self._drones[drone.hostname] = drone
+
+
+    @_timer.decorate
+    def refresh(self):
+       super(SiteDroneManager, self).refresh()
+
+
+    @_timer.decorate
+    def execute_actions(self):
+       super(SiteDroneManager, self).execute_actions()

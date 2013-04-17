@@ -25,6 +25,7 @@ from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.database import database_connection
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import scheduler_config
+from autotest_lib.site_utils.graphite import stats
 
 _notify_email_statuses = []
 _base_url = None
@@ -360,8 +361,10 @@ class Host(DBObject):
     _table_name = 'afe_hosts'
     _fields = ('id', 'hostname', 'locked', 'synch_id', 'status',
                'invalid', 'protection', 'locked_by_id', 'lock_time', 'dirty')
+    _timer = stats.Timer("scheduler_models.Host")
 
 
+    @_timer.decorate
     def set_status(self,status):
         logging.info('%s -> %s', self.hostname, status)
         self.update_field('status',status)
@@ -435,6 +438,7 @@ class HostQueueEntry(DBObject):
     _fields = ('id', 'job_id', 'host_id', 'status', 'meta_host',
                'active', 'complete', 'deleted', 'execution_subdir',
                'atomic_group_id', 'aborted', 'started_on')
+    _timer = stats.Timer('scheduler_models.HostQueueEntry')
 
 
     def __init__(self, id=None, row=None, **kwargs):
@@ -549,6 +553,7 @@ class HostQueueEntry(DBObject):
                                     self.status, flags_str)
 
 
+    @_timer.decorate
     def set_status(self, status):
         logging.info("%s -> %s", self, status)
 
@@ -823,6 +828,7 @@ class Job(DBObject):
                'parse_failed_repair', 'max_runtime_hrs', 'drone_set_id',
                'parameterized_job_id', 'max_runtime_mins', 'parent_job_id',
                'test_retry')
+    _timer = stats.Timer("scheduler_models.Job")
 
     # This does not need to be a column in the DB.  The delays are likely to
     # be configured short.  If the scheduler is stopped and restarted in
@@ -1007,6 +1013,7 @@ class Job(DBObject):
         return stats
 
 
+    @_timer.decorate
     def set_status(self, status, update_queues=False):
         self.update_field('status',status)
 

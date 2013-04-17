@@ -25,6 +25,7 @@ from autotest_lib.scheduler import gc_stats, host_scheduler, monitor_db_cleanup
 from autotest_lib.scheduler import scheduler_logging_config
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
+from autotest_lib.site_utils.graphite import stats
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
 PID_FILE_PREFIX = 'monitor_db'
@@ -309,6 +310,7 @@ class BaseDispatcher(object):
         major step begins so we can try to figure out where we are using most
         of the tick time.
         """
+        timer = stats.Timer('scheduler.tick')
         self._log_tick_msg('Calling new tick, starting garbage collection().')
         self._garbage_collection()
         self._log_tick_msg('Calling _drone_manager.refresh().')
@@ -335,9 +337,11 @@ class BaseDispatcher(object):
         _drone_manager.execute_actions()
         self._log_tick_msg('Calling '
                            'email_manager.manager.send_queued_emails().')
-        email_manager.manager.send_queued_emails()
+        with timer.get_client('email_manager_send_queued_emails'):
+            email_manager.manager.send_queued_emails()
         self._log_tick_msg('Calling django.db.reset_queries().')
-        django.db.reset_queries()
+        with timer.get_client('django_db_reset_queries'):
+            django.db.reset_queries()
         self._tick_count += 1
 
 

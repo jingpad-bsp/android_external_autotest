@@ -94,6 +94,41 @@ class SiteDispatcher(object):
     def tick(self):
         super(SiteDispatcher, self).tick()
 
+    @_timer.decorate
+    def _garbage_collection(self):
+        super(SiteDispatcher, self)._garbage_collection()
+
+    @_timer.decorate
+    def _run_cleanup(self):
+        super(SiteDispatcher, self)._run_cleanup()
+
+    @_timer.decorate
+    def _find_aborting(self):
+        super(SiteDispatcher, self)._find_aborting()
+
+    @_timer.decorate
+    def _process_recurring_runs(self):
+        super(SiteDispatcher, self)._process_recurring_runs()
+
+    @_timer.decorate
+    def _schedule_delay_tasks(self):
+        super(SiteDispatcher, self)._schedule_delay_tasks()
+
+    @_timer.decorate
+    def _schedule_running_host_queue_entries(self):
+        super(SiteDispatcher, self)._schedule_running_host_queue_entries()
+
+    @_timer.decorate
+    def _schedule_special_tasks(self):
+        super(SiteDispatcher, self)._schedule_special_tasks()
+
+    @_timer.decorate
+    def _schedule_new_jobs(self):
+        super(SiteDispatcher, self)._schedule_new_jobs()
+
+    @_timer.decorate
+    def _handle_agents(self):
+        super(SiteDispatcher, self)._handle_agents()
 
     def _reverify_hosts_where(self, where,
                               print_message='Reverifying host %s'):

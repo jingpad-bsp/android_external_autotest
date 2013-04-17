@@ -9,6 +9,7 @@ from autotest_lib.client.common_lib import global_config, utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import metahost_scheduler, scheduler_config
 from autotest_lib.scheduler import scheduler_models
+from autotest_lib.site_utils.graphite import stats
 
 
 get_site_metahost_schedulers = utils.import_site_function(
@@ -32,6 +33,11 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
     queries.  It has proven much simpler and faster to build these auxiliary
     data structures and perform the logic in Python.
     """
+
+
+    _timer = stats.Timer('host_scheduler')
+
+
     def __init__(self, db):
         self._db = db
         self._metahost_schedulers = metahost_scheduler.get_metahost_schedulers()
@@ -51,6 +57,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
                                in self._metahost_schedulers))
 
 
+    @_timer.decorate
     def _get_ready_hosts(self):
         # avoid any host with a currently active queue entry against it
         hosts = scheduler_models.Host.fetch(
@@ -86,6 +93,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         return result
 
 
+    @_timer.decorate
     def _get_job_acl_groups(self, job_ids):
         query = """
         SELECT afe_jobs.id, afe_acl_groups_users.aclgroup_id
@@ -98,6 +106,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         return self._get_many2many_dict(query, job_ids)
 
 
+    @_timer.decorate
     def _get_job_ineligible_hosts(self, job_ids):
         query = """
         SELECT job_id, host_id
@@ -107,6 +116,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         return self._get_many2many_dict(query, job_ids)
 
 
+    @_timer.decorate
     def _get_job_dependencies(self, job_ids):
         query = """
         SELECT job_id, label_id
@@ -116,6 +126,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         return self._get_many2many_dict(query, job_ids)
 
 
+    @_timer.decorate
     def _get_host_acls(self, host_ids):
         query = """
         SELECT host_id, aclgroup_id
@@ -125,6 +136,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         return self._get_many2many_dict(query, host_ids)
 
 
+    @_timer.decorate
     def _get_label_hosts(self, host_ids):
         if not host_ids:
             return {}, {}
@@ -139,6 +151,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         return labels_to_hosts, hosts_to_labels
 
 
+    @_timer.decorate
     def _get_labels(self):
         return dict((label.id, label) for label
                     in scheduler_models.Label.fetch())
@@ -165,6 +178,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         self._labels = self._get_labels()
 
 
+    @_timer.decorate
     def tick(self):
         for metahost_scheduler in self._metahost_schedulers:
             metahost_scheduler.tick()
