@@ -80,7 +80,7 @@ class audiovideo_LineOutToMicInLoopback(test.test):
                        (self._record_duration, self._wav_path))
                 utils.system(cmd)
 
-            self._ah.loopback_test_channels(noise_file, play_wav)
+            self._ah.loopback_test_channels(noise_file.name, play_wav)
 
     def loopback_test_cras(self):
         """Uses cras_test_client to test audio on CRAS."""
@@ -102,4 +102,4 @@ class audiovideo_LineOutToMicInLoopback(test.test):
                        (self._record_duration, self._wav_path))
                 utils.system(cmd)
 
-            self._ah.loopback_test_channels(noise_file, play_wav)
+            self._ah.loopback_test_channels(noise_file.name, play_wav)

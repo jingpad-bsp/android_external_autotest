@@ -103,7 +103,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             self._ah.record_sample(noise_file.name)
             # Test each media file for all channels.
             for media_file in _MEDIA_FORMATS:
-                self._ah.loopback_test_channels(noise_file,
+                self._ah.loopback_test_channels(noise_file.name,
                         lambda channel: self.play_media(media_file))
 
     def play_media(self, media_file):
