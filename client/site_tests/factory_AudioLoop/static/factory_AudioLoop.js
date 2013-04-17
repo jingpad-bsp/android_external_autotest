@@ -1,7 +1,14 @@
-window.onkeydown = function(event) {
-  if (event.keyCode == 83) {
+init = function(autostart) {
+  if (autostart) {
+    document.getElementById("message").innerHTML = "";
     test.sendTestEvent("start_run_test", {});
-    window.onkeydown = null;
+  } else {
+    window.onkeydown = function(event) {
+      if (event.keyCode == 83) {
+        test.sendTestEvent("start_run_test", {});
+        window.onkeydown = null;
+      }
+    }
   }
 }
 

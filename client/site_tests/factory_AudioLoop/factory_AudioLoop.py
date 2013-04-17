@@ -168,14 +168,15 @@ class factory_AudioLoop(test.test):
             factory.console.info('Got frequency %d' % freq)
 
     def run_once(self, audiofuntest=True, audiofuntest_duration=10,
-            blacklist_combinations = [],
+            blacklist_combinations=[],
             duration=_DEFAULT_DURATION_SEC,
             input_devices=['hw:0,0'], output_devices=['hw:0,0'],
             mixer_controls=None, device_to_mute=None,
             mute_left_mixer_settings=_MUTE_LEFT_MIXER_SETTINGS,
             mute_right_mixer_settings=_MUTE_RIGHT_MIXER_SETTINGS,
             unmute_mixer_settings=_UNMUTE_MIXER_SETTINGS,
-            mute_device_mixer_settings=None):
+            mute_device_mixer_settings=None,
+            autostart=False):
         factory.console.info('%s run_once' % self.__class__)
 
         self._audiofuntest = audiofuntest
@@ -212,6 +213,9 @@ class factory_AudioLoop(test.test):
         self.ui = UI()
         self.ui.AddEventHandler('start_run_test', self.start_run_test)
 
+        # If autostart, JS triggers start_run_test event.
+        # Otherwise, it binds start_run_test with 's' key pressed.
+        self.ui.CallJSFunction('init', autostart)
         factory.console.info('Run UI')
         self.ui.Run()
 
