@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Derived class to control Linksys E1000 router."""
+
 import linksyse2100_ap_configurator
 
 
@@ -34,6 +36,7 @@ class Linksyse1000APConfigurator(linksyse2100_ap_configurator.
 
 
     def _set_channel_width(self, channel_wid):
+        """Sets the channel width for the wireless network."""
         channel_width_choice = ['Auto (20 MHz or 40 MHz)', '20MHz only']
         xpath = '//select[@name="_wl_nbw"]'
         self.select_item_from_popup_by_xpath(channel_width_choice[channel_wid],

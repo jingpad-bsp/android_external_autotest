@@ -47,7 +47,7 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
 
     def set_security_wep(self, key_value, authentication):
         if self.current_band == self.band_5ghz:
-            logging.info('Cannot set WEP \
+            logging.debug('Cannot set WEP \
                           security for 5GHz band in Netgear R6200 router.')
             return None
         super(NetgearR6200APConfigurator, self).set_security_wep(

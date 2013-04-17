@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
 import netgear_WNDR_dual_band_configurator
 from netgear_WNDR_dual_band_configurator import *
 
@@ -24,13 +22,10 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
         #  We ignore warnings that we get when we disable visibility or security
         #  changed to WEP, WPA Personal or WPA Enterprise.
         if 'The WEP security can only be supported on one SSID' in text:
-            logging.info('Alert message: %s', text)
             alert.accept()
         elif '40 Mhz and 20 Mhz coexistence' in text:
-            logging.info('Alert message: %s', text)
             alert.accept()
         elif 'WPS is going to become inaccessible' in text:
-            logging.info('Alert message: %s', text)
             alert.accept()
         else:
             super(Netgear4300APConfigurator, self)._alert_handler(alert)

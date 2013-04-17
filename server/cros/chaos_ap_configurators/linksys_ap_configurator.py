@@ -141,8 +141,8 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wep(self, key_value, authentication):
-        logging.info('This router %s does not support WEP authentication type:'
-                     ' %s', self.get_router_name(), authentication)
+        logging.debug('This router %s doesnt support WEP authentication type: '
+                      '%s', self.get_router_name(), authentication)
         popup = '//select[@name="SecurityMode"]'
         self.wait_for_object_by_xpath(popup)
         text_field = ('//input[@name="wl_passphrase"]')
@@ -160,10 +160,10 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpapsk(self, shared_key, update_interval=1800):
         if update_interval < 600:
-            logging.info('The minimum update interval is 600, overriding.')
+            logging.debug('The minimum update interval is 600, overriding.')
             update_interval = 600
         elif update_interval > 7200:
-            logging.info('The maximum update interval is 7200, overriding.')
+            logging.debug('The maximum update interval is 7200, overriding.')
             update_interval = 7200
         popup = '//select[@name="SecurityMode"]'
         self.wait_for_object_by_xpath(popup)

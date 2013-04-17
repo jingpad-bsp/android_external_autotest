@@ -2,22 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Subclass of the APConfigurator"""
+
 import logging
 import urlparse
-
 import ap_configurator
 
 class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
-
+    """Derived class to control Linksyse2000 AP"""
 
     def _sec_alert(self, alert):
         text = alert.text
         if 'Your wireless security mode is not compatible with' in text:
-           alert.accept()
+            alert.accept()
         elif 'WARNING: Your Wireless-N devices will only operate' in text:
-           alert.accept()
+            alert.accept()
         else:
-           raise RuntimeError('Invalid handler')
+            raise RuntimeError('Unhandled alert : %s' % text)
 
 
     def get_number_of_pages(self):
@@ -94,17 +95,17 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
             mode_name = mode_mapping[mode]
             if (mode & self.mode_a) and (self.current_band == self.band_2ghz):
                #  a mode only in 5Ghz
-               logging.info('Mode \'a\' is not available for 2.4Ghz band.')
-               return
+                logging.debug('Mode \'a\' is not available for 2.4Ghz band.')
+                return
             elif ((mode & (self.mode_b | self.mode_g) ==
                   (self.mode_b | self.mode_g)) or
                   (mode & self.mode_b == self.mode_b) or
                   (mode & self.mode_g == self.mode_g)) and \
                   (self.current_band != self.band_2ghz):
                #  b/g, b, g mode only in 2.4Ghz
-               logging.info('Mode \'%s\' is not available for 5Ghz band.'
-                            % mode_name)
-               return
+                logging.debug('Mode \'%s\' is not available for 5Ghz band.',
+                               mode_name)
+                return
         else:
             raise RuntimeError("The mode %s is not supported" % mode_name)
         self.select_item_from_popup_by_xpath(mode_name, xpath,
@@ -137,8 +138,8 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
         xpath = '//select[@name="wl_schannel"]'
-        channels=['Auto', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                  '10', '11']
+        channels = ['Auto', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                    '10', '11']
         if self.current_band == self.band_5ghz:
             xpath = '//select[@name="wl_schannel"]'
             channels = ['Auto', '36', '40', '44', '48', '149', '153',
@@ -147,16 +148,21 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def set_ch_width(self, channel_wid):
+        """
+        Set the channel width
+
+        @param channel_wid: the required channel width
+        """
         self.add_item_to_command_list(self._set_ch_width,(channel_wid,),
                                       1, 900)
 
 
     def _set_ch_width(self, channel_wid):
-        channel_width_choice=['Auto (20MHz or 40MHz)', '20MHz only']
+        channel_width_choice = ['Auto (20MHz or 40MHz)', '20MHz only']
         xpath = '//select[@name="_wl_nbw"]'
         if self.current_band == self.band_5ghz:
-            channel_width_choice=['Auto (20MHz or 40MHz)', '20MHz only',
-                                  '40MHz only']
+            channel_width_choice = ['Auto (20MHz or 40MHz)', '20MHz only',
+                                    '40MHz only']
             xpath = '//select[@name="_wl_nbw"]'
         self.select_item_from_popup_by_xpath(channel_width_choice[channel_wid],
                                              xpath)
@@ -224,7 +230,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wpa2psk(self, shared_key):
-        logging.info('update_interval is not supported')
+        logging.debug('update_interval is not supported')
         popup = '//select[@name="security_mode2"]'
         self.select_item_from_popup_by_xpath('WPA Personal', popup,
                                              alert_handler=self._sec_alert)
@@ -239,7 +245,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
     def _set_visibility(self, visible=True):
         value = 0 if visible else 1
-        xpath = '//input[@name="wl_closed_24g" and @value="%s"]' %value
+        xpath = '//input[@name="wl_closed_24g" and @value="%s"]' % value
         if self.current_band == self.band_5ghz:
-            xpath = '//input[@name="wl_closed_5g" and @value="%s"]' %value
+            xpath = '//input[@name="wl_closed_5g" and @value="%s"]' % value
         self.click_button_by_xpath(xpath)

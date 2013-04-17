@@ -19,21 +19,16 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
         """
         text = alert.text
         if 'The WEP security can only be supported on one SSID' in text:
-            logging.info(text)
             alert.accept()
         elif 'WPA-PSK [TKIP] only operates at "Up to 54Mbps"' in text:
             raise RuntimeError('Security and mode do not match:', text)
         elif '40 Mhz and 20 Mhz coexistence' in text:
-            logging.info(text)
             alert.accept()
         elif 'Are you sure that you do not want any wireless security' in text:
-            logging.info(text)
             alert.accept()
         elif 'WPS requires SSID broadcasting in order to work' in text:
-            logging.info(text)
             alert.accept()
         elif 'WPS is going to become inaccessible' in text:
-            logging.info(text)
             alert.accept()
         else:
             super(Netgear2000APConfigurator, self)._alert_handler(alert)

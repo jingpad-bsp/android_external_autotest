@@ -7,7 +7,6 @@ import urlparse
 
 import linksyse_dual_band_configurator
 
-
 class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                                  LinksyseDualBandAPConfigurator):
     """Derived class to control Linksys E2500 router."""
@@ -77,7 +76,7 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
             mode_name = mode_mapping[mode]
             if (mode & self.mode_a) and (self.current_band != self.band_5ghz):
                 #  a mode only in 5Ghz
-                logging.info('Mode \'a\' is not available for 2.4Ghz band.')
+                logging.debug('Mode \'a\' is not available for 2.4Ghz band.')
                 return
             elif ((mode & (self.mode_b | self.mode_g) ==
                   (self.mode_b | self.mode_g)) or
@@ -85,8 +84,8 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                  (mode & self.mode_g == self.mode_g)) and \
                  (self.current_band != self.band_2ghz):
                 #  b/g, b, g mode only in 2.4Ghz
-                logging.info('Mode \'%s\' is not available for 5Ghz band.'
-                             % mode_name)
+                logging.debug('Mode \'%s\' is not available for 5Ghz band.',
+                              mode_name)
                 return
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
