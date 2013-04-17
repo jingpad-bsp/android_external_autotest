@@ -4,6 +4,7 @@
 
 import os
 import sys
+import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..',
                              'client', 'deps', 'pyauto_dep', 'test_src',
@@ -52,6 +53,8 @@ class WebDriverCoreHelpers(object):
                                'specified.  The text from the alert was: %s'
                                % alert_text)
         alert_handler(alert)
+        # Sometimes routers put out multiple alert statements on the same page.
+        self._handle_alert(xpath, alert_handler)
 
 
     def set_wait_time(self, time):
@@ -60,6 +63,44 @@ class WebDriverCoreHelpers(object):
 
     def restore_default_wait_time(self):
         self.wait = WebDriverWait(self.driver, timeout=5)
+
+
+    def wait_for_objects_by_id(self, element_ids, wait_time=5):
+        """Wait for one of the element_ids to show up.
+
+        @param element_ids: A list of all the element ids to find.
+        @param wait_time: The time to wait before giving up.
+
+        @return The id that was found first.
+        """
+        xpaths = []
+        for element_id in element_ids:
+            xpaths.append('id("%s")' % element_id)
+        xpath_found = self.wait_for_objects_by_xpath(xpaths, wait_time)
+        for element_id in element_ids:
+            if element_id in xpath_found:
+                return element_id
+
+
+    def wait_for_objects_by_xpath(self, xpaths, wait_time=5):
+        """Wait for one of the items in the xpath to show up.
+
+        @param xpaths: A list of all the xpath's of elements to find.
+        @param wait_time: The time to wait before giving up.
+
+        @return The xpath that was found first.
+        """
+        if wait_time < len(xpaths):
+            wait_time = len(xpaths)
+        start_time = int(time.time())
+        while (int(time.time()) - start_time) < wait_time:
+            for xpath in xpaths:
+                try:
+                    if self.wait_for_object_by_xpath(xpath, wait_time=0.25):
+                        return xpath
+                except:
+                    pass
+        return None
 
 
     def click_button_by_id(self, element_id, alert_handler=None):
@@ -184,11 +225,7 @@ class WebDriverCoreHelpers(object):
           True if the item exists; False otherwise.
         """
         xpath = 'id("%s")' % element_id
-        if self.number_of_items_in_popup_by_xpath(xpath) == 0:
-            raise SeleniumTimeoutException('The popup at xpath %s has no items.'
-                                           '\n WebDriver exception: %s', xpath,
-                                           str(e))
-        self.item_in_popup_by_xpath_exist(item, xpath)
+        return self.item_in_popup_by_xpath_exist(item, xpath)
 
 
     def item_in_popup_by_xpath_exist(self, item, xpath):
@@ -203,7 +240,8 @@ class WebDriverCoreHelpers(object):
         """
         if self.number_of_items_in_popup_by_xpath(xpath) == 0:
             raise SeleniumTimeoutException('The popup at xpath %s has no items.'
-                                           % xpath)
+                                           '\n WebDriver exception: %s' %
+                                           (xpath, str(e)))
         popup = self.driver.find_element_by_xpath(xpath)
         for option in popup.find_elements_by_tag_name('option'):
             if option.text == item:
@@ -223,7 +261,7 @@ class WebDriverCoreHelpers(object):
             The number of items in the popup.
         """
         xpath = 'id("%s")' % element_id
-        self.number_of_items_in_popup_by_xpath(xpath, alert_handler)
+        return self.number_of_items_in_popup_by_xpath(xpath, alert_handler)
 
 
     def number_of_items_in_popup_by_xpath(self, xpath, alert_handler=None):

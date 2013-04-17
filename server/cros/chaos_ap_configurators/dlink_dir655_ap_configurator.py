@@ -34,7 +34,12 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
             raise RuntimeError('Security modes are not compatible: %s' % text)
         elif 'The Radius Server 1 can not be zero.' in text:
             alert.accept()
-            raise RuntimeError(text)
+            raise RuntimeError('Invalid configuration, alert message:\n%s'
+                               % text)
+        elif 'The length of the Passphrase must be at least' in text:
+            alert.accept()
+            raise RuntimeError('Invalid configuration, alert message:\n%s'
+                               % text)
         else:
             alert.accept()
             raise RuntimeError('We have an unhandled alert: %s' % text)
@@ -67,23 +72,15 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
         # All settings are on the same page, so we always open the config page
         page_url = urlparse.urljoin(self.admin_interface_url, 'wireless.asp')
         self.get_url(page_url, page_title='D-LINK CORPORATION')
-        at_configuration_page = True
-        try:
-            self.wait_for_object_by_id('w_enable')
-        except SeleniumTimeoutException:
-            at_configuration_page = False
-        if at_configuration_page == False:
-            try:
-                self.wait_for_object_by_id('log_pass')
-            except SeleniumTimeoutException, e:
-                raise SeleniumTimeoutException('Unable to navigate to the '
-                                               'login or configuration page. '
-                                               'WebDriver exception: %s'
-                                               % str(e))
+        found_id = self.wait_for_objects_by_id(['w_enable', 'log_pass'])
+        if 'log_pass' in found_id:
             self.set_content_of_text_field_by_id('password', 'log_pass')
             self.click_button_by_id('login', alert_handler=self._alert_handler)
             # This will send us to the landing page and not where we want to go.
             self.get_url(page_url, page_title='D-LINK CORPORATION')
+        elif 'w_enable' not in found_id:
+            raise Exception('Unable to navigate to login or configuration
+                             page.')
 
 
     def save_page(self, page_number):
