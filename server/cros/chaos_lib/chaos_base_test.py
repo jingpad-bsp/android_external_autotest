@@ -39,6 +39,31 @@ class WiFiChaosConnectionTest(object):
     PSK = 'psk'
 
 
+    def _get_dut_wlan_mac(self):
+        """Extracts MAC addr of DUT's wlan0 interface.
+
+        Example ifconfig output for wlan0 on a cros device:
+        localhost tmp # ifconfig wlan0
+        wlan0     Link encap:Ethernet  HWaddr 20:68:9d:0a:4e:6b
+                  UP BROADCAST MULTICAST  MTU:1500  Metric:1
+                  RX packets:7605 errors:0 dropped:23 overruns:0 frame:0
+                  TX packets:9166 errors:0 dropped:0 overruns:0 carrier:0
+                  collisions:0 txqueuelen:1000
+                  RX bytes:1031738 (1007.5 KiB)  TX bytes:1228876 (1.1 MiB)
+
+        We want to extract the string immediately following 'HWaddr'.
+
+        @return a string, wlan0 MAC address.
+        """
+        mac_addr = 'unknown'
+        result = self.host.run("ifconfig wlan0 | awk '/HWaddr/ { print $5 }'")
+        if result.stdout:
+            mac_addr = result.stdout.strip()  #  Remove trailing newline
+        # FIXME(tgao): raise an error here if MAC addr not found?
+        logging.info('DUT wlan0 MAC addr = %s', mac_addr)
+        return mac_addr
+
+
     def __init__(self, host, capturer):
         """Initialize.
 
@@ -46,6 +71,7 @@ class WiFiChaosConnectionTest(object):
         @param capturer: a PacketCaptureManager object, packet tracer.
         """
         self.host = host
+        self.dut_mac_addr = self._get_dut_wlan_mac()
         self.capturer = capturer
         self.connector = connector.TracingConnector(self.host, self.capturer)
         self.disconnector = disconnector.Disconnector(self.host)
@@ -57,10 +83,11 @@ class WiFiChaosConnectionTest(object):
 
 
     def __repr__(self):
-        """@returns class name, DUT name and packet tracer name."""
-        return 'class: %s, DUT: %s, capturer: %s' % (
+        """@returns class name, DUT name + MAC addr and packet tracer name."""
+        return 'class: %s, DUT: %s (MAC addr: %s), capturer: %s' % (
                 self.__class__.__name__,
                 self.host.hostname,
+                self.dut_mac_addr,
                 self.capturer)
 
 
