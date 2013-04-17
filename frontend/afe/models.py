@@ -1377,43 +1377,23 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
         return self.host is None and self.meta_host is not None
 
 
-    def abort(self):
-        """ Aborts this host queue entry.
-        
-        Abort this host queue entry and all host queue entries of jobs created by
-        this one.
+    def log_abort(self, user):
+        """Logs an abort.
 
+        @param user: The user performing the abort.
         """
+        abort_log = AbortedHostQueueEntry(queue_entry=self, aborted_by=user)
+        abort_log.save()
+
+
+    def abort(self):
+        """Aborts this host queue entry."""
         # This isn't completely immune to race conditions since it's not atomic,
         # but it should be safe given the scheduler's behavior.
         if not self.complete and not self.aborted:
-            # TODO(milleral): crbug.com/230100
-            # The |abort_host_queue_entries| rpc does nearly exactly this,
-            # however, trying to re-use the code generates some horrible
-            # circular import error.  I'd be nice to refactor things around
-            # sometime so the code could be reused.
-
-            # Fixpoint algorithm to find the whole tree of HQEs to abort to
-            # minimize the total number of database queries:
-            children = set()
-            new_children = set([self])  # We will always abort |self|
-            while new_children:
-                children.update(new_children)
-                new_child_ids = [hqe.job_id for hqe in new_children]
-                new_children = HostQueueEntry.objects.filter(
-                        job__parent_job__in=new_child_ids,
-                        complete=False, aborted=False).all()
-                # To handle circular parental relationships
-                new_children = set(new_children) - children
-
-            # Associate a user with the host queue entries that we're about
-            # to abort so that we can look up who to blame for the aborts.
-            aborted_hqes = [AbortedHostQueueEntry(queue_entry=hqe,
-                    aborted_by=User.current_user()) for hqe in children]
-            AbortedHostQueueEntry.objects.bulk_create(aborted_hqes)
-            # Bulk update all of the HQEs to set the abort bit.
-            child_ids = [hqe.id for hqe in children]
-            HostQueueEntry.objects.filter(id__in=child_ids).update(aborted=True)
+            self.log_abort(User.current_user())
+            self.aborted = True
+            self.save()
 
 
     @classmethod
