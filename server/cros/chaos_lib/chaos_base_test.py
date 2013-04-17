@@ -31,11 +31,9 @@ class WiFiChaosConnectionTest(object):
     @attribute factory: an APConfiguratorFactory object.
     @attribute psk_password: a string, password used for PSK authentication.
 
-    @attribute LOG_FILES: a string, log files to record per-run data.
     @attribute PSK: a string, WiFi Pre-Shared Key (Personal) mode.
     """
 
-    LOG_FILES = ({'file': '/var/log/messages'}, {'file': '/var/log/net.log'})
     PSK = 'psk'
 
 
@@ -91,39 +89,6 @@ class WiFiChaosConnectionTest(object):
                 self.capturer)
 
 
-    def _mark_line_count(self, logs, key):
-        """Records line count as key in logs.
-
-        @param logs: a tuple of dicts containing log file attributes.
-        @param key: a string, name of a key to add to logs.
-
-        @returns an updated dictionary with the key and line count.
-        """
-        for log in logs:
-            command = "wc -l %s | awk '{print $1}'" % log['file']
-            log[key] = int(self.host.run(command).stdout.strip())
-        return logs
-
-
-    # TODO(krisr): utilize incremental logging provided by lab team
-    def _log_to_files(self, logs, log_dir, iteration):
-        """Log run-specific data to LOG_FILES.
-
-        @param logs: a dict containing log file attributes.
-        @param log_dir: a string, directory to store test output.
-        @param iteration: an integer, current iteration (1-indexed).
-        """
-        logs = self._mark_line_count(logs, 'end')
-        for log in logs:
-            line_count = log['end'] - log['start']
-            cmd = 'tail -n %d %s' % (line_count, log['file'])
-            output = self.host.run(cmd).stdout
-            file_path = os.path.join(log_dir, os.path.basename(log['file']))
-            file_path += '_%d' % iteration
-            with open(file_path, 'w') as f:
-                f.write(output)
-
-
     def run_connect_disconnect_test(self, ap_info):
         """Attempts to connect to an AP.
 
@@ -167,12 +132,10 @@ class WiFiChaosConnectionTest(object):
                                     'connect_try_%d' % iteration)
             self.connector.set_filename(filename)
 
-            logs = self._mark_line_count(self.LOG_FILES, 'start')
             resp = self.run_connect_disconnect_test(ap_info)
             if resp:
                 ap_info['failed_iterations'].append({'error': resp,
                                                      'try': iteration})
-            self._log_to_files(logs, log_dir, iteration)
 
         if ap_info['failed_iterations']:
             self.error_list.append(ap_info)
