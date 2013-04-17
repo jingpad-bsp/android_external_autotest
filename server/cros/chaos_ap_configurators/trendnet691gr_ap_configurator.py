@@ -12,9 +12,7 @@ class Trendnet691grAPConfigurator(trendnet_ap_configurator.
 
     def save_page(self, page_number):
         super(Trendnet691grAPConfigurator, self).save_page(page_number)
-        # Wait for the settings progress bar to save the setting.
-        self.wait_for_progress_bar()
-        # Then reboot the device if told to.
+        # Reboot the device.
         reboot_button = '//input[@value="Reboot the Device"]'
         if self.object_by_xpath_exist(reboot_button):
             self.click_button_by_xpath(reboot_button)

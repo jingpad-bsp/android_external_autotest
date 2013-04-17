@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Derived class to control the Trendnet TEW-639GR."""
-
 import logging
 import time
 import urlparse
@@ -87,6 +85,7 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
         elif page_number == 2:
             xpath = ('//input[@class="button_submit" and @value="Apply"]')
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
+        # Wait for the settings progress bar to save the setting.
         self.wait_for_progress_bar()
 
 
