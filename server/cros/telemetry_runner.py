@@ -4,6 +4,7 @@
 
 import logging
 import os
+import pprint
 import re
 import StringIO
 
@@ -20,6 +21,17 @@ TELEMETRY_TIMEOUT_MINS = 60
 SUCCESS_STATUS = 'SUCCESS'
 WARNING_STATUS = 'WARNING'
 FAILED_STATUS = 'FAILED'
+
+# Regex for the RESULT output lines understood by chrome buildbot.
+# Keep in sync with chromium/tools/build/scripts/slave/process_log_utils.py.
+RESULTS_REGEX = re.compile(r'(?P<IMPORTANT>\*)?RESULT '
+                             '(?P<GRAPH>[^:]*): (?P<TRACE>[^=]*)= '
+                             '(?P<VALUE>[\{\[]?[-\d\., ]+[\}\]]?)('
+                             ' ?(?P<UNITS>.+))?')
+
+# Constants pertaining to perf keys generated from Telemetry test results.
+PERF_KEY_TELEMETRY_PREFIX = 'TELEMETRY'
+PERF_KEY_DELIMITER = '--'
 
 
 class TelemetryResult(object):
@@ -48,39 +60,43 @@ class TelemetryResult(object):
         self.output = '\n'.join([stdout, stderr])
 
 
-    def _cleanup_value(self, value):
-        """Cleanup a value string.
+    def _cleanup_perf_string(self, str):
+        """Clean up a perf-related string by removing illegal characters.
 
-        Given a string representing a value clean it up by removing the space
-        and parenthesis around the units, and either append the units or get
-        rid of them.
+        Perf keys stored in the chromeOS database may contain only letters,
+        numbers, underscores, periods, and dashes.  Transform an inputted
+        string so that any illegal characters are replaced by underscores.
+
+        @param str: The perf string to clean up.
+
+        @return The cleaned-up perf string.
+        """
+        return re.sub(r'[^\w.-]', '_', str)
+
+
+    def _cleanup_units_string(self, units):
+        """Cleanup a units string.
+
+        Given a string representing units for a perf measurement, clean it up
+        by replacing certain illegal characters with meaningful alternatives.
+        Any other illegal characters should then be replaced with underscores.
 
         Examples:
-            loadtime (ms) -> loadtime_ms
-            image_count () -> image_count
-            image_count (count) -> image_count
-            CodeLoad (score (bigger is better)) -> CodeLoad_score
-            load_percent (%) -> load_percent
-            score (runs/s) -> score_runs_per_s
+            count/time -> count_per_time
+            % -> percent
+            units! --> units_
+            score (bigger is better) -> score__bigger_is_better_
+            score (runs/s) -> score__runs_per_s_
 
-        @param value: Value we are cleaning up.
+        @param units: The units string to clean up.
 
-        @result a String representing the cleaned up value.
+        @return The cleaned-up units string.
         """
-        value_sections = value.split(' (')
-        value_name = value_sections[0]
-        # There can be sub-parens in the units -> if so remove them.
-        units = value_sections[1].split('(')[0]
-        units = units.split(')')[0]
-        if units is '%':
-            units = 'percent'
+        if '%' in units:
+            units = units.replace('%', 'percent')
         if '/' in units:
             units = units.replace('/','_per_')
-        if not units:
-            return value_name
-        if value_name.endswith(units):
-            return value_name
-        return '_'.join([value_name, units])
+        return self._cleanup_perf_string(units)
 
 
     def parse_benchmark_results(self):
@@ -89,36 +105,41 @@ class TelemetryResult(object):
         Stdout has the format of CSV at the top and then the output repeated
         in RESULT block format below.
 
-        We will parse the CSV part to get the perf key-value pairs we are
-        interested in.
+        The lines of interest start with the substring "RESULT".  These are
+        specially-formatted perf data lines that are interpreted by chrome
+        builbot (when the Telemetry tests run for chrome desktop) and are
+        parsed to extract perf data that can then be displayed on a perf
+        dashboard.  This format is documented in the docstring of class
+        GraphingLogProcessor in this file in the chrome tree:
 
-        Example stdout:
-        url,average_commit_time (ms),average_image_gathering_time (ms)
-        file:///tough_scrolling_cases/cust_scrollbar.html,1.3644,0
-        RESULT average_commit_time: <URL>= <SCORE> score
-        RESULT average_image_gathering_time: <URL>= <SCORE> score
+        chromium/tools/build/scripts/slave/process_log_utils.py
 
-        We want to generate perf keys in the format of value-url i.e.:
-        average_commit_time-http____www.google.com
-        Where we also removed non non-alphanumeric characters except '.', '_',
-        and '-'.
+        Example RESULT output lines:
+        RESULT average_commit_time_by_url: http___www.ebay.com= 8.86528 ms
+        RESULT CodeLoad: CodeLoad= 6343 score (bigger is better)
+        RESULT ai-astar: ai-astar= [614,527,523,471,530,523,577,625,614,538] ms
+
+        Currently for chromeOS, we can only associate a single perf key (string)
+        with a perf value.  That string can only contain letters, numbers,
+        dashes, periods, and underscores, as defined by write_keyval() in:
+
+        chromeos/src/third_party/autotest/files/client/common_lib/
+        base_utils.py
+
+        We therefore parse each RESULT line, clean up the strings to remove any
+        illegal characters not accepted by chromeOS, and construct a perf key
+        string based on the parsed components of the RESULT line (with each
+        component separated by a special delimiter).  We prefix the perf key
+        with the substring "TELEMETRY" to identify it as a telemetry-formatted
+        perf key.
 
         Stderr has the format of Warnings/Tracebacks. There is always a default
-        warning of the display enviornment setting. Followed by warnings of
+        warning of the display enviornment setting, followed by warnings of
         page timeouts or a traceback.
 
         If there are any other warnings we flag the test as warning. If there
         is a traceback we consider this test a failure.
-
-        @param exit_code: Exit code of the the telemetry run. 0 == SUCCESS,
-                          otherwise it is a warning or failure.
-        @param stdout: Stdout of the telemetry run.
-        @param stderr: Stderr of the telemetry run.
-
-        @returns A TelemetryResult instance with the results of the telemetry
-                 run.
         """
-        # The output will be in CSV format.
         if not self._stdout:
             # Nothing in stdout implies a test failure.
             logging.error('No stdout, test failed.')
@@ -126,35 +147,38 @@ class TelemetryResult(object):
             return
 
         stdout_lines = self._stdout.splitlines()
-        value_names = None
         for line in stdout_lines:
-            if not line:
+            results_match = RESULTS_REGEX.search(line)
+            if not results_match:
                 continue
-            if not value_names and line.startswith('url,'):
-                # This line lists out all the values we care about and we drop
-                # the first one as it is the url name.
-                value_names = line.split(',')[1:]
-                # Clean up each value name.
-                value_names = [self._cleanup_value(v) for v in value_names]
-                logging.debug('Value_names: %s', value_names)
-            if not value_names:
-                continue
-            if ' ' in line:
-                # We are in a non-CSV part of the output, ignore this line.
-                continue
-            # We are now a CSV line we care about, parse it accordingly.
-            line_values = line.split(',')
-            # Grab the URL
-            url = line_values[0]
-            # We want the perf keys to be format value|url. Example:
-            # load_time-http___www.google.com
-            # Andd replace all non-alphanumeric characters except
-            # '-', '.' and '_' with '_'
-            url_values_names = [re.sub(r'[^\w.-]', '_', '-'.join([v, url]))
-                    for v in value_names]
-            self.perf_keyvals.update(dict(zip(url_values_names,
-                                              line_values[1:])))
-        logging.debug('Perf Keyvals: %s', self.perf_keyvals)
+
+            match_dict = results_match.groupdict()
+            graph_name = self._cleanup_perf_string(match_dict['GRAPH'].strip())
+            trace_name = self._cleanup_perf_string(match_dict['TRACE'].strip())
+            units = self._cleanup_units_string(
+                    (match_dict['UNITS'] or 'units').strip())
+            value = match_dict['VALUE'].strip()
+            unused_important = match_dict['IMPORTANT'] or False  # Unused now.
+
+            if value.startswith('['):
+                # A list of values, e.g., "[12,15,8,7,16]".  Extract just the
+                # numbers, compute the average and use that.  In this example,
+                # we'd get 12+15+8+7+16 / 5 --> 11.6.
+                value_list = [float(x) for x in value.strip('[],').split(',')]
+                value = float(sum(value_list)) / len(value_list)
+            elif value.startswith('{'):
+                # A single value along with a standard deviation, e.g.,
+                # "{34.2,2.15}".  Extract just the value itself and use that.
+                # In this example, we'd get 34.2.
+                value_list = [float(x) for x in value.strip('{},').split(',')]
+                value = value_list[0]  # Position 0 is the value.
+
+            perf_key = PERF_KEY_DELIMITER.join(
+                    [PERF_KEY_TELEMETRY_PREFIX, graph_name, trace_name, units])
+            self.perf_keyvals[perf_key] = str(value)
+
+        pp = pprint.PrettyPrinter(indent=2)
+        logging.debug('Perf Keyvals: %s', pp.pformat(self.perf_keyvals))
 
         if self.status is SUCCESS_STATUS:
             return

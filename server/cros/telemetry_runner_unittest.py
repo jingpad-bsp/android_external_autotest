@@ -14,6 +14,19 @@ from autotest_lib.server.cros import telemetry_runner
 class TelemetryResultTest(mox.MoxTestBase):
     """Unit tests for telemetry_runner.TelemetryResult."""
 
+    SAMPLE_RESULT_LINES = (
+        'RESULT average_commit_time_by_url: http___www.ebay.com= 8.86528 ms\n'
+        'RESULT CodeLoad: CodeLoad= 6343 score (bigger is better)\n'
+        'RESULT ai-astar: ai-astar= '
+        '[614,527,523,471,530,523,577,625,614,538] ms\n'
+        'RESULT graph_name: test_name= {3.14, 0.98} units')
+
+    EXPECTED_KEYVALS = {
+        'TELEMETRY--average_commit_time_by_url--http___www.ebay.com--ms':
+            '8.86528',
+        'TELEMETRY--CodeLoad--CodeLoad--score__bigger_is_better_': '6343',
+        'TELEMETRY--ai-astar--ai-astar--ms': '554.2',
+        'TELEMETRY--graph_name--test_name--units': '3.14'}
 
     def testEmptyStdout(self):
         """Test when the test exits with 0 but there is no output."""
@@ -22,95 +35,116 @@ class TelemetryResultTest(mox.MoxTestBase):
         self.assertEquals(result.status, telemetry_runner.FAILED_STATUS)
 
 
-    def testOnlyCSV(self):
-        """Test when the stdout is only CSV format."""
-        stdout = ('url,load_time (ms),image_decode_time (ms),image_count '
-                  '(count)\n'
-                  'http://www.google.com,5,100,10\n')
-        expected_keyvals = {
-                'load_time_ms-http___www.google.com': '5',
-                'image_decode_time_ms-http___www.google.com': '100',
-                'image_count-http___www.google.com':'10'}
-
-        result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout)
+    def testOnlyResultLines(self):
+        """Test when the stdout is only Result lines."""
+        result = telemetry_runner.TelemetryResult(
+                exit_code=0, stdout=self.SAMPLE_RESULT_LINES)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
 
 
-    def testOnlyCSVWithWarnings(self):
+    def testOnlyResultLinesWithWarnings(self):
         """Test when the stderr has Warnings."""
-        stdout = ('url,load_time (ms),image_decode_time (ms),image_count '
-                  '(count)\n'
-                  'http://www.google.com,5,100,10\n')
+        stdout = self.SAMPLE_RESULT_LINES
         stderr = ('WARNING: Page failed to load http://www.facebook.com\n'
                   'WARNING: Page failed to load http://www.yahoo.com\n')
-        expected_keyvals = {
-                'load_time_ms-http___www.google.com': '5',
-                'image_decode_time_ms-http___www.google.com': '100',
-                'image_count-http___www.google.com':'10'}
 
         result = telemetry_runner.TelemetryResult(exit_code=2, stdout=stdout,
                                                   stderr=stderr)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.WARNING_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
 
 
-    def testOnlyCSVWithWarningsAndTraceback(self):
+    def testOnlyResultLinesWithWarningsAndTraceback(self):
         """Test when the stderr has Warnings and Traceback."""
-        stdout = ('url,load_time (ms),image_decode_time (ms),image_count '
-                  '(count)\n'
-                  'http://www.google.com,5,100,10\n')
+        stdout = self.SAMPLE_RESULT_LINES
         stderr = ('WARNING: Page failed to load http://www.facebook.com\n'
                   'WARNING: Page failed to load http://www.yahoo.com\n'
                   'Traceback (most recent call last):\n'
                   'File "../../utils/unittest_suite.py", line 238, in '
                   '<module>\n'
                   'main()')
-        expected_keyvals = {
-                'load_time_ms-http___www.google.com': '5',
-                'image_decode_time_ms-http___www.google.com': '100',
-                'image_count-http___www.google.com':'10'}
 
         result = telemetry_runner.TelemetryResult(exit_code=2, stdout=stdout,
                                                   stderr=stderr)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.FAILED_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
 
 
-    def testInfoBeforeCSV(self):
-        """Test when there is info before the CSV format."""
-        stdout = ('Pages: [http://www.google.com, http://www.facebook.com]\n'
-                  'url,load_time (ms),image_decode_time (ms),image_count '
-                  '(count)\n'
-                  'http://www.google.com,5,100,10\n')
+    def testInfoBeforeResultLines(self):
+        """Test when there is info before the Result lines."""
+        stdout = ('Pages: [http://www.google.com, http://www.facebook.com]\n' +
+                  self.SAMPLE_RESULT_LINES)
         stderr = 'WARNING: Page failed to load http://www.facebook.com\n'
-        expected_keyvals = {
-                'load_time_ms-http___www.google.com': '5',
-                'image_decode_time_ms-http___www.google.com': '100',
-                'image_count-http___www.google.com':'10'}
 
         result = telemetry_runner.TelemetryResult(exit_code=1, stdout=stdout,
                                                   stderr=stderr)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.WARNING_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
 
 
-    def testInfoAfterCSV(self):
-        """Test when there is info after the CSV format."""
-        stdout = ('url,load_time (ms),image_decode_time (ms),image_count '
-                  '(count)\n'
-                  'http://www.google.com,5,100,10\n'
-                  'RESULT load_time for http://www.google.com = 5\n'
-                  'RESULT image_decode_time for http://www.google.com = 100\n'
-                  'RESULT image_count for http://www.google.com = 10\n')
+    def testInfoAfterResultLines(self):
+        """Test when there is info after the Result lines."""
+        stdout = (self.SAMPLE_RESULT_LINES + '\n'
+                  'stderr:WARNING:root:Found (system), but you do not have '
+                  'a DISPLAY environment set.\n\n'
+                  '04/16 12:51:23.312 DEBUG|telemetry_:0139|')
+
+        result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
+                                                  stderr='')
+        result.parse_benchmark_results()
+        self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
+        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+
+
+    def testInfoBeforeAndAfterResultLines(self):
+        """Test when there is info before and after the Result lines."""
+        stdout = ('Pages: [http://www.google.com, http://www.facebook.com]\n' +
+                  self.SAMPLE_RESULT_LINES + '\n'
+                  'stderr:WARNING:root:Found (system), but you do not have '
+                  'a DISPLAY environment set.\n\n'
+                  '04/16 12:51:23.312 DEBUG|telemetry_:0139|')
+
+        result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
+                                                  stderr='')
+        result.parse_benchmark_results()
+        self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
+        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+
+
+    def testNoResultLines(self):
+        """Test when Result lines are missing from stdout."""
+        stdout = ('Pages: [http://www.google.com, http://www.facebook.com]\n'
+                  'stderr:WARNING:root:Found (system), but you do not have '
+                  'a DISPLAY environment set.\n\n'
+                  '04/16 12:51:23.312 DEBUG|telemetry_:0139|')
+
+        result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
+                                                  stderr='')
+        result.parse_benchmark_results()
+        self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
+        self.assertEquals({}, result.perf_keyvals)
+
+
+    def testBadCharactersInResultStringComponents(self):
+        """Test bad characters are cleaned up in RESULT string components."""
+        stdout = (
+            'RESULT average_commit_time_by_url!: '
+            'http___www.^^ebay.com= 8.86528 ms\n'
+            'RESULT CodeLoad*: CodeLoad= 6343 score\n'
+            'RESULT ai-astar: ai-astar= '
+            '[614,527,523,471,530,523,577,625,614,538] ~~ms\n'
+            'RESULT !!graph_name: &&test_name= {3.14, 0.98} units!')
         expected_keyvals = {
-                'load_time_ms-http___www.google.com': '5',
-                'image_decode_time_ms-http___www.google.com': '100',
-                'image_count-http___www.google.com':'10'}
+            'TELEMETRY--average_commit_time_by_url_--http___www.__ebay.com--ms':
+                '8.86528',
+            'TELEMETRY--CodeLoad_--CodeLoad--score': '6343',
+            'TELEMETRY--ai-astar--ai-astar--__ms': '554.2',
+            'TELEMETRY--__graph_name--__test_name--units_': '3.14'}
 
         result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
                                                   stderr='')
@@ -119,75 +153,18 @@ class TelemetryResultTest(mox.MoxTestBase):
         self.assertEquals(expected_keyvals, result.perf_keyvals)
 
 
-    def testInfoBeforeAndAfterCSV(self):
-        """Test when there is info before and after CSV format."""
-        stdout = ('Pages: [http://www.google.com]\n'
-                  'url,load_time (ms),image_decode_time (ms),image_count '
-                  '(count)\n'
-                  'http://www.google.com,5,100,10\n'
-                  'RESULT load_time for http://www.google.com = 5\n'
-                  'RESULT image_decode_time for http://www.google.com = 100\n'
-                  'RESULT image_count for http://www.google.com = 10\n')
-        expected_keyvals = {
-                'load_time_ms-http___www.google.com': '5',
-                'image_decode_time_ms-http___www.google.com': '100',
-                'image_count-http___www.google.com':'10'}
-
-        result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
-                                                  stderr='')
-        result.parse_benchmark_results()
-        self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
-
-
-    def testNoCSV(self):
-        """Test when CSV format is missing from stdout."""
-        stdout = ('Pages: [http://www.google.com]\n'
-                  'RESULT load_time for http://www.google.com = 5\n'
-                  'RESULT image_decode_time for http://www.google.com = 100\n'
-                  'RESULT image_count for http://www.google.com = 10)\n')
-        expected_keyvals = {}
-
-        result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
-                                                  stderr='')
-        result.parse_benchmark_results()
-        self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
-
-
-    def testBadCharactersInUrlAndValues(self):
-        """Test that bad characters are cleaned up in value names and urls."""
-        stdout = ('url,load_time (ms),image_decode_time?=% (ms),image_count '
-                  '(count)\n'
-                  'http://www.google.com?search=&^@$You,5,100,10\n')
-        expected_keyvals = {
-                'load_time_ms-http___www.google.com_search_____You': '5',
-                'image_decode_time____ms-http___www.google.com_search_____You':
-                '100',
-                'image_count-http___www.google.com_search_____You':'10'}
-
-        result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
-                                                  stderr='')
-        result.parse_benchmark_results()
-        self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
-
-
-    def testCleanupUnits(self):
-        """Test that weird units are cleaned up."""
+    def testCleanupUnitsString(self):
+        """Test that special characters in units strings are cleaned up."""
         result = telemetry_runner.TelemetryResult()
-        self.assertEquals(result._cleanup_value('loadtime (ms)'),
-                                                'loadtime_ms')
-        self.assertEquals(result._cleanup_value('image_count ()'),
-                                                'image_count')
-        self.assertEquals(result._cleanup_value('image_count (count)'),
-                                                'image_count')
-        self.assertEquals(result._cleanup_value(
-                'CodeLoad (score (bigger is better))'),
-                'CodeLoad_score')
-        self.assertEquals(result._cleanup_value('load (%)'),
-                                                'load_percent')
-        self.assertEquals(result._cleanup_value('load_percent (%)'),
-                                                'load_percent')
-        self.assertEquals(result._cleanup_value('score (runs/s)'),
-                                                'score_runs_per_s')
+        self.assertEquals(result._cleanup_units_string('score/unit'),
+                          'score_per_unit')
+        self.assertEquals(result._cleanup_units_string('score / unit'),
+                          'score__per__unit')
+        self.assertEquals(result._cleanup_units_string('%'),
+                          'percent')
+        self.assertEquals(result._cleanup_units_string('unit%'),
+                          'unitpercent')
+        self.assertEquals(result._cleanup_units_string('^^un!ts##'),
+                          '__un_ts__')
+        self.assertEquals(result._cleanup_units_string('^^un!ts##/time %'),
+                          '__un_ts___per_time_percent')
