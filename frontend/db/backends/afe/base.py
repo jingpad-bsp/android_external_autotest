@@ -18,5 +18,5 @@ class DatabaseWrapper(MySQLDatabaseWrapper):
     def __init__(self, *args, **kwargs):
         super(DatabaseWrapper, self).__init__(*args, **kwargs)
         self.creation = MySQLCreation(self)
-        self.ops = DatabaseOperations()
+        self.ops = DatabaseOperations(self.connection)
         self.introspection = MySQLIntrospection(self)

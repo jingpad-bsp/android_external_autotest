@@ -40,7 +40,10 @@ AUTOTEST_DEFAULT = {
     'USER': _get_config("user"),
     'PASSWORD': _get_config("password", default=''),
     'READONLY_HOST': _get_config("readonly_host", default=_get_config("host")),
-    'READONLY_USER': _get_config("readonly_user", default=_get_config("user"))}
+    'READONLY_USER': _get_config("readonly_user", default=_get_config("user")),
+}
+
+ALLOWED_HOSTS = '*'
 
 if AUTOTEST_DEFAULT['READONLY_USER'] != AUTOTEST_DEFAULT['USER']:
     AUTOTEST_DEFAULT['READONLY_PASSWORD'] = _get_config("readonly_password",

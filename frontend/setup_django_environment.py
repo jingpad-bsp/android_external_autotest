@@ -1,8 +1,8 @@
-from django.core import management
-import common
-from autotest_lib.frontend import settings
+import os
 
-management.setup_environ(settings)
+import common
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'autotest_lib.frontend.settings')
 
 def enable_autocommit():
     from django.db import connection

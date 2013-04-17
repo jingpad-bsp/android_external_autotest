@@ -567,12 +567,12 @@ class SetuptoolsPackage(ExternalPackage):
 class MySQLdbPackage(ExternalPackage):
     """mysql package, used in scheduler."""
     module_name = 'MySQLdb'
-    version = '1.2.2'
+    version = '1.2.3'
     urls = ('http://downloads.sourceforge.net/project/mysql-python/'
             'mysql-python/%(version)s/MySQL-python-%(version)s.tar.gz'
             % dict(version=version),)
     local_filename = 'MySQL-python-%s.tar.gz' % version
-    hex_sum = '945a04773f30091ad81743f9eb0329a3ee3de383'
+    hex_sum = '3511bb8c57c6016eeafa531d5c3ea4b548915e3c'
 
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_setup_py)
@@ -589,10 +589,10 @@ class MySQLdbPackage(ExternalPackage):
 
 class DjangoPackage(ExternalPackage):
     """django package."""
-    version = '1.3'
+    version = '1.5.1'
     local_filename = 'Django-%s.tar.gz' % version
     urls = ('http://www.djangoproject.com/download/%s/tarball/' % version,)
-    hex_sum = 'f8814d5e1412bb932318db5130260da5bf053ff7'
+    hex_sum = '0ab97b90c4c79636e56337f426f1e875faccbba1'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
