@@ -104,6 +104,11 @@ class Timer(statsd.Timer):
         super(Timer, self).__init__(_prepend_server(name, bare), _conn)
 
 
+    # To override subname to not implicitly append 'total'.
+    def stop(self, subname=''):
+        super(Timer, self).stop(subname)
+
+
     def __enter__(self):
       self.start()
       return self
