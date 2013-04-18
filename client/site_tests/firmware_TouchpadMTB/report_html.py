@@ -6,9 +6,6 @@
 
 import json
 import os
-import re
-import sys
-import time
 import urllib
 
 import common_util
@@ -186,13 +183,17 @@ class ReportHtml:
 
     def _insert_log_dict(self, glog, vlogs):
         """Insert the glog and vlogs key value pair into the log dictionary."""
-        vlogs_scores = []
-        for vlog in vlogs:
-            vlog_score = {vlog.get_name(): vlog.get_score()}
-            vlogs_scores.append(vlog_score)
         glog_key = str([glog.get_name(), glog.get_variation()])
-        self.log_dict[VLOG.DICT][glog_key] = vlogs_scores
-        self.log_dict[VLOG.GV_LIST].append(glog_key)
+        if self.log_dict[VLOG.DICT].get(glog_key) is None:
+            self.log_dict[VLOG.DICT][glog_key] = {}
+        for vlog in vlogs:
+            vname = vlog.get_name()
+            if self.log_dict[VLOG.DICT][glog_key].get(vname) is None:
+                self.log_dict[VLOG.DICT][glog_key][vname] = []
+            self.log_dict[VLOG.DICT][glog_key][vname].append(vlog.get_score())
+
+        if glog_key not in self.log_dict[VLOG.GV_LIST]:
+            self.log_dict[VLOG.GV_LIST].append(glog_key)
 
     def flush(self):
         """Flush the current gesture including gesture log, image and

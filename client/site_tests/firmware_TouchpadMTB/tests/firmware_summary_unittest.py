@@ -40,21 +40,20 @@ validator_weight = {'CountPacketsValidator': weight_common,
 
 class FirmwareSummaryTest(unittest.TestCase):
     """Unit tests for firmware_summary.FirmwareSummary class."""
-
-    def setUp(self):
-        self._test_dir = os.path.join(os.getcwd(), 'tests')
-        self._log_dir = os.path.join(self._test_dir, 'logs')
+    @classmethod
+    def setUpClass(cls):
+        _test_dir = os.path.join(os.getcwd(), 'tests')
+        _log_dir = os.path.join(_test_dir, 'logs', cls.iter_str)
         summary = firmware_summary.FirmwareSummary(
-                log_dir=self._log_dir,
+                log_dir=_log_dir,
                 validator_weight=validator_weight,
                 segment_weight=segment_weight)
-        self._validator_average = summary.validator_average
-        self._validator_ssd = summary.validator_ssd
-        self._validator_summary_score = summary.validator_summary_score
-        self._validator_summary_ssd = summary.validator_summary_ssd
-        self._weighted_average = summary.weighted_average
-        self.fws = ['fw_11.26', 'fw_11.23']
-        self._round_digits = 4
+        cls._validator_average = summary.validator_average
+        cls._validator_ssd = summary.validator_ssd
+        cls._validator_summary_score = summary.validator_summary_score
+        cls._validator_summary_ssd = summary.validator_summary_ssd
+        cls._weighted_average = summary.weighted_average
+        cls._round_digits = 4
 
     def _get_score(self, fw, validator, gesture):
         """Score = sum / count, rounded to the 4th digit."""
@@ -65,6 +64,18 @@ class FirmwareSummaryTest(unittest.TestCase):
         """Get the sample standard deviation rounded to the 4th digit."""
         return round(self._validator_ssd[fw][validator][gesture],
                      self._round_digits)
+
+
+class FirmwareSummarySingleIterationTest(FirmwareSummaryTest):
+    """Unit tests for firmware_summary.FirmwareSummary class.
+
+    Tests were conducted in single iterations only.
+    """
+    @classmethod
+    def setUpClass(cls):
+        cls.iter_str = 'single_iteration'
+        cls.fws = ['fw_11.26', 'fw_11.23']
+        super(FirmwareSummarySingleIterationTest, cls).setUpClass()
 
     def test_combine_rounds_NoGapValidator(self):
         validator = 'NoGapValidator'
@@ -186,6 +197,34 @@ class FirmwareSummaryTest(unittest.TestCase):
             actual_value = round(actual_value_original, 3)
             expected_value = expected_weighted_average[fw]
             self.assertAlmostEqual(actual_value, expected_value)
+
+
+class FirmwareSummaryMultipleIterationsTest(FirmwareSummaryTest):
+    """Unit tests for firmware_summary.FirmwareSummary class.
+
+    Tests were conducted with a mix of single iteration and multiple iterations.
+    """
+    @classmethod
+    def setUpClass(cls):
+        cls.iter_str = 'multiple_iterations'
+        cls.fw = 'fw_1.0.170'
+        super(FirmwareSummaryMultipleIterationsTest, cls).setUpClass()
+
+    def test_combine_rounds_CountTrackingIDValidator(self):
+        validator = 'CountTrackingIDValidator'
+        gesture = 'three_fingers_physical_click'
+        expected_score = 0.75
+        actual_score = self._get_score(self.fw, validator, gesture)
+        self.assertAlmostEqual(actual_score, expected_score)
+
+    def test_combine_gestures_CountTrackingIDValidator(self):
+        validator = 'CountTrackingIDValidator'
+        expected_score = 0.875
+        fw = self.fw
+        actual_score_original = self._validator_summary_score[validator][fw]
+        actual_score = round(actual_score_original, self._round_digits)
+        expected_score = expected_score
+        self.assertAlmostEqual(actual_score, expected_score)
 
 
 if __name__ == '__main__':

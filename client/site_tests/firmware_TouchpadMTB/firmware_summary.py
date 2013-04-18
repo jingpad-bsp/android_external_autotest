@@ -114,11 +114,7 @@ class FirmwareSummary:
 
     def _get_result_logs(self):
         """Load the json log files in the log dictionary."""
-        patterns = ['*.log', '*/*.log']
-        log_filenames = []
-        for pattern in patterns:
-            log_filenames += glob.glob(os.path.join(self.log_dir, pattern))
-
+        log_filenames = glob.glob(os.path.join(self.log_dir, '*.log'))
         # TODO(josephsih): it is desirable to add a command line option
         # so that the tester could choose to make the summary against different
         # versions or against different file names.
@@ -148,7 +144,7 @@ class FirmwareSummary:
             for round_log in self.logs[fw]:
                 debug_print('  A new log file:')
                 # Iterate through every gesture_variation of the round
-                for gv in round_log[VLOG.GV_LIST]:
+                for gv in round_log[VLOG.DICT]:
                     debug_print('    gv: %s' % gv)
                     # Build the gesture list
                     gesture = eval(gv)[0]
@@ -162,20 +158,17 @@ class FirmwareSummary:
                         self.g_scores[gesture][fw] = {}
 
                     # Iterate through each validator score pair
-                    for validator_score_pair in round_log[VLOG.DICT][gv]:
-                        validator = validator_score_pair.keys()[0]
+                    for validator in round_log[VLOG.DICT][gv]:
                         if validator not in self.g_scores[gesture][fw]:
                             # Build the validator
                             self.g_scores[gesture][fw][validator] = []
 
-                        # Build the score of the validator
-                        score = validator_score_pair[validator]
-                        self.g_scores[gesture][fw][validator].append(score)
-
-                        debug_print('      %s: %6.4f' % (validator, score))
-
-                        if validator not in self.validators:
-                            self.validators.append(validator)
+                        for score in round_log[VLOG.DICT][gv][validator]:
+                            # Build the score of the validator
+                            self.g_scores[gesture][fw][validator].append(score)
+                            debug_print('      %s: %6.4f' % (validator, score))
+                            if validator not in self.validators:
+                                self.validators.append(validator)
 
         self.validators.sort()
 
