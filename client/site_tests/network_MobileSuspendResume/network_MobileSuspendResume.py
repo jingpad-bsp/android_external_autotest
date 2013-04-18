@@ -271,7 +271,8 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
                             assoc_timeout=60,
                             config_timeout=60),
                 network_MobileSuspendResume.service_okerrors)
-            if service.GetProperties()['State'] != 'online':
+            if not service.GetProperties()['State'] in \
+                ['ready', 'portal', 'online']:
                 raise error.TestFail('Unable to set Favorite because device '
                                      'could not connect to mobile service.')
 
