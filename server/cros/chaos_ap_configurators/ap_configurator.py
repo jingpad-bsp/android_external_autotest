@@ -34,6 +34,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         # Possible bands
         self.band_2ghz = '2.4GHz'
         self.band_5ghz = '5GHz'
+        # Set a default band, this can be overriden by the subclasses
         self.current_band = self.band_2ghz
 
         # Possible modes
@@ -61,8 +62,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             self.host_name = ap_config.get_wan_host()
             self.config_data = ap_config
 
-        # Set a default band, this can be overriden by the subclasses
-        self.current_band = self.band_2ghz
+        self.wep_authentication_open = 0x00011
+        self.wep_authentication_shared = 0x00012
 
         self._command_list = []
 
