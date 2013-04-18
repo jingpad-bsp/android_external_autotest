@@ -540,6 +540,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 #               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
             self.hostapd['log_count'] += 1
         if self.station['configured']:
+            local_servers = self.local_servers
+            self.local_servers = []
             if self.station['type'] == 'ibss':
                 self.router.run("%s dev %s ibss leave" %
                                 (self.cmd_iw, self.station['interface']))
