@@ -104,6 +104,15 @@ class Timer(statsd.Timer):
         super(Timer, self).__init__(_prepend_server(name, bare), _conn)
 
 
+    def __enter__(self):
+      self.start()
+      return self
+
+
+    def __exit__(self, exn_type, exn_value, traceback):
+      self.stop()
+
+
 class Raw(statsd.Raw):
     """Wrapper around statsd.Raw."""
     def __init__(self, name, bare=False):
