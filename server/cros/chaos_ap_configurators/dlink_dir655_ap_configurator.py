@@ -79,8 +79,8 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
             # This will send us to the landing page and not where we want to go.
             self.get_url(page_url, page_title='D-LINK CORPORATION')
         elif 'w_enable' not in found_id:
-            raise Exception('Unable to navigate to login or configuration
-                             page.')
+            raise Exception(
+                    'Unable to navigate to login or configuration page.')
 
 
     def save_page(self, page_number):

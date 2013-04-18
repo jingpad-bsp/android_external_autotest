@@ -51,6 +51,7 @@ class APConfiguratorFactory(object):
     @attribute BANDS: a string, bands supported by an AP.
     @attribute MODES: a string, 802.11 modes supported by an AP.
     @attribute SECURITIES: a string, security methods supported by an AP.
+    @attribute HOSTNAMES: a string, AP hostname.
     @attribute ap_list: a list of APConfigurator objects.
     @attribute generic_ap: a generic APConfigurator object.
     @attribute valid_modes: a set of hex numbers.
@@ -126,6 +127,7 @@ class APConfiguratorFactory(object):
     BANDS = 'bands'
     MODES = 'modes'
     SECURITIES = 'securities'
+    HOSTNAMES = 'hostnames'
 
 
     def __init__(self):
@@ -162,57 +164,6 @@ class APConfiguratorFactory(object):
             ])
 
 
-    def get_ap_configurators(self, spec=None):
-        """Returns available configurators meeting spec.
-
-        Caller may request APs based on the following attributes:
-         - BANDS, a list of strings, bands supported.
-         - MODES, a list of hex numbers, 802.11 modes supported.
-         - SECURITIES, a list of strings, security methods supported.
-
-        Interpretation rules:
-         - if an attribute is not present in spec, it's not used to select APs.
-         - caller should only specify an attribute s/he cares about testing.
-         - in case of a list of (>1) strings, logical AND is applied, e.g.
-           dual-band (2.4GHz AND 5GHz).
-         - if multiple attributes are specified, logical AND is applied.
-           Evaluation order is securities, then bands, then modes (which could
-           depend on bands as input).
-
-        Sample spec values and expected returns:
-        1. spec = None or empty dict
-           Return all APs
-        2. spec = dict(bands=['2.4GHz', '5GHz'])
-           Return all dual-band APs
-        3. spec = dict(modes=[0x00010, 0x00100], securities=[2])
-           Return all APs which support both 802.11b AND 802.11g modes AND
-           PSK security
-
-        @param spec: a dict of AP attributes, see explanation above.
-        @returns aps: a list of APConfigurator objects. Or None.
-        """
-        aps = self.ap_list
-        if not spec:
-            logging.info('No spec included, return all APs')
-            return aps
-
-        securities = spec.get(self.SECURITIES, None)
-        bands = spec.get(self.BANDS, None)
-        modes = spec.get(self.MODES, None)
-
-        if securities:
-            logging.info('Select APs by securities: %r', securities)
-            aps = self._get_aps_with_securities(securities, aps)
-        if aps and bands:
-            logging.info('Select APs by bands: %r', bands)
-            aps = self._get_aps_with_bands(bands, aps)
-        if aps and modes:
-            logging.info('Select APs by modes: %r', modes)
-            aps = self._get_aps_with_modes(modes, aps)
-
-        return aps
-
-
     def _cleanup_ap_spec(self, key, value):
         """Validates AP attribute.
 
@@ -243,7 +194,7 @@ class APConfiguratorFactory(object):
                      self.valid_modes.
         @param ap_list: a list of APConfigurator objects.
 
-        @returns aps: a list of APs. Or None.
+        @returns aps: a list of APConfigurators. Or None.
         """
         modes = self._cleanup_ap_spec(self.MODES, modes)
         if not modes:
@@ -271,7 +222,7 @@ class APConfiguratorFactory(object):
                            self.valid_securities.
         @param ap_list: a list of APConfigurator objects.
 
-        @returns aps: a list of APs. Or None.
+        @returns aps: a list of APConfigurators. Or None.
         """
         securities = self._cleanup_ap_spec(self.SECURITIES, securities)
         if not securities:
@@ -296,7 +247,7 @@ class APConfiguratorFactory(object):
                       self.valid_bands.
         @param ap_list: a list of APConfigurator objects.
 
-        @returns aps: a list of APs. Or None.
+        @returns aps: a list of APConfigurators. Or None.
         """
         bands = self._cleanup_ap_spec(self.BANDS, bands)
         if not bands:
@@ -310,6 +261,87 @@ class APConfiguratorFactory(object):
             if set(bands).issubset(set(ap_bands)):
                 logging.debug('Found ap by band = %r', ap.host_name)
                 aps.append(ap)
+        return aps
+
+
+    def _get_aps_with_hostnames(self, hostnames, ap_list):
+        """Returns specific APs by host name.
+
+        @param hostnames: a list of strings, AP's wan_hostname defined in
+                          ../chaos_dynamic_ap_list.conf.
+        @param ap_list: a list of APConfigurator objects.
+
+        @return a list of APConfigurators.
+        """
+        aps = []
+        for ap in ap_list:
+            if ap.host_name in hostnames:
+                logging.info('Found AP by hostname %s', ap.host_name)
+                aps.append(ap)
+
+        return aps
+
+
+    def get_ap_configurators(self, spec=None):
+        """Returns available configurators meeting spec.
+
+        Caller may request APs based on the following attributes:
+         - BANDS, a list of strings, bands supported.
+         - MODES, a list of hex numbers, 802.11 modes supported.
+         - SECURITIES, a list of strings, security methods supported.
+         - HOSTNAMES, a list of strings, AP wan_hostname.
+
+        Interpretation rules:
+         - if an attribute is not present in spec, it's not used to select APs.
+         - caller should only specify an attribute s/he cares about testing.
+         - if HOSTNAMES is specified, only the APs specified are returned.
+           All other attributes are IGNORED.
+         - in case of a list of (>1) strings, logical AND is applied, e.g.
+           dual-band (2.4GHz AND 5GHz).
+         - if multiple attributes are specified, logical AND is applied.
+           Evaluation order is securities, then bands, then modes (which could
+           depend on bands as input).
+
+        Sample spec values and expected returns:
+        1. spec = None or empty dict
+           Return all APs
+        2. spec = dict(bands=['2.4GHz', '5GHz'])
+           Return all dual-band APs
+        3. spec = dict(modes=[0x00010, 0x00100], securities=[2])
+           Return all APs which support both 802.11b AND 802.11g modes AND
+           PSK security
+        4. spec = dict(hostnames=['chromeos3-row1-rack1-host6',
+                                  'chromeos3-row1-rack1-host7'])
+           Return only the two APs specified.
+
+        @param spec: a dict of AP attributes, see explanation above.
+        @returns aps: a list of APConfigurator objects. Or None.
+        """
+        aps = self.ap_list
+        if not spec:
+            logging.info('No spec included, return all APs')
+            return aps
+
+        hostnames = spec.get(self.HOSTNAMES, None)
+        if hostnames:  # Fast path to return specified APs
+            logging.info('Select APs by hostname: %r', hostnames)
+            aps = self._get_aps_with_hostnames(hostnames, aps)
+            return aps
+
+        securities = spec.get(self.SECURITIES, None)
+        bands = spec.get(self.BANDS, None)
+        modes = spec.get(self.MODES, None)
+
+        if securities:
+            logging.info('Select APs by securities: %r', securities)
+            aps = self._get_aps_with_securities(securities, aps)
+        if aps and bands:
+            logging.info('Select APs by bands: %r', bands)
+            aps = self._get_aps_with_bands(bands, aps)
+        if aps and modes:
+            logging.info('Select APs by modes: %r', modes)
+            aps = self._get_aps_with_modes(modes, aps)
+
         return aps
 
 
