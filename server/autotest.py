@@ -439,9 +439,8 @@ class BaseAutotest(installable_object.InstallableObject):
 
 
     def run_timed_test(self, test_name, results_dir='.', host=None,
-                       timeout=None, tag=None, parallel_flag=False,
-                       background=False, client_disconnect_timeout=None,
-                       *args, **dargs):
+                       timeout=None, parallel_flag=False, background=False,
+                       client_disconnect_timeout=None, *args, **dargs):
         """
         Assemble a tiny little control file to just run one test,
         and run it as an autotest client-side test
@@ -453,17 +452,16 @@ class BaseAutotest(installable_object.InstallableObject):
         opts = ["%s=%s" % (o[0], repr(o[1])) for o in dargs.items()]
         cmd = ", ".join([repr(test_name)] + map(repr, args) + opts)
         control = "job.run_test(%s)\n" % cmd
-        self.run(control, results_dir, host, timeout=timeout, tag=tag,
+        self.run(control, results_dir, host, timeout=timeout,
                  parallel_flag=parallel_flag, background=background,
                  client_disconnect_timeout=client_disconnect_timeout)
 
 
-    def run_test(self, test_name, results_dir='.', host=None, tag=None,
+    def run_test(self, test_name, results_dir='.', host=None,
                  parallel_flag=False, background=False,
                  client_disconnect_timeout=None, *args, **dargs):
         self.run_timed_test(test_name, results_dir, host, timeout=None,
-                            tag=tag, parallel_flag=parallel_flag,
-                            background=background,
+                            parallel_flag=parallel_flag, background=background,
                             client_disconnect_timeout=client_disconnect_timeout,
                             *args, **dargs)
 
