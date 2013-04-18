@@ -15,7 +15,7 @@ from selenium.common.exceptions import WebDriverException
 
 class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
     """Derived class to control the DLink DIR-655."""
-
+    first_login = True
 
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and
@@ -40,6 +40,11 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
             alert.accept()
             raise RuntimeError('Invalid configuration, alert message:\n%s'
                                % text)
+        elif 'Invalid password, please try again' in text:
+            alert.accept()
+            if self.first_login:
+                self.first_login = False
+                self.login_to_ap()
         else:
             alert.accept()
             raise RuntimeError('We have an unhandled alert: %s' % text)
@@ -74,13 +79,18 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
         self.get_url(page_url, page_title='D-LINK CORPORATION')
         found_id = self.wait_for_objects_by_id(['w_enable', 'log_pass'])
         if 'log_pass' in found_id:
-            self.set_content_of_text_field_by_id('password', 'log_pass')
-            self.click_button_by_id('login', alert_handler=self._alert_handler)
-            # This will send us to the landing page and not where we want to go.
-            self.get_url(page_url, page_title='D-LINK CORPORATION')
+            self.login_to_ap()
         elif 'w_enable' not in found_id:
             raise Exception(
                     'Unable to navigate to login or configuration page.')
+
+
+    def login_to_ap():
+        self.set_content_of_text_field_by_id('password', 'log_pass')
+        self.click_button_by_id('login', alert_handler=self._alert_handler)
+        # This will send us to the landing page and not where we want to go.
+        page_url = urlparse.urljoin(self.admin_interface_url, 'wireless.asp')
+        self.get_url(page_url, page_title='D-LINK CORPORATION')
 
 
     def save_page(self, page_number):
