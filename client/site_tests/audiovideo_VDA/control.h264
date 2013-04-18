@@ -11,7 +11,7 @@ fails. Running video_decode_accelerator_unittest is skipped on machines that are
 known not to support video decode.
 """
 SUITE = "vda, video_weekly_regression"
-TIME = "SHORT"
+TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "audiovideo"
 TEST_TYPE = "client"
@@ -23,5 +23,9 @@ This is a wrapper test for Chrome video_decode_accelerator_unittest.
 
 # The FPS expectations here are lower than observed in most runs to keep
 # the bots green.
-job.run_test('audiovideo_VDA', video_file='test-25fps.h264',
-             test_params='320:240:250:258:35:150:1')
+videos = ['test-25fps.h264:320:240:250:258:35:150:1',
+          'bear.h264:320:180:30:32:35:150:1',
+          'npot-video.h264:300:176:901:978:35:150:1',
+          'red-green.h264:80:128:150:156:35:150:1']
+
+job.run_test('audiovideo_VDA', videos=videos)

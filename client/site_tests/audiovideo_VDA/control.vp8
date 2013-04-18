@@ -23,5 +23,6 @@ This is a wrapper test for Chrome video_decode_accelerator_unittest.
 
 # The FPS expectations here are lower than observed in most runs to keep
 # the bots green.
-job.run_test('audiovideo_VDA', video_file='test-25fps.vp8',
-             test_params='320:240:250:250:35:150:11');
+videos = ['test-25fps.vp8:320:240:250:250:35:150:11']
+
+job.run_test('audiovideo_VDA', videos=videos);

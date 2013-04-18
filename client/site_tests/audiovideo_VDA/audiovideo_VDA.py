@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_test
 
 SKIP_DEPS_ARG = 'skip_deps'
@@ -23,9 +25,21 @@ class audiovideo_VDA(chrome_test.ChromeBinaryTest):
             skip_deps=bool(SKIP_DEPS_ARG in arguments))
 
 
-    def run_once(self, video_file, test_params):
-        video_file = os.path.join(self.cr_source_dir, 'content', 'common',
-                                  'gpu', 'testdata', video_file)
+    def run_once(self, videos):
+        path = os.path.join(self.cr_source_dir, 'content', 'common',
+                            'gpu', 'testdata', '')
 
-        cmd_line = ('--test_video_data="%s:%s"' % (video_file, test_params))
-        self.run_chrome_binary_test(self.binary, cmd_line)
+        last_test_failure = None
+        for video in videos:
+            cmd_line = ('--test_video_data="%s%s"' % (path, video))
+
+            try:
+                self.run_chrome_binary_test(self.binary, cmd_line)
+            except error.TestFail as test_failure:
+                # Continue to run the remaining test videos and raise
+                # the last failure after finishing all videos.
+                logging.error('%s: %s', video, test_failure.message)
+                last_test_failure = test_failure
+
+        if last_test_failure:
+            raise last_test_failure
