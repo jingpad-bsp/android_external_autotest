@@ -69,6 +69,13 @@ class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
             if page_name == 'wireless.htm':
                 break
 
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
 
     def set_mode(self, mode_enable=True, band=None):
         self.add_item_to_command_list(self._set_mode, (mode_enable,), 1, 900)

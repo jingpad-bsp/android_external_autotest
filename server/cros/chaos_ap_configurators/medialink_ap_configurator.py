@@ -82,6 +82,13 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
                                    alert_handler=self._alert_handler)
         self.wait_for_object_by_xpath('//input[@type="button" and @value="OK"]')
 
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
 
     def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)
