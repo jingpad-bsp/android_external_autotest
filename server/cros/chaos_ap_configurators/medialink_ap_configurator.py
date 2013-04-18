@@ -88,7 +88,7 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
         @return True is supported; False otherwise
         """
-        return False
+        return True
 
     def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)

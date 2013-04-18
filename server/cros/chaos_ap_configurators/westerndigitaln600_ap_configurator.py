@@ -4,7 +4,6 @@
 
 import logging
 import urlparse
-import time
 
 import ap_configurator
 
@@ -41,6 +40,15 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
     def get_number_of_pages(self):
         return 1
+
+
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
 
 
     def get_supported_modes(self):
@@ -98,7 +106,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
             self.driver.find_elements_by_id('onsumit')[1].click()
             self.wait_for_object_by_xpath('//input[@value="Ok"]', wait_time=5)
         except WebDriverException, e:
-            logging.info('There is a webdriver exception: "%s".' % str(e))
+            logging.debug('There is a webdriver exception: "%s".', str(e))
             settings_changed = False
         if not settings_changed:
             try:
@@ -106,7 +114,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
                 self.driver.find_element_by_id('nochg')
                 self.click_button_by_id('nochg')
             except WebDriverException, e:
-                logging.info('There is a webdriver exception: "%s".' % str(e))
+                logging.debug('There is a webdriver exception: "%s".', str(e))
 
 
     def set_mode(self, mode, band=None):
@@ -131,7 +139,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
             mode_name = mode_mapping[mode]
             if (mode & self.mode_a) and (self.current_band != self.band_5ghz):
                 # a mode only in 5Ghz
-                logging.info('Mode \'a\' is not supported for 2.4Ghz band.')
+                logging.debug('Mode \'a\' is not supported for 2.4Ghz band.')
                 return
             elif ((mode & (self.mode_b | self.mode_g) ==
                   (self.mode_b | self.mode_g)) or
@@ -139,8 +147,8 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
                  (mode & self.mode_g == self.mode_g)) and \
                  (self.current_band != self.band_2ghz):
                 # b/g, b, g mode only in 2.4Ghz
-                logging.info('Mode \'%s\' is not available for 5Ghz band.'
-                             % mode_name)
+                logging.debug('Mode \'%s\' is not available for 5Ghz band.',
+                              mode_name)
                 return
         else:
             raise RuntimeError('The mode selected \'%d\' is not supported by '
@@ -199,7 +207,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('set_radio is not supported in Western Digital N600 AP.')
+        logging.debug('set_radio is not supported in Western Digital N600 AP.')
         return None
 
 
@@ -261,7 +269,6 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpa2psk(self, shared_key):
         self.security_wpa2psk = 'WPA2 - Personal'
-        logging.info('update_interval is not supported.')
         sec_id = 'security_type'
         text = '//input[@name="wpapsk" and @type="text"]'
         if self.current_band == self.band_5ghz:
@@ -276,10 +283,10 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
                                                     abort_check=False)
 
 
-    def set_visibility(self, visible=True):
-        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
+    def is_visibility_supported(self):
+        """
+        Returns if AP supports setting the visibility (SSID broadcast).
 
-
-    def _set_visibility(self, visible=True):
-        logging.info("SSID broadcast is not supported for Western Digital N600")
-        return None
+        @return True if supported; False otherwise.
+        """
+        return False

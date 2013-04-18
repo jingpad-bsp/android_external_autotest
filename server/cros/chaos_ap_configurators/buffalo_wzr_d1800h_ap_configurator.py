@@ -16,6 +16,15 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         return 2
 
 
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
+
+
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
                  'modes': [self.mode_b, self.mode_n, self.mode_g]},
@@ -205,7 +214,6 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wpapsk(self, shared_key, update_interval=None):
-        logging.debug('update_interval is not supported.')
         self._switch_frame()
         xpath = '//span[@class="WLAN11G"]'
         if self.current_band == self.band_5ghz:
@@ -220,6 +228,10 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         default = self.driver.switch_to_default_content()
 
 
-    def set_visibility(self, visible=True):
-        logging.debug('SSID broadcast is not supported for Buffalo WZR')
-        return None
+   def is_visibility_supported(self):
+        """
+        Returns if AP supports setting the visibility (SSID broadcast).
+
+        @return True if supported; False otherwise.
+        """
+        return False

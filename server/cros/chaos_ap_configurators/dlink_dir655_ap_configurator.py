@@ -54,6 +54,15 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
         return 1
 
 
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return True
+
+
     def get_supported_bands(self):
         return [{'band': self.band_2ghz,
                  'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]

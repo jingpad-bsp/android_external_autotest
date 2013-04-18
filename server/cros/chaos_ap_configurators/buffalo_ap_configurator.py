@@ -15,6 +15,15 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         return 2
 
 
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return True
+
+
     def get_supported_modes(self):
         return [{'band':self.band_2ghz,
                  'modes':[self.mode_b, self.mode_g, self.mode_n,
@@ -83,8 +92,8 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
     def set_radio(self, enabled):
         #  We cannot turn off radio on Buffalo.
-        logging.info('This router (%s) does not support radio.',
-                     self.get_router_name())
+        logging.debug('This router (%s) does not support radio.',
+                      self.get_router_name())
         return None
 
 
@@ -151,8 +160,8 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        logging.info('This router (%s) does not support multiple bands.',
-                     self.get_router_name())
+        logging.debug('This router (%s) does not support multiple bands.',
+                      self.get_router_name())
         return None
 
 
