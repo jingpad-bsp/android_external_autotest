@@ -13,19 +13,18 @@ on channels 48, 64.
 """
 
 
+from autotest_lib.server.cros.wlan import hostap_config
+
+
 def run(machine):
-    # TODO(tgao): do we need to test connection on more channels?
-    channels = [{'channel': '5240',
-                 'mode': '11a',
-                 'ssid_suffix': 'ch48'},
-                {'channel': '5320',
-                 'mode': '11a',
-                 'ssid_suffix': 'ch64'}]
+    a_mode = hostap_config.HostapConfig.MODE_11A
+    configurations = [hostap_config.HostapConfig(channel=48, mode=a_mode),
+                      hostap_config.HostapConfig(channel=64, mode=a_mode)]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,
                  raw_cmdline_args=args,
-                 additional_params=channels)
+                 additional_params=configurations)
 
 
 parallel_simple(run, machines)

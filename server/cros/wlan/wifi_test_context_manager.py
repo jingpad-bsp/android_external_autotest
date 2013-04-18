@@ -87,6 +87,19 @@ class WiFiTestContextManager(object):
         return self.server.wifi_ip
 
 
+    def configure(self, configuration_parameters):
+        """Configure a router with the given parameters.
+
+        Configures an AP according to the specified parameters and
+        enables whatever packet captures are appropriate.
+
+        @param configuration_parameters HostapConfig object.
+
+        """
+        self.router.hostap_configure(configuration_parameters)
+        # TODO(wiley) enable packet captures here.
+
+
     def setup(self):
         """Construct the state used in a WiFi test."""
         if utils.host_is_in_lab_zone(self.client.host.hostname):

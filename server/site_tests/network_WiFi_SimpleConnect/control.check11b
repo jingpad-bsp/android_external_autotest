@@ -13,21 +13,19 @@ on channels 1, 6, and 11 (2.4 Ghz band) and correctly send IP traffic.
 """
 
 
+from autotest_lib.server.cros.wlan import hostap_config
+
+
 def run(machine):
-    channels = [{'channel': '2412',
-                 'mode': '11b',
-                 'ssid_suffix': 'ch1'},
-                {'channel': '2437',
-                 'mode': '11b',
-                 'ssid_suffix': 'ch6'},
-                {'channel': '2462',
-                 'mode': '11b',
-                 'ssid_suffix': 'ch11'} ]
+    b_mode = hostap_config.HostapConfig.MODE_11B
+    configurations = [hostap_config.HostapConfig(channel=1, mode=b_mode),
+                      hostap_config.HostapConfig(channel=6, mode=b_mode),
+                      hostap_config.HostapConfig(channel=11, mode=b_mode)]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,
                  raw_cmdline_args=args,
-                 additional_params=channels)
+                 additional_params=configurations)
 
 
 parallel_simple(run, machines)

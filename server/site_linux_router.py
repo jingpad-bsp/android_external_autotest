@@ -160,6 +160,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param params dict of site_wifitest parameters.
 
         """
+        logging.info('Starting hostapd with parameters: %r', conf)
         # Figure out the correct interface.
         interface = self._get_wlanif(self.hostapd['frequency'],
                                      self.phytype,
@@ -225,6 +226,57 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """Kill all hostapd instances."""
         self.kill_hostapd_instance(None)
 
+
+    def __get_default_hostap_config(self):
+        """@return dict of default options for hostapd."""
+        conf = self.hostapd['conf']
+        # default RTS and frag threshold to ``off''
+        conf['rts_threshold'] = '2347'
+        conf['fragm_threshold'] = '2346'
+        conf['driver'] = self.hostapd['driver']
+        return conf
+
+
+    def hostap_configure(self, configuration, multi_interface=None):
+        """Build up a hostapd configuration file and start hostapd.
+
+        Also setup a local server if this router supports them.
+
+        @param configuration HosetapConfig object.
+        @param multi_interface bool True iff multiple interfaces allowed.
+
+        """
+        if multi_interface is None and (self.hostapd['configured'] or
+                                        self.station['configured']):
+            self.deconfig()
+        # Start with the default hostapd config parameters.
+        conf = self.__get_default_hostap_config()
+        conf['ssid'] = (self.defssid + configuration.ssid_suffix)[-32:]
+        conf['channel'] = configuration.channel
+        self.hostapd['frequency'] = configuration.frequency
+        conf['hw_mode'] = configuration.hw_mode
+        if configuration.hide_ssid:
+            conf['ignore_broadcast_ssid'] = 1
+        if configuration.is_11n:
+            conf['ieee80211n'] = 1
+            conf['ht_capab'] = ''.join(configuration.n_capabilities)
+        if configuration.wmm_enabled:
+            conf['wmm_enabled'] = 1
+        if configuration.require_ht:
+            conf['require_ht'] = 1
+        # TODO(wiley) beacon interval support
+        self.start_hostapd(conf, {})
+        # Configure transmit power
+        tx_power_params = {'interface': conf['interface']}
+        # TODO(wiley) support for setting transmit power
+        self.set_txpower(tx_power_params)
+        if self.force_local_server:
+            self.start_local_server(conf['interface'])
+        self._post_start_hook({})
+        logging.info('AP configured.')
+        self.hostapd['configured'] = True
+
+
     def hostap_config(self, params):
         """Configure the AP per test requirements.
 
@@ -244,17 +296,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         local_server = params.pop('local_server', False)
 
-        # Construct the hostapd.conf file and start hostapd.
-        conf = self.hostapd['conf']
-        # default RTS and frag threshold to ``off''
-        conf['rts_threshold'] = '2347'
-        conf['fragm_threshold'] = '2346'
-
+        conf = self.__get_default_hostap_config()
         tx_power_params = {}
         htcaps = set()
-
-        conf['driver'] = params.get('hostapd_driver',
-            self.hostapd['driver'])
 
         for k, v in params.iteritems():
             if k == 'ssid':

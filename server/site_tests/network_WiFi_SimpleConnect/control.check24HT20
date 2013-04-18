@@ -13,24 +13,22 @@ on 2.4 GHz channels (20MHz channels only).
 """
 
 
+from autotest_lib.server.cros.wlan import hostap_config
+
+
 def run(machine):
-    channels = [{'channel': '2412',
-                 'ht20': None,
-                 'puren': None,
-                 'ssid_suffix': 'ch1'},
-                {'channel': '2437',
-                 'ht20': None,
-                 'puren': None,
-                 'ssid_suffix': 'ch6'},
-                {'channel': '2462',
-                 'ht20': None,
-                 'puren': None,
-                 'ssid_suffix': 'ch11'}]
+    caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
+            hostap_config.HostapConfig.N_CAPABILITY_HT20]
+    n = hostap_config.HostapConfig.MODE_11N_PURE
+    configurations = [
+            hostap_config.HostapConfig(channel=1, mode=n, n_capabilities=caps),
+            hostap_config.HostapConfig(channel=6, mode=n, n_capabilities=caps),
+            hostap_config.HostapConfig(channel=11, mode=n, n_capabilities=caps)]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,
                  raw_cmdline_args=args,
-                 additional_params=channels)
+                 additional_params=configurations)
 
 
 parallel_simple(run, machines)

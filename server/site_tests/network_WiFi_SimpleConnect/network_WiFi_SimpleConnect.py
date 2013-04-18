@@ -17,13 +17,13 @@ class network_WiFi_SimpleConnect(wifi_test_base.WiFiTestBase):
         @param additional_params list of dicts describing router configs.
 
         """
-        self._channels = additional_params
+        self._configurations = additional_params
 
 
     def run_once_impl(self):
         """Sets up a router, connects to it, pings it, and repeats."""
-        for channel in self._channels:
-            self.context.router.config(channel)
+        for configuration in self._configurations:
+            self.context.configure(configuration)
             assoc_params = xmlrpc_datatypes.AssociationParameters()
             assoc_params.ssid = self.context.router.get_ssid()
             self.assert_connect_wifi(assoc_params)
