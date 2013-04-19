@@ -44,7 +44,7 @@ def wifi_chaos_open(machine):
                         # Group test output by SSID
                         mod_ssid = ap_info['ssid'].replace(' ', '_')
                         job.run_test('network_WiFiChaosOpen', host=host,
-                                     helper=helper, ap_info=ap_info, tries=2,
+                                     helper=helper, ap_info=ap_info, tries=10,
                                      disable_sysinfo=False, tag=mod_ssid)
 
 parallel_simple(wifi_chaos_open, machines)
