@@ -245,8 +245,8 @@ class network_ShillInitScripts(test.test):
                     'Shill command line does not contain push argument')
 
     def test_start_logged_in(self):
-        """ The "--push" argument should be added if the shill is started
-            while a user is logged in.
+        """ The "--push" argument should not be added even though shill
+            is started while a user is logged in.
         """
         os.mkdir('/var/run/shill')
         os.mkdir('/var/run/shill/user_profiles')
@@ -256,9 +256,8 @@ class network_ShillInitScripts(test.test):
         self.touch('/var/run/state/logged-in')
         self.start_shill()
         command_line = self.get_commandline()
-        self.assure('--push=~chronos/shill' in command_line,
-                    'Shill command line contains push argument: %s' %
-                    repr(command_line))
+        self.assure('--push=~chronos/shill' not in self.get_commandline(),
+                    'Shill command line does not contain push argument')
         os.unlink('/var/run/state/logged-in')
 
     def test_start_port_flimflam_profile(self):
@@ -506,10 +505,7 @@ class network_ShillInitScripts(test.test):
 
     def test_login_multi_profile(self):
         """ Login script should create multiple profiles in parallel
-            if called more than once without an intervening logout. If
-            shill is started while all these profiles are present, each
-            of these should be listed in the '--push' command-line
-            argument to shill.
+            if called more than once without an intervening logout.
         """
         os.mkdir('/var/run/shill')
         self.create_new_shill_user_profile('')
@@ -530,17 +526,6 @@ class network_ShillInitScripts(test.test):
                                    self.user_cryptohome_log_dir,
                                    'Shill log link for %s' % username)
             created_profiles.append(profile)
-
-        # Start up shill with the data from all the user profiles above
-        # in place.  Shill should be started with instructions to push
-        # each of these profiles.
-        self.touch('/var/run/state/logged-in')
-        self.start_shill()
-        command_line = self.get_commandline()
-        push_argument = '--push=%s' % ','.join(created_profiles)
-        self.assure(push_argument in command_line,
-                    'Shill command line contains push argument: %s' %
-                    repr(command_line))
 
     def test_logout(self):
         os.makedirs('/var/run/shill/user_profiles')
