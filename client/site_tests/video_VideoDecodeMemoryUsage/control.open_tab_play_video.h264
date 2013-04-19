@@ -1,0 +1,24 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'owenlin@chromium.org, chromeos-video@google.com'
+NAME = 'video_VideoDecodeMemoryUsage.open_tab_play_video'
+PURPOSE = 'Ensure no memory leak while playing videos'
+SUITE = 'video'
+TIME = 'LONG'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'video'
+TEST_TYPE = 'client'
+EXPERIMENTAL = 'True'
+
+DOC = """
+Repeat the following steps and check the memory usage.
+  1. Open a new tab
+  2. Play a video in the new tab
+  3. Close the tab
+"""
+
+job.run_test('video_VideoDecodeMemoryUsage',
+             testcase = 'OpenTabPlayVideo',
+             video = 'tp101-1920x1080.mp4')
