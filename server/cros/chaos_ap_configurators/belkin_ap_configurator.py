@@ -200,7 +200,19 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
                                                 abort_check=False)
 
 
-    def set_visibility(self, visible=True):
-        logging.info('Visibility cannot be changed for this router %s.',
-                     self.get_router_name())
-        return None
+    def is_visibility_supported(self):
+        """
+        Returns if AP supports setting the visibility (SSID broadcast).
+
+        @return True if supported; False otherwise.
+        """
+        return False
+
+
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False

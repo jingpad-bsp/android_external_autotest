@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Derived class to control the Trendnet TEW-731BR."""
-
 import trendnet_ap_configurator
 
 
@@ -100,6 +98,15 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
         xpath = ('//input[@value="%d" and @name="wlan0_ssid_broadcast"]' %
                   int_value)
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
+
+
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
 
 
     def _set_security_wep(self, key_value, authentication):
