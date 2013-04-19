@@ -7,36 +7,50 @@ import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
+from autotest_lib.server.cros import wifi_test_utils
 
-def isLinuxRouter(router):
-    router_uname = router.run('uname').stdout
+def isLinuxRouter(host):
+    """Check if host is a linux router.
+
+    @param host Host object representing the remote machine.
+    @return True iff remote system is a Linux system.
+
+    """
+    router_uname = host.run('uname').stdout
     return re.search('Linux', router_uname)
 
 class LinuxRouter(site_linux_system.LinuxSystem):
-    """
-    Linux/mac80211-style WiFi Router support for WiFiTest class.
+    """Linux/mac80211-style WiFi Router support for WiFiTest class.
 
     This class implements test methods/steps that communicate with a
     router implemented with Linux/mac80211.  The router must
     be pre-configured to enable ssh access and have a mac80211-based
     wireless device.  We also assume hostapd 0.7.x and iw are present
     and any necessary modules are pre-loaded.
+
     """
 
 
     def __init__(self, host, params, defssid):
-        site_linux_system.LinuxSystem.__init__(self, host, params, "router")
+        """Build a LinuxRouter.
+
+        @param host Host object representing the remote machine.
+        @param params dict of settings from site_wifitest based tests.
+        @param defssid string default SSID for networks created on this router.
+
+        """
+        site_linux_system.LinuxSystem.__init__(self, host, params, 'router')
         self._remove_interfaces()
 
         # Router host.
         self.router = host
 
-        self.cmd_hostapd = self.__must_be_installed(host,
-            params.get("cmd_hostapd", "/usr/sbin/hostapd"))
-        self.cmd_hostapd_cli = \
-            params.get("cmd_hostapd_cli", "/usr/sbin/hostapd_cli")
-        self.dhcpd_conf = "/tmp/dhcpd.%s.conf"
-        self.dhcpd_leases = "/tmp/dhcpd.leases"
+        self.cmd_hostapd = wifi_test_utils.must_be_installed(
+                host, params.get('cmd_hostapd', '/usr/sbin/hostapd'))
+        self.cmd_hostapd_cli = params.get('cmd_hostapd_cli',
+                                          '/usr/sbin/hostapd_cli')
+        self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
+        self.dhcpd_leases = '/tmp/dhcpd.leases'
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
@@ -75,20 +89,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Place us in the US by default
         self.router.run("%s reg set US" % self.cmd_iw)
 
-    def __must_be_installed(self, host, cmd):
-        if not self.__is_installed(host, cmd):
-            raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
-        return cmd
-
-    def __is_installed(self, host, filename):
-        result = host.run("ls %s" % filename, ignore_status=True)
-        m = re.search(filename, result.stdout)
-        return m is not None
-
 
     def create(self, params):
-        """
-        Create a wifi device of the specified type.
+        """Create a wifi device of the specified type.
 
         @param params dict containing the device type under key 'type'.
 
@@ -97,8 +100,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def create_wifi_device(self, device_type='hostap'):
-        """
-        Create a wifi device of the specified type.
+        """Create a wifi device of the specified type.
 
         Defaults to creating a hostap managed device.
 
@@ -127,19 +129,37 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def destroy(self, params={}):
-        """ Destroy a previously created device """
+        """Destroy a previously created device.
+
+        @param params dict of site_wifitest parameters.
+
+        """
         self.deconfig(params)
         self.hostapd['conf'] = self.default_config.copy()
 
+
     def has_local_server(self):
+        """@return True iff this router has local servers configured."""
         return bool(self.local_servers)
 
+
     def cleanup(self, params):
-        """ Clean up any resources in use """
+        """Clean up any resources in use.
+
+        @param params dict of site_wifitest parameters.
+
+        """
         # For linux, this is a no-op
         pass
 
+
     def start_hostapd(self, conf, params):
+        """Start a hostapd instance described by conf.
+
+        @param conf dict of hostapd configuration parameters.
+        @param params dict of site_wifitest parameters.
+
+        """
         # Figure out the correct interface.
         interface = self._get_wlanif(self.hostapd['frequency'],
                                      self.phytype,
@@ -168,10 +188,16 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         })
 
     def _kill_process_instance(self, process, instance=None, wait=0):
-        """
+        """Kill a process on the router.
+
         Kills program named |process|, optionally only a specific
         |instance|.  If |wait| is specified, we makes sure |process| exits
         before returning.
+
+        @param process string name of process to kill.
+        @param instance string instance of process to kill.
+        @param wait int timeout in seconds to wait for.
+
         """
         if instance:
             search_arg = '-f "%s.*%s"' % (process, instance)
@@ -188,14 +214,23 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.router.run(cmd, ignore_status=True)
 
     def kill_hostapd_instance(self, instance):
+        """Kills a hostapd instance.
+
+        @param instance string instance to kill.
+
+        """
         self._kill_process_instance('hostapd', instance, 30)
 
     def kill_hostapd(self):
+        """Kill all hostapd instances."""
         self.kill_hostapd_instance(None)
 
     def hostap_config(self, params):
-        """ Configure the AP per test requirements """
+        """Configure the AP per test requirements.
 
+        @param params dict of site_wifitest parameters.
+
+        """
         # keep parameter modifications local-only
         orig_params = params
         params = params.copy()
@@ -345,10 +380,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     @staticmethod
     def ip_addr(netblock, idx):
-        """
-        Simple IPv4 calculator.  Takes host address in "IP/bits" notation
-        and returns netmask, broadcast address as well as integer offsets
-        into the address range.
+        """Simple IPv4 calculator.
+
+        Takes host address in "IP/bits" notation and returns netmask, broadcast
+        address as well as integer offsets into the address range.
+
+        @param netblock string host address in "IP/bits" notation.
+        @param idx string describing what to return.
+        @return string containing something you hopefully requested.
+
         """
         addr_str,bits = netblock.split('/')
         addr = map(int, addr_str.split('.'))
@@ -367,6 +407,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def station_config(self, params):
+        """Configure a station based AP.
+
+        @param params dict of site_wifitest parameters.
+
+        """
         # keep parameter modifications local-only
         orig_params = params
         params = params.copy()
@@ -417,9 +462,22 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def local_server_address(self, index):
+        """Get the local server address for an interface.
+
+        When we multiple local servers, we give them static IP addresses
+        like 192.158.*.254.
+
+        @param index int describing which local server this is for.
+
+        """
         return '%d.%d.%d.%d' % (192, 168, index, 254)
 
     def start_local_server(self, interface):
+        """Start a local server on an interface.
+
+        @param interface string (e.g. wlan0)
+
+        """
         logging.info("Starting up local server...")
 
         if len(self.local_servers) >= 256:
@@ -451,6 +509,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.start_dhcp_server(interface)
 
     def start_dhcp_server(self, interface):
+        """Start a dhcp server on an interface.
+
+        @param interface string (e.g. wlan0)
+
+        """
         conf_file = self.dhcpd_conf % interface
         dhcp_conf = '\n'.join(map(
             lambda server_conf: \
@@ -469,13 +532,24 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def stop_dhcp_server(self, instance=None):
+        """Stop a dhcp server on the router.
+
+        @param instance string instance to kill.
+
+        """
         self._kill_process_instance('dhcpd', instance, 0)
 
     def stop_dhcp_servers(self):
+        """Stop all dhcp servers on the router."""
         self.stop_dhcp_server(None)
 
 
     def config(self, params):
+        """Configure an AP based on site_wifitest parameters.
+
+        @param params dict of site_wifitest parameters.
+
+        """
         if self.apmode:
             self.hostap_config(params)
         else:
@@ -483,6 +557,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def get_wifi_ip(self, ap_num):
+        """Return IP address on the WiFi subnet of a local server on the router.
+
+        If no local servers are configured (e.g. for an RSPro), a TestFail will
+        be raised.
+
+        @param ap_num int which local server to get an address from.
+
+        """
         if self.local_servers:
             return self.ip_addr(self.local_servers[ap_num]['netblock'],
                                 'local')
@@ -491,6 +573,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def get_hostapd_mac(self, ap_num):
+        """Return the MAC address of an AP in the test.
+
+        @param ap_num int index of local server to read the MAC address from.
+        @return string MAC address like 00:11:22:33:44:55.
+
+        """
         instance = self.hostapd_instances[ap_num]
         interface = instance['interface']
         result = self.router.run('%s addr show %s' % (self.cmd_ip, interface))
@@ -505,8 +593,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def deconfig(self, params={}):
-        """ De-configure the AP (will also bring wlan down) """
+        """De-configure the AP (will also bring wlan down).
 
+        @param params dict of parameters from site_wifitest.
+
+        """
         if not self.hostapd['configured'] and not self.station['configured']:
             return
 
@@ -562,6 +653,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def verify_pmksa_auth(self, params):
+        """Verify that the PMKSA auth was cached on a hostapd instance.
+
+        @param params dict with optional key 'instance' (defaults to 0).
+
+        """
         instance_num = params.get('instance', 0)
         instance = self.hostapd_instances[instance_num]
         pmksa_match = 'PMK from PMKSA cache - skip IEEE 802.1X.EAP'
@@ -569,10 +665,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def get_ssid(self):
+        """@return string ssid for the network stemming from this router."""
         return self.hostapd['conf']['ssid']
 
 
     def set_txpower(self, params):
+        """Set the transmission power for an interface.
+
+        Assumes that we want to refer to the first hostapd instance unless
+        'interface' is defined in params.  Sets the transmission power to
+        'auto' if 'power' is not defined in params.
+
+        @param params dict of parameters as described above.
+
+        """
         interface = params.get('interface',
                                self.hostapd_instances[0]['interface'])
         power = params.get('power', 'auto')
@@ -581,6 +687,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def deauth(self, params):
+        """Deauthenticates a client described in params.
+
+        @param params dict containing a key 'client'.
+
+        """
         self.router.run('%s -p%s deauthenticate %s' %
                         (self.cmd_hostapd_cli,
                          self.hostapd['conf']['ctrl_interface'],
@@ -588,21 +699,32 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
 
     def _pre_config_hook(self, config):
-        """
-        Hook for subclasses. Run after gathering configuration parameters,
+        """Hook for subclasses.
+
+        Run after gathering configuration parameters,
         but before writing parameters to config file.
+
+        @param config dict containing hostapd config parameters.
+
         """
         pass
 
 
     def _pre_start_hook(self, params):
-        """
-        Hook for subclasses. Run after generating hostapd config file, but
-        before starting hostapd.
+        """Hook for subclasses.
+
+        Run after generating hostapd config file, but before starting hostapd.
+
+        @param params dict parameters from site_wifitest.
+
         """
         pass
 
 
     def _post_start_hook(self, params):
-        """Hook for subclasses. Run after starting hostapd."""
+        """Hook for subclasses run after starting hostapd.
+
+        @param params dict parameters from site_wifitest.
+
+        """
         pass
