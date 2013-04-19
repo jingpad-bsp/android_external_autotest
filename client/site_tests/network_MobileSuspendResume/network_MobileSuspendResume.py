@@ -108,15 +108,15 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
     # There appears to be an issue after suspend/resume where GetProperties
     # returns with UnknownMethod called until some time later.
     def __get_mobile_device(self, timeout=TIMEOUT):
-        start_time = time.time()
-        device = self.FindMobileDevice(timeout)
-
         properties = None
+        start_time = time.time()
         timeout = start_time + timeout
         while properties is None and time.time() < timeout:
             try:
+                device = self.FindMobileDevice(timeout)
                 properties = device.GetProperties(utf8_strings=True)
-            except:
+            except dbus.exceptions.DBusException:
+                logging.debug('Mobile device not ready yet')
                 properties = None
 
             time.sleep(1)
