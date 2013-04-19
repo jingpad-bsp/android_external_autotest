@@ -7,8 +7,12 @@
 from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.cellular import mm1
 import dbus
+import cellular_logging
 
-MODEM_TIMEOUT=60
+log = cellular_logging.SetupCellularLogging('modem1')
+
+MODEM_TIMEOUT = 60
+
 
 class Modem(object):
     """An object which talks to a ModemManager1 modem."""
@@ -126,7 +130,10 @@ class Modem(object):
 
     def GetCurrentTechnologyFamily(self):
         """Returns the modem technology family."""
-        if self.GetAll(mm1.MODEM_INTERFACE)['Sim']:
+        props = self.GetAll(mm1.MODEM_INTERFACE)
+        sim = props.get('Sim')
+        log.debug('Modem.Sim = %s' % sim)
+        if sim is not None:
             return cellular.TechnologyFamily.UMTS
         else:
             return cellular.TechnologyFamily.CDMA

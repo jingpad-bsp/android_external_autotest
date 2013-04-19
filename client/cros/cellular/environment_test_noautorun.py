@@ -31,25 +31,28 @@ labconfig.get_interface_ip = mock.Mock(return_value = dut1_ip)
 
 # Must import after the mocks.
 import environment
+import cellular_logging
+log = cellular_logging.SetupCellularLogging('environment_test')
 
-log = logging.getLogger('environment_test')
-log.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter(' %(name)s - %(message)s' )
-ch.setFormatter(formatter)
-log.addHandler(ch)
 
 class EnvTest(unittest.TestCase):
 
-    def test_Env(self):
+    def test_Env3G(self):
         """
-        Make an environment.
+        make an environment
         """
         with environment.DefaultCellularTestContext(config) as c:
             env = c.env
             env.StartDefault('Technology:HSDPA')
-            log.debug('Starting')
+
+    def test_EnvLte(self):
+        """
+        make an environment
+        """
+        log.debug('LTE Enviroment test')
+        with environment.DefaultCellularTestContext(config) as c:
+            env = c.env
+            env.StartDefault('Technology:LTE')
 
 if __name__ == '__main__':
     unittest.main()

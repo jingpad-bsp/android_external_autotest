@@ -12,11 +12,13 @@ This file is both a python module and a command line utility to speak
 to the module
 """
 
+import cellular_logging
 import collections
-import logging
 import socket
 import struct
 import sys
+
+log = cellular_logging.SetupCellularLogging('ether_io_rf_switch')
 
 
 class Error(Exception):
@@ -42,9 +44,8 @@ class EtherIo24(object):
         return payload
 
     def SendCommandVerify(self, write_opcode, list_bytes, read_opcode=None):
-        """Sends opcode and bytes, then reads to make sure command was
-        executed.
-        """
+        """Sends opcode and bytes,
+        then reads to make sure command was executed."""
         if read_opcode is None:
             read_opcode = write_opcode.lower()
         for _ in xrange(3):
@@ -55,21 +56,20 @@ class EtherIo24(object):
                 if response == write_sent:
                     return
                 else:
-                    logging.warning('Unexpected reply:  sent %s, got %s',
-                                    write_sent.encode('hex_codec'),
-                                    response.encode('hex_codec'))
+                    log.warning('Unexpected reply:  sent %s, got %s',
+                                write_sent.encode('hex_codec'),
+                                response.encode('hex_codec'))
             except socket.timeout:
-                logging.warning('Timed out awaiting reply for %s',
-                                write_opcode)
+                log.warning('Timed out awaiting reply for %s', write_opcode)
                 continue
         raise Error('Failed to execute %s' % write_sent.encode('hex_codec'))
 
     def AwaitResponse(self):
         (response, address) = self.socket.recvfrom(65536)
         if (socket.gethostbyname(address[0]) !=
-            socket.gethostbyname(self.destination[0])):
-            logging.warning('Unexpected reply source: %s (expected %s)',
-                            address, self.destination)
+                socket.gethostbyname(self.destination[0])):
+            log.warning('Unexpected reply source: %s (expected %s)',
+                        address, self.destination)
         return response
 
 
@@ -108,7 +108,7 @@ class RfSwitch(object):
         except ValueError:
             port = None
 
-        return (status, port, direction)
+        return status, port, direction
 
 
 def CommandLineUtility(arguments):
@@ -120,8 +120,8 @@ def CommandLineUtility(arguments):
     def Query(switch, unused_remaining_args):
         (raw_status, port, direction) = switch.Query()
         if direction != 0x00:
-            print 'Warning:  Direction register is %x, should be 0x00' % \
-                direction
+            print 'Warning: Direction register is %x, should be 0x00' % \
+                  direction
         if port is None:
             port_str = 'Invalid'
         else:

@@ -2,9 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import optparse, pickle, re, subprocess
 
-import cellular, labconfig_data
+import optparse
+import pickle
+import re
+import subprocess
+
+import common
+from autotest_lib.client.cros.cellular import cellular
+from autotest_lib.client.cros.cellular import cellular_logging
+from autotest_lib.client.cros.cellular import labconfig_data
+
+log = cellular_logging.SetupCellularLogging('labconfig')
+
 
 class LabConfigError(Exception):
     """Exception thrown on bad lab configuration"""
@@ -79,19 +89,33 @@ class Configuration(object):
         machine we're running on.  The important thing is that this
         matches the IP address in the cell duts configuration.  We'll
         have to come up with a better way if this proves brittle."""
+
+        # TODO(byronk) : crosbug.com/235911:
+        # autotest: Getting IP address from eth0 by name is brittle
         if self.ip and not machine:
             machine = self.ip
 
+        log.debug('self.ip is : %s ' % self.ip)
+        # TODO(byronk): use sysfs to find network interface
+        possible_interfaces = ['eth0', 'eth1', 'eth_test']
+        log.debug('Looking for an up network interface in : %s' %
+                  possible_interfaces)
+        for interface in possible_interfaces:
+            machine = get_interface_ip(interface)
+            if machine:
+                log.debug('Got an IP address: %s Stopping the search.. ' %
+                          machine)
+                self.ip = machine
+                break
         if not machine:
-            machine = get_interface_ip('eth0')
-            self.ip = machine
-        if not machine:
-            machine = get_interface_ip('eth_test')
-            self.ip = machine
-        if not machine:
+            ifconfig = subprocess.Popen(['/sbin/ifconfig'],
+                                        stdout=subprocess.PIPE).communicate()[0]
             raise LabConfigError(
-                'Could not determine which machine we are.  Cell =  %s' %
-                self.options.cell)
+                'Could not determine which machine we are.\n'
+                '  Cell =  %s \n' % self.options.cell +
+                'Tried these interface names: %s \n' % possible_interfaces +
+                'ifconfig output:\n%s' % ifconfig
+            )
 
         for dut in self.cell["duts"]:
             if machine == dut["address"] or machine == dut["name"]:
