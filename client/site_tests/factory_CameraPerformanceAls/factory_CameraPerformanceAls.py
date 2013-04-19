@@ -217,9 +217,6 @@ class factory_CameraPerformanceAls(test.test):
     version = 2
     preserve_srcdir = True
 
-    # OpenCV will automatically search for a working camera device if we use
-    # the index -1.
-    _DEVICE_INDEX = -1
     _TEST_CHART_FILE = 'test_chart.png'
     _TEST_SAMPLE_FILE = 'sample.png'
 
@@ -521,7 +518,7 @@ class factory_CameraPerformanceAls(test.test):
     def test_camera_functionality(self):
         # Initialize the camera with OpenCV.
         self.update_status(mid='init_cam')
-        cam = cv2.VideoCapture(self._DEVICE_INDEX)
+        cam = cv2.VideoCapture(self.device_index)
         if not cam.isOpened():
             cam.release()
             self.update_result('cam_stat', False)
@@ -767,7 +764,8 @@ class factory_CameraPerformanceAls(test.test):
         return
 
     def run_once(self, test_type = _TEST_TYPE_FULL, unit_test = False,
-                 use_als = True, log_good_image = False):
+                 use_als = True, log_good_image = False,
+                 device_index = -1):
         '''The entry point of the test.
 
         Args:
@@ -789,6 +787,7 @@ class factory_CameraPerformanceAls(test.test):
            use_als:    Whether to use the ambient light sensor.
            log_good_image: Log images that pass that test
                        (By default, only failed images are logged)
+           device_index: video device index (-1 to auto pick device by OpenCV)
         '''
         factory.log('%s run_once' % self.__class__)
 
@@ -801,6 +800,7 @@ class factory_CameraPerformanceAls(test.test):
         self.unit_test = unit_test
         self.use_als = use_als
         self.log_good_image = log_good_image
+        self.device_index = device_index
 
         self.talk_to_fixture = use_als
         self.config_loaded = False
