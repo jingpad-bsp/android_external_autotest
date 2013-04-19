@@ -28,8 +28,9 @@ def _prepend_server(name, bare=False):
     """
     Since many people run their own local AFE, stats from a local setup
     shouldn't get mixed into stats from prod.  Therefore, this function
-    exists to prepend the name of the local server to the stats, so that
-    each person has their own "folder" of stats that they can look at.
+    exists to prepend the name of the local server to the stats if |name|
+    doesn't start with the server name, so that each person has their own
+    "folder" of stats that they can look at.
 
     However, this functionality might not always be wanted, so we allow
     one to pass in |bare=True| to force us to not prepend the local
@@ -42,12 +43,13 @@ def _prepend_server(name, bare=False):
     >>> _prepend_server('rpc.create_job', bare=True)
     'rpc.create_job'
 
-    @param name The name to append to the server name.
+    @param name The name to append to the server name if it doesn't start
+                with the server name.
     @param bare If True, |name| will be returned un-altered.
     @return A string to use as the stat name.
 
     """
-    if not bare:
+    if not bare and not name.startswith(AUTOTEST_SERVER):
         name = '%s.%s' % (AUTOTEST_SERVER, name)
     return name
 
@@ -82,26 +84,30 @@ _conn = statsd.Connection(host=STATSD_SERVER, port=STATSD_PORT)
 
 class Average(statsd.Average):
     """Wrapper around statsd.Average."""
-    def __init__(self, name, bare=False):
-        super(Average, self).__init__(_prepend_server(name, bare), _conn)
+    def __init__(self, name, connection=None, bare=False):
+        conn = connection or _conn
+        super(Average, self).__init__(_prepend_server(name, bare), conn)
 
 
 class Counter(statsd.Counter):
     """Wrapper around statsd.Counter."""
-    def __init__(self, name, bare=False):
-        super(Counter, self).__init__(_prepend_server(name, bare), _conn)
+    def __init__(self, name, connection=None, bare=False):
+        conn = connection or _conn
+        super(Counter, self).__init__(_prepend_server(name, bare), conn)
 
 
 class Gauge(statsd.Gauge):
     """Wrapper around statsd.Gauge."""
-    def __init__(self, name, bare=False):
-        super(Gauge, self).__init__(_prepend_server(name, bare), _conn)
+    def __init__(self, name, connection=None, bare=False):
+        conn = connection or _conn
+        super(Gauge, self).__init__(_prepend_server(name, bare), conn)
 
 
 class Timer(statsd.Timer):
     """Wrapper around statsd.Timer."""
-    def __init__(self, name, bare=False):
-        super(Timer, self).__init__(_prepend_server(name, bare), _conn)
+    def __init__(self, name, connection=None, bare=False):
+        conn = connection or _conn
+        super(Timer, self).__init__(_prepend_server(name, bare), conn)
 
 
     # To override subname to not implicitly append 'total'.
@@ -120,5 +126,6 @@ class Timer(statsd.Timer):
 
 class Raw(statsd.Raw):
     """Wrapper around statsd.Raw."""
-    def __init__(self, name, bare=False):
-        super(Raw, self).__init__(_prepend_server(name, bare), _conn)
+    def __init__(self, name, connection=None, bare=False):
+        conn = connection or _conn
+        super(Raw, self).__init__(_prepend_server(name, bare), conn)
