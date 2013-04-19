@@ -40,37 +40,6 @@ class security_HciconfigDefaultSettings(test.test):
         logging.debug('Match found.')
         return True
 
-    def get_adapter(self):
-        '''Gets adapter interface for bluetooth through D-Bus.
-
-        Uses dbus to get the name of the default adapter for BlueZ, then uses
-        dbus to get an interface to that adapter.
-
-        Returns:
-            A dbus interface object referencing the default BlueZ adapter.
-        '''
-        bus = dbus.SystemBus()
-        default = bus.get_object('org.bluez', '/')
-        adapter_path = default.DefaultAdapter(dbus_interface=
-                'org.bluez.Manager')
-
-        adapter_proxy = bus.get_object('org.bluez', adapter_path)
-        adapter = dbus.Interface(adapter_proxy, dbus_interface=
-                'org.bluez.Adapter')
-        return adapter
-
-    def set_adapter_power(self, adapter, state):
-        '''Sets adapter 'Powered' property to desired state
-
-        Uses interface provided by dbus to change adapter's property
-
-        Args:
-            adapter: adapter to modify
-            state: desired state (True for enabled, False for disabled)
-        '''
-        logging.debug('Powering adapter %s.' % ('off', 'on')[state])
-        adapter.SetProperty('Powered', state)
-
     def verify_settings(self):
         '''Checks all required default settings.
 
@@ -108,17 +77,16 @@ class security_HciconfigDefaultSettings(test.test):
             raise error.TestError('Unexpected quantity of Bluetooth interface'
                     'information.  Expected 9 or 16 lines, saw %d:' % lines)
 
+        adapter = output[0][:output[0].index(':')]
         was_down = self.compare(output[2], 'DOWN')
 
-        adapter = self.get_adapter()
-
         if was_down:
-            self.set_adapter_power(adapter, True)
+            utils.system('hciconfig %s up' % adapter)
 
         good_settings = self.verify_settings()
 
         if was_down:
-            self.set_adapter_power(adapter, False)
+            utils.system('hciconfig %s down' % adapter)
 
         if not was_down:
             raise error.TestFail('Bluetooth was already up.')
