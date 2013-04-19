@@ -96,6 +96,10 @@ class WiFiChaosConnectionTest(object):
 
         @return a string (error message) or None.
         """
+        # Enable logging
+        self.host.run('restart wpasupplicant WPA_DEBUG=excessive')
+        self.host.run('restart shill SHILL_LOG_SCOPES=wifi SHILL_LOG_LEVEL=-5')
+
         self.disconnector.disconnect(ap_info['ssid'])
         self.connector.set_frequency(ap_info['frequency'])
 
