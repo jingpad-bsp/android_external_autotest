@@ -230,13 +230,20 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_wpa2psk(self, shared_key):
-        logging.debug('update_interval is not supported')
         popup = '//select[@name="security_mode2"]'
         self.select_item_from_popup_by_xpath('WPA Personal', popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,
                                                 abort_check=False)
+
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
 
 
     def set_visibility(self, visible=True):

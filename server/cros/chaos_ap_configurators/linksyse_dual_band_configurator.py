@@ -231,6 +231,15 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
                                                 abort_check=True)
 
 
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
+
+
     def set_visibility(self, visible=True):
         self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
 

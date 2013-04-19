@@ -119,20 +119,6 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                                              xpath)
 
 
-    def set_security_disabled(self):
-        self.add_item_to_command_list(self._set_security_disabled, (), 2, 900)
-
-
-    def set_security_wep(self, key_value, authentication):
-        self.add_item_to_command_list(self._set_security_wep,
-                                      (key_value, authentication), 2, 900)
-
-
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
-        self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 2, 900)
-
-
     def _set_visibility(self, visible=True):
         button = 'closed_24g'
         if self.current_band == self.band_5ghz:
