@@ -10,6 +10,7 @@ CELLS = {}
 
 # TODO(rochberg):  Need some way to subset this list for long/short tests
 
+LTE_TECHNOLOGIES = ['LTE']
 GENERIC_GSM_TECHNOLOGIES = ['GPRS', 'EGPRS', 'WCDMA', 'HSDPA', 'HSUPA',
                             'HSDUPA', 'HSPA_PLUS']
 
@@ -36,7 +37,7 @@ def combine_trees(a_original, b):
     return a
 
 
-def MakeDefault8960(specifics):
+def MakeDefaultCallBoxConfig(specifics):
     base = {
             "type": "8960-prologix",
             # IP addresses and netmask for the air-side of the
@@ -80,7 +81,7 @@ def MakeDefaultPerfServer(specifics):
 
 CELLS['cam'] = {
     "basestations": [
-        MakeDefault8960({
+        MakeDefaultCallBoxConfig({
             "gpib_adapter": {
                 "address": "172.31.206.171",
                 },
@@ -123,19 +124,39 @@ CELLS['cam'] = {
         }
     }
 
-
 CELLS['mtv'] = {
     "basestations": [
-        MakeDefault8960({
+        MakeDefaultCallBoxConfig({
             "gpib_adapter": {
-              "name": "gpib-mtv",
+              "type":'8960',
               "address": "172.22.50.118",
               "ethernet_mac": "00:21:69:01:06:46",
               }
-            })
+            }),
+        MakeDefaultCallBoxConfig({
+          "type":'pxt',
+          "gpib_adapter": {
+              "address": "172.22.50.244",
+              "ethernet_mac": "00:21:69:01:0a:11",
+              # ddns-hostname "chromeos1-rack1-pxt-gpib";
+            }
+        })
         ],
 
+
+#chromeos1-rack1-pxt / 172.22.50.243
+#chromeos1-rack2-rfswitch2 / 172.22.50.229
+#pixel 172.22.50.86 chromeos1-rack2-host6
+
     "duts": [
+         {
+             "address": "172.22.50.86",
+             "ethernet_mac": "00:0e:c6:89:9d:18",
+             "name": "link-lte",
+             "technologies": LTE_TECHNOLOGIES,
+             "location": "rack2-host6",
+             "rf_switch_port": 1,
+             },
         {
             "address": "172.22.50.133",
             "ethernet_mac": "00:00:00:00:08:4b",

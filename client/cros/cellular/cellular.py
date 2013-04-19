@@ -39,6 +39,7 @@ Technology = Enum('Technology', [
 TechnologyFamily = Enum('TechnologyFamily', [
     'UMTS',
     'CDMA',
+    'LTE'
 ])
 
 TechnologyToFamily = {
@@ -51,9 +52,8 @@ TechnologyToFamily = {
     Technology.HSPA_PLUS: TechnologyFamily.UMTS,
     Technology.CDMA_2000: TechnologyFamily.CDMA,
     Technology.EVDO_1X: TechnologyFamily.CDMA,
-    Technology.LTE: TechnologyFamily.UMTS,
+    Technology.LTE: TechnologyFamily.LTE,
 }
-
 
 
 UeGsmDataStatus = Enum('GsmDataStatus', [
@@ -88,6 +88,16 @@ UeEvdoDataStatus = Enum('EvdoDataStatus', [
     'UATI_REQUEST',
 ])
 
+# todo(byronk): Move this LTE specific data into the LTE call_box object
+UeLteDataStatus = Enum('LteDataStatus', [
+    'OFF',
+    'IDLE',
+    'CONNECTED',
+    'REGISTERED',
+    'LOOPBACK',
+    'RELEASE',
+    'UNAVAILABLE',
+])
 
 # Each cell technology has a different connection state machine.  For
 # generic tests, we want to abstract that away.  UeGenericDataStatus
@@ -131,8 +141,14 @@ RatToGenericDataStatus = {
     UeEvdoDataStatus.SESSION_NEGOTIATE: UeGenericDataStatus.CONNECTING,
     UeEvdoDataStatus.SESSION_OPEN: UeGenericDataStatus.REGISTERED,
     UeEvdoDataStatus.UATI_REQUEST: UeGenericDataStatus.NONE,
+    UeLteDataStatus.OFF: UeGenericDataStatus.NONE,
+    UeLteDataStatus.IDLE: UeGenericDataStatus.NONE,
+    UeLteDataStatus.CONNECTED: UeGenericDataStatus.CONNECTED,
+    UeLteDataStatus.REGISTERED: UeGenericDataStatus.REGISTERED,
+    UeLteDataStatus.LOOPBACK: UeGenericDataStatus.NONE,
+    UeLteDataStatus.RELEASE: UeGenericDataStatus.DISCONNECTING,
+    UeLteDataStatus.UNAVAILABLE: UeGenericDataStatus.NONE
 }
-
 
 
 class Power(object):
@@ -159,6 +175,7 @@ class SmsAddress(object):
         self.address = address
         self.address_type = address_type
         self.address_plan = address_plan
+
 
 class TestEnvironment(object):
     def __init__(self, event_loop):

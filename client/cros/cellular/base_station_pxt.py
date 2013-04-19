@@ -2,34 +2,36 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import re
 import time
+
 import common
-from autotest_lib.client.cros.cellular import cellular_logging
-from autotest_lib.client.cros.cellular import cellular_system_error
+from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.cellular import air_state_verifier
 from autotest_lib.client.cros.cellular import base_station_interface
 from autotest_lib.client.cros.cellular import cellular
-from autotest_lib.client.bin import utils
+from autotest_lib.client.cros.cellular import cellular_logging
+from autotest_lib.client.cros.cellular import cellular_system_error
 
 POLL_SLEEP = 0.2
 
-log = cellular_logging.SetupCellularLogging('base_station_8960')
+log = cellular_logging.SetupCellularLogging('base_station_pxt')
 
-class BaseStation8960(base_station_interface.BaseStationInterface):
-    """Wrap an Agilent 8960 Series 10."""
+
+class BaseStationPxt(base_station_interface.BaseStationInterface):
+    """Wrap an Agilent PXT"""
 
     def __init__(self, scpi_connection, no_initialization=False):
         """
-        Creates an 8960 call-box object.
-        TODO (byrok): make a factory that returns a call_box, of either
+        Creates a PXT call-box object.
+        TODO(byronk): Make a factory that returns a call_box, of either
         a 8960 or a PXT, or a...
 
-        @param scpi_connection:  The scpi port to send commands over
+        @param scpi_connection:  The scpi port to send commands over.
         @param no_initialization: Don't do anything. Useful for unit testing
         and debugging when you don't want to run all the usual functions.
         """
+        # TODO(byronk): Use variables longer then 1 char.
         self.c = scpi_connection
         if no_initialization:
             return
@@ -37,26 +39,20 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         with self.checker_context:
             self._Verify()
             self._Reset()
-            self.SetPower(cellular.Power.DEFAULT)
 
     def _Verify(self):
         idn = self.c.Query('*IDN?')
-        if '8960 Series 10 E5515C' not in idn:
-            raise cellular_system_error.BadState(
-                'Not actually an 8960:  *IDN? says ' + idn)
+        if 'E6621' not in idn:
+            raise cellular_system_error.BadGpibCommand(
+                'Not actually a E6621 PXT:  *IDN? says ' + idn)
 
     def _Reset(self):
         self.c.Reset()
         self.Stop()
-        # Perform a partial reset to workaround a problem with the 8960
-        # failing to accept CDMA connections after switching from a
-        # GSM technology.
-        self.c.SendStanza(['SYSTEM:PRESet3'])
 
     def _IsIdle(self):
-        call_state = self.c.Query('CALL:STATus?')
-        data_state = self.c.Query('CALL:STATus:DATa?')
-        return call_state == 'IDLE' and data_state in ['IDLE', 'OFF']
+        bs_active = self.c.Query('BSE:SIMULator?')
+        return bs_active == 'STOP'
 
     def Close(self):
         self.c.Close()
@@ -65,15 +61,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         return air_state_verifier.AirStateVerifierBasestation(self)
 
     def GetDataCounters(self):
-        output = {}
-        for counter in ['OTATx', 'OTARx', 'IPTX', 'IPRX']:
-            result_text = self.c.Query('CALL:COUNT:DTMonitor:%s:DRATe?' %
-                                       counter)
-            result = [float(x) for x in result_text.rstrip().split(',')]
-            output[counter] = dict(zip(['Mean', 'Current', 'Max', 'Total'],
-                                       result))
-        logging.info('Data counters: %s', output)
-        return output
+        raise NotImplementedError
 
     def GetRatUeDataStatus(self):
         """Get the radio-access-technology-specific status of the UE.
@@ -81,7 +69,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         Unlike GetUeDataStatus, below, this returns a status that depends
         on the RAT being used.
         """
-        status = self.c.Query('CALL:STATus:DATa?')
+        status = self.c.Query('BSE:STATus:ACELL?')
         rat = \
             ConfigDictionaries.FORMAT_TO_DATA_STATUS_TYPE[self.format][status]
         return rat
@@ -92,117 +80,107 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         return cellular.RatToGenericDataStatus[rat]
 
     def ResetDataCounters(self):
-        self.c.SendStanza(['CALL:COUNt:DTMonitor:CLEar'])
+        # Keep this here until the implementation of this class
+        # is done. If we never hit this, then we can safely remove it,
+        # but we should think twice about that. The 8960 needs it,
+        # it seems likely that the PXT should.
+        raise NotImplementedError
 
     def ClearErrors(self):
         self.c.RetrieveErrors()
 
     def LogStats(self):
-        self.c.Query("CALL:HSDPa:SERVice:PSData:HSDSchannel:CONFig?")
-
-        # Category reported by UE
-        self.c.Query("CALL:HSDPa:MS:REPorted:HSDSChannel:CATegory?")
-        # The category in use
-        self.c.Query("CALL:STATUS:MS:HSDSChannel:CATegory?")
-        self.c.Query("CALL:HSDPA:SERV:PSD:CQI?")
+        # Keep this here until the implementation of this class
+        # is done. If we never hit this, then we can safely remove it,
+        # but we should think twice about that. The 8960 needs it,
+        # it seems likely that the PXT should.
+        raise NotImplementedError
 
     def SetBsIpV4(self, ip1, ip2):
-        self.c.SendStanza([
-            'SYSTem:COMMunicate:LAN:SELF:ADDRess:IP4 "%s"' % ip1,
-            'SYSTem:COMMunicate:LAN:SELF:ADDRess2:IP4 "%s"' % ip2,])
+        return  # TODO(byronk): Configure the PXT to find.crbug.com:/235643
 
     def SetBsNetmaskV4(self, netmask):
-        self.c.SendStanza([
-            'SYSTem:COMMunicate:LAN:SELF:SMASk:IP4 "%s"' % netmask,])
+        return  # TODO(byronk): Configure the PXT to find. crbug.com:/235643
 
     def SetPlmn(self, mcc, mnc):
-        # Doing this appears to set the WCDMa versions as well
-        self.c.SendStanza([
-            'CALL:MCCode %s' % mcc,
-            'CALL:MNCode %s' % mnc,])
+        raise NotImplementedError
 
     def SetPower(self, dbm):
-        if dbm <= cellular.Power.OFF :
-            self.c.SendStanza([
-                'CALL:CELL:POWer:STATe off',])
+        # TODO(byronk): Setting the RF output of the PXT. crbug.com/235655
+        # and 8960 call boxes to OFF should be off
+        if dbm <= cellular.Power.OFF:
+            self.c.SendStanza(['AMPLitude:ALL -120'])
         else:
-            self.c.SendStanza([
-                'CALL:CELL:POWer %s' % dbm,])
+            self.c.SendStanza(['AMPLitude:ALL %s' % dbm])
 
     def SetTechnology(self, technology):
-        # TODO(rochberg): Check that we're not already in chosen tech for
-        # speed boost
+        # TODO(byronk):  The set technology step likely belongs in the
+        # constructor.
 
         # Print out a helpful message on a key error.
         try:
             self.format = ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology]
         except KeyError:
-            raise KeyError('%s not in %s ' %
-                           (technology,
-                            ConfigDictionaries.TECHNOLOGY_TO_FORMAT))
+            raise KeyError('%s not in %s ' % (
+                technology,
+                ConfigDictionaries.TECHNOLOGY_TO_FORMAT))
         self.technology = technology
-
-        self.c.SimpleVerify('SYSTem:APPLication:FORMat', self.format)
-        # Setting the format will start the call box, we need to stop it so we
-        # can configure the new format.
-        self.Stop()
-        self.c.SendStanza(
-            ConfigDictionaries.TECHNOLOGY_TO_CONFIG_STANZA.get(technology, []))
 
     def SetUeDnsV4(self, dns1, dns2):
         """Set the DNS values provided to the UE.  Emulator must be stopped."""
-        stanza = ['CALL:MS:DNSServer:PRIMary:IP:ADDRess "%s"' % dns1]
-        if dns2:
-            stanza.append('CALL:MS:DNSServer:SECondary:IP:ADDRess "%s"' % dns2)
-        self.c.SendStanza(stanza)
+        return  # TODO(byronk): Configure the PXT to find. crbug.com/235643
+                # the data server
 
     def SetUeIpV4(self, ip1, ip2=None):
         """
-        Set the IP addresses provided to the UE.  Emulator must be stopped.
+        Set the IP addresses provided to the UE. Emulator must be stopped.
         """
-        stanza = ['CALL:MS:IP:ADDRess1 "%s"' % ip1]
-        if ip2:
-            stanza.append('CALL:MS:IP:ADDRess2 "%s"' % ip2)
-        self.c.SendStanza(stanza)
+        return  # TODO(byronk) crbug.com:/235643: Configure the PXT to find
+                # the data server
 
     def Start(self):
-        self.c.SendStanza(['CALL:OPERating:MODE CALL'])
+        commands = [
+            '*CLS',
+            'STATus:PRESet',
+            # Enable conn checks
+            'BSE:CONFig:RRC:CTIMer:STATus ON',
+            # Check freq (secs)
+            'BSE:CONFig:RRC:CTIMer:LENGth 5',
+            'SIGN:MODE BSE',
+            'SCENArio:LOAD "FDD_Combined_v6.3.lbmf"',
+            'BSE:CONF:PROF 20MH',
+            'FREQ:BAND 13',
+            'BSE:SIMULator RUN'
+        ]
+        self.c.SendStanza(commands)
 
     def Stop(self):
-        self.c.SendStanza(['CALL:OPERating:MODE OFF'])
+        self.c.SendStanza(['BSE:SIMULator STOP'])
         # Make sure the call status goes to idle before continuing.
         utils.poll_for_condition(
             self._IsIdle,
             timeout=cellular.DEFAULT_TIMEOUT,
             exception=cellular_system_error.BadState(
-                '8960 did not enter IDLE state'))
+                'PXT did not enter IDLE state'))
 
     def SupportedTechnologies(self):
-        return [
-            cellular.Technology.GPRS,
-            cellular.Technology.EGPRS,
-            cellular.Technology.WCDMA,
-            cellular.Technology.HSDPA,
-            cellular.Technology.HSUPA,
-            cellular.Technology.HSDUPA,
-            cellular.Technology.HSPA_PLUS,
-            cellular.Technology.CDMA_2000,
-            cellular.Technology.EVDO_1X,
-        ]
+        return [cellular.Technology.LTE]
 
     def WaitForStatusChange(self,
                             interested=None,
                             timeout=cellular.DEFAULT_TIMEOUT):
-        """When UE status changes (to a value in interested), return the value.
+        """When UE status changes (to a value in |interested|),
+        return the value.
 
         Arguments:
             interested: if non-None, only transitions to these states will
               cause a return
             timeout: in seconds.
         Returns: state
-        Raises:  cellular_system_error.Timeout
+        Raises: cellular_system_error.Timeout
         """
         start = time.time()
+        # TODO(byronk): consider utils.poll_for_condition()
         while time.time() - start <= timeout:
             state = self.GetUeDataStatus()
             if state in interested:
@@ -213,24 +191,27 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         if state in interested:
             return state
 
-        raise cellular_system_error.InstrumentTimeout(
-            'Timed out waiting for state in %s.  State was %s' %
-                      (interested, state))
-
-def _Parse(command_sequence):
-    """Split and remove comments from a config stanza."""
-    uncommented = [re.sub(r'\s*#.*', '', line)
-                   for line in command_sequence.split('\n')]
-
-    # Return only nonempty lines
-    return [line for line in uncommented if line]
+        raise cellular_system_error.Timeout(
+            'Timed out waiting for state in %s.  State was %s.' %
+            (interested, state))
 
 
 class ConfigStanzas(object):
     # p 22 of http://cp.literature.agilent.com/litweb/pdf/5989-5932EN.pdf
+
+    def _Parse( command_sequence):
+        """Split and remove comments from a config stanza."""
+        return [line for line in command_sequence.splitlines()
+                if line and not line.startswith('#')]
+
+    LTE = _Parse(""" """)
+
+    # TODO(byronk): ConfigStanza should not be. These belong somewhere in
+    # the PXT class.
     WCDMA_MAX = _Parse("""
 # RAB3: 64 Up/384 down
-# http://wireless.agilent.com/rfcomms/refdocs/wcdma/wcdmala_hpib_call_service.html#CACBDEAH
+# http://wireless.agilent.com/rfcomms/refdocs/
+#        wcdma/wcdmala_hpib_call_service.html#CACBDEAH
 CALL:UPLink:TXPower:LEVel:MAXimum 24
 CALL:SERVICE:GPRS:RAB GPRSRAB3
 """)
@@ -294,6 +275,7 @@ call:hsup:edch:tti MS2
 call:hsup:serv:psd:ergc:inf:stat Off
 """)
 
+
 class ConfigDictionaries(object):
     TECHNOLOGY_TO_FORMAT_RAW = {
         cellular.Technology.GPRS: 'GSM/GPRS',
@@ -308,6 +290,8 @@ class ConfigDictionaries(object):
         cellular.Technology.CDMA_2000: 'IS-2000/IS-95/AMPS',
 
         cellular.Technology.EVDO_1X: 'IS-856',
+
+        cellular.Technology.LTE: 'LTE',
     }
 
     # Put each value in "" marks to quote it for GPIB
@@ -325,8 +309,9 @@ class ConfigDictionaries(object):
         cellular.Technology.HSUPA: ConfigStanzas.CAT_08,
         cellular.Technology.HSDUPA: ConfigStanzas.CAT_08,
         cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_10,
+        cellular.Technology.LTE: ConfigStanzas.LTE,
     }
-
+    # TODO(byronk): remove these. Not used for LTE. Check for external deps
     # http://wireless.agilent.com/rfcomms/refdocs/
     #        gsmgprs/prog_synch_callstategprs.html#CHDDFBAJ
     # NB:  We have elided a few states of the GSM state machine here.
@@ -382,9 +367,23 @@ class ConfigDictionaries(object):
         'UREQ': cellular.UeEvdoDataStatus.UATI_REQUEST,
     }
 
+    #lte status from BSE:STATus:ACELL? on the PXT
+    #OFF | IDLE | CON | REG |
+    #LOOP | REL | UNAV
+
+    CALL_STATUS_DATA_TO_STATUS_LTE = {
+        'OFF': cellular.UeLteDataStatus.OFF,
+        'IDLE': cellular.UeLteDataStatus.IDLE,
+        'CON': cellular.UeLteDataStatus.CONNECTED,
+        'REG': cellular.UeLteDataStatus.REGISTERED,
+        'LOOP': cellular.UeLteDataStatus.LOOPBACK,
+        'REL': cellular.UeLteDataStatus.RELEASE,
+        'UNAV': cellular.UeLteDataStatus.UNAVAILABLE,
+    }
     FORMAT_TO_DATA_STATUS_TYPE = {
         '"GSM/GPRS"': CALL_STATUS_DATA_TO_STATUS_GSM_GPRS,
         '"WCDMA"': CALL_STATUS_DATA_TO_STATUS_WCDMA,
         '"IS-2000/IS-95/AMPS"': CALL_STATUS_DATA_TO_STATUS_CDMA_2000,
         '"IS-856"': CALL_STATUS_DATA_TO_STATUS_EVDO,
+        '"LTE"': CALL_STATUS_DATA_TO_STATUS_LTE,
     }

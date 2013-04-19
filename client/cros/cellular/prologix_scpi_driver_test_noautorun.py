@@ -10,6 +10,7 @@ import mock
 import prologix_scpi_driver
 import scpi
 import unittest
+import cellular_system_error
 
 log = logging.getLogger('scpi_test')
 log.setLevel(logging.DEBUG)
@@ -47,7 +48,8 @@ class BasicPrologixTest(unittest.TestCase):
         log.debug(instr)
         with self.assertRaises(Exception) as ex:
             self._get_idns_and_verify(instruments=[instr], opc=True)
-        self.assertIsInstance(ex.exception, SystemError)
+        self.assertIsInstance(ex.exception,
+                              cellular_system_error.SocketTimeout)
 
     def test_ConnectToPortSuccess(self):
         """ Make a socket connection """
@@ -58,7 +60,8 @@ class BasicPrologixTest(unittest.TestCase):
         """ Make a socket connection """
         with self.assertRaises(Exception) as ex:
             prologix_scpi_driver.connect_to_port('192.168.255.111', 1234, 1)
-        self.assertIsInstance(ex.exception, SystemError)
+        self.assertIsInstance(ex.exception,
+                              cellular_system_error.SocketTimeout)
 
     def test_BadGpibAddress(self):
         """
@@ -68,7 +71,8 @@ class BasicPrologixTest(unittest.TestCase):
         instr['gpib_addr'] = 9  # str(int(instr['gpib_addr'])+1)
         with self.assertRaises(Exception) as ex:
             self._get_idns_and_verify(instruments=[instr], opc=True)
-        self.assertIsInstance(ex.exception, SystemError)
+        self.assertIsInstance(ex.exception,
+                              cellular_system_error.InstrumentTimeout)
 
     @mock.patch.object(prologix_scpi_driver.PrologixScpiDriver, '_DirectQuery')
     def test_NonClearReadBufferBeforeInit(self, patched_driver):
@@ -126,8 +130,9 @@ class BasicPrologixTest(unittest.TestCase):
                                                   read_timeout_seconds=1)
             try:
                 scpi_connection.Query('*IDN')
-            except SystemError:
-                assert "Should have raised a SystemError on a bad SCPI command"
+            except cellular_system_error.InstrumentTimeout:
+                assert \
+                 "Should have raised a Instrument Timeout on a bad SCPI command"
 
     def test_ErrorCheckerContextAndStanzaSendingOpcFalse(self):
         """

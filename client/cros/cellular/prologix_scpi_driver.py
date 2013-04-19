@@ -156,7 +156,7 @@ class PrologixScpiDriver:
                 'But there was not data to read from the instrument.' \
                 'Does that command return a result?' \
                 'Bad GPIB port number, or timeout too short?'
-        raise cellular_system_error.Timeout(s)
+        raise cellular_system_error.InstrumentTimeout(s)
 
     def Query(self, command):
         """Send a GPIB command and return the response."""
@@ -206,5 +206,6 @@ def connect_to_port(hostname, port, connect_timeout_seconds):
                 pass  # Try to close it, but it may not have been created.
             temp_string_var = ' Could be bad IP address. Tried: %s : %s' % \
                               (hostname, port)
-            raise SystemError(str(msg) + temp_string_var)
+            raise cellular_system_error.SocketTimeout(str(msg) +
+                                                      temp_string_var)
     return s

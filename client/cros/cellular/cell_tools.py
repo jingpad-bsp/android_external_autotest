@@ -3,13 +3,15 @@
 # found in the LICENSE file.
 
 """Utilities for cellular tests."""
-import copy, dbus, logging, os, string, tempfile
+import copy, dbus, os, string, tempfile
 
 # TODO(thieule): Consider renaming mm.py, mm1.py, modem.py, etc to be more
 # descriptive (crosbug.com/37060).
+import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import cellular
+from autotest_lib.client.cros.cellular import cellular_system_error
 from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular import modem
 
@@ -17,12 +19,12 @@ from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 
-class Error(Exception):
-    pass
-
-
 TIMEOUT = 30
 SERVICE_TIMEOUT = 60
+
+import cellular_logging
+
+logger = cellular_logging.SetupCellularLogging('cell_tools')
 
 
 def ConnectToCellular(flim, timeout=TIMEOUT):
@@ -38,34 +40,51 @@ def ConnectToCellular(flim, timeout=TIMEOUT):
     Raises:
         Error if connection fails or times out
     """
+
     service = flim.FindCellularService(timeout=timeout)
     if not service:
-        raise Error('Could not find cell service')
+        raise cellular_system_error.ConnectionFailure(
+            'Could not find cell service')
     properties = service.GetProperties(utf8_strings=True)
-    logging.error('Properties are: %s', properties)
+    logger.error('Properties are: %s', properties)
 
-    logging.info('Connecting to cell service: %s', service)
+    logger.info('Connecting to cell service: %s', service)
+
+    states = ['portal', 'online', 'idle']
+    state = flim.WaitForServiceState(service=service,
+                                     expected_states=states,
+                                     timeout=timeout,
+                                     ignore_failure=True)[0]
+    logger.debug('Cell connection state : %s ' % state)
+    connected_states = ['portal', 'online']
+    if state in connected_states:
+        logger.debug('Looks good, skip ConnectService')
+        return service, state
+    else:
+        logger.debug('Trying to ConnectService')
+
     success, status = flim.ConnectService(
         service=service,
         assoc_timeout=timeout,
         config_timeout=timeout)
 
     if not success:
-        logging.error('Connect failed: %s' % status)
+        logger.error('Connect failed: %s' % status)
         # TODO(rochberg):  Turn off autoconnect
         if 'Error.AlreadyConnected' not in status['reason']:
-            raise Error('Could not connect: %s.' % status)
+            raise cellular_system_error.ConnectionFailure(
+                'Could not connect: %s.' % status)
 
-    connected_states = ['portal', 'online']
-    # We have to wait up to 10 seconds for state to go to portal
     state = flim.WaitForServiceState(service=service,
                                      expected_states=connected_states,
                                      timeout=timeout,
                                      ignore_failure=True)[0]
     if not state in connected_states:
-        raise Error('Still in state %s' % state)
+        raise cellular_system_error.BadState(
+            'Still in state %s, expecting one of: %s ' %
+            (state, str(connected_states)))
 
-    return (service, state)
+    return service, state
 
 
 def FindLastGoodAPN(service, default=None):
@@ -107,7 +126,8 @@ def DisconnectFromCellularService(bs, flim, service):
         utils.poll_for_condition(
             _ModemIsFullyDisconnected,
             timeout=20,
-            exception=Error('modem not disconnected from base station'))
+            exception=cellular_system_error.BadState(
+                'modem not disconnected from base station'))
 
 
 def _EnumerateModems(manager):
@@ -131,30 +151,39 @@ def _WaitForModemToReturn(manager, preexisting_modems_original, modem_path):
     utils.poll_for_condition(
         lambda: _SawNewModem(manager, preexisting_modems, modem_path),
         timeout=50,
-        exception=Error('Modem did not come back after settings change'))
+        exception=cellular_system_error.BadState(
+            'Modem did not come back after settings change'))
 
     current_modems = _EnumerateModems(manager)
 
     new_modems = [x for x in current_modems - preexisting_modems]
     if len(new_modems) != 1:
-        raise Error('Unexpected modem list change: %s vs %s' % (
-            current_modems, new_modems))
+        raise cellular_system_error.BadState(
+            'Unexpected modem list change: %s vs %s' %
+            (current_modems, new_modems))
 
-    logging.info('New modem: %s' % new_modems[0])
+    logger.info('New modem: %s' % new_modems[0])
     return new_modems[0]
 
 
 def SetFirmwareForTechnologyFamily(manager, modem_path, family):
     """Set the modem to firmware.  Return potentially-new modem path."""
+    # todo(byronk): put this in a modem object?
+    if family == cellular.TechnologyFamily.LTE:
+        return  # nothing to set up on a Pixel. todo(byronk) how about others?
+    logger.debug('SetFirmwareForTechnologyFamily : manager : %s ' % manager)
+    logger.debug('SetFirmwareForTechnologyFamily : modem_path : %s ' %
+                 modem_path)
+    logger.debug('SetFirmwareForTechnologyFamily : family : %s ' % family)
     preexisting_modems = _EnumerateModems(manager)
-
     # We do not currently support any multi-family modems besides Gobi
     gobi = manager.GetModem(modem_path).GobiModem()
     if not gobi:
-        raise Error('Modem %s does not support %s, cannot change technologies' %
-                    modem_path, family)
+        raise cellular_system_error.BadGpibCommand(
+            'Modem %s does not support %s, cannot change technologies' %
+            modem_path, family)
 
-    logging.info('Changing firmware to technology family %s' % family)
+    logger.info('Changing firmware to technology family %s' % family)
 
     FamilyToCarrierString = {
             cellular.TechnologyFamily.UMTS: 'Generic UMTS',
@@ -191,7 +220,7 @@ def _IsCdmaModemConfiguredCorrectly(manager, modem_path):
 
     for rk, rv in required_settings.iteritems():
         if rk not in status or rv != status[rk]:
-            logging.error('_CheckCdmaModemStatus:  %s: expected %s, got %s' % (
+            logger.error('_CheckCdmaModemStatus:  %s: expected %s, got %s' % (
                 rk, rv, status.get(rk)))
             configured_correctly = False
     return configured_correctly
@@ -203,7 +232,7 @@ def PrepareCdmaModem(manager, modem_path):
     if _IsCdmaModemConfiguredCorrectly(manager, modem_path):
         return modem_path
 
-    logging.info('Updating modem settings')
+    logger.info('Updating modem settings')
     preexisting_modems = _EnumerateModems(manager)
     cdma = manager.GetModem(modem_path).CdmaModem()
 
@@ -211,7 +240,7 @@ def PrepareCdmaModem(manager, modem_path):
         os.chmod(f.name, 0744)
         f.write(TEST_PRL_3333)
         f.flush()
-        logging.info('Calling ActivateManual to change PRL')
+        logger.info('Calling ActivateManual to change PRL')
 
         cdma.ActivateManual({
             'mdn': TESTING_MDN,
@@ -223,7 +252,7 @@ def PrepareCdmaModem(manager, modem_path):
             manager, preexisting_modems, modem_path)
 
     if not _IsCdmaModemConfiguredCorrectly(manager, new_path):
-        raise Error('Modem configuration failed')
+        raise cellular_system_error.BadState('Modem configuration failed')
     return new_path
 
 
@@ -232,12 +261,16 @@ def PrepareModemForTechnology(modem_path, target_technology):
 
     manager, modem_path = mm.PickOneModem(modem_path)
 
-    logging.info('Found modem %s' % modem_path)
+    logger.info('Found modem %s' % modem_path)
 
+
+    # todo(byronk) : This returns TechnologyFamily:UMTS on a Pixel. ????
     current_family = manager.GetModem(modem_path).GetCurrentTechnologyFamily()
     target_family = cellular.TechnologyToFamily[target_technology]
 
     if current_family != target_family:
+        logger.debug('Modem Current Family: %s ' % current_family)
+        logger.debug('Modem Target Family : %s ' %target_family )
         modem_path = SetFirmwareForTechnologyFamily(
             manager, modem_path, target_family)
 
@@ -341,10 +374,10 @@ class BlackholeContext(object):
         """Remove all rules not in the original list."""
         for rule in self._rules():
             if rule in self.original_rules:
-                logging.info('preserving %s' % rule)
+                logger.info('preserving %s' % rule)
                 continue
             rule = string.replace(rule, '-A', '-D', 1)
-            logging.info('removing %s' % rule)
+            logger.info('removing %s' % rule)
             utils.run('iptables %s' % rule)
 
         return False
@@ -369,7 +402,7 @@ class AutoConnectContext(object):
 
     def PowerOnDevice(self, device):
         """Power on a flimflam device, ignoring in progress errors."""
-        logging.info('powered = %s' % device.GetProperties()['Powered'])
+        logger.info('powered = %s' % device.GetProperties()['Powered'])
         if device.GetProperties()['Powered']:
             return
         try:
@@ -398,17 +431,17 @@ class AutoConnectContext(object):
         favorite = props['Favorite']
 
         if not favorite:
-            logging.info('Enabling Favorite by connecting to service.')
+            logger.info('Enabling Favorite by connecting to service.')
             ConnectToCellular(self.flim)
             props = service.GetProperties()
             favorite = props['Favorite']
 
         autoconnect = props['AutoConnect']
-        logging.info('Favorite = %s, AutoConnect = %s' % (
+        logger.info('Favorite = %s, AutoConnect = %s' % (
             favorite, autoconnect))
 
         if autoconnect != self.autoconnect:
-            logging.info('Setting AutoConnect = %s.', self.autoconnect)
+            logger.info('Setting AutoConnect = %s.', self.autoconnect)
             service.SetProperty('AutoConnect', dbus.Boolean(self.autoconnect))
 
             props = service.GetProperties()
@@ -436,10 +469,10 @@ class AutoConnectContext(object):
             self.PowerOnDevice(self.device)
         except Exception as e:
             if exception:
-                logging.error(
+                logger.error(
                     'Exiting AutoConnectContext with one exception, but ' +
                     'PowerOnDevice raised another')
-                logging.error(
+                logger.error(
                     'Swallowing PowerOnDevice exception %s' % e)
                 return False
             else:
@@ -449,7 +482,7 @@ class AutoConnectContext(object):
         # device, and restore state only on changed services
         service = self.flim.FindCellularService()
         if not service:
-            logging.error('Cannot find cellular service.  '
+            logger.error('Cannot find cellular service.  '
                           'Autoconnect state not restored.')
             return False
         service.SetProperty('AutoConnect', dbus.Boolean(not self.autoconnect))
