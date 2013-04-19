@@ -43,6 +43,12 @@ class FlimflamManager(dbus.service.Object):
         return '/'
 
     @dbus.service.method('org.chromium.flimflam.Manager',
+                         in_signature='ss', out_signature='o')
+    def InsertUserProfile(self, profile, user_hash):
+        self.add_method_call('InsertUserProfile', (profile, user_hash))
+        return '/'
+
+    @dbus.service.method('org.chromium.flimflam.Manager',
                          in_signature='s', out_signature='')
     def PopProfile(self, profile):
         self.add_method_call('PopProfile', profile)

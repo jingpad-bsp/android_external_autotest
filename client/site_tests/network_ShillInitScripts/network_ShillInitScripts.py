@@ -1,5 +1,4 @@
 import grp
-import logging
 import mock_flimflam
 import os
 import pwd
@@ -74,6 +73,9 @@ class network_ShillInitScripts(test.test):
         # Deduce the directory for memory log storage.
         self.user_cryptohome_log_dir = ('%s/shill_logs' %
                                         self.root_cryptohome_dir)
+
+        # The sanitized hash of the username is the basename of the cryptohome.
+        self.fake_user_hash = os.path.basename(self.root_cryptohome_dir)
 
         # Just in case this hash actually exists, add these to the list of
         # saved directories.
@@ -319,8 +321,10 @@ class network_ShillInitScripts(test.test):
                                self.user_cryptohome_log_dir,
                                'Shill logs link')
         self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
-                                  [ 'PushProfile', '~chronos/shill' ]],
-                                 'CreateProfile and PushProfile are called')
+                                  [ 'InsertUserProfile',
+                                    ('~chronos/shill', self.fake_user_hash) ]],
+                                 'CreateProfile and InsertUserProfile '
+                                 'are called')
 
     def test_login_guest(self):
         """ Login should create a temporary profile directory in /var/run,
@@ -349,8 +353,10 @@ class network_ShillInitScripts(test.test):
                                self.guest_shill_user_log_dir,
                                'Shill logs link')
         self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
-                                  [ 'PushProfile', '~chronos/shill' ]],
-                                 'CreateProfile and PushProfile are called')
+                                  [ 'InsertUserProfile',
+                                    ('~chronos/shill', '') ]],
+                                 'CreateProfile and InsertUserProfile '
+                                 'are called')
 
     def test_login_profile_exists(self):
         """ Login script should only push (and not create) the user profile
@@ -360,8 +366,9 @@ class network_ShillInitScripts(test.test):
         os.mkdir(self.new_shill_user_profile_dir)
         self.touch(self.new_shill_user_profile)
         self.login()
-        self.assure_method_calls([[ 'PushProfile', '~chronos/shill' ]],
-                                 'Only PushProfile is called')
+        self.assure_method_calls([[ 'InsertUserProfile',
+                                    ('~chronos/shill', self.fake_user_hash) ]],
+                                 'Only InsertUserProfile is called')
 
     def test_login_old_shill_profile(self):
         """ Login script should move an old shill user profile into place
@@ -379,8 +386,9 @@ class network_ShillInitScripts(test.test):
         self.assure(self.magic_header in
                     self.file_contents(self.new_shill_user_profile),
                     'Shill user profile contains our magic header')
-        self.assure_method_calls([[ 'PushProfile', '~chronos/shill' ]],
-                                 'Only PushProfile is called')
+        self.assure_method_calls([[ 'InsertUserProfile',
+                                    ('~chronos/shill', self.fake_user_hash) ]],
+                                 'Only InsertUserProfile is called')
 
     def make_symlink(self, path):
         os.symlink('/etc/hosts', path)
@@ -411,8 +419,11 @@ class network_ShillInitScripts(test.test):
             self.assure(not os.path.exists(self.new_shill_user_profile),
                         'New shill profile was not created')
             self.assure_method_calls([[ 'CreateProfile', '~chronos/shill' ],
-                                      [ 'PushProfile', '~chronos/shill' ]],
-                                     'CreateProfile and PushProfile are called')
+                                      [ 'InsertUserProfile',
+                                        ('~chronos/shill',
+                                         self.fake_user_hash) ]],
+                                     'CreateProfile and InsertUserProfile '
+                                     'are called')
             os.unlink('/var/run/shill/user_profiles/chronos')
 
     def test_login_ignore_old_shill_profile(self):
@@ -430,8 +441,9 @@ class network_ShillInitScripts(test.test):
         self.assure(self.magic_header not in
                     self.file_contents(self.new_shill_user_profile),
                     'Shill user profile does not contain our magic header')
-        self.assure_method_calls([[ 'PushProfile', '~chronos/shill' ]],
-                                 'Only PushProfile is called')
+        self.assure_method_calls([[ 'InsertUserProfile',
+                                    ('~chronos/shill', self.fake_user_hash) ]],
+                                 'Only InsertUserProfile is called')
 
     def test_login_flimflam_profile(self):
         """ Login script should move a flimflam user profile into place
@@ -449,8 +461,9 @@ class network_ShillInitScripts(test.test):
         self.assure(self.magic_header in
                     self.file_contents(self.new_shill_user_profile),
                     'Shill user profile contains our magic header')
-        self.assure_method_calls([[ 'PushProfile', '~chronos/shill' ]],
-                                 'Only PushProfile is called')
+        self.assure_method_calls([[ 'InsertUserProfile',
+                                    ('~chronos/shill', self.fake_user_hash) ]],
+                                 'Only InsertUserProfile is called')
 
     def test_login_ignore_flimflam_profile(self):
         """ Login script should ignore an old flimflam user profile if a new
@@ -465,8 +478,9 @@ class network_ShillInitScripts(test.test):
         self.assure(self.magic_header not in
                     self.file_contents(self.new_shill_user_profile),
                     'Shill user profile does not contain our magic header')
-        self.assure_method_calls([[ 'PushProfile', '~chronos/shill' ]],
-                                 'Only PushProfile is called')
+        self.assure_method_calls([[ 'InsertUserProfile',
+                                    ('~chronos/shill', self.fake_user_hash) ]],
+                                 'Only InsertUserProfile is called')
 
     def test_login_prefer_old_shill_profile(self):
         """ Login script should use the old shill user profile in preference
@@ -486,8 +500,9 @@ class network_ShillInitScripts(test.test):
         self.assure(self.magic_header in
                     self.file_contents(self.new_shill_user_profile),
                     'Shill user profile contains our magic header')
-        self.assure_method_calls([[ 'PushProfile', '~chronos/shill' ]],
-                                 'Only PushProfile is called')
+        self.assure_method_calls([[ 'InsertUserProfile',
+                                    ('~chronos/shill', self.fake_user_hash) ]],
+                                 'Only InsertUserProfile is called')
 
     def test_login_multi_profile(self):
         """ Login script should create multiple profiles in parallel
@@ -503,8 +518,10 @@ class network_ShillInitScripts(test.test):
         for username in expected_usernames:
             self.login()
             profile = "~%s/shill" % username
-            self.assure_method_calls([[ 'PushProfile', profile ]],
-                                     'PushProfile is called for %s' % profile)
+            self.assure_method_calls([[ 'InsertUserProfile',
+                                        (profile, self.fake_user_hash) ]],
+                                     'InsertUserProfile is called for %s' %
+                                     profile)
             self.assure_is_link_to('/var/run/shill/user_profiles/%s' % username,
                                    self.new_shill_user_profile_dir,
                                    'Shill profile link for %s' % username)
