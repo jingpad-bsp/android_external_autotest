@@ -34,6 +34,8 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
+    'ccs': ['webrtc-cros-build@google.com',
+            'beeps@chromium.org']
 }
 
 dynamic_suite.reimage_and_run(

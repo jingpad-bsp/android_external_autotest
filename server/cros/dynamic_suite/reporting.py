@@ -21,7 +21,7 @@ try:
     __import__('gdata')
 except ImportError, e:
     fundamental_libs = False
-    logging.info("Bug filing disabled. %s", e)
+    logging.info('Bug filing disabled. %s', e)
 else:
     from chromite.lib import cros_build_lib, gdata_lib, gs
     from gdata import client
@@ -90,10 +90,13 @@ class TestFailure(object):
         self.job_id = result.id
 
         # Aborts, server/client job failures or a test failure without a
-        # reason field need lab attention.
+        # reason field need lab attention. Errors with a reason are deemed
+        # worse than Errors without one, and since Errors themselves don't
+        # require special attention the candidate status we create needs a
+        # reason.
         self.lab_error = (job_status.is_for_infrastructure_fail(result) or
-            result.is_worse_than(job_status.Status("ERROR", "")) or
-            not result.reason)
+                result.is_worse_than(job_status.Status('ERROR', '', 'reason'))
+                or not result.reason)
 
 
     def bug_title(self):
