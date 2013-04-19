@@ -20,7 +20,9 @@ LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_REC_COMMAND = 'arecord -D hw:0,0 -d 10 -f dat'
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
-_DEFAULT_SOX_RMS_THRESHOLD = 0.5
+
+# Minimum RMS value to pass when checking recorded file.
+_DEFAULT_SOX_RMS_THRESHOLD = 0.08
 
 _JACK_VALUE_ON_RE = re.compile('.*values=on')
 _HP_JACK_CONTROL_RE = re.compile('numid=(\d+).*Headphone\sJack')

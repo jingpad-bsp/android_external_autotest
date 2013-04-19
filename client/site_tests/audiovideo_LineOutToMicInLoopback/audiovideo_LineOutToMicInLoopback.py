@@ -14,9 +14,6 @@ _DEFAULT_RECORD_DURATION = 1
 _DEFAULT_VOLUME_LEVEL = 100
 _DEFAULT_CAPTURE_GAIN = 2500
 
-# Minimum RMS value to consider a "pass".
-_DEFAULT_SOX_RMS_THRESHOLD = 0.25
-
 
 class audiovideo_LineOutToMicInLoopback(test.test):
     """Verifies audio playback and capture function."""
@@ -26,7 +23,6 @@ class audiovideo_LineOutToMicInLoopback(test.test):
     def initialize(self,
                    num_channels=_DEFAULT_NUM_CHANNELS,
                    record_duration=_DEFAULT_RECORD_DURATION,
-                   sox_min_rms=_DEFAULT_SOX_RMS_THRESHOLD,
                    volume_level=_DEFAULT_VOLUME_LEVEL,
                    capture_gain=_DEFAULT_CAPTURE_GAIN):
         """ Setup the deps for the test.
@@ -45,7 +41,6 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         self._wav_path = os.path.join(self.srcdir, '10SEC.wav')
 
         self._ah = audio_helper.AudioHelper(self,
-                sox_threshold=sox_min_rms,
                 num_channels=self._num_channels)
         self._ah.setup_deps(['sox', 'audioloop'])
 

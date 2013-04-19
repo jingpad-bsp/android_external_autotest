@@ -34,8 +34,6 @@ _DEFAULT_MIXER_SETTINGS = [{'name': _CONTROL_MASTER, 'value': "100%"},
 
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 10
-# Minimum RMS value to consider a "pass".
-_DEFAULT_SOX_RMS_THRESHOLD = 0.45
 _DEFAULT_VOLUME_LEVEL = 100
 _DEFAULT_CAPTURE_GAIN = 2500
 
@@ -55,7 +53,6 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
                    mixer_settings=_DEFAULT_MIXER_SETTINGS,
                    num_channels=_DEFAULT_NUM_CHANNELS,
                    record_duration=_DEFAULT_RECORD_DURATION,
-                   sox_min_rms=_DEFAULT_SOX_RMS_THRESHOLD,
                    volume_level=_DEFAULT_VOLUME_LEVEL,
                    capture_gain=_DEFAULT_CAPTURE_GAIN):
         """Setup the deps for the test.
@@ -66,7 +63,6 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
                 starting the test.
             num_channels: The number of channels on the device to test.
             record_duration: How long of a sample to record.
-            sox_min_rms: The minimum RMS value to consider a pass.
             volume_level: The level to set the volume to
             capture_gain: what to set the capture gain to (in dB * 100, 2500 =
                 25 dB)
@@ -81,7 +77,6 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
 
         cmd_rec = 'arecord -d %f -f dat' % record_duration
         self._ah = audio_helper.AudioHelper(self,
-                sox_threshold=sox_min_rms,
                 record_command=cmd_rec,
                 num_channels=num_channels)
         self._ah.setup_deps(['audioloop', 'sox'])
