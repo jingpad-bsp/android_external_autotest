@@ -13,6 +13,7 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.site_utils import phapi_lib
+from autotest_lib.site_utils.suite_scheduler import base_event
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
 # are useless unless they can import gdata too.
@@ -133,6 +134,15 @@ class TestFailure(object):
                                  self.test, self.reason)
 
 
+    def get_milestone(self):
+        """Parses the build string and returns a milestone."""
+        try:
+            return 'M-%s'% base_event.ParseBuildName(self.build)[2]
+        except base_event.ParseBuildNameException as e:
+            logging.error(e)
+            return ''
+
+
     def _link_build_artifacts(self):
         """Returns an url to build artifacts on google storage."""
         return (self._gs_domain + self._arg_prefix +
@@ -216,7 +226,7 @@ class Reporter(object):
 
     _api_key = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'api_key', default='')
-    _PREDEFINED_LABELS = ['Test-Support']
+    _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome']
     _OWNER = 'beeps@chromium.org'
 
     _LAB_ERROR_TEMPLATE = {
@@ -297,14 +307,13 @@ class Reporter(object):
             @param test_name: lower case test name.
             @param test_area: lower case Cr-OS area from tracker.
             """
-            return (test_name[:test_name.find('_')] in test_area
+            return (test_name and test_name[:test_name.find('_')] in test_area
                     and (not '-' in test_area or
                          test_area[test_area.find('-')+1:] in test_name))
 
         cros_areas = self._phapi_client.get_areas()
-        return (['Cr-OS-%s' % area for area in cros_areas
-                 if match_area(test_name, area.lower())]
-                 + self._PREDEFINED_LABELS)
+        return ['Cr-OS-%s' % area for area in cros_areas
+                if match_area(test_name, area.lower())]
 
 
     def _resolve_slotvals(self, override, **kwargs):
@@ -326,7 +335,8 @@ class Reporter(object):
         return kwargs
 
 
-    def _create_bug_report(self, summary, title, name, owner, bug_template):
+    def _create_bug_report(self, summary, title, name, owner, milestone='',
+                           bug_template={}):
         """
         Creates a new bug report.
 
@@ -339,8 +349,8 @@ class Reporter(object):
             bug_template, title=title,
             summary=summary, labels=self._get_labels(name.lower()),
             status='Untriaged', owner=owner)
-        issue_options.get('labels').append('autofiled')
 
+        issue_options['labels'] += self._PREDEFINED_LABELS + [milestone]
         issue = gdata_lib.Issue(**issue_options)
         bugid = self._tracker.CreateTrackerIssue(issue)
         logging.info('Filing new bug %s, with summary %s', bugid, summary)
@@ -496,4 +506,4 @@ class Reporter(object):
 
         self._create_bug_report(summary, failure.bug_title(),
                                 failure.test, self._get_owner(failure),
-                                bug_template)
+                                failure.get_milestone(), bug_template)
