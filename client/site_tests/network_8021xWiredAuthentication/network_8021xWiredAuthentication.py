@@ -30,6 +30,7 @@ class network_8021xWiredAuthentication(test.test):
     INTERFACE_NAME = 'pseudoethernet0'
     AUTHENTICATION_FLAG = 'EapAuthenticationCompleted'
     TEST_PROFILE_NAME = 'test1x'
+    AUTHENTICATION_TIMEOUT = 10
     version = 1
 
     def get_device(self, interface_name):
@@ -65,6 +66,22 @@ class network_8021xWiredAuthentication(test.test):
                 device_properties[self.AUTHENTICATION_FLAG])
 
 
+    def wait_for_authentication(self, interface_name):
+        """Wait for |interface_name| to get to enter authentication state.
+
+        @param interface_name string The name of the interface to check.
+
+        """
+        device = self.get_device(interface_name)
+        result = self._shill_proxy.wait_for_property_in(
+                         device,
+                         self.AUTHENTICATION_FLAG,
+                         (True,),
+                         self.AUTHENTICATION_TIMEOUT)
+        (successful, _, _) = result
+        return successful
+
+
     def configure_credentials(self, interface_name):
         """Adds authentication properties to the Ethernet EAP service.
 
@@ -84,9 +101,10 @@ class network_8021xWiredAuthentication(test.test):
     def run_once(self):
         """Test main loop."""
         self._shill_proxy = shill_proxy.ShillProxy()
+        manager = self._shill_proxy.manager
 
         with shill_temporary_profile.ShillTemporaryProfile(
-                self._shill_proxy.manager, profile_name=self.TEST_PROFILE_NAME):
+                manager, profile_name=self.TEST_PROFILE_NAME):
             with virtual_ethernet_pair.VirtualEthernetPair(
                     peer_interface_name=self.INTERFACE_NAME,
                     peer_interface_ip=None) as ethernet_pair:
@@ -105,6 +123,33 @@ class network_8021xWiredAuthentication(test.test):
 
                     self.configure_credentials(self.INTERFACE_NAME)
                     hostapd.send_eap_packets()
-                    time.sleep(10)
-                    if not self.get_authenticated_flag(self.INTERFACE_NAME):
+                    if not self.wait_for_authentication(self.INTERFACE_NAME):
                         raise error.TestFail('Authentication did not complete.')
+
+                    client_mac_address = ethernet_pair.peer_interface_mac
+                    if not hostapd.client_has_authenticated(client_mac_address):
+                        raise error.TestFail('Server does not agree that '
+                                             'client is authenticated')
+
+                    if hostapd.client_has_logged_off(client_mac_address):
+                        raise error.TestFail('Client has already logged off')
+
+                    # Since the EAP credentials are associated with the
+                    # top-most profile, popping it should cause the client
+                    # to immediately log-off.
+                    manager.PopProfile(self.TEST_PROFILE_NAME)
+
+                    if self.get_authenticated_flag(self.INTERFACE_NAME):
+                        raise error.TestFail('Client is still authenticated.')
+
+                    if not hostapd.client_has_logged_off(client_mac_address):
+                        raise error.TestFail('Client did not log off')
+
+                    # Re-pushing the profile should make the EAP credentials
+                    # available again, and should cause the client to
+                    # re-authenticate.
+                    manager.PushProfile(self.TEST_PROFILE_NAME)
+
+                    if not self.wait_for_authentication(self.INTERFACE_NAME):
+                        raise error.TestFail('Re-authentication did not '
+                                             'complete.')

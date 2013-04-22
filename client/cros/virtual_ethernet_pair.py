@@ -40,94 +40,17 @@ with virtual_ethernet_pair.VirtualEthernetPair(...) as vif:
 """
 
 import logging
-import socket
-import struct
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib.cros.network import interface
 
 class VirtualEthernetPair(object):
-    @staticmethod
-    def _get_ip(interface_name):
-        """
-        Returns the IPv4 address for |interface_name| (e.g "192.168.1.1") if
-        configured, and returns None if that address could not be found.
-        """
-        # "ipaddr show %s 2> /dev/null" returns something that looks like:
-        #
-        # 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
-        #    link/ether ac:16:2d:07:51:0f brd ff:ff:ff:ff:ff:ff
-        #    inet 172.22.73.124/22 brd 172.22.75.255 scope global eth0
-        #    inet6 2620:0:1000:1b02:ae16:2dff:fe07:510f/64 scope global dynamic
-        #       valid_lft 2591982sec preferred_lft 604782sec
-        #    inet6 fe80::ae16:2dff:fe07:510f/64 scope link
-        #       valid_lft forever preferred_lft forever
-        #
-        # Which we grep for 'inet ' to extract the third line, then sed to
-        # extract just the substring "172.22.73.124".
-        cmd_get_ip = ("ip addr show %s 2> /dev/null | grep 'inet ' | "
-                      "sed -E 's/\\W+inet ([0-9]+(\\.[0-9]+){3}).*/\\1/'" %
-                      interface_name)
-        addr = utils.system_output(cmd_get_ip)
-        if not addr:
-            return None
-        return addr
-
     @staticmethod
     def _interface_exists(interface_name):
         """
         Returns True iff we found an interface with name |interface_name|.
         """
-        return utils.system("ifconfig %s &> /dev/null" % interface_name,
-                            ignore_status=True) == 0
-
-    @staticmethod
-    def _get_subnet_prefix_size(interface_name):
-        """
-        Returns the number of bits in the IPv4 address prefix (e.g. 24) for
-        |interface_name| if configured.  If not configured, returns None.
-        """
-        # "ipaddr show %s 2> /dev/null" returns something that looks like:
-        #
-        # 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
-        #    link/ether ac:16:2d:07:51:0f brd ff:ff:ff:ff:ff:ff
-        #    inet 172.22.73.124/22 brd 172.22.75.255 scope global eth0
-        #    inet6 2620:0:1000:1b02:ae16:2dff:fe07:510f/64 scope global dynamic
-        #       valid_lft 2591982sec preferred_lft 604782sec
-        #    inet6 fe80::ae16:2dff:fe07:510f/64 scope link
-        #       valid_lft forever preferred_lft forever
-        #
-        # Which we grep for 'inet ' to extract the third line, then sed to
-        # extract just ip address's subnet size (e.g. /24).  We return just the
-        # 24 as an integer.
-        cmd_get_subnet = \
-                ("ip addr show %s 2> /dev/null | grep 'inet ' | "
-                 "sed -E "
-                 "'s/\\W+inet ([0-9]+(\\.[0-9]+){3})\\/([0-9]+).*/\\3/'" %
-                 interface_name)
-        addr = utils.system_output(cmd_get_subnet)
-        if not addr:
-            return None
-        return int(addr)
-
-    @staticmethod
-    def _get_subnet_mask(interface_name):
-        """
-        Returns the subnet mask (e.g. "255.255.255.0") for |interface_name|
-        if configured.  If not configured, returns None.
-        """
-        prefix_size = \
-                VirtualEthernetPair._get_subnet_prefix_size(interface_name)
-        if prefix_size is None:
-            # No prefix configured
-            return None
-        if prefix_size <= 0 or prefix_size >= 32:
-            logging.error("Very oddly configured IP address with a /%d "
-                          "prefix size" % prefix_size)
-            return None
-        all_ones = 0xffffffff
-        int_mask = (all_ones << (32 - prefix_size)) & all_ones
-        return socket.inet_ntoa(struct.pack("!I", int_mask))
-
+        return interface.Interface(interface_name).exists
 
     def __init__(self,
                  interface_name="veth_master",
@@ -179,7 +102,7 @@ class VirtualEthernetPair(object):
         # get any IP traffic through.  Since this is basically a loopback
         # device, just allow all traffic.
         for name in (self._interface_name, self._peer_interface_name):
-            code = utils.system("iptables -A INPUT -i %s -j ACCEPT" %
+            code = utils.system("iptables -I INPUT -i %s -j ACCEPT" %
                                 name)
             if code != 0:
                 self._logger.error("iptables rule addition failed for interface"
@@ -218,19 +141,27 @@ class VirtualEthernetPair(object):
 
     @property
     def interface_ip(self):
-        return VirtualEthernetPair._get_ip(self._interface_name)
+        return interface.Interface(self.interface_name).ipv4_address
 
     @property
     def peer_interface_ip(self):
-        return VirtualEthernetPair._get_ip(self._peer_interface_name)
+        return interface.Interface(self.peer_interface_name).ipv4_address
 
     @property
     def interface_subnet_mask(self):
-        return VirtualEthernetPair._get_subnet_mask(self.interface_name)
+        return interface.Interface(self.interface_name).ipv4_subnet_mask
 
     @property
     def peer_interface_subnet_mask(self):
-        return VirtualEthernetPair._get_subnet_mask(self.peer_interface_name)
+        return interface.Interface(self.peer_interface_name).ipv4_subnet_mask
+
+    @property
+    def interface_mac(self):
+        return interface.Interface(self.interface_name).mac_address
+
+    @property
+    def peer_interface_mac(self):
+        return interface.Interface(self._peer_interface_name).mac_address
 
     def __enter__(self):
         self.setup()

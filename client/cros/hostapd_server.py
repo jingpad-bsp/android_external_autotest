@@ -138,7 +138,7 @@ eap_reauth_period=10
     def running(self):
         """Tests whether the hostapd process is still running.
 
-        @return true if the hostapd process is still running, false otherwise.
+        @return True if the hostapd process is still running, False otherwise.
 
         """
         if not self._process:
@@ -157,11 +157,62 @@ eap_reauth_period=10
         self.send_command('new_sta %s' % self.PAE_NEAREST_ADDRESS)
 
 
+    def get_client_mib(self, client_mac_address):
+        """Get a dict representing the MIB properties for |client_mac_address|.
+
+        @param client_mac_address string MAC address of the client.
+        @return dict containing mib properties.
+
+        """
+        # Expected output of "hostapd cli <client_mac_address>":
+        #
+        #     Selected interface 'veth_master'
+        #     b6:f1:39:1d:ad:10
+        #     dot1xPaePortNumber=0
+        #     dot1xPaePortProtocolVersion=2
+        #     [...]
+        result = self.send_command('sta %s' % client_mac_address)
+        client_mib = {}
+        found_client = False
+        for line in result.splitlines():
+            if found_client:
+                parts = line.split('=', 1)
+                if len(parts) == 2:
+                    client_mib[parts[0]] = parts[1]
+            elif line == client_mac_address:
+                found_client = True
+        return client_mib
+
+
     def send_command(self, command):
         """Send a command to the hostapd instance.
 
-        @param command: the command to run on hostapd.
+        @param command string containing the command to run on hostapd.
+        @return string output of the command.
 
         """
-        utils.system('%s -p %s %s' % (self.HOSTAPD_CLIENT_EXECUTABLE,
-                                      self._control_directory, command))
+        return utils.system_output('%s -p %s %s' %
+                                   (self.HOSTAPD_CLIENT_EXECUTABLE,
+                                    self._control_directory, command))
+
+
+    def client_has_authenticated(self, client_mac_address):
+        """Return whether |client_mac_address| has successfully authenticated.
+
+        @param client_mac_address string MAC address of the client.
+        @return True if client is authenticated.
+
+        """
+        mib = self.get_client_mib(client_mac_address)
+        return mib.get('dot1xAuthAuthSuccessesWhileAuthenticating', '') == '1'
+
+
+    def client_has_logged_off(self, client_mac_address):
+        """Return whether |client_mac_address| has logged-off.
+
+        @param client_mac_address string MAC address of the client.
+        @return True if client has logged off.
+
+        """
+        mib = self.get_client_mib(client_mac_address)
+        return mib.get('dot1xAuthAuthEapLogoffWhileAuthenticated', '') == '1'
