@@ -176,7 +176,8 @@ class factory_AudioLoop(test.test):
             mute_right_mixer_settings=_MUTE_RIGHT_MIXER_SETTINGS,
             unmute_mixer_settings=_UNMUTE_MIXER_SETTINGS,
             mute_device_mixer_settings=None,
-            autostart=False):
+            autostart=False,
+            require_dongle=False):
         factory.console.info('%s run_once' % self.__class__)
 
         self._audiofuntest = audiofuntest
@@ -215,7 +216,7 @@ class factory_AudioLoop(test.test):
 
         # If autostart, JS triggers start_run_test event.
         # Otherwise, it binds start_run_test with 's' key pressed.
-        self.ui.CallJSFunction('init', autostart)
+        self.ui.CallJSFunction('init', autostart, require_dongle)
         factory.console.info('Run UI')
         self.ui.Run()
 

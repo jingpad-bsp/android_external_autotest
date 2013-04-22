@@ -1,4 +1,6 @@
-init = function(autostart) {
+init = function(autostart, require_dongle) {
+  if (!require_dongle)
+    document.getElementById("require_dongle").style.display = "None";
   if (autostart) {
     document.getElementById("message").innerHTML = "";
     test.sendTestEvent("start_run_test", {});
