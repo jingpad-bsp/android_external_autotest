@@ -160,6 +160,7 @@ def idle_suspend(seconds):
     # tell powerd something happened, or it will immediately idle-suspend again
     # TODO: switch to cros.power_utils#call_powerd_dbus_method once this
     # horrible mess with the WiFi tests and this file's imports is solved
+    logging.debug('Simulating user activity after idle suspend...')
     os.system('dbus-send --type=method_call --system --dest='
               'org.chromium.PowerManager /org/chromium/PowerManager '
               'org.chromium.PowerManager.HandleUserActivity int64:%d' % alarm)

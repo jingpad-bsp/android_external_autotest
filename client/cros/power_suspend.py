@@ -202,7 +202,7 @@ class Suspender(object):
         raise error.TestError('Could not find %s entry.' % name)
 
 
-    def _hwclock_ts(self, not_before, retries=11):
+    def _hwclock_ts(self, not_before, retries=3):
         """Read the RTC resume timestamp saved by powerd_suspend."""
         for retry in xrange(retries + 1):
             early_wakeup = False
@@ -216,7 +216,7 @@ class Suspender(object):
                     if seconds >= not_before:
                         return seconds
                     early_wakeup = True
-            time.sleep(0.005 * 2**retry)
+            time.sleep(0.05 * retry)
         if early_wakeup:
             logging.debug('Early wakeup, dumping eventlog if it exists:\n' +
                     utils.system_output('mosys eventlog list | tail -n %d' %

@@ -29,7 +29,7 @@ class dummy_IdleSuspend(cros_ui_test.UITest):
 
     # Don't wait longer than this to start... if power_SuspendStress died before
     # creating the HWCLOCK_FILE, we might otherwise wait forever
-    _TEST_START_TIMEOUT = 40
+    _TEST_START_TIMEOUT = 70
 
     def initialize(self, creds='$default'):
         # It's important to log in with a real user. If logged in as

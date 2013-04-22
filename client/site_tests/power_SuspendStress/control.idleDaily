@@ -17,6 +17,6 @@ Runs one hour of suspend/resume tests where suspend is triggered by idling.
 """
 
 job.parallel([lambda: job.run_test('power_SuspendStress', tag='idleDaily',
-                                   method='idle', duration=3600, init_delay=30,
-                                   min_suspend=9)],
+                                   method='idle', duration=3600, init_delay=60,
+                                   min_suspend=11, breathing_time=0)],
              [lambda: job.run_test('dummy_IdleSuspend')])
