@@ -215,6 +215,9 @@ def batch_check_files(file_paths, base_opts):
     @raises: pylint_error if pylint finds problems with a file
              in this commit.
     """
+    if not file_paths:
+        return
+
     pylint_runner = pylint.lint.Run(list(base_opts) + list(file_paths),
                                     exit=False)
     if pylint_runner.linter.msg_status:
