@@ -4,9 +4,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-PROJ="firmware_TouchpadMTB"
+PROJ="firmware_TouchMTB"
 TMP_DIR="/var/tmp"
-TEST_DIR="${TMP_DIR}/touchpad_firmware_test"
+TEST_DIR="${TMP_DIR}/touch_firmware_test"
 SUMMARY_ROOT="${TMP_DIR}/summary"
 SUMMARY_BASE_DIR="summary_`date -u +%Y%m%d_%H%M%S`"
 SUMMARY_DIR="${SUMMARY_ROOT}/$SUMMARY_BASE_DIR"

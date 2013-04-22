@@ -23,7 +23,7 @@ from validators import (CountPacketsValidator,
 
 
 # Define which score aggregator is to be used. A score aggregator collects
-# the scores from every tests and calculates the final score for the touchpad
+# the scores from every tests and calculates the final score for the touch
 # firmware test suite.
 score_aggregator = 'fuzzy.average'
 
@@ -48,10 +48,10 @@ relaxed_stationary_finger_criteria = '<= 100, ~ +100'
 
 # Define filenames and paths
 docroot = '/tmp'
-report_basename = 'touchpad_firmware_report'
+report_basename = 'touch_firmware_report'
 html_ext = '.html'
 ENVIRONMENT_REPORT_HTML_NAME = 'REPORT_HTML_NAME'
-log_root_dir = '/var/tmp/touchpad_firmware_test'
+log_root_dir = '/var/tmp/touch_firmware_test'
 
 
 # Define parameters for GUI
@@ -197,7 +197,7 @@ for dev in DEV.DEVICE_TYPE_LIST:
 
 # Define those gestures that the robot needs to pause so the user
 # could adjust the robot or do finger interaction.
-msg_step1 = 'Step 1: Place a metal finger on the %s of the touchpad now.'
+msg_step1 = 'Step 1: Place a metal finger on the %s of the touch surface now.'
 msg_step2 = 'Step 2: Press SPACE when ready.'
 msg_step3 = 'Step 3: Remember to lift the metal finger when robot has finished!'
 gesture_names_robot_pause = {
@@ -378,9 +378,9 @@ def get_gesture_dict():
             variations=((GV.LR, GV.RL, GV.TB, GV.BT, GV.BLTR, GV.TRBL),
                         (GV.SLOW, GV.NORMAL),
             ),
-            prompt='Place one stationary finger near the center of the pad, '
-                   'then take {2} to draw a straight line {0} {1} with a '
-                   'second finger',
+            prompt='Place one stationary finger near the center of the '
+                   'touch surface, then take {2} to draw a straight line '
+                   '{0} {1} with a second finger',
             subprompt={
                 GV.LR: ('from left to right', 'above the stationary finger'),
                 GV.RL: ('from right to left', 'below the stationary finger'),
@@ -462,7 +462,7 @@ def get_gesture_dict():
             name=ONE_FINGER_TAP,
             variations=(GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
                         GV.CENTER),
-            prompt='Use one finger to tap on the {0} of the pad.',
+            prompt='Use one finger to tap on the {0} of the touch surface.',
             subprompt={
                 GV.TL: ('top left corner',),
                 GV.TR: ('top right corner',),
@@ -487,7 +487,8 @@ def get_gesture_dict():
         Gesture(
             name=TWO_FINGER_TAP,
             variations=(GV.HORIZONTAL, GV.VERTICAL, GV.DIAGONAL),
-            prompt='Use two fingers aligned {0} to tap the center of the pad.',
+            prompt='Use two fingers aligned {0} to tap the center of the '
+                   'touch surface.',
             subprompt={
                 GV.HORIZONTAL: ('horizontally',),
                 GV.VERTICAL: ('vertically',),
@@ -507,7 +508,8 @@ def get_gesture_dict():
         Gesture(
             name=ONE_FINGER_PHYSICAL_CLICK,
             variations=(GV.CENTER, GV.BL, GV.BS, GV.BR),
-            prompt='Use one finger to physically click the {0} of the pad.',
+            prompt='Use one finger to physically click the {0} of the '
+                   'touch surface.',
             subprompt={
                 GV.CENTER: ('center',),
                 GV.BL: ('bottom left corner',),
@@ -526,7 +528,8 @@ def get_gesture_dict():
         Gesture(
             name=TWO_FINGER_PHYSICAL_CLICK,
             variations=None,
-            prompt='Use two fingers physically click the center of the pad.',
+            prompt='Use two fingers physically click the center of the '
+                   'touch surface.',
             subprompt=None,
             validators=(
                 CountTrackingIDValidator('== 2'),
@@ -544,7 +547,7 @@ def get_gesture_dict():
             name=THREE_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use three fingers to physically click '
-                   'the center of the pad.',
+                   'the center of the touch surface.',
             subprompt=None,
             validators=(
                 CountTrackingIDValidator('== 3'),
@@ -558,7 +561,7 @@ def get_gesture_dict():
             name=FOUR_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use four fingers to physically click '
-                   'the center of the pad.',
+                   'the center of the touch surface.',
             subprompt=None,
             validators=(
                 CountTrackingIDValidator('== 4'),
@@ -572,7 +575,7 @@ def get_gesture_dict():
             name=FIVE_FINGER_PHYSICAL_CLICK,
             variations=None,
             prompt='Use five fingers to physically click '
-                   'the center of the pad.',
+                   'the center of the touch surface.',
             subprompt=None,
             validators=(
                 CountTrackingIDValidator('== 5'),
@@ -585,8 +588,9 @@ def get_gesture_dict():
         Gesture(
             name=STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
             variations=(GV.AROUND,),
-            prompt='Place your one stationary finger in the middle of the pad, '
-                   'and use a second finger to tap all around it',
+            prompt='Place your one stationary finger in the middle of the '
+                   'touch surface, and use a second finger to tap '
+                   'all around it',
             subprompt=None,
             validators=(
                 CountTrackingIDValidator('>= 2'),
@@ -599,8 +603,8 @@ def get_gesture_dict():
         Gesture(
             name=FAT_FINGER_MOVE_WITH_RESTING_FINGER,
             variations=(GV.LR, GV.RL, GV.TB, GV.BT),
-            prompt='With a stationary finger on the {0} of the pad, draw a '
-                   'straight line with a FAT finger {1} {2} it.',
+            prompt='With a stationary finger on the {0} of the touch surface, '
+                   'draw a straight line with a FAT finger {1} {2} it.',
             subprompt={
                 GV.LR: ('center', 'from left to right', 'below'),
                 GV.RL: ('bottom edge', 'from right to left', 'above'),
@@ -626,7 +630,7 @@ def get_gesture_dict():
             name=DRAG_EDGE_THUMB,
             variations=(GV.LR, GV.RL, GV.TB, GV.BT),
             prompt='Drag the edge of your thumb {0} in a straight line '
-                   'across the pad',
+                   'across the touch surface',
             subprompt={
                 GV.LR: ('horizontally from left to right',),
                 GV.RL: ('horizontally from right to left',),
@@ -777,7 +781,7 @@ def get_gesture_dict():
         Gesture(
             name=RAPID_TAPS,
             variations=(GV.TL, GV.BR, GV.CENTER),
-            prompt='Tap the {0} of the touchpad 20 times quickly',
+            prompt='Tap the {0} of the touch surface 20 times quickly',
             subprompt={
                 GV.TL: ('top left corner',),
                 GV.TS: ('top edge',),

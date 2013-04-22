@@ -12,7 +12,7 @@ import common_unittest_utils
 import common_util
 import test_conf as conf
 
-from common_unittest_utils import MockTouchpadDevice, parse_tests_data
+from common_unittest_utils import MockTouchDevice, parse_tests_data
 from firmware_constants import GV
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
@@ -53,7 +53,7 @@ class BaseValidatorTest(unittest.TestCase):
                 continue
             query_cmd = 'cat %s' % description_filepath
             device_description = common_util.simple_system_output(query_cmd)
-            self.mock_device[platform] = MockTouchpadDevice(device_description)
+            self.mock_device[platform] = MockTouchDevice(device_description)
 
 
 class CountTrackingIDValidatorTest(BaseValidatorTest):

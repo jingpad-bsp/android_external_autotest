@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""A semi-automated test suite for touchpad firmware MTB events."""
+"""A semi-automated test suite for touch device firmware MTB events."""
 
 from autotest_lib.client.bin import test
 
 
-class firmware_TouchpadMTB(test.test):
+class firmware_TouchMTB(test.test):
     """A dummpy class for installing the test suite."""
     version = 1
 

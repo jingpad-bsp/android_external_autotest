@@ -70,7 +70,7 @@ def _setup_debug(debug_flag):
 
 
 class FirmwareSummary:
-    """Summary for touchpad firmware tests."""
+    """Summary for touch device firmware tests."""
 
     def __init__(self, log_dir=log_root_dir, debug_flag=False,
                  segment_weight=segment_weight,

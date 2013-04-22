@@ -166,7 +166,7 @@ class RobotWrapper:
             #     perform taps on distinct locations instead for convenience.
             #     Note: the location is specified by the first finger, and the
             #           second finger is on the left. Choose the tap locations
-            #           that guarantee both fingers on the trackpad.
+            #           that guarantee both fingers on the touch surface.
             GV.HORIZONTAL: (CENTER, CENTER),
             GV.VERTICAL: (END, CENTER),
             GV.DIAGONAL: (CENTER, END),

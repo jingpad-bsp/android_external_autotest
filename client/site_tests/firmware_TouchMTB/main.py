@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""This module sets up the system for the touchpad firmware test suite."""
+"""This module sets up the system for the touch device firmware test suite."""
 
 import getopt
 import logging
@@ -62,7 +62,7 @@ if is_pyauto_installed:
             """Navigate to the html test result file using pyauto."""
             testServer = httpd.HTTPListener(8000, conf.docroot)
             testServer.run()
-            # Note that the report_html_name is passed from firmware_TouchpadMTB
+            # Note that the report_html_name is passed from firmware_TouchMTB
             # to DummyTest as an environment variable.
             # It is not passed as a global variable in this module because
             # pyauto seems to create its own global scope.
@@ -76,8 +76,8 @@ if is_pyauto_installed:
             testServer.stop()
 
 
-class firmware_TouchpadMTB:
-    """Set up the system for touchpad firmware tests."""
+class firmware_TouchMTB:
+    """Set up the system for touch device firmware tests."""
 
     def __init__(self, options):
         # Get the board name
@@ -86,12 +86,12 @@ class firmware_TouchpadMTB:
         # Set up gsutil package
         self.gs = cros_gs.get_or_install_gsutil(self.board)
 
-        # Create the touchpad device
+        # Create the touch device
         # If you are going to be testing a touchscreen, set it here
-        self.touchpad = touch_device.TouchpadDevice(
+        self.touch_device = touch_device.TouchDevice(
             is_touchscreen=options[OPTIONS.TOUCHSCREEN])
-        self._check_device(self.touchpad)
-        validators.init_base_validator(self.touchpad)
+        self._check_device(self.touch_device)
+        validators.init_base_validator(self.touch_device)
 
         # Create the keyboard device.
         self.keyboard = keyboard_device.KeyboardDevice()
@@ -105,18 +105,18 @@ class firmware_TouchpadMTB:
 
         # Create a simple gtk window.
         self._get_screen_size()
-        self._get_touchpad_window_geometry()
+        self._get_touch_device_window_geometry()
         self._get_prompt_frame_geometry()
         self._get_result_frame_geometry()
         self.win = firmware_window.FirmwareWindow(
                 size=self.screen_size,
                 prompt_size=self.prompt_frame_size,
-                image_size=self.touchpad_window_size,
+                image_size=self.touch_device_window_size,
                 result_size=self.result_frame_size)
 
         # Create the HTML report object and the output object to print messages
         # on the window and to print the results in the report.
-        firmware_version = self.touchpad.get_firmware_version()
+        firmware_version = self.touch_device.get_firmware_version()
         mode = options[OPTIONS.MODE]
         if options[OPTIONS.RESUME]:
             self.log_dir = options[OPTIONS.RESUME]
@@ -127,15 +127,15 @@ class firmware_TouchpadMTB:
         self._create_report_name(mode)
         self.report_html = ReportHtml(self.report_html_name,
                                       self.screen_size,
-                                      self.touchpad_window_size,
+                                      self.touch_device_window_size,
                                       conf.score_colors)
         self.output = firmware_utils.Output(self.log_dir,
                                             self.report_name,
                                             self.win, self.report_html)
 
         # Get the test_flow object which will guide through the gesture list.
-        self.test_flow = test_flow.TestFlow(self.touchpad_window_geometry,
-                                            self.touchpad,
+        self.test_flow = test_flow.TestFlow(self.touch_device_window_geometry,
+                                            self.touch_device,
                                             self.keyboard,
                                             self.win,
                                             self.parser,
@@ -166,9 +166,9 @@ class firmware_TouchpadMTB:
         """Create the report names for both plain-text and html files.
 
         A typical html file name looks like:
-            touchpad_firmware_report-lumpy-fw_11.25-20121016_080924.html
+            touch_firmware_report-lumpy-fw_11.25-20121016_080924.html
         """
-        firmware_str = 'fw_' + self.touchpad.get_firmware_version()
+        firmware_str = 'fw_' + self.touch_device.get_firmware_version()
         curr_time = firmware_utils.get_current_time_str()
         fname = conf.filename.sep.join([conf.report_basename,
                                         self.board,
@@ -184,16 +184,17 @@ class firmware_TouchpadMTB:
         """Get the screen size."""
         self.screen_size = self.chrome.get_screen_size()
 
-    def _get_touchpad_window_geometry(self):
+    def _get_touch_device_window_geometry(self):
         """Get the preferred window geometry to display mtplot."""
         display_ratio = 0.7
-        self.touchpad_window_geometry = self.touchpad.get_display_geometry(
+        self.touch_device_window_geometry = \
+                self.touch_device.get_display_geometry(
                 self.screen_size, display_ratio)
-        self.touchpad_window_size = self.touchpad_window_geometry[0:2]
+        self.touch_device_window_size = self.touch_device_window_geometry[0:2]
 
     def _get_prompt_frame_geometry(self):
         """Get the display geometry of the prompt frame."""
-        (_, wint_height, _, _) = self.touchpad_window_geometry
+        (_, wint_height, _, _) = self.touch_device_window_geometry
         screen_width, screen_height = self.chrome.get_screen_size()
         win_x = 0
         win_y = 0
@@ -204,7 +205,7 @@ class firmware_TouchpadMTB:
 
     def _get_result_frame_geometry(self):
         """Get the display geometry of the test result frame."""
-        (wint_width, wint_height, _, _) = self.touchpad_window_geometry
+        (wint_width, wint_height, _, _) = self.touch_device_window_geometry
         screen_width, _ = self.chrome.get_screen_size()
         win_width = screen_width - wint_width
         win_height = wint_height
@@ -350,5 +351,5 @@ def _parse_options():
 
 if __name__ == '__main__':
     options = _parse_options()
-    fw = firmware_TouchpadMTB(options)
+    fw = firmware_TouchMTB(options)
     fw.main()

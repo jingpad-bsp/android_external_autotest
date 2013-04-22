@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Touchpad device module provides some touchpad related attributes."""
+"""Touch device module provides some touch device related attributes."""
 
 import glob
 import os
@@ -11,17 +11,12 @@ import re
 import common_util
 
 
-class TouchpadDevice:
-    """A class about touchpad device properties."""
+class TouchDevice:
+    """A class about touch device properties."""
     def __init__(self, device_node=None, is_touchscreen=False):
         self.device_info_file = '/proc/bus/input/devices'
         self.device_node = (device_node if device_node
                                 else self.get_device_node(is_touchscreen))
-
-    def _re_str(self):
-        """Get the regular expression search string for a touchpad device."""
-        pattern_str = ('touchpad', 'trackpad', 'cyapa')
-        return '(?:%s)' % '|'.join(pattern_str)
 
     def get_device_node(self, is_touchscreen):
         """Get the touch device node through xinput
@@ -96,7 +91,7 @@ class TouchpadDevice:
         return (left, right, top, bottom, resolution_x, resolution_y)
 
     def get_dimensions(self, device_description=None):
-        """Get the dimensions of the touchpad reported size."""
+        """Get the vendor-specified dimensions of the touch device."""
         left, right, top, bottom = self.get_edges(device_description)
         return (right - left, bottom - top)
 
@@ -119,15 +114,15 @@ class TouchpadDevice:
 
         return (disp_width, disp_height, disp_offset_x, disp_offset_y)
 
-    def _touchpad_input_name_re_str(self):
+    def _touch_input_name_re_str(self):
         pattern_str = ('touchpad', 'trackpad')
         return '(?:%s)' % '|'.join(pattern_str)
 
-    def get_touchpad_input_dir(self):
-        """Get touchpad input directory."""
+    def get_touch_input_dir(self):
+        """Get touch device input directory."""
         input_root_dir = '/sys/class/input'
         input_dirs = glob.glob(os.path.join(input_root_dir, 'input*'))
-        re_pattern = re.compile(self._touchpad_input_name_re_str(), re.I)
+        re_pattern = re.compile(self._touch_input_name_re_str(), re.I)
         for input_dir in input_dirs:
             filename = os.path.join(input_dir, 'name')
             if os.path.isfile(filename):
@@ -139,7 +134,7 @@ class TouchpadDevice:
 
     def get_firmware_version(self):
         """Probe the firmware version."""
-        input_dir = self.get_touchpad_input_dir()
+        input_dir = self.get_touch_input_dir()
         device_dir = 'device'
 
         # Get the re search pattern for firmware_version file name

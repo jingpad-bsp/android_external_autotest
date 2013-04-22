@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Touchpad firmware test report in html format."""
+"""Touch firmware test report in html format."""
 
 import json
 import os
@@ -127,13 +127,13 @@ $details
 class ReportHtml:
     """Firmware Report in html format."""
 
-    def __init__(self, filename, screen_size, touchpad_window_size,
+    def __init__(self, filename, screen_size, touch_device_window_size,
                  score_colors):
         self.html_filename = filename
         self.screen_size = screen_size
         self.image_width = self.screen_size[0] * 0.5
-        touchpad_width, touchpad_height = touchpad_window_size
-        self.image_height = self.image_width / touchpad_width * touchpad_height
+        touch_width, touch_height = touch_device_window_size
+        self.image_height = self.image_width / touch_width * touch_height
         self.doc = TemplateHtml(self.image_width, self.image_height,
                                 score_colors)
         self._reset_content()

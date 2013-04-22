@@ -56,15 +56,12 @@ Note that it is also possible to instantiate a validator as
 import numpy as n
 import os
 import re
-import sys
 
 import firmware_log
-import firmware_utils
 import fuzzy
 import mtb
 
 from firmware_constants import AXIS, GV, MTB, VAL
-from touch_device import TouchpadDevice
 
 
 # Define the ratio of points taken at both ends of a line for edge tests.
@@ -350,7 +347,7 @@ class LinearityValidator(BaseValidator):
         resolution_x, resolution_y = self.device.get_resolutions()
         (list_x, list_y) = self.packets.get_x_y(self.slot)
         # Compute average distance (fitting error) in pixels, and
-        # average deviation on touchpad in mm.
+        # average deviation on touch device in mm.
         if self.is_vertical(variation):
             ave_distance = self._simple_linear_regression(list_y, list_x)
             deviation_touch = ave_distance / resolution_x
@@ -359,7 +356,7 @@ class LinearityValidator(BaseValidator):
             deviation_touch = ave_distance / resolution_y
 
         self.log_details('ave fitting error: %.2f px' % ave_distance)
-        msg_device = 'deviation (pad) slot%d: %.2f mm'
+        msg_device = 'deviation slot%d: %.2f mm'
         self.log_details(msg_device % (self.slot, deviation_touch))
         self.log_score(self.fc.mf.grade(deviation_touch))
         return self.log
@@ -657,7 +654,7 @@ class NoLevelJumpValidator(BaseValidator):
         where slots[0,] represent the slots with numbers larger than slot 0.
         This kind of representation is required because when the thumb edge or
         a fat finger is used, due to the difficulty in handling it correctly
-        in the touchpad firmware, the tracking IDs and slot IDs may keep
+        in the touch device firmware, the tracking IDs and slot IDs may keep
         changing. We would like to analyze all such slots.
     """
 

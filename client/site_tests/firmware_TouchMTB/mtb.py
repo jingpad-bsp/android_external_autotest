@@ -99,7 +99,7 @@ class MtbEvemu:
         return ev_dict
 
     def all_fingers_leaving(self):
-        """Is there no finger on the pad?"""
+        """Is there no finger on the touch device?"""
         return self.num_tracking_ids <= 0
 
     def process_event(self, event):
@@ -126,27 +126,27 @@ class Mtb:
         """Define event function lists for various event cycles below."""
         self.check_event_func_list = {}
         self.MAX_FINGERS = 5
-        # One-finger touching the pad should generate the following events:
+        # One-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_FINGER: 0 -> 1 -> 0
         self.check_event_func_list[1] = [self._is_BTN_TOUCH,
                                          self._is_BTN_TOOL_FINGER]
 
-        # Two-finger touching the pad should generate the following events:
+        # Two-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_DOUBLETAP: 0 -> 1 -> 0
         self.check_event_func_list[2] = [self._is_BTN_TOUCH,
                                          self._is_BTN_TOOL_DOUBLETAP]
 
-        # Three-finger touching the pad should generate the following events:
+        # Three-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_TRIPLETAP: 0 -> 1 -> 0
         self.check_event_func_list[3] = [self._is_BTN_TOUCH,
                                          self._is_BTN_TOOL_TRIPLETAP]
 
-        # Four-finger touching the pad should generate the following events:
+        # Four-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_QUADTAP: 0 -> 1 -> 0
         self.check_event_func_list[4] = [self._is_BTN_TOUCH,
                                          self._is_BTN_TOOL_QUADTAP]
 
-        # Five-finger touching the pad should generate the following events:
+        # Five-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_QUINTTAP: 0 -> 1 -> 0
         self.check_event_func_list[5] = [self._is_BTN_TOUCH,
                                          self._is_BTN_TOOL_QUINTTAP]
@@ -263,7 +263,7 @@ class Mtb:
         # The default slot is slot 0 if no slot number is assigned.
         # The rationale is that evdev is a state machine. It only reports
         # the change. Slot 0 would not be reported by evdev if last time
-        # the last finger left the pad was at slot 0.
+        # the last finger left the touch device was at slot 0.
         slot = 0
 
         # Should not write "list_x = list_y = []" below.
@@ -310,7 +310,7 @@ class Mtb:
         """Extract points in every tracking id.
 
         This method is applicable when fingers are contacting and leaving
-        the touchpad continuously. The same slot number, e.g., slot 0 or
+        the touch device continuously. The same slot number, e.g., slot 0 or
         slot 1, may be used for multiple times.
         """
         # The default slot is slot 0 if no slot number is assigned.
@@ -779,10 +779,10 @@ class Mtb:
         """A generic method to get the number of event cycles.
 
         For a tap, its event cycle looks like:
-            (1) finger touching the pad:
+            (1) finger touching the touch device:
                 BTN_TOOL_FINGER: 0-> 1
                 BTN_TOUCH: 0 -> 1
-            (2) finger leaving the pad:
+            (2) finger leaving the touch device:
                 BTN_TOOL_FINGER: 1-> 0
                 BTN_TOUCH: 1 -> 0
 
@@ -834,7 +834,7 @@ class Mtb:
         return self._get_event_cycles(self.check_event_func_list[num_fingers])
 
     def verify_exact_number_fingers_touch(self, num_fingers):
-        """Verify the exact number of fingers touching the pad.
+        """Verify the exact number of fingers touching the device.
 
         Example: for a two-finger touch
             2-finger touch cycles should be equal to 1
@@ -859,7 +859,7 @@ class Mtb:
 
 
 class MtbParser:
-    """Touchpad MTB event Parser."""
+    """Touch device MTB event Parser."""
 
     def __init__(self):
         self._get_event_re_patt()

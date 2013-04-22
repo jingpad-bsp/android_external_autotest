@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""This module provides GUI for touchpad firmware test using GTK."""
+"""This module provides GUI for touch device firmware test using GTK."""
 
 import re
 
@@ -17,7 +17,7 @@ import test_conf as conf
 from firmware_constants import TFK
 
 
-TITLE = "Touchpad Firmware Test"
+TITLE = "Touch Firmware Test"
 
 
 class BaseFrame(object):
@@ -220,7 +220,7 @@ class ImageFrame(BaseFrame):
 
 
 class FirmwareWindow(object):
-    """A simple window class to display the touchpad firmware test window."""
+    """A simple window class to display the touch firmware test window."""
 
     def __init__(self, size=None, prompt_size=None, result_size=None,
                  image_size=None):
