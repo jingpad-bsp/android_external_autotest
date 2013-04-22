@@ -43,6 +43,7 @@ class WiFiClient(object):
         """
         return self._host
 
+
     @property
     def command_ifconfig(self):
         """@return string path to ifconfig command."""
@@ -103,6 +104,18 @@ class WiFiClient(object):
         return self._command_wpa_cli
 
 
+    @property
+    def wifi_if(self):
+        """@return string wifi device on machine (e.g. mlan0)."""
+        return self._wifi_if
+
+
+    @property
+    def wifi_mac(self):
+        """@return string MAC addess of self.wifi_if."""
+        return self._wifi_mac
+
+
     def __init__(self, client_host):
         """
         Construct a WiFiClient.
@@ -124,6 +137,7 @@ class WiFiClient(object):
                 constants.SHILL_XMLRPC_SERVER_PORT,
                 constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
                 constants.SHILL_XMLRPC_SERVER_READY_METHOD)
+        # Look up or hardcode command paths.
         self._command_ifconfig = 'ifconfig'
         self._command_ip = wifi_test_utils.must_be_installed(
                 self.host, '/usr/local/sbin/ip')
@@ -138,6 +152,18 @@ class WiFiClient(object):
                 self.host, '/usr/local/sbin/netserver')
         self._command_ping6 = 'ping6'
         self._command_wpa_cli = 'wpa_cli'
+        # Look up the WiFi device (and its MAC) on the client.
+        devs = wifi_test_utils.get_wlan_devs(self.host, self.command_iw)
+        if not devs:
+            raise error.TestFail('No wlan devices found on %s.' %
+                                 self.host.hostname)
+
+        if len(devs) > 1:
+            logging.warning('Warning, found multiple WiFi devices on %s: %r',
+                            self.host.hostname, devs)
+        self._wifi_if = devs[0]
+        self._wifi_mac = wifi_test_utils.get_interface_mac(
+                self.host, self.wifi_if, self.command_ip)
 
 
     def close(self):

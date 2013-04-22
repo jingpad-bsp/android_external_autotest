@@ -236,15 +236,6 @@ class WiFiTest(object):
         self.firewall_rules = []
         self.host_route_args = {}
 
-        # interface name on client
-        devs = wifi_test_utils.get_wlan_devs(self.client,
-                                             self.client_proxy.command_iw)
-        if len(devs) == 0:
-            raise error.TestFail('No wlan devices found on %s' % client['addr'])
-        self.client_wlanif = client.get('wlandev', devs[0])
-        self.client.wlan_mac = wifi_test_utils.get_interface_mac(
-                self.client, self.client_wlanif, self.client_proxy.command_ip)
-
         # Make sure powersave mode is off by default.
         self.client_powersave_off([])
 
@@ -294,7 +285,7 @@ class WiFiTest(object):
     @property
     def client(self):
         """ @return host object representing the DUT. """
-        return self.client_proxy.client
+        return self.client_proxy.host
 
 
     @property
@@ -310,6 +301,12 @@ class WiFiTest(object):
             # Server WiFi IP is created using a local server address.
             return self.wifi.local_server_address(0)
         return self.hosting_server.wifi_ip
+
+
+    @property
+    def client_wlanif(self):
+        """@return string client WiFi device (e.g. mlan0)."""
+        return self.client_proxy.wifi_if
 
 
     def init_profile(self):
@@ -2048,7 +2045,7 @@ class WiFiTest(object):
             self.write_perf({params['perf']:float(result.stdout)})
 
     def client_deauth(self, params):
-        self.wifi.deauth({'client': self.client.wlan_mac})
+        self.wifi.deauth({'client': self.client_proxy.wifi_mac})
 
     def client_reboot(self, params):
         self.client_installed_scripts = {}
@@ -2103,7 +2100,7 @@ class WiFiTest(object):
         if 'mac_count' in params:
             mac_count = 0
             expected = int(params['mac_count'])
-            mac_parts = self.client.wlan_mac.split(':')
+            mac_parts = self.client_proxy.wifi_mac.split(':')
             # Convert last 3 octets of MAC into suffix of IPv6 address
             shorts = [int(mac_parts[-3], 16), int(''.join(mac_parts[-2:]), 16)]
             mac_suffix_re = re.compile('%x:%x/' % tuple(shorts))
