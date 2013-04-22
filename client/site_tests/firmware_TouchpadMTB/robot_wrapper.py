@@ -177,11 +177,10 @@ class RobotWrapper:
 
         self._build_robot_script_paths()
 
-
         # If the robot is actually connected, we should calibrate the Z height
         # for this device immediately.  This generates a file that over-rides
         # the values found in the device description
-            self._calibrate_z(should_calibrate)
+        self._calibrate_z(should_calibrate)
 
     def _calibrate_z(self, should_calibrate):
         """ Clear any old calibration files and possibly generate a new one """
