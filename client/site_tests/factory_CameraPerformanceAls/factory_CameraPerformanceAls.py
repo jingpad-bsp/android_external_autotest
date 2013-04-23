@@ -34,12 +34,14 @@ from cros.factory.test import factory
 from cros.factory.test import leds
 from cros.factory.test import test_ui
 from cros.factory.test.media_util import MountedMedia
+from cros.factory.utils.process_utils import SpawnOutput
 from autotest_lib.client.cros.rf.config import PluggableConfig
 from autotest_lib.client.cros import tty
 from cros.factory.test.test_ui import UI
 
 
 # Test type constants:
+_TEST_TYPE_MODULE = 'Module'
 _TEST_TYPE_AB = 'AB'
 _TEST_TYPE_FULL = 'Full'
 
@@ -442,7 +444,7 @@ class factory_CameraPerformanceAls(test.test):
 
     def finalize_test(self):
         self.generate_final_result()
-        if self.type == _TEST_TYPE_AB:
+        if self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
             # We block the test flow until we successfully dumped the result.
             while not self.save_log_to_usb():
                 time.sleep(0.5)
@@ -462,6 +464,11 @@ class factory_CameraPerformanceAls(test.test):
         else:
             self.update_status(msg=cam_result)
 
+        # Reset serial number if passed. Otherwise, operator may forget to input
+        # serial number again.
+        if self.cam_pass and self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
+            self.ui.CallJSFunction("RestartSnInputBox")
+
         self.update_pbar(value=100)
 
     def exit_test(self, event):
@@ -474,7 +481,8 @@ class factory_CameraPerformanceAls(test.test):
     def run_test(self, event=None):
         self.reset_data()
         self.update_status(mid='start_test')
-        if self.type == _TEST_TYPE_AB:
+
+        if self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
             self.serial_number = event.data.get('sn', '')
 
         if self.talk_to_fixture and not self.setup_fixture():
@@ -515,7 +523,51 @@ class factory_CameraPerformanceAls(test.test):
         img /= n_samples
         return img.round().astype(np.uint8)
 
+    def verify_firmware(self, device_string, firmware_string):
+        '''Checks the firmware version of camera module.'''
+        lsusb_output = SpawnOutput(['lsusb', '-v'], log=True)
+
+        # Split into blocks for different
+        splitter = re.compile(r'^Bus\s+\d+\s+Device\s+\d+',
+                              flags = re.MULTILINE)
+        blocks = splitter.split(lsusb_output)
+        matched_blocks = [b for b in blocks if device_string in b]
+
+        err_message = None
+        ret = False
+        if len(matched_blocks) == 0:
+            err_message = 'No matched camera device for "%s"' % device_string
+        elif len(matched_blocks) > 1:
+            err_message = ('Multiple matched devices found for "%s"' %
+                           device_string)
+        else:
+            # Camera module should publish firmware version in 'bcdDevice' field
+            search_result = re.search(r'^\s*bcdDevice\s+(\S+)',
+                                      matched_blocks[0], flags = re.MULTILINE)
+            if search_result:
+                if firmware_string == search_result.group(1):
+                    ret = True
+                else:
+                    err_message = ('Wrong firmware version %s, expecting %s' %
+                                   (search_result.group(1), firmware_string))
+            else:
+                err_message = ('bcdDevice not found in lsusb output for "%s"' %
+                               device_string)
+
+        return (ret, err_message)
+
     def test_camera_functionality(self):
+        # Check firmware version
+        if self.config['firmware']['check_firmware']:
+            device_string = self.config['firmware']['device_string']
+            firmware_string = self.config['firmware']['firmware_string']
+            ret, error_message = self.verify_firmware(device_string,
+                                                      firmware_string)
+            if not ret:
+                self.update_result('cam_stat', False)
+                self.log(error_message + '\n')
+                return False
+
         # Initialize the camera with OpenCV.
         self.update_status(mid='init_cam')
         cam = cv2.VideoCapture(self.device_index)
@@ -589,7 +641,7 @@ class factory_CameraPerformanceAls(test.test):
         visual_data = {}
 
         def log_visual_data(value, event_key, log_text_fmt):
-            self.log(log_text_fmt % value)
+            self.log((log_text_fmt % value) + '\n')
             visual_data[event_key] = value
 
         def finish_log_visual_data():
@@ -765,7 +817,7 @@ class factory_CameraPerformanceAls(test.test):
 
     def run_once(self, test_type = _TEST_TYPE_FULL, unit_test = False,
                  use_als = True, log_good_image = False,
-                 device_index = -1):
+                 device_index = -1, ignore_enter_key = False):
         '''The entry point of the test.
 
         Args:
@@ -784,23 +836,29 @@ class factory_CameraPerformanceAls(test.test):
                        in the parameter file. The test will replace the
                        captured image with the sample test image and run the
                        camera performance test on it.
-           use_als:    Whether to use the ambient light sensor.
-           log_good_image: Log images that pass that test
-                       (By default, only failed images are logged)
-           device_index: video device index (-1 to auto pick device by OpenCV)
+            use_als:    Whether to use the ambient light sensor.
+            log_good_image: Log images that pass that test
+                            (By default, only failed images are logged)
+            device_index: video device index (-1 to auto pick device by OpenCV)
+            ignore_enter_key: disable enter key in serial number input
+                              (Some barcode reader automatically input enter
+                               key, but we may prefer not to start the test
+                               immediately after barcode is scanned)
         '''
         factory.log('%s run_once' % self.__class__)
 
         # Initialize variables and environment.
-        assert test_type in [_TEST_TYPE_FULL, _TEST_TYPE_AB]
+        assert test_type in [_TEST_TYPE_FULL, _TEST_TYPE_AB, _TEST_TYPE_MODULE]
         assert unit_test in [True, False]
         assert use_als in [True, False]
         assert log_good_image in [True, False]
+        assert ignore_enter_key in [True, False]
         self.type = test_type
         self.unit_test = unit_test
         self.use_als = use_als
         self.log_good_image = log_good_image
         self.device_index = device_index
+        self.ignore_enter_key = ignore_enter_key
 
         self.talk_to_fixture = use_als
         self.config_loaded = False
@@ -826,5 +884,6 @@ class factory_CameraPerformanceAls(test.test):
         self.ui = UI()
         self.register_events(['sync_fixture', 'exit_test', 'run_test'])
         self.ui.CallJSFunction("InitLayout", self.talk_to_fixture,
-                               self.type == _TEST_TYPE_FULL)
+                               self.type == _TEST_TYPE_FULL,
+                               self.ignore_enter_key)
         self.ui.Run()

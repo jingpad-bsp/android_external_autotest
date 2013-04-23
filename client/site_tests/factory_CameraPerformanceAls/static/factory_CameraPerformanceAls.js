@@ -12,16 +12,17 @@ var statIdle = '<span class="color_idle goofy-label-en">IDLE</span>' +
     '<span class="color_idle goofy-label-zh">閒置中</span>';
 
 var useFixture = true;
+var disableEnterKey = false;
 
 window.onkeydown = function(event) {
-    if (event.keyCode == 13 || event.keyCode == 32) {
+    if ((!disableEnterKey && event.keyCode == 13) || event.keyCode == 32) {
         var testButton = document.getElementById("btn_run_test");
         if (!testButton.disabled)
             ButtonRunTestClick();
     }
 }
 
-function InitLayout(talkToFixture, testFull) {
+function InitLayout(talkToFixture, testFull, ignoreEnterKey) {
     if (testFull) {
         document.getElementById("test_sn_label").hidden = true;
         document.getElementById("test_sn").hidden = true;
@@ -38,6 +39,8 @@ function InitLayout(talkToFixture, testFull) {
         document.getElementById("test_fixture").hidden = true;
         document.getElementById("fixture_status").hidden = true;
     }
+
+    disableEnterKey = ignoreEnterKey;
 }
 
 function UpdateTestBottonStatus() {
@@ -52,6 +55,13 @@ function UpdateTestBottonStatus() {
         document.getElementById('serial_number').validity.valid &&
         document.getElementById('usb_status').innerHTML == USBLoaded &&
         isFixtureReady);
+}
+
+function RestartSnInputBox() {
+    var snInputBox = document.getElementById("serial_number");
+    snInputBox.focus();
+    snInputBox.value="";
+    UpdateTestBottonStatus();
 }
 
 function OnSnInputBoxClick() {

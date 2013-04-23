@@ -1,8 +1,13 @@
 {
-    'sn_format':r'^\d\d\d\d\d\d\d\d\d\d\d\d\d$',
+    'sn_format':r'^[a-zA-Z0-9]{23}$',
     'preview':  {
                     'scale': 0.5,
                     'mtf_color_map_range': [0.2, 0.5]
+                },
+    'firmware': {
+                    'check_firmware': False,
+                    'device_string': '',
+                    'firmware_string': ''
                 },
     'cam_stat': {
                     'img_width': 1280,
@@ -147,6 +152,7 @@
                     'als_finishAB': 22.85,
                     'als_finishFull': 31.85,
                     'AB': 23.05,
-                    'Full': 31.85
+                    'Full': 31.85,
+                    'Module': 31.85
                 }
 }
