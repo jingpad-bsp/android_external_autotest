@@ -54,20 +54,23 @@ class WiFiTestBase(test.test):
                 wifi_params.serialize())
         assoc_result = xmlrpc_datatypes.AssociationResult(
                 serialized=serialized_assoc_result)
+        logging.info('Finished connection attempt to %s with times: '
+                     'discovery=%.2f, association=%.2f, configuration=%.2f.',
+                     wifi_params.ssid,
+                     assoc_result.discovery_time,
+                     assoc_result.association_time,
+                     assoc_result.configuration_time)
+
         if assoc_result.success and expect_failure:
             raise error.TestFail(
                     'Expected connect to fail, but it was successful.')
+
         if not assoc_result.success and not expect_failure:
             raise error.TestFail('Expected connect to succeed, but it failed '
                                  'with reason: %s.' %
                                  assoc_result.failure_reason)
 
-        logging.info('Connected successfully to %s, times: discovery=%.2f, '
-                     'association=%.2f, configuration=%.2f.',
-                     wifi_params.ssid,
-                     assoc_result.discovery_time,
-                     assoc_result.association_time,
-                     assoc_result.configuration_time)
+        logging.info('Connected successfully to %s.', wifi_params.ssid)
 
 
     def parse_additional_arguments(self, commandline_args, additional_params):
