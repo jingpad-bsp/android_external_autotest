@@ -10,6 +10,7 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.server.cros.wlan import packet_capturer
 
 
 class WiFiClient(object):
@@ -116,7 +117,7 @@ class WiFiClient(object):
         return self._wifi_mac
 
 
-    def __init__(self, client_host):
+    def __init__(self, client_host, result_dir):
         """
         Construct a WiFiClient.
 
@@ -164,6 +165,12 @@ class WiFiClient(object):
         self._wifi_if = devs[0]
         self._wifi_mac = wifi_test_utils.get_interface_mac(
                 self.host, self.wifi_if, self.command_ip)
+        # Used for packet captures.
+        self._packet_capturer = packet_capturer.PacketCapturer(
+                self.host, host_description='client',
+                cmd_ifconfig=self.command_ifconfig, cmd_ip=self.command_ip,
+                cmd_iw=self.command_iw, cmd_netdump=self.command_netdump)
+        self._result_dir = result_dir
 
         self._firewall_rules = []
 
@@ -172,6 +179,7 @@ class WiFiClient(object):
         """Tear down state associated with the client."""
         if self._ping_thread is not None:
             self.ping_bg_stop()
+        self.stop_capture()
         # This kills the RPC server.
         self._host.close()
 
@@ -332,3 +340,24 @@ class WiFiClient(object):
         for rule in self._firewall_rules:
             self._firewall_close(rule)
 
+    def start_capture(self):
+        """Start a packet capture.
+
+        Attempt to start a host based OTA capture.  If the driver stack does
+        not support creating monitor interfaces, fall back to managed interface
+        packet capture.  Only one ongoing packet capture is supported at a time.
+
+        """
+        self.stop_capture()
+        devname = self._packet_capturer.create_managed_monitor(self.wifi_if)
+        if devname is None:
+            logging.warning('Failure creating monitor interface; doing '
+                            'managed packet capture instead.')
+            devname = self.wifi_if
+        self._packet_capturer.start_capture(devname, self._result_dir)
+
+
+    def stop_capture(self):
+        """Stop a packet capture and copy over the results."""
+        self._packet_capturer.stop()
+        self._packet_capturer.destroy_netdump_devices()

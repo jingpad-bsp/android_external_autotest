@@ -138,7 +138,8 @@ class WiFiTestBase(test.test):
         with wifi_test_context_manager.WiFiTestContextManager(
                 self.__class__.__name__,
                 host,
-                cmdline_args) as context:
+                cmdline_args,
+                self.debugdir) as context:
             self._wifi_context = context
             self.parse_additional_arguments(cmdline_args, additional_params)
             logging.debug('Calling into actual test logic.')

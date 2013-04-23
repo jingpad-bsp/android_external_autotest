@@ -74,6 +74,43 @@ class HostapConfig(object):
     N_CAPABILITY_GREENFIELD = object()
     N_CAPABILITY_SHORT_GI = object()
 
+    @property
+    def ht_packet_capture_mode(self):
+        """Get an appropriate packet capture HT parameter.
+
+        When we go to configure a raw monitor we need to configure
+        the phy to listen on the correct channel.  Part of doing
+        so is to specify the channel width for HT channels.  In the
+        case that the AP is configured to be either HT40+ or HT40-,
+        we could return the wrong parameter because we don't know which
+        configuration will be chosen by hostap.
+
+        @return string HT parameter for frequency configuration.
+
+        """
+        if not self.n_capabilities:
+            return None
+
+        is_plus = '[HT40+]' in self.n_capabilities
+        is_minus = '[HT40-]' in self.n_capabilities
+        if is_plus and is_minus:
+            # TODO(wiley) Apparently, for some channels, there are regulatory
+            #             rules for which side of the channel you may use with
+            #             HT40 mode.  For some channels, HT40 is disabled
+            #             altogether.
+            logging.warning('Packet capture may fail because both HT40+ and '
+                            'HT40- enabled.  hostap will choose one or the '
+                            'other, but we do not know that decision.')
+            return 'HT40-'
+
+        if is_plus:
+            return 'HT40+'
+
+        if is_minus:
+            return 'HT40-'
+
+        return 'HT20'
+
 
     def __init__(self, mode=None, channel=None, frequency=None,
                  n_capabilities=None, hide_ssid=None):

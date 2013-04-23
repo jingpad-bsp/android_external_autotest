@@ -25,9 +25,11 @@ class WiFiTestContextManager(object):
 
     """
 
+    CMDLINE_CLIENT_PACKET_CAPTURES = 'client_capture'
+    CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
     CMDLINE_ROUTER_ADDR = 'router_addr'
-    CMDLINE_SERVER_ADDR = 'server_addr'
     CMDLINE_ROUTER_PORT = 'router_port'
+    CMDLINE_SERVER_ADDR = 'server_addr'
 
 
     @property
@@ -60,7 +62,7 @@ class WiFiTestContextManager(object):
                               'router address given')
 
 
-    def __init__(self, test_name, host, cmdline_args):
+    def __init__(self, test_name, host, cmdline_args, debug_dir):
         """Construct a WiFiTestContextManager.
 
         Optionally can pull addresses of the server address, router address,
@@ -74,9 +76,11 @@ class WiFiTestContextManager(object):
         super(WiFiTestContextManager, self).__init__()
         self._test_name = test_name
         self._cmdline_args = cmdline_args.copy()
-        self._client_proxy = wifi_client.WiFiClient(host)
+        self._client_proxy = wifi_client.WiFiClient(host, debug_dir)
         self._router = None
         self._server = None
+        self._enable_client_packet_captures = False
+        self._enable_router_packet_captures = False
 
 
     def __enter__(self):
@@ -128,7 +132,12 @@ class WiFiTestContextManager(object):
 
         """
         self.router.hostap_configure(configuration_parameters)
-        # TODO(wiley) enable packet captures here.
+        if self._enable_client_packet_captures:
+            self.client.start_capture()
+        if self._enable_router_packet_captures:
+            self.router.start_capture(
+                    configuration_parameters.frequency,
+                    ht_type=configuration_parameters.ht_packet_capture_mode)
 
 
     def setup(self):
@@ -164,6 +173,10 @@ class WiFiTestContextManager(object):
         self.client.shill.remove_profile('test')
         self.client.shill.create_profile('test')
         self.client.shill.push_profile('test')
+        if self.CMDLINE_CLIENT_PACKET_CAPTURES in self._cmdline_args:
+            self._enable_client_packet_captures = True
+        if self.CMDLINE_ROUTER_PACKET_CAPTURES in self._cmdline_args:
+            self._enable_router_packet_captures = True
 
 
     def teardown(self):

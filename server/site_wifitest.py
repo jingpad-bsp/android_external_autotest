@@ -108,6 +108,7 @@ class WiFiTest(object):
     def __init__(self, name, steps, client_requirements, config):
         self.name = name
         self.steps = steps
+        self.debug_dir = './debug'
         step_req_client, step_req_router = self.__get_step_requirements()
         self.client_requirements = (client_requirements + step_req_client)
         self.router_requirements = step_req_router
@@ -204,7 +205,8 @@ class WiFiTest(object):
         client = config['client']
 
         self.client_proxy = wifi_client.WiFiClient(
-                hosts.create_host(client['addr']))
+                hosts.create_host(client['addr']),
+                self.debug_dir)
         self.client_at = autotest.Autotest(self.client)
         self.client_wifi_ip = None            # client's IP address on wifi net
         self.client_wifi_device_path = None   # client's flimflam wifi path
@@ -261,9 +263,9 @@ class WiFiTest(object):
         self.command_hooks = {}
 
         if 'server_capture_all' in self.run_options:
-            self.__add_hook('config', self.hosting_server.start_capture)
+            self.__add_hook('config', self.hosting_server.start_capture_params)
         if 'router_capture_all' in self.run_options:
-            self.__add_hook('config', self.wifi.start_capture)
+            self.__add_hook('config', self.wifi.start_capture_params)
         if 'client_capture_all' in self.run_options:
             self.__add_hook('config', self.client_start_capture)
         if 'client_stats_all' in self.run_options:
@@ -329,8 +331,8 @@ class WiFiTest(object):
         self.client_stop_statistics({})
         self.client_proxy.firewall_cleanup()
         self.host_route_cleanup({})
-        self.wifi.stop_capture({})
-        self.hosting_server.stop_capture({})
+        self.wifi.stop_capture()
+        self.hosting_server.stop_capture()
 
 
     def __get_client_capabilities(self):
@@ -576,7 +578,7 @@ class WiFiTest(object):
             self.local_file_counts = {}
         file_count = self.local_file_counts.get(pattern, 0)
         self.local_file_counts[pattern] = file_count + 1
-        return './debug/%s' % (pattern % file_count)
+        return os.join(self.debug_dir, pattern % file_count)
 
 
     def install_script(self, script_name, *support_scripts):
@@ -1595,51 +1597,25 @@ class WiFiTest(object):
         self.__run_netperf('server', params)
 
 
-    def __create_netdump_dev(self, devname='mon0'):
-        self.client.run("%s dev %s del" % (self.client_proxy.command_iw,
-                                           devname),
-                        ignore_status=True)
-        self.client.run("%s dev %s interface add %s type monitor" %
-                        (self.client_proxy.command_iw, self.client_wlanif,
-                         devname))
-        self.client.run("%s %s up" % (self.client_proxy.command_ifconfig,
-                                      devname))
-        return devname
-
-
-    def __destroy_netdump_dev(self, devname='mon0'):
-        self.client.run("%s dev %s del" % (self.client_proxy.command_iw,
-                                           devname))
-
-
     def client_start_capture(self, params):
-        """ Start capturing network traffic on the client """
-        self.client_stop_capture({})
-        devname = self.__create_netdump_dev()
-        self.client_netdump_dir = self.client.get_tmp_dir()
-        self.client_netdump_file = os.path.join(self.client_netdump_dir,
-                                                "client.pcap")
-        cmd = "%s -i %s -w %s -s %s" % (self.client_proxy.command_netdump,
-                                        devname,
-                                        self.client_netdump_file,
-                                        params.get('snaplen', '0'))
-        logging.info(cmd)
-        self.client_netdump_thread = remote_command.Command(self.client, cmd)
+        """Start capturing network traffic on the client.
+
+        @param params dict of site_wifitest parameters.
+
+        """
+        self.client_proxy.start_capture()
 
 
     def client_stop_capture(self, params):
-        if self.client_netdump_thread is not None:
-            self.__destroy_netdump_dev()
-            self.client_netdump_thread.join()
-            self.client_netdump_thread = None
-            self.client.get_file(
-                self.client_netdump_file,
-                self.__get_local_file('client_capture_%02d.pcap'))
-            self.client.delete_tmp_dir(self.client_netdump_dir)
-        else:
-            # Just in case something got leftover from a previous run...
-            self.client.run("pkill %s" % self.client_proxy.command_netdump,
-                            ignore_status=True)
+        """Stop capturing network traffic on the client.
+
+        Stop capturing packets on the client, and copy the previous
+        ongoing packet capture file to the autotest server.
+
+        @param params dict of site_wifitest parameters.
+
+        """
+        self.client_proxy.stop_capture()
 
 
     def client_suspend(self, params):

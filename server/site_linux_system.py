@@ -5,6 +5,7 @@
 import re
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros.wlan import packet_capturer
 
 class LinuxSystem(object):
     """Superclass for test machines running Linux.
@@ -29,17 +30,14 @@ class LinuxSystem(object):
         self.phydev2 = params.get('phydev2', None)
         self.phydev5 = params.get('phydev5', None)
 
-        self.capture_file = '/tmp/dump.pcap'
-        self.capture_logfile = '/tmp/dump.log'
-        self.capture_count = 0
-        self.capture_running = False
-        self.capture_channel = None
-
         self.host = host
         self.role = role
 
-        setattr(self, '%s_start_capture' % role, self.start_capture)
-        setattr(self, '%s_stop_capture' % role, self.stop_capture)
+        self.capture_channel = None
+        self.capture_ht_type = None
+        self._packet_capturer = packet_capturer.PacketCapturer(
+                self.host, host_description=role, cmd_ip=self.cmd_ip,
+                cmd_iw=self.cmd_iw, cmd_netdump=self.cmd_tcpdump)
 
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []
@@ -133,61 +131,62 @@ class LinuxSystem(object):
             if m:
                 self._remove_interface(m.group(1), False)
 
-
-    def start_capture(self, params):
+    def start_capture_params(self, params):
         """Start a packet capture.
 
+        Note that in |params|, 'channel' refers to the frequency of the WiFi
+        channel (e.g. 2412), not the channel number.
+
         @param params dict of site_wifitest parameters.
 
         """
-        if self.capture_running:
-            self.stop_capture({})
-
         if 'channel' in params:
-            channel = int(params['channel'])
-            channel_args = '%s' % channel
-            for arg in ('ht20', 'ht40+', 'ht40-'):
-                if arg in params:
-                    channel_args = '%s %s' % (channel_args, arg.upper())
-            self.capture_channel = channel
-            self.channel_args = channel_args
-        else:
-            channel = self.capture_channel
-            channel_args = self.channel_args
-        self.capture_interface = self._get_wlanif(channel, 'monitor')
+            self.capture_channel = int(params['channel'])
+        for arg in ('ht20', 'ht40+', 'ht40-'):
+            if arg in params:
+                self.capture_ht_type = arg.upper()
 
-        self.host.run('%s dev %s set freq %s' %
-            (self.cmd_iw, self.capture_interface, channel_args))
+        if not self.capture_channel:
+            raise error.TestError('No capture channel specified.')
 
-        self.host.run('%s link set %s up' % (self.cmd_ip,
-                                             self.capture_interface))
-
-        self.host.run('%s -i %s -w %s -s %s >%s 2>&1 &' %
-                      (self.cmd_tcpdump,
-                       self.capture_interface,
-                       self.capture_file,
-                       params.get('snaplen', '0'),
-                       self.capture_logfile))
-        self.capture_running = True
+        self.start_capture(self.capture_channel, ht_type=self.capture_ht_type)
 
 
-    def stop_capture(self, params):
+    def stop_capture_params(self, params):
         """Stop a packet capture.
 
-        @param params dict of site_wifitest parameters.
+        @param params dict unused, but required by our dispatch method.
 
         """
-        if not self.capture_running:
+        self.stop_capture()
+
+
+    def start_capture(self, frequency, ht_type=None):
+        """Start a packet capture.
+
+        @param frequency int frequency of channel to capture on.
+        @param ht_type string one of (None, 'HT20', 'HT40+', 'HT40-').
+
+        """
+        if self._packet_capturer.capture_running:
+            self.stop_capture()
+        # LinuxSystem likes to manage the phys on its own, so let it.
+        self.capture_interface = self._get_wlanif(frequency, 'monitor')
+        # But let the capturer configure the interface.
+        self._packet_capturer.configure_raw_monitor(self.capture_interface,
+                                                    frequency,
+                                                    ht_type=ht_type)
+        # Start the capture.
+        self._packet_capturer.start_capture(self.capture_interface, './debug/')
+
+
+    def stop_capture(self):
+        """Stop a packet capture."""
+        if not self._packet_capturer.capture_running:
             return
-        self.host.run('pkill -INT tcpdump >/dev/null 2>&1', ignore_status=True)
+        self._packet_capturer.stop_capture()
         self.host.run('%s link set %s down' % (self.cmd_ip,
                                                self.capture_interface))
-
-        self.host.get_file(self.capture_file,
-                             'debug/%s_%d.pcap' %
-                             (self.role, self.capture_count))
-        self.capture_count += 1
-        self.capture_running = False
         self._release_wlanif(self.capture_interface)
 
 
