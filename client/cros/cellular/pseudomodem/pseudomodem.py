@@ -85,6 +85,8 @@ class TestModemManagerContext(object):
                 except error.CmdError:
                     pass
 
+    def GetPseudoModemManager(self):
+        return self.pseudo_modem_manager
 
 class VirtualEthernetInterface(object):
 
@@ -213,6 +215,7 @@ class PseudoModemManager(object):
         self.sim = sim
         self.detach = detach
         self.child = None
+        self.started = False
 
     def __enter__(self):
         self.Start()
@@ -222,8 +225,10 @@ class PseudoModemManager(object):
         self.Stop()
 
     def Start(self):
-        # TODO(armansito): See crosbug.com/36235
+        logging.info('Starting pseudo modem manager.')
+        self.started = True
 
+        # TODO(armansito): See crosbug.com/36235
         global virtual_ethernet_interface
         virtual_ethernet_interface.Setup()
         if self.detach:
@@ -236,13 +241,32 @@ class PseudoModemManager(object):
             self._Run()
 
     def Stop(self):
+        logging.info('Stopping pseudo modem manager.')
+        if not self.started:
+            logging.info('Not started, cannot stop.')
+            return
         if self.detach:
             if self.child != 0:
                 os.kill(self.child, signal.SIGINT)
                 os.waitpid(self.child, 0)
+                self.child = 0
                 self._Cleanup()
         else:
             self._Cleanup()
+        self.started = False
+
+    def Restart(self):
+        self.Stop()
+        self.Start()
+
+    def SetModem(self, new_modem):
+        self.modem = new_modem
+        self.Restart()
+        time.sleep(5)
+
+    def SetSIM(self, new_sim):
+        self.sim = new_sim
+        self.Restart()
 
     def _Cleanup(self):
         global virtual_ethernet_interface
@@ -251,8 +275,8 @@ class PseudoModemManager(object):
     def _Run(self):
         if not self.modem:
             raise Exception('No modem object has been provided.')
-        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-        bus = dbus.SystemBus()
+        dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
+        bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
         name = dbus.service.BusName(mm1.I_MODEM_MANAGER, bus)
         self.manager = modemmanager.ModemManager(bus)
 
