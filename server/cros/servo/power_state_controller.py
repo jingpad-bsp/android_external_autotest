@@ -271,6 +271,7 @@ class _LinkController(_ChromeECController):
 
 _CONTROLLER_BOARD_MAP = {
     'daisy': _DaisyController,
+    'spring': _DaisyController,
     'link': _LinkController,
     'lumpy': _AlexController,
     'stumpy': _StumpyController,
