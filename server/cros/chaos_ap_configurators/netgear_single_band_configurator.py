@@ -14,12 +14,6 @@ from selenium.common.exceptions import TimeoutException as \
 class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
     """Baseclass to control Netgear single band routers."""
 
-    security_disabled = 'Disabled'
-    security_wep = 'WEP'
-    security_wpapsk = 'WPA-PSK[TKIP]'
-    security_wpa2psk = 'WPA2-PSK[AES]'
-    security_wpa8021x = 'WPA-PSK[TKIP]+WPA2-PSK[AES]'
-
 
     def _alert_handler(self, alert):
         """Checks for any modal dialogs which popup to alert the user and
@@ -34,6 +28,15 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
     def get_number_of_pages(self):
         return 1
+
+
+    def is_update_interval_supported(self):
+        """
+        Returns True if setting the PSK refresh interval is supported.
+
+        @return True is supported; False otherwise
+        """
+        return False
 
 
     def get_supported_bands(self):
@@ -152,6 +155,10 @@ class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
         self.set_content_of_text_field_by_xpath(key, xpath, abort_check=True)
 
 
-    def set_visibility(self, visible=True):
-        logging.debug('set_visibility is not supported in this router.')
-        return None
+    def is_visibility_supported(self):
+        """
+        Returns if AP supports setting the visibility (SSID broadcast).
+
+        @return True if supported; False otherwise.
+        """
+        return False
