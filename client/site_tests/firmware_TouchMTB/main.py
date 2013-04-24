@@ -100,8 +100,8 @@ class firmware_TouchMTB:
         # Get the MTB parser.
         self.parser = mtb.MtbParser()
 
-        # Get the chrome browser.
-        self.chrome = firmware_utils.SimpleX('aura')
+        # Get a simple x object to manipulate X properties.
+        self.simple_x = firmware_utils.SimpleX('aura')
 
         # Create a simple gtk window.
         self._get_screen_size()
@@ -182,7 +182,7 @@ class firmware_TouchMTB:
 
     def _get_screen_size(self):
         """Get the screen size."""
-        self.screen_size = self.chrome.get_screen_size()
+        self.screen_size = self.simple_x.get_screen_size()
 
     def _get_touch_device_window_geometry(self):
         """Get the preferred window geometry to display mtplot."""
@@ -195,7 +195,7 @@ class firmware_TouchMTB:
     def _get_prompt_frame_geometry(self):
         """Get the display geometry of the prompt frame."""
         (_, wint_height, _, _) = self.touch_device_window_geometry
-        screen_width, screen_height = self.chrome.get_screen_size()
+        screen_width, screen_height = self.simple_x.get_screen_size()
         win_x = 0
         win_y = 0
         win_width = screen_width
@@ -206,7 +206,7 @@ class firmware_TouchMTB:
     def _get_result_frame_geometry(self):
         """Get the display geometry of the test result frame."""
         (wint_width, wint_height, _, _) = self.touch_device_window_geometry
-        screen_width, _ = self.chrome.get_screen_size()
+        screen_width, _ = self.simple_x.get_screen_size()
         win_width = screen_width - wint_width
         win_height = wint_height
         self.result_frame_size = (win_width, win_height)
