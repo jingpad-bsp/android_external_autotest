@@ -141,7 +141,7 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
         #  Asus does not support TKIP (wpapsk) encryption in 'n' mode.
         #  So we will use AES (wpa2psk) to avoid conflicts and modal dialogs.
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 1, 900)
+                                      (shared_key, update_interval), 1, 1000)
 
 
     def _set_security_wpapsk(self, shared_key, update_interval):
