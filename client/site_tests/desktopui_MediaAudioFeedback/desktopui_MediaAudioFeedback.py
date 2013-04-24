@@ -82,8 +82,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         self._ah.setup_deps(['audioloop', 'sox'])
 
         super(desktopui_MediaAudioFeedback, self).initialize()
-        # _test_url must end with '/'.
-        self._test_url = 'http://localhost:8000/'
+        self._test_url = 'http://localhost:8000/play.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 
@@ -94,12 +93,26 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
 
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
-            logging.info('Noise file: %s' % noise_file.name)
+            logging.info('Noise file: %s', noise_file.name)
             self._ah.record_sample(noise_file.name)
             # Test each media file for all channels.
             for media_file in _MEDIA_FORMATS:
                 self._ah.loopback_test_channels(noise_file.name,
-                        lambda channel: self.play_media(media_file))
+                        lambda channel: self.play_media(media_file),
+                        self.wait_player_end_then_check_recorded)
+
+    def wait_player_end_then_check_recorded(self, sox_output):
+        """Wait for player ends playing and then check for recorded result.
+
+        Args:
+            sox_output: sox statistics output of recorded wav file.
+        """
+        if not self.pyauto.WaitUntil(lambda: self.pyauto.ExecuteJavascript("""
+                    player_status = document.getElementById('status');
+                    window.domAutomationController.send(player_status.innerHTML);
+                """), expect_retval='Ended'):
+            raise error.TestError('Player never end until timeout.');
+        self._ah.check_recorded(sox_output)
 
     def play_media(self, media_file):
         """Plays a media file in Chromium.
@@ -107,5 +120,8 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         Args:
             media_file: Media file to test.
         """
-        logging.info('Playing back now media file %s.' % media_file)
-        self.pyauto.NavigateToURL(self._test_url + media_file)
+        logging.info('Playing back now media file %s.', media_file)
+
+        # Navigate to play.html?<file-name>, javascript test will parse
+        # the media file name and play it.
+        self.pyauto.NavigateToURL("%s?%s" % (self._test_url, media_file))

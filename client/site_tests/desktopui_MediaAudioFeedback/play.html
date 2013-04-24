@@ -1,0 +1,22 @@
+<html>
+<script>
+  function play_file() {
+    var url = String(location.href);
+    var filename = url.substr(url.indexOf("?") + 1, url.length)
+    var p = document.getElementById("player");
+    p.setAttribute("src", filename);
+    p.addEventListener("ended", on_ended, true);
+    p.load();
+    p.play();
+    document.getElementById("status").innerHTML = "Playing";
+  }
+  function on_ended() {
+    document.getElementById("status").innerHTML = "Ended";
+  }
+</script>
+
+<body onload="play_file()">
+  <audio controls id="player"></audio>
+  <div id="status">N/A</div>
+</body>
+</html>
