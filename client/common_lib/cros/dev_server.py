@@ -129,7 +129,9 @@ class DevServer(object):
         try:
             make_call()
             return True
-        except (DevServerException, urllib2.URLError):
+        except Exception as e:
+            logging.error('Devserver call failed: "%s", timeout: %s seconds,'
+                          ' Error: %s', call, timeout_min*60, str(e))
             return False
 
 
