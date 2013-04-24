@@ -21,59 +21,24 @@ import validators
 
 from firmware_constants import MODE, OPTIONS
 from report_html import ReportHtml
+from telemetry.core import browser_options, browser_finder
 
 
-def setup_http_data_dir():
-    """Set up the default http data dir for pyauto test.
+def _display_test_result(report_html_name):
+    """Display the test result html doc using telemetry."""
+    if os.path.isdir('/usr/local/telemetry'):
+        base_url = os.path.basename(report_html_name)
+        url = os.path.join('file://' + conf.docroot, base_url)
+        logging.info('Navigate to the URL: %s', url)
 
-    When creating a test http server, it checks the default http data dir
-    no matter whether it is actually used. If the http data dir does not exist,
-    it throws out the testserver_base.OptionError.
-    """
-    autotest_dir = '/usr/local/autotest'
-    pyauto_test_dir = 'deps/pyauto_dep/test_src'
-    data_dir = 'chrome/test/data'
-    http_data_dir = os.path.join(autotest_dir, pyauto_test_dir, data_dir)
-    if not os.path.isdir(http_data_dir):
-        try:
-            os.makedirs(http_data_dir)
-            msg = 'http data directory created successfully: %s'
-            logging.info(msg, http_data_dir)
-        except os.error, e:
-            logging.error('Making the default http data dir: %s.', e)
-            exit(-1)
-
-
-# Include the paths and import required modules for running pyauto if
-# pyauto has been installed so that the test result file could be displayed
-# on Chrome automatically when all tests are finished.
-pyautolib = '/usr/local/autotest/deps/pyauto_dep/test_src/chrome/test/pyautolib'
-is_pyauto_installed = os.path.isdir(pyautolib)
-if is_pyauto_installed:
-    sys.path.append('/usr/local/autotest/cros')
-    sys.path.append(pyautolib)
-    import httpd
-    import pyauto
-
-    class DummyTest(pyauto.PyUITest):
-        """This is a dummpy test class derived from PyUITest to use pyauto tool.
-        """
-        def test_navigate_to_url(self):
-            """Navigate to the html test result file using pyauto."""
-            testServer = httpd.HTTPListener(8000, conf.docroot)
-            testServer.run()
-            # Note that the report_html_name is passed from firmware_TouchMTB
-            # to DummyTest as an environment variable.
-            # It is not passed as a global variable in this module because
-            # pyauto seems to create its own global scope.
-            report_html_name = os.environ[conf.ENVIRONMENT_REPORT_HTML_NAME]
-            if report_html_name:
-                base_url = os.path.basename(report_html_name)
-                url = os.path.join('http://localhost:8000', base_url)
-                self.NavigateToURL(url)
-                msg = 'Chrome has navigated to the specified url: %s'
-                logging.info(msg, os.path.join(conf.docroot, base_url))
-            testServer.stop()
+        # Launch a browser to display the url.
+        default_options = browser_options.BrowserOptions()
+        default_options.browser_type = 'system'
+        browser_to_create = browser_finder.FindBrowser(default_options)
+        browser = browser_to_create.Create()
+        browser.tabs[0].Navigate(url)
+    else:
+        print 'You can look up the html test result in %s' % report_html_name
 
 
 class firmware_TouchMTB:
@@ -177,8 +142,6 @@ class firmware_TouchMTB:
                                         curr_time])
         self.report_name = os.path.join(self.log_dir, fname)
         self.report_html_name = self.report_name + conf.html_ext
-        # Pass the report_html_name to DummyTest as an environment variable.
-        os.environ[conf.ENVIRONMENT_REPORT_HTML_NAME] = self.report_html_name
 
     def _get_screen_size(self):
         """Get the screen size."""
@@ -218,9 +181,11 @@ class firmware_TouchMTB:
             print 'Uploading %s to %s ...' % (self.log_dir, self.gs.bucket)
             self.gs.upload(self.log_dir)
         firmware_utils.start_power_management()
-        if is_pyauto_installed:
-            setup_http_data_dir()
-            pyauto.Main()
+
+        # Release simple x before launching the Chrome browser to display the
+        # html test result.
+        del self.simple_x
+        _display_test_result(self.report_html_name)
 
 
 def _usage_and_exit():
