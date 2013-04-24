@@ -2,31 +2,35 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re, logging
+import re
+
 from autotest_lib.client.common_lib import error
 
 class LinuxSystem(object):
-    """ This is a superclass for test machines running Linux.  It provides
-        a common point for routines that use the cfg80211 users space tools
-        to manipulate the wireless stack, regardless of the role they play.
-        Currently the commands shared are the init, which queries for wireless
-        devices, along with start_capture and stop_capture.  More commands
-        may migrate from site_linux_router as appropriate to share.
+    """Superclass for test machines running Linux.
+
+    Provides a common point for routines that use the cfg80211 userspace tools
+    to manipulate the wireless stack, regardless of the role they play.
+    Currently the commands shared are the init, which queries for wireless
+    devices, along with start_capture and stop_capture.  More commands may
+    migrate from site_linux_router as appropriate to share.
+
     """
+
     def __init__(self, host, params, role):
         # Command locations.
-        self.cmd_iw = params.get("cmd_iw", "/usr/sbin/iw")
-        self.cmd_ip = params.get("cmd_ip", "/usr/sbin/ip")
-        self.cmd_dhcpd = params.get("cmd_dhcpd", "/usr/sbin/dhcpd")
-        self.cmd_readlink = params.get("cmd_readlink", "/bin/ls -l")
-        self.cmd_tcpdump = params.get("cmd_tcpdump", "/usr/sbin/tcpdump")
+        self.cmd_iw = params.get('cmd_iw', '/usr/sbin/iw')
+        self.cmd_ip = params.get('cmd_ip', '/usr/sbin/ip')
+        self.cmd_dhcpd = params.get('cmd_dhcpd', '/usr/sbin/dhcpd')
+        self.cmd_readlink = params.get('cmd_readlink', '/bin/ls -l')
+        self.cmd_tcpdump = params.get('cmd_tcpdump', '/usr/sbin/tcpdump')
 
         self.phy_bus_preference = params.get('phy_bus_preference', {})
         self.phydev2 = params.get('phydev2', None)
         self.phydev5 = params.get('phydev5', None)
 
-        self.capture_file = "/tmp/dump.pcap"
-        self.capture_logfile = "/tmp/dump.log"
+        self.capture_file = '/tmp/dump.pcap'
+        self.capture_logfile = '/tmp/dump.log'
         self.capture_count = 0
         self.capture_running = False
         self.capture_channel = None
@@ -42,12 +46,22 @@ class LinuxSystem(object):
 
 
     def _get_phy_info(self):
-        """ Parse the output of 'iw list' and find out device support for
-            each frequency.  Also return the bus type of each phy device.
+        """Get information about WiFi devices.
+
+        Parse the output of 'iw list' and some of sysfs and return:
+
+        A dict |phys_for_frequency| which maps from each frequency to a
+        list of phys that support that channel.
+
+        A dict |phy_bus_type| which maps from each phy to the bus type for
+        each phy.
+
+        @return phys_for_frequency, phy_bus_type tuple as described.
+
         """
-        output = self.host.run("%s list" % self.cmd_iw).stdout
-        re_wiphy = re.compile("Wiphy (.*)")
-        re_mhz = re.compile("(\d+) MHz")
+        output = self.host.run('%s list' % self.cmd_iw).stdout
+        re_wiphy = re.compile('Wiphy (.*)')
+        re_mhz = re.compile('(\d+) MHz')
         in_phy = False
         phy_list = []
         phys_for_frequency = {}
@@ -72,7 +86,7 @@ class LinuxSystem(object):
         phy_bus_type = {}
         for phy in phy_list:
             phybus = 'unknown'
-            command = "%s /sys/class/ieee80211/%s" % (self.cmd_readlink, phy)
+            command = '%s /sys/class/ieee80211/%s' % (self.cmd_readlink, phy)
             devpath = self.host.run(command).stdout
             if '/usb' in devpath:
                 phybus = 'usb'
@@ -86,14 +100,20 @@ class LinuxSystem(object):
 
 
     def _remove_interface(self, interface, remove_monitor):
-        self.host.run("%s link set %s down" % (self.cmd_ip, interface))
-        self.host.run("%s dev %s del" % (self.cmd_iw, interface))
+        """Remove an interface from a WiFi device.
+
+        @param interface string interface to remove (e.g. wlan0).
+        @param remove_monitor bool True if we should also remove a monitor.
+
+        """
+        self.host.run('%s link set %s down' % (self.cmd_ip, interface))
+        self.host.run('%s dev %s del' % (self.cmd_iw, interface))
         if remove_monitor:
-            # Some old hostap implementations create a "mon.<interface>" to
+            # Some old hostap implementations create a 'mon.<interface>' to
             # handle management frame transmit/receive.
-            self.host.run("%s link set mon.%s down" % (self.cmd_ip, interface),
+            self.host.run('%s link set mon.%s down' % (self.cmd_ip, interface),
                           ignore_status=True)
-            self.host.run("%s dev mon.%s del" % (self.cmd_iw, interface),
+            self.host.run('%s dev mon.%s del' % (self.cmd_iw, interface),
                       ignore_status=True)
         for phytype in self.wlanifs:
             for phy in self.wlanifs[phytype]:
@@ -103,10 +123,11 @@ class LinuxSystem(object):
 
 
     def _remove_interfaces(self):
+        """Remove all WiFi devices."""
         self.wlanifs = {}
         # Remove all wifi devices.
-        output = self.host.run("%s dev" % self.cmd_iw).stdout
-        test = re.compile("[\s]*Interface (.*)")
+        output = self.host.run('%s dev' % self.cmd_iw).stdout
+        test = re.compile('[\s]*Interface (.*)')
         for line in output.splitlines():
             m = test.match(line)
             if m:
@@ -114,29 +135,34 @@ class LinuxSystem(object):
 
 
     def start_capture(self, params):
+        """Start a packet capture.
+
+        @param params dict of site_wifitest parameters.
+
+        """
         if self.capture_running:
             self.stop_capture({})
 
         if 'channel' in params:
             channel = int(params['channel'])
-            channel_args = "%s" % channel
+            channel_args = '%s' % channel
             for arg in ('ht20', 'ht40+', 'ht40-'):
                 if arg in params:
-                    channel_args = "%s %s" % (channel_args, arg.upper())
+                    channel_args = '%s %s' % (channel_args, arg.upper())
             self.capture_channel = channel
             self.channel_args = channel_args
         else:
             channel = self.capture_channel
             channel_args = self.channel_args
-        self.capture_interface = self._get_wlanif(channel, "monitor")
+        self.capture_interface = self._get_wlanif(channel, 'monitor')
 
-        self.host.run("%s dev %s set freq %s" %
+        self.host.run('%s dev %s set freq %s' %
             (self.cmd_iw, self.capture_interface, channel_args))
 
-        self.host.run("%s link set %s up" % (self.cmd_ip,
+        self.host.run('%s link set %s up' % (self.cmd_ip,
                                              self.capture_interface))
 
-        self.host.run("%s -i %s -w %s -s %s >%s 2>&1 &" %
+        self.host.run('%s -i %s -w %s -s %s >%s 2>&1 &' %
                       (self.cmd_tcpdump,
                        self.capture_interface,
                        self.capture_file,
@@ -146,10 +172,15 @@ class LinuxSystem(object):
 
 
     def stop_capture(self, params):
+        """Stop a packet capture.
+
+        @param params dict of site_wifitest parameters.
+
+        """
         if not self.capture_running:
             return
-        self.host.run("pkill -INT tcpdump >/dev/null 2>&1", ignore_status=True)
-        self.host.run("%s link set %s down" % (self.cmd_ip,
+        self.host.run('pkill -INT tcpdump >/dev/null 2>&1', ignore_status=True)
+        self.host.run('%s link set %s down' % (self.cmd_ip,
                                                self.capture_interface))
 
         self.host.get_file(self.capture_file,
@@ -161,11 +192,17 @@ class LinuxSystem(object):
 
 
     def _get_phy_for_frequency(self, frequency, phytype):
-        """ Return the most appropriate phy interface for operating on
-            the frequency |frequency| in the role indicated by |phytype|.
-            Prefer idle phys to busy phys if any exist.  Secondarily,
-            show affinity for phys that use the bus type associated with
-            this phy type.
+        """Get a phy appropriate for a frequency and phytype.
+
+        Return the most appropriate phy interface for operating on the
+        frequency |frequency| in the role indicated by |phytype|.  Prefer idle
+        phys to busy phys if any exist.  Secondarily, show affinity for phys
+        that use the bus type associated with this phy type.
+
+        @param frequency int WiFi frequency of phy.
+        @param phytype string key of phytype registered at construction time.
+        @return string name of phy to use.
+
         """
         phys = self.phys_for_frequency[frequency]
 
@@ -182,13 +219,20 @@ class LinuxSystem(object):
 
 
     def _get_wlanif(self, frequency, phytype, mode = None):
-        """ This function is used by inherited classes, so we use the
-            single '_' convention rather than the '__' we usually use for
-            non-scriptable commands, since these cannot be inherited by
-            subclasses.
+        """Get a WiFi device that supports the given frequency, mode, and type.
 
-            We still support the old "phydevN" parameters, but
-            this code is smart enough to do without it.
+        This function is used by inherited classes, so we use the single '_'
+        convention rather than the '__' we usually use for non-scriptable
+        commands, since these cannot be inherited by subclasses.
+
+        We still support the old "phydevN" parameters, but this code is
+        smart enough to do without it.
+
+        @param frequency int WiFi frequency to support.
+        @param phytype string type of phy (e.g. 'monitor').
+        @param mode string 'a' 'b' or 'g'.
+        @return string WiFi device.
+
         """
         if mode in ('b', 'g') and self.phydev2 is not None:
             phy = self.phydev2
@@ -197,7 +241,7 @@ class LinuxSystem(object):
         elif frequency in self.phys_for_frequency:
             phy = self._get_phy_for_frequency(frequency, phytype)
         else:
-            raise error.TestFail("Unable to find phy for frequency %d mode %s" %
+            raise error.TestFail('Unable to find phy for frequency %d mode %s' %
                                  (frequency, mode))
 
         # If self.wlanifs is not defined, this is the first time we've
@@ -210,10 +254,10 @@ class LinuxSystem(object):
         elif phy in self.wlanifs[phytype]:
             return self.wlanifs[phytype][phy]
 
-        wlanif = "%s%d" % (phytype, len(self.wlanifs[phytype].keys()))
+        wlanif = '%s%d' % (phytype, len(self.wlanifs[phytype].keys()))
         self.wlanifs[phytype][phy] = wlanif
 
-        self.host.run("%s phy %s interface add %s type %s" %
+        self.host.run('%s phy %s interface add %s type %s' %
             (self.cmd_iw, phy, wlanif, phytype))
 
         self.wlanifs_in_use.append((phy, wlanif, phytype))
@@ -222,6 +266,11 @@ class LinuxSystem(object):
 
 
     def _release_wlanif(self, wlanif):
+        """Release a device allocated throuhg _get_wlanif().
+
+        @param wlanif string name of device to release.
+
+        """
         for phy, wlanif_i, phytype in self.wlanifs_in_use:
             if wlanif_i == wlanif:
                  self.wlanifs_in_use.remove((phy, wlanif, phytype))
