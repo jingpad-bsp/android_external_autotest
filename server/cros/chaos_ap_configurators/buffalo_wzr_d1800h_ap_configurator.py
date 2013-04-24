@@ -228,7 +228,7 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         default = self.driver.switch_to_default_content()
 
 
-   def is_visibility_supported(self):
+    def is_visibility_supported(self):
         """
         Returns if AP supports setting the visibility (SSID broadcast).
 

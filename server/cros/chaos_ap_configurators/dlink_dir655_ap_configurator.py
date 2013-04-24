@@ -86,7 +86,9 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
         # All settings are on the same page, so we always open the config page
         page_url = urlparse.urljoin(self.admin_interface_url, 'wireless.asp')
         self.get_url(page_url, page_title='D-LINK CORPORATION')
-        found_id = self.wait_for_objects_by_id(['w_enable', 'log_pass'])
+        # We wait for the page to load and avoid the intermediate page
+        found_id = self.wait_for_objects_by_id(['w_enable', 'log_pass'],
+                                               wait_time=15)
         if 'log_pass' in found_id:
             self.login_to_ap()
         elif 'w_enable' not in found_id:
@@ -94,7 +96,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
                     'Unable to navigate to login or configuration page.')
 
 
-    def login_to_ap():
+    def login_to_ap(self):
         self.set_content_of_text_field_by_id('password', 'log_pass')
         self.click_button_by_id('login', alert_handler=self._alert_handler)
         # This will send us to the landing page and not where we want to go.
