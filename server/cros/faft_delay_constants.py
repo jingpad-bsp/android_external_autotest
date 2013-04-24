@@ -34,6 +34,8 @@ class FAFTDelayConstants(object):
     ec_boot_to_pwr_button = 0.5
     # Delay of EC software sync hash calculating time
     software_sync = 6
+    # Delay of EC software sync updating EC
+    software_sync_update = 2
     # Duration of holding cold_reset to reset device
     hold_cold_reset = 0.1
     # Duration of holding power button to shutdown DUT normally
@@ -75,3 +77,6 @@ class FAFTDelayConstants(object):
 
             # Parrot takes slightly longer to get to dev screen.
             self.dev_screen = 8
+
+        if platform == 'Spring':
+            self.software_sync_update = 6
