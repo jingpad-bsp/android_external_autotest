@@ -96,7 +96,9 @@ class WebDriverCoreHelpers(object):
         while (int(time.time()) - start_time) < wait_time:
             for xpath in xpaths:
                 try:
-                    if self.wait_for_object_by_xpath(xpath, wait_time=0.25):
+                    element = self.wait_for_object_by_xpath(xpath,
+                                                            wait_time=0.25)
+                    if element and element.is_displayed():
                         return xpath
                 except:
                     pass
