@@ -9,6 +9,7 @@ import pprint
 from datetime import datetime
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
 from autotest_lib.server.cros.chaos_ap_configurators import \
@@ -38,28 +39,22 @@ class WiFiChaosConnectionTest(object):
 
 
     def _get_dut_wlan_mac(self):
-        """Extracts MAC addr of DUT's wlan0 interface.
+        """Extracts MAC addr of DUT's WLAN interface.
 
-        Example ifconfig output for wlan0 on a cros device:
-        localhost tmp # ifconfig wlan0
-        wlan0     Link encap:Ethernet  HWaddr 20:68:9d:0a:4e:6b
-                  UP BROADCAST MULTICAST  MTU:1500  Metric:1
-                  RX packets:7605 errors:0 dropped:23 overruns:0 frame:0
-                  TX packets:9166 errors:0 dropped:0 overruns:0 carrier:0
-                  collisions:0 txqueuelen:1000
-                  RX bytes:1031738 (1007.5 KiB)  TX bytes:1228876 (1.1 MiB)
-
-        We want to extract the string immediately following 'HWaddr'.
-
-        @return a string, wlan0 MAC address.
+        @return a string, MAC address of a WLAN interface.
+        @raises TestFail: if error looking up wifi device or its MAC address.
         """
-        mac_addr = 'unknown'
-        result = self.host.run("ifconfig wlan0 | awk '/HWaddr/ { print $5 }'")
-        if result.stdout:
-            mac_addr = result.stdout.strip()  #  Remove trailing newline
-        # FIXME(tgao): raise an error here if MAC addr not found?
-        logging.info('DUT wlan0 MAC addr = %s', mac_addr)
-        return mac_addr
+        devs = wifi_test_utils.get_wlan_devs(self.host, 'iw')
+        if not devs:
+            raise error.TestFail('No wifi devices found on %s.',
+                                 self.host.hostname)
+        logging.info('Found wifi device %s on %s', devs[0], self.host.hostname)
+        mac = wifi_test_utils.get_interface_mac(self.host, devs[0], 'ip')
+        if not mac:
+            raise error.TestFail('No MAC address found for %s on %s.',
+                                 devs[0], self.host.hostname)
+        logging.info('%s has MAC addr %s', devs[0], mac)
+        return mac
 
 
     def __init__(self, host, capturer):
