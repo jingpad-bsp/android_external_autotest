@@ -7,18 +7,18 @@
 {
   # client/netbook running Chrome OS (Device Under Test)
   "client"      : {
-    "addr"      : "172.22.18.233"  # eth0
+    "addr"      : "172.22.29.245"  # eth0
   },
   # Stumpy acting as iperf server
   "server"      : {
-    "addr"      : "172.22.18.174",  # eth0
+    "addr"      : "172.22.29.244",  # eth0
   },
   # Stumpy acting as AP
   "router"      : {
-    "addr"      : "172.22.18.174",  # eth0
+    "addr"      : "172.22.29.244",  # eth0
   },
   # BeagleBone controlled variable attenuator
   "attenuator"      : {
-    "addr"      : "172.22.18.169",  # eth0
+    "addr"      : "172.22.29.243",  # eth0
   }
 }
