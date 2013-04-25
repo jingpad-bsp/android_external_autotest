@@ -145,7 +145,7 @@ class WiFiChaosConnectionTest(object):
             self.error_list.append(ap_info)
 
 
-    def _config_one_ap(self, ap, band, channel, security, mode):
+    def _config_one_ap(self, ap, band, channel, security, mode, visibility):
         """Configures an AP for the test.
 
         @param ap: an APConfigurator object.
@@ -153,6 +153,7 @@ class WiFiChaosConnectionTest(object):
         @param channel: an integer.
         @param security: a string, AP security method.
         @param mode: a hexadecimal, 802.11 mode.
+        @param visibility: a boolean
 
         @returns a dict representing one band of a configured AP.
         """
@@ -166,7 +167,8 @@ class WiFiChaosConnectionTest(object):
         ap.set_channel(channel)
         ap.set_radio(enabled=True)
         ap.set_ssid(ssid)
-        ap.set_visibility(visible=True)
+        if ap.is_visibility_supported():
+            ap.set_visibility(visible=visibility)
 
         ap.set_mode(mode)
         if security == self.generic_ap.security_type_wpapsk:
@@ -186,7 +188,7 @@ class WiFiChaosConnectionTest(object):
                 'frequency': ChaosAP.FREQUENCY_TABLE[channel],
                 'radio': True,
                 'ssid': ssid,
-                'visibility': True,
+                'visibility': visibility,
                 'security': security,
                 self.PSK: self.psk_password,
                 'brand': ap.config_data.get_brand(),
@@ -209,7 +211,7 @@ class WiFiChaosConnectionTest(object):
                         return mode_type
 
 
-    def config_aps(self, aps, band, channel, security=''):
+    def config_aps(self, aps, band, channel, security='', visibility=True):
         """Configures a list of APs.
 
         @param aps: a list of APConfigurator objects.
@@ -217,18 +219,20 @@ class WiFiChaosConnectionTest(object):
         @param channel: an integer.
         @param security: a string, AP security method. Defaults to empty string
                          (i.e. open system). Other possible value is self.PSK.
+        @param visibility: a boolean.  Defaults to True.
 
         @returns a list of dicts, each a return by _config_one_ap().
         """
         configured_aps = []
         cartridge = ap_cartridge.APCartridge()
         for ap in aps:
-            logging.info('Configuring AP %s', ap.get_router_name())
             if not ap.is_band_and_channel_supported(band, channel):
                 continue
 
+            logging.info('Configuring AP %s', ap.get_router_name())
             mode = self._get_mode_type(ap, band)
-            ap_info = self._config_one_ap(ap, band, channel, security, mode)
+            ap_info = self._config_one_ap(ap, band, channel, security, mode,
+                                          visibility)
             configured_aps.append(ap_info)
             cartridge.push_configurator(ap)
 
