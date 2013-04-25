@@ -38,8 +38,8 @@ class telemetry_Benchmarks(test.test):
                 failed_page_sets.append(page_set)
         if failed_page_sets:
             raise error.TestFail('%s failed for page_sets: %s. And warned'
-                                 ' for page_sets: %s.', benchmark,
-                                 failed_page_sets, warned_page_sets)
+                                 ' for page_sets: %s.'% (benchmark,
+                                 failed_page_sets, warned_page_sets))
         if warned_page_sets:
             raise error.TestWarn('%s exited with warnings for page_sets:'
-                                 ' %s.', benchmark, warned_page_sets)
+                                 ' %s.'% (benchmark, warned_page_sets))
