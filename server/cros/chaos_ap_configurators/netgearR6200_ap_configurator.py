@@ -17,10 +17,11 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
 
         @params alert: The modal dialog's contents.
         """
-        super(NetgearR6200APConfigurator, self)._alert_handler(alert)
         text = alert.text
         if 'WPS requires SSID broadcasting in order to work' in text:
             alert.accept()
+        else:
+            super(NetgearR6200APConfigurator, self)._alert_handler(alert)
 
 
     def get_supported_modes(self):
