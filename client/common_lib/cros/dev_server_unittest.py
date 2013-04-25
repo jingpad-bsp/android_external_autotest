@@ -45,9 +45,10 @@ class DevServerTest(mox.MoxTestBase):
     def testSimpleResolve(self):
         """One devserver, verify we resolve to it."""
         self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
-        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_healthy')
         dev_server._get_dev_server_list().AndReturn([DevServerTest._HOST])
-        dev_server.DevServer.devserver_up(DevServerTest._HOST).AndReturn(True)
+        dev_server.DevServer.devserver_healthy(DevServerTest._HOST).AndReturn(
+                                                                        True)
         self.mox.ReplayAll()
         devserver = dev_server.ImageServer.resolve('my_build')
         self.assertEquals(devserver.url(), DevServerTest._HOST)
@@ -63,7 +64,7 @@ class DevServerTest(mox.MoxTestBase):
         urllib2.urlopen(mox.StrContains(bad_host)).AndRaise(
                 dev_server.DevServerException())
         # Good host is good.
-        to_return = StringIO.StringIO('Success')
+        to_return = StringIO.StringIO('{"free_disk": 1024}')
         urllib2.urlopen(mox.StrContains(good_host)).AndReturn(to_return)
 
         self.mox.ReplayAll()
@@ -71,11 +72,11 @@ class DevServerTest(mox.MoxTestBase):
         self.assertEquals(host.url(), good_host)
         self.mox.VerifyAll()
 
+
     def testResolveWithFailureURLError(self):
         """Ensure we rehash on a failed ping on a bad_host after urlerror."""
         # Retry mock just return the original method.
         retry.retry = retry_mock
-        self.mox.StubOutWithMock(time, 'time')
         self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
         bad_host, good_host = 'http://bad_host:99', 'http://good_host:8080'
         dev_server._get_dev_server_list().AndReturn([bad_host, good_host])
@@ -85,7 +86,7 @@ class DevServerTest(mox.MoxTestBase):
                 urllib2.URLError('urlopen connection timeout'))
 
         # Good host is good.
-        to_return = StringIO.StringIO('Success')
+        to_return = StringIO.StringIO('{"free_disk": 1024}')
         urllib2.urlopen(mox.StrContains(good_host)).AndReturn(to_return)
 
         self.mox.ReplayAll()
@@ -97,15 +98,15 @@ class DevServerTest(mox.MoxTestBase):
     def testResolveWithManyDevservers(self):
         """Should be able to return different urls with multiple devservers."""
         self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
-        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_healthy')
 
         host0_expected = 'http://host0:8080'
         host1_expected = 'http://host1:8082'
 
         dev_server.ImageServer.servers().MultipleTimes().AndReturn(
                 [host0_expected, host1_expected])
-        dev_server.DevServer.devserver_up(host0_expected).AndReturn(True)
-        dev_server.DevServer.devserver_up(host1_expected).AndReturn(True)
+        dev_server.DevServer.devserver_healthy(host0_expected).AndReturn(True)
+        dev_server.DevServer.devserver_healthy(host1_expected).AndReturn(True)
 
         self.mox.ReplayAll()
         host0 = dev_server.ImageServer.resolve(0)
@@ -283,10 +284,10 @@ class DevServerTest(mox.MoxTestBase):
     def testGetLatestBuild(self):
         """Should successfully return a build for a given target."""
         self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
-        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_healthy')
 
         dev_server.ImageServer.servers().AndReturn([self._HOST])
-        dev_server.DevServer.devserver_up(self._HOST).AndReturn(True)
+        dev_server.DevServer.devserver_healthy(self._HOST).AndReturn(True)
 
         target = 'x86-generic-release'
         build_string = 'R18-1586.0.0-a1-b1514'
@@ -301,7 +302,7 @@ class DevServerTest(mox.MoxTestBase):
     def testGetLatestBuildWithManyDevservers(self):
         """Should successfully return newest build with multiple devservers."""
         self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
-        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_up')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_healthy')
 
         host0_expected = 'http://host0:8080'
         host1_expected = 'http://host1:8082'
@@ -309,8 +310,8 @@ class DevServerTest(mox.MoxTestBase):
         dev_server.ImageServer.servers().MultipleTimes().AndReturn(
                 [host0_expected, host1_expected])
 
-        dev_server.DevServer.devserver_up(host0_expected).AndReturn(True)
-        dev_server.DevServer.devserver_up(host1_expected).AndReturn(True)
+        dev_server.DevServer.devserver_healthy(host0_expected).AndReturn(True)
+        dev_server.DevServer.devserver_healthy(host1_expected).AndReturn(True)
 
         target = 'x86-generic-release'
         build_string1 = 'R9-1586.0.0-a1-b1514'
@@ -333,3 +334,4 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         call = self.crash_server.build_call('symbolicate_dump')
         self.assertTrue(call.startswith(self._CRASH_HOST))
+

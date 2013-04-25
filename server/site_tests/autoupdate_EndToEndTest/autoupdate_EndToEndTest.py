@@ -317,8 +317,8 @@ class OmahaDevserver(object):
         current_time = time.time()
         deadline = current_time + timeout
         while(current_time < deadline):
-            if dev_server.DevServer.devserver_up('http://%s' % netloc,
-                                                 timeout_min=0.1):
+            if dev_server.DevServer.devserver_healthy('http://%s' % netloc,
+                                                      timeout_min=0.1):
                 return True
 
             time.sleep(self._WAIT_SLEEP_INTERVAL)

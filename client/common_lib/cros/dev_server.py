@@ -3,14 +3,17 @@
 # found in the LICENSE file.
 
 from distutils import version
+import json
 import logging
 import os
 import urllib2
 import HTMLParser
 import cStringIO
+import re
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.site_utils.graphite import stats
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
 
@@ -92,7 +95,6 @@ class DevServerException(Exception):
     pass
 
 
-
 class DevServer(object):
     """Base class for all DevServer-like server stubs.
 
@@ -102,6 +104,8 @@ class DevServer(object):
     host = SubClassServer.resolve(build)
     server = SubClassServer(host)
     """
+    _MIN_FREE_DISK_SPACE_GB = 20
+
     def __init__(self, devserver):
         self._devserver = devserver
 
@@ -112,26 +116,43 @@ class DevServer(object):
 
 
     @staticmethod
-    def devserver_up(devserver, timeout_min=0.1):
-        """Returns True if the |devserver| is responding to calls.
+    def devserver_healthy(devserver, timeout_min=0.1):
+        """Returns True if the |devserver| is healthy to stage build.
 
         @param devserver: url of the devserver.
         @param timeout_min: How long to wait in minutes before deciding the
                             the devserver is not up (float).
         """
-        call = DevServer._build_call(devserver, 'index')
+        server_name =  re.sub(r':\d+$', '', devserver.lstrip('http://'))
+        # statsd treats |.| as path separator.
+        server_name =  server_name.replace('.', '_')
+        call = DevServer._build_call(devserver, 'check_health')
 
         @remote_devserver_call(timeout_min=timeout_min)
         def make_call():
             """Inner method that makes the call."""
-            urllib2.urlopen(call)
+            return urllib2.urlopen(call).read()
 
         try:
-            make_call()
+            result_dict = json.load(cStringIO.StringIO(make_call()))
+            free_disk = result_dict['free_disk']
+            stats.Gauge(server_name).send('free_disk', free_disk)
+
+            if free_disk < DevServer._MIN_FREE_DISK_SPACE_GB:
+                logging.error('Devserver check_health failed. Free disk space '
+                              'is low. Only %dGB is available.', free_disk)
+                stats.Counter(server_name +'.devserver_not_healthy').increment()
+                return False
+
+            # This counter indicates the load of a devserver. By comparing the
+            # value of this counter for all devservers, we can evaluate the
+            # load balancing across all devservers.
+            stats.Counter(server_name + '.devserver_healthy').increment()
             return True
         except Exception as e:
             logging.error('Devserver call failed: "%s", timeout: %s seconds,'
                           ' Error: %s', call, timeout_min*60, str(e))
+            stats.Counter(server_name + '.devserver_not_healthy').increment()
             return False
 
 
@@ -174,7 +195,7 @@ class DevServer(object):
         calls = []
         # Note we use cls.servers as servers is class specific.
         for server in cls.servers():
-            if cls.devserver_up(server):
+            if cls.devserver_healthy(server):
                 calls.append(cls._build_call(server, method, **kwargs))
 
         return calls
@@ -196,7 +217,7 @@ class DevServer(object):
         while devservers:
             hash_index = hash(build) % len(devservers)
             devserver = devservers.pop(hash_index)
-            if cls.devserver_up(devserver):
+            if cls.devserver_healthy(devserver):
                 return cls(devserver)
         else:
             logging.error('All devservers are currently down!!!')
