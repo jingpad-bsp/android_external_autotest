@@ -45,7 +45,6 @@ class WebDriverCoreHelpers(object):
             except WebDriverException:
                 # There is a bug in selenium where the alert object will exist
                 # but you can't get to the text object right away.
-                import time
                 time.sleep(1)
             alert_text = alert.text
             alert.accept()
@@ -90,6 +89,7 @@ class WebDriverCoreHelpers(object):
 
         @return The xpath that was found first.
         """
+        excpetion = None
         if wait_time < len(xpaths):
             wait_time = len(xpaths)
         start_time = int(time.time())
@@ -100,9 +100,10 @@ class WebDriverCoreHelpers(object):
                                                             wait_time=0.25)
                     if element and element.is_displayed():
                         return xpath
-                except:
+                except SeleniumTimeoutException, e:
+                    exception = str(e)
                     pass
-        return None
+        raise SeleniumTimeoutException(exception)
 
 
     def click_button_by_id(self, element_id, alert_handler=None):
