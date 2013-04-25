@@ -123,12 +123,12 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
         self.add_item_to_command_list(self._set_security_disabled, (), 2, 900)
 
 
-    def set_security_wep(self):
+    def set_security_wep(self, key_value, authentication):
         self.add_item_to_command_list(self._set_security_wep,
                                       (key_value, authentication), 2, 900)
 
 
-    def set_security_wpapsk(self):
+    def set_security_wpapsk(self, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapask,
                                       (shared_key, update_interval), 2, 900)
 
