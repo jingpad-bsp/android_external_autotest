@@ -767,6 +767,8 @@ def parse_args():
                       help='host running servod. Servo used only if set.')
     parser.add_option('--servo_port', metavar='PORT',
                       help='servod port [servod default]')
+    parser.add_option('--skip_boards', dest='skip_boards',
+                      help='boards to skip, separated by comma.')
     parser.add_option('--omaha_host', metavar='ADDR',
                       help='Optional host where Omaha server will be spawned.'
                       'If not set, localhost is used.')
@@ -802,6 +804,12 @@ def parse_args():
         for board in opts.tested_board_list:
             if board not in _board_info.get_board_names():
                 parser.error('unknown board (%s)' % board)
+
+    # Skip specific board.
+    if opts.skip_boards:
+        opts.skip_boards = opts.skip_boards.split(',')
+        opts.tested_board_list = [board for board in opts.tested_board_list
+                                  if board not in opts.skip_boards]
 
     # Sanity check log level.
     if opts.log_level not in _valid_log_levels:
