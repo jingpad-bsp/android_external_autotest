@@ -2,12 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 {
-# Chrome Web Store ("ahfgeienlihckogmohjhadlkjgocpleb") and
+# Chrome Web Store ("ahfgeienlihckogmohjhadlkjgocpleb"),
+# Virtual Keyboard ("mppnpdlheglhdfmldimlhpnegondlapf"),
+# Files ("hhaomjibdihmijegdhdafkllkbggdgoj"), and
 # Bookmark Manager ("eemcgdkfndhakfknompkggombfjjjeno") are
 # already tracked and reviewed on the Chrome side. Ignore them
 # in our test, otherwise it's just a baseline maintenance treadmill.
   "ignored_extension_ids": [
     "ahfgeienlihckogmohjhadlkjgocpleb",
+    "mppnpdlheglhdfmldimlhpnegondlapf",
+    "hhaomjibdihmijegdhdafkllkbggdgoj",
     "eemcgdkfndhakfknompkggombfjjjeno"
   ],
   "bundled_crx_baseline": [
@@ -79,6 +83,8 @@
         "effective_host_permissions": [],
         "api_permissions": ["fileBrowserHandler",
                             "fileBrowserHandlerInternal",
+                            "fileSystem",
+                            "fileSystem.write",
                             "metricsPrivate",
                             "streamsPrivate",
                             "unlimitedStorage"
@@ -148,30 +154,6 @@
       }
   ],
   "component_extension_baseline": [
-      { "id": "hhaomjibdihmijegdhdafkllkbggdgoj",
-        "name": "File Manager",
-        "effective_host_permissions": ["chrome://extension-icon/*",
-                                       "chrome://resources/*",
-                                       "chrome://theme/*",
-                                       "https://drive.google.com/*",
-                                       "https://docs.google.com/*",
-                                       "https://*.googleusercontent.com/*"],
-        "api_permissions": ["app.runtime",
-                            "app.currentWindowInternal",
-                            "app.window",
-                            "fileBrowserHandler",
-                            "fileBrowserHandlerInternal",
-                            "fileBrowserPrivate",
-                            "fullscreen",
-                            "mediaGalleriesPrivate",
-                            "mediaPlayerPrivate",
-                            "metricsPrivate",
-                            "storage",
-                            "tabs",
-                            "clipboardWrite",
-                            "clipboardRead",
-                            "unlimitedStorage"]
-      },
       { "id": "pmfjbimdmchhbnneeidfognadeopoehp",
         "name": "Image Loader",
         "effective_host_permissions": [],
@@ -227,11 +209,6 @@
         "boards": ["link"],
         "effective_host_permissions": [],
         "api_permissions": []
-      },
-      { "id": "mppnpdlheglhdfmldimlhpnegondlapf",
-        "name": "Virtual keyboard",
-        "effective_host_permissions": [],
-        "api_permissions": ["experimental"]
       },
       { "id": "plamffmopddapimaopfdbibfkjpbojbf",
         "name": "Registration",
