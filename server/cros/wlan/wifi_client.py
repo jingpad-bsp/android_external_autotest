@@ -165,6 +165,8 @@ class WiFiClient(object):
         self._wifi_mac = wifi_test_utils.get_interface_mac(
                 self.host, self.wifi_if, self.command_ip)
 
+        self._firewall_rules = []
+
 
     def close(self):
         """Tear down state associated with the client."""
@@ -293,3 +295,40 @@ class WiFiClient(object):
                               stats['max'],
                               stats['dev'])
             raise error.TestFail('Significant difference in rtt due to bgscan')
+
+
+    def firewall_open(self, proto, src):
+        """Opens up firewall to run iperf/netperf tests.
+
+        By default, we have a firewall rule for NFQUEUE (see crbug.com/220736).
+        In order to run iperf test, we need to add a new firewall rule BEFORE
+        this NFQUEUE rule in the INPUT chain.
+
+        @param proto a string, test traffic protocol, e.g. udp, tcp.
+        @param src a string, subnet/mask.
+
+        @return a string firewall rule added.
+
+        """
+        rule = 'INPUT -s %s/32 -p %s -m %s -j ACCEPT' % (src, proto, proto)
+        self.host.run('%s -I %s' % (self._command_iptables, rule))
+        self._firewall_rules.append(rule)
+        return rule
+
+
+    def _firewall_close(self, rule):
+        """Removes firewall rule.
+
+        @param rule a string, firewall rule to remove.
+
+        """
+        if rule in self._firewall_rules:
+            self.host.run('%s -D %s' % (self._command_iptables, rule))
+            self._firewall_rules.remove(rule)
+
+
+    def firewall_cleanup(self):
+        """Cleans up firewall rules."""
+        for rule in self._firewall_rules:
+            self._firewall_close(rule)
+

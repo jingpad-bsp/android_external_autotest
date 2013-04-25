@@ -233,7 +233,6 @@ class WiFiTest(object):
         self.client_cmd_flimflam_lib = ('/usr/local' +
                                         constants.FLIMFLAM_TEST_PATH)
 
-        self.firewall_rules = []
         self.host_route_args = {}
 
         # Make sure powersave mode is off by default.
@@ -328,7 +327,7 @@ class WiFiTest(object):
         self.profile_cleanup()
         self.client_stop_capture({})
         self.client_stop_statistics({})
-        self.firewall_cleanup({})
+        self.client_proxy.firewall_cleanup()
         self.host_route_cleanup({})
         self.wifi.stop_capture({})
         self.hosting_server.stop_capture({})
@@ -1295,7 +1294,6 @@ class WiFiTest(object):
                 client_args += " -b %s" % bw
                 self.write_perf({'bandwidth':bw})
 
-        ip_rules = []
         if mode == 'server':
             server = { 'host': self.client,
                        'cmd': self.client_proxy.command_iperf }
@@ -1304,8 +1302,8 @@ class WiFiTest(object):
                        'target': self.client_wifi_ip }
 
             # Open up access from the server into our DUT
-            ip_rules.append(self.__firewall_open('tcp', self.server_wifi_ip))
-            ip_rules.append(self.__firewall_open('udp', self.server_wifi_ip))
+            self.client_proxy.firewall_open('tcp', self.server_wifi_ip)
+            self.client_proxy.firewall_open('udp', self.server_wifi_ip)
         else:  # mode == 'client'
             server = { 'host': self.server,
                        'cmd': self.hosting_server.cmd_iperf }
@@ -1330,8 +1328,7 @@ class WiFiTest(object):
         iperf_thread.join()
 
         # Close up whatever firewall rules we created for iperf
-        for rule in ip_rules:
-            self.__firewall_close(rule)
+        self.client_proxy.firewall_cleanup()
 
         self.write_perf({
             'attenuation': self.cur_attenuation or 'unknown',
@@ -1484,29 +1481,7 @@ class WiFiTest(object):
             self.server_iperf(iperf_params)
 
 
-    def __firewall_open(self, proto, src):
-        rule = 'INPUT -s %s/32 -p %s -m %s -j ACCEPT' % (src, proto, proto)
-        result = self.client.run('%s -S INPUT' %
-                                 self.client_proxy.command_iptables)
-        if '-A %s ' % rule in result.stdout.splitlines():
-            return None
-        self.client.run('%s -A %s' % (self.client_proxy.command_iptables, rule))
-        self.firewall_rules.append(rule)
-        return rule
-
-
-    def __firewall_close(self, rule):
-        if rule in self.firewall_rules:
-            self.client.run('%s -D %s' % (self.client_proxy.command_iptables,
-                                          rule))
-            self.firewall_rules.remove(rule)
-
-    def firewall_cleanup(self, params):
-        for rule in self.firewall_rules:
-            self.__firewall_close(rule)
-
     def __run_netperf(self, mode, params):
-        np_rules = []
         if mode == 'server':
             server = { 'host': self.client,
                        'cmd': self.client_proxy.command_netserv }
@@ -1515,8 +1490,8 @@ class WiFiTest(object):
                        'target': self.client_wifi_ip }
 
             # Open up access from the server into our DUT
-            np_rules.append(self.__firewall_open('tcp', self.server_wifi_ip))
-            np_rules.append(self.__firewall_open('udp', self.server_wifi_ip))
+            self.client_proxy.firewall_open('tcp', self.server_wifi_ip)
+            self.client_proxy.firewall_open('udp', self.server_wifi_ip)
         else:
             server = { 'host': self.server,
                        'cmd': self.hosting_server.cmd_netserv }
@@ -1543,8 +1518,7 @@ class WiFiTest(object):
         netperf_thread.join()
 
         # Close up whatever firewall rules we created for netperf
-        for rule in np_rules:
-            self.__firewall_close(rule)
+        self.client_proxy.firewall_cleanup()
 
         self.write_perf({
             'frequency'  : self.cur_frequency,
