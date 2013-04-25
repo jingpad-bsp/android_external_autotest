@@ -96,10 +96,6 @@ class WiFiChaosConnectionTest(object):
 
         @return a string (error message) or None.
         """
-        # Enable logging
-        self.host.run('restart wpasupplicant WPA_DEBUG=excessive')
-        self.host.run('restart shill SHILL_LOG_SCOPES=wifi SHILL_LOG_LEVEL=-5')
-
         self.disconnector.disconnect(ap_info['ssid'])
         self.connector.set_frequency(ap_info['frequency'])
 
@@ -128,6 +124,11 @@ class WiFiChaosConnectionTest(object):
         @param tries: an integer, number of connection attempts.
         @param log_dir: a string, directory to store test logs.
         """
+
+        # Enable logging
+        self.host.run('restart wpasupplicant WPA_DEBUG=excessive')
+        self.host.run('restart shill SHILL_LOG_SCOPES=wifi SHILL_LOG_LEVEL=-5')
+
         ap_info['failed_iterations'] = []
         # Make iteration 1-indexed
         for iteration in range(1, tries+1):
