@@ -101,7 +101,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
                                  not addr.startswith(self.server.ip),
                     addrs)
             if not valid_addrs:
-                raise error.TestFailed('No configured interfaces.')
+                raise error.TestFail('No configured interfaces.')
             if len(valid_addrs) > 1:
                 logging.warning('Multiple interfaces configured on server; '
                                 'taking first.')

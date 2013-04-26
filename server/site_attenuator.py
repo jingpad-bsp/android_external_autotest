@@ -9,14 +9,6 @@
 import os
 
 
-# Port of variable attenuator.
-VA_PORT = 'va_port'
-# Fixed attenuation in dB.
-FIXED_ATTEN = 'fixed_atten'
-# Total attenuation in dB.
-TOTAL_ATTEN = 'total_atten'
-
-
 class ScriptNotFound(Exception):
     """Raised when attenuator scripts cannot be found."""
 
@@ -24,6 +16,7 @@ class ScriptNotFound(Exception):
         """Initialize.
 
         @param script_name: a string.
+
         """
         super(ScriptNotFound, self).__init__(
             'Script %s not found in search path' % script_name)
@@ -36,6 +29,7 @@ class Attenuator(object):
     attenuator over SSH in control network.
     """
 
+
     def __init__(self, host):
         """Initialize.
 
@@ -45,51 +39,46 @@ class Attenuator(object):
         self.installed_scripts = {}
 
 
-    def init_va(self, params):
+    def init_atten_port(self, port):
         """Initializes attenuator port.
 
-        @param params: a Python dictionary.
+        @param port: an integer, Beaglebone I/O port number (0 or 1).
         """
-        port_num = params.get(VA_PORT, 0)
-
         # Install Python scripts on attenuator
         # TODO(tgao): bundle these scripts as part of a test image?
         init_script = self._copy_script('attenuator_init.py',
                                         'attenuator_util.py',
                                         'constants.py')
-        self.host.run('python "%s" -p %s 2>&1' % (init_script, port_num))
+        self.host.run('python "%s" -p %s 2>&1' % (init_script, port))
 
 
-    def get_attenuation(self, params):
+    def get_attenuation(self, port):
         """Reads current attenuation level in dB.
 
-        @param params: a Python dictionary.
+        @param port: an integer, Beaglebone I/O port number (0 or 1).
         """
-        port_num = params.get(VA_PORT, 0)
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
-        self.host.run('python "%s" -p %d 2>&1' % (attenuator_script, port_num))
+        self.host.run('python "%s" -p %d 2>&1' % (attenuator_script, port))
 
-    def set_attenuation(self, params):
+    def set_attenuation(self, port, fixed_db, total_db):
         """Sets desired attenuation level in dB.
 
-        @param params: a Python dictionary.
-        @returns total_atten: an integer, total attenuation in dB.
+        @param port: an integer, Beaglebone I/O port number (0 or 1).
+        @param fixed_db: an integer, fixed attenuation in dB.
+        @param total_db: an integer, total attenuation in dB.
+        @returns an integer, total attenuation in dB.
         """
-        port_num = params.get(VA_PORT, 0)
-        fixed_atten = params.get(FIXED_ATTEN, None)
-        total_atten = params.get(TOTAL_ATTEN, None)
-
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
         self.host.run('python "%s" -p %d -f %d -t %d 2>&1' %
-                      (attenuator_script, port_num, fixed_atten, total_atten))
-        return total_atten
+                      (attenuator_script, port, fixed_db, total_db))
+        return total_db
 
 
-    # TODO(tgao): refactor & merge this w/ site_linux.router.install_script()
+    # TODO(tgao): refactor & merge this w/ site_wifitest.install_script()
     def _copy_script(self, script_name, *support_scripts):
         """Copies script to DUT.
 

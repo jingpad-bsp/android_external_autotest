@@ -12,6 +12,22 @@ import time
 from autotest_lib.client.common_lib import error
 
 
+def _get_machine_domain(hostname):
+    """Parses hostname to extract machine and domain info.
+
+    @param hostname String, machine name in wifi cell.
+    @return a tuple of (string, string), domain name (if any) and machine name.
+
+    """
+    domain = ''
+    machine = hostname
+    if hostname.find('.') > 0:
+        domain_start = hostname.find('.')
+        domain = hostname[domain_start:]
+        machine = hostname[0:domain_start]
+    return (machine, domain)
+
+
 def get_server_addr_in_lab(hostname):
     """
     If we are in the lab use the names for the server, AKA rspro, and the
@@ -23,13 +39,7 @@ def get_server_addr_in_lab(hostname):
             (e.g. chromeos1-shelf1-host1-server.cros)
 
     """
-    domain = ''
-    machine = hostname
-    if hostname.find('.') > 0:
-        domain_start = hostname.find('.')
-        domain = hostname[domain_start:]
-        machine = hostname[0:domain_start]
-    return '%s-server%s' % (machine, domain)
+    return '%s-server%s' % _get_machine_domain(hostname)
 
 
 def get_router_addr_in_lab(hostname):
@@ -43,13 +53,20 @@ def get_router_addr_in_lab(hostname):
             (e.g. chromeos1-shelf1-host1-router.cros)
 
     """
-    domain = ''
-    machine = hostname
-    if hostname.find('.') > 0:
-        domain_start = hostname.find('.')
-        domain = hostname[domain_start:]
-        machine = hostname[0:domain_start]
-    return '%s-router%s' % (machine, domain)
+    return '%s-router%s' % _get_machine_domain(hostname)
+
+
+def get_attenuator_addr_in_lab(hostname):
+    """
+    For wifi rate vs. range tests, look up attenuator host name.
+
+    @param hostname String, DUT name in wifi cell.
+            (e.g. chromeos3-grover-host1.cros)
+    @return String, attenuator host name
+            (e.g. chromeos3-grover-host1-attenuator.cros)
+
+    """
+    return '%s-attenuator%s' % _get_machine_domain(hostname)
 
 
 def is_installed(host, filename):
