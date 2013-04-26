@@ -212,12 +212,12 @@ class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath(xpath)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
+    def set_security_wpapsk(self, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 1, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=1800):
+    def _set_security_wpapsk(self, shared_key, update_interval=None):
         popup = '//select[@name="wl0_security_mode"]'
         key_field = '//input[@name="wl0_wpa_psk"]'
         if self.current_band == self.band_5ghz:

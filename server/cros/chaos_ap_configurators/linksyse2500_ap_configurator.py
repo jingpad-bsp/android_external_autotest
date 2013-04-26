@@ -30,9 +30,9 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
                  'modes': [self.mode_b, self.mode_n, self.mode_b |
-                           self.mode_g, self.mode_g]},
+                           self.mode_g, self.mode_g, self.mode_m]},
                 {'band': self.band_5ghz,
-                 'modes': [self.mode_a, self.mode_n]}]
+                 'modes': [self.mode_a, self.mode_n, self.mode_m]}]
 
 
     def is_security_mode_supported(self, security_mode):
@@ -66,7 +66,8 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                         self.mode_g: 'Wireless-G Only',
                         self.mode_b | self.mode_g: 'Wireless-B/G Only',
                         self.mode_n: 'Wireless-N Only',
-                        self.mode_a: 'Wireless-A Only'}
+                        self.mode_a: 'Wireless-A Only',
+                        self.mode_m: 'Mixed'}
         xpath = '//select[@name="net_mode_24g"]'
         if self.current_band == self.band_5ghz or band == self.band_5ghz:
             self.current_band = self.band_5ghz
@@ -128,8 +129,8 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                                       (key_value, authentication), 2, 900)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
-        self.add_item_to_command_list(self._set_security_wpapask,
+    def set_security_wpapsk(self, shared_key, update_interval=None):
+        self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 2, 900)
 
 
