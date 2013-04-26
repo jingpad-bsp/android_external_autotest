@@ -5,24 +5,27 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_3GDisconnectFailure"
 PURPOSE = """
-  Tests that a disconnect failure at the modemmanager level is handled properly
-  by shill.
+Tests that a disconnect failure at the modemmanager level is handled properly
+by shill.
+
 """
 CRITERIA = """
-  The test will fail if the cellular service exposed by shill is in an
-  incorrect state upon certain failures of a Disconnect call.
+The test will fail if the cellular service exposed by shill is in an
+incorrect state upon certain failures of a Disconnect call.
+
 """
-SUITE = "network3g"
+
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 DOC = """
-  The test uses the pseudo modem manager to simulate two failure scenarios of a
-  Disconnect call: failure while the modem state is DISCONNECTING and failure
-  while it is CONNECTED. The expected behavior of shill is to do nothing if the
-  modem state is DISCONNECTING and to clean up the service otherwise.
+The test uses the pseudo modem manager to simulate two failure scenarios of a
+Disconnect call: failure while the modem state is DISCONNECTING and failure
+while it is CONNECTED. The expected behavior of shill is to do nothing if the
+modem state is DISCONNECTING and to clean up the service otherwise.
+
 """
 
 job.run_test('network_3GDisconnectFailure')
