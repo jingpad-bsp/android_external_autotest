@@ -6,9 +6,7 @@
 #             https://gerrit.chromium.org/gerrit/37180 and the code for
 #             remote_pyauto in client/cros for examples
 
-import logging
 import os
-from autotest_lib.client.common_lib import error
 
 
 # Port of variable attenuator.
@@ -20,12 +18,11 @@ TOTAL_ATTEN = 'total_atten'
 
 
 class ScriptNotFound(Exception):
-    """
-    Raised when attenuator scripts cannot be found.
-    """
+    """Raised when attenuator scripts cannot be found."""
 
     def __init__(self, script_name):
-        """
+        """Initialize.
+
         @param script_name: a string.
         """
         super(ScriptNotFound, self).__init__(
@@ -33,29 +30,23 @@ class ScriptNotFound(Exception):
 
 
 class Attenuator(object):
-    """
-    Attenuator support for WiFiTest class.
+    """Attenuator support for WiFiTest class.
 
     This class implements wifi test methods that communicate with a variable
     attenuator over SSH in control network.
     """
 
     def __init__(self, host):
-        """
+        """Initialize.
+
         @param host: an Autotest host object, representing the attenuator.
         """
         self.host = host
         self.installed_scripts = {}
 
 
-    # TODO(tgao): needed? e.g. reset GPIO pins
-    def cleanup(self):
-        pass
-
-
     def init_va(self, params):
-        """
-        Initializes attenuator port.
+        """Initializes attenuator port.
 
         @param params: a Python dictionary.
         """
@@ -66,12 +57,11 @@ class Attenuator(object):
         init_script = self._copy_script('attenuator_init.py',
                                         'attenuator_util.py',
                                         'constants.py')
-        self.host.run('python "%s" -p %s' % (init_script, port_num))
+        self.host.run('python "%s" -p %s 2>&1' % (init_script, port_num))
 
 
     def get_attenuation(self, params):
-        """
-        Reads current attenuation level in dB.
+        """Reads current attenuation level in dB.
 
         @param params: a Python dictionary.
         """
@@ -79,11 +69,10 @@ class Attenuator(object):
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
-        self.host.run('python "%s" -p %d' % (attenuator_script, port_num))
+        self.host.run('python "%s" -p %d 2>&1' % (attenuator_script, port_num))
 
     def set_attenuation(self, params):
-        """
-        Sets desired attenuation level in dB.
+        """Sets desired attenuation level in dB.
 
         @param params: a Python dictionary.
         @returns total_atten: an integer, total attenuation in dB.
@@ -95,15 +84,14 @@ class Attenuator(object):
         attenuator_script = self._copy_script('attenuator_config.py',
                                               'attenuator_util.py',
                                               'constants.py')
-        self.host.run('python "%s" -p %d -f %d -t %d' %
+        self.host.run('python "%s" -p %d -f %d -t %d 2>&1' %
                       (attenuator_script, port_num, fixed_atten, total_atten))
         return total_atten
 
 
     # TODO(tgao): refactor & merge this w/ site_linux.router.install_script()
     def _copy_script(self, script_name, *support_scripts):
-        """
-        Copies script to DUT.
+        """Copies script to DUT.
 
         @param script_name: a string.
         @param support_scripts: a list of strings.

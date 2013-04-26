@@ -22,19 +22,19 @@ def config_logger(logger, log_file):
     @param logger: a logger object.
     @param log_file: a string, name of log file.
     """
-    # Set logging level
-    logger.setLevel(logging.DEBUG)
-    # Create file handler and set level to debug
+    # Set default logging level to INFO
+    logger.setLevel(logging.INFO)
+    # Create file handler and set level to DEBUG
     fh = logging.FileHandler(log_file)
     fh.setLevel(logging.DEBUG)
-    # Create console handler and set level to debug
+    # Create console handler and set level to INFO
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.INFO)
     # Create formatter
     formatter = logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s')
     # Add formatter to handlers
     fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
+    #ch.setFormatter(formatter)
     # Add handlers to logger
     logger.addHandler(fh)
     logger.addHandler(ch)
