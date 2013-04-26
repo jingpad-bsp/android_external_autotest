@@ -29,6 +29,37 @@ class WiFiTestContextManager(object):
     CMDLINE_SERVER_ADDR = 'server_addr'
     CMDLINE_ROUTER_PORT = 'router_port'
 
+
+    @property
+    def server_address(self):
+        """@return string address of WiFi server host in test."""
+        hostname = self.client.host.hostname
+        if utils.host_is_in_lab_zone(hostname):
+            # Lab naming convention in: go/chromeos-lab-hostname-convention
+            return wifi_test_utils.get_server_addr_in_lab(hostname)
+
+        elif self.CMDLINE_SERVER_ADDR in self._cmdline_args:
+            return self._cmdline_args[self.CMDLINE_SERVER_ADDR]
+
+        raise error.TestError('Test not running in lab zone and no '
+                              'server address given')
+
+
+    @property
+    def router_address(self):
+        """@return string address of WiFi router host in test."""
+        hostname = self.client.host.hostname
+        if utils.host_is_in_lab_zone(hostname):
+            # Lab naming convention in: go/chromeos-lab-hostname-convention
+            return wifi_test_utils.get_router_addr_in_lab(hostname)
+
+        elif self.CMDLINE_ROUTER_ADDR in self._cmdline_args:
+            return self._cmdline_args[self.CMDLINE_ROUTER_ADDR]
+
+        raise error.TestError('Test not running in lab zone and no '
+                              'router address given')
+
+
     def __init__(self, test_name, host, cmdline_args):
         """Construct a WiFiTestContextManager.
 
@@ -102,34 +133,16 @@ class WiFiTestContextManager(object):
 
     def setup(self):
         """Construct the state used in a WiFi test."""
-        if utils.host_is_in_lab_zone(self.client.host.hostname):
-            # If we are in the lab use the names for the server, AKA rspro,
-            # and the router as defined in:
-            # go/chromeos-lab-hostname-convention
-            server_address = wifi_test_utils.get_server_addr_in_lab(
-                    self.client.host.hostname)
-            router_addr = wifi_test_utils.get_router_addr_in_lab(
-                    self.client.host.hostname)
-        else:
-            if self.CMDLINE_ROUTER_ADDR not in self._cmdline_args:
-                raise error.TestError(
-                        'Test not running in lab zone and no '
-                        'router address given')
-            if self.CMDLINE_SERVER_ADDR not in self._cmdline_args:
-                raise error.TestError(
-                        'Test not running in lab zone and no '
-                        'server address given')
-            server_address = self._cmdline_args[self.CMDLINE_SERVER_ADDR]
-            router_addr = self._cmdline_args[self.CMDLINE_ROUTER_ADDR]
         # Build up our router we're going to use in the test.  This involves
         # figuring out what kind of test setup we're using.
         router_port = int(self._cmdline_args.get(self.CMDLINE_ROUTER_PORT, 22))
-        logging.info('Connecting to router at %s:%d', router_addr, router_port)
-        router_host = hosts.SSHHost(router_addr, port=router_port)
+        logging.info('Connecting to router at %s:%d',
+                     self.router_address, router_port)
+        router_host = hosts.SSHHost(self.router_address, port=router_port)
         # TODO(wiley) Simplify the router and make the parameters explicit.
         router_params = {}
         default_ssid = wifi_test_utils.get_default_ssid(self._test_name,
-                                                        router_addr,
+                                                        self.router_address,
                                                         router_host)
         logging.info('Default router SSID is %s.', default_ssid)
         if site_linux_cros_router.isLinuxCrosRouter(router_host):
@@ -142,7 +155,7 @@ class WiFiTestContextManager(object):
         self._router.create_wifi_device()
         # The '_server' is a machine which hosts network
         # services, such as OpenVPN or StrongSwan.
-        server_host = hosts.SSHHost(server_address, port=22)
+        server_host = hosts.SSHHost(self.server_address, port=22)
         self._server = site_linux_server.LinuxServer(server_host, {})
         # Set up a test profile on a clean stack.
         self.client.shill.clean_profiles()
