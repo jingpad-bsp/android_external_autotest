@@ -3,12 +3,21 @@
 # found in the LICENSE file.
 
 import logging
-from autotest_lib.server import test, autotest, utils
+from autotest_lib.server import test, utils
 
 class platform_InstallFW(test.test):
+    """Test to install FW on DUT"""
     version = 1
 
     def run_once(self, host=None, fw_type=None, fw_path=None, fw_name=None):
+        """Run test to install firmware.
+
+        @param host: host to run on
+        @param fw_type: must be either "bios" or "ec"
+        @param fw_path: path to fw binary or set to "local"
+        @param fw_name: (optional) name of binary file
+        """
+
         if fw_path == "local":
             fw_dst = "/usr/sbin/chromeos-firmwareupdate"
             is_shellball = True
@@ -39,7 +48,7 @@ class platform_InstallFW(test.test):
         # Reboot client after installing the binary.
         host.reboot()
         # Get the versions of BIOS and EC binaries.
-        bios_info = host.run("sudo mosys -k smbios info bios")
-        logging.info("BIOS version info: %s" % bios_info)
+        bios_info = host.run("crossystem fwid")
+        logging.info("BIOS version info:\n %s", bios_info)
         ec_info = host.run("sudo mosys -k ec info")
-        logging.info("EC version info: %s" % ec_info)
+        logging.info("EC version info:\n %s", ec_info)
