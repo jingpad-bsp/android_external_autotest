@@ -62,9 +62,12 @@ class Modem(object):
         obj = self.bus.get_object(self.service, self.path)
         return dbus.Interface(obj, mm1.SIM_INTERFACE)
 
-    def GetAll(self, iface):
+    def PropertiesInterface(self):
         obj = self.bus.get_object(self.service, self.path)
-        obj_iface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
+        return dbus.Interface(obj, dbus.PROPERTIES_IFACE)
+
+    def GetAll(self, iface):
+        obj_iface = self.PropertiesInterface()
         return obj_iface.GetAll(iface)
 
     def _GetModemInterfaces(self):

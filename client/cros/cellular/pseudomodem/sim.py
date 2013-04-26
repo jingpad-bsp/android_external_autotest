@@ -25,6 +25,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
     class Carrier:
 
         MCC_LIST = {
+            'test' : '001',
             'us': '310',
             'de': '262',
             'es': '214',
@@ -35,6 +36,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         }
 
         CARRIER_LIST = {
+            'test' : ('test', '000', 'Test Network'),
             'banana' : ('us', '001', 'Banana-Comm'),
             'att': ('us', '090', 'AT&T'),
             'tmobile': ('us', '026', 'T-Mobile'),

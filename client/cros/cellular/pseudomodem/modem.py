@@ -265,9 +265,29 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
     @dbus.service.method(mm1.I_MODEM)
     def Reset(self):
-        self.Disconnect('/')
-        self.bearers.clear()
-        self._properties = self._InitializeProperties()
+        logging.info('Resetting modem.')
+
+        def ResetCleanup():
+            logging.info('ResetCleanup')
+            self._properties = self._InitializeProperties()
+            if self.sim:
+                self.Set(mm1.I_MODEM,
+                         'Sim',
+                         dbus.types.ObjectPath(self.sim.path))
+            self.Enable(True)
+
+        def RaiseCb(error):
+            logging.info('Disconnect error: ' + str(error))
+            raise error
+
+        if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_CONNECTED:
+            self.Disconnect('/', ResetCleanup, RaiseCb)
+            self.bearers.clear()
+        else:
+            ResetCleanup()
+
+        # TODO(armansito): For now this is fine, but ideally the manager should
+        # remove this modem object and create a brand new one.
 
     @dbus.service.method(mm1.I_MODEM, in_signature='s')
     def FactoryReset(self, code):

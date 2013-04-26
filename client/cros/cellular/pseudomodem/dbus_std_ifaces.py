@@ -121,7 +121,7 @@ class DBusProperties(dbus.service.Object):
                 MMPropertyError.UNKNOWN_PROPERTY, message)
         return val
 
-    @dbus.service.method(mm1.I_PROPERTIES, in_signature='sss')
+    @dbus.service.method(mm1.I_PROPERTIES, in_signature='ssv')
     def Set(self, interface_name, property_name, value):
         """
         Sets the value matching the given property and interface.
