@@ -132,6 +132,8 @@ class WiFiTestBase(test.test):
 
         """
         cmdline_args = utils.args_to_dict(raw_cmdline_args)
+        logging.info('Running wifi test with commandline arguments: %r',
+                     cmdline_args)
 
         with wifi_test_context_manager.WiFiTestContextManager(
                 self.__class__.__name__,
