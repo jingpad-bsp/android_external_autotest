@@ -344,6 +344,7 @@ class Reporter(object):
         @param title: Title of the bug.
         @param name: Failing Test name, used to assigning labels.
         @param owner: The owner of the new bug.
+        @return: id of the created issue.
         """
         issue_options = self._resolve_slotvals(
             bug_template, title=title,
@@ -360,6 +361,7 @@ class Reporter(object):
         # with an owner. crbug.com/221757.
         if owner:
             self._modify_bug_report(issue.id, owner=owner)
+        return issue.id
 
 
     def _modify_bug_report(self, issue_id, comment='', owner=''):
@@ -484,10 +486,12 @@ class Reporter(object):
         @param failure A TestFailure instance about the failure.
         @param bug_template: A template dictionary specifying the default bug
                              filing options for failures in this suite.
+
+        @return: The issue id of the issue that was either created or modified.
         """
         if not self._check_tracker():
             logging.error("Can't file %s", failure.bug_title())
-            return
+            return None
 
         issue = self._find_issue_by_marker(failure.search_marker())
         summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
@@ -497,13 +501,13 @@ class Reporter(object):
         if issue:
             comment = '%s\n\n%s' % (failure.bug_title(), summary)
             self._modify_bug_report(issue.id, comment)
-            return
+            return issue.id
 
         if failure.lab_error:
             if bug_template.get('labels'):
                 self._LAB_ERROR_TEMPLATE['labels'] += bug_template.get('labels')
             bug_template = self._LAB_ERROR_TEMPLATE
 
-        self._create_bug_report(summary, failure.bug_title(),
-                                failure.test, self._get_owner(failure),
-                                failure.get_milestone(), bug_template)
+        return self._create_bug_report(summary, failure.bug_title(),
+                                       failure.test, self._get_owner(failure),
+                                       failure.get_milestone(), bug_template)

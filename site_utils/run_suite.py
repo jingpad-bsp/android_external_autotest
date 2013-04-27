@@ -212,22 +212,35 @@ def get_view_info(suite_job_id, view, build, suite):
 
 class LogLink(object):
     """
-    Link to a log.
+    Link to a log. Since we create bugs for failures the
+    link text will include a link to the bug too.
 
     @var anchor: the link text.
     @var url: the link url.
     """
-    def __init__(self, anchor, job_string):
+    def __init__(self, anchor, job_string, bug_id=None):
         """
         Initialize the LogLink by generating the log URL.
 
         @param anchor: the link text.
         @param job_string: the job whose logs we'd like to link to.
+        @param bug_id: the bug id, if one was filed for this failure.
         """
         self.anchor = anchor
         host = CONFIG.get_config_value('SERVER', 'hostname', type=str)
         pattern = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
         self.url = pattern % (host, job_string)
+        self.bug_id = bug_id
+
+
+    def GenerateBugString(self):
+        """
+        @return: A plain text link to the bug filed, if any.
+        """
+        if self.bug_id:
+            crbug_url = CONFIG.get_config_value('BUG_REPORTING', 'tracker_url')
+            return ' (%s/%s filed)'% (crbug_url, self.bug_id)
+        return ''
 
 
     def GenerateBuildbotLink(self):
@@ -236,7 +249,8 @@ class LogLink(object):
 
         @return A link formatted for the buildbot log annotator.
         """
-        return "@@@STEP_LINK@%s@%s@@@" % (self.anchor.strip(), self.url)
+        anchor_string = self.anchor.strip() + self.GenerateBugString()
+        return "@@@STEP_LINK@%s@%s@@@"% (anchor_string, self.url)
 
 
     def GenerateTextLink(self):
@@ -602,7 +616,19 @@ def main():
             test_view = _full_test_name(job_id, view, options.build,
                 options.name).ljust(width)
             logging.info("%s%s", test_view, get_pretty_status(view['status']))
-            link = LogLink(test_view, job_name)
+
+            # It's important that we:
+            # a. Use the test name in the view and not the name returned by
+            #    full_test_name, as this was the name inserted after the test
+            #    ran. Eg: for an aborted test full_test_name will return
+            #    experimental_testname but the view and the bug_id keyval will
+            #    contain /bulid/suite/experimental_testname.
+            # b. Apply the inverse function that was applied to record the bug
+            #    id as a keyval in dynamic_suite, by replacing all '/' with '_'.
+            bug_id = view['job_keyvals'].get(
+                view['test_name'].replace('/', '_')+constants.BUG_KEYVAL)
+
+            link = LogLink(test_view, job_name, bug_id)
             web_links.append(link)
 
             if view['status'] != 'GOOD':
