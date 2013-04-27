@@ -39,7 +39,7 @@
 // Configuration
 #define RUN_TIME_DEFAULT_SECONDS    30  // default time to run
 #define RUN_TIME_MIN_SECONDS        2   // minimum allowable user time to run
-#define CGROUP_DIRECTORY    "/tmp/cgroup/cpu/chrome_renderers/background/"
+#define CGROUP_DIRECTORY    "/sys/fs/cgroup/cpu/chrome_renderers/background/"
 
 // Enable debugging by setting to 1.
 #define DEBUG 0
