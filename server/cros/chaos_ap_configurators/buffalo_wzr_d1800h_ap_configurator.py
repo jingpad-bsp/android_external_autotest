@@ -73,10 +73,19 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         except:
             logging.debug('Settings have not been changed.')
         complete = '//input[@type="button"]'
-        self.wait_for_object_by_xpath(complete, wait_time=40)
         # Give some time for router to save changes.
-        if self.driver.find_element_by_xpath(complete):
-            self.click_button_by_xpath(complete)
+        # In case when contents of page are not displayed, we need
+        # to refresh page and click apply button one more time.
+        try:
+            self.wait_for_object_by_xpath(complete, wait_time=40)
+        except:
+            self.driver.refresh()
+            self._switch_frame()
+            self.wait_for_object_by_xpath(apply_set)
+            self.click_button_by_xpath(apply_set)
+        self.wait_for_object_by_xpath(complete, wait_time=40)
+        self.driver.find_element_by_xpath(complete)
+        self.click_button_by_xpath(complete)
 
 
     def _switch_frame(self):
