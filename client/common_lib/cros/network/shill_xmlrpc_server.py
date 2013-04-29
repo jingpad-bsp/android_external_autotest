@@ -4,8 +4,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import functools
 import logging
 import logging.handlers
 
@@ -20,50 +18,7 @@ from autotest_lib.client.cros import flimflam_test_path
 import shill_proxy
 
 
-def dbus_safe(default_return_value):
-    """Catch all DBus exceptions and return a default value instead.
-
-    Wrap a function with a try block that catches DBus exceptions and
-    returns default instead.  This is convenient for simple error
-    handling since XMLRPC doesn't understand DBus exceptions.
-
-    @param wrapped_function function to wrap.
-    @param default_return_value value to return on exception (usually False).
-
-    """
-    def decorator(wrapped_function):
-        """Call a function and catch DBus errors.
-
-        @param wrapped_function function to call in dbus safe context.
-        @return function return value or default_return_value on failure.
-
-        """
-        @functools.wraps(wrapped_function)
-        def wrapper(*args, **kwargs):
-            """Pass args and kwargs to a dbus safe function.
-
-            @param args formal python arguments.
-            @param kwargs keyword python arguments.
-            @return function return value or default_return_value on failure.
-
-            """
-            logging.debug('%s()', wrapped_function.__name__)
-            try:
-                return wrapped_function(*args, **kwargs)
-
-            except dbus.exceptions.DBusException as e:
-                logging.error('Exception while performing operation %s: %s: %s',
-                              wrapped_function.__name__,
-                              e.get_dbus_name(),
-                              e.get_dbus_message())
-                return default_return_value
-
-        return wrapper
-
-    return decorator
-
-
-class ShillXmlRpcDelegate(object):
+class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """Exposes methods called remotely during WiFi autotests.
 
     All instance methods of this object without a preceding '_' are exposed via
@@ -77,7 +32,7 @@ class ShillXmlRpcDelegate(object):
         self._shill_proxy = shill_proxy.ShillProxy()
 
 
-    @dbus_safe(False)
+    @xmlrpc_server.dbus_safe(False)
     def create_profile(self, profile_name):
         """Create a shill profile.
 
@@ -89,7 +44,7 @@ class ShillXmlRpcDelegate(object):
         return True
 
 
-    @dbus_safe(False)
+    @xmlrpc_server.dbus_safe(False)
     def push_profile(self, profile_name):
         """Push a shill profile.
 
@@ -101,7 +56,7 @@ class ShillXmlRpcDelegate(object):
         return True
 
 
-    @dbus_safe(False)
+    @xmlrpc_server.dbus_safe(False)
     def pop_profile(self, profile_name):
         """Pop a shill profile.
 
@@ -116,7 +71,7 @@ class ShillXmlRpcDelegate(object):
         return True
 
 
-    @dbus_safe(False)
+    @xmlrpc_server.dbus_safe(False)
     def remove_profile(self, profile_name):
         """Remove a profile from disk.
 
@@ -128,7 +83,7 @@ class ShillXmlRpcDelegate(object):
         return True
 
 
-    @dbus_safe(False)
+    @xmlrpc_server.dbus_safe(False)
     def clean_profiles(self):
         """Pop and remove shill profiles above the default profile.
 
@@ -187,12 +142,6 @@ class ShillXmlRpcDelegate(object):
         level('Disconnect result: %r, duration: %d, reason: %s',
               successful, duration, message)
         return successful is True
-
-
-    def ready(self):
-        """Confirm that the XMLRPC server is up and ready to serve."""
-        logging.debug('ready()')
-        return True
 
 
 if __name__ == '__main__':

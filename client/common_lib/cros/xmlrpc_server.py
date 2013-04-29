@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
 import errno
+import functools
 import logging
 import select
 import signal
@@ -84,3 +86,64 @@ class XmlRpcServer(threading.Thread):
 
         """
         self._keep_running = False
+
+
+def dbus_safe(default_return_value):
+    """Catch all DBus exceptions and return a default value instead.
+
+    Wrap a function with a try block that catches DBus exceptions and
+    returns default values instead.  This is convenient for simple error
+    handling since XMLRPC doesn't understand DBus exceptions.
+
+    @param wrapped_function function to wrap.
+    @param default_return_value value to return on exception (usually False).
+
+    """
+    def decorator(wrapped_function):
+        """Call a function and catch DBus errors.
+
+        @param wrapped_function function to call in dbus safe context.
+        @return function return value or default_return_value on failure.
+
+        """
+        @functools.wraps(wrapped_function)
+        def wrapper(*args, **kwargs):
+            """Pass args and kwargs to a dbus safe function.
+
+            @param args formal python arguments.
+            @param kwargs keyword python arguments.
+            @return function return value or default_return_value on failure.
+
+            """
+            logging.debug('%s()', wrapped_function.__name__)
+            try:
+                return wrapped_function(*args, **kwargs)
+
+            except dbus.exceptions.DBusException as e:
+                logging.error('Exception while performing operation %s: %s: %s',
+                              wrapped_function.__name__,
+                              e.get_dbus_name(),
+                              e.get_dbus_message())
+                return default_return_value
+
+        return wrapper
+
+    return decorator
+
+
+class XmlRpcDelegate(object):
+    """A super class for XmlRPC delegates used with XmlRpcServer.
+
+    This doesn't add much helpful functionality except to implement the trivial
+    status check method expected by autotest's host.xmlrpc_connect() method.
+    Subclass this class to add more functionality.
+
+    """
+    def ready(self):
+        """Confirm that the XMLRPC server is up and ready to serve.
+
+        @return True (always).
+
+        """
+        logging.debug('ready()')
+        return True
