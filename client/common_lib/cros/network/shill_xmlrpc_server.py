@@ -11,7 +11,7 @@ import logging.handlers
 
 import common
 from autotest_lib.client.common_lib.cros import xmlrpc_server
-from autotest_lib.client.common_lib.cros.wlan import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 
 # pylint: disable=W0611

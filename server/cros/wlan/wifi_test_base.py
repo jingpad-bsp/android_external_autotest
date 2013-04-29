@@ -6,7 +6,7 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.wlan import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import test
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.wlan import wifi_test_context_manager

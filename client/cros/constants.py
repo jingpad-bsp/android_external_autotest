@@ -127,7 +127,8 @@ FAKE_ROOT_CA_DIR = '/etc/fake_root_ca'
 FAKE_NSSDB_DIR = FAKE_ROOT_CA_DIR + '/nssdb'
 
 SHILL_XMLRPC_SERVER_PORT = 9989
-SHILL_XMLRPC_SERVER_COMMAND = ('cd /usr/local/autotest/common_lib/cros/wlan && '
-                               './shill_xmlrpc_server.py')
+SHILL_XMLRPC_SERVER_COMMAND = (
+        'cd /usr/local/autotest/common_lib/cros/network && '
+        './shill_xmlrpc_server.py')
 SHILL_XMLRPC_SERVER_CLEANUP_PATTERN = 'shill_xmlrpc_server'
 SHILL_XMLRPC_SERVER_READY_METHOD = 'ready'
