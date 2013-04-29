@@ -4,7 +4,6 @@
 
 import logging, tempfile
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, httpd
 from autotest_lib.client.cros.audio import audio_helper
@@ -19,18 +18,6 @@ _CONTROL_CAPTURE = "'Capture Volume'"
 _CONTROL_PCM = "'PCM Playback Volume'"
 _CONTROL_DIGITAL = "'Digital Capture Volume'"
 _CONTROL_CAPTURE_SWITCH = "'Capture Switch'"
-
-# Default test configuration.
-_DEFAULT_CARD = '0'
-_DEFAULT_MIXER_SETTINGS = [{'name': _CONTROL_MASTER, 'value': "100%"},
-                           {'name': _CONTROL_HEADPHONE, 'value': "100%"},
-                           {'name': _CONTROL_SPEAKER, 'value': "0%"},
-                           {'name': _CONTROL_MIC_BOOST, 'value': "50%"},
-                           {'name': _CONTROL_MIC_CAPTURE, 'value': "50%"},
-                           {'name': _CONTROL_PCM, 'value': "100%"},
-                           {'name': _CONTROL_DIGITAL, 'value': "100%"},
-                           {'name': _CONTROL_CAPTURE, 'value': "100%"},
-                           {'name': _CONTROL_CAPTURE_SWITCH, 'value': "on"}]
 
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 10
@@ -49,8 +36,6 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
     version = 1
 
     def initialize(self,
-                   card=_DEFAULT_CARD,
-                   mixer_settings=_DEFAULT_MIXER_SETTINGS,
                    num_channels=_DEFAULT_NUM_CHANNELS,
                    record_duration=_DEFAULT_RECORD_DURATION,
                    volume_level=_DEFAULT_VOLUME_LEVEL,
@@ -58,9 +43,6 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         """Setup the deps for the test.
 
         Args:
-            card: The index of the sound card to use.
-            mixer_settings: Alsa control settings to apply to the mixer before
-                starting the test.
             num_channels: The number of channels on the device to test.
             record_duration: How long of a sample to record.
             volume_level: The level to set the volume to
@@ -70,8 +52,6 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         Raises:
             error.TestError if the deps can't be run.
         """
-        self._card = card
-        self._mixer_settings = mixer_settings
         self._volume_level = volume_level
         self._capture_gain = capture_gain
 
