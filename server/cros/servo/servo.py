@@ -687,7 +687,7 @@ class Servo(object):
                    'host'
         """
 
-        if self._usb_position == side:
+        if self.get_usbkey_direction() == side:
             return
 
         if side == 'host':
@@ -705,14 +705,13 @@ class Servo(object):
 
         self._usb_position = side
 
-
     def get_usbkey_direction(self):
         """Get name of the side the USB device is connected to.
 
         @return a string, either 'dut' or 'host'
         """
         if not self._usb_position:
-            if self.get('usb_mux_sel1').starstwith('dut'):
+            if self.get('usb_mux_sel1').startswith('dut'):
                 self._usb_position = 'dut'
             else:
                 self._usb_position = 'host'
