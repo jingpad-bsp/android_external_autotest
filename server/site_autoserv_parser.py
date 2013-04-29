@@ -1,3 +1,5 @@
+#pylint: disable-msg=C0111
+
 __author__ = "raphtee@google.com (Travis Miller)"
 __author__ = "ericli@chromium.com (Eric Li)"
 
@@ -30,3 +32,4 @@ class site_autoserv_parser(base_autoserv_parser):
         base_autoserv_parser.parse_args(self)
         if self.options.image:
             self.options.install_before = True
+            self.options.image =  self.options.image.strip()

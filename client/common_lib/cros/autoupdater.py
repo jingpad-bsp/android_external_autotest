@@ -48,8 +48,8 @@ def url_to_version(update_url):
     # exception is delta update URLs, which are rooted under the version; e.g.,
     # http://.../update/.../0.14.755.0/au/0.14.754.0. In this case we want to
     # strip off the au section of the path before reading the version.
-    return re.sub(
-        '/au/.*', '', urlparse.urlparse(update_url).path).split('/')[-1]
+    return re.sub('/au/.*', '',
+                  urlparse.urlparse(update_url).path).split('/')[-1].strip()
 
 
 def url_to_image_name(update_url):
