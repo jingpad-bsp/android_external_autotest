@@ -18,8 +18,11 @@ class Interface:
     ADDRESS_TYPE_IPV6 = 'inet6'
     ADDRESS_TYPES = [ ADDRESS_TYPE_MAC, ADDRESS_TYPE_IPV4, ADDRESS_TYPE_IPV6 ]
 
-    def __init__(self, name):
+    def __init__(self, name, host=None):
         self._name = name
+        self._run = utils.run
+        if host is not None:
+            self._run = host.run
 
 
     @property
@@ -45,8 +48,8 @@ class Interface:
         # column is an address type we are interested in.  For example,
         # for "inet 172.22.73.124/22 ...", we will capture "172.22.73.124/22".
         try:
-            address_info = utils.system_output('ip addr show %s 2> /dev/null' %
-                                               self._name)
+            result = self._run('ip addr show %s 2> /dev/null' % self._name)
+            address_info = result.stdout
         except error.CmdError, e:
             # The "ip" command will return non-zero if the interface does
             # not exist.

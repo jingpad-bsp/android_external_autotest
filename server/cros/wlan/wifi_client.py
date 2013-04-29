@@ -6,6 +6,7 @@ import logging
 import signal
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server.cros import remote_command
@@ -113,8 +114,14 @@ class WiFiClient(object):
 
     @property
     def wifi_mac(self):
-        """@return string MAC addess of self.wifi_if."""
-        return self._wifi_mac
+        """@return string MAC address of self.wifi_if."""
+        return self._interface.mac_address
+
+
+    @property
+    def wifi_ip(self):
+        """@return string IPv4 address of self.wifi_if."""
+        return self._interface.ipv4_address
 
 
     def __init__(self, client_host, result_dir):
@@ -163,8 +170,7 @@ class WiFiClient(object):
             logging.warning('Warning, found multiple WiFi devices on %s: %r',
                             self.host.hostname, devs)
         self._wifi_if = devs[0]
-        self._wifi_mac = wifi_test_utils.get_interface_mac(
-                self.host, self.wifi_if, self.command_ip)
+        self._interface = interface.Interface(self._wifi_if, host=self.host)
         # Used for packet captures.
         self._packet_capturer = packet_capturer.PacketCapturer(
                 self.host, host_description='client',
