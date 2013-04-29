@@ -26,6 +26,7 @@ class network_WiFi_SimpleConnect(wifi_test_base.WiFiTestBase):
             self.context.configure(configuration)
             assoc_params = xmlrpc_datatypes.AssociationParameters()
             assoc_params.ssid = self.context.router.get_ssid()
+            assoc_params.is_hidden = configuration.hide_ssid or False
             self.assert_connect_wifi(assoc_params)
             self.assert_ping_from_dut()
             self.context.client.shill.disconnect(assoc_params.ssid)

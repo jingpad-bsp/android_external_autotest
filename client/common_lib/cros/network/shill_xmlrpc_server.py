@@ -109,16 +109,16 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         logging.debug('connect_wifi()')
         params = xmlrpc_datatypes.AssociationParameters(raw_params)
-        result = xmlrpc_datatypes.AssociationResult.\
-                from_dbus_proxy_output(
-                        self._shill_proxy.connect_to_wifi_network(
-                                params.ssid,
-                                params.security,
-                                params.psk,
-                                params.save_credentials,
-                                params.discovery_timeout,
-                                params.association_timeout,
-                                params.configuration_timeout))
+        raw = self._shill_proxy.connect_to_wifi_network(
+                params.ssid,
+                params.security,
+                params.psk,
+                params.save_credentials,
+                hidden_network=params.is_hidden,
+                discovery_timeout_seconds=params.discovery_timeout,
+                association_timeout_seconds=params.association_timeout,
+                configuration_timeout_seconds=params.configuration_timeout)
+        result = xmlrpc_datatypes.AssociationResult.from_dbus_proxy_output(raw)
         return result.serialize()
 
 
