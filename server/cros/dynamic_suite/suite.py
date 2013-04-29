@@ -392,7 +392,8 @@ class Suite(object):
                 # status, reason, etc. However, doing so would cause a
                 # bunch of database traffic to grab data that we already
                 # have laying around in memory across several objects here.
-                worse = result.is_worse_than(job_status.Status("WARN", ""))
+                worse = result.is_worse_than(
+                    job_status.Status('WARN', '', 'reason'))
                 if self._file_bugs and worse:
                     failure = reporting.TestFailure(self._build,
                                                     self._tag,

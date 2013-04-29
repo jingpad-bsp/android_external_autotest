@@ -142,6 +142,9 @@ class ReportingTest(mox.MoxTestBase):
             """
             assert('autofiled' in issue.labels)
             for k, v in self.bug_template.iteritems():
+                if (isinstance(v, list)
+                    and all(item in getattr(issue, k) for item in v)):
+                    continue
                 if v and getattr(issue, k) is not v:
                     return False
             return True
@@ -156,6 +159,9 @@ class ReportingTest(mox.MoxTestBase):
         reporting.TestFailure.bug_summary().AndReturn('Summary')
         tracker = self.mox.CreateMock(gdata_lib.TrackerComm)
         self._stub_out_tracker(tracker)
+
+        tracker.AppendTrackerIssueById(mox.IgnoreArg(), mox.IgnoreArg(),
+                                       self.bug_template['owner'])
 
         self.mox.StubOutWithMock(tracker, 'CreateTrackerIssue')
         tracker.CreateTrackerIssue(mox.Func(check_suite_options))

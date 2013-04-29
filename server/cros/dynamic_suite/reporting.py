@@ -226,7 +226,8 @@ class Reporter(object):
 
     _api_key = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'api_key', default='')
-    _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome']
+    _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome',
+                          'Type-Bug', 'Restrict-View-EditIssue']
     _OWNER = 'beeps@chromium.org'
 
     _LAB_ERROR_TEMPLATE = {
@@ -351,7 +352,9 @@ class Reporter(object):
             summary=summary, labels=self._get_labels(name.lower()),
             status='Untriaged', owner=owner)
 
-        issue_options['labels'] += self._PREDEFINED_LABELS + [milestone]
+        issue_options['labels'] = set(issue_options['labels'] +
+                                      self._PREDEFINED_LABELS +
+                                      [milestone])
         issue = gdata_lib.Issue(**issue_options)
         bugid = self._tracker.CreateTrackerIssue(issue)
         logging.info('Filing new bug %s, with summary %s', bugid, summary)
@@ -359,8 +362,8 @@ class Reporter(object):
         # The tracker api will not allow us to assign an owner to a new bug,
         # To work around this we must first create a bug and then update it
         # with an owner. crbug.com/221757.
-        if owner:
-            self._modify_bug_report(issue.id, owner=owner)
+        if issue_options['owner']:
+            self._modify_bug_report(issue.id, owner=issue_options['owner'])
         return issue.id
 
 

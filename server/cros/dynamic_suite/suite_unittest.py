@@ -14,6 +14,7 @@ import tempfile
 
 from autotest_lib.client.common_lib import base_job, control_data
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -413,6 +414,9 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.StubOutWithMock(reporting.Reporter, 'report')
         reporting.Reporter.report(mox.IgnoreArg(), mox.IgnoreArg())
+
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(mox.IgnoreArg(), mox.IgnoreArg())
 
         self.mox.ReplayAll()
 
