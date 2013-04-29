@@ -16,16 +16,16 @@ from autotest_lib.client.cros.cellular import emulator_config
 import flimflam
 
 
-TIMEOUT=60
+TIMEOUT = 60
 
 class Error(Exception):
     pass
 
 
 class Environment(object):
-  """Dispatch class:  reads config and returns appropriate concrete type."""
-  def __new__(self, config, *args, **kwargs):
-    return EmulatedEnvironment(config, *args, **kwargs)
+    """Dispatch class:  reads config and returns appropriate concrete type."""
+    def __new__(cls, config, *args, **kwargs):
+        return EmulatedEnvironment(config, *args, **kwargs)
 
 
 class EmulatedEnvironment(object):
@@ -59,25 +59,26 @@ class EmulatedEnvironment(object):
             raise Error('Content downloaded, but it was incorrect')
 
     def CheckedConnectToCellular(self, timeout=TIMEOUT):
-      """Connect to cellular, check if we are connected, return a service"""
-      (service, _) = cell_tools.ConnectToCellular(self.flim, timeout=timeout)
-      self.verifier.AssertDataStatusIn([cellular.UeGenericDataStatus.CONNECTED])
-      return service
+        """Connect to cellular, check if we are connected, return a service"""
+        (service, _) = cell_tools.ConnectToCellular(self.flim, timeout=timeout)
+        self.verifier.AssertDataStatusIn([
+            cellular.UeGenericDataStatus.CONNECTED])
+        return service
 
     def CheckedDisconnectFromCellular(self, service):
-      """Disconnect from cellular and check that we're disconnected."""
+        """Disconnect from cellular and check that we're disconnected."""
 
-      self.flim.DisconnectService(service)
+        self.flim.DisconnectService(service)
 
-      def _ModemIsFullyDisconnected():
-          return self.verifier.IsDataStatusIn([
-              cellular.UeGenericDataStatus.REGISTERED,
-              cellular.UeGenericDataStatus.NONE,])
+        def _ModemIsFullyDisconnected():
+            return self.verifier.IsDataStatusIn([
+                cellular.UeGenericDataStatus.REGISTERED,
+                cellular.UeGenericDataStatus.NONE,])
 
-      utils.poll_for_condition(
-          _ModemIsFullyDisconnected,
-          timeout=20,
-          exception=Error('modem not disconnected from base station'))
+        utils.poll_for_condition(
+            _ModemIsFullyDisconnected,
+            timeout=20,
+            exception=Error('modem not disconnected from base station'))
 
 
 class DefaultCellularTestContext(object):

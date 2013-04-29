@@ -8,19 +8,19 @@ DEFAULT_TIMEOUT = 10
 
 
 def Enum(enum_name, items):
-  """Build a class with a member for each item.
+    """Build a class with a member for each item.
 
-  Arguments:
-    members: A list of items for the enum.  They must be valid python
-     identifiers
-"""
-  class output(object):
-    pass
+    Arguments:
+      members: A list of items for the enum.  They must be valid python
+       identifiers
+    """
+    class output(object):
+        pass
 
-  for item in items:
-    setattr(output, item, enum_name + ':' + item)
+    for item in items:
+        setattr(output, item, enum_name + ':' + item)
 
-  return output
+    return output
 
 
 Technology = Enum('Technology', [
@@ -34,12 +34,12 @@ Technology = Enum('Technology', [
     'CDMA_2000',
     'EVDO_1X',
     'LTE'
-    ])
+])
 
 TechnologyFamily = Enum('TechnologyFamily', [
     'UMTS',
     'CDMA',
-    ])
+])
 
 TechnologyToFamily = {
     Technology.GPRS: TechnologyFamily.UMTS,
@@ -65,7 +65,7 @@ UeGsmDataStatus = Enum('GsmDataStatus', [
     'PDP_ACTIVATING',
     'PDP_ACTIVE',
     'PDP_DEACTIVATING',
-    ])
+])
 
 UeC2kDataStatus = Enum('C2kDataStatus', [
     'OFF',
@@ -102,7 +102,7 @@ UeGenericDataStatus = Enum('UeGenericDataStatus', [
     'CONNECTED',        # Data can be sent
     'CONNECTING',
     'DISCONNECTING',
-    ])
+])
 
 
 RatToGenericDataStatus = {
@@ -136,46 +136,48 @@ RatToGenericDataStatus = {
 
 
 class Power(object):
-  """Useful power levels, in dBm."""
-  OFF = -200
-  DEFAULT = -35
+    """Useful power levels, in dBm."""
+    OFF = -200
+    DEFAULT = -35
 
 
 class SmsAddress(object):
-  def __init__(self, address, address_type='INAT', address_plan='ISDN'):
-    """Constructs an SMS address.
+    def __init__(self, address, address_type='INAT', address_plan='ISDN'):
+        """Constructs an SMS address.
 
-    For expediency, the address type arguments come from the GPIB
-    commands for the Agilent 8960.  See
-    http://wireless.agilent.com/rfcomms/refdocs/gsmgprs/gprsla_hpib_sms.html#CIHDGBIH
+        For expediency, the address type arguments come from the GPIB
+        commands for the Agilent 8960.  See
+        http://wireless.agilent.com/rfcomms/refdocs/
+               gsmgprs/gprsla_hpib_sms.html#CIHDGBIH
 
-    Arguments:
-      address:  1-10 octets
-      address_type:  INAT, NAT, NET, SUBS, ALPH, ABBR, RES
-      address_plan:  ISDN, DATA, TEL, SCS1, SCS2, PRIV, NATional, ERMes, RES
-      """
-    self.address = address
-    self.address_type = address_type
-    self.address_plan = address_plan
+        Arguments:
+            address:  1-10 octets
+            address_type:  INAT, NAT, NET, SUBS, ALPH, ABBR, RES
+            address_plan:  ISDN, DATA, TEL, SCS1, SCS2, PRIV, NATional,
+                           ERMes, RES
+        """
+        self.address = address
+        self.address_type = address_type
+        self.address_plan = address_plan
 
 class TestEnvironment(object):
-  def __init__(self, event_loop):
-    pass
+    def __init__(self, event_loop):
+        pass
 
-  def RequestBaseStations(self,
-                          configuration,
-                          requirements_list):
-    """Requests a set of base stations that satisfy the given requirements.
+    def RequestBaseStations(self,
+                            configuration,
+                            requirements_list):
+        """Requests a set of base stations that satisfy the given requirements.
 
-    Arguments:
-      configuration:  configuration dictionary
-      requirements_list: A list of lists of technologies that must be
-        supported
+        Arguments:
+            configuration:  configuration dictionary
+            requirements_list: A list of lists of technologies that must be
+                               supported
 
-    Returns: a list of base stations.
-    """
-    pass
+        Returns: a list of base stations.
+        """
+        pass
 
-  def TimedOut(self):
-    """Called by base stations when an expected event hasn't occurred."""
-    pass
+    def TimedOut(self):
+        """Called by base stations when an expected event hasn't occurred."""
+        pass

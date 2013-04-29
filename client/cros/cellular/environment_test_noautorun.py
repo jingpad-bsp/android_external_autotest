@@ -42,14 +42,14 @@ log.addHandler(ch)
 
 class EnvTest(unittest.TestCase):
 
-  def test_Env(self):
-    """
-    make an environment
-    """
-    with environment.DefaultCellularTestContext(config) as c:
-      env = c.env
-      env.StartDefault('Technology:HSDPA')
-      log.debug('Starting')
+    def test_Env(self):
+        """
+        Make an environment.
+        """
+        with environment.DefaultCellularTestContext(config) as c:
+            env = c.env
+            env.StartDefault('Technology:HSDPA')
+            log.debug('Starting')
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()
