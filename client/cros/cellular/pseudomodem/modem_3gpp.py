@@ -38,7 +38,7 @@ class Modem3gpp(modem.Modem):
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
         ip[mm1.I_MODEM_3GPP] = {
-            'Imei' : '00112342342',
+            'Imei' : '00112342342123',
             'RegistrationState' : (
                 dbus.types.UInt32(mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)),
             'OperatorCode' : '',

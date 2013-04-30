@@ -78,17 +78,34 @@ class Modem(object):
             mm1.MODEM_MODEMCDMA_INTERFACE
             ]
 
+    @staticmethod
+    def _CopyPropertiesCheckUnique(src, dest):
+        """Copies properties from |src| to |dest| and makes sure there are no
+           duplicate properties that have different values."""
+        for key, value in src.iteritems():
+            if key in dest and value != dest[key]:
+                raise KeyError('Duplicate property %s, different values '
+                               '("%s", "%s")' % (key, value, dest[key]))
+            dest[key] = value
+
     def GetModemProperties(self):
         """Returns all DBus Properties of all the modem interfaces."""
         props = dict()
         for iface in self._GetModemInterfaces():
             try:
-                d = self.GetAll(iface)
+                iface_props = self.GetAll(iface)
             except dbus.exceptions.DBusException:
                 continue
-            if d:
-                for k, v in d.iteritems():
-                    props[k] = v
+            if iface_props:
+                self._CopyPropertiesCheckUnique(iface_props, props)
+
+        try:
+            sim_obj = self.bus.get_object(self.service, props['Sim'])
+            sim_props_iface = dbus.Interface(sim_obj, dbus.PROPERTIES_IFACE)
+            sim_props = sim_props_iface.GetAll(mm1.SIM_INTERFACE)
+            self._CopyPropertiesCheckUnique(sim_props, props)
+        except dbus.exceptions.DBusException:
+            pass
 
         return props
 

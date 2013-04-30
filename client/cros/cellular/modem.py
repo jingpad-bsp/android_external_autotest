@@ -120,17 +120,37 @@ class Modem(object):
             Modem.GSM_NETWORK_INTERFACE,
             Modem.GOBI_MODEM_INTERFACE]
 
+
+    @staticmethod
+    def _CopyPropertiesCheckUnique(src, dest):
+        """Copies properties from |src| to |dest| and makes sure there are no
+           duplicate properties that have different values."""
+        for key, value in src.iteritems():
+            if key in dest and value != dest[key]:
+                raise KeyError('Duplicate property %s, different values '
+                               '("%s", "%s")' % (key, value, dest[key]))
+            dest[key] = value
+
     def GetModemProperties(self):
         """Returns all DBus Properties of all the modem interfaces."""
         props = dict()
         for iface in self._GetModemInterfaces():
             try:
-                d = self.GetAll(iface)
+                iface_props = self.GetAll(iface)
             except dbus.exceptions.DBusException:
                 continue
-            if d:
-                for k, v in d.iteritems():
-                    props[k] = v
+            if iface_props:
+                self._CopyPropertiesCheckUnique(iface_props, props)
+
+        status = self.SimpleModem().GetStatus()
+        if 'meid' in status:
+            props['Meid'] = status['meid']
+        if 'imei' in status:
+            props['Imei'] = status['imei']
+        if 'imsi' in status:
+            props['Imsi'] = status['imsi']
+        if 'esn' in status:
+            props['Esn'] = status['esn']
 
         return props
 
