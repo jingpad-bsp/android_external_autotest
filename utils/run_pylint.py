@@ -159,7 +159,13 @@ class CustomDocStringChecker(base.DocStringChecker):
 
         @param node: node of the ast we're currently checking.
         """
+
+        # Even plain functions will have a parent, which is the
+        # module they're in, and a frame, which is the context
+        # of said module; They need not however, always have
+        # ancestors.
         if (node.name in ('run_once', 'initialize', 'cleanup') and
+            hasattr(node.parent.frame(), 'ancestors') and
             any(ancestor.name == 'base_test' for ancestor in
                 node.parent.frame().ancestors())):
             return
