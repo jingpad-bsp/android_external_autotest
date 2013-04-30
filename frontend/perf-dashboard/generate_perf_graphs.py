@@ -48,7 +48,7 @@ _REV_NUM_FILE_NAME = 'rev_num.txt'
 _WILDCARD = '*'
 _TELEMETRY_PERF_KEY_IDENTIFIER = 'TELEMETRY'
 _TELEMETRY_PERF_KEY_DELIMITER = '--'
-_NEW_DASH_UPLOAD_URL = 'http://chromeperf.appspot.com/add_point'
+_NEW_DASH_UPLOAD_URL = 'https://chromeperf.appspot.com/add_point'
 
 # Values that can be configured through options.
 # TODO(dennisjeffrey): Infer the tip-of-tree milestone dynamically once this
