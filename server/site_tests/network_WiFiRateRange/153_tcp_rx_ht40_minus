@@ -1,0 +1,29 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Rate vs. Range test over an open 802.11n connection w/ power save disabled.
+# TCP Rx/downstream on channel 153 HT40- using Stumpy as AP.
+# TCP provides a better measure of application-layer throughput.
+
+{ "name":"153_tcp_rx_ht40_minus",
+  "steps":[
+    [ "create",         { "type":"hostap" } ],
+
+    # Initialize ports #0 and #1
+    [ "init_va",        { "va_port":"0" } ],
+    [ "init_va",        { "va_port":"1" } ],
+
+    [ "config",         { "channel":"5765", "ht40-": None, "puren":None } ],
+    [ "connect",        { "security":"none" } ],
+
+    [ "client_powersave_off" ],
+    # Expect possible connection failure in higher attenuation. Safe to ignore.
+    [ "~rvr_test",       { "proto":"tcp",
+                           "fixed_atten":"56",
+                           "start_atten":"60",
+                           "end_atten":"98",
+                           "test_time":"60" } ],
+    [ "destroy" ],
+  ],
+}

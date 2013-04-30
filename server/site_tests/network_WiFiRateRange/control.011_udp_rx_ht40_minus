@@ -1,0 +1,26 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "tgao@chromium.org"
+NAME = "WiFi RateRange"
+TIME = "LONG"
+TEST_TYPE = "Server"
+
+DOC = """
+WiFiRateRange is a suite of 3-machine tests to benchmark throughput under
+varying attenuation level. This test requires special hardware to run.
+
+Runs UDP downstream test on Channel 11 HT40-.
+"""
+
+from autotest_lib.server import site_wifitest
+
+
+def run_server_tests(machine):
+  site_wifitest.run_test_dir("network_WiFiRateRange", job,
+                             ['config_file=wifi_attenuator_config',
+                              'test_pat=011_udp_rx_ht40_minus'], machine)
+
+
+parallel_simple(run_server_tests, machines)

@@ -1,12 +1,12 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Rate vs. Range test over an open 802.11n connection w/ power save disabled.
-# TCP Rx/downstream on channel 44 HT40+ using Stumpy as AP.
-# TCP provides a better measure of application-layer throughput.
+# UDP Rx/downstream on channel 44 HT40+ using Stumpy as AP.
+# UDP provides a measure of 'raw' wifi performance.
 
-{ "name":"Rvr5gHt40Tcp",
+{ "name":"044_udp_rx_ht40_plus",
   "steps":[
     [ "create",         { "type":"hostap" } ],
 
@@ -14,15 +14,16 @@
     [ "init_va",        { "va_port":"0" } ],
     [ "init_va",        { "va_port":"1" } ],
 
-    # WARNING: only test in 11a/n in 5.2GHz band (where tx power is safe for
-    #          the variable attenuators controlled from the BeagleBone)
-
     [ "config",         { "channel":"5220", "ht40+": None, "puren":None } ],
     [ "connect",        { "security":"none" } ],
 
     [ "client_powersave_off" ],
-    [ "rvr_test",       { "proto":"tcp", "fixed_atten":"42", "start_atten":"60",
-                          "end_atten":"98", "test_time":"60" } ],
+    # Expect possible connection failure in higher attenuation. Safe to ignore.
+    [ "~rvr_test",       { "proto":"udp",
+                           "fixed_atten":"54",
+                           "start_atten":"60",
+                           "end_atten":"98",
+                           "test_time":"60" } ],
     [ "destroy" ],
   ],
 }
