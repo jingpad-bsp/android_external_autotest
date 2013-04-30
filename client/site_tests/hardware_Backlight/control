@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "hardware_Backlight"
 PURPOSE = 'Verify that the backlight can be adjusted in software.'
 CRITERIA = """
-If backlight-tool fails to adjust the backlight brightness this test will fail.
+If backlight_tool fails to adjust the backlight brightness this test will fail.
 """
 SUITE = "hwqual"
 TIME = "SHORT"

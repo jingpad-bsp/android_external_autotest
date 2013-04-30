@@ -37,7 +37,7 @@ class power_BacklightServer(test.test):
     def _get_brightness(self):
         """Returns the hardware-dependent backlight brightness level as an
         integer."""
-        result = self._client_cmd('backlight-tool --get_brightness')
+        result = self._client_cmd('backlight_tool --get_brightness')
         return int(result.stdout.rstrip())
 
 
@@ -54,7 +54,7 @@ class power_BacklightServer(test.test):
         @param brightness: integer value of the brightness. The value can
         range differently between different boards.
         """
-        result = self._client_cmd('backlight-tool --set_brightness  %d'
+        result = self._client_cmd('backlight_tool --set_brightness  %d'
                                   % brightness)
 
 
@@ -72,7 +72,7 @@ class power_BacklightServer(test.test):
         if 'running' not in cmd_result.stdout:
             raise error.TestError('powerd must be running.')
 
-        result = self._client_cmd('power-supply-info | grep online')
+        result = self._client_cmd('power_supply_info | grep online')
         if 'yes' not in result.stdout:
             raise error.TestError('power must be plugged in.')
 

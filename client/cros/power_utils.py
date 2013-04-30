@@ -67,7 +67,7 @@ class BacklightException(Exception):
 
 class Backlight(object):
     """Class for control of built-in panel backlight."""
-    bl_cmd = 'backlight-tool'
+    bl_cmd = 'backlight_tool'
 
     # Default brightness is based on expected average use case.
     # See http://www.chromium.org/chromium-os/testing/power-testing for more
@@ -96,7 +96,7 @@ class Backlight(object):
         try:
             utils.system(cmd)
         except error.CmdError:
-            raise error.TestFail('Setting level with backlight-tool')
+            raise error.TestFail('Setting level with backlight_tool')
 
 
     def set_percent(self, percent):
@@ -112,7 +112,7 @@ class Backlight(object):
         try:
             utils.system(cmd)
         except error.CmdError:
-            raise error.TestFail('Setting percent with backlight-tool')
+            raise error.TestFail('Setting percent with backlight_tool')
 
 
     def set_resume_level(self, level):
@@ -127,7 +127,7 @@ class Backlight(object):
         try:
             utils.system(cmd)
         except error.CmdError:
-            raise error.TestFail('Setting resume level with backlight-tool')
+            raise error.TestFail('Setting resume level with backlight_tool')
 
 
     def set_resume_percent(self, percent):
@@ -143,7 +143,7 @@ class Backlight(object):
         try:
             utils.system(cmd)
         except error.CmdError:
-            raise error.TestFail('Setting resume percent with backlight-tool')
+            raise error.TestFail('Setting resume percent with backlight_tool')
 
 
     def set_default(self):
@@ -164,7 +164,7 @@ class Backlight(object):
         try:
             return int(utils.system_output(cmd).rstrip())
         except error.CmdError:
-            raise error.TestFail('Getting level with backlight-tool')
+            raise error.TestFail('Getting level with backlight_tool')
 
 
     def get_max_level(self):
@@ -179,7 +179,7 @@ class Backlight(object):
         try:
             return int(utils.system_output(cmd).rstrip())
         except error.CmdError:
-            raise error.TestFail('Getting max level with backlight-tool')
+            raise error.TestFail('Getting max level with backlight_tool')
 
 
     def restore(self):
@@ -211,7 +211,7 @@ class KbdBacklight(object):
         _max: cached value of 'max_brightness' integer
 
     TODO(tbroch): deprecate direct sysfs access if/when these controls are
-    integrated into a userland tool such as backlight-tool in power manager.
+    integrated into a userland tool such as backlight_tool in power manager.
     """
     DEFAULT_PATH = "/sys/class/leds/chromeos::kbd_backlight"
 

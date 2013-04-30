@@ -10,7 +10,7 @@ from autotest_lib.server import test
 
 class power_ChargeStatus(test.test):
     """
-    Test power-supply-info AC and BAT "state" on power OFF and ON.
+    Test power_supply_info AC and BAT "state" on power OFF and ON.
 
     If DUT is connected to RPM(default) - No need to pass any command line args.
     If DUT is connected to USB powerstrip(via servo), Need to pass cmdlineargs
@@ -49,9 +49,9 @@ class power_ChargeStatus(test.test):
     def test_charge_state(self, ac_state, bat_state):
         """Tests when on AC- the Main line is "ON" and "Charging/Charged".
 
-        @param ac_state Specifies the power-supply-info "Line Power"
+        @param ac_state Specifies the power_supply_info "Line Power"
                         online value.
-        @param bat_state Specifies the power-supply-info "Battery"
+        @param bat_state Specifies the power_supply_info "Battery"
                          charge state value.
         """
         if not (ac_state == "yes" and (bat_state == "Charging"
@@ -63,9 +63,9 @@ class power_ChargeStatus(test.test):
     def test_discharge_state(self, ac_state, bat_state):
         """Tests when on DC - the Main line is "No" and "Discharging".
 
-        @param ac_state Specifies the power-supply-info "Line Power"
+        @param ac_state Specifies the power_supply_info "Line Power"
                         online value.
-        @param bat_state Specifies the power-supply-info "Battery"
+        @param bat_state Specifies the power_supply_info "Battery"
                          charge state value.
         """
         if not (ac_state == "no" and bat_state == "Discharging"):
@@ -74,16 +74,16 @@ class power_ChargeStatus(test.test):
 
 
     def get_ac_status(self, host):
-        """Get the AC state info from "power-supply-info"."""
+        """Get the AC state info from "power_supply_info"."""
         ac_state_info = host.run(
-            "power-supply-info | egrep 'online'").stdout.strip()
+            "power_supply_info | egrep 'online'").stdout.strip()
         return self.split_info(ac_state_info)
 
 
     def get_bat_status(self, host):
-        """ Get the DC state info from "power-supply-info"."""
+        """ Get the DC state info from "power_supply_info"."""
         bat_state_info = host.run(
-            "power-supply-info | egrep 'state'").stdout.strip()
+            "power_supply_info | egrep 'state'").stdout.strip()
         return self.split_info(bat_state_info)
 
 

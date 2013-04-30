@@ -9,9 +9,9 @@ NAME = "power_ChargeStatus"
 PURPOSE = "Servo based ChromeOS functional tests."
 CRITERIA = """
 This test will fail if:
-1. "power-supply-info" state value reports "Discharging" when AC plugged or
+1. "power_supply_info" state value reports "Discharging" when AC plugged or
     online value is "no".
-2. "power-supply-info" state value reports "Charging" when AC Unplugged or
+2. "power_supply_info" state value reports "Charging" when AC Unplugged or
     online value is "yes".
 
 The Command line args to run this test is as follow:
@@ -27,7 +27,7 @@ TEST_CLASS = "power"
 TEST_TYPE = "server"
 
 DOC = """
-This test is used to verify the power-supply-info 'status' of the DUT on
+This test is used to verify the power_supply_info 'status' of the DUT on
 turning power ON/OFF of charge.
 """
 

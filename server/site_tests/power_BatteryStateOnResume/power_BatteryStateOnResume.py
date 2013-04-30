@@ -73,7 +73,7 @@ class power_BatteryStateOnResume(test.test):
 
     def ensure_battery_present(self):
         """Ensure we have battery exists in DUT."""
-        result = self._client.run('power-supply-info | egrep present')
+        result = self._client.run('power_supply_info | egrep present')
         if 'yes' not in result.stdout:
             raise error.TestError('Find no batteries')
 
@@ -108,11 +108,11 @@ class power_BatteryStateOnResume(test.test):
 
 
     def get_bat_status(self, host):
-        """Returns battery state value running 'power-supply-info' script.
+        """Returns the battery state per the 'power_supply_info' tool.
 
         @return battery power 'state' value. (i.e, Charging/Discharging ..)
         """
         bat_state_info = host.run(
-            'power-supply-info | egrep state').stdout.strip()
+            'power_supply_info | egrep state').stdout.strip()
         split_list = bat_state_info.split(":")
         return split_list[-1].strip()
