@@ -4,13 +4,12 @@
 
 import optparse
 import os
-import shutil
-import sys
 
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server import test, autotest
 
 class chromeperf_PGOPageCycler(test.test):
+    """PGO PageCycler test."""
     version = 1
     _DEFAULT_UPLOAD_PATTERN = 'gs://chromeos-prebuilt/pgo-job/%s'
     _PGO_TRANSFER_TIMEOUT = 300
@@ -91,3 +90,7 @@ class chromeperf_PGOPageCycler(test.test):
                         self.options.acl, result_dir=self.job.resultdir):
                     raise error.TestFail('Unable to copy from %s to %s' %
                                          (src, self.options.destination))
+            else:
+                raise error.TestError('No destination for PGO specified.')
+        else:
+            raise error.TestError('Could not find data file: %s' % src)
