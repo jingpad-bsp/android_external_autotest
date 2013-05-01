@@ -266,9 +266,10 @@ class Servo(object):
         self.set_nocheck('kbd_m1_a1', m1_a1)
 
 
-    def _press_and_release_keys(self, key,
-                                press_secs=SERVO_KEY_PRESS_DELAY):
+    def _press_and_release_keys(self, key, press_secs=None):
         """Simulate button presses and release."""
+        if press_secs is None:
+            press_secs = self.SERVO_KEY_PRESS_DELAY
         self._press_keys(key)
         time.sleep(press_secs)
         self.set_nocheck('kbd_en', 'off')
@@ -279,50 +280,50 @@ class Servo(object):
         self._key_matrix = matrix
 
 
-    def ctrl_d(self):
+    def ctrl_d(self, press_secs=None):
         """Simulate Ctrl-d simultaneous button presses."""
-        self._press_and_release_keys('ctrl_d')
+        self._press_and_release_keys('ctrl_d', press_secs)
 
 
-    def ctrl_enter(self):
+    def ctrl_enter(self, press_secs=None):
         """Simulate Ctrl-enter simultaneous button presses."""
-        self._press_and_release_keys('ctrl_enter')
+        self._press_and_release_keys('ctrl_enter', press_secs)
 
 
-    def d_key(self):
+    def d_key(self, press_secs=None):
         """Simulate Enter key button press."""
-        self._press_and_release_keys('d')
+        self._press_and_release_keys('d', press_secs)
 
 
-    def ctrl_key(self):
+    def ctrl_key(self, press_secs=None):
         """Simulate Enter key button press."""
-        self._press_and_release_keys('ctrl')
+        self._press_and_release_keys('ctrl', press_secs)
 
 
-    def enter_key(self):
+    def enter_key(self, press_secs=None):
         """Simulate Enter key button press."""
-        self._press_and_release_keys('enter')
+        self._press_and_release_keys('enter', press_secs)
 
 
-    def refresh_key(self):
+    def refresh_key(self, press_secs=None):
         """Simulate Refresh key (F3) button press."""
-        self._press_and_release_keys('refresh')
+        self._press_and_release_keys('refresh', press_secs)
 
 
-    def ctrl_refresh_key(self):
+    def ctrl_refresh_key(self, press_secs=None):
         """Simulate Ctrl and Refresh (F3) simultaneous press.
 
         This key combination is an alternative of Space key.
         """
-        self._press_and_release_keys('ctrl_refresh')
+        self._press_and_release_keys('ctrl_refresh', press_secs)
 
 
-    def imaginary_key(self):
+    def imaginary_key(self, press_secs=None):
         """Simulate imaginary key button press.
 
         Maps to a key that doesn't physically exist.
         """
-        self._press_and_release_keys('unused')
+        self._press_and_release_keys('unused', press_secs)
 
 
     def enable_recovery_mode(self):

@@ -831,13 +831,13 @@ class FAFTSequence(ServoTest):
                     "Should specify the ctrl_u_cmd argument.")
 
 
-    def press_enter(self):
+    def press_enter(self, press_secs=None):
         """Send Enter key to DUT."""
         if not self.client_attr.has_keyboard:
             logging.info('Running usbkm232-enter...')
             os.system('usbkm232-enter')
         else:
-            self.servo.enter_key()
+            self.servo.enter_key(press_secs)
 
 
     def wait_dev_screen_and_ctrl_d(self):
@@ -861,7 +861,10 @@ class FAFTSequence(ServoTest):
     def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
         """Wait for firmware warning screen and trigger recovery boot."""
         time.sleep(self.delay.firmware_screen)
-        self.press_enter()
+
+        # Pressing Enter for too long triggers a second key press.
+        # Let's press it without delay
+        self.press_enter(press_secs=0)
 
         # For Alex/ZGB, there is a dev warning screen in text mode.
         # Skip it by pressing Ctrl-D.
