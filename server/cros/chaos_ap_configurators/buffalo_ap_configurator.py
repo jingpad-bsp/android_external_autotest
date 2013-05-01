@@ -201,8 +201,13 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         popup = '//select[@name="ath0_security_mode"]'
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="ath0_wpa_psk"]'
-        self.select_item_from_popup_by_xpath('WPA Personal', popup,
-                                             wait_for_xpath=key_field)
+        self.select_item_from_popup_by_xpath('WPA2 Personal', popup)
+        try:
+            self.wait_for_object_by_xpath(key_field, wait_time=5)
+        except:
+            page_url = urlparse.urljoin(self.admin_interface_url,
+                                        'WL_WPATable.asp')
+            self.get_url(page_url, page_title='DD-WRT')
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         interval_field='//input[@name="ath0_wpa_gtk_rekey"]'
         self.set_content_of_text_field_by_xpath(str(update_interval),
