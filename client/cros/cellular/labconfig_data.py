@@ -207,39 +207,39 @@ CELLS['mtv'] = {
 
 
 class TestCombineTrees(unittest.TestCase):
-  def test_simple(self):
-    self.assertEqual({1:2, 3:4, 5:6},
-                     combine_trees({1:2, 3:4}, {5:6}))
+    def test_simple(self):
+        self.assertEqual({1:2, 3:4, 5:6},
+                         combine_trees({1:2, 3:4}, {5:6}))
 
-  def test_override_simple(self):
-    self.assertEqual({1:3},
-                     combine_trees({1:2},{1:3}))
+    def test_override_simple(self):
+        self.assertEqual({1:3},
+                         combine_trees({1:2},{1:3}))
 
-  def test_join_nested(self):
-    self.assertEqual({1:{2:3, 3:4}},
-                     combine_trees({1:{2:3}},{1:{3:4}}))
+    def test_join_nested(self):
+        self.assertEqual({1:{2:3, 3:4}},
+                         combine_trees({1:{2:3}},{1:{3:4}}))
 
-  def test_override_in_nested(self):
-    self.assertEqual({1:{2:4}},
-                     combine_trees({1:{2:3}},{1:{2:4}}))
+    def test_override_in_nested(self):
+        self.assertEqual({1:{2:4}},
+                         combine_trees({1:{2:3}},{1:{2:4}}))
 
-  def test_override_different_types(self):
-    self.assertEqual({1:{2:4}},
-                     combine_trees({1:'rhinoceros'},{1:{2:4}}))
-    self.assertEqual({1:'rhinoceros'},
-                     combine_trees({1:{2:4}},{1:'rhinoceros'}))
+    def test_override_different_types(self):
+        self.assertEqual({1:{2:4}},
+                         combine_trees({1:'rhinoceros'},{1:{2:4}}))
+        self.assertEqual({1:'rhinoceros'},
+                         combine_trees({1:{2:4}},{1:'rhinoceros'}))
 
-  def test_two_level(self):
-      self.assertEqual({1:{2:{3:4, 5:6}}},
-                       combine_trees({1:{2:{3:4}}},{1:{2:{5:6}}}))
+    def test_two_level(self):
+        self.assertEqual({1:{2:{3:4, 5:6}}},
+                         combine_trees({1:{2:{3:4}}},{1:{2:{5:6}}}))
 
-  def test_none(self):
-      self.assertEqual({1:None},
-                       combine_trees({1:2}, {1:None}))
-      self.assertEqual({1:None},
-                       combine_trees({1:None}, {}))
-      self.assertEqual({1:2},
-                       combine_trees({1:None}, {1:2}))
+    def test_none(self):
+        self.assertEqual({1:None},
+                         combine_trees({1:2}, {1:None}))
+        self.assertEqual({1:None},
+                         combine_trees({1:None}, {}))
+        self.assertEqual({1:2},
+                         combine_trees({1:None}, {1:2}))
 
 
 if __name__ == '__main__':
