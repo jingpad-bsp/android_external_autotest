@@ -13,6 +13,10 @@ from autotest_lib.client.cros import (cryptohome, cros_ownership_test, cros_ui,
 
 
 class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
+    """Tests to ensure that the Ownership API can be used, as an
+       enterprise might, to set device policies.
+    """
+
     version = 1
 
     _poldata = 'hooberbloob'
@@ -35,8 +39,8 @@ class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
         self.push_policy(self.generate_policy(priv, pub, self._poldata), sm)
 
         # Rotate key gracefully.
-        username = ''.join(random.sample(string.ascii_uppercase,6)) + "@foo.com"
-        password = ''.join(random.sample(string.ascii_uppercase,6))
+        username = ''.join(random.sample(string.ascii_lowercase,6)) + "@foo.com"
+        password = ''.join(random.sample(string.ascii_lowercase,6))
         cryptohome.remove_vault(username)
         cryptohome.mount_vault(username, password, create=True)
 

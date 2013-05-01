@@ -8,11 +8,13 @@ import tempfile
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp, error
-from autotest_lib.client.cros import constants, cros_ui, cryptohome
+from autotest_lib.client.cros import cros_ui, cryptohome
 from autotest_lib.client.cros import cros_ownership_test, ownership
 
 
 class login_OwnershipApi(cros_ownership_test.OwnershipTest):
+    """Tests to ensure that the Ownership API works for a local device owner.
+    """
     version = 1
 
     _tempdir = None
@@ -24,19 +26,15 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
 
     def initialize(self):
         super(login_OwnershipApi, self).initialize()
+        # Start clean.
         cros_ui.stop()
         cryptohome.remove_vault(self._testuser)
         cryptohome.mount_vault(self._testuser, self._testpass, create=True)
-        # to prime nssdb.
-        self._tempdir = autotemp.tempdir(unique_id=self.__class__.__name__)
-        tmpname = self.__generate_temp_filename(constants.CRYPTOHOME_MOUNT_PT)
-        utils.system_output(cros_ui.xcommand_as('HOME=%s %s %s' %
-                                                (constants.CRYPTOHOME_MOUNT_PT,
-                                                 constants.KEYGEN,
-                                                 tmpname)))
-        os.unlink(tmpname)
 
-        ownership.use_known_ownerkeys()
+        # Make device already owned by self._testuser.
+        ownership.use_known_ownerkeys(self._testuser)
+
+        self._tempdir = autotemp.tempdir(unique_id=self.__class__.__name__)
         cros_ui.start()
 
 
