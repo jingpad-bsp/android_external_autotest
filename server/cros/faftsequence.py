@@ -984,6 +984,7 @@ class FAFTSequence(ServoTest):
                 self.servo.set('cold_reset', 'on')
                 time.sleep(self.delay.hold_cold_reset)
                 self.servo.set('cold_reset', 'off')
+            time.sleep(self.delay.ec_boot_to_console)
             self.ec.reboot("ap-off")
             time.sleep(self.delay.ec_boot_to_console)
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
