@@ -149,7 +149,10 @@ class HostapConfig(object):
         self.require_ht = False
         if mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE) or n_capabilities:
             if mode == self.MODE_11N_PURE:
-                self.require_ht = True
+                # TODO(wiley) Why? (crbug.com/237370)
+                logging.warning('Not enforcing pure N mode because Snow does '
+                                'not seem to support it...')
+                #self.require_ht = True
             # For their own historical reasons, hostapd wants it this way.
             if self.frequency > 5000:
                 mode = self.MODE_11A
