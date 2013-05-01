@@ -430,17 +430,34 @@ class SiteHost(remote.RemoteHost):
                 timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
 
-    def _stage_build_and_return_update_url(self, image_name):
+    def _stage_image_for_update(self, image_name=None):
         """Stage a build on a devserver and return the update_url.
 
         @param image_name: a name like lumpy-release/R27-3837.0.0
         @returns an update URL like:
             http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
         """
-        logging.info('Staging requested build: %s', image_name)
+        if not image_name:
+            image_name = self.get_repair_image_name()
+        logging.info('Staging build for AU: %s', image_name)
         devserver = dev_server.ImageServer.resolve(image_name)
         devserver.trigger_download(image_name, synchronous=False)
         return tools.image_url_pattern() % (devserver.url(), image_name)
+
+
+    def stage_image_for_servo(self, image_name=None):
+        """Stage a build on a devserver and return the update_url.
+
+        @param image_name: a name like lumpy-release/R27-3837.0.0
+        @returns an update URL like:
+            http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
+        """
+        if not image_name:
+            image_name = self.get_repair_image_name()
+        logging.info('Staging build for servo install: %s', image_name)
+        devserver = dev_server.ImageServer.resolve(image_name)
+        devserver.stage_artifacts(image_name, ['test_image'])
+        return devserver.get_test_image_url(image_name)
 
 
     def machine_install(self, update_url=None, force_update=False,
@@ -473,21 +490,22 @@ class SiteHost(remote.RemoteHost):
         @raises autoupdater.ChromiumOSError
 
         """
-        if not update_url and self._parser.options.image:
-            requested_build = self._parser.options.image
-            if requested_build.startswith('http://'):
-                update_url = requested_build
+        if not update_url:
+            if self._parser.options.image:
+                requested_build = self._parser.options.image
+                if requested_build.startswith('http://'):
+                    update_url = requested_build
+                else:
+                    # Try to stage any build that does not start with
+                    # http:// on the devservers defined in
+                    # global_config.ini.
+                    update_url = self._stage_image_for_update(
+                            requested_build)
+            elif repair:
+                update_url = self._stage_image_for_update()
             else:
-                # Try to stage any build that does not start with http:// on
-                # the devservers defined in global_config.ini.
-                update_url = self._stage_build_and_return_update_url(
-                        requested_build)
-        elif not update_url and not repair:
-            raise autoupdater.ChromiumOSError(
-                'Update failed. No update URL provided.')
-        elif not update_url and repair:
-            update_url = self._stage_build_and_return_update_url(
-                    self.get_repair_image_name())
+                raise autoupdater.ChromiumOSError(
+                    'Update failed. No update URL provided.')
 
         if repair:
             # In case the system is in a bad state, we always reboot the machine
@@ -648,7 +666,7 @@ class SiteHost(remote.RemoteHost):
                                       self.BOOT_TIMEOUT)
 
 
-    def servo_repair_reinstall(self, image_url=None):
+    def _servo_repair_reinstall(self):
         """Reinstall the DUT utilizing servo and a test image.
 
         Re-install the OS on the DUT by:
@@ -656,10 +674,6 @@ class SiteHost(remote.RemoteHost):
                 board,
         2) booting that image in recovery mode, and then
         3) installing the image with chromeos-install.
-
-        @param image_url: If specified use as the url to install on the DUT.
-                otherwise use the latest image staged on the devserver for the
-                particular board the DUT has.
 
         @raises AutoservRepairMethodNA if the device does not have servo
                 support.
@@ -672,14 +686,7 @@ class SiteHost(remote.RemoteHost):
         logging.info('Attempting to recovery servo enabled device with '
                      'servo_repair_reinstall')
 
-        board = self._get_board_from_afe()
-        if board is None:
-            raise error.AutoservRepairMethodNA('DUT has no board attribute, '
-                                               'cannot be repaired.')
-
-        if not image_url:
-            image_url = dev_server.ImageServer.devserver_url_for_servo(board)
-
+        image_url = self.stage_image_for_servo()
         self.servo_install(image_url)
 
 
@@ -768,7 +775,7 @@ class SiteHost(remote.RemoteHost):
         # but needs to be populated in order so DUTs are repaired with the
         # least amount of effort.
         repair_funcs = [self._install_repair, self._servo_repair_power,
-                        self.servo_repair_reinstall,
+                        self._servo_repair_reinstall,
                         self._powercycle_to_repair]
         errors = []
         for repair_func in repair_funcs:
