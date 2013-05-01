@@ -24,7 +24,8 @@ class RetryingAFE(frontend.AFE):
         self.delay_sec = delay_sec
         super(RetryingAFE, self).__init__(**dargs)
 
-    @retry.retry(Exception, timeout_min=30, delay_sec=10)
+    @retry.retry(Exception, timeout_min=30, delay_sec=10,
+                 blacklist=[ImportError])
     def run(self, call, **dargs):
         return super(RetryingAFE, self).run(call, **dargs)
 
@@ -45,6 +46,7 @@ class RetryingTKO(frontend.TKO):
         super(RetryingTKO, self).__init__(**dargs)
 
 
-    @retry.retry(Exception, timeout_min=30, delay_sec=10)
+    @retry.retry(Exception, timeout_min=30, delay_sec=10,
+                 blacklist=[ImportError])
     def run(self, call, **dargs):
         return super(RetryingTKO, self).run(call, **dargs)
