@@ -9,6 +9,7 @@ CRITERIA = """
 This test will fail if a connect failure does not immediately cause the
 service to enter the Failed state.
 """
+SUITE = "smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
