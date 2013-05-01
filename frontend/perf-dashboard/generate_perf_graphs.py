@@ -276,6 +276,7 @@ def upload_to_chrome_dashboard(data_point_info, platform, test_name,
         perf_err = traces[perf_key][1]
 
         units = None
+        test_path = test_name
         if perf_key.startswith(_TELEMETRY_PERF_KEY_IDENTIFIER):
             # The perf key is associated with a Telemetry test, and has a
             # specially-formatted perf key that encodes a graph_name,
@@ -283,16 +284,28 @@ def upload_to_chrome_dashboard(data_point_info, platform, test_name,
             # "TELEMETRY--DeltaBlue--DeltaBlue--score__bigger_is_better_"
             graph_name, trace_name, units = (
                 perf_key.split(_TELEMETRY_PERF_KEY_DELIMITER)[1:])
+
             # The Telemetry test name is the name of the tag that has been
             # appended to |test_name|.  For example, autotest name
             # "telemetry_Benchmarks.octane" corresponds to Telemetry test name
             # "octane" on chrome's new perf dashboard.
             test_name = test_name[test_name.find('.') + 1:]
 
+            # Transform the names according to rules set by the Chrome team,
+            # as implemented in:
+            # chromium/tools/build/scripts/slave/results_dashboard.py
+            if trace_name == graph_name + '_ref':
+                trace_name = 'ref'
+            graph_name = graph_name.replace('_by_url', '')
+            trace_name = trace_name.replace('/', '_')
+            test_path = '%s/%s/%s' % (test_name, graph_name, trace_name)
+            if graph_name == trace_name:
+                test_path = '%s/%s' % (test_name, graph_name)
+
         new_dash_entry = {
             'master': master_name,
             'bot': 'cros-' + platform,  # Prefix to make clear it's chromeOS.
-            'test': '%s/%s/%s' % (test_name, graph_name, trace_name),
+            'test': test_path,
             'value': perf_val,
             'error': perf_err,
             'supplemental_columns': {
