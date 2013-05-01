@@ -6,9 +6,8 @@ import dbus
 import logging
 from random import choice, randint
 import time
-import utils
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test
 from autotest_lib.client.cros import rtc, sys_power
@@ -77,6 +76,22 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
         logging.info('Power state of mobile device is %s.',
                      ['off', 'on'][properties['Powered']])
         return properties['Powered']
+
+    def _check_powered(self, device, check_enabled):
+        properties = device.GetProperties(utf8_strings=True)
+        power_state = (properties['Powered'] == 1)
+        return power_state if check_enabled else not power_state
+
+    def check_powered(self, device, check_enabled):
+        logging.info('Polling to check device state is %s.',
+                     'enabled' if check_enabled else 'disabled')
+        utils.poll_for_condition(
+            lambda: self._check_powered(device, check_enabled),
+            exception=error.TestFail(
+                'Failed to verify the device is in power state %s.',
+                'enabled' if check_enabled else 'disabled'),
+            timeout=self.TIMEOUT)
+        logging.info('Verified device power state.')
 
     def enable_device(self, device, enable):
         lambda_func = lambda: device.Enable() if enable else device.Disable()
@@ -147,9 +162,9 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
         # This verifies that the device is in the same state before and after
         # the device is suspended/resumed.
         device = self.__get_mobile_device()
-        if self.get_powered(device) != 0:
-            raise error.TestError('Device is not in same state it was prior'
-                                  'to Suspend/Resume.')
+        logging.info('Checking to see if device is in the same state as prior '
+                     'to suspend/resume')
+        self.check_powered(device, False)
 
         # Turn on the device to make sure we can bring it back up.
         self.enable_device(device, True)
@@ -168,9 +183,9 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
             # This verifies that the device is in the same state before
             # and after the device is suspended/resumed.
             device = self.__get_mobile_device()
-            if self.get_powered(device) != 0:
-                raise error.TestError('Device is not in same state it was prior'
-                                      'to Suspend/Resume.')
+            logging.info('Checking to see if device is in the same state as '
+                         'prior to suspend/resume')
+            self.check_powered(device, False)
 
         # Turn on the device to make sure we can bring it back up.
         self.enable_device(device, True)
@@ -183,9 +198,9 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
       service.SetProperty('EAP.Password', identity)
       self.flim.ConnectService(service=service, **kwargs)
 
-    # This test randomly enables or disables the modem.  This
-    # is mainly used for stress tests as it does not check the power state of
-    # the modem before and after suspend/resume.
+    # This test randomly enables or disables the modem.  This is mainly used
+    # for stress tests as it does not check the power state of the modem before
+    # and after suspend/resume.
     def scenario_suspend_mobile_random(self, stress_iterations=10, **kwargs):
         logging.debug('Running suspend_mobile_random %d times' %
                       stress_iterations)
@@ -294,10 +309,9 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
         # Here we verify that the power state of the device is up, and
         # that the mobile service can be found.
         device = self.__get_mobile_device()
-
-        if not self.get_powered(device) == 1:
-            raise error.TestFail('Failed to execute %s.  Modem '
-                             'is not powered on after test.'% function_name)
+        logging.info('Checking that modem is powered on after scenario %s.',
+                     function_name)
+        self.check_powered(device, True)
 
         logging.info('Scenario complete: %s.' % function_name)
 
