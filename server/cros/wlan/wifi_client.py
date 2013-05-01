@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import re
 import signal
 
 from autotest_lib.client.common_lib import error
@@ -16,6 +17,10 @@ from autotest_lib.server.cros.wlan import packet_capturer
 
 class WiFiClient(object):
     """WiFiClient is a thin layer of logic over a remote DUT in wifitests."""
+
+    IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
+    IW_LITNK_KEY_DTIM_PERIOD = 'dtim period'
+    IW_LINK_KEY_FREQUENCY = 'freq'
 
     DEFAULT_PING_COUNT = 10
     COMMAND_PING = 'ping'
@@ -367,3 +372,31 @@ class WiFiClient(object):
         """Stop a packet capture and copy over the results."""
         self._packet_capturer.stop()
         self._packet_capturer.destroy_netdump_devices()
+
+
+    def check_iw_link_value(self, iw_link_key, desired_value):
+        """Assert that the current wireless link property is |desired_value|.
+
+        @param iw_link_key string one of IW_LINK_KEY_* defined above.
+        @param desired_value string desired value of iw link property.
+
+        """
+        result = self.host.run('%s dev %s link' % (self.command_iw,
+                                                   self.wifi_if))
+        find_re = re.compile('\s*%s:\s*(.*\S)\s*$' % iw_link_key)
+        find_results = filter(bool, map(find_re.match,
+                                        result.stdout.splitlines()))
+        if not find_results:
+            raise error.TestFail('Could not find iw link property %s.' %
+                                 key)
+
+        actual_value = find_results[0].group(1)
+        desired_value = str(desired_value)
+        if actual_value != str(desired_value):
+            raise error.TestFail('Wanted iw link property %s value %s, but '
+                                 'got %s instead.' % (iw_link_key,
+                                                      desired_value,
+                                                      actual_value))
+
+        logging.info('Found iw link key %s with value %s.',
+                     iw_link_key, actual_value)

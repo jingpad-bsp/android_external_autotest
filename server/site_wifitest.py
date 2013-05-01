@@ -61,7 +61,7 @@ class WiFiTest(object):
       disconnect              disconnect client from AP
       client_check_*          check the client's connection state to verify
                               a parameter was setup as expected; e.g.
-                              client_check_bintval checks the beacon interval
+                              client_check_dtimperiod checks the DTIM period
                               set on the AP was adopted by the client
       client_monitor_start    start monitoring for wireless system events as
                               needed (e.g, kick off a process that listens)
@@ -988,23 +988,14 @@ class WiFiTest(object):
                                  (param, want, got))
 
 
-    def __client_check_iw_link(self, param, want):
-        """ Verify negotiated station mode parameter """
-        result = self.client.run("%s dev %s link" %
-                                 (self.client_proxy.command_iw,
-                                  self.client_wlanif))
-        find_re = re.compile("\s*%s:\s*(.*\S)\s*$" % param)
-        find_results = filter(bool, map(find_re.match,
-                                        result.stdout.splitlines()))
-        if not find_results:
-            raise error.TestFail("wanted %s but %s not found" % (want, param))
-        got = find_results[0].group(1)
-        if not re.match(want, got):
-            raise error.TestFail("wanted %s got %s" % (want, got))
+    def __client_check_iw_link(self, iw_link_key, desired_value):
+        """Assert that the current wireless link property is |desired_value|.
 
-    def client_check_bintval(self, params):
-        """ Verify negotiated beacon interval """
-        self.__client_check_iw_link("beacon int", params[0])
+        @param iw_link_key string one of IW_LINK_KEY_* defined in WiFiClient.
+        @param desired_value string desired value of iw link property.
+
+        """
+        self.client_proxy.check_iw_link_value(iw_link_key, desired_value)
 
 
     def client_check_dtimperiod(self, params):

@@ -114,7 +114,7 @@ class WiFiTestBase(test.test):
         logging.info('Ping successful.')
 
 
-    def run_once(self, host, raw_cmdline_args, additional_params):
+    def run_once(self, host, raw_cmdline_args, additional_params=None):
         """Wrapper around bodies of test subclasses.
 
         This is the entry point from autotest proper.  We use it to set up

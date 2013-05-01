@@ -264,7 +264,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['wmm_enabled'] = 1
         if configuration.require_ht:
             conf['require_ht'] = 1
-        # TODO(wiley) beacon interval support
+        if configuration.beacon_interval:
+            conf['beacon_int'] = configuration.beacon_interval
         self.start_hostapd(conf, {})
         # Configure transmit power
         tx_power_params = {'interface': conf['interface']}

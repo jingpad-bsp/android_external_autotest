@@ -113,7 +113,7 @@ class HostapConfig(object):
 
 
     def __init__(self, mode=None, channel=None, frequency=None,
-                 n_capabilities=None, hide_ssid=None):
+                 n_capabilities=None, hide_ssid=None, beacon_interval=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -125,6 +125,7 @@ class HostapConfig(object):
         @param frequency int frequency of channel.
         @param n_capabilities list of N_CAPABILITY_x defined above.
         @param hide_ssid True if we should set up a hidden SSID.
+        @param beacon_interval int beacon interval of AP.
 
         """
         super(HostapConfig, self).__init__()
@@ -199,3 +200,4 @@ class HostapConfig(object):
                 raise error.TestError('Unknown capability: %r' % cap)
 
         self.hide_ssid = hide_ssid
+        self.beacon_interval = beacon_interval
