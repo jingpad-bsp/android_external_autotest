@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import httplib, logging, os, socket, subprocess, sys, time, xmlrpclib
+import SocketServer
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, test
@@ -18,7 +19,7 @@ class ServoTest(test.test):
     """
     version = 2
 
-    _PORT = 9990
+    _REMOTE_PORT = 9990
     _REMOTE_COMMAND = '/usr/local/autotest/cros/faft_client.py'
     _REMOTE_COMMAND_SHORT = 'faft_client'
     _REMOTE_LOG_FILE = '/tmp/faft_client.log'
@@ -39,6 +40,7 @@ class ServoTest(test.test):
         self._client = host
         self._ssh_tunnel = None
         self._remote_process = None
+        self._local_port = None
 
         # Initializes dut, may raise AssertionError if pre-defined gpio
         # sequence to set GPIO's fail.  Autotest does not handle exception
@@ -119,7 +121,7 @@ class ServoTest(test.test):
 
         # Connect to RPC object.
         logging.info('Connecting to client RPC server...')
-        remote_url = 'http://localhost:%s' % self._PORT
+        remote_url = 'http://localhost:%s' % self._local_port
         self.faft_client = xmlrpclib.ServerProxy(remote_url, allow_none=True)
         logging.info('Server proxy: %s', remote_url)
 
@@ -208,16 +210,25 @@ class ServoTest(test.test):
         """Delete the Servo object, call remote cleanup, and kill ssh."""
         self.kill_remote()
 
+    def _find_unused_port(self):
+        """Returns an unused TCP port."""
+        server = SocketServer.TCPServer(('localhost', 0),
+                                        SocketServer.BaseRequestHandler)
+        _, port = server.server_address
+        return port
+
     def _launch_ssh_tunnel(self):
         """Establish an ssh tunnel for connecting to the remote RPC server.
         """
+        if self._local_port is None:
+            self._local_port = self._find_unused_port()
         if not self._ssh_tunnel or self._ssh_tunnel.poll() is not None:
             self._ssh_tunnel = subprocess.Popen([
                 'ssh -N -n -q %s -L %s:localhost:%s root@%s' %
-                (self._SSH_CONFIG, self._PORT, self._PORT,
+                (self._SSH_CONFIG, self._local_port, self._REMOTE_PORT,
                 self._client.ip)], shell=True)
             assert self._ssh_tunnel.poll() is None, \
-                'The SSH tunnel on port %d is not up.' % self._PORT
+                'The SSH tunnel on port %d is not up.' % self._local_port
 
     def _kill_remote_process(self):
         """Ensure the remote process and local ssh process are terminated.
