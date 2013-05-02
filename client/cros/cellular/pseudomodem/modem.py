@@ -14,9 +14,11 @@ import dbus.types
 import dbus_std_ifaces
 import disable_machine
 import enable_machine
+import gobject
 import logging
 import mm1
 import modem_simple
+import time
 
 ALLOWED_BEARER_PROPERTIES = [
     'apn',
@@ -153,14 +155,16 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             self.sim.SetBus(self.bus)
         self.Set(mm1.I_MODEM, 'Sim', dbus.types.ObjectPath(val))
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='b')
-    def Enable(self, enable):
+    @dbus.service.method(mm1.I_MODEM,
+                         in_signature='b',
+                         async_callbacks=('return_cb', 'raise_cb'))
+    def Enable(self, enable, return_cb=None, raise_cb=None):
         if enable:
             logging.info('Modem enable')
-            enable_machine.EnableMachine(self).Step()
+            enable_machine.EnableMachine(self, return_cb, raise_cb).Step()
         else:
             logging.info('Modem disable')
-            disable_machine.DisableMachine(self).Step()
+            disable_machine.DisableMachine(self, return_cb, raise_cb).Step()
 
     def RegisterWithNetwork(self):
         """
@@ -267,22 +271,30 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
     def Reset(self):
         logging.info('Resetting modem.')
 
-        def ResetCleanup():
-            logging.info('ResetCleanup')
+        def RaiseCb(error):
+            raise error
+
+        def DisableEnable():
             self._properties = self._InitializeProperties()
             if self.sim:
                 self.Set(mm1.I_MODEM,
                          'Sim',
                          dbus.types.ObjectPath(self.sim.path))
-            self.Enable(True)
+            # Shill will issue a second disable a little after the modem
+            # becomes disabled (for fun of course). Wait here to make sure
+            # that the enable is issued after the second disable fails.
+            def DelayedEnable():
+                self.Enable(True)
+                return False
+            gobject.timeout_add(3000, DelayedEnable)
 
-        def RaiseCb(error):
-            logging.info('Disconnect error: ' + str(error))
-            raise error
+        def ResetCleanup():
+            logging.info('ResetCleanup')
+            self.bearers.clear()
+            self.Enable(False, DisableEnable, RaiseCb)
 
         if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_CONNECTED:
             self.Disconnect('/', ResetCleanup, RaiseCb)
-            self.bearers.clear()
         else:
             ResetCleanup()
 
@@ -291,7 +303,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
     @dbus.service.method(mm1.I_MODEM, in_signature='s')
     def FactoryReset(self, code):
-        self.Reset()
+        pass
 
     @dbus.service.method(mm1.I_MODEM, in_signature='uu')
     def SetAllowedModes(self, modes, preferred):

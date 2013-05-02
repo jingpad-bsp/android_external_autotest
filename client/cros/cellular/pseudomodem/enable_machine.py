@@ -7,6 +7,11 @@ import mm1
 import state_machine
 
 class EnableMachine(state_machine.StateMachine):
+    def __init__(self, modem, return_cb, raise_cb):
+        super(EnableMachine, self).__init__(modem)
+        self.return_cb = return_cb
+        self.raise_cb = raise_cb
+
     def Cancel(self):
         logging.info('EnableMachine: Canceling enable.')
         super(EnableMachine, self).Cancel()
@@ -16,6 +21,8 @@ class EnableMachine(state_machine.StateMachine):
             logging.info('EnableMachine: Setting state to DISABLED.')
             self._modem.ChangeState(mm1.MM_MODEM_STATE_DISABLED, reason)
         self._modem.enable_step = None
+        if self.return_cb:
+            self.return_cb()
 
     def _HandleDisabledState(self):
         assert self._modem.disable_step is None
@@ -44,6 +51,8 @@ class EnableMachine(state_machine.StateMachine):
         assert self._modem.disconnect_step is None
         logging.info('EnableMachine: Searching for networks.')
         self._modem.enable_step = None
+        if self.return_cb:
+            self.return_cb()
         self._modem.RegisterWithNetwork()
         return False
 

@@ -40,10 +40,14 @@ class ActivationTest(object):
             # For the purposes of this test, introduce a property to help
             # verify that a reset has taken place. Expose this under a test
             # specific interface.
-            if not props.get(I_ACTIVATION_TEST, None):
-                props[I_ACTIVATION_TEST] = {
-                    'ResetCalled' : dbus.types.Boolean(False)
-                }
+            if hasattr(self, '_properties'):
+                reset_called = \
+                    self._properties[I_ACTIVATION_TEST]['ResetCalled']
+            else:
+                reset_called = False
+            props[I_ACTIVATION_TEST] = {
+                'ResetCalled' : dbus.types.Boolean(reset_called)
+            }
             return props
 
         def RegisterWithNetwork(self):
@@ -52,9 +56,9 @@ class ActivationTest(object):
             return
 
         def Reset(self):
-            modem_3gpp.Modem3gpp.Reset(self)
             self.Set(
                 I_ACTIVATION_TEST, 'ResetCalled', dbus.types.Boolean(True))
+            modem_3gpp.Modem3gpp.Reset(self)
 
     def __init__(self, pmm_context, test):
         self.pmm_context = pmm_context
@@ -70,7 +74,8 @@ class ActivationTest(object):
                                         'OwnNumbers',
                                         ['1111111111'])
         time.sleep(5)
-        self.test.CheckServiceActivationState('activated')
+        if self.test.flim.FindCellularService():
+            self.test.CheckServiceActivationState('activated')
 
     def Run(self):
         if not self.test_modem:
@@ -85,11 +90,10 @@ class ActivationTest(object):
     def RunTest(self):
         raise NotImplementedError()
 
-class RemainActivatingTest(ActivationTest):
+class TimeoutResetTest(ActivationTest):
     """
-    This test verifies that the service stays in the 'Activating' state, if
-    the modem never becomes registered after an online payment and the OLP
-    doesn't update.
+    This test verifies that the modem resets after a timeout following online
+    payment.
 
     """
     def SetupTestModem(self):
@@ -121,9 +125,9 @@ class RemainActivatingTest(ActivationTest):
         if not self.test.GetModemResetCalled():
             raise error.TestError('Modem should have been reset.')
 
-        # The service should never register, but it should be marked as
-        # 'activating'.
-        self.test.CheckServiceActivationState('activating')
+        # At this point, a service should never get created.
+        if self.test.flim.FindCellularService():
+            raise error.TestError('There should be no cellular service.')
 
 class TimeoutActivatedTest(ActivationTest):
     """
@@ -305,7 +309,7 @@ class network_LTEActivate(test.test):
                     'manager+dhcp')
 
                 tests = [
-                    RemainActivatingTest(tmmc.GetPseudoModemManager(), self),
+                    TimeoutResetTest(tmmc.GetPseudoModemManager(), self),
                     TimeoutActivatedTest(tmmc.GetPseudoModemManager(), self),
                     ResetAfterRegisterTest(tmmc.GetPseudoModemManager(), self),
                     ActivatedDueToMdnTest(tmmc.GetPseudoModemManager(), self)

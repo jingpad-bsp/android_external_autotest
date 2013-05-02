@@ -7,6 +7,11 @@ import mm1
 import state_machine
 
 class DisableMachine(state_machine.StateMachine):
+    def __init__(self, modem, return_cb, raise_cb):
+        super(DisableMachine, self).__init__(modem)
+        self.return_cb = return_cb
+        self.raise_cb = raise_cb
+
     def _HandleConnectedState(self):
         logging.info('DisableMachine: Modem is CONNECTED.')
         assert self._modem.connect_step is None
@@ -72,6 +77,8 @@ class DisableMachine(state_machine.StateMachine):
         reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         self._modem.ChangeState(mm1.MM_MODEM_STATE_DISABLED, reason)
         self._modem.disable_step = None
+        if self.return_cb:
+            self.return_cb()
         return False
 
     def _GetModemStateFunctionMap(self):
@@ -103,6 +110,8 @@ class DisableMachine(state_machine.StateMachine):
                 # but WON'T check for raised errors, which causes
                 # problems. Treat this particular case as success.
                 logging.info('Already in a disabled state. Ignoring.')
+                if self.return_cb:
+                    self.return_cb()
                 return False
 
             invalid_states = [
