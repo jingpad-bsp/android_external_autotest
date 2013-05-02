@@ -16,8 +16,11 @@ class login_CryptohomeIncognitoUnmounted(cros_ui_test.UITest):
 
 
     def start_authserver(self):
-        super(login_CryptohomeIncognitoUnmounted, self).start_authserver(
-            authenticator=self.__authenticator)
+        try:
+            super(login_CryptohomeIncognitoUnmounted, self).start_authserver(
+                authenticator=self.__authenticator)
+        except Exception as err:
+            raise error.TestFailRetry(err)
 
 
     def run_once(self):

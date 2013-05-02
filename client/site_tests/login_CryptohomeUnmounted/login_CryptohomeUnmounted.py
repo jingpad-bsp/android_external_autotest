@@ -11,7 +11,10 @@ class login_CryptohomeUnmounted(cros_ui_test.UITest):
     version = 2
 
     def initialize(self, creds='$default'):
-        super(login_CryptohomeUnmounted, self).initialize(creds)
+        try:
+            super(login_CryptohomeUnmounted, self).initialize(creds)
+        except Exception as err:
+            raise error.TestFailRetry(err)
 
 
     def run_once(self):
