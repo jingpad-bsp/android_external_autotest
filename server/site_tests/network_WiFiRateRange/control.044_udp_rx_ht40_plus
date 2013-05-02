@@ -4,6 +4,7 @@
 
 AUTHOR = "tgao@chromium.org"
 NAME = "WiFi RateRange"
+SUITE = 'wifirvr'
 TIME = "LONG"
 TEST_TYPE = "Server"
 
