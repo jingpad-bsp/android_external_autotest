@@ -166,7 +166,7 @@ def extract_perf_for_job_id(cursor, job_id, unexpected_job_names, test_dir,
             result['job_name'] = job_name
             result['platform'] = platform
             result.setdefault('perf_keys', {})
-            if key and val:
+            if key is not None and val is not None:
                 result['perf_keys'].setdefault(key, [])
                 result['perf_keys'][key].append(val)
         else:
