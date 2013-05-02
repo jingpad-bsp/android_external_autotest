@@ -1,0 +1,21 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "chrome-ui"
+NAME = "Telemetry Login Status Test"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_TYPE = "server"
+
+DOC = """
+This server control file executes the CrOS telemetry test: testLoginStatus.
+"""
+
+def run_test(machine):
+    host = hosts.create_host(machine)
+    job.run_test("telemetry_CrosTests", host=host,
+                 test="CrOSAutoTest.testLoginStatus")
+
+
+parallel_simple(run_test, machines)

@@ -15,6 +15,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 
 TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_multipage_benchmarks'
 TELEMETRY_RUN_TESTS_SCRIPT = 'tools/telemetry/run_tests'
+TELEMETRY_RUN_CROS_TESTS_SCRIPT = 'chrome/test/telemetry/run_cros_tests'
 TELEMETRY_TIMEOUT_MINS = 60
 
 # Result Statuses
@@ -235,6 +236,7 @@ class TelemetryRunner(object):
         """
         devserver_hostname = self._devserver.url().split(
                 'http://')[1].split(':')[0]
+        # TODO (sbasi crbug.com/239933) add support for incognito mode.
         telemetry_args = ['ssh',
                           devserver_hostname,
                           'python',
@@ -269,6 +271,26 @@ class TelemetryRunner(object):
                                stderr=stderr)
 
 
+    def _run_test(self, script, test):
+        """Runs a telemetry test on a dut.
+
+        @param script: Which telemetry test script we want to run. Can be
+                       telemetry's base test script or the Chrome OS specific
+                       test script.
+        @param test: Telemetry test we want to run.
+
+        @returns A TelemetryResult Instance with the results of this telemetry
+                 execution.
+        """
+        logging.debug('Running telemetry test: %s', test)
+        telemetry_script = os.path.join(self._telemetry_path, script)
+        result = self._run_telemetry(telemetry_script, test)
+        if result.status is FAILED_STATUS:
+            raise error.TestFail('Telemetry test: %s failed.',
+                                 test)
+        return result
+
+
     def run_telemetry_test(self, test):
         """Runs a telemetry test on a dut.
 
@@ -277,14 +299,18 @@ class TelemetryRunner(object):
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
         """
-        logging.debug('Running telemetry test: %s', test)
-        telemetry_script = os.path.join(self._telemetry_path,
-                                        TELEMETRY_RUN_TESTS_SCRIPT)
-        result = self._run_telemetry(telemetry_script, test)
-        if result.status is FAILED_STATUS:
-            raise error.TestFail('Telemetry test: %s failed.',
-                                 test)
-        return result
+        return self._run_test(TELEMETRY_RUN_TESTS_SCRIPT, test)
+
+
+    def run_cros_telemetry_test(self, test):
+        """Runs a cros specific telemetry test on a dut.
+
+        @param test: Telemetry test we want to run.
+
+        @returns A TelemetryResult instance with the results of this telemetry
+                 execution.
+        """
+        return self._run_test(TELEMETRY_RUN_CROS_TESTS_SCRIPT, test)
 
 
     def run_telemetry_benchmark(self, benchmark, page_set, keyval_writer=None):
