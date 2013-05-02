@@ -34,6 +34,7 @@ class firmware_ECAdc(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['adc_ectemp']):
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         logging.info("Reading EC internal temperature for %d times.",
                      self.READ_COUNT)

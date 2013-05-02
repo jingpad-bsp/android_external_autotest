@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import time
 
 from autotest_lib.server.cros.faftsequence import FAFTSequence
@@ -50,6 +51,7 @@ class firmware_ECKeyboard(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['keyboard']):
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         self.register_faft_sequence((
             {   # Step 1, use key press simulation to issue reboot command

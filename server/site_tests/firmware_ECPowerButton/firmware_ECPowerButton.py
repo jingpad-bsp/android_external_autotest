@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import re
 from threading import Timer
 
@@ -75,6 +76,7 @@ class firmware_ECPowerButton(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability():
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         self.register_faft_sequence((
             {   # Step 1, Shutdown when powerd is still running and wake from S5

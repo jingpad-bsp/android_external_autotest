@@ -195,6 +195,7 @@ class firmware_ECLidSwitch(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['lid']):
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         self.register_faft_sequence((
             {   # Step 1, shutdown and long delayed wake

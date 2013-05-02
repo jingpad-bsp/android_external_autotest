@@ -114,6 +114,7 @@ class firmware_ECCharging(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['battery', 'charging']):
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         if self._get_battery_charge() == 100:
             logging.info("Battery is full. Unable to test.")

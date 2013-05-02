@@ -34,6 +34,7 @@ class firmware_ECPeci(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['peci']):
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         logging.info("Reading PECI CPU temperature for %d times.",
                      self.READ_COUNT)

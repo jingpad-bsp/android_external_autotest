@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.server.cros.faftsequence import FAFTSequence
+import logging
 import time
 
 
@@ -38,6 +39,7 @@ class firmware_ECWatchdog(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability():
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         self.register_faft_sequence((
             {   # Step 1, trigger a watchdog reset and power on system again.

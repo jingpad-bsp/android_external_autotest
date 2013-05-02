@@ -419,6 +419,7 @@ class firmware_ECThermal(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['thermal']):
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         logging.info("Checking host temperature report.")
         self.check_temp_report()

@@ -43,6 +43,7 @@ class firmware_ECBootTime(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability():
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         self._x86 = ('x86' in self.client_attr.ec_capability)
         dev_mode = self.checkers.crossystem_checker({'devsw_boot': '1'})

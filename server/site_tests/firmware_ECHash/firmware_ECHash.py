@@ -73,6 +73,7 @@ class firmware_ECHash(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability():
+            logging.info("Nothing needs to be tested on this device - Skipping")
             return
         self.register_faft_sequence((
             {   # Step 1, save the EC hash, invalidate it, and warm reboot.
