@@ -339,20 +339,26 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
                     lsb_dict[lsb_key].rstrip(")").split(" ")[3])
             keyval[lsb_key] = lsb_dict[lsb_key]
 
-        # get the hwid (hardware ID)
-        # TODO(dennisjeffrey): Remove the try/except around the call to
-        # "crossystem hwid" after this bug is fixed: crbug.com/223728.
+        # Get the hwid (hardware ID), if applicable.
         try:
             keyval["hwid"] = utils.system_output('crossystem hwid')
         except error.CmdError:
-            other_hwid_command = 'cat /sys/devices/platform/chromeos_acpi/HWID'
-            additional_info = utils.system_output(other_hwid_command)
-            logging.info('Output of "%s": %s', other_hwid_command,
-                         additional_info)
-            raise
+            # The hwid may not be available (e.g, when running on a VM).
+            # If the output of 'crossystem mainfw_type' is 'nonchrome', then
+            # we expect the hwid to not be avilable, and we can proceed in this
+            # case.  Otherwise, the hwid is missing unexpectedly.
+            mainfw_type = utils.system_output('crossystem mainfw_type')
+            if mainfw_type == 'nonchrome':
+                logging.info(
+                    'HWID not available; not logging it as a test keyval.')
+            else:
+                logging.exception('HWID expected but could not be identified; '
+                                  'output of "crossystem mainfw_type" is "%s"',
+                                  mainfw_type)
+                raise
 
-        # get the chrome version
+        # Get the chrome version.
         keyval["CHROME_VERSION"] = self._get_chrome_version()
 
-        # return the updated keyvals
+        # Return the updated keyvals.
         return keyval
