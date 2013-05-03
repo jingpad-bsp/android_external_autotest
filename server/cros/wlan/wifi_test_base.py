@@ -114,6 +114,27 @@ class WiFiTestBase(test.test):
         logging.info('Ping successful.')
 
 
+    def assert_ping_from_server(self, additional_ping_params=None):
+        """Ping the DUT across the WiFi network from the server.
+
+        Check that the ping is mostly successful and fail the test if it
+        is not.
+
+        @param additional_ping_params dict of optional parameters to ping.
+
+        """
+        logging.info('Pinging from server.')
+        if additional_ping_params is None:
+            additional_ping_params = {}
+        ping_count = 10
+        stats = self.context.server.ping(self.context.client.wifi_ip,
+                                         ping_count, additional_ping_params)
+        # These are percentages.
+        if float(stats['loss']) > 20:
+            raise error.TestFail('Server lost ping packets: %r.', stats)
+        logging.info('Ping successful.')
+
+
     def run_once(self, host, raw_cmdline_args, additional_params=None):
         """Wrapper around bodies of test subclasses.
 

@@ -185,6 +185,8 @@ class WiFiClient(object):
         self._result_dir = result_dir
 
         self._firewall_rules = []
+        # Turn off powersave mode by default.
+        self.powersave_switch(False)
 
 
     def close(self):
@@ -192,6 +194,7 @@ class WiFiClient(object):
         if self._ping_thread is not None:
             self.ping_bg_stop()
         self.stop_capture()
+        self.powersave_switch(False)
         # This kills the RPC server.
         self._host.close()
 
@@ -414,3 +417,28 @@ class WiFiClient(object):
         if turn_on:
             mode = 'on'
         self.host.run('iw dev %s set power_save %s' % (self.wifi_if, mode))
+
+
+    def check_powersave(self, should_be_on):
+        """Check that powersave mode is on or off.
+
+        @param should_be_on bool True iff powersave mode should be on.
+
+        """
+        result = self.host.run("iw dev %s get power_save" % self.wifi_if)
+        output = result.stdout.rstrip()       # NB: chop \n
+        # Output should be either "Power save: on" or "Power save: off".
+        find_re = re.compile('([^:]+):\s+(\w+)')
+        find_results = find_re.match(output)
+        if not find_results:
+            raise error.TestFail("wanted %s but not found" % want)
+        actually_on = find_results.group(2) == 'on'
+        if should_be_on:
+            wording = 'on'
+        else:
+            wording = 'off'
+        if should_be_on != actually_on:
+            raise error.TestFail('Powersave mode should be %s, but it is not.' %
+                                 wording)
+
+        logging.debug('Power save is indeed %s.', wording)
