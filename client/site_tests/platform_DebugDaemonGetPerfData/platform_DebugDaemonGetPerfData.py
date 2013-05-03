@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, subprocess
+import cStringIO, dbus, gzip, logging, subprocess
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -29,6 +29,21 @@ class platform_DebugDaemonGetPerfData(test.test):
         'idle'     : 'sleep 1',
         'busy'     : 'ls',
     }
+
+    def GzipString(self, string):
+        """
+        Gzip a string.
+
+        @param string: The input string to be gzipped.
+
+        Returns:
+          The gzipped string.
+        """
+        string_file = cStringIO.StringIO()
+        gzip_file = gzip.GzipFile(fileobj=string_file, mode='wb')
+        gzip_file.write(string)
+        gzip_file.close()
+        return string_file.getvalue()
 
 
     def run_once(self, *args, **kwargs):
@@ -60,8 +75,10 @@ class platform_DebugDaemonGetPerfData(test.test):
                 if len(result) < 10:
                     raise error.TestFail('Perf output too small')
 
-                keyvals['perf_data_size_%s_%d' % (profile_type, duration)] = \
-                    len(result)
+                result = "".join(chr(b) for b in result)
+                key = 'perf_data_size_%s_%d' % (profile_type, duration)
+                keyvals[key] = len(result)
+                keyvals[key + '_zipped'] = len(self.GzipString(result))
 
             # Terminate the process and actually wait for it to terminate.
             process.terminate()
