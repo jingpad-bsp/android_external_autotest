@@ -184,7 +184,7 @@ class ServoTest(test.test):
         self._launch_client()
         logging.info('Server: Relaunched remote %s.', 'faft')
 
-    def wait_for_client_offline(self, timeout=60, orig_boot_id=''):
+    def wait_for_client_offline(self, timeout=60, orig_boot_id=None):
         """Wait for the client to come offline.
 
         @param timeout: Time in seconds to wait the client to come offline.

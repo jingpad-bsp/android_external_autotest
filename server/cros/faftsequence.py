@@ -1465,11 +1465,16 @@ class FAFTSequence(ServoTest):
         if test['state_checker']:
             self._call_action(test['state_checker'], check_status=True)
 
+        boot_id = None
+        try:
+          boot_id = self._client.get_boot_id()
+        except error.AutoservRunError:
+          logging.warning('Failed to get boot id.')
+
         self._call_action(test['userspace_action'])
 
         # Don't run reboot_action and firmware_action if no_reboot is True.
         if not no_reboot:
-            boot_id = self._client.get_boot_id()
             self._call_action(test['reboot_action'])
             self.wait_for_client_offline(orig_boot_id=boot_id)
             self._call_action(test['firmware_action'])
