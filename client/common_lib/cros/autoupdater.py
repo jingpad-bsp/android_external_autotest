@@ -385,6 +385,10 @@ class ChromiumOSUpdater():
         update version: lumpy-chrome-perf/R28-3837.0.0-b2996
         booted version: 3837.0.0
 
+        6. pgo-generate build.
+        update version: lumpy-release-pgo-generate/R28-3837.0.0-b2996
+        booted version: 3837.0.0-pgo-generate
+
         When we are checking if a DUT needs to do a full install, we should NOT
         use this method to check if the DUT is running the same version, since
         it may return false positive for a DUT running trybot paladin build to
@@ -422,12 +426,26 @@ class ChromiumOSUpdater():
                                         booted_version)
         has_date_string = booted_version != booted_version_no_date
 
+        is_pgo_generate_build = re.match(r'.+-pgo-generate',
+                                           self.update_url)
+
+        # Remove |-pgo-generate| in booted_version
+        booted_version_no_pgo = booted_version.replace('-pgo-generate', '')
+        has_pgo_generate = booted_version != booted_version_no_pgo
+
         if is_trybot_paladin_build:
             if not has_date_string:
                 logging.error('A trybot paladin build is expected. Version ' +
                               '"%s" is not a paladin build.', booted_version)
                 return False
             return stripped_version == booted_version_no_date
+        elif is_pgo_generate_build:
+            if not has_pgo_generate:
+                logging.error('A pgo-generate build is expected. Version ' +
+                              '"%s" is not a pgo-generate build.',
+                              booted_version)
+                return False
+            return stripped_version == booted_version_no_pgo
         else:
             if has_date_string:
                 logging.error('Unexpected date found in a non trybot paladin' +
