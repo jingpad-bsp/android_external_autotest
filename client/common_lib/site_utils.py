@@ -22,6 +22,11 @@ _LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
 
 LAB_GOOD_STATES = ('open', 'throttled')
 
+_SHERIFF_JS = global_config.global_config.get_config_value(
+    'NOTIFICATIONS', 'sheriffs', default='')
+_CHROMIUM_BUILD_URL = global_config.global_config.get_config_value(
+    'NOTIFICATIONS', 'chromium_build_url', default='')
+
 
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
@@ -35,6 +40,7 @@ def ping(host, deadline=None, tries=None, timeout=60):
     Specifying |deadline| or |count| alone should return 0 as long as
     some packets receive responses.
 
+    @param host: the host to ping.
     @param deadline: seconds within which |tries| pings must succeed.
     @param tries: number of pings to send.
     @param timeout: number of seconds after which to kill 'ping' command.
@@ -93,6 +99,9 @@ def gs_upload(local_file, remote_file, acl, result_dir=None,
                 file.
     @param result_dir: Result directory if you want to add tracing to the
                        upload.
+    @param transfer_timeout: Timeout for this upload call.
+    @param acl_timeout: Timeout for the acl call needed to confirm that
+                        the uploader has permissions to execute the upload.
 
     @raise CmdError: the exit code of the gsutil call was not 0.
 
@@ -256,3 +265,32 @@ def check_lab_status(board=None):
                     'currently not allowing suites to be scheduled on board '
                     '%s: %s' % (board, lab_status['message']))
     return
+
+
+def get_sheriffs():
+    """
+    Polls the javascript file that holds the identity of the sheriff and
+    parses it's output to return a list of chromium sheriff email addresses.
+    The javascript file can contain the ldap of more than one sheriff, eg:
+    document.write('sheriff_one, sheriff_two').
+
+    @return: A list of chroium.org sheriff email addresses to cc on the bug
+        if the suite that failed was the bvt suite. An empty list otherwise.
+    """
+    sheriff_ids = []
+    for sheriff_js in _SHERIFF_JS.split(','):
+        try:
+            url_content = base_utils.urlopen('%s%s'% (
+                _CHROMIUM_BUILD_URL, sheriff_js)).read()
+        except (ValueError, IOError) as e:
+            logging.error('could not parse sheriff from url %s%s: %s',
+                           _CHROMIUM_BUILD_URL, sheriff_js, str(e))
+        else:
+            ldaps = re.search(r"document.write\('(.*)'\)", url_content)
+            if not ldaps:
+                logging.error('Could not retrieve sheriff ldaps for: %s',
+                               url_content)
+                continue
+            sheriff_ids += ['%s@chromium.org'% alias.replace(' ', '')
+                            for alias in ldaps.group(1).split(',')]
+    return sheriff_ids

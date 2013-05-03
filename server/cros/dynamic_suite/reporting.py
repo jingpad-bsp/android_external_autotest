@@ -10,7 +10,7 @@ import re
 
 import common
 
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.site_utils import phapi_lib
 from autotest_lib.site_utils.suite_scheduler import base_event
@@ -178,7 +178,7 @@ class TestFailure(object):
                                                self._chromeos_image_archive,
                                                self.build)
             return json.loads(gs_context.Cat(gs_cmd).output)
-        except cros_build_lib.RunCommandError, e:
+        except (cros_build_lib.RunCommandError, gs.GSContextException) as e:
             logging.debug(e)
 
 
@@ -337,7 +337,7 @@ class Reporter(object):
 
 
     def _create_bug_report(self, summary, title, name, owner, milestone='',
-                           bug_template={}):
+                           bug_template={}, sheriffs=[]):
         """
         Creates a new bug report.
 
@@ -350,11 +350,13 @@ class Reporter(object):
         issue_options = self._resolve_slotvals(
             bug_template, title=title,
             summary=summary, labels=self._get_labels(name.lower()),
-            status='Untriaged', owner=owner)
+            status='Untriaged', owner=owner, ccs=[self._OWNER])
 
         issue_options['labels'] = set(issue_options['labels'] +
                                       self._PREDEFINED_LABELS +
                                       [milestone])
+        issue_options['ccs'] = set(issue_options['ccs'] + sheriffs)
+
         issue = gdata_lib.Issue(**issue_options)
         bugid = self._tracker.CreateTrackerIssue(issue)
         logging.info('Filing new bug %s, with summary %s', bugid, summary)
@@ -511,6 +513,11 @@ class Reporter(object):
                 self._LAB_ERROR_TEMPLATE['labels'] += bug_template.get('labels')
             bug_template = self._LAB_ERROR_TEMPLATE
 
+        sheriffs = []
+        if failure.suite is 'bvt':
+            sheriffs = site_utils.get_sheriffs()
+
         return self._create_bug_report(summary, failure.bug_title(),
                                        failure.test, self._get_owner(failure),
-                                       failure.get_milestone(), bug_template)
+                                       failure.get_milestone(), bug_template,
+                                       sheriffs)
