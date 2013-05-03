@@ -268,6 +268,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['beacon_int'] = configuration.beacon_interval
         if configuration.dtim_period:
             conf['dtim_period'] = configuration.dtim_period
+        if configuration.frag_threshold:
+            conf['fragm_threshold'] = configuration.frag_threshold
         self.start_hostapd(conf, {})
         # Configure transmit power
         tx_power_params = {'interface': conf['interface']}
