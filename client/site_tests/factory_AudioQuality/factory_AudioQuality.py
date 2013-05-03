@@ -78,6 +78,9 @@ _MUTE_RIGHT_MIXER_SETTINGS = [{'name': '"Master Playback Switch"',
 # Logs
 _LABEL_FAIL_LOGS = 'Test fail, find more detail in log.'
 
+# Setting
+_INIT_COUNTDOWN = 3
+
 class factory_AudioQuality(test.test):
     version = 2
     preserve_srcdir = True
@@ -310,16 +313,21 @@ class factory_AudioQuality(test.test):
 
     def init_audio_server(self, event):
         self._eth = net_utils.FindUsableEthDevice()
-        if not self._eth:
-            raise error.TestError('No Ethernet interface available')
-        factory.console.info('Got %s for connection' % self._eth)
+        if self._eth:
+            factory.console.info('Got %s for connection' % self._eth)
 
-        # Configure local network environment to accept command from test host.
-        utils.system('ifconfig %s %s netmask 255.255.255.0 up' %
-                (self._eth, _LOCAL_IP))
-        utils.system('iptables -A INPUT -p tcp --dport %s -j ACCEPT' % _PORT)
+            # Configure local network environment to accept command
+            # from test host.
+            utils.system('ifconfig %s %s netmask 255.255.255.0 up' %
+                    (self._eth, _LOCAL_IP))
+            utils.system('iptables -A INPUT -p tcp --dport %s -j ACCEPT' %
+                    _PORT)
 
-        self.start_server()
+            self.start_server()
+        else:
+            self.ui.CallJSFunction('start_countdown',
+                    'Auto detect ethernet, countdown | 自动侦测网路，倒数\n',
+                    self._countdown)
 
     def run_once(self, input_dev='hw:0,0', output_dev='hw:0,0', eth='eth0',
             dmic_switch_mixer_settings=_DMIC_SWITCH_MIXER_SETTINGS,
@@ -327,7 +335,8 @@ class factory_AudioQuality(test.test):
             unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS,
             mute_right_mixer_settings=_MUTE_RIGHT_MIXER_SETTINGS,
             mute_left_mixer_settings=_MUTE_LEFT_MIXER_SETTINGS,
-            use_sox_loop=False, use_multitone=False, loop_buffer_count=10):
+            use_sox_loop=False, use_multitone=False, loop_buffer_count=10,
+            countdown=_INIT_COUNTDOWN):
         factory.console.info('%s run_once' % self.__class__)
 
         self._ah = audio_helper.AudioHelper(self)
@@ -346,6 +355,7 @@ class factory_AudioQuality(test.test):
         self._sweep_job = None
         self._tone_job = None
         self._loop_process = None
+        self._countdown = countdown
 
         # Mixer settings for different configurations.
         self._init_mixer_settings = init_mixer_settings
