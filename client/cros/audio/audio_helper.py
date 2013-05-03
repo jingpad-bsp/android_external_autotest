@@ -318,21 +318,23 @@ class AudioHelper(object):
     def record_sample(self, tmpfile):
         '''Records a sample from the default input device.
 
-        @param duration: How long to record in seconds.
         @param tmpfile: The file to record to.
         '''
         cmd_rec = self._rec_cmd + ' %s' % tmpfile
         logging.info('Command %s recording now', cmd_rec)
         utils.system(cmd_rec)
 
-    def loopback_test_channels(self, noise_file_name, loopback_callback=None,
-                               check_recorded_callback=None):
+    def loopback_test_channels(self, noise_file_name,
+                               loopback_callback=None,
+                               check_recorded_callback=None,
+                               preserve_test_file=True):
         '''Tests loopback on all channels.
 
         @param noise_file_name: Name of the file contains pre-recorded noise.
         @param loopback_callback: The callback to do the loopback for
             one channel.
         @param check_recorded_callback: The callback to check recorded file.
+        @param preserve_test_file: Retain the recorded files for future debugging.
         '''
         for channel in xrange(self._num_channels):
             reduced_file_name = self.create_wav_file("reduced-%d" % channel)
@@ -349,6 +351,9 @@ class AudioHelper(object):
 
             sox_output = self.sox_stat_output(reduced_file_name, channel)
 
+            if not preserve_test_file:
+                os.unlink(reduced_file_name)
+                os.unlink(record_file_name)
             # Use injected check recorded callback if any.
             if check_recorded_callback:
                 check_recorded_callback(sox_output)
