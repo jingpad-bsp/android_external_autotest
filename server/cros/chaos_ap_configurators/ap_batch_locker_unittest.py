@@ -104,25 +104,23 @@ class ApBatchLockerLockApInAfeTest(mox.MoxTestBase):
         self.mock_ap_locker = ap_batch_locker.ApLocker(
                 MockApConfigurator(), retries)
         self.mock_batch_locker.aps_to_lock = [self.mock_ap_locker]
-        self.mock_batch_locker.manager.add([MOCK_AP]).AndReturn(None)
 
 
     def testLockApInAfe_WithLockableAp(self):
         """Tests AP can be locked and removed from ap_list."""
         self._set_up_mocks(self.retries)
-        self.mock_batch_locker.manager.lock().AndReturn(None)
+        self.mock_batch_locker.manager.lock_one_host(MOCK_AP).AndReturn(True)
         self.mox.ReplayAll()
         actual = self.mock_batch_locker.lock_ap_in_afe(self.mock_ap_locker)
         self.assertEquals(True, actual)
         self.assertEquals(False, self.mock_ap_locker.to_be_locked)
-        self.assertEquals([], self.mock_batch_locker.aps_to_lock)
 
 
     def testLockApInAfe_WithUnlockableApAndRetriesRemaining(self):
         """Tests retries counter (of an unlockable AP) is properly deducted."""
         self._set_up_mocks(self.retries)
         expected_retries = self.retries - 1
-        self.mock_batch_locker.manager.lock().AndRaise(Exception)
+        self.mock_batch_locker.manager.lock_one_host(MOCK_AP).AndReturn(False)
         self.mox.ReplayAll()
         actual_ret = self.mock_batch_locker.lock_ap_in_afe(self.mock_ap_locker)
         self.assertEquals(False, actual_ret)
@@ -134,11 +132,10 @@ class ApBatchLockerLockApInAfeTest(mox.MoxTestBase):
         self.retries = 1
         expected_retries = 0
         self._set_up_mocks(self.retries)
-        self.mock_batch_locker.manager.lock().AndRaise(Exception)
+        self.mock_batch_locker.manager.lock_one_host(MOCK_AP).AndReturn(False)
         self.mox.ReplayAll()
         actual_ret = self.mock_batch_locker.lock_ap_in_afe(self.mock_ap_locker)
         self.assertEquals(False, actual_ret)
-        self.assertEquals([], self.mock_batch_locker.aps_to_lock)
         self.assertEquals(expected_retries, self.mock_ap_locker.retries)
 
 

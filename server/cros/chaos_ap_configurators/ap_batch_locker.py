@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import random
 
 from time import sleep
 
@@ -74,7 +75,8 @@ class ApBatchLocker(object):
     """
 
 
-    SECONDS_TO_SLEEP = 30
+    MIN_SECONDS_TO_SLEEP = 30
+    MAX_SECONDS_TO_SLEEP = 120
 
 
     def __init__(self, ap_spec, retries=MAX_RETRIES):
@@ -99,16 +101,11 @@ class ApBatchLocker(object):
         @param ap_locker: an ApLocker object, AP to be locked.
         @return a boolean, True iff ap_locker is locked.
         """
-        try:
-            self.manager.add([ap_locker.configurator.host_name])
-            self.manager.lock()
-            logging.info('locked %s and removed it from list',
-                         ap_locker.configurator.host_name)
-            self.aps_to_lock.remove(ap_locker)
+        if self.manager.lock_one_host(ap_locker.configurator.host_name):
+            logging.info('locked %s', ap_locker.configurator.host_name)
             ap_locker.to_be_locked = False
             return True
-        # Catching a wide exception b/c frontend.AFE.run() throws Exception
-        except Exception as e:
+        else:
             ap_locker.retries -= 1
             logging.info('%d retries left for %s',
                          ap_locker.retries,
@@ -116,14 +113,11 @@ class ApBatchLocker(object):
             if ap_locker.retries == 0:
                 logging.info('No more retries left. Remove %s from list',
                              ap_locker.configurator.host_name)
-                self.aps_to_lock.remove(ap_locker)
-            # FIXME(tgao): check error msg and remove unlockable aps sooner?
-            #              e.g., an AP not registered w/ AFE.
+                ap_locker.to_be_locked = False
+
         return False
 
 
-    # TODO(tgao): have the batch locker running in its own thread just adding
-    # to the batch list and then the test can pop them off as it uses them.
     def get_ap_batch(self, batch_size=ap_cartridge.THREAD_MAX):
         """Allocates a batch of locked APs.
 
@@ -131,27 +125,46 @@ class ApBatchLocker(object):
                            Defaults to THREAD_MAX in ap_cartridge.py
         @return a list of APConfigurator objects, locked on AFE.
         """
-        ap_batch = []
         # We need this while loop to continuously loop over the for loop.
         # To exit the while loop, we either:
         #  - locked batch_size number of aps and return them
         #  - exhausted all retries on all aps in aps_to_lock
-        while len(self.aps_to_lock) > 0:
+        while len(self.aps_to_lock):
+            ap_batch = []
+
             for ap_locker in self.aps_to_lock:
-                logging.debug('checking %s', ap_locker.configurator.host_name)
-                if ap_locker.to_be_locked:
-                    if self.lock_ap_in_afe(ap_locker):
-                        ap_batch.append(ap_locker.configurator)
-                        if len(ap_batch) == batch_size:
-                            return ap_batch
-                    # Unable to lock ap, sleep before moving on to next ap.
-                    else:
-                      logging.info('Sleep %d sec before retry',
-                                   self.SECONDS_TO_SLEEP)
-                      sleep(self.SECONDS_TO_SLEEP)
-        if ap_batch:
-            logging.info('partial batch with %d ap', len(ap_batch))
-        return ap_batch
+                logging.info('checking %s', ap_locker.configurator.host_name)
+                if self.lock_ap_in_afe(ap_locker):
+                    ap_batch.append(ap_locker.configurator)
+                    if len(ap_batch) == batch_size:
+                        break
+
+            # Remove locked APs from list of APs to process.
+            aps_to_rm = [ap for ap in self.aps_to_lock if not ap.to_be_locked]
+            self.aps_to_lock = list(set(self.aps_to_lock) - set(aps_to_rm))
+            for ap in aps_to_rm:
+                logging.info('Removed %s from self.aps_to_lock',
+                             ap.configurator.host_name)
+            logging.info('Remaining aps to lock = %s',
+                         [ap.configurator.host_name for ap in self.aps_to_lock])
+
+            # Return available APs and retry remaining ones later.
+            if ap_batch:
+                return ap_batch
+
+            # Sleep before next retry.
+            if self.aps_to_lock:
+                seconds_to_sleep = random.randint(self.MIN_SECONDS_TO_SLEEP,
+                                                  self.MAX_SECONDS_TO_SLEEP)
+                logging.info('Sleep %d sec before retry', seconds_to_sleep)
+                sleep(seconds_to_sleep)
+
+        return []
+
+
+    def unlock_aps(self):
+        """Unlock APs after we're done."""
+        self.manager.unlock()
 
 
 class ApBatchLockerManager(object):

@@ -44,3 +44,5 @@ def wifi_chaos_open(host, ap_spec, batch_size, tries):
                                      tries=tries,
                                      disable_sysinfo=False,
                                      tag=mod_ssid)
+
+                batch_locker.unlock_aps()

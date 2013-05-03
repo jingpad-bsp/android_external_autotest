@@ -44,7 +44,7 @@ class HostLockManager(object):
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
-        self._hosts = frozenset()
+        self._hosts = set()
         self._hosts_are_locked = False
 
 
@@ -73,6 +73,26 @@ class HostLockManager(object):
         """Unlock all DUTs in self._hosts."""
         self._host_modifier(locked=False)
         self._hosts_are_locked = False
+        self._hosts = set()
+
+
+    def lock_one_host(self, host):
+        """Attemps to lock one host if it's not already locked.
+
+        @param host: a string, hostname.
+        @returns a boolean: False == host is already locked.
+        """
+        mod_host = host.split('.')[0]
+        host_info = self._afe.get_hosts(hostname=host)[0]
+        if host_info.locked:
+            err = ('Contention detected: %s is locked by %s at %s.' %
+                   (host, host_info.locked_by, host_info.lock_time))
+            logging.error(err)
+            return False
+
+        self.add([host])
+        self.lock()
+        return True
 
 
     def _host_modifier(self, **kwargs):
