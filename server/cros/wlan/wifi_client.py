@@ -134,6 +134,7 @@ class WiFiClient(object):
         Construct a WiFiClient.
 
         @param client_host host object representing a remote host.
+        @param result_dir string directory to store test logs/packet caps.
 
         """
         super(WiFiClient, self).__init__()
@@ -351,6 +352,7 @@ class WiFiClient(object):
         for rule in self._firewall_rules:
             self._firewall_close(rule)
 
+
     def start_capture(self):
         """Start a packet capture.
 
@@ -400,3 +402,15 @@ class WiFiClient(object):
 
         logging.info('Found iw link key %s with value %s.',
                      iw_link_key, actual_value)
+
+
+    def powersave_switch(self, turn_on):
+        """Toggle powersave mode for the DUT.
+
+        @param turn_on bool True iff powersave mode should be turned on.
+
+        """
+        mode = 'off'
+        if turn_on:
+            mode = 'on'
+        self.host.run('iw dev %s set power_save %s' % (self.wifi_if, mode))

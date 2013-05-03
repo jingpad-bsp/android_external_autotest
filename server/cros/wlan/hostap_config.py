@@ -113,7 +113,8 @@ class HostapConfig(object):
 
 
     def __init__(self, mode=None, channel=None, frequency=None,
-                 n_capabilities=None, hide_ssid=None, beacon_interval=None):
+                 n_capabilities=None, hide_ssid=None, beacon_interval=None,
+                 dtim_period=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -126,6 +127,7 @@ class HostapConfig(object):
         @param n_capabilities list of N_CAPABILITY_x defined above.
         @param hide_ssid True if we should set up a hidden SSID.
         @param beacon_interval int beacon interval of AP.
+        @param dtim_period int include a DTIM every |dtim_period| beacons.
 
         """
         super(HostapConfig, self).__init__()
@@ -204,3 +206,4 @@ class HostapConfig(object):
 
         self.hide_ssid = hide_ssid
         self.beacon_interval = beacon_interval
+        self.dtim_period = dtim_period

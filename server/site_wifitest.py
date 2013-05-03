@@ -952,13 +952,21 @@ class WiFiTest(object):
 
 
     def client_powersave_on(self, params):
-        """ Enable power save operation """
-        self.client.run("iw dev %s set power_save on" % self.client_wlanif)
+        """Enable power save operation.
+
+        @param params ignored, but required by this framework.
+
+        """
+        self.client_proxy.powersave_switch(True)
 
 
     def client_powersave_off(self, params):
-        """ Disable power save operation """
-        self.client.run("iw dev %s set power_save off" % self.client_wlanif)
+        """Disable power save operation.
+
+        @param params ignored, but required by this framework.
+
+        """
+        self.client_proxy.powersave_switch(False)
 
 
     def client_check_powersave(self, params):

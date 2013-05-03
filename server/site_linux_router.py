@@ -266,6 +266,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['require_ht'] = 1
         if configuration.beacon_interval:
             conf['beacon_int'] = configuration.beacon_interval
+        if configuration.dtim_period:
+            conf['dtim_period'] = configuration.dtim_period
         self.start_hostapd(conf, {})
         # Configure transmit power
         tx_power_params = {'interface': conf['interface']}
