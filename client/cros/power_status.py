@@ -308,7 +308,7 @@ class SysStat(object):
     battery:   A list of BatteryStat objects.
     linepower: A list of LineStat objects.
     """
-    psu_types = ['Mains', 'USB', 'USB_ACA', 'USB_CDP', 'USB_DCP']
+    psu_types = ['Mains', 'USB', 'USB_ACA', 'USB_CDP', 'USB_DCP', 'Unknown']
 
     def __init__(self):
         power_supply_path = '/sys/class/power_supply/*'
