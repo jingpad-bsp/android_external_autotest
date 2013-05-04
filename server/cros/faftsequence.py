@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import time
+import uuid
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -188,6 +189,8 @@ class FAFTSequence(ServoTest):
 
     def setup(self, ec_wp=None):
         """Autotest setup function."""
+        self.run_id = str(uuid.uuid4())
+        logging.info('FAFTSequence setup begin (id=%s)', self.run_id)
         super(FAFTSequence, self).setup()
         self.register_faft_template({
             'state_checker': (None),
@@ -199,14 +202,17 @@ class FAFTSequence(ServoTest):
         self.record_system_info()
         self.setup_gbb_flags()
         self.setup_ec_write_protect(ec_wp)
+        logging.info('FAFTSequence setup done (id=%s)', self.run_id)
 
 
     def cleanup(self):
         """Autotest cleanup function."""
+        logging.info('FAFTSequence cleaning up (id=%s)', self.run_id)
         self.restore_ec_write_protect()
         self._faft_sequence = ()
         self._faft_template = {}
         super(FAFTSequence, self).cleanup()
+        logging.info('FAFTSequence cleanup done (id=%s)', self.run_id)
 
 
     def record_system_info(self):
