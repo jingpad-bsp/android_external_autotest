@@ -138,3 +138,5 @@ AUTHENTICATION_BACKENDS = (
 # TODO(scottz): Temporary addition until time can be spent untangling middleware
 # session crosbug.com/31608
 SESSION_COOKIE_AGE = 1200
+
+AUTOTEST_CREATE_ADMIN_GROUPS = True

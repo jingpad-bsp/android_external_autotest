@@ -2,6 +2,7 @@
 
 from django.db.models import signals
 from django.contrib import auth
+from django.conf import settings
 # In this file, it is critical that we import models *just like this*.  In
 # particular, we *cannot* do import common; from autotest_lib... import models.
 # This is because when we pass the models module to signal.connect(), it
@@ -41,5 +42,5 @@ def create_admin_group(app, created_models, verbosity, **kwargs):
     else:
         print 'Group "%s" already exists' % BASIC_ADMIN
 
-
-signals.post_syncdb.connect(create_admin_group, sender=models)
+if settings.AUTOTEST_CREATE_ADMIN_GROUPS:
+    signals.post_syncdb.connect(create_admin_group, sender=models)
