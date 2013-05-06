@@ -6,13 +6,13 @@ import random
 import string
 import os
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import (cryptohome, cros_ownership_test, cros_ui,
-                                      ownership)
+from autotest_lib.client.common_lib.cros import policy
+from autotest_lib.client.cros import cros_ui, cryptohome, ownership
 
 
-class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
+class login_RemoteOwnership(test.test):
     """Tests to ensure that the Ownership API can be used, as an
        enterprise might, to set device policies.
     """
@@ -26,17 +26,27 @@ class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
         utils.make('OUT_DIR=.')
 
 
+    def initialize(self):
+        # Start with a clean slate wrt ownership
+        cros_ui.stop()
+        ownership.clear_ownership_files()
+        cros_ui.start()
+        super(login_RemoteOwnership, self).initialize()
+
+
     def run_once(self):
-        sm = self.connect_to_session_manager()
+        sm = ownership.connect_to_session_manager()
 
         # Initial policy setup.
         priv = ownership.known_privkey()
         pub = ownership.known_pubkey()
-        self.push_policy(self.generate_policy(priv, pub, self._poldata), sm)
+        policy.push_policy_and_verify(
+            policy.generate_policy(self.srcdir, priv, pub, self._poldata), sm)
 
         # Force re-key the device
         (priv, pub) = ownership.pairgen_as_data()
-        self.push_policy(self.generate_policy(priv, pub, self._poldata), sm)
+        policy.push_policy_and_verify(
+            policy.generate_policy(self.srcdir, priv, pub, self._poldata), sm)
 
         # Rotate key gracefully.
         username = ''.join(random.sample(string.ascii_lowercase,6)) + "@foo.com"
@@ -49,14 +59,16 @@ class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
         if not sm.StartSession(username, ''):
             raise error.TestFail('Could not start session for random user')
 
-        self.push_policy(self.generate_policy(key=new_priv,
-                                              pubkey=new_pub,
-                                              policy=self._poldata,
-                                              old_key=priv),
-                         sm)
+        policy.push_policy_and_verify(
+            policy.generate_policy(self.srcdir,
+                                   key=new_priv,
+                                   pubkey=new_pub,
+                                   policy=self._poldata,
+                                   old_key=priv),
+            sm)
 
         try:
-            cros_ui.restart()
+            sm.StopSession('')
         except error.TestError as e:
             logging.error(str(e))
             raise error.TestFail('Could not stop session for random user')

@@ -17,6 +17,9 @@ OPENSSLRSA = 'openssl rsa'
 OPENSSLREQ = 'openssl req'
 OPENSSLCRYPTO = 'openssl sha1'
 
+TESTUSER = 'ownership_test@chromium.org'
+TESTPASS = 'testme'
+
 
 class OwnershipError(error.TestError):
     """Generic error for ownership-related failures."""
@@ -77,7 +80,7 @@ def __unlink(filename):
         logging.info(error)
 
 
-def clear_ownership():
+def clear_ownership_files():
     """Remove on-disk state related to device ownership."""
     __unlink(constants.OWNER_KEY_FILE)
     __unlink(constants.SIGNED_POLICY_FILE)

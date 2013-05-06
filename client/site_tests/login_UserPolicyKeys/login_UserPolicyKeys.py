@@ -8,15 +8,16 @@ import os
 import pwd
 import stat
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ownership_test
-from autotest_lib.client.cros import cros_ui
-from autotest_lib.client.cros import cryptohome
-from autotest_lib.client.cros import ownership
+from autotest_lib.client.common_lib.cros import policy
+from autotest_lib.client.cros import cros_ui, cryptohome, ownership
 
 
-class login_UserPolicyKeys(cros_ownership_test.OwnershipTest):
+class login_UserPolicyKeys(test.test):
+    """Verifies that, after user policy is pushed, the user policy key winds
+       up stored in the right place.
+    """
     version = 1
 
     def _can_read(self, uid, gid, info):
@@ -74,14 +75,19 @@ class login_UserPolicyKeys(cros_ownership_test.OwnershipTest):
         # Clear the user's vault, to make sure the test starts without any
         # policy or key lingering around. At this stage the session isn't
         # started and there's no user signed in.
-        cryptohome.remove_vault(self._testuser)
+        cros_ui.stop()
+        ownership.clear_ownership_files()
+        cryptohome.remove_vault(ownership.TESTUSER)
+        cros_ui.start()
 
 
     def run_once(self):
         # Mount the vault, connect to session_manager and start the session.
-        cryptohome.mount_vault(self._testuser, self._testpass, create=True)
-        session_manager = self.connect_to_session_manager()
-        if not session_manager.StartSession(self._testuser, ''):
+        cryptohome.mount_vault(ownership.TESTUSER,
+                               ownership.TESTPASS,
+                               create=True)
+        session_manager = ownership.connect_to_session_manager()
+        if not session_manager.StartSession(ownership.TESTUSER, ''):
             raise error.TestError('Could not start session')
 
         # No policy stored yet.
@@ -90,7 +96,7 @@ class login_UserPolicyKeys(cros_ownership_test.OwnershipTest):
             raise error.TestError('session_manager already has user policy!')
 
         # And no user key exists.
-        key_file = ownership.get_user_policy_key_filename(self._testuser)
+        key_file = ownership.get_user_policy_key_filename(ownership.TESTUSER)
         if os.path.exists(key_file):
             raise error.TestFail('%s exists before storing user policy!' %
                                  key_file)
@@ -100,10 +106,11 @@ class login_UserPolicyKeys(cros_ownership_test.OwnershipTest):
         # outer PolicyFetchResponse that contains the public_key.
         public_key = ownership.known_pubkey()
         private_key = ownership.known_privkey()
-        policy_data = self.build_policy_data()
-        policy_response = self.generate_policy(private_key,
-                                               public_key,
-                                               policy_data)
+        policy_data = policy.build_policy_data(self.srcdir)
+        policy_response = policy.generate_policy(self.srcdir,
+                                                 private_key,
+                                                 public_key,
+                                                 policy_data)
         try:
           result = session_manager.StoreUserPolicy(
               dbus.ByteArray(policy_response))
@@ -124,9 +131,11 @@ class login_UserPolicyKeys(cros_ownership_test.OwnershipTest):
 
         # Starting a new session will restore the key that was previously
         # stored. Reconnect to the session_manager, since the restart killed it.
-        cryptohome.mount_vault(self._testuser, self._testpass, create=True)
-        session_manager = self.connect_to_session_manager()
-        if not session_manager.StartSession(self._testuser, ''):
+        cryptohome.mount_vault(ownership.TESTUSER,
+                               ownership.TESTPASS,
+                               create=True)
+        session_manager = ownership.connect_to_session_manager()
+        if not session_manager.StartSession(ownership.TESTUSER, ''):
             raise error.TestError('Could not start session after restart')
         self._verify_key_file(key_file)
 

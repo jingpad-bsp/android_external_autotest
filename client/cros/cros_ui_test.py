@@ -299,7 +299,7 @@ class UITest(pyauto_test.PyAutoTest):
             self.fake_owner = True
         else:
             logging.info('Erasing stale owner state.')
-            ownership.clear_ownership()
+            ownership.clear_ownership_files()
             self.fake_owner = False
 
         try:
@@ -576,7 +576,7 @@ class UITest(pyauto_test.PyAutoTest):
 
             if self.fake_owner:
                 logging.info('Erasing fake owner state.')
-                ownership.clear_ownership()
+                ownership.clear_ownership_files()
 
             self.__log_crashed_processes(self.crash_blacklist)
 

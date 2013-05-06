@@ -2,22 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
 import gobject
-import logging
-import sys
 import os
-import tempfile
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import autotemp, error
-from autotest_lib.client.cros import constants, cros_ui, cryptohome, login
-from autotest_lib.client.cros import cros_ownership_test, ownership
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import policy
+from autotest_lib.client.cros import constants, cros_ui, cryptohome, ownership
 
 from dbus.mainloop.glib import DBusGMainLoop
 
 
-class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
+class login_OwnershipRetaken(test.test):
+    """"Ensure that ownership is re-taken upon loss of owner's cryptohome."""
     version = 1
 
     _tempdir = None
@@ -51,8 +48,16 @@ class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
 
     def initialize(self):
         super(login_OwnershipRetaken, self).initialize()
-        cryptohome.remove_vault(self._testuser)
-        cryptohome.mount_vault(self._testuser, self._testpass, create=True)
+        # Start clean, wrt ownership and the desired user.
+        cros_ui.stop()
+        ownership.clear_ownership_files()
+        cryptohome.remove_vault(ownership.TESTUSER)
+
+        # Run the UI, mount the user's encrypted profile
+        cros_ui.start()
+        cryptohome.mount_vault(ownership.TESTUSER,
+                               ownership.TESTPASS,
+                               create=True)
 
         DBusGMainLoop(set_as_default=True)
         ownership.listen_to_session_manager_signal(self.__handle_new_key,
@@ -67,14 +72,19 @@ class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
         sm = ownership.connect_to_session_manager()
 
         # Pre-configure some owner settings, including initial key.
-        poldata = self.build_policy_data(owner=self._testuser,
-                                         guests=False,
-                                         new_users=True,
-                                         roaming=True,
-                                         whitelist=(self._testuser, 'a@b.c'),
-                                         proxies={ 'proxy_mode': 'direct' })
-        policy_string = self.generate_policy(pkey, pubkey, poldata)
-        self.push_policy(policy_string, sm)
+        poldata = policy.build_policy_data(self.srcdir,
+                                           owner=ownership.TESTUSER,
+                                           guests=False,
+                                           new_users=True,
+                                           roaming=True,
+                                           whitelist=(ownership.TESTUSER,
+                                                      'a@b.c'),
+                                           proxies={ 'proxy_mode': 'direct' })
+        policy_string = policy.generate_policy(self.srcdir,
+                                               pkey,
+                                               pubkey,
+                                               poldata)
+        policy.push_policy_and_verify(policy_string, sm)
 
         # wait for new-owner-key signal, property-changed signal.
         utils.poll_for_condition(condition=lambda: self.__received_signals(),
@@ -87,7 +97,7 @@ class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
             raise error.TestFail('Owner key should not have changed!')
 
         # Start a new session, which will trigger the re-taking of ownership.
-        if not sm.StartSession(self._testuser, ''):
+        if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestFail('Could not start session for owner')
 
         # wait for new-owner-key signal, property-changed signal.
@@ -103,14 +113,14 @@ class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
         retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
         if retrieved_policy is None:
             raise error.TestFail('Policy not found')
-        self.compare_policy_response(retrieved_policy,
-                                     owner=self._testuser,
-                                     guests=False,
-                                     new_users=True,
-                                     roaming=True,
-                                     whitelist=(self._testuser, 'a@b.c'),
-                                     proxies={ 'proxy_mode': 'direct' })
-
+        policy.compare_policy_response(self.srcdir,
+                                       retrieved_policy,
+                                       owner=ownership.TESTUSER,
+                                       guests=False,
+                                       new_users=True,
+                                       roaming=True,
+                                       whitelist=(ownership.TESTUSER, 'a@b.c'),
+                                       proxies={ 'proxy_mode': 'direct' })
 
 
     def cleanup(self):
