@@ -455,3 +455,25 @@ class WiFiClient(object):
                                  wording)
 
         logging.debug('Power save is indeed %s.', wording)
+
+
+    def scan(self, frequencies, ssids):
+        """Request a scan and check that certain SSIDs appear in the results.
+
+        @param frequencies list of int WiFi frequencies to scan for.
+        @param ssids list of string ssids to probe request for.
+
+        """
+        scan_params = ''
+        if frequencies:
+           scan_params += ' freq %s' % ' '.join(map(str, frequencies))
+        if ssids:
+           scan_params += ' ssid "%s"' % '" "'.join(ssids)
+        result = self.host.run('%s dev %s scan%s' % (self.command_iw,
+                                                     self.wifi_if,
+                                                     scan_params))
+        scan_lines = result.stdout.splitlines()
+        for ssid in ssids:
+            if ssid and ('\tSSID: %s' % ssid) not in scan_lines:
+                raise error.TestFail('SSID %s is not in scan results: %s' %
+                                     (ssid, result.stdout))

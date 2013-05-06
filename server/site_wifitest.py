@@ -392,11 +392,8 @@ class WiFiTest(object):
                 raise error.TestNAError(
                     "%s: client is missing required capability: %s" %
                     (self.name, requirement))
-        for requirement in self.router_requirements:
-            if not requirement in self.wifi.capabilities:
-                raise error.TestNAError(
-                    "%s: AP is missing required capability: %s" %
-                    (self.name, requirement))
+
+        self.wifi.require_capabilities(self.router_requirements)
 
         for step_number, s in enumerate(self.steps):
             method = s[0]
@@ -1745,22 +1742,18 @@ class WiFiTest(object):
 
 
     def scan(self, params):
-        scan_params = ''
-        frequencies = params.get('freq', [])
-        if frequencies:
-           scan_params += ' freq %s' % ' '.join(frequencies)
+        """Ask the DUT to scan for SSIDs on frequencies.
+
+        |params| may contain 'freq' and 'ssid' keys, which should
+        map to lists of frequencies and ssids respectively.  Asserts
+        that we find all 'ssid' members listed.
+
+        @param params dict of settings for scan.
+
+        """
+        frequencies = map(int, params.get('freq', []))
         ssids = params.get('ssid', [])
-        if ssids:
-           scan_params += ' ssid "%s"' % '" "'.join(ssids)
-        result = self.client.run("%s dev %s scan%s" %
-                                 (self.client_proxy.command_iw,
-                                  self.client_wlanif,
-                                  scan_params))
-        scan_lines = result.stdout.splitlines()
-        for ssid in ssids:
-            if ssid and ('\tSSID: %s' % ssid) not in scan_lines:
-                raise error.TestFail('SSID %s is not in scan results: %s' %
-                                     (ssid, result.stdout))
+        self.client_proxy.scan(frequencies, ssids)
 
 
     def time_sync(self, params):

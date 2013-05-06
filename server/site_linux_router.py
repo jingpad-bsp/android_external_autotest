@@ -252,6 +252,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Start with the default hostapd config parameters.
         conf = self.__get_default_hostap_config()
         conf['ssid'] = (self.defssid + configuration.ssid_suffix)[-32:]
+        if configuration.ssid:
+            # Let test writers overwrite the default SSID.
+            conf['ssid'] = configuration.ssid
+        if configuration.bssid:
+            conf['bssid'] = configuration.bssid
         conf['channel'] = configuration.channel
         self.hostapd['frequency'] = configuration.frequency
         conf['hw_mode'] = configuration.hw_mode

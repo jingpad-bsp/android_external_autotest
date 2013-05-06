@@ -32,10 +32,9 @@ class LinuxSystem(object):
 
         self._capabilities = []
         phymap = self.phys_for_frequency
-        frequencies = phymap.iterkeys()
-        if [freq for freq in frequencies if freq > 5000]:
+        if [freq for freq in phymap.iterkeys() if freq > 5000]:
             self._capabilities.append(self.CAPABILITY_5GHZ)
-        if [freq for freq in frequencies if len(phymap[freq]) > 1]:
+        if [freq for freq in phymap.iterkeys() if len(phymap[freq]) > 1]:
             self._capabilities.append(self.CAPABILITY_MULTI_AP_SAME_BAND)
             self._capabilities.append(self.CAPABILITY_MULTI_AP)
         elif len(self.phy_bus_type) > 1:
@@ -121,7 +120,7 @@ class LinuxSystem(object):
             elif '/pci' in devpath:
                 phybus = 'pci'
             phy_bus_type[phy] = phybus
-
+        logging.debug('Got phys for frequency: %r', phys_for_frequency)
         return phys_for_frequency, phy_bus_type
 
 
@@ -301,3 +300,24 @@ class LinuxSystem(object):
         for phy, wlanif_i, phytype in self.wlanifs_in_use:
             if wlanif_i == wlanif:
                  self.wlanifs_in_use.remove((phy, wlanif, phytype))
+
+
+    def require_capabilities(self, requirements, fatal_failure=False):
+        """Require capabilities of this LinuxSystem.
+
+        Check that capabilities in |requirements| exist on this system.
+        Raise and exception to skip but not fail the test if said
+        capabilities are not found.  Pass |fatal_failure| to cause this
+        error to become a test failure.
+
+        @param requirements list of CAPABILITY_* defined above.
+        @param fatal_failure bool True iff failures should be fatal.
+
+        """
+        to_be_raised = error.TestNAError
+        if fatal_failure:
+            to_be_raised = error.TestFail
+        missing = [cap for cap in requirements if not cap in self.capabilities]
+        if missing:
+            raise to_be_raised('AP on %s is missing required capabilites: %r' %
+                               (self.role, missing))

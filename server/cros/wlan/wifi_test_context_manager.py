@@ -122,16 +122,19 @@ class WiFiTestContextManager(object):
         return self.server.wifi_ip
 
 
-    def configure(self, configuration_parameters):
+    def configure(self, configuration_parameters, multi_interface=None):
         """Configure a router with the given parameters.
 
         Configures an AP according to the specified parameters and
-        enables whatever packet captures are appropriate.
+        enables whatever packet captures are appropriate.  Will deconfigure
+        existing APs unless |multi_interface| is specified.
 
         @param configuration_parameters HostapConfig object.
+        @param multi_interface True iff having multiple configured interfaces
+                is expected for this configure call.
 
         """
-        self.router.hostap_configure(configuration_parameters)
+        self.router.hostap_configure(configuration_parameters, multi_interface)
         if self._enable_client_packet_captures:
             self.client.start_capture()
         if self._enable_router_packet_captures:
