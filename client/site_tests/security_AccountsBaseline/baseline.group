@@ -25,10 +25,6 @@ utmp:x:406:
 nogroup::65533:
 nobody::65534:
 chronos:x:1000:
-daemon-store:x:400:
-serial:x:402:chronos,uucp
-devbroker-access:x:403:chronos
-i2c:x:404:power
 chronos-access:x:1001:root,ipsec,chronos,ntfs-3g,avfs,fuse-exfat,chaps
 messagebus:x:201:
 syslog:x:202:
@@ -64,7 +60,12 @@ tlsdate:x:234:
 debugd-logs:x:235:
 debugfs-access:x:236:
 shill-crypto:x:237:
+avahi:x:238:
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
+daemon-store:x:400:
 logs-access:x:401:debugd-logs
+serial:x:402:chronos,uucp
+devbroker-access:x:403:chronos
+i2c:x:404:power
