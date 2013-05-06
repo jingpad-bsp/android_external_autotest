@@ -19,6 +19,9 @@ VAEntrypointVLD = 1
 # VA_RT_FORMAT that we are interested in
 VA_RT_FORMAT_YUV420 = 0x01
 
+KEY_DEVICES = 'devices'
+KEY_FORMATS = 'formats'
+
 class hardware_VideoDecodeCapable(test.test):
     """Test class to verify hardware video decoding capability."""
 
@@ -30,10 +33,13 @@ class hardware_VideoDecodeCapable(test.test):
         VAProfileH264High]
 
     REQUESTED_V4L2_FORMATS = [
-        'cap_fmt_VM12',
-        'cap_fmt_NM12',
-        'out_fmt_H264',
-        'out_fmt_VP80']
+        # Requested formats for decoding devices
+        {KEY_DEVICES: ['/dev/mfc-dec'],
+         KEY_FORMATS: ['cap_fmt_VM12', 'cap_fmt_NM12',
+                      'out_fmt_H264', 'out_fmt_VP80']},
+        # REQUESTED formats for GSCALER devices
+        {KEY_DEVICES: ['/dev/gsc0', '/dev/gsc1', '/dev/gsc2', '/dev/gsc3'],
+         KEY_FORMATS: ['cap_fmt_RGB4', 'out_fmt_VM12']}]
 
     def assertTrue(self, condition, message = '', *args):
         """Raises an TestFail when the assertion failed"""
@@ -108,30 +114,27 @@ class hardware_VideoDecodeCapable(test.test):
         import v4l2
 
         capture_formats = v4l2.enum_capture_formats(video_device)
-        logging.info('Capture formats=%s', capture_formats)
+        logging.info('%s, capture formats=%s', video_device, capture_formats)
         output_formats = v4l2.enum_output_formats(video_device)
-        logging.info('Output formats=%s', output_formats)
+        logging.info('%s, output formats=%s', video_device, output_formats)
 
         return (['cap_fmt_%s' % fmt for fmt in capture_formats] +
                 ['out_fmt_%s' % fmt for fmt in output_formats])
 
 
-    def run_once_v4l2(self, video_device=None):
-        """Emit supported image formats as keyvals.
-
-        @param video_device: used by v4l2 binary to enum formats.
+    def run_once_v4l2(self):
+        """Check supported image formats for all expected device nodes
         """
-        if not video_device:
-            raise error.TestError('no video_device supplied to check')
-        missed = (set(self.REQUESTED_V4L2_FORMATS) -
-                  set(self._enum_formats(video_device)))
-        self.assertTrue(not missed, 'Formats: %s is not supported', missed)
+        for rules in self.REQUESTED_V4L2_FORMATS:
+            formats = rules['formats']
+            for device in rules['devices']:
+                missed = set(formats) - set(self._enum_formats(device))
+                self.assertTrue(not missed,
+                                'Formats: %s is not supported', missed)
 
-
-    def run_once(self, type='v4l2', **kwargs):
+    def run_once(self, type='v4l2'):
         if type == 'v4l2':
-            video_device = kwargs['video_device']
-            self.run_once_v4l2(video_device = video_device)
+            self.run_once_v4l2()
         else:
             self.run_once_vaapi()
 

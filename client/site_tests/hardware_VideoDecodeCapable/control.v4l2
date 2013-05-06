@@ -16,14 +16,11 @@ TIME='FAST'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
-DEPENDENCIES = 'board:daisy'
+DEPENDENCIES = 'video_decode_v4l2'
 EXPERIMENTAL = 'True'
-
 DOC = """
 V4L2 formats enumeration is done in C. It is built as a extension module
 (v4l2.so) during setup.
 """
 
-DAISY_VIDEO_DEC = "/dev/mfc-dec"
-
-job.run_test('hardware_VideoDecodeCapable', video_device=DAISY_VIDEO_DEC)
+job.run_test('hardware_VideoDecodeCapable')
