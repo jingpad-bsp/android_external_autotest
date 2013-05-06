@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html>
+<body> $summary <table border="3" width="100%"> 
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_tracking.('left_to_right', 'slow') </h3>
+                        <h5> Take 3 seconds to draw a straight, horizontal line from left to right using a ruler. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAA/4BAjZZEawAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAedSURBVHhe7dvdbptaEIbh3ETvbIMU%0Azr2lzf3gA58TiXWV%2Bxt%2BnEatRwL/wcxL1TbtxI3nY83jBU4/PrIfv6rUxz8fBJB6AVSsAEYAAzAg%0AdQIgCIIgmJoANkIgCIIgCIKpEwBBEATB1ASwEwRBEARBEEydAAiCIAimJoCdIAiCIAiCYOoEQBAE%0AQTA1AewEQRAEQRAEUycAgiAIgqkJYCcIgiAIgiCYOgEQBEEQTE0AO0EQBEEQBMHUCYAgCIJgagLY%0ACYIgCIIgCKZOAARBEARTE8BOEARBEARBMHUCIAiCIJiaAHaCIAiCIAiCqRMAQRAEwdQEsBMEQRAE%0AQRBMnQAIgiAIpiaAnSAIgiAIgmDqBEAQBEEwNQHsBEEQBEEQBFMnAIIgCIKpCWAnCIIgCIIgmDoB%0AEARBEExNADtBEARBEATB1AmAIAiCYGoC2AmCIAiCIAimTgAEQRAEUxPAThAEQRAEQTB1AiAIgiCY%0AmgB2giAIgiAIgqkTAEEQBMHUBLATBEEQBEEQTJ0ACIIgCKYmgJ0gCIIgCIJg6gRAEARBMDUB7ARB%0AEARBEARTJwCCIAiCqQlgJwiCIAiCIBgmga6qmr5e104cBEspQz20pfSrEggTwNkCaPRLzgBq6zxV%0AACeNermu9c/x1GcKoC7tVylCT0c9VOWSKwBRX1q13LWdVkFTLIBBC6CqzcEECLaTdqUrX/rZlNoC%0AGFdDs657PeJIrwLdaWyyqtphXgEKoKj5qpyn/uf6mt%2BOE4BBpzPc6pwvAVTXALo1Pf/43KMEUI/Q%0A6dwXa9rOt%2BybAth%2B9i2JowTQ9ub8HMCln0%2BiEFxeC7YugT0HcPpcumo7vep9r4Dut26Vyl3HbgM4%0A1drdjZ22l77Yj78H0P6exoYo9hrAstMptsqH0msErNMJwQ193nzIjgOw8dYq0PCPAdxs4b7CLgPQ%0AstZrnu11rwHc16Xz6F0GoCvaeQTmAO4d9CMFYL1OAdiitwCEoNPAvaXdrIB6aM%2BDGddXNvdLX0Lw%0A3hb9x%2B8lAF3S6LCNnq70NP5Pbvs7lH0EoJ71Kj8FIPvKOVUA042cawDqX/gnWgE6%2B62avgagDzIF%0AoPanAM4zgl1ju/s7N/i%2Bez%2Bq7zVgom9cAddnpTtcrzzeGUBj3k0rYPju2a7zX3i8IIDuZzvj3Qw7%0AxhNvh17%2Bf37KK//09ADqRg3PZ9UW9zj0jbY64wd2vLLdP7/WcwP4rKpWZ9h6rQdb8bq0X47z/MFr%0AV/wfCTw3AN2tVQAjdZfrip8bVwBDeefin7J4ZgCfyzs2NwJ46kXOH6f6xl88J4Cm12VNpx3tdN7/%0AGoC9qbOD4/EBaNp1UaPLGt3EsgD6ZhkBXeno6HS1ZwjuoHl7Co8OQN5d1KUFoEs6fWwvAXoRMAT7%0A8f7mThpfnsaDA5gW%2BxSA3cZ88a5mQ7gPDMC%2BOafV2V9WwHQfd8NzeulDHhaA1NP3J80BXEYEX9rI%0A1i/2mAD0/Rrt0CoCC0AIbn02b3jc3QGc9KR1C7c39i2AN2/sVkd4TwB1JeX0mqbtrQXQ6v2r9%2B/s%0A1iawKoD659rW6W61oR2PMYC2X/vl3//5dwYwt2/bHTWfLQC7mvmaIjhi69PqW7UC/lW3/w2n6ZGn%0AT43AHED3/qW89RmsCmBud0xA%2BtkK0Ps4QnDrV9/B49YEUC8LXvc5rH%2Bd94Psdpyg1wQwfU%2BSnflu%0APP8K4PjHmgDq8X27sfXp1%2BO3v%2B5y2C7t2swBVNM2Vxl0h9vx3lysa0bg%2Bo8ogJv/4NEKmwI4WpPe%0A8yUA/uPkL2%2BBxK8xAowAIxB/zr0OMQADMMCbkPg1DMAADIg/516HGIABGOBNSPwaBmAABsSfc69D%0ADMAADPAmJH4NAzAAA%2BLPudchBmAABngTEr%2BGARiAAfHn3OsQAzAAA7wJiV/DAAzAgPhz7nWIARiA%0AAd6ExK9hAAZgQPw59zrEAAzAAG9C4tcwAAMwIP6cex1iAAZggDch8WsYgAEYEH/OvQ4xAAMwwJuQ%0A%2BDUMwAAMiD/nXocYgAEY4E1I/BoGYAAGxJ9zr0MMwAAM8CYkfg0DMAAD4s%2B51yEGYAAGeBMSv4YB%0AGIAB8efc6xADMAADvAmJX8MADMCA%2BHPudYgBGIAB3oTEr2EABmBA/Dn3OsQADMAAb0Li1zAAAzAg%0A/px7HWIABmCANyHxaxiAARgQf869DjEAAzDAm5D4NQzAAAyIP%2BdehxiAARjgTUj8GgZgAAbEn3Ov%0AQwzAAAzwJiR%2BDQMwAAPiz7nXIQZgAAZ4ExK/hgEYgAHx59zrEAMwAAO8CYlfwwAMwID4c%2B51iAEY%0AgAHehMSvYQAGYED8Ofc6xAAMwABvQuLXMAADMCD%2BnHsdYgAGYIA3IfFrGIABGBB/zr0OMQADMMCb%0AkPg1DMAADIg/516HGIABGOBNSPwaBmAABsSfc69DDMAADPAmJH4NAzAAA%2BLPudchBmAABngTEr%2BG%0AARiAAfHn3OsQAzAAA7wJiV/DAAzAgPhz7nWIARiAAd6ExK9hAAZgQPw59zrEAAzAAG9C4tcwAAMw%0AIP6cex1iAAZggDch8WsYgAEYEH/OvQ4xAAMwwJuQ%2BDUMwAAMiD/nXocY8JH9%2BB9ujIN8tI6WagAA%0AAABJRU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-robot_sim-20130506_032701.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 5.31 px<br>    deviation slot0: 0.53 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 8.66 px<br>    deviation slot0: 0.87 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.998134665898</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.157277
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0.716751317471</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(BothEnds)Validator</b></span>
+    Reversed motions slot0: {'X': -6} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 0.997260947684</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 103.09 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_tracking.('left_to_right', 'slow') </h3>
+                        <h5> Take 3 seconds to draw a straight, horizontal line from left to right using a ruler. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAAgEAAbx392AAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAg/SURBVHhe7dxNcuJIEIZhX6JvNlIE%0A2jML3UdeeE9HqE7ZX5YEBtrtlGzAIvOVJ/xXGJNfVT4qyR3z8pL9%2BNWkPv57IYDUC6BhBdACGIAB%0AqRMAQRAEwdQEsBECQRAEQRBMnQAIgiAIpiaAnSAIgiAIgmDqBEAQBEEwNQHsBEEQBEEQBFMnAIIg%0ACIKpCWAnCIIgCIIgmDoBEARBEExNADtBEARBEATB1AmAIAiCYGoC2AmCIAiCIAimTgAEQRAEUxPA%0AThAEQRAEQTB1AiAIgiCYmgB2giAIgiAIgqkTAEEQBMHUBLATBEEQBEEQTJ0ACIIgCKYmgJ0gCIIg%0ACIJg6gRAEARBMDUB7ARBEARBEARTJwCCIAiCqQlgJwiCIAiCIJg6ARAEQRBMTQA7QRAEQRAEwdQJ%0AgCAIgmBqAtgJgiAIgiAIpk4ABEEQBFMTwE4QBEEQBEEwdQIgCIIgmJoAdoIgCIIgCIKpEwBBEATB%0A1ASwEwRBEARBEEydAAiCIAimJoCdIAiCIAiCYOoEQBAEQTA1AewEQRAEQRAEUycAgiAIgqkJYCcI%0AgiAIgiCYOgEQBEEQTE0AO0EQBEEQBMHUCYAgCIJgagLYCcZFcL9sZUcNYNeW7rAkgqgBlNfMAWju%0Ay1vmAPqxTbkCytTz3aEfGwWwRIAmymlQ1Xa/y9Ds23bs9dbo82VHDARb1duXMrRF72sAi49YAXRF%0ARz8uOwFOGUUIoDRaAXtbAXMAi6dfD3z%2BAKz3Df1%2BLNYGZeHp7xjSkwcw1Tw0pStvB0Go%2Blf0v4Xw%0A3AFo6ducD1a63lkAK%2Bt/6gBa7XeOAfQ1AJ0FtA5WHc%2B8ArpSA1DvH1fAqtKnBwcIoM751AKpAuh1%0A0muE4FCrbhfufP%2BK6FlXgGo/KIDvH08agDX/oV0r/kdxPVMAUl9XOY1O%2BocawEf1rP7eMwXQabvT%0AFm36Sj3/ZQvA0KsB/J4CmPVbPeVXP/AsK6DXjJ8FYJ1wm%2BMZAugHK/8ygNtUr2fZfgCdSp/eJgT1%0A%2BZrrfS%2BpzQfQa6s7BzDVcqPePwazzQDa07zVvX4N4MaFbzqAoT/smr3ucI7dOAdwp/K3aYCqHnW2%0A1x%2B37B5nGQ1Br5W/PL7FFrB7HDre9GYBHL5c3JIf3FoAbdvN9dcASrnj5Nd8fiCA6ebNh7Oza23K%0AT4etgA8fd8Nv/kAAqu9wUcHu9NV59Zr/1zFaADafVuTFdex8M2cYmv%2BPAfTa7yuAoekuHnnDiT89%0A1UNXgK7hdDFjx/kS6Etp3rTRt8u86VDV9Sxwj4Kvn/NxAegeTltZq8fZzPbH750%2BXr/Ie379sADs%0AjzenKVapp6LmNXGqXpufexZ8/dyPCkCzfwxgaoNTld3VAjjvjutXe4evHxNAb8W/6i6OLXdVMX%2Bo%0A9djn78eDy7/zPkDXNKUddfWquzg1AFVbZ76bcjh%2BOtdv7D/8uN8KaBtd00zsjQpgsJv4zfFKXgnM%0AxfZ2vqvH%2BBj2ryK%2BTwC9qtNkXwRw%2BYvnk3/dFjzidP/PlXWfAHSeHxSAbt3X6bUr%2BqtXIPsPr/pe%0Ar%2BF/vrhHDNw6gHZs9J/u39mF/GkF2Iq4POrJTx5M769HH/j1rQOwO7f1z1ZjbYEZwQ8KsgDssedb%0Aog8edvdv3TgAVdTXAPpRAXz26usS0GM/f9Rnz3Cbse8EsGsGexHWw63uYA16U0UWgP6I8Wn19hPH%0AAA63KeSrz/KdAMqbun1iXJdvne1h5wB0vvMCqFeFevgP17/yhsj%2BPOe9ArANrhXxHsDoLP33Z9Ae%0AafFjvzq//s%2BtWgHzv7/d723J2xo%2BBWCzOfZaAeNpr%2BP/btsR/vQCWLECdna3rlHxmnObcQXw9wo4%0A7vSWVL%2BNxyxfAZrkYlUrhhqAPv4dwDaKWvMqvhhAzcJ%2Bz9k/01nza7fz2MUB2MTX6e/1YWqB7VTx%0AjVeyOAArX9vc9xb4xi/d0o8uDKBO/6FuX/wz/Jbqc1/LggD2ehKVP7jP9ZQPWBCA7mUnD0CLP/MK%0AsB2fuj/qsaQFsgcgAHKvAN24yx5A1P63uhYYELl8AmAF0AL8f4R%2BxUbOq44WoAVoAa9LYo9jAAZg%0AQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe%0A96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rD%0AAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzA%0AAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9L%0AYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9j%0AAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZg%0AQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe%0A96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rD%0AAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDAAzA%0AAK9LYo9jAAZgQOwe96rDAAzAAK9LYo9jAAZgQOwe96rDgJfsxx%2B95J5q7vmxUgAAAABJRU5ErkJg%0Agg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-robot_sim-20130506_032705.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 13.00 px<br>    deviation slot0: 1.30 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.896827934378</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 14.14 px<br>    deviation slot0: 1.41 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.846812705202</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.534758
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0.163774566965</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(BothEnds)Validator</b></span>
+    Reversed motions slot0: {'X': -2} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 103.60 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_tracking.('right_to_left', 'slow') </h3>
+                        <h5> Take 3 seconds to draw a straight, horizontal line from right to left using a ruler. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAAgICASV%2BptgAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAbmSURBVHhe7dldbuM2FAbQbGJ2VguI%0A3z1AtR8HqN8dwFplL6kkbfPnjJ3iG5iHg0CxJfuKn3hPCMzd3ejjx2bo8cedAIZeABsrQAswgAFD%0AJwBBCEJwaAJshCAIQQhCcOgEIAhBCA5NgJ0gBCEIQQgOnQAEIQjBoQmwE4QgBCEIwaETgCAEITg0%0AAXaCEIQgBCE4dAIQhCAEhybAThCCEIQgBIdOAIIQhODQBNgJQhCCEITg0AlAEIIQHJoAO0EIQhCC%0AEBw6AQhCEIJDE2AnCEEIQhCCQycAQQhCcGgC7AQhCEEIQnDoBCAIQQgOTYCdIAQhCEEIDp0ABCEI%0AwaEJsBOEIAQhCMGhE4AgBCE4NAF2ghCEIAQhOHQCEIQgBIcmwE4QghCEIASHTgCCEITg0ATYCUIQ%0AghCE4NAJQBCCEByaADtBCEIQghAcOgEIQhCCQxNgJwhBCEIQgkMnAEEIQnBoAuwEIQhBCEJw6AQg%0ACEEIDk2AnSAEIQhBCA6dAAQhCMGhCbAThCAEIQjBoROAIAQhODQBdoIQhCAEITh0AhCEIASHJsBO%0AEIIQhCAEh04AghCE4NAE2AlCEIIQhODQCUAQghAcmgA7QQhCEIIQHDoBCEIQgkMTYCcIQQhCEIJD%0AJwBBCEJwaALsBCEIQQhCcOgEIBhHcMouwMgK%2BPecp/m4ex3B8vqN/74%2Bc/rzD78%2Bmwjgfj4%2B38Y0%0Azcvj0hKY9%2Bt77fhqhruX1/tpOU2n5fl1%2B9y147sDeJrGh7fVHv6yHKdpeTzVPOZlqQCWqQ7LcliO%0Ade5hOS4VwfMs50Odb59pFx0rgPrXzrZxqi%2Bb6kPXjG8OYHva/HW/3%2Bw%2BuqVa8JtdTWR%2BbAGcegA1%0A3gbQ3u1fsgbwdNHrAOpzDy/r4aOan7//vQEs29OhHsxDv/daq%2B1wP90/9Xx/4o9tsi8BtInVE34V%0AQH/gNeb9fKh18fTE66I1gL4%2B2jitn2sL4eLxDQH06e37HSzzemc11fu6v2UzTf1ej5vNtlb2UgG0%0A%2Bdav/6yAmlQLYD%2BvLVAv6%2Br1a9YAHtcOqIv6THuq6/la/33sq/7DqT52wfiGANqq3tZtHOqnHdvo%0AxwpgXl8et212L72733QGp9YC9cu0Lvb/3H2fdAvg2E%2B/c0W7vAI41XXH3UPFetlCuDaA%2B01NZuoT%0APtRPO7bRj%2B8EMLcVUHfeAzg3ngL49LIKcdsXVY3dp1d%2BcPLiAPb7/o2V/nL82Zf%2Boa3F7Xov/dBO%0Ar2NdAfUc59b9H9zKxW/XV/ZxvOQbfiWAXev03eZ%2Bs9/V2q21V4%2B4Fa762zocegC1EOunXte19aTb%0A%2Bbq17fqyvXPRbX46te26/ude8VfHFwOoSdef7prZz7KoZlrN1/8it2MP4E0DPgfw/fN9O8W6i3qz%0AuuGC8cUAlsOpFtq2/d1pWr8E0FfA9so/xRfc9rsf%2BfPdd8%2B8%2BQsB1NzXANY59xXQA3hP8TNlf5/T%0AXwhgt9vVgz/VSt%2Be6mH3Zu8t0GbRfrnxANoUN29b4Pd5htfdyfkV8BLAsT/w/4Px66Zw3afPBzC3%0AFXC742wAbQEMHcDD4AHUArjd5d9mdq4Faps5dgDT6AHc9uP/QgsI4NYTOIfgrc//7F8BAdx6Alog%0A/r/D4SVmBVgBP8JrMFxeC2gBLRBuwnB5BjCAAeEmDJdnAAMYEG7CcHkGMIAB4SYMl2cAAxgQbsJw%0AeQYwgAHhJgyXZwADGBBuwnB5BjCAAeEmDJdnAAMYEG7CcHkGMIAB4SYMl2cAAxgQbsJweQYwgAHh%0AJgyXZwADGBBuwnB5BjCAAeEmDJdnAAMYEG7CcHkGMIAB4SYMl2cAAxgQbsJweQYwgAHhJgyXZwAD%0AGBBuwnB5BjCAAeEmDJdnAAMYEG7CcHkGMIAB4SYMl2cAAxgQbsJweQYwgAHhJgyXZwADGBBuwnB5%0ABjCAAeEmDJdnAAMYEG7CcHkGMIAB4SYMl2cAAxgQbsJweQYwgAHhJgyXZwADGBBuwnB5BjCAAeEm%0ADJdnAAMYEG7CcHkGMIAB4SYMl2cAAxgQbsJweQYwgAHhJgyXZwADGBBuwnB5BjCAAeEmDJdnAAMY%0AEG7CcHkGMIAB4SYMl2cAAxgQbsJweQYwgAHhJgyXZwADGBBuwnB5BjCAAeEmDJdnAAMYEG7CcHkG%0AMIAB4SYMl2cAAxgQbsJweQYwgAHhJgyXZwADGBBuwnB5BjCAAeEmDJdnAAMYEG7CcHkGMIAB4SYM%0Al2cAAxgQbsJweQYwgAHhJgyXZwADGBBuwnB5BjCAAeEmDJdnAAMYEG7CcHkGMIAB4SYMl2cAAxgQ%0AbsJweQYwgAHhJgyXZwADGBBuwnB5BjCAAeEmDJdnwN3o428g41JydgjjYgAAAABJRU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.right_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032708.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 6.60 px<br>    deviation slot0: 0.66 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 17.81 px<br>    deviation slot0: 1.78 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:red"><b>score: 0.641115185242</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 3.794733
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(BothEnds)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 103.90 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_tracking.('right_to_left', 'slow') </h3>
+                        <h5> Take 3 seconds to draw a straight, horizontal line from right to left using a ruler. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAAAAD/U1NG0AAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAeQSURBVHhe7dpNbtswEIbhXKI3qwRI%0Ae3nB%2B8hAvZcB8ZSdoST/wW5kGRlPPa%2BANolih5yPnCe026%2Bv6NevKvT1%2B4sAQm%2BAih1AC2AABoRO%0AAARBEARDE8BBCARBEARBMHQCIAiCIBiaAE6CIAiCIAiCoRMAQRAEwdAEcBIEQRAEQRAMnQAIgiAI%0AhiaAkyAIgiAIgmDoBEAQBEEwNAGcBEEQBEEQBEMnAIIgCIKhCeAkCIIgCIIgGDoBEARBEAxNACdB%0AEARBEATB0AmAIAiCYGgCOAmCIAiCIAiGTgAEQRAEQxPASRAEQRAEQTB0AiAIgiAYmgBOgiAIgiAI%0AgqETAEEQBMHQBHASBEEQBEEQDJ0ACIIgCIYmgJMgCIIgCIJg6ARAEARBMDQBnARBEARBEARDJwCC%0AIAiCoQngJAiCIAiCIBg6ARAEQRAMTQAnQRAEQRAEwdAJgCAIgmBoAjgJgiAIgiAIhk4ABEEQBEMT%0AwEkQBEEQBEEwdAIgCIIgGJoAToIgCIIgCIKhEwBBEATB0ARwEgRBEARBEAydAAiCIAiGJoCTIAiC%0AIAiCYOgEQBAEQTA0AZwEQRAEQRAEQycAgiAIgqEJ4CQIgiAIgiAYOgEQBEEQDE0AJ0EQBEEQBMHQ%0ACYAgCIJgaAI4CYIgCIIgCIZOAARBEARDE8BJEARBEARBMHQCIAiCIOiNgLqpN0%2BpHarquWf7M6BO%0AOQ9VsymDVp6a8v6Z57oLQOvPQ877nEctpFu9oJKZBCDXoX8iP3cBaP0agFxjlv0sH1cuaGqHtjwv%0A91XJbtXlLIBmKuEUQK0BtKsikMcNUwRtXw2ritcHeQqgHqtpBU87oE964yIAjaIeU1/qS718bI/S%0AKm0%2Bjll2gNwsDB7K91ddjgJo2lHXWwSUq2z83KfjRQA59bLKUwBactoP9XgOoNRerv80AGl6DWCp%0AQgqRgo85SWfrztA11gDqLDsgHTSAw3UAc/nPfXCzA%2BpWApA/l/0uhc5xnAOQLXEK4GoHPFf36dFe%0AAph%2B%2B8kO6K8KuQ1gannZG7oD5JHCxouXlwBkiaX4%2BpH3ZQeUUqUD5O%2BZwReL16fbB9BIEXW1a65O%0AOGkKYEVBr6/59SD2AeS%2BSWJbuZYNXPR/tPorUnnhIW8IQIs/B7CTHbHbaf3DC2Vsf6phAHUtnavY%0An69Rj7p/SvnvWX8zA%2BQlrjqvu79cyw4o%2BOv1suZb94DRDpjr7OdySwD6K26%2B/7b1N9sB1wH0p%2BVa%0AAti6fq8/z2YHdNPKyzFW2mA53Ojklx3xeiFbf4JFAPs6Tys9aMHn5Zc5J7H/Xf5Pkf1kAIepWHnh%0AVgIYdMWvypcA5Obljti6jtuf94MBtNNqdwcpfvsEf/qZPxRAO5T352S9te2PgQPo9p8aQPfPvVl2%0AgBxudP3fi9w/pynf3NoCdS4JyB6/e10G8LZD3t2Z3d7cGIDu7KbqD%2BP9d%2B0ll6ntFYJPC6Drun5X%0AdvZB/xr75jZUyWX55T69fXH7AE9fr9wBsqTzVaqeruXTP9cFpfndTb37GQHUVTv2XScN383/cHEO%0AoXx2HJtuCaFR98rbu9exeP1qxQ6o01DWuh1l55fP5NISl8/LjaqTF/uSUbn7SQE0p5fsbSl0vkQ2%0AKXU839jlsUt5TOXO5wTQDucSS22H6evzhj5/X17hz19oOg/f4HXWC9%2B0wGUA7RRAf1NBusjoNh1n%0Axd6bzjcBzO9djVp8CeC2fP2Z03FPvplKAPcecm9oH/e%2BC0CXd2ins8zjXZ36EoIGMH5WAPqezbBm%0AqSScWvr%2BcUZrfsg7HvPNDnjHlGzHJAD%2Bo%2BQv2y3nbTRagBagBbx1pe18MAADMMC257yNhgEYgAHe%0AutJ2PhiAARhg23PeRsMADMAAb11pOx8MwAAMsO05b6NhAAZggLeutJ0PBmAABtj2nLfRMAADMMBb%0AV9rOBwMwAANse87baBiAARjgrStt54MBGIABtj3nbTQMwAAM8NaVtvPBAAzAANue8zYaBmAABnjr%0AStv5YAAGYIBtz3kbDQMwAAO8daXtfDAAAzDAtue8jYYBGIAB3rrSdj4YgAEYYNtz3kbDAAzAAG9d%0AaTsfDMAADLDtOW%2BjYQAGYIC3rrSdDwZgAAbY9py30TAAAzDAW1fazgcDMAADbHvO22gYgAEY4K0r%0AbeeDARiAAbY95200DMAADPDWlbbzwQAMwADbnvM2GgZgAAZ460rb%2BWAABmCAbc95Gw0DMAADvHWl%0A7XwwAAMwwLbnvI2GARiAAd660nY%2BGIABGGDbc95GwwAMwABvXWk7HwzAAAyw7Tlvo2EABmCAt660%0AnQ8GYAAG2Pact9EwAAMwwFtX2s4HAzAAA2x7zttoGIABGOCtK23ngwEYgAG2PedtNAzAAAzw1pW2%0A88EADMAA257zNhoGYAAGeOtK2/lgAAZggG3PeRsNAzAAA7x1pe18MAADMMC257yNhgEYgAHeutJ2%0APhiAARhg23PeRsMADMAAb11pOx8MwAAMsO05b6NhAAZggLeutJ0PBmAABtj2nLfRMAADMMBbV9rO%0ABwMwAANse87baBiAARjgrStt54MBGIABtj3nbbTfX9GvvzjwhWowNroiAAAAAElFTkSuQmCC%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.right_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032712.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 10.70 px<br>    deviation slot0: 1.07 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.969126163339</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 13.31 px<br>    deviation slot0: 1.33 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.88389580532</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 4.642796
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(BothEnds)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 103.59 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> two_finger_tracking.('left_to_right', 'normal') </h3>
+                        <h5> Take 1 second to draw a horizontal line from left to right using a ruler with TWO fingers at the same time. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAxQTFRF%0A////AAAA/wAAAP8Aj2xU8wAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZ%0AcwAACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAq2SURBVHhe7ZvNburIFoXPS5w3%0AuwY1EmLULV3m6A55Cs4g8xwJv4%2BVYZ7Cygj5rl0GAjTEToWc2lR9VjeEH6dqrdrrq22n%2B8eP0o%2Bf%0AVdHHf35gQNEFUFEBRAAGwICiHQCCQBAIFo0AGiEgCASBIBAs2gEgCASBYNEIoBMEgkAQCALBoh0A%0AgkAQCBaNADpBIAgEgSAQLNoBIAgEgWDRCKATBIJAEAgCwaIdAIJAEAgWjQA6QSAIBIEgECzaASAI%0ABIFg0QigEwSCQBAIAsGiHQCCQBAIFo0AOkEgCASBIBAs2gEgCASBYNEIoBMEgkAQCALBoh0AgkAQ%0ACBaNADpBIAgEgSAQLNoBIAgEgWDRCKATBIJAEAgCwaIdAIJAEAgWjQA6QSAIBIEgECzaASAIBIFg%0A0QigEwSCQBAIAsGiHQCCQBAIFo0AOkEgCASBIBAs2gEgCASBYNEIoBMEgkAQCALBoh0AgkAwMwj%2B%0AfRroyXYw3vlEoA5aJ3U9q5/1w/LXtpr9rgcdyNMAmSEDlk/BgL8%2BrIJHN2BTzWy9q2oj0ZPtrA4V%0AUM%2Be9wbU9fN/czZgtq1nv7e1lNuDnn6fGfCsRNR9Nm658MgVIMSdGKD1DwaYUlWAHpebqrKSuKU9%0AvP9QBiz3WiTPxE229fJQActtb4AJ17HPRf4GqALMB4uAnnvxF49HL65%2B%2BkAVsNzUqgBLvOi%2BXf6q%0AVfG1dO%2BX/Lr666JP33UeAVu%2BPtAqehkwqU8M0EfDAoe%2B4d8AYf25tk0tbHTBgI2qfTLc4wxpD5%2B7%0AN8A29tIMsMLeo0vaDwaE9boBulFrff1LHitgb0AdIh62cYvA9fl/%2BV2HBpjkidrZvoW5A%2Bc%2BNMmd%0AAWKdbXZHAz6c/R0%2BdGRAWGshXs/a7VX7A03sHdTrV6Q3IOhWxmvrc04NuMcuP2ySAwPU1i/rEwM0%0A6YH2dVjW%2BG%2BkNsD6uzMDxk/9Pt/8NgP6G1P/muT72tqqT6y/OxigOvjX17//jW8wYLOxac/UtIbp%0An2/hMmAS3lbiewPsylb/pDrub8Cs1iXq8qmutZWZKuPbUd1Mt6iW%2BkfvHQ1IJb0f954GhPKenBuw%0A3C7NENvT6lo38C4NSKteo9/HgOWTrlfqJ1vyZd1XgErdQnBmQL2ZPVt3HyogufR7VYBuwG7eDZAP%0ABwNCO6NbVdbT9xXQG9BHwIn%2BO1TAhQGSerxumewNsEuacGxM9lJ14uf4UgRMoKr6UAH6UXA/kafP%0Az46EsL/peJQBf2lF9XeXkPFfSvTm/defGXBzVEcfjDRgsn0XKYzpiu1owMUqO9I2aipjDdDlqeo7%0AiC3TgKffBjEzQJV/qIBnvbzM%2BSjbHX1pZAVoU%2B8N%2BEdPioAjBV%2BcylgDege25oOiUKIBtpdvgg1W%0A%2BPkcoyuglzw7aXPyMOGTBkze/xqXh/7PtsITL9cwd7P/kxVwt3Hd/CIM4D%2BU/OmmGpNMhAgQASKQ%0AJHpuBoUBMAAGuIljkonAABgAA5JEz82gMAAGwAA3cUwyERgAA2BAkui5GRQGwAAY4CaOSSYCA2AA%0ADEgSPTeDwgAYAAPcxDHJRGAADIABSaLnZlAYAANggJs4JpkIDIABMCBJ9NwMCgNgAAxwE8ckE4EB%0AMAAGJImem0FhAAyAAW7imGQiMAAGwIAk0XMzKAyAATDATRyTTAQGwAAYkCR6bgaFATAABriJY5KJ%0AwAAYAAOSRM/NoDAABsAAN3FMMhEYAANgQJLouRkUBsAAGOAmjkkmAgNgAAxIEj03g8IAGAAD3MQx%0AyURgAAyAAUmi52ZQGAADYICbOCaZCAyAATAgSfTcDAoDYAAMcBPHJBOBATAABiSJnptBYQAMgAFu%0A4phkIjAABsCAJNFzMygMgAEwwE0ck0wEBsAAGJAkem4GhQEwAAa4iWOSicAAGAADkkTPzaBZMaA7%0A2rpoxzqcpwGLTke7bka4gAE57QKKQL/ohVbAtKsWu2a1mleLVha0ndxYDaUgpwiYARZ%2BE26HXra7%0AMgyQ4mk1X3TV%2BsKAtzIMWOyqZt12LwVWwGol7q0Wu8XuigGVIjCUgOqhGTCfdp0Kv1vLgO4tRD9A%0AwH4Yezy0ASr6rnvtOq2/VcBndB/9eUgDVjb9ZlqZeDv2ESjFgOm0W1XK/frtUAGq/EHa34rEo1XA%0AdLpW2ruplb1xP0Tglrgx7z%2BSAVMJWoealwHrXd/qxSX/3ZpHMmDdruZmgCpgESpgzAoPfce3AXOx%0ArrGe1o65Qh%2BOYwSGxI353LcBXfPa7apVt37ZTXdBuV3mt1NFYIy4Md9xaoCWXldyjRFut1Cn0xsQ%0A1r8dI2v8d/wZsLLJC23W5gUD9GQG6EkV0IyXNu6bzgxomkU3n6roXyrtcabdHqq%2BAhqZkLcB6uuD%0AZst6q9Xf7Vu9fi3vL95%2Br5cKCKEPmvcGWJu3Cx3e1xqdoSD4MEBt/YsZcHJYmyf19m4zJOIrn6c3%0AYKXIq6vtWvX4xwqoYi/uPu1FcgNeOvU31uJofw8GNMYAGfBpKXEnJDZgutAeZ%2Bp7A7612K8blNiA%0AdZ/6EIF7tzjXBV%2B%2B%2By0GrC5HufnaDLAItKr5P1b1Z7P5DgM%2BbNS13x0KXbcsrQBkQJhSrgbY/vZ%2B%0AzLuXcPdm8bZbv2rd91vd2Xf%2B6Iv7V8BUYDsRvO7a1YkiW3IZsH7dG9D%2BUbVXBruHAfPQxu2Pld2y%0ACn%2BTMxvm0quIN/ahKr5vdXZa%2BL0Bh7PSPd/DgNNLFN2rkuKFdradfgqCgwF67PR3KnutCugNCLak%0APr5ugN2pCFI6W%2BL/SWCrhJ8YIMyF5ubMgHCGh%2BOrBizCnVldxL7tdKNO92q07jLA1lk/6WVfAe8G%0ANAb7PhMe9H/5alAGWAVcGmAVoEK3kq9sVzQDdFfLheTzSXy%2BAmxbMykGcpX9uQFa%2BvD7D61AH44e%0AiA7Va0qfNsDqPKzlwYDGhFkFGOc/7IFcOvApA0Q5K3YVsyU8VMCFqOwNWIRd7rYBLhf5w0mNqwCL%0Atv59bQ3vMkAQuFz7D0dx/OFoA2xDe23XZoDSXpYBU/vbhB2NyqB1vJoxUxuugLmWu2gDtPJW8/ag%0Aw/q4rI7hCugNyEr0qZhBA6yd7xc/Tw8GDQjtfMbHGAOajPWPuBZYHy5o8rRhuALy1H1UhQE5/R8j%0AMcVKBVABP2MKJ59ziAARIAL55DlGCQyAATAgJjn5nAMDYAAMyCfPMUpgAAyAATHJyeccGAADYEA%2B%0AeY5RAgNgAAyISU4%2B58AAGAAD8slzjBIYAANgQExy8jkHBsAAGJBPnmOUwAAYAANikpPPOTAABsCA%0AfPIcowQGwAAYEJOcfM6BATAABuST5xglMAAGwICY5ORzDgyAATAgnzzHKIEBMAAGxCQnn3NgAAyA%0AAfnkOUYJDIABMCAmOfmcAwNgAAzIJ88xSmAADIABMcnJ5xwYAANgQD55jlECA2AADIhJTj7nwAAY%0AAAPyyXOMEhgAA2BATHLyOQcGwAAYkE%2BeY5TAABgAA2KSk885MAAGwIB88hyjBAbAABgQk5x8zoEB%0AMAAG5JPnGCUwAAbAgJjk5HMODIABMCCfPMcogQEwAAbEJCefc2AADIAB%2BeQ5RgkMgAEwICY5%2BZwD%0AA2AADMgnzzFKYAAMgAExycnnHBgAA2BAPnmOUQIDYAAMiElOPufAgB%2BlH/8HXW0nOfqgvYYAAAAA%0ASUVORK5CYII%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.left_to_right.normal-lumpy-fw_11.23-robot_sim-20130506_032715.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 2
+    criteria: == 2
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 6.49 px<br>    deviation slot0: 0.65 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 11.67 px<br>    deviation slot0: 1.17 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.943536436612</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 4.67 px<br>    deviation slot1: 0.47 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 4.58 px<br>    deviation slot1: 0.46 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 3.038963
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot1: 3.590110
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot1: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 86.24 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> two_finger_tracking.('left_to_right', 'normal') </h3>
+                        <h5> Take 1 second to draw a horizontal line from left to right using a ruler with TWO fingers at the same time. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAxQTFRF%0A////AAAAAP////8AwVEKrwAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZ%0AcwAACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAt4SURBVHhe7ZzNbuJIFIX7JfrN%0AxqAgWayyGO9Rr0Z%2BCnqRPZHw%2B1hZ5ilQVshzb9mGhB9jqAJ8XV%2BppyHlH%2Bqcuudz2aTn16/Y2%2B8k%0A6vbPLwyIugASKoAIwAAYELUDQBAIAsGoEcBCCAgCQSAIBKN2AAgCQSAYNQJYCQJBIAgEgWDUDgBB%0AIAgEo0YAK0EgCASBIBCM2gEgCASBYNQIYCUIBIEgEASCUTsABIEgEIwaAawEgSAQBIJAMGoHgCAQ%0ABIJRI4CVIBAEgkAQCEbtABAEgkAwagSwEgSCQBAIAsGoHQCCQBAIRo0AVoJAEAgCQSAYtQNAEAgC%0AwagRwEoQCAJBIAgEo3YACAJBIBg1AlgJAkEgCASBYNQOAEEgCASjRgArQSAIBIEgEIzaASAIBIFg%0A1AhgJQgEgSAQBIJROwAEgSAQjBoBrASBIBAEgkAwageAIBAEglEjgJUgEASCQHDEEJwsL4obNwNm%0Aq8gNyCI3YFZEbMDsvSiK1WUIjJUBsyJuA2ZFbcBFBo50KSz61YDLBEjGaYDq7yNe62OMDCjEgL76%0ALRowWXcle7IuxIDe%2Bq0ZIOInRdHlgDOgv35jBoj4uq0Lfbs%2BUirdYkBXhRxuM8WAnX5R2WHAocbO%0Anw0asNYQnDWgKx6nnDBmgIgXhVrnPytgsn59VXlFNyFPOGDLgKPpdcWwVt0S/aOtJ/Qeddkx4O%2Bp%0Ayd0ZoGwctwGT4u8JgT8q4CYHzFTArMOAiV741IujAr/cYcUAub0/VQGNwFr5qYxcdMCCATK/kz6L%0A2xEb8NLLgIuzfWqHgVTA8tTY2r4iycZtQJH9XbnyfT22YbaSC/0N65vjM53pGUIFFNmbe4ClK5rs%0AoBbUgCTJzow%2BQPfTDciKpVTAoQEvrRG1AQGEnjvFMAxYuofYrgLED1nSZ5m8K4pl9uYq4I7taQa8%0AisBs6VSKvNlK1jHyzsnWZxqtAbrxru1JBiyX6x8G7DVKtxiwq4CRGvD3/b014FBhbYCmQGphecjE%0A8MVwnwp46R6olPvqnAFJkdy0ouv%2BxPNbgxowaT%2Bn87I1Wc/e31fnh/TYLUENmC2bwSvM2/dHeibr%0AyWDkh/1iZOaALsuWpTBMv5vaVcR3E7KOu7ojs%2B7fEaYCXlTqpDZAVu7LRA0oirfakJ0Kh4ZRGpBJ%0A8WdvbyvVp%2BXfGHB4DytocFuH1MJUgCxmherfDBClM6kAdeRbc2u8URqQzcQALfjZSipAXrVlyQ52%0Ar3WXq4Bma73P8/8OUwECgLVTJgacWrzUWXiRHUZsgJvMwy/rJAf7B1pSEuvnT/nBCLwrQOO/P%2Bdp%0AA5K6Ah68xuvndWADDj9UK2BnyrgqQAOtwf9ZAacMkOmfrWoXTEfgx7JuIoyXpxgXDVCXnAGFXB6W%0Ah/YM4ef%2BEZjthitYmy2LycoZcFHEaAxIdlrFALnYSVn3M0AYOYoKmLz/W892Jg%2Bs3payyjlEflcx%0AyB2C%2BQgI0OW3cvTvwa1muqy/sK0/A2Timybkvxz9C587mM39DajnXj2I1IAkaywYz%2BxrGfavANk5%0AW17DvcFUeedArjKg80xGN2IA/3Dyt9HaDTRsIkAEiECgMBk9DQyAATDAaHgDDRsGwAAYEChMRk8D%0AA2AADDAa3kDDhgEwAAYECpPR08AAGAADjIY30LBhAAyAAYHCZPQ0MAAGwACj4Q00bBgAA2BAoDAZ%0APQ0MgAEwwGh4Aw0bBsAAGBAoTEZPAwNgAAwwGt5Aw4YBMAAGBAqT0dPAABgAA4yGN9CwYQAMgAGB%0AwmT0NDAABsAAo%2BENNGwYAANgQKAwGT0NDIABMMBoeAMNGwbAABgQKExGTwMDYAAMMBreQMOGATAA%0ABgQKk9HTwAAYAAOMhjfQsGEADIABgcJk9DQwAAbAAKPhDTRsGAADYECgMBk9DQyAATDAaHgDDRsG%0AwAAYEChMRk8DA2AADDAa3kDDhgEwAAYECpPR08AAGAADjIY30LDHzICyj0ejNWA6nW9jNmCRV1XV%0ApwRGWgFzkR%2B1AU5/zBXQGpBexMAoI1BO2wL4L0oDPrdJVfW6BIg9I6yAuYivxIR%2BbYQG9J99tWh0%0ABmj8%2B87%2BKA2YR23ANLm2AEYWgXyjBVD2w1%2B917gYkH%2BJ/s01%2BsdVATr9VxaAOQP%2BJB2r21z1XzX/%0Api6D0yRZ/Kk2VZmmSblwOsufatWAay6BerQhBuSVJryqPt2fvKyS%2Bbb2IUmmontR5dv5tQVgx4BK%0Ap7dtYoC6IS/JQjxYVCLcXQDViOualQqo7%2B%2B%2BedCUwx/xQHo/q4Xs8bm5TrzubcSA9KcBTQXs/ZCO%0A%2BbX8r82yYUBafTRiJfe5q/2mAppu6RCLyusLwEgFVGrAZl5XeP0iEKw2u7qQzfL%2BBv0WDEg15KVg%0A/1Cf9LQOyJvDrT1/HnoE5Om%2BK/8j9bU%2B0V3P/GgNkMB3GaA23Dr3tYVDroDpVuU7A84UQM8y79pt%0AyAbMnXw14H76nwnBVBb3rk3ljUiUP2nToy9p0hogi977tSdWgFzGFiJskeRyh7Oditytm2rt1OXt%0AZ1MA2ne/9lQDvqoknVdTvcvZ5rVcd2UTue31bXM/6fWZn2eAoO3L3eHIf3sD3IKmyj%2B/1I9tfs/0%0AP80ADXqayvW9abUB7U/fXrf3nn09/xMqQGdVlvNigJtmbd8rYO/AaA34SGQdr49u6qDnG13M5LKw%0A1%2B/0di1plv53LoPHV8C8lvjp5lfel2pA23Lt0B0eMvv6qY83wMnTCOjH5%2BVevHsnDpSJQHBz0H%2B3%0AHx9tgE6xM%2BBQ%2BU7hPVc9J2x8tAGivswfV%2BAnFB90PdgALYDxG1CeLW9H%2BfNbL89X%2BD3uUAFzqfCP%0AaZqW6dFwtQA2R71P7QhvgFzc5fsJafWtzTd10wEWQMDL4DSRKU/l65nWgKPJzjdHXU%2BdfPfh4SpA%0A2F6vYcQALXVt3/QtFgs1oHy%2B5J8jCGVAufhuwLwxYLr9qJd08q2mtM3QABCuAhrFH828twbo60bq%0AoF30Hy38nl8PISogTRaidFcB9Zwn%2BkSrNqKctgY8X%2B/RCHwNkEvdQp5a5nsD9rM8bQxo7/yPPnwI%0AHV4GyA1rVcrsfqjSU2raKHxJFE7vceqoh/Z5GLBIWwM%2BzxlQl7578vFQVVd82O0GCPA%2B5SFGKbP8%0A0SHPFcHmihE9eNdbDZCnue4XEqpSjOgywMFwdAZMt%2B6pfSmPdOT1wpzpo67httsqQAzQJgbILywM%0AV1yfkd1kwELg1lRAksdngCxrNQKN8OgqYCHQk9S78tcWlQG7VX2fcBnZ5yoGiAF/HP2MiOszzCsN%0AmDv9ERswOv29nwil04X8ulrznV6f0rKyT98I6NR/yZp3TNXv5qinAc1tnVSAlZntO86eBtTZlwiU%0AfU9sZb9%2BBjQFMD75fSPQGLCxMq1XjPOKCvga8m39FZJ/7trbgJs/YeAH9jNg4CJ8hocB/L/EfvsU%0AkP1jiQARIAL2c%2ByjAAbAABjgkyD7x8IAGAAD7OfYRwEMgAEwwCdB9o%2BFATAABtjPsY8CGAADYIBP%0AguwfCwNgAAywn2MfBTAABsAAnwTZPxYGwAAYYD/HPgpgAAyAAT4Jsn8sDIABMMB%2Bjn0UwAAYAAN8%0AEmT/WBgAA2CA/Rz7KIABMAAG%2BCTI/rEwAAbAAPs59lEAA2AADPBJkP1jYQAMgAH2c%2ByjAAbAABjg%0AkyD7x8IAGAAD7OfYRwEMgAEwwCdB9o%2BFATAABtjPsY8CGAADYIBPguwfCwNgAAywn2MfBTAABsAA%0AnwTZPxYGwAAYYD/HPgpgAAyAAT4Jsn8sDIABMMB%2Bjn0UwAAYAAN8EmT/WBgAA2CA/Rz7KIABMAAG%0A%2BCTI/rEwAAbAAPs59lEAA2AADPBJkP1jYQAMgAH2c%2ByjAAbAABjgkyD7x8IAGAAD7OfYRwEMgAEw%0AwCdB9o/951fs7X/4y6asaaSkngAAAABJRU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.left_to_right.normal-lumpy-fw_11.23-robot_sim-20130506_032725.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 2
+    criteria: == 2
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 9.11 px<br>    deviation slot0: 0.91 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.994711681957</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 10.75 px<br>    deviation slot0: 1.08 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.967886353696</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 12.67 px<br>    deviation slot1: 1.27 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.909624829016</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 9.89 px<br>    deviation slot1: 0.99 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.984838759897</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.617250
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0.0801659716198</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot1: 3.640055
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot1: {'X': -1} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 86.23 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> two_finger_tracking.('right_to_left', 'normal') </h3>
+                        <h5> Take 1 second to draw a horizontal line from right to left using a ruler with TWO fingers at the same time. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAA/wD/7ctyPQAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAnoSURBVHhe7ZjBjtpIFEVtCe9ZNP/j%0Akab3tGRbgj2Rhv9xS8melvBXzn1lG0iH6gkUmaT6ndIMmMLVfvfWu4dSisL7WLWuR1NggOsGaOkA%0AIgADYIBrB4AgEASCrhHAQQgIAkEgCARdOwAEgSAQdI0AToJAEAgCQSDo2gEgCASBoGsEcBIEgkAQ%0ACAJB1w4AQSAIBF0jgJMgEASCQBAIunYACAJBIOgaAZwEgSAQBIJA0LUDQBAIAkHXCOAkCASBIBAE%0Agq4dAIJAEAi6RgAnQSAIBIEgEHTtABAEgkDQNQI4CQJBIAgEgaBrB4AgEASCrhHASRAIAkEgCARd%0AOwAEgSAQdI0AToJAEAgCQSDo2gEgCASBoGsEcBIEgkAQCAJB1w4AQSAIBF0jgJMgEASCQBAIunYA%0ACAJBIOgaAZwEgSAQBIJA0LUDQBAIAkHXCOAkCASBIBAEgq4dAIJAEAi6RgAnQSAIBIEgEHTtABAE%0AgkDQNQI4CQJBIAgEgaBrB4AgEASCrhHASRAIAkEgCARdOwAEgSAQdI0AToJAEAgCQSDo2gEgCASB%0AoGsEcBIEgkAQCAJB1w4AQSAIBF0jgJMgEASCQBAIunYACALBTwbBZvV8U6Q/XQTWVeXWgEbKm7q8%0ASf9vPAq/3FbofLca3IRejNW60qfn1ctytWrWRQ4G1CtVXM8awqer48cvmrJsV%2BtxPrw%2BlU21rmRm%0AsaiLRbUuiurqn4pO/q8M0NbVy6IqJFnvxVRU1ICmahvt53yf3d4UElw/aXb1VLWrtlmUaxlQP/9d%0A2Kjq01%2BNKn73xa8zoDCdGutioXrbF%2B3SOgg/GaApu6VeVmNR8scEj0OtrPmmqJ7PBjT63gRr25tF%0AUcmC9UKq11VRlpK/sA6Y1//s%2By8wwCIpYTLgSRfFaEBR1y8vmp0MqIulfKh1X2GXodq/C2VYBpiG%0AsJ%2BLhRlQ2ufn9vn5pVnb96Ev1kt9q26XD2ZZrVe5e894uAGFNrRe1dKlKwkeDTA9da0agwFWsQxQ%0Au5oBglija%2B3hky5sK0f92tpVo/bRx7bUHtfrYtLYlPWTdntRSbFZ1rZCw53jcQbUtlPqxgsDVPDJ%0AgFqOnGusV7qeOmAyQMKX7wzQXetK0opGtpTB0GmsdaVW0BgNmOdvf08x4PRsFaoNLvT7dGGASlSZ%0AwRZr6aD3NIIBYQRSjB0gvknP1AGmzGSGe6YOmD6Okw96TTDg/JOrRjYDtENmgFTLkLPEUcKH9QYD%0Awh0yQHovemVa/W7mw79205dRA16if0ZbYwUXy1B0UdblbEAhA6LL/tAvogb8dVlwcKNQg%2BtNnKqf%0ATgbIhMkA9fhy9Yeq/KCsqAHhp8cW1vrtEYA19BP8nQGleiEYYOaEO%2B01s/GBAWVbPts5ZqlfopMB%0ATXnqgJVxajIgM9UX5cYNkFT9ukq5DBg7wM7Z1giXW/3L4PR/WRo3oNX2zgaYD4W23n7P9PKZxgcG%0ASKYZUJ3Iro73ZoAd7c7bHQywl880Pu6Az6Q0ogUDilXEGifTdAAdQASchD0iEwbAABgQCYeTaRgA%0AA2CAk7BHZMIAGAADIuFwMg0DYAAMcBL2iEwYAANgQCQcTqZhAAyAAU7CHpEJA2AADIiEw8k0DIAB%0AMMBJ2CMyYQAMgAGRcDiZhgEwAAY4CXtEJgyAATAgEg4n0zAABsAAJ2GPyIQBMAAGRMLhZBoGwAAY%0A4CTsEZkwAAbAgEg4nEzDABgAA5yEPSITBsAAGBAJh5NpGAADYICTsEdkwgAYAAMi4XAyDQNgAAxw%0AEvaITBgAA2BAJBxOpmEADIABTsIekQkDYAAMiITDyTQMgAEwwEnYIzJhAAyAAZFwOJmGATAABjgJ%0Ae0QmDIABMCASDifTMAAGwAAnYY/IhAEwAAZEwuFkGgbAABjgJOwRmTAABsCASDicTMMAGAADnIQ9%0AIhMGwAAYEAmHk2kYAANggJOwR2TCABgAAyLhcDINA2AADHAS9ohMGAADYEAkHE6mYQAMgAFOwh6R%0ACQNgAAyIhMPJNAyAATDASdgjMmEADIABkXA4mf5UDOju2LRPZcD2zzZgY%2BWNm3TPVt0h7meWPLwD%0AduGpm67dSaUJ3XX6YGN4Pbbd/rDZ9Xrte/NjGMI9D/Lj0Ifn3DYebUA3mJzdMLwN%2B7fj/tB2w34Y%0ADl3bHWWArg/DcNTMcBxU7jDse92j/3ZWtlaGNrlnbN/0mDsWPtqA10FyXiVwMqD/EgzYD5p7Z8Dw%0AagbIp26v4je71owY%2Bp0ubrVBduqBv9EA6/hQ9FZNbfsbxpvKGocZEDog1HmeNgPCnfbSDmZA8ELe%0AqGXm/VROZkfCZH/eaH0etlo1/snD%2BYufvkrugJ09Kkj4pudvT/LGDjBhe21N2P5eEi8iEHZMHTAb%0AoPdDZwvCmA34ctxIouVFY/%2Bq9dvhZE0I2FZ3/zYDdt1gLXsyYD8lPERA4TYpelEHTAq0W8Nxf5AI%0AfSMDzJOpA3SnfTsNadUSGaIbrxtgDz4bcNyPT9CfvGn8Rwf0ofn0pOujG2zLNttQ9DfVsD12x72u%0A59v1TbiUtB/HNKmuMKEa7wywn4jRgLeh72TE2AF7dUCn/49HtcnYAb09wl5uHx8bsFX/fd1tTYQZ%0AYWMjO3a9XXW78PxxvJ0NaLfnFp0NmBZ//3ZhgDWR9PWTE2ZGr3T0wZheHfBqnaAbdKnuGX2RAWqg%0AXrkL9dw3ogZI8CApo7y2fR2%2B2gM23fBNu36UMI3pzS5lwOu9XXiqPBhgXqhjTgboh0FTowHhTvkb%0ADLAOSB9RA/RY1TEbYIK/Drsxol9OBoQN0lCJ6ohHGHCpyHZXhoS/LtPPwRoNsB1KHzEDTJQ6YBI4%0AC50ZNXeA5sNXwYD0IcHfjYvP4ffvNOzTI9TrD/6HAVMHzAbM77MBoWPlSv9d3Vl9uGrA5ixq6G2D%0Af%2BgA07gPlM5K7ZVirxrwz/tdlQEHUU551LvePtG4asB1fbPy/Hf9Ut8NBly3JfdZDOCfxVe5N3Fa%0A/USACBCBtAzlvhoGwAAYkHuK0%2BqHATAABqRlKPfVMAAGwIDcU5xWPwyAATAgLUO5r4YBMAAG5J7i%0AtPphAAyAAWkZyn01DIABMCD3FKfVDwNgAAxIy1Duq2EADIABuac4rX4YAANgQFqGcl8NA2AADMg9%0AxWn1wwAYAAPSMpT7ahgAA2BA7ilOqx8GwAAYkJah3FfDABgAA3JPcVr9MAAGwIC0DOW%2BGgbAABiQ%0Ae4rT6ocBMAAGpGUo99UwAAbAgNxTnFY/DIABMCAtQ7mvhgEwAAbknuK0%2BmEADIABaRnKfTUMgAEw%0AIPcUp9UPA2AADEjLUO6rYQAMgAG5pzitfhgAA2BAWoZyXw0DYAAMyD3FafXDABgAA9IylPtqGAAD%0A3DOgcD7%2BBfmLw5JtYU8jAAAAAElFTkSuQmCC%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.right_to_left.normal-lumpy-fw_11.23-robot_sim-20130506_032729.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 2
+    criteria: == 2
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 6.28 px<br>    deviation slot0: 0.63 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 9.70 px<br>    deviation slot0: 0.97 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.98761041577</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 6.65 px<br>    deviation slot1: 0.66 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 6.35 px<br>    deviation slot1: 0.64 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 6.082763
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot1: 3.726780
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot1: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 86.85 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> two_finger_tracking.('right_to_left', 'normal') </h3>
+                        <h5> Take 1 second to draw a horizontal line from right to left using a ruler with TWO fingers at the same time. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAxQTFRF%0A////AAAAgEAA/4BATQij6gAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZ%0AcwAACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAsPSURBVHhe7ZvBbuJIFEX7J/rP%0AxrbaEmLVs/AeZclXEKnZ0xL%2BH5TVKF%2BBWCHPLRsSEoypIlApV51qJaHtZ9d7t949Lmd6fvxIffzM%0Akh7//ECApBsgowOwAAyAAUkrAASBIBBMGgFshIAgEASCQDBpBYAgEASCSSOAnSAQBIJAEAgmrQAQ%0ABIJAMGkEsBMEgkAQCALBpBUAgkAQCCaNAHaCQBAIAkEgmLQCQBAIAsGkEcBOEAgCQSAIBJNWAAgC%0AQSCYNALYCQJBIAgEgWDSCgBBIAgEk0YAO0EgCASBIBBMWgEgCASBYNIIYCcIBIEgEASCSSsABIEg%0AEEwaAewEgSAQBIJAMGkFgCAQBIJJI4CdIBAEgkAQCCatABAEgkAwaQSwEwSCQBAIAsGkFQCCQBAI%0AJo0AdoJAEAgCQSCYtAJAEAgCwaQRwE4QCAJBIAgEk1YACAJBIJg0AtgJAkEgCASBYNIKAEEgCAST%0ARgA7QSAIBIEgEExaASAIBIFg0ghgJwgEgSAQBIJJKwAEgSAQTBoB7ASBIBAEgkAwaQXGCcFfWZbn%0A2eL3HZZunAJUv/Jy%2BbxaJytAXZV1vfybrgBVXS1PO6AzQ35LQ4zRAossq0p9ext5Z4YyEQHy1Xuh%0A1WKhdS//rp9vKd5cM8IOKE8FeF6pF/JVXS%2Bkg76cx5gE0MNPo3pevVdZLVfVQn8v6z/Pf6qTE9ZC%0AjEmASlXlWbU4Ka6qV%2BWzHgZ5bUbsAtSqvFx8EMC0fSkBsnUKAqgDflefBDBNYQTIqro2HeI8xmQB%0A8X59E%2BiGVBmRAL/LRbfYQ/U4nxuNAHW2lvvbbr/rGI8A%2Bf3b3yj5XQI479vVAXdd%2BePNvkOAxa%2Bs%0A7mCmprYbdWaegY8Y3yBAvqqyuivdQYBHFG/u6V%2BAX%2BVK66kNzfO6qs0u7trItfqPWn/vAtTlqmo7%0AwOzpLQUoF9EIkK8lwHExjQB6sFdXFncht1wJudZCg%2Bc9WsA0vOmAQz5WAtR60zUd8LjxBQHy2sLA%0AJ5kfBPhUi/bwA/WddMyDNLhVgIV5BV1bS1Cu9B7bi7whAWQZdcCDKj/c9kYByvW/Wjm9g8rDa4sU%0AS/3ipqqlWs9QB1xoAgnQE3/fQ7cKoPIdBGh/cXMp8VYAs9E/Gw949zmb40YBTOOKAMcO6Mv%2BdCoJ%0AUPYU%2BBbSI4AuqQMVQI1ZLTsB9MsIYwHJMVSenvnDpzshF%2B/bHXW%2BEeBsuR5wwLkDhLNOgJNkJIAU%0AWV1Iz8RfEaAVsl4YFHR7BT0tgxWg/msKyk%2BXpxOgleCsa/O1JcrESLXVaAT4sNr6RZ064G2cLLeK%0Av1GAC%2B1098PuFuhv9fJUgPaB177xOwhgQKGbtBbITv/jx91r/nBDVwHqy7m9aaBuWNbZ0jSCEcCl%0AgAsbApdbOMa6CzAwgZEgb4G41M/l399GgIH4nlOO4T13cDx0VwEOc0uHZV3qy2nxu4vjEEAerqtV%0AeYsAjuv39XDXDrCesVpEKIALm6/ufaylfGygUwekLkDevwV47Ao9%2Bu72HaDnW/IC3PBYe/QCfvn%2B%0ATh2QtACL51E81p07wrYD8tN/muQ8S8AX2Apw%2BR0o4OJsUrMW4PSfJ9rceCwx1gKMpSDXPBGA/2nq%0Ap2vTxBWPBbAAFojL067VwAAYAANcXRNXPAyAATAgLk%2B7VgMDYAAMcHVNXPEwAAbAgLg87VoNDIAB%0AMMDVNXHFwwAYAAPi8rRrNTAABsAAV9fEFQ8DYAAMiMvTrtXAABgAA1xdE1c8DIABMCAuT7tWAwNg%0AAAxwdU1c8TAABsCAuDztWg0MgAEwwNU1ccXDABgAA%2BLytGs1MAAGwABX18QVDwNgAAyIy9Ou1cAA%0AGAADXF0TVzwMgAEwIC5Pu1YDA2AADHB1TVzxMAAGwIC4PO1aDQyAATDA1TVxxcMAGAAD4vK0azUw%0AAAbAAFfXxBUPA2AADIjL067VwAAYAANcXRNXPAyAATAgLk%2B7VgMDYAAMcHVNXPEwAAbAgLg87VoN%0ADIABMMDVNXHFwwAYAAPi8rRrNTAABsAAV9fEFQ8DYAAMiMvTrtXAABgAA1xdE1c8DIABMCAuT7tW%0AAwNgwBgZMN26dvrF%2BDFZoGj22XyzyZp9mgIUjRHgtdlLgJ0%2B3meMpwOaTwI02eYeEoxOALWBVl9u%0AaJq7gGAsAhT7pmi7fto2fyvA7miDIstmt3bDSARQ9U1X4vRYtQQ4gmC6yW7uhvEI8HmJi73aYN7K%0AMd98Pmn/9/EK0PqgE2D6OrOv%2BFPkKASYZIf%2B/5R8sZ837Zlmv7lVgW8SYN64ZHw5WAI0G/OA3I5O%0AgMtFnZcyEDuVAo2%2BjUaAmR5ZGlo5%2BxZ4GYhtBSi2xVgEeGnmO/PMthZgkhXT/YAAImGHgfO%2BsTvi%0AkwEz7WKauR7fpgvmm64XrqTZbOba8wx1i3lF%2BsK4SQAtYXboZfupJ0WjNxmNXTPfmsvUC9dH858E%0AGA7rdojDMZfP3iJA0WSzJ1UxUzM/Xb71pzON2l/lt19bc25uQa4Xo9gVAawz6A28TYAnU8WuedKf%0AtparQ/3SvLYdYCzQXaQfs9nglRPZP0QBVIYZKkRjuxmsoT1pun9nOuBVi6lPxw7QHS6CoMim2%2BbV%0ACLC9PsEXIm7ogHlbeNvLZlg0qKl9q2/HPE8E6D72FDDfSgDdfBCAPde5HnIXYHooXCvZCXBxEd9y%0AUfc32/NK5rp%2Bvp/1pjyRADt1QHACTDZalkKZm3eRTgDVMKiBCjEd0FNnd4dJtjk/J8VaC5yfufMR%0A1w5o5EoJ0GZRaBNuHu1ax22WbTY9dSgoezXdf0kA0wWvZ686evsx1j9vmjtXr9s5CtCu2Ydl6QRo%0Advq5fznPr1CFPd3/FtgJsHu/cGI%2BSrEHs%2B9tQjcBJtqVfNp5HoxghNGD4aybTYHbc13ej3QXbjc6%0AMptkk0kjFSd6wzMHfAwnAWbK9mxfaiowZR6G0p/NZl36RWEaYNjHuuxVX%2BKIpBRgpJemCVOA8/43%0AS2SyVpnHsTtEqZVn3eFhAXSD1/Za81RpBdBPb%2BvvxgBT2ra/LedtDe9Dj68X7X7aA9cEaN8NOxFf%0AzIdgBSimyu6CAFNzwpw/DAnQFnLxgo86zk3ksQP0sXNQv9Z3PurAgLZHh6dvCzFj/2S%2Bzy3rb7U7%0AWGBjMc1wEm5nrQWYmU389Xur5uPQnt9aAO0p3nYKh13G9bnuEmErQNFMLrX/hzy0lFsdMLiw0esu%0ANXzpJvYC2K%2BmEpo22duKfim/h19sK4BW1qoDDgn7beOvqGQpgGnpjcM8yQvgoNU3h9p2gB7sLh3w%0AzVU5TG8nwPRrv3l1yMd7qKUA3vPyNqGdAN7S8T8RAvAvRX/6b7uQZsQCWAALhORI/7nAABgAA/z7%0ALqQZYQAMgAEhOdJ/LjAABsAA/74LaUYYAANgQEiO9J8LDIABMMC/70KaEQbAABgQkiP95wIDYAAM%0A8O%2B7kGaEATAABoTkSP%2B5wAAYAAP8%2By6kGWEADIABITnSfy4wAAbAAP%2B%2BC2lGGAADYEBIjvSfCwyA%0AATDAv%2B9CmhEGwAAYEJIj/ecCA2AADPDvu5BmhAEwAAaE5Ej/ucAAGAAD/PsupBlhAAyAASE50n8u%0AMAAGwAD/vgtpRhgAA2BASI70nwsMgAEwwL/vQpoRBsAAGBCSI/3nAgNgAAzw77uQZoQBMAAGhORI%0A/7nAABgAA/z7LqQZYQAMgAEhOdJ/LjAABsAA/74LaUYYAANgQEiO9J8LDIABMMC/70KaEQbAABgQ%0AkiP95wIDYAAM8O%2B7kGb850fq43%2Bizfe8ijEIZQAAAABJRU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.right_to_left.normal-lumpy-fw_11.23-robot_sim-20130506_032735.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 2
+    criteria: == 2
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 14.81 px<br>    deviation slot0: 1.48 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.814056659091</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 12.46 px<br>    deviation slot0: 1.25 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.917178590024</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 16.11 px<br>    deviation slot1: 1.61 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:red"><b>score: 0.743761048175</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 14.11 px<br>    deviation slot1: 1.41 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.848321630063</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.332381
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0.449224105209</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot1: 2.549510
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0.146991551805</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot1: {'X': 1} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 85.84 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_to_edge.('center_to_left', 'slow') </h3>
+                        <h5> Take 2 seconds to draw a striaght horizontal line from the center off left edge. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAAgICASV%2BptgAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAZ9SURBVHhe7dhRbhpJEAZgXyKX2PNk%0AkOCdfZj7gGTeWYk55XbPgA0mjqK4wlJb3yRybBiXq//p%2BtLJy0v169tQ%2Bvr%2BIoDSG2CwA4wAAxhQ%0AOgEIQhCCpQlwEIIgBCEIwdIJQBCCECxNgJMgBCEIQQiWTgCCEIRgaQKcBCEIQQhCsHQCEIQgBEsT%0A4CQIQQhCEIKlE4AgBCFYmgAnQQhCEIIQLJ0ABCEIwdIEOAlCEIIQhGDpBCAIQQiWJsBJEIIQhCAE%0ASycAQQhCsDQBToIQhCAEIVg6AQhCEIKlCXAShCAEIQjB0glAEIIQLE2AkyAEIQhBCJZOAIIQhGBp%0AApwEIQhBCEKwdAIQhCAESxPgJAhBCEIQgqUTgCAEIViaACdBCEIQghAsnQAEIQjB0gQ4CUIQghCE%0AYOkEIAhBCJYmwEkQghCEIARLJwBBCEKwNAFOghCEIAQhWDoBCEIQgqUJcBKEIAQhCMHSCUAQghAs%0ATYCTIAQhCEEIlk4AghCEYGkCnAQhCEEIQrB0AhCEIARLE%2BAkCEEIQhCCpROAIAQhWJoAJ0EIQhCC%0AECydAAQhCMHSBDgJQhCCEIRg6QQgCEEIlibASRCCEIQgBEsnAEEIQrA0AU6CEIQgBCFYOgEIQhCC%0ApQlwEoQgBCEIwdIJQBCCECxNgJMgBCEIQQiWTgCCEIRgaQKcBCEYg%2BAu7Rx9YQds3xe9Of2vAlgN%0Aq2FYr4f11apet8Pu5jFv/56mvuxVv7cHsB%2BGq0jSBHK3A8bDcWy/hmnaTe8rHqep/e4vrFsSbamr%0A9tU0HYdhnE7b%2BfPpuJmWZbfg1i2MHHHcBdCe630Ay3J7AO2z9rhX0z/nAHbzn4f549QDWK/X7bZp%0AP63OcTz5XrgKYHneLYDpOB3bQvfLDlgN6917AG2V42l9%2Bbo99Pk6LH%2B0Jc/vvLb9M19PvvjeXgug%0AL7wNcp/j9untDlhvV%2BNpOm3OC9qdPznMO2DYXAK4vN6/vV/78/1z5ddhtTk%2BbRTfX/7qC5%2BHfs7g%0ANoBl9E/LE2/vngPY9wD6msZlpS24%2BZ3L%2B8tgzLe0V1/nu47t5ifMoQUwDYflIbcO25IO112%2BBdD2%0A9tWC95fNvZlOPbl%2BtZB29wHMubxdTxpAb/I0tnX0AG6u5cm3RV6uzazDgkN/rQdwfbUq7d3394dD%0Af%2BHtOt7c/BRf9B0wtgZP7cPlWV41dt4Bb6%2B0IVm1%2B3ef9d4Cam9dBzQv/mLFcbXZfvat/9HrbwG0%0ANu93QItkPN4tt4Hx2dUCurk28/rnVDa9zniel8%2B%2B//Gv9wD6dRrbZr4bgS/306tebYgeQA/jia7%2B%0At0Drqp192vx/fH5f7/NjxR7116tGVugHofkxfWw15od8rNqynu5GKuZH/WaVHsDHLn%2Bz1K982xzA%0A8VfufNQ9d/8W%2BNM/uAfwTAk8PIB2jKgdwA8OG3960/20/sN3wPBkfw08PoCfPo/HvymAmP8VfvyT%0Ai/qJdoAd8C1qM%2BWsYwSMgBHIObtRXTOAAQyImqacdRjAAAbknN2orhnAAAZETVPOOgxgAANyzm5U%0A1wxgAAOipilnHQYwgAE5ZzeqawYwgAFR05SzDgMYwICcsxvVNQMYwICoacpZhwEMYEDO2Y3qmgEM%0AYEDUNOWswwAGMCDn7EZ1zQAGMCBqmnLWYQADGJBzdqO6ZgADGBA1TTnrMIABDMg5u1FdM4ABDIia%0Appx1GMAABuSc3aiuGcAABkRNU846DGAAA3LOblTXDGAAA6KmKWcdBjCAATlnN6prBjCAAVHTlLMO%0AAxjAgJyzG9U1AxjAgKhpylmHAQxgQM7ZjeqaAQxgQNQ05azDAAYwIOfsRnXNAAYwIGqactZhAAMY%0AkHN2o7pmAAMYEDVNOeswgAEMyDm7UV0zgAEMiJqmnHUYwAAG5JzdqK4ZwAAGRE1TzjoMYAADcs5u%0AVNcMYAADoqYpZx0GMIABOWc3qmsGMIABUdOUsw4DGMCAnLMb1TUDGMCAqGnKWYcBDGBAztmN6poB%0ADGBA1DTlrMMABjAg5%2BxGdc0ABjAgappy1mEAAxiQc3ajumYAAxgQNU056zCAAQzIObtRXTOAAQyI%0AmqacdRjAAAbknN2orhnAAAZETVPOOgxgAANyzm5U1wxgAAOipilnHQYwgAE5ZzeqawYwgAFR05Sz%0ADgMYwICcsxvVNQMYwICoacpZhwEMYEDO2Y3qmgEMYEDUNOWswwAGvBS//gW5xiNoL0zgZAAAAABJ%0ARU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_to_edge.center_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032738.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 6.13 px<br>    deviation slot0: 0.61 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 14.17 px<br>    deviation slot0: 1.42 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.8455796965</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 5.215362
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>RangeValidator</b></span>
+    actual: (1,)<br>    spec: (0, 1280)<br>    ave_deviation: 0.000781
+    criteria: <= 0.05, ~ +0.05
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 101.65 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_to_edge.('center_to_left', 'slow') </h3>
+                        <h5> Take 2 seconds to draw a striaght horizontal line from the center off left edge. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAAAAD/U1NG0AAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAaYSURBVHhe7dlRbtpYFAbgbKIvs4Su%0Ap0aCd0Ya78dIzTuR8Crn2tgQMsxUJ0oz5JzPqpoCN8Tnt/8vN%2BnTU/XjW1f6%2BPEkgNI3QOcOUAEG%0AMKB0AhCEIARLE2AjBEEIQhCCpROAIAQhWJoAO0EIQhCCECydAAQhCMHSBNgJQhCCEIRg6QQgCEEI%0AlibAThCCEIQgBEsnAEEIQrA0AXaCEIQgBCFYOgEIQhCCpQmwE4QgBCEIwdIJQBCCECxNgJ0gBCEI%0AQQiWTgCCEIRgaQLsBCEIQQhCsHQCEIQgBEsTYCcIQQhCEIKlE4AgBCFYmgA7QQhCEIIQLJ0ABCEI%0AwdIE2AlCEIIQhGDpBCAIQQiWJsBOEIIQhCAESycAQQhCsDQBdoIQhCAEIVg6AQhCEIKlCbAThCAE%0AIQjB0glAEIIQLE2AnSAEIQhBCJZOAIIQhGBpAuwEIQhBCEKwdAIQhCAESxNgJwhBCEIQgqUTgCAE%0AIViaADtBCEIQghAsnQAEIQjB0gTYCUIQghCEYOkEIAhBCJYmwE4QghCEIARLJwBBCEKwNAF2ghCE%0AIAQhWDoBCEIQgqUJsBOEIAQhCMHSCUAQghAsTYCdIAQhCEEIlk4AghCEYGkC7AQhCEEIQrB0AhCE%0AIARLE2AnCEEIQhCCpROAIAQhWJoAO0EIQhCCECydAAQhCMHSBNgJQhCCELyD4KbbdNvtnRdun/r5%0AyxWPv6AZMNycZf88DkN/7I/jePvCvoVyc%2Bx3lxXLv3bHxx/47Rn%2BePpjvHlunI%2BX6a%2BbAP4cu/66%0A8q/9ZvNqxW48tTfZjF8ygO%2B3g94GsOn2czybfhx34yWANnx7Yo5oui2G9tJ8fNEArte6TbOMMn0Y%0Atl3/MvYtgulqT0cb9tB1%2B5/r42G7HY/7/vS8vH7sWiRf6/jx9H06%2BeNmODy3u/q4BHCuwDicx95f%0AAtj347FNuw58fn0cT%2BcFp253mhP4QhgsAZzv6DbJFEAb7zDuTm3884B9ezgfxzWI8%2BM26fn59mn9%0A/HrXMNjPAcwRfIUc1gCuk7RLuHR9sw6%2BvDhcqjAH0CZcA5kInKedctgOf7UAWo7nFNqzj3z8I4DX%0AJ7vcAe3GmAZr5LWx5mOYJp1WLo%2BnAOZjWdBmTxbANFubcr3iwzrwvwQwLgG8rOse9%2BN/3gHn025D%0Arle4BdD%2BXMafX7/53nfpxLYfn5sMx8edfDmzNwHcO%2BFXAfx6oqUDTdBuc9q1cLYPHsEUwKXalyv9%0A/pNeb4E5gLkgQzf83N9/ww/4evffOPDs%2BfcB03W7d/EDb3RZOn3/7Ke51wDmm%2BJlbtFm7dLM5%2BHa%0Arfd8oY/5nOUXIu10Pub9zu/SZh6uZM4BjEPbZrX749C2Gu3WWL9/fORXfdd7LQH010vzrrd5%2B0m7%0AKYBuvPyQcA7gZbrsp34KYD3efuKnP/5NvxLbzYFOKSyTttkP88%2BY7b6vEMD1Qu7mBKY9YgugXfo1%0AgKE/zHfJ/338pjvgzlj9xGJ7fm3HaxHvLP%2Bspz41gHmoB/sJ6fMC%2BKxLGvw6AvD/At%2BC90yy5Sqg%0AAiqQrNTBcRjAAAYES5NsOQMYwIBkpQ6OwwAGMCBYmmTLGcAABiQrdXAcBjCAAcHSJFvOAAYwIFmp%0Ag%2BMwgAEMCJYm2XIGMIAByUodHIcBDGBAsDTJljOAAQxIVurgOAxgAAOCpUm2nAEMYECyUgfHYQAD%0AGBAsTbLlDGAAA5KVOjgOAxjAgGBpki1nAAMYkKzUwXEYwAAGBEuTbDkDGMCAZKUOjsMABjAgWJpk%0AyxnAAAYkK3VwHAYwgAHB0iRbzgAGMCBZqYPjMIABDAiWJtlyBjCAAclKHRyHAQxgQLA0yZYzgAEM%0ASFbq4DgMYAADgqVJtpwBDGBAslIHx2EAAxgQLE2y5QxgAAOSlTo4DgMYwIBgaZItZwADGJCs1MFx%0AGMAABgRLk2w5AxjAgGSlDo7DAAYwIFiaZMsZwAAGJCt1cBwGMIABwdIkW84ABjAgWamD4zCAAQwI%0AlibZcgYwgAHJSh0chwEMYECwNMmWM4ABDEhW6uA4DGAAA4KlSbacAQxgQLJSB8dhAAMYECxNsuUM%0AYAADkpU6OA4DGMCAYGmSLWcAAxiQrNTBcRjAAAYES5NsOQMYwIBkpQ6OwwAGMCBYmmTLGcAABiQr%0AdXAcBjCAAcHSJFvOAAYwIFmpg%2BMwgAEMCJYm2XIGMIAByUodHIcBDGBAsDTJljOAAQxIVurgOAxg%0AAAOCpUm2nAEMeCp%2B/A3TzlxsOr05FwAAAABJRU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_to_edge.center_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032743.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 8.04 px<br>    deviation slot0: 0.80 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.999991497246</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 14.82 px<br>    deviation slot0: 1.48 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.813527026486</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 10.295630
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 8} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 0.975528258148</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>RangeValidator</b></span>
+    actual: (1,)<br>    spec: (0, 1280)<br>    ave_deviation: 0.000781
+    criteria: <= 0.05, ~ +0.05
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 97.52 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+         </table> </body>
+</html>

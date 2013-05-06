@@ -1,0 +1,580 @@
+    Record program: mtplot /dev/input/event6 -d :0 -g 1024x544+0+256
+    
+[1;34m<one_finger_tracking>[0m:
+    Take [1;32m3 seconds[0m to draw a straight, [1;32mhorizontal[0m line [1;32mfrom left to right[0m using a ruler.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 5.31 px
+        deviation slot0: 0.53 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 8.66 px
+        deviation slot0: 0.87 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.998135
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 2.157277
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.716751
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(BothEnds)Validator
+        Reversed motions slot0: {'X': -6} px
+        criteria_str: <= 5, ~ +30
+    score: 0.997261
+    
+
+    ReportRateValidator
+        Report rate: 103.09 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-robot_sim-20130506_032701.dat)
+
+    
+[1;34m<one_finger_tracking>[0m:
+    Take [1;32m3 seconds[0m to draw a straight, [1;32mhorizontal[0m line [1;32mfrom left to right[0m using a ruler.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 13.00 px
+        deviation slot0: 1.30 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.896828
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 14.14 px
+        deviation slot0: 1.41 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.846813
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 2.534758
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.163775
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(BothEnds)Validator
+        Reversed motions slot0: {'X': -2} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 103.60 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-robot_sim-20130506_032705.dat)
+
+    
+[1;34m<one_finger_tracking>[0m:
+    Take [1;32m3 seconds[0m to draw a straight, [1;32mhorizontal[0m line [1;32mfrom right to left[0m using a ruler.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 6.60 px
+        deviation slot0: 0.66 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 17.81 px
+        deviation slot0: 1.78 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.641115
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 3.794733
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(BothEnds)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 103.90 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.right_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032708.dat)
+
+    
+[1;34m<one_finger_tracking>[0m:
+    Take [1;32m3 seconds[0m to draw a straight, [1;32mhorizontal[0m line [1;32mfrom right to left[0m using a ruler.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 10.70 px
+        deviation slot0: 1.07 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.969126
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 13.31 px
+        deviation slot0: 1.33 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.883896
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 4.642796
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(BothEnds)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 103.59 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_tracking.right_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032712.dat)
+
+    
+[1;34m<two_finger_tracking>[0m:
+    Take [1;32m1 second[0m to draw a [1;32mhorizontal[0m line [1;32mfrom left to right[0m using a ruler with TWO fingers at the same time.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 2
+        criteria_str: == 2
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 6.49 px
+        deviation slot0: 0.65 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 11.67 px
+        deviation slot0: 1.17 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.943536
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 4.67 px
+        deviation slot1: 0.47 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 4.58 px
+        deviation slot1: 0.46 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 3.038963
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoGapValidator
+        Largest gap ratio slot1: 3.590110
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot1: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 86.24 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.left_to_right.normal-lumpy-fw_11.23-robot_sim-20130506_032715.dat)
+
+    
+[1;34m<two_finger_tracking>[0m:
+    Take [1;32m1 second[0m to draw a [1;32mhorizontal[0m line [1;32mfrom left to right[0m using a ruler with TWO fingers at the same time.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 2
+        criteria_str: == 2
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 9.11 px
+        deviation slot0: 0.91 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.994712
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 10.75 px
+        deviation slot0: 1.08 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.967886
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 12.67 px
+        deviation slot1: 1.27 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.909625
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 9.89 px
+        deviation slot1: 0.99 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.984839
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 2.617250
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.080166
+    
+
+    NoGapValidator
+        Largest gap ratio slot1: 3.640055
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot1: {'X': -1} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 86.23 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.left_to_right.normal-lumpy-fw_11.23-robot_sim-20130506_032725.dat)
+
+    
+[1;34m<two_finger_tracking>[0m:
+    Take [1;32m1 second[0m to draw a [1;32mhorizontal[0m line [1;32mfrom right to left[0m using a ruler with TWO fingers at the same time.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 2
+        criteria_str: == 2
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 6.28 px
+        deviation slot0: 0.63 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 9.70 px
+        deviation slot0: 0.97 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.987610
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 6.65 px
+        deviation slot1: 0.66 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 6.35 px
+        deviation slot1: 0.64 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 6.082763
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoGapValidator
+        Largest gap ratio slot1: 3.726780
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot1: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 86.85 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.right_to_left.normal-lumpy-fw_11.23-robot_sim-20130506_032729.dat)
+
+    
+[1;34m<two_finger_tracking>[0m:
+    Take [1;32m1 second[0m to draw a [1;32mhorizontal[0m line [1;32mfrom right to left[0m using a ruler with TWO fingers at the same time.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 2
+        criteria_str: == 2
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 14.81 px
+        deviation slot0: 1.48 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.814057
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 12.46 px
+        deviation slot0: 1.25 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.917179
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 16.11 px
+        deviation slot1: 1.61 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.743761
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 14.11 px
+        deviation slot1: 1.41 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.848322
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 2.332381
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.449224
+    
+
+    NoGapValidator
+        Largest gap ratio slot1: 2.549510
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.146992
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot1: {'X': 1} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 85.84 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/two_finger_tracking.right_to_left.normal-lumpy-fw_11.23-robot_sim-20130506_032735.dat)
+
+    
+[1;34m<one_finger_to_edge>[0m:
+    Take [1;32m2 seconds[0m to draw a striaght [1;32mhorizontal[0m line [1;32mfrom the center off left edge[0m.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 6.13 px
+        deviation slot0: 0.61 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 14.17 px
+        deviation slot0: 1.42 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.845580
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 5.215362
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    RangeValidator
+        actual: (1,)
+        spec: (0, 1280)
+        ave_deviation: 0.000781
+        criteria_str: <= 0.05, ~ +0.05
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 101.65 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_to_edge.center_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032738.dat)
+
+    
+[1;34m<one_finger_to_edge>[0m:
+    Take [1;32m2 seconds[0m to draw a striaght [1;32mhorizontal[0m line [1;32mfrom the center off left edge[0m.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 8.04 px
+        deviation slot0: 0.80 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.999991
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 14.82 px
+        deviation slot0: 1.48 mm
+        criteria_str: <= 0.8, ~ +2.4
+    score: 0.813527
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 10.295630
+        criteria_str: <= 1.8, ~ +1.0
+    score: 0.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 8} px
+        criteria_str: <= 5, ~ +30
+    score: 0.975528
+    
+
+    RangeValidator
+        actual: (1,)
+        spec: (0, 1280)
+        ave_deviation: 0.000781
+        criteria_str: <= 0.05, ~ +0.05
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 97.52 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_to_edge.center_to_left.slow-lumpy-fw_11.23-robot_sim-20130506_032743.dat)
+
+    
+[1;34m<one_finger_to_edge>[0m:
+    Take [1;32m2 seconds[0m to draw a striaght [1;32mhorizontal[0m line [1;32mfrom the center off right edge[0m.
+    (deleted: /var/tmp/touch_firmware_test/20130506_032659-fw_11.23-robot_sim/one_finger_to_edge.center_to_right.slow-lumpy-fw_11.23-robot_sim-20130506_032747.dat)
+

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<body> $summary <table border="3" width="100%"> 
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_tracking.('left_to_right', 'slow') </h3>
+                        <h5> Take 3 seconds to draw a straight, horizontal line from left to right using a ruler. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAA/wD/7ctyPQAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAa5SURBVHhe7drBbttGEAZgv0TerBQg%0A3XXR%2B9AH32WAfMruko7lNg5gRvJolPlkwG0UJzM73P/jUu3TU/XXj6H0658nAyi9AQY7QAQYwIDS%0AE4AgBCFYmgAHIQhCEIIQLD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQgqUJ%0AcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQ%0ALD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFY%0AmgAnQQhCEIIQLD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQgqUJcBKEIAQh%0ACMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQ%0AgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhC%0AEIIQLD0BCEIQgqUJcBKEIAQhCMHSE4AgBCFYmgAnQQhCEIIQLD0BCEIQgqUJcBKEIAQhCMHSE/gr%0AENz1S3j8s%2Bv4MAMY2wqPw75/3w39axj7qufDeT7N5/nwOg/H/a79wMbXIwxg35Z1mHbzbh7m5/b9%0AdO5f7Z323vp67f/ovzifNq4/40Fo7Ave92v89prHefxsAIdlzf11GcD8%2BAM4TH3B83g6t03ehnEc%0All9Nh7kv%2BKV9bzu%2Bfa3vfBhA%2B43H3wHt0l8GcJjav/c9//z1HbB1A2SLQLvY7fXclzy3lC8DWHbA%0AbyPQERyHZuGwGPDIA9gPp773X94jcJpOc9vzywA%2BW9hu%2Buzdje/d%2BS7Q72bHnvWmXlvna7vglwH8%0A3AEbl7Ttx%2B8ygC7bejNvd7N57gtdLnOz7ePF/nsH0IO93sw/DGCJ/e92%2B7aruuWnw3dAP6xdBtDu%0AW/Pcsj7t1h2wpfXb/Gz4AE7nnvMm23oz/08EGufhr%2B8fwHJqv6ysDWD8NAJ3WHyf9rcPoJ3oFuT6%0Ag0x/jmnSfxhA%2BAX/peA3D%2BB4mNYB9AeZcX2O%2Bfym/ktnQW987wB27RbXT%2B0duVIDWPZ7e4Jvl/xt%0AB/QHmbHd889BF/bLZW66A8Z%2Bj9sfzsvl7qf39gT3/wh8ubOgH7zVAHbToWG3EP9yGUCPwLqQ9wgE%0ArevLZW4zgPbZzMcBLPu9P6%2B3ZWd/XT%2BAY0v7OoDTtD7NXHZA9tW3/q4eQHsKXz6du%2ByAsT2ZvxlQ%0AYAD9Y7k%2BgL7UNwPGB1j2pcVrd0D/iO50iw8m7jW1KwcwrjvgXt3foO6fDWA3zT30bdN36H/e6m7Q%0ATvxfsXkAbe3T8DaA97t8fN83q7hpAK/783MfwOl53QGPnf51hlsGsP53mI8DeOjNv30ADfz26gMY%0A1z9cLQLrDjgP7fP7m0Xw7n/Rlgj0Znf5Hmivm%2BHWAVxXLeGfNgD/m9yPhPsysCUREAERCAxcwlIM%0AYAADEgYzsCUGMIABgYFLWIoBDGBAwmAGtsQABjAgMHAJSzGAAQxIGMzAlhjAAAYEBi5hKQYwgAEJ%0AgxnYEgMYwIDAwCUsxQAGMCBhMANbYgADGBAYuISlGMAABiQMZmBLDGAAAwIDl7AUAxjAgITBDGyJ%0AAQxgQGDgEpZiAAMYkDCYgS0xgAEMCAxcwlIMYAADEgYzsCUGMIABgYFLWIoBDGBAwmAGtsQABjAg%0AMHAJSzGAAQxIGMzAlhjAAAYEBi5hKQYwgAEJgxnYEgMYwIDAwCUsxQAGMCBhMANbYgADGBAYuISl%0AGMAABiQMZmBLDGAAAwIDl7AUAxjAgITBDGyJAQxgQGDgEpZiAAMYkDCYgS0xgAEMCAxcwlIMYAAD%0AEgYzsCUGMIABgYFLWIoBDGBAwmAGtsQABjAgMHAJSzGAAQxIGMzAlhjAAAYEBi5hKQYwgAEJgxnY%0AEgMYwIDAwCUsxQAGMCBhMANbYgADGBAYuISlGMAABiQMZmBLDGAAAwIDl7AUAxjAgITBDGyJAQxg%0AQGDgEpZiAAMYkDCYgS0xgAEMCAxcwlIMYAADEgYzsCUGMIABgYFLWIoBDGBAwmAGtsQABjAgMHAJ%0ASzGAAQxIGMzAlhjAAAYEBi5hKQYwgAEJgxnYEgMYwIDAwCUsxQAGMCBhMANbYgADGBAYuISlGMAA%0ABiQMZmBLDGAAAwIDl7AUAxjAgITBDGyJAQxgQGDgEpZiAAMYkDCYgS0x4Kn661%2BI5zVkI69fEAAA%0AAABJRU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_031746-fw_11.27-robot_sim/one_finger_tracking.left_to_right.slow-lumpy-fw_11.27-robot_sim-20130506_031747.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 4.88 px<br>    deviation slot0: 0.49 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 14.69 px<br>    deviation slot0: 1.47 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:orange"><b>score: 0.820138136164</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 1.720465
+    criteria: <= 1.8, ~ +1.0
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(BothEnds)Validator</b></span>
+    Reversed motions slot0: {'X': -2} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 112.55 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_tracking.('right_to_left', 'slow') </h3>
+                        <h5> Take 3 seconds to draw a straight, horizontal line from right to left using a ruler. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAQMAAAAhr4nMAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAZQTFRF%0A////AAAAVcLTfgAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAACxIA%0AAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAOkSURBVHhe7d2xbtpQFIBhK0Jthiqmm4cK%0AJ%2BoLmI0BlaEv0uwd6FSkoCBU1CyVeIU%2BSKviIvUZumHE0DGXyZFs7q2NoalIHGywfZffWyLL5/d3%0AblCUJYah%2BxoorZc0CEAAAQQQQAABBBBAAAEEEEAAAQQQQAABBBBAAAEEEEAAAQQQQAABBBBAAAEE%0AEEAAAQQQQAABBBBAAAEEEEAAAQQQQAABBBBAAAEEEEAAAQQQQAABBBBAAAEEEEAAAQQQQAABBBBA%0AAAEEEEAAAQQQQAABBBBAAAEEEEAAAQQQQAABBBBAAAEEEEAAAQQQQAABBBBAAAEEEECgEoFApV0V%0A/dNtkTZfVRMgv3bSCqoJeP9SY0Dw8fs3wx7rExCvLatm3%2BgL8E7q9efqj7YAGQukTY%2B%2BX/ohDAdP%0ATK8i4LfmAP%2BL3oBgYT69gVLPwGx2%2B2E61hfgj8e/LhZ75pco4C9Mc9TcN7%2B0gKtgMY0EOroCZHM5%0A3au/jivhgyj%2B5aN/Mc82v4yApZLyTXO5Fz%2B5oQSBedjudzKOL2EFK38Ztq41BQhlnlkLFbYHmQGK%0APQNxQH2qwuzvX%2BgKROgkAtlfP7qzwEOYBNi5xhcZIEQu%2Bm1nQQIrpXQGyIYlrW5O%2B83tRQh8bjTq%0AugMigYEOgbA1UJ4dCdjaAnqXUUDeH73/rQ4/A%2BLGPHvVigMOsz/qEIatS6UzYP5iE2Cru8uj3v%2Bw%0AT0IRB4ycaAXH6a/T854Bab0dOeuAzpGvfsAZiDY//bkOMJWqPkCM2tuAOL7qAD90/gUUhJ/sIOMZ%0AEO4oCZgWs/n7p%2BQJKPTNtwlZAqQKxLCone8K7gmQMpj9uHM84ab%2BmWv3iTm/Tg24nV2vVqrXOn92%0A2nM85eZ8bubbUwL84FPNcrp9Kw7oOpPMz8t94%2BMBvuslAXXHqK0FSrseBsyuAt91vROjfv6utxbo%0AdSoMEKc1w3Pd4eR%2BBWZpbx8/eFcgCRhuV2CXOvzxAMOYDKMVlD55M2BXoJusoKrxD1YgByo%2BA9XN%0Af3AGKhydjNpdAQEIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAII%0AIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCA%0AAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIaBAzN11/mHBJ4%0ALkvEggAAAABJRU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_031746-fw_11.27-robot_sim/one_finger_tracking.right_to_left.slow-lumpy-fw_11.27-robot_sim-20130506_031755.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 6.52 px<br>    deviation slot0: 0.65 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 8.26 px<br>    deviation slot0: 0.83 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.999707414069</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.009975
+    criteria: <= 1.8, ~ +1.0
+<span style="color:orange"><b>score: 0.895101454188</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(BothEnds)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 113.81 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> two_finger_tracking.('left_to_right', 'normal') </h3>
+                        <h5> Take 1 second to draw a horizontal line from left to right using a ruler with TWO fingers at the same time. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAxQTFRF%0A////AAAAgEAA/4BATQij6gAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZ%0AcwAACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAh/SURBVHhe7drBTuNIEMZxXmLe%0AbJ1oIqGcZg%2B%2Bc85TgLTcgxS/T8SRp4g4Rd5qOyFDCLgakkq5%2Bp%2BdHXZmGtz1ub8fnmhvbkp//aqK%0Afv1zQwBFH4CKE0AFMAADik4ABEEQBIsmgAchEARBEATBohMAQRAEwaIJ4EkQBEEQBEGw6ARAEARB%0AsGgCeBIEQRAEQRAsOgEQBEEQLJoAngRBEARBEASLTgAEQRAEiyaAJ0EQBEEQBMGiEwBBEATBogng%0ASRAEQRAEQbDoBEAQBEGwaAJ4EgRBEARBECw6ARAEQRAsmgCeBEEQBEEQBItOAARBEASLJoAnQRAE%0AQRAEwaITAEEQBMGiCeBJEARBEARBsOgEQBAEQbBoAngSBEEQBEEQLDoBEARBECyaAJ4E/SM4W9b3%0AJw5pfV8/rE78fu5vOQvgd9UP%2B6f7OFnV900KoL6fLZuqmazkg/z6QT6eDmCSO7%2BvCsh4j80qTdrM%0A0uyDAcgaSUPW9XP/rupmmRmBqxPw/QCapvp3VTfyehpjAHKsu7M9e5IJ0gmYNfXbCUgDnahAN%2Bfb%0ACWjk0PQByBfIiuD6J0DO71sARxUYnOR0APXD4CceFlwxALnpk1UzezoEUFXNY3f/kgEZQ8jnyaHp%0ATsBSTkD9eK//ZGcB6Dd%2BvHLSSAwyeJ2CcB2AsC077L6/7U/A8TDf%2BXUKIL3qZeX8BBwHsPzOuOf7%0AnEtWoJO96m60ND3d8/TzWwDnG%2BInX%2BniAfQnvcgA0uj9j3cn4Ce36wKfe6ETkB7fiwzgz%2B4edQF0%0A/73D%2BQL37jxf8nwnoKNO7nr9KM%2B1hwDOs83LfZULBnC5TZ/zKysDmNwPXLT/ZidPpP0JGFjt6I%2B1%0AAXxd5Wb/3T5sALNm%2Bd9k927N2%2B2T0stfPuRnebdGnnjktX8edXSHh7aiPAEz%2BYvW7KEbMs25Sv%2Bk%0A0Y8CGLqawz9XBjCRAIT33fTNxwAcjqbbkjIAOdzpBCQJ5OZ/CEB3LZertAH0m5e33OQNh30ALgfK%0A3dS3Ash7tyZ3S7br8wOINL1knRfARCpQdAC2p9PkanknwGRLthchAP4PkV%2B2R87b1agAFaAC3lpp%0Aux8MwAAMsO2ct6thAAZggLdW2u4HAzAAA2w75%2B1qGIABGOCtlbb7wQAMwADbznm7GgZgAAZ4a6Xt%0AfjAAAzDAtnPeroYBGIAB3lppux8MwAAMsO2ct6thAAZggLdW2u4HAzAAA2w75%2B1qGIABGOCtlbb7%0AwQAMwADbznm7GgZgAAZ4a6XtfjAAAzDAtnPeroYBGIAB3lppux8MwAAMsO2ct6thAAZggLdW2u4H%0AAzAAA2w75%2B1qGIABGOCtlbb7wQAMwADbznm7GgZgAAZ4a6XtfjAAAzDAtnPeroYBGIAB3lppux8M%0AwAAMsO2ct6thAAZggLdW2u4HAzAAA2w75%2B1qGIABGOCtlbb7wQAMwADbznm7GgZgAAZ4a6XtfjAA%0AAzDAtnPeroYBGIAB3lppux8MwAAMsO2ct6thAAZggLdW2u4HAzAAA2w75%2B1qGIABGOCtlbb7wQAM%0AwADbznm7GgZgAAZ4a6XtfjAAAzDAtnPeroYBGIAB3lppux8MwIBoBqzzKhSsAvNtW3YA7bbNOwBV%0AlBNwd3db3d2tSw1g8dy2bfq3gADmm3a67X6abmXu7aJ92bT7ALIFqMZWgd3sHwJ4kZsv/wYM4La6%0A/Vu1zwLYVWCbKaAsd43g4lluafu8XayruzRaO3/tT//xCaimvQGxAritDgFM28V6sU4B5N/jrz/D%0A6wlI466Tbc/dCdgHsPl6mm/8qasA1uv9BHMZOgWwr8B8dwJiBzBvU8PlG9xiLQE8dw%2B1YkD60J%2BA%0Ab9zgwU9xcgJu5xsB/hDAojsBh91Pc59wBwffL3ARgNz3Fwlg8fcJSDdfPcUPFl4/gEW73gXwrgI/%0AmCnrU68XQFultgvxEsBrdwIkgKy9n2XxVQJYvGyk4n8FsLE57qcSswxA7vGr3HCZ/igAq75fK4D0%0ACLeRw346gFO7Mvy9y50AGVs6/vK6lWeYUwEYDvnVpc4ewLqq5Eclt/zzAL7akPWfnTGA7q%2Bq6VvZ%0AtnvL4mMA1rOprne2ANI7NJ8EoNrItRadKYA0fheAPM0t%2BhNwrYkyr3uOALrDfnQCMrdxveU/DyD9%0A5a0LoBtivk0/RvT6YQD9t/YUwIhmfrfV7ADm7XN6oOtOfPqQHu7ksXa0r3MEMNrh08ZzAuhu94cT%0AsBn1/DkBTOUZ5ziAcQ%2BvOgFTecddXlt5r64LYPwjv59gsAIEcDgB4e5%2BZgWiHf5%2BnuEKhLzvh5s5%0AGMC4HmzzT%2BlgAON9yNWFMRhAtdF9obGuGg5grJMp900A/K%2Byv5RnJegyKkAFqEDQcivHwgAMwABl%0AWYIuwwAMwICg5VaOhQEYgAHKsgRdhgEYgAFBy60cCwMwAAOUZQm6DAMwAAOClls5FgZgAAYoyxJ0%0AGQZgAAYELbdyLAzAAAxQliXoMgzAAAwIWm7lWBiAARigLEvQZRiAARgQtNzKsTAAAzBAWZagyzAA%0AAzAgaLmVY2EABmCAsixBl2EABmBA0HIrx8IADMAAZVmCLsMADMCAoOVWjoUBGIAByrIEXYYBGIAB%0AQcutHAsDMAADlGUJugwDMAADgpZbORYGYAAGKMsSdBkGYAAGBC23ciwMwAAMUJYl6DIMwAAMCFpu%0A5VgYgAEYoCxL0GUYgAEYELTcyrEwAAMwQFmWoMswAAMwIGi5lWNhAAZggLIsQZdhAAZgQNByK8fC%0AAAzAAGVZgi7DAAzAgKDlVo6FARiAAcqyBF2GARiAAUHLrRwLAzAAA5RlCboMAzAAA4KWWzkWBmAA%0ABijLEnQZBmAABgQtt3IsDMAADFCWJegyDMAADAhabuVYGIABGKAsS9BlGHBT%2But/jJhpHnumsOEA%0AAAAASUVORK5CYII%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_031746-fw_11.27-robot_sim/two_finger_tracking.left_to_right.normal-lumpy-fw_11.27-robot_sim-20130506_031759.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 2
+    criteria: == 2
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 2.84 px<br>    deviation slot0: 0.28 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 7.98 px<br>    deviation slot0: 0.80 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 7.34 px<br>    deviation slot1: 0.73 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 20.02 px<br>    deviation slot1: 2.00 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:red"><b>score: 0.498767012918</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.408319
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0.333117918626</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoGapValidator</b></span>
+    Largest gap ratio slot1: 1.815846
+    criteria: <= 1.8, ~ +1.0
+<span style="color:blue"><b>score: 0.999380561145</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot1: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 99.02 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> two_finger_tracking.('right_to_left', 'normal') </h3>
+                        <h5> Take 1 second to draw a horizontal line from right to left using a ruler with TWO fingers at the same time. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAxQTFRF%0A////AAAAAAD/gICAEYcEVwAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZ%0AcwAACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAhDSURBVHhe7dpBbuJKEMbxXCI3%0Ae7YVpMirbLxHsxpxCrNg70j4PmiWOYU1K8uv2uAEAnEzSWFc3X%2BYydNjPE3X56ofnWgeHmJ/PCZR%0AP/57IICoGyChAxgBDMCAqBMAQRAEwagJ4CAEgiAIgiAYdQIgCIIgGDUBnARBEARBEASjTgAEQRAE%0AoyaAkyAIgiAIgmDUCYAgCIJg1ARwEgRBEARBEIw6ARAEQRCMmgBOgiAIgiAIglEnAIIgCIJRE8BJ%0AEARBEARBMOoEQBAEQTBqAjgJgiAIgiAIRp0ACIIgCEZNACdBEARBEATBqBMAQRAEwagJ4CQIgiAI%0AgiAYdQIgCIIgGDUBnARBEARBEASjTgAEQRAEoyaAkyAIgiAIgmDUCYAgCIJg1ARwEgRBEARBEIw6%0AARAEQRCMmgBOgiAIgiAIglEnAIIgCIJRE8BJEARBEARBMOoEQBAEQTBqAjgJgiAIgiAIRp0ACIIg%0ACEZNACdBELSHYPqUpumT1uCa64A02dSLzaautzoRmAtgsa7rou4fr6VCBsYCKF8KufmuA5JFjAGs%0Aq%2B1iXSnc948l7HTAU1Km9avS5NsLIN0WabV4rcIPIN0uqqKsk8OzWO9LTrf1okp1u79vg7mNQH0e%0AwKKSMPoOUB3%2Bw2LzCKAo3bO/6V8GcIvq79IBfanp6Sz7A7hR%2BXcYgXoIoC96vZXeLpOjAM4r7Ufg%0A/GWlV248AgLapnIVyONQ5XgASmVdv4x%2BAC/uzd0kL163Uv0%2BgEU1GsD1%2B1W/Uj2AtHafY%2BuzAFyr%0A9zd/KOF4BNTLun5B5QDqYu0J4PqtTXOlegCbkwDKQxVyiFE/w%2BkEpBSAc7r/ID90wFD4xyaDDmD/%0AQTUEoHNnplpFpQM%2BAphq23rv8/MAyqSMLYCnZPiRpPu4c89K745MvdJ3OqAu5em%2BcUkOAUy9ac33%0A%2B8cA0iR5SU4CKLbFTD/grovpygCk8MT9oKKo13Uqv2PrgJdCih8COOoAF4sYcF3W87zqmg54Sush%0AgLqWH0i7EZhnNd/Y1TUBSMvXxx3wjbeZ71/xByAHvE3fAa6Iokpv97OJu6Q0HkApP4qV0/1aArjL%0A7iZ409EA0soFUEoAE%2BzkTm8xGoAccfsAyjttboq3HQ2g74ApdnHH9xgN4I77muytCcDeP5HRbQ46%0AgA541G0pa6sxAowAI2BtanX3iwEYgAG6M2VtNQzAAAywNrW6%2B8UADMAA3ZmythoGYAAGWJta3f1i%0AAAZggO5MWVsNAzAAA6xNre5%2BMQADMEB3pqythgEYgAHWplZ3vxiAARigO1PWVsMADMAAa1Oru18M%0AwAAM0J0pa6thAAZggLWp1d0vBmAABujOlLXVMAADMMDa1OruFwMwAAN0Z8raahiAARhgbWp194sB%0AGIABujNlbTUMwAAMsDa1uvvFAAzAAN2ZsrYaBmAABlibWt39YgAGYIDuTFlbDQMwAAOsTa3ufjEA%0AAzBAd6asrYYBGIAB1qZWd78YgAEYoDtT1lbDAAzAAGtTq7tfDMAADNCdKWurYQAGYIC1qdXdLwZg%0AAAbozpS11TAAAzDA2tTq7hcDMAADdGfK2moYgAEYYG1qdfeLARiAAbozZW01DMAADLA2tbr7xQAM%0AwADdmbK2GgZgAAZYm1rd/WIABmCA7kxZWw0DMAADrE2t7n4xAAMwQHempljt%2Bbfeu1g04HfXPasl%0AYC6A52XWdd1KLQFjAWS/Vm0uAXSrRqkHLAWwXGZSfLvqmsT91nlYCqDtb36b76T0Vea%2BKjzMBPCc%0A/JGb/9YNdUcXwCprpAOUbvtR59jogGWy7PJGoeHPl5hpANl%2Bp8tkJ7/ypk1a6YDz3Su8MscAutXO%0A9brc9lb6Pmvyv23WKtR6cYk5BPB%2Bu2WHeZM3EoBEILddxP/bulekAy7uXuHFOQQgt7uTyt1tlknv%0AA8h3/W0/dECjUOhXS9wxAHef5fmnXfUB9H0%2BBOBa4Ya3/SiNyQLo%2BzxL%2BnpPnn/ch9tJB/TbuxH6%0AZ41wiwCkifNmf2eTzI2xfGny3erNfbkQgGzKBSDXyn%2Bnftw0AClW7u8%2BALnrb82h4z91wNQ1n7yf%0AagB516w6uc9DBxwHcN4Bd637/c3VAljtpI1HApDvX96aedSs3wFZD9t7AO9v4F6fYc3aAWSC3OUA%0A5l6829%2BPRmB/ez8CsFDw5z1%2BPwCpu3GfbwK9hVb/XPjw//8aQJe18mv/zIcAvlrcwuvXB7Av%2BjiA%0AQwfsB8FCsZf2%2BJMA5GjrRiD4AA5j/rkDLsVp8DVPB7iOPwnAYInjW74%2BgPF1zP7pWABZ0h11gNkS%0Axzc%2BFkC%2B6wMYX8D6n44F4I73wT/GApAOCL7%2Bn30vEEI8Yx0QQn3eGgiAfyX26O2SoC9gBBgBRiDo%0AEfcWhwEYgAHeMQn6AgzAAAwIesS9xWEABmCAd0yCvgADMAADgh5xb3EYgAEY4B2ToC/AAAzAgKBH%0A3FscBmAABnjHJOgLMAADMCDoEfcWhwEYgAHeMQn6AgzAAAwIesS9xWEABmCAd0yCvgADMAADgh5x%0Ab3EYgAEY4B2ToC/AAAzAgKBH3FscBmAABnjHJOgLMAADMCDoEfcWhwEYgAHeMQn6AgzAAAwIesS9%0AxWEABmCAd0yCvgADMAADgh5xb3EYgAEY4B2ToC/AAAzAgKBH3FscBmAABnjHJOgLMAADMCDoEfcW%0AhwEYgAHeMQn6AgzAAAwIesS9xWEABmCAd0yCvgADMAADgh5xb3EYgAEY4B2ToC/AAAzAgKBH3Fsc%0ABmAABnjHJOgLMAADMCDoEfcWhwEYgAHeMQn6AgzAAAwIesS9xWEABjxE/vgfrGnj1mWhZosAAAAA%0ASUVORK5CYII%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_031746-fw_11.27-robot_sim/two_finger_tracking.right_to_left.normal-lumpy-fw_11.27-robot_sim-20130506_031804.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 2
+    criteria: == 2
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 4.77 px<br>    deviation slot0: 0.48 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 11.33 px<br>    deviation slot0: 1.13 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.953111313601</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 4.30 px<br>    deviation slot1: 0.43 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 10.36 px<br>    deviation slot1: 1.04 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 0.976314935806</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:orange"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.006932
+    criteria: <= 1.8, ~ +1.0
+<span style="color:orange"><b>score: 0.898012424432</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoGapValidator</b></span>
+    Largest gap ratio slot1: 1.970943
+    criteria: <= 1.8, ~ +1.0
+<span style="color:blue"><b>score: 0.929615291357</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot1: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 100.47 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+        
+            <tr>
+                <td><table>
+                    <tr>
+                        <h3> one_finger_to_edge.('center_to_left', 'slow') </h3>
+                        <h5> Take 2 seconds to draw a striaght horizontal line from the center off left edge. </h5>
+                    </tr>
+                    <tr>
+                        <img src="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAABAAAAAIgAgMAAABmD/McAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC%0AAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlQTFRF%0A////AAAAAP8A7XVULwAAAAFiS0dEAIgFHUgAAAAJb0ZGcwAAAAAAAAEAANvo3PkAAAAJcEhZcwAA%0ACxIAAAsSAdLdfvwAAAAJdnBBZwAABQAAAAMgANAoCFUAAAZ9SURBVHhe7dhNTiNJEAZQX6IXc4BZ%0AzH0oS/aeTd3HSMPeSFWnnMiyYYCmW6OYhoaIVxb94yaN46v8nlO923W/vk2tr5udAFpvgMkOUAEG%0AMKB1AhCEIARbE%2BAgBEEIQhCCrROAIAQh2JoAJ0EIQhCCEGydAAQhCMHWBDgJQhCCEIRg6wQgCEEI%0AtibASRCCEIQgBFsnAEEIQrA1AU6CEIQgBCHYOgEIQhCCrQlwEoQgBCEIwdYJQBCCEGxNgJMgBCEI%0AQQi2TgCCEIRgawKcBCEIQQhCsHUCEIQgBFsT4CQIQQhCEIKtE4AgBCHYmgAnQQhCEIIQbJ0ABCEI%0AwdYEOAlCEIIQhGDrBCAIQQi2JsBJEIIQhCAEWycAQQhCsDUBToIQhCAEIdg6AQhCEIKtCXAShCAE%0AIQjB1glAEIIQbE2AkyAEIQhBCLZOAIIQhGBrApwEIQhBCEKwdQIQhCAEWxPgJAhBCEIQgq0TgCAE%0AIdiaACdBCEIQghBsnQAEIQjB1gQ4CUIQghCEYOsEIAhBCLYmwEkQghCEIARbJwBBCEKwNQFOghCE%0AIAQh2DoBCEIQgq0JcBKEIAQhCMHWCUAQghBsTYCTIAQhCEEItk4AghCEYGsCnAQhCEEIQrB1AhCE%0AIARbE%2BAkCEEIQhCCrROAIAQh2JoAJ0EIQhCCEGydwGdC8DDdHqbT7cfej08RwGk/3U6Hab1b1/t1%0APRw%2BMoLfH8B%2BOi7zwzqtp2sA63r6wAR%2BfwDz%2BRrA3bj923W37Jd1ne8f4tf1/L5pfFQAY4vvt8d1%0Av99Op9j38ZjP85hz/2wHvAhgRLA//P1eMbxbAGPWbcZx7fdji8eo53m97Pe79bjsY%2Bp9zHd8XYFX%0AAWy74usEcIqxT4dpTDtmjDu%2Bvw74dgBPFThdZ3xVgW3893PhjR2wj92av47LeFxu9wjguMxR58sW%0AP6/ndb3s9/t1Xo7reMznn/%2Bw4zb/u8H4FMBpjB279hA79fGnjSBut7cXH9Hb75dP6dP252fXKPPY%0A89HzxwBi1ih3TLjE9Oum/Ns74PVrff/3eIHvn/xVz9zs/jjGa90el3iHsW%2BndRkBrNMcX%2Bv9OWwa%0AXY5PqCkex7iTy3y/jJ8eT49gYm00PLb6GC%2BGjPVj5G3asQM24eb/FcCvmvXN17nZ/RWDj536FEDc%0ArruI4CG%2B1pggAoktfRczbp9TkcG6RM1HWNP48I4ZH14E8FYFxvd%2BzisqMAaNGxX3elrjjo8dcAkg%0ADmaxh0cAa4w%2BAohrCyBubTy9j9Du4jGPZ2PtNbNLAI/jHkPAbcd80isCiM0eE/y7A54CuO6AdXxQ%0Av9wBMeP4%2BHrcFc93wPmTDvqjt3Wz%2BzM28osA4ltjN/y0AkO3sTGuO6BCAK8CuiA4Hc/joB4GjH8e%0ADEY2y3yKJ18EcP5RvF/g%2BTfOAf/hXY8Apml8baF85SsXwNgIl6%2BvPPv23rMBfPnBHwcQgP8W/1Zm%0AN6cGUQEVUIFUdcosYgADGFCmzqlBGMAABqSqU2YRAxjAgDJ1Tg3CAAYwIFWdMosYwAAGlKlzahAG%0AMIABqeqUWcQABjCgTJ1TgzCAAQxIVafMIgYwgAFl6pwahAEMYECqOmUWMYABDChT59QgDGAAA1LV%0AKbOIAQxgQJk6pwZhAAMYkKpOmUUMYAADytQ5NQgDGMCAVHXKLGIAAxhQps6pQRjAAAakqlNmEQMY%0AwIAydU4NwgAGMCBVnTKLGMAABpSpc2oQBjCAAanqlFnEAAYwoEydU4MwgAEMSFWnzCIGMIABZeqc%0AGoQBDGBAqjplFjGAAQwoU%2BfUIAxgAANS1SmziAEMYECZOqcGYQADGJCqTplFDGAAA8rUOTUIAxjA%0AgFR1yixiAAMYUKbOqUEYwAAGpKpTZhEDGMCAMnVODcIABjAgVZ0yixjAAAaUqXNqEAYwgAGp6pRZ%0AxAAGMKBMnVODMIABDEhVp8wiBjCAAWXqnBqEAQxgQKo6ZRYxgAEMKFPn1CAMYAADUtUps4gBDGBA%0AmTqnBmEAAxiQqk6ZRQxgAAPK1Dk1CAMYwIBUdcosYgADGFCmzqlBGMAABqSqU2YRAxjAgDJ1Tg3C%0AAAYwIFWdMosYwAAGlKlzahAGMIABqeqUWcQABjCgTJ1TgzCAAQxIVafMIgYwgAFl6pwahAEMYECq%0AOmUWMYABDChT59QgDGAAA1LVKbOIAQxgQJk6pwZhAAMYkKpOmUUM2HW//gER6kHaNT7T4AAAAABJ%0ARU5ErkJggg%3D%3D%0A"
+                            alt="/var/tmp/touch_firmware_test/20130506_031746-fw_11.27-robot_sim/one_finger_to_edge.center_to_left.slow-lumpy-fw_11.27-robot_sim-20130506_031808.png" width="640" height="340" />
+                    </tr>
+                </table></td>
+                <td><table>
+                    
+            <tr>
+<pre><span style="color:blue"><b>CountTrackingIDValidator</b></span>
+    count of trackid IDs: 1
+    criteria: == 1
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(Middle)Validator</b></span>
+    ave fitting error: 3.63 px<br>    deviation slot0: 0.36 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>Linearity(BothEnds)Validator</b></span>
+    ave fitting error: 7.45 px<br>    deviation slot0: 0.74 mm
+    criteria: <= 0.8, ~ +2.4
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:red"><b>NoGapValidator</b></span>
+    Largest gap ratio slot0: 2.910428
+    criteria: <= 1.8, ~ +1.0
+<span style="color:red"><b>score: 0</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>NoReversedMotion(Middle)Validator</b></span>
+    Reversed motions slot0: {'X': 0} px
+    criteria: <= 5, ~ +30
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>RangeValidator</b></span>
+    actual: (0,)<br>    spec: (0, 1280)<br>    ave_deviation: 0.000000
+    criteria: <= 0.05, ~ +0.05
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        <hr>
+            <tr>
+<pre><span style="color:blue"><b>ReportRateValidator</b></span>
+    Report rate: 113.87 Hz
+    criteria: >= 60
+<span style="color:blue"><b>score: 1</b></span></pre>
+            </tr>
+        
+                </table></td>
+            </tr>
+         </table> </body>
+</html>

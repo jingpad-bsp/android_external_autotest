@@ -110,11 +110,14 @@ class FirmwareSummary:
 
     def _get_firmware_version(self, filename):
         """Get the firmware version from the given filename."""
-        return filename.split('-')[2]
+        return filename.split('-')[-3]
 
     def _get_result_logs(self):
         """Load the json log files in the log dictionary."""
         log_filenames = glob.glob(os.path.join(self.log_dir, '*.log'))
+        if not log_filenames:
+            log_filenames = glob.glob(os.path.join(self.log_dir, '*', '*.log'))
+
         # TODO(josephsih): it is desirable to add a command line option
         # so that the tester could choose to make the summary against different
         # versions or against different file names.
