@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import re
 
 from autotest_lib.client.common_lib import error
@@ -17,6 +18,32 @@ class LinuxSystem(object):
     migrate from site_linux_router as appropriate to share.
 
     """
+
+    CAPABILITY_5GHZ = '5ghz'
+    CAPABILITY_MULTI_AP = 'multi_ap'
+    CAPABILITY_MULTI_AP_SAME_BAND = 'multi_ap_same_band'
+
+
+    @property
+    def capabilities(self):
+        """@return list of AP capabilities for this system."""
+        if self._capabilities is not None:
+            return self._capabilities
+
+        self._capabilities = []
+        phymap = self.phys_for_frequency
+        frequencies = phymap.iterkeys()
+        if [freq for freq in frequencies if freq > 5000]:
+            self._capabilities.append(self.CAPABILITY_5GHZ)
+        if [freq for freq in frequencies if len(phymap[freq]) > 1]:
+            self._capabilities.append(self.CAPABILITY_MULTI_AP_SAME_BAND)
+            self._capabilities.append(self.CAPABILITY_MULTI_AP)
+        elif len(self.phy_bus_type) > 1:
+            self._capabilities.append(self.CAPABILITY_MULTI_AP)
+        logging.info('%s system capabilities: %r',
+                     self.role, self._capabilities)
+        return self._capabilities
+
 
     def __init__(self, host, params, role):
         # Command locations.
@@ -41,6 +68,7 @@ class LinuxSystem(object):
 
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []
+        self._capabilities = None
 
 
     def _get_phy_info(self):

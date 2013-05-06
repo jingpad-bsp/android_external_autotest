@@ -100,10 +100,6 @@ class WiFiTest(object):
     _result_expect_success = 2
     _result_dont_care = 3
 
-    _capability_5ghz = "5ghz"
-    _capability_multi_ap = "multi_ap"
-    _capability_multi_ap_same_band = "multi_ap_same_band"
-
 
     def __init__(self, name, steps, client_requirements, config):
         self.name = name
@@ -276,8 +272,6 @@ class WiFiTest(object):
           self.ethernet_mac_address = "".join(pieces)
 
         self.init_profile()
-        self.client_capabilities = self.__get_client_capabilities()
-        self.router_capabilities = self.__get_router_capabilities()
 
 
     @property
@@ -332,35 +326,6 @@ class WiFiTest(object):
         self.hosting_server.stop_capture()
 
 
-    def __get_client_capabilities(self):
-        caps = []
-
-        # Find out if this device supports 5GHz
-        system = site_linux_system.LinuxSystem(self.client, {}, '')
-        if [freq for freq in system.phys_for_frequency.keys() if freq > 5000]:
-            caps.append(WiFiTest._capability_5ghz)
-        logging.info("Client system capabilities: %s" % repr(caps))
-        return caps
-
-
-    def __get_router_capabilities(self):
-        caps = []
-
-        # Find out if this device supports multi-AP
-        system = site_linux_system.LinuxSystem(self.router, {}, '')
-        phymap = system.phys_for_frequency
-        frequencies = phymap.keys()
-        if [freq for freq in frequencies if freq > 5000]:
-            caps.append(WiFiTest._capability_5ghz)
-        if [freq for freq in frequencies if len(phymap[freq]) > 1]:
-            caps.append(WiFiTest._capability_multi_ap_same_band)
-            caps.append(WiFiTest._capability_multi_ap)
-        elif len(system.phy_bus_type) > 1:
-            caps.append(WiFiTest._capability_multi_ap)
-        logging.info("Router system capabilities: %s" % repr(caps))
-        return caps
-
-
     def __get_step_requirements(self):
         # This finds out what additional requirements are implicit based on
         # the steps outlined in the test description.
@@ -374,10 +339,11 @@ class WiFiTest(object):
             if method != 'config':
                 continue
             if 'channel' in params and int(params['channel']) > 5000:
-                client_reqs.add(WiFiTest._capability_5ghz)
-                router_reqs.add(WiFiTest._capability_5ghz)
+                client_reqs.add(site_linux_system.LinuxSystem.CAPABILITY_5GHZ)
+                router_reqs.add(site_linux_system.LinuxSystem.CAPABILITY_5GHZ)
             if 'multi_interface' in params:
-                router_reqs.add(WiFiTest._capability_multi_ap)
+                router_reqs.add(
+                        site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP)
         logging.info("Step requirements: Client: %s, AP: %s" %
                      (repr(client_reqs), repr(router_reqs)))
         return list(client_reqs), list(router_reqs)
@@ -422,12 +388,12 @@ class WiFiTest(object):
             is especially useful during cleanup (e.g., deleting profiles).
         """
         for requirement in self.client_requirements:
-            if not requirement in self.client_capabilities:
+            if not requirement in self.client_proxy.capabilities:
                 raise error.TestNAError(
                     "%s: client is missing required capability: %s" %
                     (self.name, requirement))
         for requirement in self.router_requirements:
-            if not requirement in self.router_capabilities:
+            if not requirement in self.wifi.capabilities:
                 raise error.TestNAError(
                     "%s: AP is missing required capability: %s" %
                     (self.name, requirement))

@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
+from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.wlan import packet_capturer
@@ -24,6 +25,12 @@ class WiFiClient(object):
 
     DEFAULT_PING_COUNT = 10
     COMMAND_PING = 'ping'
+
+
+    @property
+    def capabilities(self):
+        """@return list of WiFi capabilities as parsed by LinuxSystem."""
+        return self._capabilities
 
 
     @property
@@ -187,6 +194,12 @@ class WiFiClient(object):
         self._firewall_rules = []
         # Turn off powersave mode by default.
         self.powersave_switch(False)
+        # It is tempting to make WiFiClient a type of LinuxSystem, but most of
+        # the functionality there only makes sense for systems that want to
+        # manage their own WiFi interfaces.  On client devices however, shill
+        # does that work.
+        system = site_linux_system.LinuxSystem(self.host, {}, 'client')
+        self._capabilities = system.capabilities
 
 
     def close(self):
