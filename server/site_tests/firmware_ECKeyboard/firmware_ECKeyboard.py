@@ -51,8 +51,7 @@ class firmware_ECKeyboard(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['keyboard']):
-            logging.info("Nothing needs to be tested on this device - Skipping")
-            return
+            raise error.TestNAError("Nothing needs to be tested on this device")
         self.register_faft_sequence((
             {   # Step 1, use key press simulation to issue reboot command
                 'reboot_action': self.reboot_by_keyboard,

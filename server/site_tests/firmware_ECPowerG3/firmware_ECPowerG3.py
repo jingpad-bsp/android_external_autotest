@@ -67,8 +67,7 @@ class firmware_ECPowerG3(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['x86']):
-            logging.info("Nothing needs to be tested on this device - Skipping")
-            return
+            raise error.TestNAError("Nothing needs to be tested on this device")
         self.register_faft_sequence((
             {   # Step 1, power off and check if system drop into G3 correctly
                 'reboot_action': self.check_G3,

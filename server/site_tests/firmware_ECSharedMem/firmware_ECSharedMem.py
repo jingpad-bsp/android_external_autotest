@@ -40,8 +40,7 @@ class firmware_ECSharedMem(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability():
-            logging.info("Nothing needs to be tested on this device - Skipping")
-            return
+            raise error.TestNAError("Nothing needs to be tested on this device")
         self.register_faft_sequence((
             {   # Step 1, check shared memory in normal operation and crash EC
                 'state_checker': self.shared_mem_checker,

@@ -115,8 +115,7 @@ class firmware_ECBattery(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['battery']):
-            logging.info("Nothing needs to be tested on this device - Skipping")
-            return
+            raise error.TestNAError("Nothing needs to be tested on this device")
 
         self._get_battery_path()
 

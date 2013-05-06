@@ -101,8 +101,7 @@ class firmware_UpdateECBin(FAFTSequence):
 
     def run_once(self, dev_mode=False):
         if not self.check_ec_capability():
-            logging.info("Nothing needs to be tested on this device - Skipping")
-            return
+            raise error.TestNAError("Nothing needs to be tested on this device")
 
         flags = self.faft_client.bios.get_preamble_flags('a')
         if flags & vboot.PREAMBLE_USE_RO_NORMAL == 0:

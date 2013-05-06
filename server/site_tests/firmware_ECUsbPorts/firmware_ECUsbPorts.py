@@ -115,8 +115,7 @@ class firmware_ECUsbPorts(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability(['usb']):
-            logging.info("Nothing needs to be tested on this device - Skipping")
-            return
+            raise error.TestNAError("Nothing needs to be tested on this device")
         self.register_faft_sequence((
             {   # Step 1, turn off all USB ports and then turn them on again
                 'reboot_action': self.fake_reboot_by_usb_mode_change,

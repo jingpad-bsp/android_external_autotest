@@ -39,8 +39,7 @@ class firmware_ECWatchdog(FAFTSequence):
 
     def run_once(self):
         if not self.check_ec_capability():
-            logging.info("Nothing needs to be tested on this device - Skipping")
-            return
+            raise error.TestNAError("Nothing needs to be tested on this device")
         self.register_faft_sequence((
             {   # Step 1, trigger a watchdog reset and power on system again.
                 'reboot_action': self.reboot_by_watchdog,
