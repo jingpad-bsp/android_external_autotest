@@ -2,12 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import gobject
-import os
+import gobject, os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import policy
+from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import constants, cros_ui, cryptohome, ownership
 
 from dbus.mainloop.glib import DBusGMainLoop
@@ -26,26 +25,6 @@ class login_OwnershipRetaken(test.test):
         utils.make('OUT_DIR=.')
 
 
-    def __handle_new_key(self, success):
-        self._got_new_key = (success == 'success')
-
-
-    def __handle_new_policy(self, success):
-        self._got_new_policy = (success == 'success')
-
-
-    def __received_signals(self):
-        """Process dbus events"""
-        context = gobject.MainLoop().get_context()
-        while context.iteration(False):
-            pass
-        return self._got_new_key and self._got_new_policy
-
-
-    def __reset_signal_state(self):
-        self._got_new_policy = self._got_new_key = False
-
-
     def initialize(self):
         super(login_OwnershipRetaken, self).initialize()
         # Start clean, wrt ownership and the desired user.
@@ -53,23 +32,17 @@ class login_OwnershipRetaken(test.test):
         ownership.clear_ownership_files()
         cryptohome.remove_vault(ownership.TESTUSER)
 
-        # Run the UI, mount the user's encrypted profile
         cros_ui.start()
-        cryptohome.mount_vault(ownership.TESTUSER,
-                               ownership.TESTPASS,
-                               create=True)
 
         DBusGMainLoop(set_as_default=True)
-        ownership.listen_to_session_manager_signal(self.__handle_new_key,
-                                                   'SetOwnerKeyComplete')
-        ownership.listen_to_session_manager_signal(self.__handle_new_policy,
-                                                   'PropertyChangeComplete')
+        self._listener = session_manager.SignalListener(gobject.MainLoop())
+        self._listener.listen_for_new_key_and_policy()
 
 
     def run_once(self):
         pkey = ownership.known_privkey()
         pubkey = ownership.known_pubkey()
-        sm = ownership.connect_to_session_manager()
+        sm = session_manager.connect()
 
         # Pre-configure some owner settings, including initial key.
         poldata = policy.build_policy_data(self.srcdir,
@@ -86,24 +59,20 @@ class login_OwnershipRetaken(test.test):
                                                poldata)
         policy.push_policy_and_verify(policy_string, sm)
 
-        # wait for new-owner-key signal, property-changed signal.
-        utils.poll_for_condition(condition=lambda: self.__received_signals(),
-                                 desc='Initial policy push complete.',
-                                 timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT)
-        self.__reset_signal_state()
+        self._listener.wait_for_signals(desc='Initial policy push complete.')
 
         # grab key, ensure that it's the same as the known key.
         if (utils.read_file(constants.OWNER_KEY_FILE) != pubkey):
             raise error.TestFail('Owner key should not have changed!')
 
         # Start a new session, which will trigger the re-taking of ownership.
+        cryptohome.mount_vault(ownership.TESTUSER,
+                               ownership.TESTPASS,
+                               create=True)
         if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestFail('Could not start session for owner')
 
-        # wait for new-owner-key signal, property-changed signal.
-        utils.poll_for_condition(condition=lambda: self.__received_signals(),
-                                 desc='Retaking of ownership complete.',
-                                 timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT)
+        self._listener.wait_for_signals(desc='Re-taking of ownership complete.')
 
         # grab key, ensure that it's different than known key
         if (utils.read_file(constants.OWNER_KEY_FILE) == pubkey):

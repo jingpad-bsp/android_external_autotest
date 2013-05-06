@@ -61,6 +61,8 @@ ENABLE_BROWSER_HANG_DETECTION_FILE = \
 
 FLIMFLAM_TEST_PATH = '/usr/lib/flimflam/test/'
 
+GUEST_USER = '$guest'
+
 KEYGEN = 'keygen'
 
 LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'

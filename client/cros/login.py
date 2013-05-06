@@ -108,21 +108,6 @@ def wait_for_cryptohome(timeout=cros_ui.DEFAULT_TIMEOUT):
         crash_msg='cryptohomed crashed during mount attempt')
 
 
-def wait_for_window_manager(timeout=cros_ui.DEFAULT_TIMEOUT):
-    """Wait until the window manager is running.
-
-    Args:
-        timeout: float number of seconds to wait
-
-    Raises:
-        TimeoutError: window manager didn't start before timeout
-    """
-    utils.poll_for_condition(
-        lambda: not os.system('pgrep ^%s$' % constants.WINDOW_MANAGER),
-        utils.TimeoutError('Timed out waiting for window manager to start'),
-        timeout=timeout)
-
-
 def wait_for_ownership(timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT):
     wait_for_condition(
         condition=lambda: os.access(constants.OWNER_KEY_FILE, os.F_OK),

@@ -295,7 +295,7 @@ class UITest(pyauto_test.PyAutoTest):
         # Fake ownership unless the test is explicitly testing owner creation.
         if not is_creating_owner:
             logging.info('Faking ownership...')
-            cros_ui.fake_ownership()
+            ownership.fake_ownership()
             self.fake_owner = True
         else:
             logging.info('Erasing stale owner state.')

@@ -10,7 +10,7 @@ import stat
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import policy
+from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import cros_ui, cryptohome, ownership
 
 
@@ -86,12 +86,12 @@ class login_UserPolicyKeys(test.test):
         cryptohome.mount_vault(ownership.TESTUSER,
                                ownership.TESTPASS,
                                create=True)
-        session_manager = ownership.connect_to_session_manager()
-        if not session_manager.StartSession(ownership.TESTUSER, ''):
+        sm = session_manager.connect()
+        if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestError('Could not start session')
 
         # No policy stored yet.
-        retrieved_policy = session_manager.RetrieveUserPolicy(byte_arrays=True)
+        retrieved_policy = sm.RetrieveUserPolicy(byte_arrays=True)
         if retrieved_policy:
             raise error.TestError('session_manager already has user policy!')
 
@@ -112,7 +112,7 @@ class login_UserPolicyKeys(test.test):
                                                  public_key,
                                                  policy_data)
         try:
-          result = session_manager.StoreUserPolicy(
+          result = sm.StoreUserPolicy(
               dbus.ByteArray(policy_response))
           if not result:
               raise error.TestFail('Failed to store user policy')
@@ -134,8 +134,8 @@ class login_UserPolicyKeys(test.test):
         cryptohome.mount_vault(ownership.TESTUSER,
                                ownership.TESTPASS,
                                create=True)
-        session_manager = ownership.connect_to_session_manager()
-        if not session_manager.StartSession(ownership.TESTUSER, ''):
+        sm = session_manager.connect()
+        if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestError('Could not start session after restart')
         self._verify_key_file(key_file)
 

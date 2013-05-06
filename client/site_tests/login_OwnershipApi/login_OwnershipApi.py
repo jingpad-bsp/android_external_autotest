@@ -8,7 +8,7 @@ import tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import autotemp, error
-from autotest_lib.client.common_lib.cros import policy
+from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import cros_ui, cryptohome, ownership
 
 
@@ -52,7 +52,7 @@ class login_OwnershipApi(test.test):
     def run_once(self):
         pkey = ownership.known_privkey()
         pubkey = ownership.known_pubkey()
-        sm = ownership.connect_to_session_manager()
+        sm = session_manager.connect()
         if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestFail('Could not start session for owner')
 

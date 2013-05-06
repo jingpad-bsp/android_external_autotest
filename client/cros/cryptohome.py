@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, re, shutil
+import dbus, logging, os, random, re, shutil, string
 
 import common, constants
 from autotest_lib.client.bin import utils
@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import error
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 
-class ChromiumOSError(error.InstallError):
+class ChromiumOSError(error.TestError):
     """Generic error for ChromiumOS-specific exceptions."""
     pass
 
@@ -34,6 +34,18 @@ def user_path(user):
 def system_path(user):
     """Get the system mount point for the given user."""
     return utils.system_output('cryptohome-path system %s' % user)
+
+
+def ensure_clean_cryptohome_for(user, password=None):
+    """Ensure a fresh cryptohome exists for user.
+
+    @param user: user who needs a shiny new cryptohome.
+    @param password: if unset, a random password will be used.
+    """
+    if not password:
+        password = ''.join(random.sample(string.ascii_lowercase, 6))
+    remove_vault(user)
+    mount_vault(user, password, create=True)
 
 
 def get_tpm_status():
@@ -134,6 +146,15 @@ def mount_vault(user, password, create=False):
             device_regex=constants.CRYPTOHOME_DEV_REGEX_REGULAR_USER,
             allow_fail=True):
         raise ChromiumOSError('Cryptohome created a vault but did not mount.')
+
+
+def mount_guest():
+    """Mount the given user's vault."""
+    cmd = CRYPTOHOME_CMD + ' --action=mount_guest'
+    __run_cmd(cmd)
+    # Ensure that the guest tmpfs is mounted.
+    if not is_guest_vault_mounted(allow_fail=True):
+        raise ChromiumOSError('Cryptohome did not mount tmpfs.')
 
 
 def test_auth(user, password):

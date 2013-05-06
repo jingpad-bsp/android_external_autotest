@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, tempfile
+import logging, os, shutil, tempfile
 
 import common, constants, cryptohome
 from autotest_lib.client.bin import utils
@@ -86,36 +86,18 @@ def clear_ownership_files():
     __unlink(constants.SIGNED_POLICY_FILE)
 
 
-def connect_to_session_manager():
-    """Create and return a DBus connection to session_manager.
+def fake_ownership():
+    """Fake ownership by generating the necessary magic files."""
+    # Determine the module directory.
+    dirname = os.path.dirname(__file__)
+    mock_certfile = os.path.join(dirname, constants.MOCK_OWNER_CERT)
+    mock_signedpolicyfile = os.path.join(dirname,
+                                         constants.MOCK_OWNER_POLICY)
+    utils.open_write_close(constants.OWNER_KEY_FILE,
+                           cert_extract_pubkey_der(mock_certfile))
+    shutil.copy(mock_signedpolicyfile,
+                constants.SIGNED_POLICY_FILE)
 
-    Connects to the session manager over the DBus system bus.  Returns
-    appropriately configured DBus interface object.
-
-    @return a dbus.Interface object connection to the session_manager.
-    """
-    bus = dbus.SystemBus()
-    proxy = bus.get_object('org.chromium.SessionManager',
-                           '/org/chromium/SessionManager')
-    return dbus.Interface(proxy, 'org.chromium.SessionManagerInterface')
-
-
-def listen_to_session_manager_signal(callback, signal):
-    """Connect a callback to a given session_manager dbus signal.
-
-    Sets up a signal receiver for signal, and calls the provided callback
-    when it comes in.
-
-    @param callback: a callable to call when signal is received.
-    @param signal: the signal to listen for.
-    """
-    bus = dbus.SystemBus()
-    bus.add_signal_receiver(
-        handler_function=callback,
-        signal_name=signal,
-        dbus_interface='org.chromium.Chromium',
-        bus_name=None,
-        path='/org/chromium/SessionManager')
 
 POLICY_TYPE = 'google/chromeos/device'
 

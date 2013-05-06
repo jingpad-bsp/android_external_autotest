@@ -2,17 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import dbus.glib
-import logging
-import sys
 import os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui_test, ownership, login
+from autotest_lib.client.common_lib.cros import session_manager
+from autotest_lib.client.cros import constants, cros_ui_test, login
 
 
 class login_OwnershipTaken(cros_ui_test.UITest):
+    """Sign in and ensure that ownership of the device is taken."""
     version = 1
 
     def setup(self):
@@ -32,7 +30,7 @@ class login_OwnershipTaken(cros_ui_test.UITest):
         self.login(self.username, self.password)
         login.wait_for_ownership()
 
-        sm = ownership.connect_to_session_manager()
+        sm = session_manager.connect()
         retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
         if retrieved_policy is None:
             raise error.TestFail('Policy not found')

@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, shutil
+import common, os
 
-import common, constants, httpd, ownership
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants, httpd
 
 # Log messages used to signal when we're restarting UI. Used to detect
 # crashes by cros_ui_test.UITest.
@@ -153,20 +153,6 @@ def restart(impl=None):
 def nuke():
     """Nuke the login manager, waiting for it to restart."""
     restart(lambda: utils.nuke_process_by_name('session_manager'))
-
-
-def fake_ownership():
-    """Fake ownership by generating the necessary magic files."""
-    # Determine the module directory.
-    dirname = os.path.dirname(__file__)
-    mock_certfile = os.path.join(dirname, constants.MOCK_OWNER_CERT)
-    mock_signedpolicyfile = os.path.join(dirname,
-                                         constants.MOCK_OWNER_POLICY)
-    utils.open_write_close(
-        constants.OWNER_KEY_FILE,
-        ownership.cert_extract_pubkey_der(mock_certfile))
-    shutil.copy(mock_signedpolicyfile,
-                constants.SIGNED_POLICY_FILE)
 
 
 class ChromeSession(object):
