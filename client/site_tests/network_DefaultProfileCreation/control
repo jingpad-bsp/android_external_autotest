@@ -1,0 +1,22 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "quiche@chromium.org"
+NAME = "network_DefaultProfileCreation"
+PURPOSE = "Verify that default profile is populated with default values"
+CRITERIA = """
+This test fails if a newly created default profile does not contain
+default values for the properties that should have them.
+"""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "network"
+TEST_TYPE = "client"
+
+DOC = """
+  Tests that, when shill creats a default profile, it populates properties
+  with default values (where appropriate).
+"""
+
+job.run_test('network_DefaultProfileCreation')
