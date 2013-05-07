@@ -25,6 +25,7 @@ params_dict = {
 
 class power_LoadTest(cros_ui_test.UITest):
     version = 2
+    _creds='power.loadtest@gmail.com:power_LoadTest'
 
 
     def start_authserver(self):
@@ -45,7 +46,7 @@ class power_LoadTest(cros_ui_test.UITest):
         pass
 
 
-    def initialize(self, creds='$default', percent_initial_charge_min=None,
+    def initialize(self, creds=_creds, percent_initial_charge_min=None,
                  check_network=True, loop_time=3600, loop_count=1,
                  should_scroll='true', should_scroll_up='true',
                  scroll_loop='false', scroll_interval_ms='10000',

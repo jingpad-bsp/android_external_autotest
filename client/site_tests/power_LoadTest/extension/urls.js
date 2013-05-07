@@ -5,8 +5,7 @@
 // List of tasks to accomplish
 var URLS = new Array();
 
-var ViewGDoc = ('http://docs.google.com/RawDocContents?action=fetch&' +
-                'justBody=false&revision=_latest&editMode=true&docID=');
+var ViewGDoc = ('https://docs.google.com/document/d/');
 
 var tasks = [
   {
@@ -74,8 +73,8 @@ var tasks = [
     timeout: seconds(10),
     focus: true,
     urls: [
-       ViewGDoc + '0AaLGACl774zLZGRuYzlibWtfMXJzbmdoamcy',
-       ViewGDoc + '0AaLGACl774zLZGRuYzlibWtfMGRkcmY4emNu'
+       ViewGDoc + '1CIvneyASuIHvxxN0WV22zikb08Us1nc93mkU0c5Azr4/edit',
+       ViewGDoc + '120TtfoHXCgRuaubGhra3X5tl0_pS7KX757wFigTFf0c/edit'
     ],
   },
   {
