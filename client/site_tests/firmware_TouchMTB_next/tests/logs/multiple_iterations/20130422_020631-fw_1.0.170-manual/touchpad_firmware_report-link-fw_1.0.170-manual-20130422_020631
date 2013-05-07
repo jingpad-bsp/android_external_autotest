@@ -1,0 +1,228 @@
+    Record program: mtplot /dev/input/event8 -d :0 -g 2040x1360+0+340
+    
+[1;34m<drag_edge_thumb>[0m:
+    Drag the edge of your thumb [1;32mhorizontally from left to right[0m in a straight line across the pad
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 6.64 px
+        deviation (pad) slot0: 0.33 mm
+        criteria_str: <= 1.5, ~ +3.0
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 12.10 px
+        deviation (pad) slot0: 0.60 mm
+        criteria_str: <= 1.5, ~ +3.0
+    score: 1.000000
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 1.198038
+        criteria_str: <= 1.8, ~ +1.0
+    score: 1.000000
+    
+
+    NoLevelJumpValidator
+          accu jump (0 X): 0 px
+          accu jump (0 Y): 0 px
+        Max accu jump: 0 px
+        criteria_str: <= 10, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 179.64 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touchpad_firmware_test/20130422_020631-fw_1.0.170-manual/drag_edge_thumb.left_to_right-link-fw_1.0.170-manual-20130422_020633.dat)
+
+    
+[1;34m<drag_edge_thumb>[0m:
+    Drag the edge of your thumb [1;32mhorizontally from left to right[0m in a straight line across the pad
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 137.50 px
+        deviation (pad) slot0: 6.88 mm
+        criteria_str: <= 1.5, ~ +3.0
+    score: 0.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 167.62 px
+        deviation (pad) slot0: 8.38 mm
+        criteria_str: <= 1.5, ~ +3.0
+    score: 0.000000
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: 1.649242
+        criteria_str: <= 1.8, ~ +1.0
+    score: 1.000000
+    
+
+    NoLevelJumpValidator
+          accu jump (0 X): 0 px
+          accu jump (0 Y): 0 px
+        Max accu jump: 0 px
+        criteria_str: <= 10, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 179.39 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touchpad_firmware_test/20130422_020631-fw_1.0.170-manual/drag_edge_thumb.left_to_right-link-fw_1.0.170-manual-20130422_020644.dat)
+
+    
+[1;34m<drag_edge_thumb>[0m:
+    Drag the edge of your thumb [1;32mhorizontally from left to right[0m in a straight line across the pad
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    Linearity(Middle)Validator
+        ave fitting error: 17.30 px
+        deviation (pad) slot0: 0.86 mm
+        criteria_str: <= 1.5, ~ +3.0
+    score: 1.000000
+    
+
+    Linearity(BothEnds)Validator
+        ave fitting error: 20.14 px
+        deviation (pad) slot0: 1.01 mm
+        criteria_str: <= 1.5, ~ +3.0
+    score: 1.000000
+    
+
+    NoGapValidator
+        Largest gap ratio slot0: -inf
+        criteria_str: <= 1.8, ~ +1.0
+    score: 1.000000
+    
+
+    NoLevelJumpValidator
+          accu jump (0 X): 0 px
+          accu jump (0 Y): 0 px
+        Max accu jump: 0 px
+        criteria_str: <= 10, ~ +30
+    score: 1.000000
+    
+
+    NoReversedMotion(Middle)Validator
+        Reversed motions slot0: {'X': 0} px
+        criteria_str: <= 5, ~ +30
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 179.40 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touchpad_firmware_test/20130422_020631-fw_1.0.170-manual/drag_edge_thumb.left_to_right-link-fw_1.0.170-manual-20130422_020651.dat)
+
+    
+[1;34m<three_fingers_physical_click>[0m:
+    Use three fingers to physically click the center of the pad.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 3
+        criteria_str: == 3
+    score: 1.000000
+    
+
+    PhysicalClickValidator
+        Count of 3-finger physical clicks: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 124.59 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touchpad_firmware_test/20130422_020631-fw_1.0.170-manual/three_fingers_physical_click-link-fw_1.0.170-manual-20130422_020703.dat)
+
+    
+[1;34m<three_fingers_physical_click>[0m:
+    Use three fingers to physically click the center of the pad.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 3
+        criteria_str: == 3
+    score: 1.000000
+    
+
+    PhysicalClickValidator
+        Count of 3-finger physical clicks: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 124.69 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touchpad_firmware_test/20130422_020631-fw_1.0.170-manual/three_fingers_physical_click-link-fw_1.0.170-manual-20130422_020710.dat)
+
+    
+[1;34m<three_fingers_physical_click>[0m:
+    Use three fingers to physically click the center of the pad.
+    
+
+    CountTrackingIDValidator
+        count of trackid IDs: 4
+        criteria_str: == 3
+    score: 0.000000
+    
+
+    PhysicalClickValidator
+        Count of 3-finger physical clicks: 1
+        criteria_str: == 1
+    score: 1.000000
+    
+
+    ReportRateValidator
+        Report rate: 111.71 Hz
+        criteria_str: >= 60
+    score: 1.000000
+    (saved: /var/tmp/touchpad_firmware_test/20130422_020631-fw_1.0.170-manual/three_fingers_physical_click-link-fw_1.0.170-manual-20130422_020712.dat)
+
+    
+[1;34m<four_fingers_physical_click>[0m:
+    Use four fingers to physically click the center of the pad.
+    (deleted: /var/tmp/touchpad_firmware_test/20130422_020631-fw_1.0.170-manual/four_fingers_physical_click-link-fw_1.0.170-manual-20130422_020719.dat)
+
