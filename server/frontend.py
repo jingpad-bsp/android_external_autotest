@@ -9,8 +9,7 @@ can recursively add and manage other jobs.
 We turn the JSON dictionaries into real objects that are more idiomatic
 
 For docs, see:
-    http://autotest/afe/server/rpc_doc/
-    http://autotest/new_tko/server/rpc_doc/
+    http://www.chromium.org/chromium-os/testing/afe-rpc-infrastructure
     http://docs.djangoproject.com/en/dev/ref/models/querysets/#queryset-api
 """
 
