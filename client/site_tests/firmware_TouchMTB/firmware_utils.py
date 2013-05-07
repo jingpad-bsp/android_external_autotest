@@ -45,10 +45,31 @@ def get_board():
     return board
 
 
+def get_fw_and_date(filename):
+    """Get the firmware version and the test date from a log directory
+       or a log file.
+
+    An example html filename looks like
+        'touch_firmware_report-link-fw_1.0.170-manual-20130426_064849.log'
+        return (fw_1.0.170, 20130426_064849)
+
+    An example log directory looks like
+        '20130422_020631-fw_1.0.170-manual'
+        return (fw_1.0.170, 20130422_020631)
+    """
+    result = re.search('-(%s[._0-9]+?)-' % conf.fw_prefix, filename)
+    fw = result.group(1) if result else None
+
+    result = re.search('(\d{8}_\d{6})[-.]', filename)
+    date = result.group(1) if result else None
+
+    return (fw, date)
+
+
 def create_log_dir(firmware_version, mode):
     """Create a directory to save the report and device event files."""
     dir_basename = conf.filename.sep.join([get_current_time_str(),
-                                           'fw_' + firmware_version,
+                                           conf.fw_prefix + firmware_version,
                                            mode])
     log_root_dir = conf.log_root_dir
     log_dir = os.path.join(log_root_dir, dir_basename)

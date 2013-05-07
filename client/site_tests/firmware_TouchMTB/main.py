@@ -45,6 +45,8 @@ class firmware_TouchMTB:
     """Set up the system for touch device firmware tests."""
 
     def __init__(self, options):
+        self.options = options
+
         # Get the board name
         self.board = firmware_utils.get_board()
 
@@ -79,17 +81,24 @@ class firmware_TouchMTB:
                 image_size=self.touch_device_window_size,
                 result_size=self.result_frame_size)
 
-        # Create the HTML report object and the output object to print messages
-        # on the window and to print the results in the report.
-        firmware_version = self.touch_device.get_firmware_version()
         mode = options[OPTIONS.MODE]
         if options[OPTIONS.RESUME]:
+            # Use the firmware version of the real touch device for recording.
+            firmware_version = self.touch_device.get_firmware_version()
             self.log_dir = options[OPTIONS.RESUME]
         elif options[OPTIONS.REPLAY]:
+            # Use the firmware version of the specified logs for replay.
             self.log_dir = options[OPTIONS.REPLAY]
+            fw_str, date = firmware_utils.get_fw_and_date(self.log_dir)
+            _, firmware_version = fw_str.split(conf.fw_prefix)
         else:
+            # Use the firmware version of the real touch device for recording.
+            firmware_version = self.touch_device.get_firmware_version()
             self.log_dir = firmware_utils.create_log_dir(firmware_version, mode)
-        self._create_report_name(mode)
+
+        # Create the HTML report object and the output object to print messages
+        # on the window and to print the results in the report.
+        self._create_report_name(mode, firmware_version)
         self.report_html = ReportHtml(self.report_html_name,
                                       self.screen_size,
                                       self.touch_device_window_size,
@@ -105,6 +114,7 @@ class firmware_TouchMTB:
                                             self.win,
                                             self.parser,
                                             self.output,
+                                            firmware_version,
                                             options=options)
 
         # Register some callback functions for firmware window
@@ -127,13 +137,13 @@ class firmware_TouchMTB:
             logging.error('Cannot find device_node.')
             exit(-1)
 
-    def _create_report_name(self, mode):
+    def _create_report_name(self, mode, firmware_version):
         """Create the report names for both plain-text and html files.
 
         A typical html file name looks like:
             touch_firmware_report-lumpy-fw_11.25-20121016_080924.html
         """
-        firmware_str = 'fw_' + self.touch_device.get_firmware_version()
+        firmware_str = conf.fw_prefix + firmware_version
         curr_time = firmware_utils.get_current_time_str()
         fname = conf.filename.sep.join([conf.report_basename,
                                         self.board,
@@ -177,7 +187,7 @@ class firmware_TouchMTB:
     def main(self):
         """A helper to enter gtk main loop."""
         upload_choice = fw.win.main()
-        if upload_choice:
+        if upload_choice and not options[OPTIONS.REPLAY]:
             print 'Uploading %s to %s ...' % (self.log_dir, self.gs.bucket)
             self.gs.upload(self.log_dir)
         firmware_utils.start_power_management()
