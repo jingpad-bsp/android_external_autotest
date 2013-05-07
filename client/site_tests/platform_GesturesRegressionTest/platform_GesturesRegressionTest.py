@@ -43,7 +43,11 @@ class platform_GesturesRegressionTest(test.test):
         results = runner.RunAll('%s*/*' % board)
         self.test_results = {}
         for key, value in results.items():
-            self.test_results[key.replace('/', '-')] = value["score"]
+            score = value["score"]
+            not_integer = isinstance(score, bool) or not isinstance(score, int)
+            if not_integer and not isinstance(score, float):
+                score = 0.0
+            self.test_results[key.replace('/', '-')] = score
 
         # write converted test results out
         if self.test_results:
