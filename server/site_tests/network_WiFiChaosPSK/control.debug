@@ -10,9 +10,9 @@ TEST_CLASS = "network"
 TEST_TYPE = "server"
 
 DOC = """
-This script iterates through all of the access points in the AP compatibility
-lab which supports PSK security and has a chrome device connect to each in
-series. This test must be performed in the AP compatibility lab.
+This script iterates through user-specified access points in the AP
+compatibility lab which supports PSK security and has a chrome device connect
+to each in series. This test must be performed in the AP compatibility lab.
 """
 
 from autotest_lib.server.cros.chaos_lib import chaos_interop_test
@@ -20,7 +20,9 @@ from autotest_lib.server.cros.chaos_lib import chaos_interop_test
 
 def run_chaos_psk(machine):
     host = hosts.create_host(machine)
+    # List of specific APs to debug. Please verify the APs indeed support PSK.
+    debug_aps = ['chromeos3-row1-rack1-host6', 'chromeos3-row1-rack1-host7']
     helper = chaos_interop_test.WifiChaosTest('network_WiFiChaosPSK', host)
-    helper.run(job, ap_spec={}, batch_size=15, tries=10)
+    helper.run(job, ap_spec={'hostnames': debug_aps},  batch_size=2, tries=2)
 
 parallel_simple(run_chaos_psk, machines)

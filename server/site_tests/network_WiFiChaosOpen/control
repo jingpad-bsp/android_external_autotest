@@ -11,8 +11,8 @@ TEST_TYPE = "server"
 
 DOC = """
 This script iterates through all of the access points in the AP compatibility
-lab has a chrome device connect to each in series.  This test must be performed
-in the AP compatibility lab.
+lab and has a chrome device connect to each in series. This test must be
+performed in the AP compatibility lab.
 """
 
 from autotest_lib.server.cros.chaos_lib import chaos_interop_test
@@ -20,10 +20,8 @@ from autotest_lib.server.cros.chaos_lib import chaos_interop_test
 
 def run_chaos_open(machine):
     host = hosts.create_host(machine)
-    chaos_interop_test.wifi_chaos_open(host,
-                                       ap_spec={},
-                                       batch_size=15,
-                                       tries=10)
+    helper = chaos_interop_test.WifiChaosTest('network_WiFiChaosOpen', host)
+    helper.run(job, ap_spec={}, batch_size=15, tries=10)
 
 
 parallel_simple(run_chaos_open, machines)

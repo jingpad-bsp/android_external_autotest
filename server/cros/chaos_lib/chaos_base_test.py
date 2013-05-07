@@ -38,6 +38,21 @@ class WiFiChaosConnectionTest(object):
     PSK = 'psk'
 
 
+    @property
+    def psk_password(self):
+        """@returns PSK password."""
+        return self._psk_password
+
+
+    @psk_password.setter
+    def psk_password(self, password):
+        """Sets PSK password.
+
+        @param password: a string, PSK password.
+        """
+        self._psk_password = password
+
+
     def _get_dut_wlan_mac(self):
         """Extracts MAC addr of DUT's WLAN interface.
 

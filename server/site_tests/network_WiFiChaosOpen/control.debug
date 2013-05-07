@@ -22,10 +22,8 @@ def run_chaos_open(machine):
     host = hosts.create_host(machine)
     # List of specific APs to debug.
     debug_aps = ['chromeos3-row1-rack1-host6', 'chromeos3-row1-rack1-host7']
-    chaos_interop_test.wifi_chaos_open(host,
-                                       ap_spec={'hostnames': debug_aps},
-                                       batch_size=2,
-                                       tries=2)
+    helper = chaos_interop_test.WifiChaosTest('network_WiFiChaosOpen', host)
+    helper.run(job, ap_spec={'hostnames': debug_aps}, batch_size=2, tries=1)
 
 
 parallel_simple(run_chaos_open, machines)
