@@ -29,6 +29,15 @@ class StateMachine(object):
         self._done = False
         self._trans_func_map = self._GetModemStateFunctionMap()
 
+    @property
+    def cancelled(self):
+        """
+        @return True, if the state machine has been cancelled or has
+                transitioned to a terminal state. False, otherwise.
+
+        """
+        return self._done
+
     def Cancel(self):
         """
         Tells the state machine to stop transitioning to further states.
@@ -42,7 +51,9 @@ class StateMachine(object):
         state.
 
         """
+        logging.info('StateMachine: Step')
         if self._done:
+            logging.info('StateMachine: Terminating.')
             return
 
         if not self._started:
@@ -52,11 +63,34 @@ class StateMachine(object):
             self._started = True
 
         state = self._modem.Get(mm1.I_MODEM, 'State')
-        func = self._trans_func_map.get(state, None)
+        func = self._trans_func_map.get(state, self._GetDefaultHandler())
         if func and func(self):
-            gobject.idle_add(StateMachine.Step, self)
+            self._ScheduleNextStep()
         else:
             self._done = True
+
+    def _ScheduleNextStep(self):
+        """
+        Schedules the next state transition to execute on the idle loop.
+        subclasses can override this method to implement custom logic, such as
+        delays.
+
+        """
+        gobject.idle_add(StateMachine.Step, self)
+
+    def _GetDefaultHandler(self):
+        """
+        Returns the function to handle a modem state, for which the value
+        returned by StateMachine._GetModemStateFunctionMap is None. The
+        returned function's signature must match:
+
+            StateMachine -> Boolean
+
+        This function by default returns None. If no function exists to handle
+        a modem state, the default behavior is to terminate the state machine.
+
+        """
+        return None
 
     def _GetModemStateFunctionMap(self):
         """

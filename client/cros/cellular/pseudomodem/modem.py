@@ -113,7 +113,10 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             'Bands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
             'Sim' : dbus.types.ObjectPath(mm1.ROOT_PATH)
         }
-        return { mm1.I_MODEM : props }
+        return {
+            mm1.I_MODEM : props,
+            mm1.I_MODEM_SIMPLE : {}
+        }
 
     def IncrementPath(self):
         """
@@ -321,7 +324,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         """
         for key in properties.iterkeys():
             if key not in ALLOWED_BEARER_PROPERTIES:
-                raise mm1.MMCoreError(mm1.INVALID_ARGS,
+                raise mm1.MMCoreError(mm1.MMCoreError.INVALID_ARGS,
                         'Invalid property "%s", not creating bearer.' % key)
 
     @dbus.service.method(mm1.I_MODEM, out_signature='ao')
@@ -481,8 +484,9 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                 self.resetting = False
 
                 def _DelayedEnable():
-                    if self.Get(mm1.I_MODEM, 'State') < \
-                        mm1.MM_MODEM_STATE_ENABLED:
+                    if not self.IsPendingEnable() and \
+                        self.Get(mm1.I_MODEM, 'State') < \
+                            mm1.MM_MODEM_STATE_ENABLING:
                         self.Enable(True)
                     return False
 

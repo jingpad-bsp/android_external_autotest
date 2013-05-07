@@ -43,7 +43,7 @@ class TestModemManagerContext(object):
         # Do stuff
         ...
 
-    Which will stop the real modem manager that are executing and launch the
+    Which will stop the real modem managers that are executing and launch the
     pseudo modem manager in a subprocess.
 
     Passing False to the TestModemManagerContext constructor will simply render
@@ -111,7 +111,7 @@ class TestModemManagerContext(object):
 
 class VirtualEthernetInterface(object):
     """
-    VirtualEthernetInterface sets up a virtual ethernet pair and runs dnsmasq
+    VirtualEthernetInterface sets up a virtual Ethernet pair and runs dnsmasq
     on one end of the pair. This is used to enable the pseudo modem to expose
     a network interface and be assigned a dynamic IP address.
 
@@ -126,21 +126,21 @@ class VirtualEthernetInterface(object):
 
     def BringIfaceUp(self):
         """
-        Brings up the pseudomodem network interface.
+        Brings up the pseudo modem network interface.
 
         """
         utils.run('sudo ifconfig %s up' % IFACE_NAME)
 
     def BringIfaceDown(self):
         """
-        Brings down the pseudomodem network interface.
+        Brings down the pseudo modem network interface.
 
         """
         utils.run('sudo ifconfig %s down' % IFACE_NAME);
 
     def StartDHCPServer(self):
         """
-        Runs dnsmasq on the peer end of the virtual ethernet pair.
+        Runs dnsmasq on the peer end of the virtual Ethernet pair.
 
         """
         lease_file = '/tmp/dnsmasq.%s.leases' % IFACE_NAME
@@ -161,7 +161,7 @@ class VirtualEthernetInterface(object):
     def StopDHCPServer(self):
         """
         Stops dnsmasq if its currently running on the peer end of the virtual
-        ethernet pair.
+        Ethernet pair.
 
         """
         if self.dnsmasq:
@@ -169,7 +169,7 @@ class VirtualEthernetInterface(object):
 
     def RestartDHCPServer(self):
         """
-        Restarts dnsmasq on the peer end of the virtual ethernet pair.
+        Restarts dnsmasq on the peer end of the virtual Ethernet pair.
 
         """
         self.StopDHCPServer()
@@ -177,7 +177,7 @@ class VirtualEthernetInterface(object):
 
     def Setup(self):
         """
-        Sets up the virtual ethernet pair and starts dnsmasq.
+        Sets up the virtual Ethernet pair and starts dnsmasq.
 
         """
         self.vif.setup()
@@ -195,7 +195,7 @@ class VirtualEthernetInterface(object):
 
     def Teardown(self):
         """
-        Stops dnsmasq and takes down the virtual ethernet pair.
+        Stops dnsmasq and takes down the virtual Ethernet pair.
 
         """
         self.StopDHCPServer()
@@ -290,7 +290,7 @@ class PseudoModemManager(object):
         Starts the pseudo modem manager based on the initialization parameters.
         Depending on the configuration, this method may or may not fork. If a
         subprocess is launched, a DBus mainloop will be initialized by the
-        subprocess. This method sets up the virtual ethernet interfaces and
+        subprocess. This method sets up the virtual Ethernet interfaces and
         initializes tha DBus objects and servers.
 
         """
@@ -312,7 +312,7 @@ class PseudoModemManager(object):
     def Stop(self):
         """
         Stops the pseudo modem manager. This means killing the subprocess,
-        if any, stopping the DBus server, and tearing down the virtual ethernet
+        if any, stopping the DBus server, and tearing down the virtual Ethernet
         pair.
 
         """
@@ -400,11 +400,11 @@ class PseudoModemManager(object):
         @param text: TODO
 
         """
-        #TODO(armansito): Implement
+        # TODO(armansito): Implement
         raise NotImplementedError()
 
 
-def Start(use_cdma=False):
+def Start(use_cdma=False, activated=True):
     """
     Runs the pseudomodem in script mode. This function is called only by the
     main function.
@@ -413,12 +413,17 @@ def Start(use_cdma=False):
                      an instance of modem_cdma.ModemCdma, otherwise the default
                      modem will be used, which is an instance of
                      modem_3gpp.Modem3gpp.
+    @param activated: If True, the pseudo modem will be initialized as
+                      unactivated and will require service activation.
 
     """
+    # TODO(armansito): Support "not activated" initialization option for 3GPP
+    #                  carriers.
     if use_cdma:
         # Import modem_cdma here to avoid circular imports.
         import modem_cdma
-        m = modem_cdma.ModemCdma(modem_cdma.ModemCdma.CdmaNetwork())
+        m = modem_cdma.ModemCdma(
+            modem_cdma.ModemCdma.CdmaNetwork(activated=activated))
         s = None
     else:
         m = None
@@ -447,6 +452,9 @@ def main():
     parser.add_option('-f', '--family', dest='family',
                       metavar='<family>',
                       help='<family> := 3GPP|CDMA')
+    parser.add_option('-n', '--not-activated', dest="not_activated",
+                      action="store_true", default=False,
+                      help='Initialize the service as not-activated.')
 
     (opts, args) = parser.parse_args()
     if not opts.family:
@@ -459,7 +467,7 @@ def main():
         print 'Unsupported family: ' + family
         return
 
-    Start(family == 'CDMA')
+    Start(family == 'CDMA', not opts.not_activated)
 
 
 if __name__ == '__main__':

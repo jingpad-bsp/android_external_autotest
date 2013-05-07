@@ -6,6 +6,7 @@ import dbus
 import dbus.types
 import logging
 
+import cdma_activate_machine
 import mm1
 import modem
 import register_machine_cdma
@@ -21,18 +22,31 @@ class ModemCdma(modem.Modem):
     """
     class CdmaNetwork(object):
         """
-        Stores carrier specific infomation needed for a CDMA network.
+        Stores carrier specific information needed for a CDMA network.
 
         """
         def __init__(self,
                      sid=99998,
                      nid=0,
                      activated=True,
+                     mdn='5555555555',
                      standard='evdo'):
             self.sid = sid
             self.nid = nid
             self.standard = standard
             self.activated = activated
+            self._mdn = mdn
+
+        @property
+        def mdn(self):
+            """
+            Returns the 'Mobile Directory Number' assigned to this modem by the
+            carrier. If not activated, the first 6 digits will contain '0'.
+
+            """
+            if self.activated:
+                return self._mdn
+            return '000000' + self._mdn[6:]
 
     def __init__(self,
                  home_network,
@@ -41,6 +55,7 @@ class ModemCdma(modem.Modem):
                  roaming_networks=[],
                  config=None):
         self.home_network = home_network
+        self.cdma_activate_step = None
         modem.Modem.__init__(self,
                              bus=bus,
                              device=device,
@@ -95,21 +110,33 @@ class ModemCdma(modem.Modem):
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC0_CELLULAR_800),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC1_PCS_1900),
         ]
+        if self.home_network:
+            props['OwnNumbers'] = [self.home_network.mdn]
+        else:
+            props['OwnNumbers'] = []
+
         return ip
 
-    @dbus.service.method(mm1.I_MODEM_CDMA, in_signature='s')
-    def Activate(self, carrier):
+    @dbus.service.method(mm1.I_MODEM_CDMA,
+                         in_signature='s',
+                         async_callbacks=('return_cb', 'raise_cb'))
+    def Activate(self, carrier, return_cb, raise_cb):
         """
         Provisions the modem for use with a given carrier using the modem's
         OTA activation functionality, if any.
 
-        @param carrier: Name of carrier
+        @param carrier: Automatic activation code.
+        @param return_cb: Asynchronous success callback.
+        @param raise_cb: Asynchronous failure callback. Has to take an instance
+                         of Exception or Error.
 
         Emits:
             ActivationStateChanged
 
         """
-        raise NotImplementedError()
+        logging.info('ModemCdma.Activate')
+        cdma_activate_machine.CdmaActivateMachine(
+            self, return_cb, raise_cb).Step()
 
     @dbus.service.method(mm1.I_MODEM_CDMA, in_signature='a{sv}')
     def ActivateManual(self, properties):
@@ -118,7 +145,7 @@ class ModemCdma(modem.Modem):
         carrier over the air. Some modems will reboot after this call is made.
 
         @param properties: A dictionary of properties to set on the modem,
-                           including "mdn" and "min"
+                           including "mdn" and "min".
 
         Emits:
             ActivationStateChanged
@@ -144,7 +171,50 @@ class ModemCdma(modem.Modem):
                                "min".
 
         """
-        raise NotImplementedError()
+        logging.info('ModemCdma: activation state changed: state: %u, error: '
+                     '%u, status_changes: %s',
+                     activation_state,
+                     activation_error,
+                     str(status_changes))
+
+    def IsPendingActivation(self):
+        """
+        @return True, if a CdmaActivationMachine is currently active.
+
+        """
+        return self.cdma_activate_step and \
+            not self.cdma_activate_step.cancelled
+
+    def ChangeActivationState(self, state, error):
+        """
+        Changes the activation state of this modem to the one provided.
+
+        If the requested state is MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED and
+        a cdma_activation_machine.CdmaActivationMachine associated with this
+        modem is currently active, then this method won't update the DBus
+        properties until after the modem has reset.
+
+        @param state: Requested activation state, given as a
+                      MMModemCdmaActivationState.
+        @param error: Carrier-specific error code, given as a
+                      MMCdmaActivationError.
+
+        """
+        status_changes = {}
+        if state == mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
+            self.home_network.activated = True
+            status_changes['mdn'] = self.home_network.mdn
+            self.Set(mm1.I_MODEM, 'OwnNumbers', status_changes['mdn'])
+
+            if self.IsPendingActivation():
+                logging.info("A CdmaActivationMachine is currently active. "
+                             "Deferring setting the 'ActivationState' property"
+                             " to ACTIVATED until after the reset is "
+                             "complete.")
+                return
+
+        self.SetUInt32(mm1.I_MODEM_CDMA, 'ActivationState', state)
+        self.ActivationStateChanged(state, error, status_changes)
 
     def GetHomeNetwork(self):
         """
@@ -194,10 +264,18 @@ class ModemCdma(modem.Modem):
 
     # Inherited from modem.Modem.
     def RegisterWithNetwork(self):
+        """
+        Overridden from superclass.
+
+        """
         logging.info('ModemCdma.RegisterWithNetwork')
         register_machine_cdma.RegisterMachineCdma(self).Step()
 
     def UnregisterWithNetwork(self):
+        """
+        Overridden from superclass.
+
+        """
         logging.info('ModemCdma.UnregisterWithNetwork')
         if self.Get(mm1.I_MODEM, 'State') != \
             mm1.MM_MODEM_STATE_REGISTERED:
@@ -212,7 +290,7 @@ class ModemCdma(modem.Modem):
     # Inherited from modem_simple.ModemSimple.
     def Connect(self, properties, return_cb, raise_cb):
         """
-        Overriden from superclass.
+        Overridden from superclass.
 
         @param properties
         @param return_cb
@@ -227,7 +305,7 @@ class ModemCdma(modem.Modem):
 
     def Disconnect(self, bearer_path, return_cb, raise_cb, *return_cb_args):
         """
-        Overriden from superclass.
+        Overridden from superclass.
 
         @param bearer_path
         @param return_cb
@@ -243,7 +321,7 @@ class ModemCdma(modem.Modem):
 
     def GetStatus(self):
         """
-        Overriden from superclass.
+        Overridden from superclass.
 
         """
         modem_props = self.GetAll(mm1.I_MODEM)
@@ -253,13 +331,10 @@ class ModemCdma(modem.Modem):
         if retval['state'] == mm1.MM_MODEM_STATE_REGISTERED:
             retval['signal-quality'] = modem_props['SignalQuality'][0]
             retval['bands'] = modem_props['Bands']
-            retval['access-technology'] = self.sim.access_technology
             retval['cdma-cdma1x-registration-state'] = \
                 cdma_props['Cdma1xRegistrationState']
             retval['cdma-evdo-registration-state'] = \
                 cdma_props['EvdoRegistrationState']
-            retval['m3gpp-registration-state'] = \
-                m3gpp_props['RegistrationState']
             retval['cdma-sid'] = cdma_props['Sid']
             retval['cdma-nid'] = cdma_props['Nid']
         return retval
