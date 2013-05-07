@@ -2,100 +2,48 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test, utils
+import dbus
+import logging
+import time
+import urlparse
+
+# Import 'flimflam_test_path' first in order to import flimflam' and 'mm'.
+from autotest_lib.client.cros import flimflam_test_path
+import flimflam
+import mm
+
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
+from autotest_lib.client.cros.cellular import cell_tools
 
 # TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
 # cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
 from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
 
-import logging, re, socket, string, time, urllib2
-import dbus, dbus.mainloop.glib, gobject
 
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam, routing, mm
+# Default timeouts in seconds
+CONNECT_TIMEOUT = 120
+DISCONNECT_TIMEOUT = 60
 
-SERVER = 'testing-chargen.appspot.com'
-BASE_URL = 'http://' + SERVER + '/'
-
+SHILL_LOG_SCOPES = 'cellular+dbus+device+dhcp+manager+modem+portal+service'
 
 class network_3GSmokeTest(test.test):
     version = 1
 
-    def ConnectTo3GNetwork(self, config_timeout, service_timeout):
-        """Attempts to connect to a 3G network using FlimFlam.
+    # TODO(benchan): Migrate to use ShillProxy when ShillProxy provides a
+    # similar method.
+    def DisconnectFrom3GNetwork(self, disconnect_timeout):
+        """Attempts to disconnect from a 3G network.
 
         Args:
-        config_timeout:  Timeout (in seconds) before giving up on connect
+            disconnect_timeout: Timeout in seconds for disconnecting from
+                the network.
 
         Raises:
-        error.TestFail if connection fails
-        """
-        logging.info('ConnectTo3GNetwork')
+            error.TestFail if it fails to disconnect from the network before
+               timeout.
 
-        service = self.flim.FindCellularService()
-        if not service:
-            raise error.TestError('Could not find cellular service.')
-
-        success, status = self.flim.ConnectService(
-            service=service,
-            config_timeout=config_timeout)
-        if not success:
-            raise error.TestFail('Could not connect: %s.' % status)
-
-        logging.info('Waiting for connected state.')
-        connected_states = ['portal', 'online']
-        state = self.flim.WaitForServiceState(service=service,
-                                              expected_states=connected_states,
-                                              timeout=service_timeout,
-                                              ignore_failure=True)[0]
-        if not state in connected_states:
-            raise error.TestFail('Still in state %s' % state)
-
-        return state
-
-    def FetchUrl(self, url_pattern=
-                 BASE_URL + 'download?size=%d',
-                 size=10,
-                 label=None):
-        """Fetch the URL, write a dictionary of performance data.
-
-        Args:
-          url_pattern:  URL to download with %d to be filled in with # of
-              bytes to download.
-          size:  Number of bytes to download.
-          label:  Label to add to performance keyval keys.
-        """
-        logging.info('FetchUrl')
-
-        if not label:
-            raise error.TestError('FetchUrl: no label supplied.')
-
-        url = url_pattern % size
-        start_time = time.time()
-        result = urllib2.urlopen(url, timeout=self.fetch_timeout)
-        bytes_received = len(result.read())
-        fetch_time = time.time() - start_time
-        if not fetch_time:
-            raise error.TestError('FetchUrl took 0 time.')
-
-        if bytes_received != size:
-            raise error.TestError('FetchUrl:  for %d bytes, got %d.' %
-                                  (size, bytes_received))
-
-        self.write_perf_keyval(
-            {'seconds_%s_fetch_time' % label: fetch_time,
-             'bytes_%s_bytes_received' % label: bytes_received,
-             'bits_second_%s_speed' % label: 8 * bytes_received / fetch_time}
-            )
-
-    def DisconnectFrom3GNetwork(self, disconnect_timeout):
-        """Attempts to disconnect to a 3G network using FlimFlam.
-
-        Args:
-          disconnect_timeout: Wait this long for disconnect to take
-              effect.  Raise if we time out.
         """
         logging.info('DisconnectFrom3GNetwork')
 
@@ -108,6 +56,7 @@ class network_3GSmokeTest(test.test):
             wait_timeout=disconnect_timeout)
         if not success:
             raise error.TestFail('Could not disconnect: %s.' % status)
+
 
     def GetModemInfo(self):
         """Find all modems attached and return an dictionary of information.
@@ -123,7 +72,7 @@ class network_3GSmokeTest(test.test):
         results = {}
 
         devices = mm.EnumerateDevices()
-        print 'Devices: %s' % ', '.join([p for m, p in devices])
+        print 'Devices: %s' % ', '.join([p for _, p in devices])
         for manager, path in devices:
             modem = manager.Modem(path)
             props = manager.Properties(path)
@@ -158,43 +107,8 @@ class network_3GSmokeTest(test.test):
             results[path] = info
         return results
 
-    def CheckInterfaceForDestination(self, host, service):
-        """Checks that routes for hosts go through the device for service.
 
-        The concern here is that our network setup may have gone wrong
-        and our test connections may go over some other network than
-        the one we're trying to test.  So we take all the IP addresses
-        for the supplied host and make sure they go through the
-        network device attached to the supplied Flimflam service.
-
-        Args:
-          host:  Destination host
-          service: Flimflam service object that should be used for
-            connections to host
-        """
-        # addrinfo records: (family, type, proto, canonname, (addr, port))
-        server_addresses = [record[4][0] for
-                            record in socket.getaddrinfo(SERVER, 80)]
-
-        device = self.flim.GetObjectInterface('Device',
-                                              service.GetProperties()['Device'])
-        expected = device.GetProperties()['Interface']
-        logging.info('Device for %s: %s', service.object_path, expected)
-
-        routes = routing.NetworkRoutes()
-        for address in server_addresses:
-            interface = routes.getRouteFor(address).interface
-            logging.info('interface for %s: %s', address, interface)
-            if interface != expected:
-                raise error.TestFail('Target server %s uses interface %s'
-                                     '(%s expected).' %
-                                     (address, interface, expected))
-
-    def run_once_internal(self, connect_count, sleep_kludge):
-        # TODO(armansito): Why do we call these?
-        bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-        self.bus = dbus.SystemBus(mainloop=bus_loop)
-
+    def run_once_internal(self):
         # Get to a good starting state
         network.ResetAllModems(self.flim)
 
@@ -203,62 +117,73 @@ class network_3GSmokeTest(test.test):
         # with a "I have no network!" exception, and then at the end when we
         # test that the modem info matches, it won't. Oops.
         time.sleep(5)
-        self.DisconnectFrom3GNetwork(disconnect_timeout=60)
+        self.DisconnectFrom3GNetwork(disconnect_timeout=DISCONNECT_TIMEOUT)
 
         # Get information about all the modems
-        modem_info = self.GetModemInfo()
+        old_modem_info = self.GetModemInfo()
 
-        for ii in xrange(connect_count):
-            state = self.ConnectTo3GNetwork(config_timeout=120,
-                                            service_timeout=30)
+        for _ in xrange(self.connect_count):
+            service, state = cell_tools.ConnectToCellular(self.flim,
+                                                          CONNECT_TIMEOUT)
 
             # TODO(armansito): The pseudomodem currently cannot connect
             # to the internet. See crosbug.com/36235
             if not self.use_pseudomodem:
-                self.CheckInterfaceForDestination(
-                    SERVER, self.flim.FindCellularService())
-
                 if state == 'portal':
-                    kwargs = dict(
-                        url_pattern=('https://quickaccess.verizonwireless.com/'
-                                     'images_b2c/shared/nav/'
-                                     'vz_logo_quickaccess.jpg?foo=%d'),
-                        size=4476)
+                    url_pattern = ('https://quickaccess.verizonwireless.com/'
+                                   'images_b2c/shared/nav/'
+                                   'vz_logo_quickaccess.jpg?foo=%d')
+                    bytes_to_fetch = 4476
                 else:
-                    kwargs = dict(size=1<<16)
-                self.FetchUrl(label='3G', **kwargs)
+                    url_pattern = network.FETCH_URL_PATTERN_FOR_TEST
+                    bytes_to_fetch = 64 * 1024
 
-            self.DisconnectFrom3GNetwork(disconnect_timeout=60)
+                device = self.flim.GetObjectInterface(
+                    'Device', service.GetProperties()['Device'])
+                interface = device.GetProperties()['Interface']
+                logging.info('Expected interface for %s: %s',
+                             service.object_path, interface)
+                network.CheckInterfaceForDestination(
+                    urlparse.urlparse(url_pattern).hostname,
+                    interface)
+
+                fetch_time = network.FetchUrl(url_pattern, bytes_to_fetch,
+                                              self.fetch_timeout)
+                self.write_perf_keyval({
+                    'seconds_3G_fetch_time': fetch_time,
+                    'bytes_3G_bytes_received': bytes_to_fetch,
+                    'bits_second_3G_speed': 8 * bytes_to_fetch / fetch_time
+                })
+
+            self.DisconnectFrom3GNetwork(disconnect_timeout=DISCONNECT_TIMEOUT)
 
             # Verify that we can still get information for all the modems
-            logging.info('Info: %s' % ', '.join(modem_info))
-            if len(self.GetModemInfo()) != len(modem_info):
-                logging.info('NewInfo: %s' % ', '.join(self.GetModemInfo()))
+            logging.info('Old modem info: %s', ', '.join(old_modem_info))
+            new_modem_info = self.GetModemInfo()
+            if len(new_modem_info) != len(old_modem_info):
+                logging.info('New modem info: %s', ', '.join(new_modem_info))
                 raise error.TestFail('Test shutdown: '
                                      'failed to leave modem in working state.')
 
-            if sleep_kludge:
-                logging.info('Sleeping for %.1f seconds', sleep_kludge)
-                time.sleep(sleep_kludge)
+            if self.sleep_kludge:
+                logging.info('Sleeping for %.1f seconds', self.sleep_kludge)
+                time.sleep(self.sleep_kludge)
+
 
     def run_once(self, connect_count=5, use_pseudomodem=False, sleep_kludge=5,
-        fetch_timeout=120):
+                 fetch_timeout=120):
+        self.connect_count = connect_count
         self.use_pseudomodem = use_pseudomodem
+        self.sleep_kludge = sleep_kludge
         self.fetch_timeout = fetch_timeout
+
         with backchannel.Backchannel():
             fake_sim = sim.SIM(sim.SIM.Carrier('att'),
-                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+                               mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
             with pseudomodem.TestModemManagerContext(use_pseudomodem,
-                                                     ['cromo', 'modemmanager'],
-                                                     fake_sim):
-                time.sleep(3)
-                self.flim = flimflam.FlimFlam()
-                self.device_manager = flimflam.DeviceManager(self.flim)
-                self.flim.SetDebugTags(
-                    'dbus+service+device+modem+cellular+portal+network+'
-                    'manager+dhcp')
-                try:
-                    self.device_manager.ShutdownAllExcept('cellular')
-                    self.run_once_internal(connect_count, sleep_kludge)
-                finally:
-                    self.device_manager.RestoreDevices()
+                                                     sim=fake_sim):
+                with cell_tools.OtherDeviceShutdownContext('cellular'):
+                    time.sleep(3)
+                    self.flim = flimflam.FlimFlam()
+                    self.flim.SetDebugTags(SHILL_LOG_SCOPES)
+                    self.run_once_internal()

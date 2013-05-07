@@ -2,10 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, time
+import dbus
+import logging
+import socket
+import time
+import urllib2
 
-import common, flimflam_test_path
+import common
+
+# Import 'flimflam_test_path' first in order to import 'routing'.
+import flimflam_test_path
+import routing
+
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm
 
 
@@ -41,9 +51,9 @@ def ResetAllModems(flim):
     try:
         if service and service.GetProperties()['Favorite']:
             service.SetProperty('AutoConnect', False),
-    except dbus.exceptions.DBusException, error:
+    except dbus.exceptions.DBusException, e:
         # The service object may disappear, we can safely ignore it.
-        if error._dbus_error_name != 'org.freedesktop.DBus.Error.UnknownMethod':
+        if e._dbus_error_name != 'org.freedesktop.DBus.Error.UnknownMethod':
             raise
 
     for manager, path in mm.EnumerateDevices():
@@ -62,7 +72,7 @@ def ResetAllModems(flim):
             timeout=30)
         modem.Enable(False)
         utils.poll_for_condition(
-            lambda: modem.IsDisabled(),
+            modem.IsDisabled,
             exception=
                 utils.TimeoutError('Timed out waiting for modem disable'),
             sleep_interval=1,
@@ -87,7 +97,7 @@ def ResetAllModems(flim):
         else:
             modem.Enable(True)
             utils.poll_for_condition(
-                lambda: modem.IsEnabled(),
+                modem.IsEnabled,
                 exception=
                     utils.TimeoutError('Timed out waiting for modem enable'),
                 sleep_interval=1,
@@ -104,12 +114,12 @@ def ClearGobiModemFaultInjection():
 
     gobi = modem_manager.GetModem(gobi_path).GobiModem()
     if gobi:
-        gobi.InjectFault('ClearFaults',1);
+        gobi.InjectFault('ClearFaults', 1)
 
 
 class IpTablesContext(object):
     """Context manager that manages iptables rules."""
-    IPTABLES='/sbin/iptables'
+    IPTABLES = '/sbin/iptables'
 
     def __init__(self, initial_allowed_host=None):
         self.initial_allowed_host = initial_allowed_host
@@ -171,3 +181,74 @@ def NameServersForService(flim, service):
     logging.info('Name servers: %s', ', '.join(hosts))
 
     return hosts
+
+
+def CheckInterfaceForDestination(host, expected_interface):
+    """Checks that routes for host go through a given interface.
+
+    The concern here is that our network setup may have gone wrong
+    and our test connections may go over some other network than
+    the one we're trying to test.  So we take all the IP addresses
+    for the supplied host and make sure they go through the given
+    network interface.
+
+    Args:
+        host: Destination host
+        expected_interface: Expected interface name
+
+    Raises:
+        error.TestFail if the routes for the given host go through
+            a different interface than the expected one.
+
+    """
+    # addrinfo records: (family, type, proto, canonname, (addr, port))
+    server_addresses = [record[4][0]
+                        for record in socket.getaddrinfo(host, 80)]
+
+    routes = routing.NetworkRoutes()
+    for address in server_addresses:
+        interface = routes.getRouteFor(address).interface
+        logging.info('interface for %s: %s', address, interface)
+        if interface != expected_interface:
+            raise error.TestFail('Target server %s uses interface %s'
+                                 '(%s expected).' %
+                                 (address, interface, expected_interface))
+
+
+FETCH_URL_PATTERN_FOR_TEST = \
+    'http://testing-chargen.appspot.com/download?size=%d'
+
+def FetchUrl(url_pattern, bytes_to_fetch=10, fetch_timeout=10):
+    """Fetch a specified number of bytes from a URL.
+
+    Args:
+        url_pattern: URL pattern for fetching a specified number of bytes.
+            %d in the pattern is to be filled in with the number of bytes to
+            fetch.
+        bytes_to_fetch: Number of bytes to fetch.
+        fetch_timeout: Number of seconds to wait for the fetch to complete
+            before it times out.
+
+    Returns:
+        The time in seconds spent for fetching the specified number of bytes.
+
+    Raises:
+        error.TestError if one of the following happens:
+            - The fetch takes no time.
+            - The number of bytes fetched differs from the specified number.
+
+    """
+    url = url_pattern % bytes_to_fetch
+    logging.info('FetchUrl %s', url)
+    start_time = time.time()
+    result = urllib2.urlopen(url, timeout=fetch_timeout)
+    bytes_fetched = len(result.read())
+    fetch_time = time.time() - start_time
+    if not fetch_time:
+        raise error.TestError('FetchUrl took no time to complete.')
+
+    if bytes_fetched != bytes_to_fetch:
+        raise error.TestError('FetchUrl expected %d bytes, got %d bytes.' %
+                              (bytes_to_fetch, bytes_fetched))
+
+    return fetch_time
