@@ -83,14 +83,19 @@ class HostLockManager(object):
         @returns a boolean: False == host is already locked.
         """
         mod_host = host.split('.')[0]
-        host_info = self._afe.get_hosts(hostname=host)[0]
+        host_info = self._afe.get_hosts(hostname=mod_host)
+        if not host_info:
+            logging.error('Skip unknown host %s.', host)
+            return False
+
+        host_info = host_info[0]
         if host_info.locked:
             err = ('Contention detected: %s is locked by %s at %s.' %
-                   (host, host_info.locked_by, host_info.lock_time))
+                   (mod_host, host_info.locked_by, host_info.lock_time))
             logging.error(err)
             return False
 
-        self.add([host])
+        self.add([mod_host])
         self.lock()
         return True
 
