@@ -32,9 +32,11 @@ ALLOWED_BEARER_PROPERTIES = [
 ]
 
 class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
+    SUPPORTS_MULTIPLE_OBJECT_PATHS = True
+
     def __init__(self, bus=None,
                  device='pseudomodem0',
-                 name='/Modem/0',
+                 index=0,
                  roaming_networks=[],
                  config=None):
         """
@@ -48,10 +50,11 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         """
 
         self.device = device
+        self.index = index
 
         # The superclass construct will call _InitializeProperties
         dbus_std_ifaces.DBusProperties.__init__(self,
-            mm1.MM1 + name, bus, config)
+            mm1.MM1 + '/Modem/' + str(index), bus, config)
 
         self.roaming_networks = roaming_networks
 
@@ -63,6 +66,9 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         self.connect_step = None
         self.disconnect_step = None
         self.register_step = None
+
+        self._modemmanager = None
+        self.resetting = False
 
     def _InitializeProperties(self):
         """
@@ -108,6 +114,20 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         }
         return { mm1.I_MODEM : props }
 
+    def IncrementPath(self):
+        self.index += 1
+        path = mm1.MM1 + '/Modem/' + str(self.index)
+        logging.info('Modem coming back as: ' + path)
+        self.SetPath(path)
+
+    @property
+    def manager(self):
+        return self._modemmanager
+
+    @manager.setter
+    def manager(self, manager):
+        self._modemmanager = manager
+
     def IsPendingEnable(self):
         return self.enable_step and not self.enable_step.cancelled
 
@@ -122,6 +142,18 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
     def IsPendingRegister(self):
         return self.register_step and not self.register_step.cancelled
+
+    def CancelAllStateMachines(self):
+        if self.IsPendingEnable():
+            self.enable_step.Cancel()
+        if self.IsPendingDisable():
+            self.disable_step.Cancel()
+        if self.IsPendingConnect():
+            self.connect_step.Cancel()
+        if self.IsPendingDisconnect():
+            self.disconnect_step.Cancel()
+        if self.IsPendingRegister():
+            self.register_step.Cancel()
 
     def SetSignalQuality(self, quality):
         self.Set(mm1.I_MODEM, 'SignalQuality', (dbus.types.Struct(
@@ -257,35 +289,56 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
     def Reset(self):
         logging.info('Resetting modem.')
 
-        def RaiseCb(error):
+        if self.resetting:
+            raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS,
+                                  'Reset already in progress.')
+
+        self.resetting = True
+
+        self.CancelAllStateMachines()
+
+        def ResetFunc():
+            # Disappear.
+            manager = self.manager
+            if manager:
+                manager.Remove(self)
+
+            self.bearers.clear()
+
+            # Reappear.
+            def DelayedReappear():
+                self.IncrementPath()
+
+                # Reset to defaults.
+                self._properties = self._InitializeProperties()
+                if self.sim:
+                    self.Set(mm1.I_MODEM,
+                             'Sim',
+                             dbus.types.ObjectPath(self.sim.path))
+
+                if manager:
+                    manager.Add(self)
+
+                self.resetting = False
+
+                def DelayedEnable():
+                    if self.Get(mm1.I_MODEM, 'State') < \
+                        mm1.MM_MODEM_STATE_ENABLED:
+                        self.Enable(True)
+                    return False
+
+                gobject.timeout_add(1000, DelayedEnable)
+                return False
+
+            gobject.timeout_add(2000, DelayedReappear)
+
+        def ErrorCallback(error):
             raise error
 
-        def DisableEnable():
-            self._properties = self._InitializeProperties()
-            if self.sim:
-                self.Set(mm1.I_MODEM,
-                         'Sim',
-                         dbus.types.ObjectPath(self.sim.path))
-            # Shill will issue a second disable a little after the modem
-            # becomes disabled (for fun of course). Wait here to make sure
-            # that the enable is issued after the second disable fails.
-            def DelayedEnable():
-                self.Enable(True)
-                return False
-            gobject.timeout_add(3000, DelayedEnable)
-
-        def ResetCleanup():
-            logging.info('ResetCleanup')
-            self.bearers.clear()
-            self.Enable(False, DisableEnable, RaiseCb)
-
         if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_CONNECTED:
-            self.Disconnect('/', ResetCleanup, RaiseCb)
+            self.Disconnect('/', ResetFunc, ErrorCallback)
         else:
-            ResetCleanup()
-
-        # TODO(armansito): For now this is fine, but ideally the manager should
-        # remove this modem object and create a brand new one.
+            gobject.idle_add(ResetFunc)
 
     @dbus.service.method(mm1.I_MODEM, in_signature='s')
     def FactoryReset(self, code):

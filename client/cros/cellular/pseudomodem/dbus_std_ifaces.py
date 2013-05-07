@@ -13,6 +13,7 @@ Python implementation of the standard interfaces:
 import dbus
 import dbus.service
 import dbus.types
+import gobject
 import logging
 
 import mm1
@@ -83,6 +84,10 @@ class DBusProperties(dbus.service.Object):
     def SetBus(self, bus):
         self.bus = bus
         self.add_to_connection(bus, self.path)
+
+    def SetPath(self, path):
+        self.path = path
+        self.add_to_connection(self.bus, path)
 
     def SetUInt32(self, interface_name, property_name, value):
         self.Set(interface_name, property_name, dbus.types.UInt32(value))
@@ -259,6 +264,7 @@ class DBusObjectManager(dbus.service.Object):
 
         """
         self.devices.append(device)
+        device.manager = self
         self.InterfacesAdded(device.path, device.GetInterfacesAndProperties())
 
     def Remove(self, device):
@@ -276,8 +282,8 @@ class DBusObjectManager(dbus.service.Object):
         if device in self.devices:
             self.devices.remove(device)
         interfaces = device.GetInterfacesAndProperties().keys()
-        device.remove_from_connection()
         self.InterfacesRemoved(device.path, interfaces)
+        device.remove_from_connection()
 
     @dbus.service.method(mm1.I_OBJECT_MANAGER, out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):

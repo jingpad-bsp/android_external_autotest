@@ -35,11 +35,14 @@ class ModemCdma(modem.Modem):
                  home_network,
                  bus=None,
                  device='pseudomodem0',
-                 name='/Modem/0',
                  roaming_networks=[],
                  config=None):
         self.home_network = home_network
-        modem.Modem.__init__(self, bus, device, name, roaming_networks, config)
+        modem.Modem.__init__(self,
+                             bus=bus,
+                             device=device,
+                             roaming_networks=roaming_networks,
+                             config=config)
 
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
