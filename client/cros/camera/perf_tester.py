@@ -1,3 +1,4 @@
+# -*- coding: utf-8; tab-width: 4; python-indent: 4 -*-
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -311,18 +312,22 @@ def CheckLensShading(sample, check_low_freq=True,
     # Check if any pixel on the boundary is lower than the threshold.
     # A little smoothing to deal with the possible noise.
     k_size = (7, 7)
-    ret.msg = 'Found dark pixels on the boundary.'
-    if np.any(cv2.blur(img[0, :], k_size) < pass_value):
-        return False, ret
-    if np.any(cv2.blur(img[-1, :], k_size) < pass_value):
-        return False, ret
-    if np.any(cv2.blur(img[:, 0], k_size) < pass_value):
-        return False, ret
-    if np.any(cv2.blur(img[:, -1], k_size) < pass_value):
-        return False, ret
+    edge1 = cv2.blur(img[0, :], k_size)
+    edge2 = cv2.blur(img[-1, :], k_size)
+    edge3 = cv2.blur(img[:, 0], k_size)
+    edge4 = cv2.blur(img[:, -1], k_size)
+    lowest_value = min(np.min(edge1),
+                       np.min(edge2),
+                       np.min(edge3),
+                       np.min(edge4))
+    ret.lowest_ratio = lowest_value / mtop
 
-    ret.msg = None
-    return True, ret
+    if lowest_value < pass_value:
+        ret.msg = 'Found dark pixels on the boundary.'
+        return False, ret
+    else:
+        ret.msg = None
+        return True, ret
 
 
 def CheckVisualCorrectness(

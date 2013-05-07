@@ -661,6 +661,10 @@ class factory_CameraPerformanceAls(test.test):
         if hasattr(tar_data, 'shift'):
             log_visual_data(float(tar_data.shift), 'image_shift',
                             'Image shift percentage: %f')
+            log_visual_data(float(tar_data.v_shift[0]), 'image_shift_x',
+                            'Image shift X: %f')
+            log_visual_data(float(tar_data.v_shift[1]), 'image_shift_y',
+                            'Image shift Y: %f')
             log_visual_data(float(tar_data.tilt), 'image_tilt',
                             'Image tilt: %f degrees')
         if not success:
@@ -684,6 +688,9 @@ class factory_CameraPerformanceAls(test.test):
         if tar_ls.check_low_freq:
             log_visual_data(float(tar_ls.response), 'ls_low_freq',
                             'Low-frequency response value: %f')
+        if tar_ls.lowest_ratio:
+            log_visual_data(float(tar_ls.lowest_ratio), 'ls_lowest_ratio',
+                            'Len shading ratio: %f')
         if not success:
             self.log('Lens shading: %s\n' % tar_ls.msg)
             return
