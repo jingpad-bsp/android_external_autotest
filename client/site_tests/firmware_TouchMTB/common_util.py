@@ -60,6 +60,12 @@ def program_exists(program):
     return os.system('which %s > /dev/null 2>&1' % program) == 0
 
 
+def print_and_exit(msg, exit_code=-1):
+    """Print a message and exit."""
+    print msg
+    sys.exit(exit_code)
+
+
 class Debug:
     """A simple class to print the debug message."""
     def __init__(self, debug_flag=False):

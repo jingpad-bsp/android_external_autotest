@@ -190,11 +190,3 @@ VAL.BOTH_ENDS = 'BothEnds'
 VAL.WHOLE = 'Whole'
 # SEGMENT_LIST is a list of all attributes above
 VAL.SEGMENT_LIST = list(VAL.__dict__.values())
-
-
-class _Vlog(_Constant):
-    """Constants about validator logs."""
-    pass
-VLOG = _Vlog()
-VLOG.DICT = 'vlog_dict'
-VLOG.GV_LIST = 'gv_list'

@@ -53,6 +53,7 @@ Note that it is also possible to instantiate a validator as
 '''
 
 
+import copy
 import numpy as n
 import os
 import re
@@ -78,27 +79,27 @@ def validate(packets, gesture, variation):
 
     msg_list = []
     score_list = []
-    logs = []
+    vlogs = []
     for validator in gesture.validators:
-        log = validator.check(packets, variation)
-        if log is None:
+        vlog = validator.check(packets, variation)
+        if vlog is None:
             continue
-        logs.append(log)
-        score = log.get_score()
+        vlogs.append(copy.deepcopy(vlog))
+        score = vlog.score
 
         if score is not None:
             score_list.append(score)
             # save the validator messages
-            msg_validator_name = '%s' % log.get_name()
-            msg_criteria = '    criteria_str: %s' % log.get_criteria()
+            msg_validator_name = '%s' % vlog.name
+            msg_criteria = '    criteria_str: %s' % vlog.criteria
             msg_score = 'score: %f' % score
             msg_list.append(os.linesep)
             msg_list.append(msg_validator_name)
-            msg_list += log.get_details()
+            msg_list += vlog.details
             msg_list.append(msg_criteria)
             msg_list.append(msg_score)
 
-    return (score_list, msg_list, logs)
+    return (score_list, msg_list, vlogs)
 
 
 def get_short_name(validator_name):
@@ -162,15 +163,14 @@ class BaseValidator(object):
         self.device = device if device else BaseValidator._device
         self.device_width, self.device_height = self.device.get_dimensions()
         self.packets = None
-        self.msg_list = []
-        self.log = firmware_log.ValidatorLog()
-        self.log.insert_name(name)
-        self.log.insert_criteria(criteria_str)
+        self.vlog = firmware_log.ValidatorLog()
+        self.vlog.name = name
+        self.vlog.criteria = criteria_str
 
     def init_check(self, packets=None):
         """Initialization before check() is called."""
         self.packets = mtb.Mtb(packets)
-        self.msg_list = []
+        self.vlog.reset()
 
     def _is_direction_in_variation(self, variation, directions):
         """Is any element of directions list found in variation?"""
@@ -214,24 +214,11 @@ class BaseValidator(object):
             return variation
         return None
 
-    def log_name(self, msg):
-        """Collect the validator name."""
-        self.log.insert_name(msg)
-
     def log_details(self, msg):
         """Collect the detailed messages to be printed within this module."""
         prefix_space = ' ' * 4
         formatted_msg = '%s%s' % (prefix_space, msg)
-        self.msg_list.append(formatted_msg)
-        self.log.insert_details(formatted_msg)
-
-    def log_score(self, score):
-        """Collect the score."""
-        self.log.insert_score(score)
-
-    def log_error(self, msg):
-        """Collect the error message."""
-        self.log.insert_error(msg)
+        self.vlog.insert_details(formatted_msg)
 
 
 class LinearityValidator(BaseValidator):
@@ -350,16 +337,16 @@ class LinearityValidator(BaseValidator):
         # average deviation on touch device in mm.
         if self.is_vertical(variation):
             ave_distance = self._simple_linear_regression(list_y, list_x)
-            deviation_touch = ave_distance / resolution_x
+            deviation = ave_distance / resolution_x
         else:
             ave_distance = self._simple_linear_regression(list_x, list_y)
-            deviation_touch = ave_distance / resolution_y
+            deviation = ave_distance / resolution_y
 
         self.log_details('ave fitting error: %.2f px' % ave_distance)
         msg_device = 'deviation slot%d: %.2f mm'
-        self.log_details(msg_device % (self.slot, deviation_touch))
-        self.log_score(self.fc.mf.grade(deviation_touch))
-        return self.log
+        self.log_details(msg_device % (self.slot, deviation))
+        self.vlog.score = self.fc.mf.grade(deviation)
+        return self.vlog
 
 
 class RangeValidator(BaseValidator):
@@ -422,8 +409,8 @@ class RangeValidator(BaseValidator):
         self.log_details('actual: %s' % str(actual_range_axis))
         self.log_details('spec: %s' % str(spec_range_axis))
         self.log_details('ave_deviation: %f' % ave_deviation)
-        self.log_score(self.fc.mf.grade(ave_deviation))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(ave_deviation)
+        return self.vlog
 
 
 class CountTrackingIDValidator(BaseValidator):
@@ -445,8 +432,8 @@ class CountTrackingIDValidator(BaseValidator):
         # Get the count of tracking id
         count_tid = self.packets.get_number_contacts()
         self.log_details('count of trackid IDs: %d' % count_tid)
-        self.log_score(self.fc.mf.grade(count_tid))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(count_tid)
+        return self.vlog
 
 
 class StationaryFingerValidator(BaseValidator):
@@ -471,8 +458,8 @@ class StationaryFingerValidator(BaseValidator):
         distance = self.packets.get_largest_distance(self.slot)
         self.log_details('Largest distance slot%d: %d px' %
                          (self.slot, distance))
-        self.log_score(self.fc.mf.grade(distance))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(distance)
+        return self.vlog
 
 
 class NoGapValidator(BaseValidator):
@@ -495,8 +482,8 @@ class NoGapValidator(BaseValidator):
         gap_ratio = self.packets.get_largest_gap_ratio(self.slot)
         msg = 'Largest gap ratio slot%d: %f'
         self.log_details(msg % (self.slot, gap_ratio))
-        self.log_score(self.fc.mf.grade(gap_ratio))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(gap_ratio)
+        return self.vlog
 
 
 class NoReversedMotionValidator(BaseValidator):
@@ -532,8 +519,8 @@ class NoReversedMotionValidator(BaseValidator):
             msg = 'Reversed motions slot%d: %s px'
             self.log_details(msg % (slot, reversed_motions))
             sum_reversed_motions += sum(map(abs, reversed_motions.values()))
-        self.log_score(self.fc.mf.grade(sum_reversed_motions))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(sum_reversed_motions)
+        return self.vlog
 
 
 class CountPacketsValidator(BaseValidator):
@@ -557,8 +544,8 @@ class CountPacketsValidator(BaseValidator):
         num_packets = self.packets.get_num_packets(self.slot)
         msg = 'Number of packets slot%d: %s'
         self.log_details(msg % (self.slot, num_packets))
-        self.log_score(self.fc.mf.grade(num_packets))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(num_packets)
+        return self.vlog
 
 
 class PinchValidator(BaseValidator):
@@ -583,8 +570,8 @@ class PinchValidator(BaseValidator):
             relative_motion = -relative_motion
         msg = 'Relative motions of the two fingers: %.2f px'
         self.log_details(msg % relative_motion)
-        self.log_score(self.fc.mf.grade(relative_motion))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(relative_motion)
+        return self.vlog
 
 
 class PhysicalClickValidator(BaseValidator):
@@ -608,8 +595,8 @@ class PhysicalClickValidator(BaseValidator):
         count = self.packets.get_physical_clicks(self.fingers)
         msg = 'Count of %d-finger physical clicks: %s'
         self.log_details(msg % (self.fingers, count))
-        self.log_score(self.fc.mf.grade(count))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(count)
+        return self.vlog
 
 
 class DrumrollValidator(BaseValidator):
@@ -633,8 +620,8 @@ class DrumrollValidator(BaseValidator):
         max_distance = self.packets.get_max_distance_of_all_tracking_ids()
         msg = 'Max distance: %.2f px'
         self.log_details(msg % max_distance)
-        self.log_score(self.fc.mf.grade(max_distance))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(max_distance)
+        return self.vlog
 
 
 class NoLevelJumpValidator(BaseValidator):
@@ -686,8 +673,8 @@ class NoLevelJumpValidator(BaseValidator):
         max_jump = max(jumps) if jumps else 0
         msg = 'Max accu jump: %d px'
         self.log_details(msg % (max_jump))
-        self.log_score(self.fc.mf.grade(max_jump))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(max_jump)
+        return self.vlog
 
 
 class ReportRateValidator(BaseValidator):
@@ -711,5 +698,5 @@ class ReportRateValidator(BaseValidator):
         report_rate = self.packets.get_report_rate()
         msg = 'Report rate: %.2f Hz'
         self.log_details(msg % report_rate)
-        self.log_score(self.fc.mf.grade(report_rate))
-        return self.log
+        self.vlog.score = self.fc.mf.grade(report_rate)
+        return self.vlog

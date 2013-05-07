@@ -4,7 +4,6 @@
 
 """Touch firmware test report in html format."""
 
-import json
 import os
 import urllib
 
@@ -12,7 +11,7 @@ import common_util
 import firmware_log
 import test_conf as conf
 
-from firmware_constants import VLOG
+from firmware_utils import get_fw_and_date
 from string import Template
 
 
@@ -89,13 +88,12 @@ $details
 
     def _insert_vlog(self, vlog):
         """Insert a single vlog."""
-        score=vlog.get_score()
         vlog_content = self.validator_template.safe_substitute(
-                name=vlog.get_name(),
-                details=self._insert_details(vlog.get_details()),
-                criteria=vlog.get_criteria(),
-                color=self.get_score_color(score),
-                score=score)
+                name=vlog.name,
+                details=self._insert_details(vlog.details),
+                criteria=vlog.criteria,
+                color=self.get_score_color(vlog.score),
+                score=vlog.score)
         return vlog_content
 
     def _insert_vlogs(self, vlogs):
@@ -105,13 +103,13 @@ $details
             vlogs_content.append(self._insert_vlog(vlog))
         return '<hr>'.join(vlogs_content)
 
-    def insert_gesture(self, glog, image, image_filename, vlogs):
+    def insert_gesture(self, glog, image, image_filename):
         """Insert glog, image, and vlogs."""
-        vlogs_content = self._insert_vlogs(vlogs)
+        vlogs_content = self._insert_vlogs(glog.vlogs)
         gesture = self.gesture_template.safe_substitute(
-                gesture_name=glog.get_name(),
-                variation=glog.get_variation(),
-                prompt=glog.get_prompt(),
+                gesture_name=glog.name,
+                variation=glog.variation,
+                prompt=glog.prompt,
                 image=image,
                 filename=image_filename,
                 vlogs=vlogs_content)
@@ -137,9 +135,8 @@ class ReportHtml:
         self.doc = TemplateHtml(self.image_width, self.image_height,
                                 score_colors)
         self._reset_content()
-        self.log_dict = {}
-        self.log_dict[VLOG.DICT] = {}
-        self.log_dict[VLOG.GV_LIST] = []
+        fw_and_date = get_fw_and_date(filename)
+        self.rlog = firmware_log.RoundLog(*fw_and_date)
 
     def __del__(self):
         self.stop()
@@ -154,20 +151,18 @@ class ReportHtml:
         copy_cmd = 'cp %s %s' % (self.html_filename, tmp_copy)
         common_util.simple_system(copy_cmd)
 
-        # Dump the logs to a json file
+        # Dump the logs to a byte stream file
         log_file_root = os.path.splitext(self.html_filename)[0]
-        log_file_name = os.extsep.join([log_file_root, 'log'])
-        with open(log_file_name, 'w') as log_file:
-            json.dump(self.log_dict, log_file)
+        log_filename = os.extsep.join([log_file_root, 'log'])
+        self.rlog.dump(log_filename)
 
     def _reset_content(self):
         self.glog = firmware_log.GestureLog()
         self.encoded_image=''
         self.image_filename=''
-        self.vlogs = []
 
     def _get_content(self):
-        return [self.glog, self.encoded_image, self.image_filename, self.vlogs]
+        return [self.glog, self.encoded_image, self.image_filename]
 
     def _encode_base64(self, filename):
         """Encode a file in base 64 format."""
@@ -176,34 +171,16 @@ class ReportHtml:
         encoded = urllib.quote(open(filename, "rb").read().encode("base64"))
         return encoded
 
-    def reset_logs(self):
-        "Reset the details of vlogs."
-        for vlog in self.vlogs:
-            vlog.reset()
-
-    def _insert_log_dict(self, glog, vlogs):
-        """Insert the glog and vlogs key value pair into the log dictionary."""
-        glog_key = str([glog.get_name(), glog.get_variation()])
-        if self.log_dict[VLOG.DICT].get(glog_key) is None:
-            self.log_dict[VLOG.DICT][glog_key] = {}
-        for vlog in vlogs:
-            vname = vlog.get_name()
-            if self.log_dict[VLOG.DICT][glog_key].get(vname) is None:
-                self.log_dict[VLOG.DICT][glog_key][vname] = []
-            self.log_dict[VLOG.DICT][glog_key][vname].append(vlog.get_score())
-
-        if glog_key not in self.log_dict[VLOG.GV_LIST]:
-            self.log_dict[VLOG.GV_LIST].append(glog_key)
-
     def flush(self):
         """Flush the current gesture including gesture log, image and
         validator logs.
         """
         content = self._get_content()
         if all(content):
+            # Write the content to the html file.
             self.doc.insert_gesture(*content)
-            self._insert_log_dict(self.glog, self.vlogs)
-            self.reset_logs()
+            # Write the logs to the round log.
+            self.rlog.insert_glog(self.glog)
             self._reset_content()
 
     def insert_image(self, filename):
@@ -215,10 +192,10 @@ class ReportHtml:
         """Insert the text into the document."""
         self.result += text
 
-    def insert_gesture_log(self, log):
+    def insert_gesture_log(self, glog):
         """Update the gesture log."""
-        self.glog.update(log)
+        self.glog = glog
 
-    def insert_validator_logs(self, logs):
+    def insert_validator_logs(self, vlogs):
         """Update the validator logs."""
-        self.vlogs = logs
+        self.glog.vlogs = vlogs

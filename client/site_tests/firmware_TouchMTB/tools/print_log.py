@@ -10,35 +10,39 @@ Example: python tools/print_log.py tests/log/lumpy
 
 
 import glob
-import json
+import pickle
 import os
 import sys
 
+# Need to have this line because pickle needs firmware_log module to load logs.
 sys.path.append(os.getcwd())
-from firmware_constants import VLOG
-
-
-GV_DICT = 'vlog_dict'
-GV_LIST = 'gv_list'
 
 
 def _print_log(log_dir):
     ext = '.log'
-    filenames = glob.glob(os.path.join(log_dir, '*', '*' + ext))
-    print 'filenames: ', filenames
+    filenames = glob.glob(os.path.join(log_dir, '*.log'))
     for filename in filenames:
         print 'Printing %s ...' % filename
-        log_dict = {}
+
         with open(filename) as log_file:
-            log_data = json.load(log_file)
-            log_dict[GV_DICT] = {}
-            for gv in log_data[GV_DICT]:
-                print '  ', gv
-                log_dict[GV_DICT][gv] = {}
-                for validator, score in sorted(log_data[GV_DICT][gv].items()):
-                    print '          %s:  %s' % (validator, str(score))
-            gv_list = log_data[GV_LIST]
-            log_dict[GV_LIST] = gv_list
+            fw = pickle.load(log_file)
+            date = pickle.load(log_file)
+            glogs = pickle.load(log_file)
+
+        prefix_spaces = ' ' * 2
+        print prefix_spaces + 'fw:   ', fw
+        print prefix_spaces + 'date: ', date
+        print prefix_spaces + 'glogs: '
+        for glog in glogs:
+            vlogs = glog.vlogs
+            if not vlogs:
+                continue
+
+            print prefix_spaces * 2 + '(%s %s)' % (glog.name, glog.variation)
+            for vlog in vlogs:
+                print prefix_spaces * 4 + '%s: ' % vlog.name
+                print prefix_spaces * 5 + 'score: %s' % str(vlog.score)
+        print
 
 
 if __name__ == '__main__':

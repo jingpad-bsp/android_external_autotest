@@ -313,9 +313,9 @@ class TestFlow:
         msg = '%s: %s' % (test.name, monochrome_prompt)
 
         glog = firmware_log.GestureLog()
-        glog.insert_name(test.name)
-        glog.insert_variation(variation)
-        glog.insert_prompt(monochrome_prompt)
+        glog.name = test.name
+        glog.variation = variation
+        glog.prompt = monochrome_prompt
 
         return (msg, color_msg, glog)
 
@@ -422,7 +422,6 @@ class TestFlow:
     def _handle_user_choice_discard_after_parsing(self):
         """Handle user choice for discarding the parsed gesture file."""
         self.output.print_window('')
-        self.output.report_html.reset_logs()
         self._setup_this_gesture_variation()
         self._prompt_and_action()
         self.packets = None

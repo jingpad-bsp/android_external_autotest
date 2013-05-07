@@ -15,28 +15,28 @@ from firmware_summary import FirmwareSummary
 
 
 # Define the relative segment weights of a validator.
-segment_weight = {VAL.BEGIN: 0.15,
-                  VAL.MIDDLE: 0.7,
-                  VAL.END: 0.15,
-                  VAL.BOTH_ENDS: 0.15 + 0.15,
-                  VAL.WHOLE: 0.15 + 0.7 + 0.15}
+segment_weights = {VAL.BEGIN: 0.15,
+                   VAL.MIDDLE: 0.7,
+                   VAL.END: 0.15,
+                   VAL.BOTH_ENDS: 0.15 + 0.15,
+                   VAL.WHOLE: 0.15 + 0.7 + 0.15}
 
 # Define the validator score weights
 weight_rare = 1
 weight_common = 2
 weight_critical = 3
-validator_weight = {'CountPacketsValidator': weight_common,
-                    'CountTrackingIDValidator': weight_critical,
-                    'DrumrollValidator': weight_rare,
-                    'LinearityValidator': weight_common,
-                    'NoGapValidator': weight_common,
-                    'NoLevelJumpValidator': weight_rare,
-                    'NoReversedMotionValidator': weight_common,
-                    'PhysicalClickValidator': weight_critical,
-                    'PinchValidator': weight_common,
-                    'RangeValidator': weight_common,
-                    'ReportRateValidator': weight_common,
-                    'StationaryFingerValidator': weight_common}
+validator_weights = {'CountPacketsValidator': weight_common,
+                     'CountTrackingIDValidator': weight_critical,
+                     'DrumrollValidator': weight_rare,
+                     'LinearityValidator': weight_common,
+                     'NoGapValidator': weight_common,
+                     'NoLevelJumpValidator': weight_rare,
+                     'NoReversedMotionValidator': weight_common,
+                     'PhysicalClickValidator': weight_critical,
+                     'PinchValidator': weight_common,
+                     'RangeValidator': weight_common,
+                     'ReportRateValidator': weight_common,
+                     'StationaryFingerValidator': weight_common}
 
 
 class FirmwareSummaryTest(unittest.TestCase):
@@ -46,19 +46,17 @@ class FirmwareSummaryTest(unittest.TestCase):
         test_dir = os.path.join(os.getcwd(), 'tests')
         log_dir = os.path.join(test_dir, 'logs', cls.log_category)
         summary = FirmwareSummary(log_dir=log_dir,
-                                  validator_weight=validator_weight,
-                                  segment_weight=segment_weight)
-        cls._validator_average = summary.validator_average
-        cls._validator_ssd = summary.validator_ssd
-        cls._validator_summary_score = summary.validator_summary_score
-        cls._validator_summary_ssd = summary.validator_summary_ssd
-        cls._weighted_average = summary.weighted_average
+                                  validator_weights=validator_weights,
+                                  segment_weights=segment_weights)
+        cls.slog = summary.slog
         cls._round_digits = 8
 
-    def _get_score(self, fw, validator, gesture):
+    def _get_score(self, fw=None, gesture=None, validator=None):
         """Score = sum / count, rounded to the 4th digit."""
-        return round(self._validator_average[fw][validator][gesture],
-                     self._round_digits)
+        result= self.slog.get_result(fw=fw, gesture=gesture,
+                                     validator=validator)
+        average = result.stat_score.average
+        return round(average, self._round_digits)
 
 
 class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
@@ -76,7 +74,9 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
     def _test_by_gesture(self, validator, expected_scores):
         for fw, fw_expected_scores in expected_scores.items():
             for gesture, expected_score in fw_expected_scores.items():
-                actual_score = self._get_score(fw, validator, gesture)
+                actual_score = self._get_score(fw=fw,
+                                               gesture=gesture,
+                                               validator=validator)
                 self.assertAlmostEqual(actual_score, expected_score)
 
     def test_by_gesture_LinearityBothEndsValidator(self):
@@ -143,7 +143,7 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         }
         for fw, fw_expected_scores in expected_scores.items():
             for validator, expected_score in fw_expected_scores.items():
-                actual_score = self._validator_summary_score[validator][fw]
+                actual_score = self._get_score(fw=fw, validator=validator)
                 actual_score = round(actual_score, self._round_digits)
                 self.assertAlmostEqual(actual_score, expected_score)
 
@@ -152,8 +152,9 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
             'fw_11.23': 0.83536569,
             'fw_11.27': 0.93257017,
         }
+        final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():
-            actual_value = self._weighted_average[fw]
+            actual_value = final_weighted_average[fw]
             actual_value = round(actual_value, self._round_digits)
             self.assertAlmostEqual(actual_value, expected_value)
 

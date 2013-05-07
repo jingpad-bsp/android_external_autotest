@@ -66,7 +66,7 @@ class CountTrackingIDValidatorTest(BaseValidatorTest):
         packets = parse_tests_data(filename)
         validator = CountTrackingIDValidator(criteria, device=device)
         vlog = validator.check(packets)
-        return vlog.get_score()
+        return vlog.score
 
     def test_two_finger_id_change(self):
         """Two two fingers id change.
@@ -110,7 +110,7 @@ class DrumrollValidatorTest(BaseValidatorTest):
         packets = parse_tests_data(filename)
         validator = DrumrollValidator(criteria, device=device)
         vlog = validator.check(packets)
-        return vlog.get_score()
+        return vlog.score
 
     def test_drumroll_lumpy(self):
         """Should catch the drumroll on lumpy.
@@ -158,7 +158,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         for slot in slots:
             validator = LinearityValidator(criteria_str, device=device,
                                            slot=slot)
-            scores[slot] = validator.check(packets, direction).get_score()
+            scores[slot] = validator.check(packets, direction).score
         return scores
 
     def test_linearity_criteria0(self):
@@ -193,7 +193,7 @@ class LinearityValidatorTest(BaseValidatorTest):
             slots = (slots,)
         for slot in slots:
             validator = LinearityValidator(criteria, device=device, slot=slot)
-            scores[slot] = validator.check(packets, direction).get_score()
+            scores[slot] = validator.check(packets, direction).score
         return scores
 
     def test_two_finger_jagged_lines(self):
@@ -315,7 +315,7 @@ class NoGapValidatorTest(BaseValidatorTest):
         packets = parse_tests_data(file_subpath)
         validator = NoGapValidator(criteria, device=device, slot=slot)
         vlog = validator.check(packets)
-        return vlog.get_score()
+        return vlog.score
 
     def test_two_finger_scroll_gaps(self):
         """Test that there are gaps in the two finger scroll gesture.
@@ -368,7 +368,7 @@ class StationaryFingerValidatorTest(BaseValidatorTest):
         packets = parse_tests_data(filename)
         validator = StationaryFingerValidator(criteria, device=device)
         vlog = validator.check(packets)
-        return vlog.get_score()
+        return vlog.score
 
     def test_stationary_finger_shift(self):
         """Test that the stationary shift due to 2nd finger tapping.
@@ -408,7 +408,7 @@ class NoLevelJumpValidatorTest(BaseValidatorTest):
                                          slots=[0,])
         packets = parse_tests_data(filename, gesture_dir=self.gesture_dir)
         vlog = validator.check(packets)
-        score = vlog.get_score()
+        score = vlog.score
         return score
 
     def test_level_jumps(self):
@@ -448,7 +448,7 @@ class ReportRateValidatorTest(BaseValidatorTest):
         validator = ReportRateValidator(self.criteria, device=device)
         packets = parse_tests_data(filename)
         vlog = validator.check(packets)
-        score = vlog.get_score()
+        score = vlog.score
         return score
 
     def test_level_jumps(self):
