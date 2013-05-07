@@ -5,8 +5,8 @@
 import logging
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
-
 
 class firmware_ECKeyboard(FAFTSequence):
     """

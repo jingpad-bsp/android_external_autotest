@@ -20,6 +20,12 @@ class firmware_ECCharging(FAFTSequence):
         super(firmware_ECCharging, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+        self.ec.send_command("chan 0")
+
+
+    def cleanup(self):
+        self.ec.send_command("chan 0xffffffff")
+        super(firmware_ECCharging, self).cleanup()
 
 
     def _get_battery_desired_voltage(self):

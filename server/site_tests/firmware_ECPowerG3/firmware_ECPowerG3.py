@@ -27,6 +27,12 @@ class firmware_ECPowerG3(FAFTSequence):
         super(firmware_ECPowerG3, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+        self.ec.send_command("chan 0")
+
+
+    def cleanup(self):
+        self.ec.send_command("chan 0xffffffff")
+        super(firmware_ECPowerG3, self).cleanup()
 
 
     def wait_power(self, reg_ex, timeout):

@@ -5,6 +5,7 @@
 import logging
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 class firmware_ECSharedMem(FAFTSequence):
@@ -18,6 +19,12 @@ class firmware_ECSharedMem(FAFTSequence):
         super(firmware_ECSharedMem, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+        self.ec.send_command("chan 0")
+
+
+    def cleanup(self):
+        self.ec.send_command("chan 0xffffffff")
+        super(firmware_ECSharedMem, self).cleanup()
 
 
     def shared_mem_checker(self):

@@ -40,6 +40,12 @@ class firmware_ECBattery(FAFTSequence):
         super(firmware_ECBattery, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+        self.ec.send_command("chan 0")
+
+
+    def cleanup(self):
+        self.ec.send_command("chan 0xffffffff")
+        super(firmware_ECBattery, self).cleanup()
 
 
     def _get_battery_path(self):

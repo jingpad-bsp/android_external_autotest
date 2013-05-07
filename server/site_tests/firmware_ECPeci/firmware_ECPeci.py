@@ -17,6 +17,16 @@ class firmware_ECPeci(FAFTSequence):
     # Repeat read count
     READ_COUNT = 200
 
+    def setup(self):
+        super(firmware_ECPeci, self).setup()
+        self.ec.send_command("chan 0")
+
+
+    def cleanup(self):
+        self.ec.send_command("chan 0xffffffff")
+        super(firmware_ECPeci, self).cleanup()
+
+
     def _check_read(self):
         """Read CPU temperature through PECI.
 

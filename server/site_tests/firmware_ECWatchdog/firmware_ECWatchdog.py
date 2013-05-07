@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros.faftsequence import FAFTSequence
 import logging
 import time
 
+from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 class firmware_ECWatchdog(FAFTSequence):
     """

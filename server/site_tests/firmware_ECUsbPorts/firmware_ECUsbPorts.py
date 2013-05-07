@@ -29,6 +29,12 @@ class firmware_ECUsbPorts(FAFTSequence):
         super(firmware_ECUsbPorts, self).setup()
         # Only run in normal mode
         self.setup_dev_mode(False)
+        self.ec.send_command("chan 0")
+
+
+    def cleanup(self):
+        self.ec.send_command("chan 0xffffffff")
+        super(firmware_ECUsbPorts, self).cleanup()
 
 
     def fake_reboot_by_usb_mode_change(self):

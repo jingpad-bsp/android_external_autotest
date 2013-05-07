@@ -49,12 +49,14 @@ class firmware_FAFTSetup(FAFTSequence):
             # Not Chrome EC. Nothing to check.
             return True
         try:
+            self.ec.send_command("chan 0")
             expected_output = ["Chip:\s+[^\r\n]*\r\n",
                                "RO:\s+[^\r\n]*\r\n",
                                "RW:\s+[^\r\n]*\r\n",
                                "Build:\s+[^\r\n]*\r\n"]
             self.ec.send_command_get_output("version",
                                             expected_output)
+            self.ec.send_command("chan 0xffffffff")
             return True
         except: # pylint: disable=W0702
             logging.error("Cannot talk to EC console.")

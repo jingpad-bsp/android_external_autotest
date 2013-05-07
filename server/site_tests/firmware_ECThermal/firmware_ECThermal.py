@@ -137,6 +137,7 @@ class firmware_ECThermal(FAFTSequence):
 
     def setup(self):
         super(firmware_ECThermal, self).setup()
+        self.ec.send_command("chan 0")
         try:
             self.faft_client.system.run_shell_command('stop temp_metrics')
         except xmlrpclib.Fault:
@@ -156,6 +157,7 @@ class firmware_ECThermal(FAFTSequence):
         if self._has_temp_metrics:
             logging.info('Starting temp_metrics')
             self.faft_client.system.run_shell_command('start temp_metrics')
+        self.ec.send_command("chan 0xffffffff")
         super(firmware_ECThermal, self).cleanup()
 
 

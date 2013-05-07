@@ -36,9 +36,11 @@ class firmware_ECWriteProtect(FAFTSequence):
         super(firmware_ECWriteProtect, self).setup(ec_wp=False)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
+        self.ec.send_command("chan 0")
 
 
     def cleanup(self):
+        self.ec.send_command("chan 0xffffffff")
         self.restore_firmware()
         super(firmware_ECWriteProtect, self).cleanup()
 
