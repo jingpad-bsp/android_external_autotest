@@ -1,3 +1,4 @@
+# -*- coding: utf-8; tab-width: 4; python-indent: 4 -*-
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -24,13 +25,24 @@ _COLORS = {
 _UPSAMPLING_SCALE = 8
 _UPSAMPLING_BITS = 3
 
+def _FtoI(v):
+    '''Converts tuple/list/scalar from float to int so to be compatible with
+    OpenCV API.'''
+    if type(v) == tuple:
+        return tuple([int(i) for i in v])
+    elif type(v) == list:
+        return [int(i) for i in v]
+    else:
+        return int(v)
+
+
 def _DrawLineByAngle(img, origin, length, angle, color,
                      thickness):
     '''Draw a line by specifying the origin, length and angle.'''
     dx1 = length * math.cos(angle)
     dy1 = length * math.sin(angle)
-    cv2.line(img, origin, (origin[0] + dx1, origin[1] + dy1), color,
-             thickness, lineType=cv2.CV_AA)
+    cv2.line(img, _FtoI(origin), _FtoI((origin[0] + dx1, origin[1] + dy1)),
+             color, thickness, lineType=cv2.CV_AA)
 
 
 def _DrawArrowTip(img, tip, direction, tip_length, tip_angle, color,
@@ -46,7 +58,7 @@ def _DrawArcWithArrow(img, center, radius, start_angle, delta_angle,
                         tip_length, tip_angle, color, thickness):
     '''Draw an arc with an arrow tip on one end.'''
     # Draw arc.
-    cv2.ellipse(img, center, (radius, radius), start_angle,
+    cv2.ellipse(img, _FtoI(center), _FtoI((radius, radius)), start_angle,
                 (0 if delta_angle > 0 else -delta_angle),
                 (-delta_angle if delta_angle > 0 else 0), color, thickness,
                 lineType=cv2.CV_AA)
@@ -66,27 +78,27 @@ def DrawVC(img, success, result):
     if hasattr(result, 'sample_corners'):
         # Draw all corners.
         for point in result.sample_corners:
-            cv2.circle(img, (point[0], point[1]), 2, _COLORS['corner'],
-                       thickness=-1)
+            cv2.circle(img, _FtoI((point[0], point[1])), 2,
+                       _COLORS['corner'], thickness=-1)
 
         if hasattr(result, 'shift'):
             # Draw the four corners of the corner grid.
             for point in result.four_corners:
-                cv2.circle(img, (point[0], point[1]), 4,
+                cv2.circle(img, _FtoI((point[0], point[1])), 4,
                            _COLORS[('success' if success else 'important')],
                            thickness = -1, lineType=cv2.CV_AA)
 
             # Draw the center and the shift vector.
             center = ((img.shape[1] - 1) / 2.0, (img.shape[0] - 1) / 2.0)
             tip = np.array(center) + result.v_shift
-            cv2.line(img, center, (tip[0], tip[1]),
+            cv2.line(img, _FtoI(center), _FtoI((tip[0], tip[1])),
                      _COLORS['deviation'], thickness=2, lineType=cv2.CV_AA)
             diag_len = math.sqrt(img.shape[0] ** 2 + img.shape[1] ** 2)
             angle = math.atan2(result.v_shift[1], result.v_shift[0])
             _DrawArrowTip(img, (tip[0], tip[1]), math.degrees(angle),
                           result.shift * diag_len * 0.3, 60,
                           _COLORS['deviation'], thickness=2)
-            cv2.circle(img, center, 4,
+            cv2.circle(img, _FtoI(center), 4,
                        _COLORS[('success' if success else 'important')],
                        thickness=-1, lineType=cv2.CV_AA)
 
@@ -127,6 +139,6 @@ def DrawMTF(img, edges, perm, mtfs, crop_ratio, color_map_range):
         edge = edges[edge_id]
         start = (1 - crop_ratio) * edge[0:2] + crop_ratio * edge[2:4]
         end = crop_ratio * edge[0:2] + (1 - crop_ratio) * edge[2:4]
-        cv2.line(img, tuple(_Up(start)), tuple(_Up(end)),
+        cv2.line(img, _FtoI(tuple(_Up(start))), _FtoI(tuple(_Up(end))),
                  _HSVToBGR(hues[idx], 1.0, 1.0), thickness=2,
                  shift=_UPSAMPLING_BITS, lineType=cv2.CV_AA)
