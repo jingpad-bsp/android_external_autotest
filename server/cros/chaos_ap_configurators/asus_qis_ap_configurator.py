@@ -34,7 +34,7 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
         self.click_button_by_id('applyButton')
         ssid = '//input[@name="wl_ssid"]'
         try:
-            self.wait_for_object_by_xpath(ssid)
+            self.wait_for_objects_by_xpath([ssid])
         except selenium.common.exceptions.TimeoutException, e:
             raise RuntimeError('Unable to find the object by xpath: %s\n '
                                'WebDriver exception: %s' % (ssid, str(e)))
