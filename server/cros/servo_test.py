@@ -3,9 +3,8 @@
 # found in the LICENSE file.
 
 import httplib, logging, os, socket, subprocess, sys, time, xmlrpclib
-import SocketServer
 
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server import autotest, test
 
 
@@ -218,18 +217,11 @@ class ServoTest(test.test):
         """Delete the Servo object, call remote cleanup, and kill ssh."""
         self.kill_remote()
 
-    def _find_unused_port(self):
-        """Returns an unused TCP port."""
-        server = SocketServer.TCPServer(('localhost', 0),
-                                        SocketServer.BaseRequestHandler)
-        _, port = server.server_address
-        return port
-
     def _launch_ssh_tunnel(self):
         """Establish an ssh tunnel for connecting to the remote RPC server.
         """
         if self._local_port is None:
-            self._local_port = self._find_unused_port()
+            self._local_port = utils.get_unused_port()
         if not self._ssh_tunnel or self._ssh_tunnel.poll() is not None:
             self._ssh_tunnel = subprocess.Popen([
                 'ssh -N -n -q %s -L %s:localhost:%s root@%s' %
