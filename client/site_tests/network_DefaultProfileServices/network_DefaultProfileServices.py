@@ -6,13 +6,13 @@ import os
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from dbus import DBusException
+from autotest_lib.client.common_lib import utils
 
 # This hacks the path so that we can import shill_proxy.
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 # pylint: enable=W0611
-import shill_proxy
+from shill_proxy import ShillProxy
 
 class network_DefaultProfileServices(test.test):
     """The Default Profile Services class.
@@ -24,57 +24,37 @@ class network_DefaultProfileServices(test.test):
     that is present over-the-air.
 
     """
-    DEFAULT_PROFILE_PATH="/var/cache/shill/default.profile"
-    OUR_SSID="org.chromium.DfltPrflSrvcsTest"
-    DBUS_SERVICE_UNKNOWN="org.freedesktop.DBus.Error.ServiceUnknown"
+    DEFAULT_PROFILE_PATH = '/var/cache/shill/default.profile'
+    OUR_SSID = 'org.chromium.DfltPrflSrvcsTest'
     version = 1
 
-    def stop_shill(self):
-        """Stop the running shill process"""
-        os.system("stop shill")
-
-    def start_shill(self):
-        """Start a shill process. Assumes it is not already running"""
-        os.system("start shill")
-
-    def delete_default_profile(self):
-        """Remove shill's default profile."""
-        os.remove(self.DEFAULT_PROFILE_PATH)
-
-    def connect_proxy(self):
-        """Connect to shill over D-Bus. If shill is not yet running,
-           retry until it is."""
-        self._shill = None
-        while self._shill is None:
-            try:
-                self._shill = shill_proxy.ShillProxy()
-            except DBusException as e:
-                if e.get_dbus_name() != self.DBUS_SERVICE_UNKNOWN:
-                    raise error.TestFail("Error connecting to shill")
 
     def run_once(self):
         """Test main loop."""
-        self.stop_shill()
-        self.delete_default_profile()
-        self.start_shill()
-        self.connect_proxy()
+        utils.run('stop shill')
+        os.remove(self.DEFAULT_PROFILE_PATH)
+        utils.run('start shill')
+        shill = ShillProxy.get_shill_proxy()
+        if shill is None:
+            raise error.TestFail('Could not connect to shill')
 
-        manager = self._shill.manager
-        manager.PopAllUserProfiles()
-        path = manager.ConfigureService({
-                self._shill.SERVICE_PROPERTY_TYPE: "wifi",
-                self._shill.SERVICE_PROPERTY_MODE: "managed",
-                self._shill.SERVICE_PROPERTY_SSID: self.OUR_SSID,
-                self._shill.SERVICE_PROPERTY_HIDDEN: True,
-                self._shill.SERVICE_PROPERTY_SECURITY: "none",
+        shill.manager.PopAllUserProfiles()
+        path = shill.manager.ConfigureService({
+                shill.SERVICE_PROPERTY_TYPE: 'wifi',
+                shill.SERVICE_PROPERTY_MODE: 'managed',
+                shill.SERVICE_PROPERTY_SSID: self.OUR_SSID,
+                shill.SERVICE_PROPERTY_HIDDEN: True,
+                shill.SERVICE_PROPERTY_SECURITY: 'none',
                 })
 
-        self.stop_shill()
-        self.start_shill()
-        self.connect_proxy()
-        manager = self._shill.manager
-        manager.PopAllUserProfiles()
-        service = self._shill.find_object('AnyService',
-                                          {'Name': self.OUR_SSID})
+        utils.run('stop shill')
+        utils.run('start shill')
+        shill = ShillProxy.get_shill_proxy()
+        if shill is None:
+            raise error.TestFail('Could not connect to shill')
+
+        shill.manager.PopAllUserProfiles()
+        service = shill.find_object('AnyService',
+                                    {'Name': self.OUR_SSID})
         if not service:
-            raise error.TestFail("Network not found after restart.")
+            raise error.TestFail('Network not found after restart.')
