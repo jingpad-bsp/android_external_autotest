@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server.cros.wlan import wifi_test_base
+from autotest_lib.server.cros.wlan import wifi_cell_test_base
 
 
-class network_WiFi_SimpleConnect(wifi_test_base.WiFiTestBase):
+class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
     """Test that we can connect to router configured in various ways."""
     version = 1
 

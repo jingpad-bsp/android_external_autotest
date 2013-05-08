@@ -4,10 +4,10 @@
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
-from autotest_lib.server.cros.wlan import wifi_test_base
+from autotest_lib.server.cros.wlan import wifi_cell_test_base
 
 
-class network_WiFi_RxFrag(wifi_test_base.WiFiTestBase):
+class network_WiFi_RxFrag(wifi_cell_test_base.WiFiCellTestBase):
     """Test that the DUT can reassemble packet fragments."""
     version = 1
 

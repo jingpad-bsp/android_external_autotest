@@ -4,16 +4,17 @@
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
-from autotest_lib.server.cros.wlan import wifi_test_base
+from autotest_lib.server.cros.wlan import wifi_cell_test_base
 from autotest_lib.server.cros.wlan import wifi_client
 
 
-class network_WiFi_BeaconInterval(wifi_test_base.WiFiTestBase):
+class network_WiFi_BeaconInterval(wifi_cell_test_base.WiFiCellTestBase):
     """Test that we understand the routers negotiated beacon interval."""
     version = 1
 
 
     def run_once_impl(self):
+        """Body of the test."""
         bint_val = 200
         configuration = hostap_config.HostapConfig(
                 channel=6,

@@ -4,10 +4,10 @@
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
-from autotest_lib.server.cros.wlan import wifi_test_base
+from autotest_lib.server.cros.wlan import wifi_cell_test_base
 
 
-class network_WiFi_Powersave(wifi_test_base.WiFiTestBase):
+class network_WiFi_Powersave(wifi_cell_test_base.WiFiCellTestBase):
     """Test that we can enter and exit powersave mode without issue."""
     version = 1
 
