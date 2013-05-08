@@ -23,7 +23,10 @@ class SIM(dbus_std_ifaces.DBusProperties):
     """
 
     class Carrier:
+        """
+        Represents a 3GPP carrier that can be stored by a SIM object.
 
+        """
         MCC_LIST = {
             'test' : '001',
             'us': '310',
@@ -97,9 +100,17 @@ class SIM(dbus_std_ifaces.DBusProperties):
         return { mm1.I_SIM : props }
 
     def IsLocked(self):
+        """
+        @return True if the SIM is locked.
+
+        """
         return self.locked
 
     def IsBlocked(self):
+        """
+        @return True if the SIM is blocked.
+
+        """
         return self.blocked
 
     @dbus.service.method(mm1.I_SIM, in_signature='s')
@@ -107,8 +118,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         """
         Sends the PIN to unlock the SIM card.
 
-        Args:
-            pin -- A string containing the PIN code.
+        @param pin: A string containing the PIN code.
 
         """
         raise NotImplementedError()
@@ -118,9 +128,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
         """
         Sends the PUK and a new PIN to unlock the SIM card.
 
-        Args:
-            puk -- A string containing the PUK code.
-            pin -- A string containing the PIN code.
+        @param puk: A string containing the PUK code.
+        @param pin: A string containing the PIN code.
 
         """
         raise NotImplementedError()
@@ -130,9 +139,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
         """
         Enables or disables PIN checking.
 
-        Args:
-            pin -- A string containing the PIN code.
-            enabled -- TRUE to enable PIN, FALSE otherwise.
+        @param pin: A string containing the PIN code.
+        @param enabled: TRUE to enable PIN, FALSE otherwise.
 
         """
         raise NotImplementedError()
@@ -142,9 +150,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
         """
         Changes the PIN code.
 
-        Args:
-            old_pin -- A string containing the old PIN code.
-            new_pin -- A string containing the new PIN code.
+        @param old_pin: A string containing the old PIN code.
+        @param new_pin: A string containing the new PIN code.
 
         """
         raise NotImplementedError()

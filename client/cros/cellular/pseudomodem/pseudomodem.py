@@ -34,7 +34,22 @@ DEFAULT_MANAGERS = ['cromo', 'modemmanager']
 PARENT_SLEEP_TIMEOUT = 2
 
 class TestModemManagerContext(object):
+    """
+    TestModemManagerContext is an easy way for an autotest to setup a pseudo
+    modem manager environment. A typical test will look like:
 
+    with pseudomodem.TestModemManagerContext(True):
+        ...
+        # Do stuff
+        ...
+
+    Which will stop the real modem manager that are executing and launch the
+    pseudo modem manager in a subprocess.
+
+    Passing False to the TestModemManagerContext constructor will simply render
+    this class a no-op, not affecting any environment configuration.
+
+    """
     def __init__(self, use_pseudomodem,
                  real_managers=DEFAULT_MANAGERS,
                  sim=None,
@@ -85,10 +100,22 @@ class TestModemManagerContext(object):
                     pass
 
     def GetPseudoModemManager(self):
+        """
+        Returns the underlying PseudoModemManager object.
+
+        @return An instance of PseudoModemManager, or None, if this object
+                was initialized with use_pseudomodem=False.
+
+        """
         return self.pseudo_modem_manager
 
 class VirtualEthernetInterface(object):
+    """
+    VirtualEthernetInterface sets up a virtual ethernet pair and runs dnsmasq
+    on one end of the pair. This is used to enable the pseudo modem to expose
+    a network interface and be assigned a dynamic IP address.
 
+    """
     def __init__(self):
         self.vif = virtual_ethernet_pair.VirtualEthernetPair(
                 interface_name=IFACE_NAME,
@@ -98,12 +125,24 @@ class VirtualEthernetInterface(object):
         self.dnsmasq = None
 
     def BringIfaceUp(self):
+        """
+        Brings up the pseudomodem network interface.
+
+        """
         utils.run('sudo ifconfig %s up' % IFACE_NAME)
 
     def BringIfaceDown(self):
+        """
+        Brings down the pseudomodem network interface.
+
+        """
         utils.run('sudo ifconfig %s down' % IFACE_NAME);
 
     def StartDHCPServer(self):
+        """
+        Runs dnsmasq on the peer end of the virtual ethernet pair.
+
+        """
         lease_file = '/tmp/dnsmasq.%s.leases' % IFACE_NAME
         os.close(os.open(lease_file, os.O_CREAT | os.O_TRUNC))
         self.dnsmasq = subprocess.Popen(
@@ -120,14 +159,27 @@ class VirtualEthernetInterface(object):
                 ])
 
     def StopDHCPServer(self):
+        """
+        Stops dnsmasq if its currently running on the peer end of the virtual
+        ethernet pair.
+
+        """
         if self.dnsmasq:
             self.dnsmasq.terminate()
 
     def RestartDHCPServer(self):
+        """
+        Restarts dnsmasq on the peer end of the virtual ethernet pair.
+
+        """
         self.StopDHCPServer()
         self.StartDHCPServer()
 
     def Setup(self):
+        """
+        Sets up the virtual ethernet pair and starts dnsmasq.
+
+        """
         self.vif.setup()
         self.BringIfaceDown()
         if not self.vif.is_healthy:
@@ -142,6 +194,10 @@ class VirtualEthernetInterface(object):
         self.StartDHCPServer()
 
     def Teardown(self):
+        """
+        Stops dnsmasq and takes down the virtual ethernet pair.
+
+        """
         self.StopDHCPServer()
         try:
             utils.run('sudo route del -host 255.255.255.255 dev ' +
@@ -159,9 +215,15 @@ class VirtualEthernetInterface(object):
         self.vif.teardown()
 
     def Restart(self):
+        """
+        Restarts the configuration.
+
+        """
         self.Teardown()
         self.Setup()
 
+# This is the global VirtualEthernetInterface instance. Classes inside the
+# pseudo modem manager can access the singleton via this variable.
 virtual_ethernet_interface = VirtualEthernetInterface()
 
 class PseudoModemManager(object):
@@ -224,6 +286,14 @@ class PseudoModemManager(object):
         self.Stop()
 
     def Start(self):
+        """
+        Starts the pseudo modem manager based on the initialization parameters.
+        Depending on the configuration, this method may or may not fork. If a
+        subprocess is launched, a DBus mainloop will be initialized by the
+        subprocess. This method sets up the virtual ethernet interfaces and
+        initializes tha DBus objects and servers.
+
+        """
         logging.info('Starting pseudo modem manager.')
         self.started = True
 
@@ -240,6 +310,12 @@ class PseudoModemManager(object):
             self._Run()
 
     def Stop(self):
+        """
+        Stops the pseudo modem manager. This means killing the subprocess,
+        if any, stopping the DBus server, and tearing down the virtual ethernet
+        pair.
+
+        """
         logging.info('Stopping pseudo modem manager.')
         if not self.started:
             logging.info('Not started, cannot stop.')
@@ -255,15 +331,33 @@ class PseudoModemManager(object):
         self.started = False
 
     def Restart(self):
+        """
+        Restarts the pseudo modem manager.
+
+        """
         self.Stop()
         self.Start()
 
     def SetModem(self, new_modem):
+        """
+        Sets the modem object that is exposed by the pseudo modem manager and
+        restarts the pseudo modem manager.
+
+        @param new_modem: An instance of modem.Modem to assign.
+
+        """
         self.modem = new_modem
         self.Restart()
         time.sleep(5)
 
     def SetSIM(self, new_sim):
+        """
+        Sets the SIM object that is exposed by the pseudo modem manager and
+        restarts the pseudo modem manager.
+
+        @param new_sim: An instance of sim.SIM to assign.
+
+        """
         self.sim = new_sim
         self.Restart()
 
@@ -286,21 +380,28 @@ class PseudoModemManager(object):
 
         self.mainloop = gobject.MainLoop()
 
-        def SignalHandler(signum, frame):
+        def _SignalHandler(signum, frame):
             logging.info('Signal handler called with signal %s', signum)
             self.manager.Remove(self.modem)
             self.mainloop.quit()
             if self.detach:
                 os._exit(0)
 
-        signal.signal(signal.SIGINT, SignalHandler)
-        signal.signal(signal.SIGTERM, SignalHandler)
+        signal.signal(signal.SIGINT, _SignalHandler)
+        signal.signal(signal.SIGTERM, _SignalHandler)
 
         self.mainloop.run()
 
     def SendTextMessage(self, sender_no, text):
-        # TODO(armansito): Implement
-        pass
+        """
+        Allows sending a fake text message notification.
+
+        @param sender_no: TODO
+        @param text: TODO
+
+        """
+        #TODO(armansito): Implement
+        raise NotImplementedError()
 
 
 def Start(use_cdma=False):
@@ -308,11 +409,10 @@ def Start(use_cdma=False):
     Runs the pseudomodem in script mode. This function is called only by the
     main function.
 
-    Args:
-        use_cdma -- If True, the pseudo modem manager will be initialized with
-                    an instance of modem_cdma.ModemCdma, otherwise the default
-                    modem will be used, which is an instance of
-                    modem_3gpp.Modem3gpp.
+    @param use_cdma: If True, the pseudo modem manager will be initialized with
+                     an instance of modem_cdma.ModemCdma, otherwise the default
+                     modem will be used, which is an instance of
+                     modem_3gpp.Modem3gpp.
 
     """
     if use_cdma:
@@ -327,6 +427,10 @@ def Start(use_cdma=False):
         pass
 
 def main():
+    """
+    The main method, executed when this file is executed as a script.
+
+    """
     usage = """
 
       Run pseudomodem to simulate a modem using the modemmanager-next

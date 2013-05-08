@@ -8,11 +8,20 @@ import mm1
 import state_machine
 
 class RegisterMachine(state_machine.StateMachine):
+    """
+    RegisterMachine handles the state transitions involved in bringing the
+    modem to the REGISTERED state.
+
+    """
     def __init__(self, modem):
         super(RegisterMachine, self).__init__(modem)
         self._networks = None
 
     def Cancel(self):
+        """
+        Overriden from superclass.
+
+        """
         logging.info('RegisterMachine: Canceling register.')
         super(RegisterMachine, self).Cancel()
         state = self._modem.Get(mm1.I_MODEM, 'State')

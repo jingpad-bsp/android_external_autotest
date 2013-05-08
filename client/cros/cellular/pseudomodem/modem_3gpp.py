@@ -23,6 +23,11 @@ class Modem3gpp(modem.Modem):
     """
 
     class GsmNetwork(object):
+        """
+        GsmNetwork stores the properties of a 3GPP network that can be
+        discovered during a network scan.
+
+        """
         def __init__(self,
                      operator_long,
                      operator_short,
@@ -84,6 +89,15 @@ class Modem3gpp(modem.Modem):
         return ip
 
     def SetRegistrationState(self, state):
+        """
+        Sets the 'RegistrationState' property.
+
+        @param state: An MMModem3gppRegistrationState value.
+
+        Emits:
+            PropertiesChanged
+
+        """
         self.SetUInt32(mm1.I_MODEM_3GPP, 'RegistrationState', state)
 
     @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s')
@@ -91,10 +105,9 @@ class Modem3gpp(modem.Modem):
         """
         Request registration with a given modem network.
 
-        Args:
-            operator_id -- The operator ID to register. An empty string can be
-                           used to register to the home network.
-            *args -- Args can optionally contain an operator name.
+        @param operator_id: The operator ID to register. An empty string can be
+                            used to register to the home network.
+        @param args: Args can optionally contain an operator name.
 
         """
         logging.info('Modem3gpp.Register: %s', operator_id)
@@ -172,16 +185,37 @@ class Modem3gpp(modem.Modem):
         self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', '')
 
     def Connect(self, properties, return_cb, raise_cb):
+        """
+        Overriden from superclass.
+
+        @param properties
+        @param return_cb
+        @param raise_cb
+
+        """
         logging.info('Connect')
         connect_machine.ConnectMachine(
             self, properties, return_cb, raise_cb).Step()
 
     def Disconnect(self, bearer_path, return_cb, raise_cb, *return_cb_args):
-        logging.info('Disconnect: %s' % bearer_path)
+        """
+        Overriden from superclass.
+
+        @param bearer_path
+        @param return_cb
+        @param raise_cb
+        @param return_cb_args
+
+        """
+        logging.info('Disconnect: %s', bearer_path)
         disconnect_machine.DisconnectMachine(
             self, bearer_path, return_cb, raise_cb, return_cb_args).Step()
 
     def GetStatus(self):
+        """
+        Overriden from superclass.
+
+        """
         modem_props = self.GetAll(mm1.I_MODEM)
         m3gpp_props = self.GetAll(mm1.I_MODEM_3GPP)
         retval = {}

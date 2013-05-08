@@ -8,6 +8,11 @@ import mm1
 import register_machine
 
 class RegisterMachineCdma(register_machine.RegisterMachine):
+    """
+    RegisterMachineCdma handles the CDMA specific state transitions involved in
+    bringing the modem to the REGISTERED state.
+
+    """
     def Cancel(self):
         logging.info('RegisterMachineCdma: Canceling register.')
         super(RegisterMachine, self).Cancel()

@@ -7,12 +7,21 @@ import mm1
 import state_machine
 
 class EnableMachine(state_machine.StateMachine):
+    """
+    EnableMachine handles the state transitions involved in bringing the modem
+    to the ENABLED state.
+
+    """
     def __init__(self, modem, return_cb, raise_cb):
         super(EnableMachine, self).__init__(modem)
         self.return_cb = return_cb
         self.raise_cb = raise_cb
 
     def Cancel(self):
+        """
+        Overriden from superclass.
+
+        """
         logging.info('EnableMachine: Canceling enable.')
         super(EnableMachine, self).Cancel()
         state = self._modem.Get(mm1.I_MODEM, 'State')

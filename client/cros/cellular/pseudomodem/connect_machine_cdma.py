@@ -8,6 +8,11 @@ import connect_machine
 import mm1
 
 class ConnectMachineCdma(connect_machine.ConnectMachine):
+    """
+    ConnectMachineCdma handles CDMA specific logic that is involved in
+    connecting to a network.
+
+    """
     def _HandleRegisteredState(self):
         logging.info('ConnectMachineCdma: Modem is REGISTERED.')
         assert not self._modem.IsPendingDisconnect()

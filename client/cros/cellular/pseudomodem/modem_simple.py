@@ -38,42 +38,39 @@ class ModemSimple(dbus.service.Interface):
         registration to a specific provider), create a new packet data bearer
         using the given "apn", and connect that bearer.
 
-        Args:
-            properties -- See the ModemManager Reference Manual for the allowed
-                          key/value pairs in properties.
+        @param properties: See the ModemManager Reference Manual for the allowed
+                           key/value pairs in properties.
+        @param return_cb: The callback to execute to send an asynchronous
+                          response for the initial Connect request.
+        @param raise_cb: The callback to execute to send an asynchronous error
+                         in response to the initial Connect request.
 
-            return_cb -- The callback to execute to send an asynchronous
-                         response for the initial Connect request.
-
-            raise_cb -- The callback to execute to send an asynchronous error
-                        in response to the initial Connect request.
-
-        Returns:
-            On successfult connect, returns the object path of the connected
-            packet data bearer used for the connection attempt.
+        @return On successfult connect, returns the object path of the connected
+                packet data bearer used for the connection attempt. The value
+                is returned asynchronously via return_cb.
 
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM_SIMPLE, in_signature='o',
-        async_callbacks=('return_cb', 'raise_cb'))
+    @dbus.service.method(mm1.I_MODEM_SIMPLE,
+                         in_signature='o',
+                         async_callbacks=('return_cb', 'raise_cb'))
     def Disconnect(self, bearer, return_cb, raise_cb, *return_cb_args):
         """
         Disconnect an active packet data connection.
 
-        Args:
-            bearer -- The object path of the data bearer to disconnect. If the
-                      path is "/" (i.e. no object given) this method will
-                      disconnect all active packet data bearers.
+        @param bearer: The object path of the data bearer to disconnect. If the
+                       path is "/" (i.e. no object given) this method will
+                       disconnect all active packet data bearers.
+        @param return_cb: The callback to execute to send an asynchronous
+                          response for the initial Disconnect request.
+        @param raise_cb: The callback to execute to send an asynchronous error
+                         in response to the initial Disconnect request.
 
-            return_cb -- The callback to execute to send an asynchronous
-                         response for the initial Disconnect request.
-
-            raise_cb -- The callback to execute to send an asynchronous error
-                        in response to the initial Disconnect request.
-
-            *return_cb_args -- Optional arguments which will be supplied to
-                               return_cb.
+        @param return_cb_args: Optional arguments which will be supplied to
+                               return_cb. This allows control flow to be set
+                               when this method is called from within the
+                               pseudo modem manager.
         """
         raise NotImplementedError()
 
@@ -82,9 +79,8 @@ class ModemSimple(dbus.service.Interface):
         """
         Gets the general modem status.
 
-        Returns:
-            Dictionary of properties. See the ModemManager Reference Manual
-            for the predefined common properties.
+        @return Dictionary of properties. See the ModemManager Reference Manual
+                for the predefined common properties.
 
         """
         raise NotImplementedError()

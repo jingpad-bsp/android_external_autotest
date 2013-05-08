@@ -19,8 +19,11 @@ class ModemCdma(modem.Modem):
     capabilities.
 
     """
-
     class CdmaNetwork(object):
+        """
+        Stores carrier specific infomation needed for a CDMA network.
+
+        """
         def __init__(self,
                      sid=99998,
                      nid=0,
@@ -100,8 +103,7 @@ class ModemCdma(modem.Modem):
         Provisions the modem for use with a given carrier using the modem's
         OTA activation functionality, if any.
 
-        Args:
-            carrier -- Name of carrier
+        @param carrier: Name of carrier
 
         Emits:
             ActivationStateChanged
@@ -115,9 +117,8 @@ class ModemCdma(modem.Modem):
         Sets the modem provisioning data directly, without contacting the
         carrier over the air. Some modems will reboot after this call is made.
 
-        Args:
-            properties -- A dictionary of properties to set on the modem,
-                          including "mdn" and "min"
+        @param properties: A dictionary of properties to set on the modem,
+                           including "mdn" and "min"
 
         Emits:
             ActivationStateChanged
@@ -131,12 +132,36 @@ class ModemCdma(modem.Modem):
             activation_state,
             activation_error,
             status_changes):
+        """
+        The device activation state changed.
+
+        @param activation_state: Current activation state, given as a
+                                 MMModemCdmaActivationState.
+        @param activation_error: Carrier-specific error code, given as a
+                                 MMCdmaActivationError.
+        @param status_changes: Properties that have changed as a result of this
+                               activation state chage, including "mdn" and
+                               "min".
+
+        """
         raise NotImplementedError()
 
     def GetHomeNetwork(self):
+        """
+        @return A instance of CdmaNetwork that represents the
+                current home network that is assigned to this modem.
+
+        """
         return self.home_network
 
     def SetRegistered(self, network):
+        """
+        Sets the modem to be registered on the given network. Configures the
+        'ActivationState', 'Sid', and 'Nid' properties accordingly.
+
+        @param network: An instance of CdmaNetwork.
+
+        """
         logging.info('ModemCdma.SetRegistered')
         if network:
             state = mm1.MM_MODEM_CDMA_REGISTRATION_STATE_HOME
@@ -158,6 +183,12 @@ class ModemCdma(modem.Modem):
         self.SetUInt32(mm1.I_MODEM_CDMA, 'Nid', nid)
 
     def SetRegistrationState(self, state):
+        """
+        Sets the CDMA1x and EVDO registration states to the provided value.
+
+        @param state: A MMModemCdmaRegistrationState value.
+
+        """
         self.SetUInt32(mm1.I_MODEM_CDMA, 'Cdma1xRegistrationState', state)
         self.SetUInt32(mm1.I_MODEM_CDMA, 'EvdoRegistrationState', state)
 
@@ -180,6 +211,14 @@ class ModemCdma(modem.Modem):
 
     # Inherited from modem_simple.ModemSimple.
     def Connect(self, properties, return_cb, raise_cb):
+        """
+        Overriden from superclass.
+
+        @param properties
+        @param return_cb
+        @param raise_cb
+
+        """
         logging.info('ModemCdma.Connect')
         # Import connect_machine_cdma here to avoid circular imports.
         import connect_machine_cdma
@@ -187,13 +226,26 @@ class ModemCdma(modem.Modem):
             self, properties, return_cb, raise_cb).Step()
 
     def Disconnect(self, bearer_path, return_cb, raise_cb, *return_cb_args):
-        logging.info('ModemCdma.Disconnect: %s' % bearer_path)
+        """
+        Overriden from superclass.
+
+        @param bearer_path
+        @param return_cb
+        @param raise_cb
+        @param return_cb_args
+
+        """
+        logging.info('ModemCdma.Disconnect: %s', bearer_path)
         # Import connect_machine_cdma here to avoid circular imports.
         import disconnect_machine
         disconnect_machine.DisconnectMachine(
             self, bearer_path, return_cb, raise_cb, return_cb_args).Step()
 
     def GetStatus(self):
+        """
+        Overriden from superclass.
+
+        """
         modem_props = self.GetAll(mm1.I_MODEM)
         cdma_props = self.GetAll(mm1.I_MODEM_CDMA)
         retval = {}

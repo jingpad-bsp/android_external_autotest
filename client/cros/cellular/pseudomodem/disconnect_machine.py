@@ -7,6 +7,11 @@ import mm1
 import state_machine
 
 class DisconnectMachine(state_machine.StateMachine):
+    """
+    DisconnectMachine handles the state transitions involved in bringing the
+    modem to the DISCONNECTED state.
+
+    """
     def __init__(self, modem, bearer_path, return_cb, raise_cb,
         return_cb_args=[]):
         super(DisconnectMachine, self).__init__(modem)

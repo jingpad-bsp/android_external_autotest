@@ -13,7 +13,6 @@ Python implementation of the standard interfaces:
 import dbus
 import dbus.service
 import dbus.types
-import gobject
 import logging
 
 import mm1
@@ -51,18 +50,17 @@ class DBusProperties(dbus.service.Object):
 
     def __init__(self, path, bus=None, config=None):
         """
-        Args:
-            bus -- The pydbus bus object.
-            path -- The DBus object path of this object.
-            config -- This is an optional dictionary that can be used to
-                      initialize the property dictionary with values other
-                      than the ones provided by |_InitializeProperties|. The
-                      dictionary has to contain a mapping from DBus interfaces
-                      to property-value pairs, and all contained keys must
-                      have been initialized during |_InitializeProperties|,
-                      i.e. if config contains any keys that have not been
-                      already set in the internal property dictionary, an
-                      error will be raised. (See DBusProperties.Set)
+        @param bus: The pydbus bus object.
+        @param path: The DBus object path of this object.
+        @param config: This is an optional dictionary that can be used to
+                       initialize the property dictionary with values other
+                       than the ones provided by |_InitializeProperties|. The
+                       dictionary has to contain a mapping from DBus interfaces
+                       to property-value pairs, and all contained keys must
+                       have been initialized during |_InitializeProperties|,
+                       i.e. if config contains any keys that have not been
+                       already set in the internal property dictionary, an
+                       error will be raised (see DBusProperties.Set).
 
         """
         if not path:
@@ -82,17 +80,65 @@ class DBusProperties(dbus.service.Object):
                     self.Set(key, prop, val)
 
     def SetBus(self, bus):
+        """
+        Sets the pydbus bus object that this instance of DBusProperties should
+        be exposed on. Call this method only if |bus| is not already set.
+
+        @param bus: The pydbus bus object to assign.
+
+        """
         self.bus = bus
         self.add_to_connection(bus, self.path)
 
     def SetPath(self, path):
+        """
+        Exposes this object on a new DBus path. This method fails with an
+        Exception by default, since exposing an object on multiple paths is
+        disallowed by default.
+
+        Subclasses can change this behavior by setting the
+        SUPPORTS_MULTIPLE_OBJECT_PATHS class variable to True.
+
+        @param path: The new path to assign to this object.
+
+        """
         self.path = path
         self.add_to_connection(self.bus, path)
 
     def SetUInt32(self, interface_name, property_name, value):
+        """
+        Sets the given uint32 value matching the given property and interface.
+        Wraps the given value inside a dbus.types.UInt32.
+
+        @param interface_name: The DBus interface name.
+        @param property_name: The property name.
+        @param value: Value to set.
+
+        @raises MMPropertyError, if the given |interface_name| or
+                |property_name| is not exposed by this object.
+
+        Emits:
+            PropertiesChanged
+
+        """
         self.Set(interface_name, property_name, dbus.types.UInt32(value))
 
     def SetInt32(self, interface_name, property_name, value):
+        """
+        Sets the given int32 value matching the given property and interface.
+        Wraps the given value inside a dbus.types.Int32.
+
+        @param interface_name: The DBus interface name.
+        @param property_name: The property name.
+        @param value: Value to set.
+
+        @raises MMPropertyError, if the given |interface_name| or
+                |property_name| is not exposed by this object.
+
+        Emits:
+            PropertiesChanged
+
+        """
         self.Set(interface_name, property_name, dbus.types.Int32(value))
 
     @dbus.service.method(mm1.I_PROPERTIES,
@@ -101,16 +147,13 @@ class DBusProperties(dbus.service.Object):
         """
         Returns the value matching the given property and interface.
 
-        Args:
-            interface_name -- The DBus interface name.
-            property_name -- The property name.
+        @param interface_name: The DBus interface name.
+        @param property_name: The property name.
 
-        Returns:
-            The value matching the given property and interface.
+        @return The value matching the given property and interface.
 
-        Raises:
-            MMPropertyError, if the given interface_name or property_name
-            is not exposed by this object.
+        @raises MMPropertyError, if the given |interface_name| or
+                |property_name| is not exposed by this object.
 
         """
         logging.info(
@@ -132,16 +175,15 @@ class DBusProperties(dbus.service.Object):
         """
         Sets the value matching the given property and interface.
 
-        Args:
-            interface_name -- The DBus interface name.
-            property_name -- The property name.
+        @param interface_name: The DBus interface name.
+        @param property_name: The property name.
+        @param value: The value to set.
+
+        @raises MMPropertyError, if the given |interface_name| or
+                |property_name| is not exposed by this object.
 
         Emits:
             PropertiesChanged
-
-        Raises:
-            MMPropertyError, if the given |interface_name| or |property_name|
-            is not exposed by this object.
 
         """
         logging.info(
@@ -157,8 +199,9 @@ class DBusProperties(dbus.service.Object):
                 "interface '%s'.") %
                 (property_name, interface_name))
         if props[property_name] == value:
-            logging.info("Property '%s' already has value '%s'. Ignoring." %
-                         (property_name, value))
+            logging.info("Property '%s' already has value '%s'. Ignoring.",
+                         property_name,
+                         value)
             return
         props[property_name] = value
         changed = { property_name : value }
@@ -171,12 +214,13 @@ class DBusProperties(dbus.service.Object):
         """
         Returns all property-value pairs that match the given interface.
 
-        Args:
-            interface_name -- The DBus interface name.
+        @param interface_name: The DBus interface name.
 
-        Raises:
-            MMPropertyError, if the given interface_name is not exposed
-            by this object.
+        @return A dictionary, containing the properties of the given DBus
+                interface and their values.
+
+        @raises MMPropertyError, if the given |interface_name| or
+                |property_name| is not exposed by this object.
 
         """
         logging.info(
@@ -200,12 +244,11 @@ class DBusProperties(dbus.service.Object):
         """
         This signal is emitted by Set, when the value of a property is changed.
 
-        Args:
-            interface_name -- The interface the changed properties belong to.
-            changed_properties -- Dictionary containing the changed properties
-                    and their new values.
-            invalidated_properties -- List of properties that were invalidated
-                    when properties changed.
+        @param interface_name: The interface the changed properties belong to.
+        @param changed_properties: Dictionary containing the changed properties
+                                   and their new values.
+        @param invalidated_properties: List of properties that were invalidated
+                                       when properties changed.
 
         """
         logging.info(('Properties Changed on interface: %s Changed Properties:'
@@ -213,6 +256,13 @@ class DBusProperties(dbus.service.Object):
             str(changed_properties), str(invalidated_properties)))
 
     def GetInterfacesAndProperties(self):
+        """
+        Returns all DBus properties of this object.
+
+        @return The complete property dictionary. The returned dict is a tree,
+                where the keys are DBus interfaces and the values are
+                dictionaries that map properties to values.
+        """
         return self._properties
 
     def _InvalidatedPropertiesForChangedValues(self, changed):
@@ -256,8 +306,7 @@ class DBusObjectManager(dbus.service.Object):
         Adds a device to the list of devices that are managed by this modem
         manager.
 
-        Args:
-            device -- Device to add.
+        @param device: Device to add.
 
         Emits:
             InterfacesAdded
@@ -272,8 +321,7 @@ class DBusObjectManager(dbus.service.Object):
         Removes a device from the list of devices that are managed by this
         modem manager.
 
-        Args:
-            device -- Device to remove.
+        @param device: Device to remove.
 
         Emits:
             InterfacesRemoved
@@ -305,10 +353,29 @@ class DBusObjectManager(dbus.service.Object):
 
     @dbus.service.signal(mm1.I_OBJECT_MANAGER, signature='oa{sa{sv}}')
     def InterfacesAdded(self, object_path, interfaces_and_properties):
+        """
+        The InterfacesAdded signal is emitted when either a new object is added
+        or when an existing object gains one or more interfaces.
+
+        @param object_path: Path of the added object.
+        @param interfaces_and_properties: The complete property dictionary that
+                                          belongs to the recently added object.
+
+        """
         logging.info((self.path + ': InterfacesAdded(' + object_path +
                      ', ' + str(interfaces_and_properties)) + ')')
 
     @dbus.service.signal(mm1.I_OBJECT_MANAGER, signature='oas')
     def InterfacesRemoved(self, object_path, interfaces):
+        """
+        The InterfacesRemoved signal is emitted whenever an object is removed
+        or it loses one or more interfaces.
+
+        @param object_path: Path of the remove object.
+        @param interfaces_and_properties: The complete property dictionary that
+                                          belongs to the recently removed
+                                          object.
+
+        """
         logging.info((self.path + ': InterfacesRemoved(' + object_path +
                      ', ' + str(interfaces) + ')'))

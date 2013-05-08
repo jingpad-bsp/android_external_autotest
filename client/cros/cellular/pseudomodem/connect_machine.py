@@ -10,6 +10,11 @@ import pseudomodem
 import state_machine
 
 class ConnectMachine(state_machine.StateMachine):
+    """
+    ConnectMachine handles the state transitions involved in bringing the modem
+    to the CONNECTED state.
+
+    """
     def __init__(self, modem, properties, return_cb, raise_cb):
         super(ConnectMachine, self).__init__(modem)
         self.connect_props = properties
@@ -19,6 +24,10 @@ class ConnectMachine(state_machine.StateMachine):
         self.register_initiated = False
 
     def Cancel(self):
+        """
+        Overriden from superclass.
+
+        """
         logging.info('ConnectMachine: Canceling connect.')
         super(ConnectMachine, self).Cancel()
         state = self._modem.Get(mm1.I_MODEM, 'State')

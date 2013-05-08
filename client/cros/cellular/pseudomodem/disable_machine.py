@@ -7,6 +7,11 @@ import mm1
 import state_machine
 
 class DisableMachine(state_machine.StateMachine):
+    """
+    DisableMachine handles the state transitions involved in bringing the modem
+    to the DISABLED state.
+
+    """
     def __init__(self, modem, return_cb, raise_cb):
         super(DisableMachine, self).__init__(modem)
         self.return_cb = return_cb

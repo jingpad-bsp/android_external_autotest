@@ -44,10 +44,19 @@ class Bearer(dbus_std_ifaces.DBusProperties):
             pass
 
     def IsActive(self):
+        """
+        @return True, if the bearer is currently active.
+
+        """
         return self._active
 
     @property
     def bearer_properties(self):
+        """
+        @return The current bearer properties that were set during a call to
+                org.freedesktop.ModemManager1.Modem.Simple.Connect.
+
+        """
         return self._bearer_props
 
     @dbus.service.method(mm1.I_BEARER)

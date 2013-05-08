@@ -2,11 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""
-Pseudomodem implementation of org.freedesktop.ModemManager1
-
-"""
-
 import dbus
 import dbus_std_ifaces
 import mm1
@@ -14,7 +9,10 @@ import mm1
 LOG_LEVELS = ['ERR', 'WARN', 'INFO', 'DEBUG']
 
 class ModemManager(dbus_std_ifaces.DBusObjectManager):
+    """
+    Pseudomodem implementation of org.freedesktop.ModemManager1
 
+    """
     def __init__(self, bus):
         dbus_std_ifaces.DBusObjectManager.__init__(self, bus, mm1.MM1)
         self.debug_level = 'INFO'
@@ -37,8 +35,7 @@ class ModemManager(dbus_std_ifaces.DBusObjectManager):
         """
         Sets logging verbosity.
 
-        Args:
-            level -- One of "ERR", "WARN", "INFO", "DEBUG"
+        @param level: One of "ERR", "WARN", "INFO", "DEBUG"
 
         """
         if level not in LOG_LEVELS:

@@ -97,6 +97,14 @@ REGISTRATION_STATE_STRINGS = [
 ]
 
 def RegistrationStateToString(state):
+    """
+    Returns a string for the given state.
+
+    @param state: MMModem3gppRegistrationState value.
+
+    @return A string that describes the given state.
+
+    """
     return REGISTRATION_STATE_STRINGS[state]
 
 # enum MMModem3gppUssdSessionState
@@ -301,6 +309,14 @@ MODEM_STATE_STRINGS = [
 ]
 
 def ModemStateToString(state):
+    """
+    Returns a string for the given state.
+
+    @param state: MMModemState value.
+
+    @return A string that describes the given state.
+
+    """
     return MODEM_STATE_STRINGS[state + 1]
 
 # enum MMModemPowerState
@@ -334,6 +350,12 @@ MM_SMS_STORAGE_TA = 6
 
 # Errors
 class MMError(dbus.exceptions.DBusException):
+    """
+    Generic DBusException subclass that serves as the base class for
+    ModemManager errors.
+
+    """
+
     def __init__(self, errno, *args, **kwargs):
         super(MMError, self).__init__(self, args, kwargs)
         self.include_traceback = False
@@ -348,6 +370,10 @@ class MMError(dbus.exceptions.DBusException):
 
 
 class MMConnectionError(MMError):
+    """
+    DBusException wrapper for MMConnectionError values.
+
+    """
 
     UNKNOWN = 0
     NO_CARRIER = 1
@@ -367,6 +393,10 @@ class MMConnectionError(MMError):
 
 
 class MMCoreError(MMError):
+    """
+    DBusException wrapper for MMCoreError values.
+
+    """
 
     FAILED = 0
     CANCELLED = 1
@@ -404,6 +434,10 @@ class MMCoreError(MMError):
 
 
 class MMMessageError(MMError):
+    """
+    DBusException wrapper for MMMessageError values.
+
+    """
 
     ME_FAILURE = 300
     SMS_SERVICE_RESERVED = 301
@@ -461,6 +495,10 @@ class MMMessageError(MMError):
 
 
 class MMMobileEquipmentError(MMError):
+    """
+    DBusException wrapper for MMMobileEquipmentError values.
+
+    """
 
     PHONE_FAILURE = 0
     NO_CONNECTION = 1
@@ -585,6 +623,10 @@ class MMMobileEquipmentError(MMError):
 
 
 class MMSerialError(MMError):
+    """
+    DBusException wrapper for MMSerialError values.
+
+    """
 
     UNKNOWN = 0
     OPEN_FAILED = 1
@@ -608,6 +650,10 @@ class MMSerialError(MMError):
 
 
 class MMCdmaActivationError(MMError):
+    """
+    DBusException wrapper for MMCdmaActivationError values.
+
+    """
 
     NONE = 0
     UNKNOWN = 1

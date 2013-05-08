@@ -26,8 +26,7 @@ class Messaging(dbus.service.Interface):
         retrieved either by listening for the "Added" and "Completed" signals,
         or by querying the specific SMS object of interest.
 
-        Returns:
-            The list of SMS object paths.
+        @return The list of SMS object paths.
 
         Emits:
             Added
@@ -41,8 +40,7 @@ class Messaging(dbus.service.Interface):
         """
         Deletes an SMS message.
 
-        Args:
-            The object path of the SMS to delete.
+        @param path: The object path of the SMS to delete.
 
         Emits:
             Deleted
@@ -59,23 +57,52 @@ class Messaging(dbus.service.Interface):
         mandatory, others are optional. If the SMSC is not specified and one is
         required, the default SMSC is used.
 
-        Args:
-            properties -- Message properties from the SMS D-Bus interface.
+        @param properties: Message properties from the SMS D-Bus interface.
 
-        Returns:
-            The object path of the new message object.
+        @return The object path of the new message object.
 
         """
         raise NotImplementedError()
 
     @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='ob')
     def Added(self, path, received):
+        """
+        Emitted when any part of a new SMS has been received or added (but not
+        for subsequent parts, if any). For messages received from the network,
+        not all parts may have been received and the message may not be
+        complete.
+
+        Check the 'State' property to determine if the message is complete. The
+        "Completed" signal will also be emitted when the message is complete.
+
+        @param path: Object path of the new SMS.
+
+        @param received: True if the message was received from the network, as
+                         opposed to being added locally.
+
+        """
         raise NotImplementedError()
 
     @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='o')
     def Completed(self, path):
+        """
+        Emitted when the complete-ness status of an SMS message changes.
+
+        An SMS may not necessarily be complete when the first part is received;
+        this signal will be emitted when all parts have been received, even for
+        single-part messages.
+
+        @param path: Object path of the new SMS.
+
+        """
         raise NotImplementedError()
 
     @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='o')
     def Deleted(self, path):
+        """
+        Emitted when a message has been deleted.
+
+        @param path: Object path of the now deleted SMS.
+
+        """
         raise NotImplementedError()
