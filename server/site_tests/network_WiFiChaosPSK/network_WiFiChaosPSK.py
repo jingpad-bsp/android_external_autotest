@@ -21,9 +21,6 @@ class network_WiFiChaosPSK(test.test):
         @param ap_info: a dict of attributes of a specific AP.
         @param tries: an integer, number of connection attempts.
         """
-        # Override PSK password in base helper class
-        helper.psk_password = 'chromeos'
-
         # Install all of the autotest libraries on the client
         client_at = autotest.Autotest(host)
         client_at.install()

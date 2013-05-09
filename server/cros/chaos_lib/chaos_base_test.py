@@ -182,10 +182,9 @@ class WiFiChaosConnectionTest(object):
             ap.set_visibility(visible=visibility)
 
         ap.set_mode(mode)
-        if security == self.generic_ap.security_type_wpapsk:
+        if security == self.PSK:
             logging.debug('Use PSK security w/ password %s', self.psk_password)
             ap.set_security_wpapsk(self.psk_password)
-            security = self.PSK
         else:  # Testing open system, i.e. security = ''
             ap.set_security_disabled()
 

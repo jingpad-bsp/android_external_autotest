@@ -72,12 +72,15 @@ class WifiChaosTest(object):
                     # Power down all of the APs because some can get grumpy
                     # if they are configured several times and remain on.
                     helper.power_down_aps(ap_batch)
+                    security = ''
+                    if helper.psk_password != '':
+                        security = helper.PSK
 
                     # For dual-band AP, we can only configure and test one band
                     # at a time. Hence the use of nested for loops below.
                     for band, channel in helper.get_bands_and_channels():
                         for ap_info in helper.config_aps(
-                                ap_batch, band, channel):
+                                ap_batch, band, channel, security=security):
                             # Group test output by SSID
                             mod_ssid = ap_info['ssid'].replace(' ', '_')
                             job.run_test(self._test,
