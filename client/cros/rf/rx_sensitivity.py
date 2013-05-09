@@ -1,6 +1,5 @@
 import argparse
 import pexpect
-import sys
 import time
 
 import common
@@ -25,7 +24,7 @@ class Labtool8797(object):
 
         @param option_string: option string that labtool would process.
         @param expected_string: the specific pattern to wait from labtool.
-        @return the string in between the expected string and 'Enter option:' 
+        @return the string in between the expected string and 'Enter option:'
         """
         self.labtool8797.sendline(option_string)
         self.labtool8797.expect(expected_string)
@@ -189,10 +188,10 @@ def main():
     print 'Beginning test in %s secs' % args.sleeptime
     time.sleep(float(args.sleeptime))
 
-    n4010a = agilent_scpi.N4010ASCPI(args.n4010a_host)   
+    n4010a = agilent_scpi.N4010ASCPI(args.n4010a_host)
     connect_and_initialize_n4010a(n4010a)
 
-    labtool = Labtool8797(args.labtool_dir) 
+    labtool = Labtool8797(args.labtool_dir)
     launch_labtool(labtool)
 
     # Finding RX sensivity for various channels, data rates
@@ -204,7 +203,7 @@ def main():
         (BAND_2G, ((1, 2412*1e6), (6, 2437*1e6), (11, 2462*1e6))),
         (BAND_5G, ((36, 5180*1e6), (64, 5320*1e6), (165, 5825*1e6))))
     data_rate_power_info = (('MCS0', -70), ('MCS7', -50))
-    
+
     find_sensitivity_for_channels_rates(n4010a, labtool, wifi_bands,
                                         data_rate_power_info, TEST_2G, TEST_5G)
 
