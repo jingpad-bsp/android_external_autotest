@@ -11,6 +11,7 @@ import time
 import urllib
 
 from autotest_lib.client.common_lib import base_utils, error, global_config
+from autotest_lib.client.cros import constants
 
 
 # Keep checking if the pid is alive every second until the timeout (in seconds)
@@ -72,6 +73,39 @@ def host_is_in_lab_zone(hostname):
         return True
     except socket.gaierror:
       return False
+
+
+def get_chrome_version(job_views):
+    """
+    Retrieves the version of the chrome binary associated with a job.
+
+    When a test runs we query the chrome binary for it's version and drop
+    that value into a client keyval. To retrieve the chrome version we get all
+    the views associated with a test from the db, including those of the
+    server and client jobs, and parse the version out of the first test view
+    that has it. If we never ran a single test in the suite the job_views
+    dictionary will not contain a chrome version.
+
+    This method cannot retrieve the chrome version from a dictionary that
+    does not conform to the structure of an autotest tko view.
+
+    @param job_views: a list of a job's result views, as returned by
+                      the get_detailed_test_views method in rpc_interface.
+    @return: The chrome version string, or None if one can't be found.
+    """
+
+    # Aborted jobs have no views.
+    if not job_views:
+        return None
+
+    for view in job_views:
+        if (view.get('attributes')
+            and constants.CHROME_VERSION in view['attributes'].keys()):
+
+            return view['attributes'].get(constants.CHROME_VERSION)
+
+    logging.warning('Could not find chrome version for failure.')
+    return None
 
 
 def get_current_board():

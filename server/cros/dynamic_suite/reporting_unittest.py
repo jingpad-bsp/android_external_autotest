@@ -19,6 +19,7 @@ class ReportingTest(mox.MoxTestBase):
     # test report used to generate failure
     test_report = {
         'build':'build',
+        'chrome_version':'28.0',
         'suite':'suite',
         'test':'bad_test',
         'reason':'dreadful_reason',
@@ -50,6 +51,7 @@ class ReportingTest(mox.MoxTestBase):
             hostname=self.test_report.get('hostname'))
 
         return reporting.TestFailure(self.test_report.get('build'),
+            self.test_report.get('chrome_version'),
             self.test_report.get('suite'), expected_result)
 
 

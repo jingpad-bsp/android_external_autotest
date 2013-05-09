@@ -8,6 +8,8 @@ import json
 import logging
 import re
 
+from xml.parsers import expat
+
 import common
 
 from autotest_lib.client.common_lib import global_config, site_utils
@@ -73,16 +75,19 @@ class TestFailure(object):
 
     _HTTP_ERROR_THRESHOLD = 400
 
-    def __init__(self, build, suite, result):
+    def __init__(self, build, chrome_version, suite, result):
         """
-        @param build The build type, of the form <board>/<milestone>-<release>.
-                     ie. x86-mario-release/R25-4321.0.0
-        @param suite The name of the suite that this test run was a part of.
+        @param build: The build type, of the form <board>/<milestone>-<release>.
+                      eg: x86-mario-release/R25-4321.0.0
+        @param chrome_version: The chrome version associated with the build.
+                               eg: 28.0.1498.1
+        @param suite: The name of the suite that this test run is a part of.
         @param result: The status of the job associated with this failure.
                        This contains the status, job id, test name, hostname
                        and reason for failure.
         """
         self.build = build
+        self.chrome_version = chrome_version
         self.suite = suite
         self.test = result.test_name
         self.reason = result.reason
@@ -111,7 +116,8 @@ class TestFailure(object):
         links = self._get_links_for_failure()
         summary = ('This bug has been automatically filed to track the '
                    'following failure:\nTest: %(test)s.\nSuite: %(suite)s.\n'
-                   'Build: %(build)s.\n\nReason:\n%(reason)s.\n\n'
+                   'Chrome Version: %(chrome_version)s.\n'
+                   'Build: %(build)s.\n\nReason:\n%(reason)s.\n'
                    'build artifacts: %(build_artifacts)s.\n'
                    'results log: %(results_log)s.\n'
                    'buildbot stages: %(buildbot_stages)s.\n')
@@ -120,6 +126,7 @@ class TestFailure(object):
             'test': self.test,
             'suite': self.suite,
             'build': self.build,
+            'chrome_version': self.chrome_version,
             'reason': self.reason,
             'build_artifacts': links.artifacts,
             'results_log': links.results,
@@ -498,7 +505,18 @@ class Reporter(object):
             logging.error("Can't file %s", failure.bug_title())
             return None
 
-        issue = self._find_issue_by_marker(failure.search_marker())
+        # If our search string sends pythons xml module into a state which it
+        # believes will lead to an xml syntax error, it will give up and throw
+        # an exception. This might happen with aborted jobs that contain weird
+        # escape charactes in their reason fields. We'd rather create a new
+        # issue than fail in dedulicating such cases.
+        issue = None
+        try:
+            issue = self._find_issue_by_marker(failure.search_marker())
+        except expat.ExpatError as e:
+            logging.warning('Unable to deduplicate, creating new issue: %s',
+                            str(e))
+
         summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
                                     self._SEARCH_MARKER,
                                     failure.search_marker())

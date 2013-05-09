@@ -13,6 +13,8 @@ FW_VERSION_PREFIX = 'fw-version:'
 JOB_REPO_URL = 'job_repo_url'
 VERSION_PREFIX = 'cros-version:'
 BOARD_PREFIX = 'board:'
+
+# Bug filing
 BUG_KEYVAL = '-Bug_Id'
 
 # Timings

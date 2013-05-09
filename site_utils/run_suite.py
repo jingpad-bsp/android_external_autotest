@@ -233,13 +233,13 @@ class LogLink(object):
         self.bug_id = bug_id
 
 
-    def GenerateBugString(self):
+    def GenerateBugLink(self):
         """
         @return: A plain text link to the bug filed, if any.
         """
         if self.bug_id:
             crbug_url = CONFIG.get_config_value('BUG_REPORTING', 'tracker_url')
-            return ' (%s/%s filed)'% (crbug_url, self.bug_id)
+            return '%s%s'% (crbug_url, self.bug_id)
         return ''
 
 
@@ -249,8 +249,9 @@ class LogLink(object):
 
         @return A link formatted for the buildbot log annotator.
         """
-        anchor_string = self.anchor.strip() + self.GenerateBugString()
-        return "@@@STEP_LINK@%s@%s@@@"% (anchor_string, self.url)
+        bug_link = self.GenerateBugLink()
+        url = bug_link if bug_link else self.url
+        return "@@@STEP_LINK@%s@%s@@@"% (self.anchor.strip(), url)
 
 
     def GenerateTextLink(self):

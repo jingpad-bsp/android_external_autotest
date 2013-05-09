@@ -408,9 +408,12 @@ class SuiteTest(mox.MoxTestBase):
             [test_predicates+test_fallout],
             self.recorder)
 
+        self.suite._tko.run = self.mox.CreateMock(frontend.RpcClient.run)
+        self.suite._tko.run('get_detailed_test_views', afe_job_id='myjob')
+
         self.mox.StubOutWithMock(reporting, 'TestFailure')
         reporting.TestFailure(self._BUILD, mox.IgnoreArg(),
-                              mox.Func(check_result))
+                              mox.IgnoreArg(), mox.Func(check_result))
 
         self.mox.StubOutWithMock(reporting.Reporter, 'report')
         reporting.Reporter.report(mox.IgnoreArg(), mox.IgnoreArg())

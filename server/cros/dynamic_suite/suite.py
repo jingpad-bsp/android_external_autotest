@@ -7,7 +7,7 @@ import hashlib, logging, os, re, traceback
 import common
 
 from autotest_lib.client.common_lib import control_data
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import site_utils, utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -394,10 +394,15 @@ class Suite(object):
                 # have laying around in memory across several objects here.
                 worse = result.is_worse_than(
                     job_status.Status('WARN', '', 'reason'))
+
                 if self._file_bugs and worse:
+                    job_views = self._tko.run('get_detailed_test_views',
+                                              afe_job_id=result.id)
+
                     failure = reporting.TestFailure(self._build,
-                                                    self._tag,
-                                                    result)
+                            site_utils.get_chrome_version(job_views),
+                            self._tag,
+                            result)
 
                     bug_id = bug_reporter.report(failure, bug_template)
                     try:

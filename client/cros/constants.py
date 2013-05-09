@@ -134,3 +134,6 @@ SHILL_XMLRPC_SERVER_COMMAND = (
         './shill_xmlrpc_server.py')
 SHILL_XMLRPC_SERVER_CLEANUP_PATTERN = 'shill_xmlrpc_server'
 SHILL_XMLRPC_SERVER_READY_METHOD = 'ready'
+
+# Bug filing
+CHROME_VERSION = 'CHROME_VERSION'
