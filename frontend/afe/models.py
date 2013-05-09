@@ -2,7 +2,15 @@
 
 import logging, os
 from datetime import datetime
-from django.db import models as dbmodels, connection
+import django.core
+try:
+    from django.db import models as dbmodels, connection
+except django.core.exceptions.ImproperlyConfigured:
+    raise ImportError('Django database not yet configured. Import either '
+                       'setup_django_environment or '
+                       'setup_django_lite_environment from '
+                       'autotest_lib.frontend before any imports that '
+                       'depend on django models.')
 from xml.sax import saxutils
 import common
 from autotest_lib.frontend.afe import model_logic, model_attributes
