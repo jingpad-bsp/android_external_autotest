@@ -317,7 +317,7 @@ class FAFTSequence(ServoTest):
             error.TestError: if failed to boot the USB image.
         """
         # DUT works fine and is already in recovery boot, done.
-        if self._ping_test(self._client.ip, timeout=5):
+        if self._sshd_test(self._client.ip, timeout=5):
             if self.checkers.crossystem_checker({'mainfw_type': 'recovery'}):
                 return
 
