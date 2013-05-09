@@ -2,6 +2,7 @@
 # This does not include stuff like proxy-directives and some of the files here
 # include other directive files.
 
+DocumentRoot /usr/local/autotest/apache/www/
 Include "/usr/local/autotest/apache/conf/cgi-directives"
 Include "/usr/local/autotest/apache/conf/gwt-directives"
 Include "/usr/local/autotest/apache/conf/django-directives"
@@ -12,4 +13,4 @@ Include "/usr/local/autotest/apache/conf/embedded-tko-directives"
 Include "/usr/local/autotest/apache/conf/embedded-spreadsheet-directives"
 Include "/usr/local/autotest/apache/conf/site-directives"
 # This should only be uncommented for official servers.
-# Include "/usr/local/autotest/apache/conf/site-sso-directives"
+ Include "/usr/local/autotest/apache/conf/site-sso-directives"

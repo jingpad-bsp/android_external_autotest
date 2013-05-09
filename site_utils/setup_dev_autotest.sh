@@ -104,7 +104,7 @@ EOF
 fi
 
 echo "Installing needed Ubuntu packages..."
-PKG_LIST="mysql-server mysql-common libapache2-mod-python python-mysqldb \
+PKG_LIST="mysql-server mysql-common libapache2-mod-wsgi python-mysqldb \
 gnuplot apache2-mpm-prefork unzip python-imaging libpng12-dev libfreetype6-dev \
 sqlite3 python-pysqlite2 git-core pbzip2 openjdk-6-jre openjdk-6-jdk \
 python-crypto  python-dev subversion build-essential python-setuptools \
@@ -198,8 +198,10 @@ sudo a2dissite default
 sudo a2ensite autotest-server
 # Enable rewrite module
 sudo a2enmod rewrite
-# Enable mod-python
-sudo a2enmod python
+# Enable wsgi
+sudo a2enmod wsgi
+# enable version
+sudo a2enmod version
 # Setup permissions so that Apache web user can read the proper files.
 chmod -R o+r "${AT_DIR}"
 find "${AT_DIR}"/ -type d -print0 | xargs --null chmod o+x

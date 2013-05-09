@@ -16,7 +16,22 @@ class DatabaseOperations(MySQLOperations):
 
 class DatabaseWrapper(MySQLDatabaseWrapper):
     def __init__(self, *args, **kwargs):
+        self.connection = None
         super(DatabaseWrapper, self).__init__(*args, **kwargs)
         self.creation = MySQLCreation(self)
-        self.ops = DatabaseOperations(self.connection)
+        try:
+            self.ops = DatabaseOperations()
+        except TypeError:
+            self.ops = DatabaseOperations(connection=kwargs.get('connection'))
         self.introspection = MySQLIntrospection(self)
+
+    def _valid_connection(self):
+        if self.connection is not None:
+            if self.connection.open:
+                try:
+                    self.connection.ping()
+                    return True
+                except Database.DatabaseError:
+                    self.connection.close()
+                    self.connection = None
+        return False
