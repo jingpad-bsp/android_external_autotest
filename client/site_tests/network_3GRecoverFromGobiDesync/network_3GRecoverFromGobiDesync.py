@@ -137,8 +137,9 @@ class GobiDesyncEventLoop(TestEventLoop):
       if (START_DEVICE_PRESENT in self.remaining_start_conditions and
           mm.PickOneModem('Gobi')):
         self.remaining_start_conditions.discard(START_DEVICE_PRESENT)
-    except org.freedesktop.DBus.Error.NoReply:
-      pass
+    except dbus.exceptions.DBusException, e:
+      if e.get_dbus_name() != 'org.freedesktop.DBus.Error.NoReply':
+        raise
 
     if self.remaining_start_conditions:
       logging.info('Not starting until: %s' % self.remaining_start_conditions)
