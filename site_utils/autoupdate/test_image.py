@@ -27,7 +27,7 @@ except ImportError:
 # end with a '/', in order for standard basename code to work correctly for
 # zip-encapsulated paths.
 ZIPFILE_BOUNDARY = '//'
-ARCHIVE_URL_FORMAT = '%(archive_base)s/%(board)s-release/%(branch)s-%(release)s'
+ARCHIVE_URL_FORMAT = '%(archive_prefix)s/%(version)s'
 
 
 class TestImageError(BaseException):
@@ -35,13 +35,11 @@ class TestImageError(BaseException):
     pass
 
 
-def get_archive_url(board, branch, release):
-    """Returns the gs archive_url for the respective arguments.
+def get_default_archive_url(board, build_version):
+    """Returns the default archive_url for the given board and build_version .
 
-    @param board: the platform name (string)
-    @param release: the release version (string), without milestone and
-                    attempt/build counters
-    @param branch: the release's branch name
+    @param board: the platform/board name
+    @param build_version: the full build version i.e. R27-3823.0.0-a2.
     """
     archive_base = global_config.global_config.get_config_value(
             'CROS', 'image_storage_server')
@@ -51,9 +49,22 @@ def get_archive_url(board, branch, release):
     # once we switch to using artifacts from gs://chromeos-images/
     # (see chromium-os:38222)
     board = re.sub('-he$', '_he', board)
+    archive_prefix = archive_base + '/%s-release' % board
     return ARCHIVE_URL_FORMAT % dict(
-            archive_base=archive_base, board=board, branch=branch,
-            release=release)
+            archive_prefix=archive_prefix, version=build_version)
+
+
+def get_archive_url_from_prefix(archive_prefix, build_version):
+    """Returns the gs archive_url given a particular archive_prefix.
+
+    @param archive_prefix: Use the archive_prefix as the base of your URL
+
+                           construction (instead of config + board-release) e.g.
+                           gs://my_location/my_super_awesome_directory.
+    @param build_version: the full build version i.e. R27-3823.0.0-a2.
+    """
+    return ARCHIVE_URL_FORMAT % dict(
+            archive_prefix=archive_prefix, version=build_version)
 
 
 def gs_ls(pattern, archive_url, single):

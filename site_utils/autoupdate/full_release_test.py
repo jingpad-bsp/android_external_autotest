@@ -46,11 +46,19 @@ _default_dump_dir = os.path.realpath(
 # Matches delta format name and returns groups for branches and release numbers.
 _delta_re = re.compile(
         'chromeos_'
-        '(?P<s_branch>R[0-9]+)-(?P<s_release>[0-9a-z.\-]+)_'
-        '(?P<t_branch>R[0-9]+)-(?P<t_release>[0-9a-z.\-]+)_[\w.]+')
+        '(?P<s_version>R[0-9]+-[0-9a-z.\-]+)_'
+        '(?P<t_version>R[0-9]+-[0-9a-z.\-]+)_[\w.]+')
+
+_build_version_re = re.compile(
+        '(?P<branch>R[0-9]+)-(?P<release>[0-9a-z.\-]+)')
+_build_version = '%(branch)s-%(release)s'
+
+
 # Extracts just the main version from a version that may contain attempts or
 # a release candidate suffix i.e. 3928.0.0-a2 -> base_version=3928.0.0.
 _version_re = re.compile('(?P<base_version>[0-9.]+)(?:\-[a-z]+[0-9]+])*')
+
+
 
 _name_re = re.compile('\s*NAME\s*=')
 
@@ -258,35 +266,44 @@ class TestConfigGenerator(object):
         self.src_as_payload = src_as_payload
         self.use_mp_images = use_mp_images
         if archive_url:
-          self.archive_url = archive_url
+            self.archive_url = archive_url
         else:
-          self.archive_url = test_image.get_archive_url(
-                  board, get_release_branch(tested_release), tested_release)
+            branch = get_release_branch(tested_release)
+            build_version = _build_version % dict(branch=branch,
+                                                  release=tested_release)
+            self.archive_url = test_image.get_default_archive_url(
+                    board, build_version)
+
+        # Get the prefix which is an archive_url stripped of its trailing
+        # version. We rstrip in the case of any trailing /'s.
+        # Use archive prefix for any nmo / specific builds.
+        self.archive_prefix = self.archive_url.rstrip('/').rpartition('/')[0]
 
 
-    def _get_source_uri(self, release, branch=None):
-        """Returns the source uri for a given release or None if not found.
+    def _get_source_uri_from_build_version(self, build_version):
+        """Returns the source_url given build version.
 
         Args:
-            release: required release number.
-            branch: optional branch. If not set, we use release_config to find
-                    it.
+            build_version: the full build version i.e. R27-3823.0.0-a2.
         """
-        if not branch:
-            branch = get_release_branch(release)
-
-        # If we're looking for our own image, use the target archive_url if set.
-        archive_url = None
-        if self.tested_release in release:
-            archive_url = self.archive_url
-        else:
-            archive_url = test_image.get_archive_url(self.board, branch,
-                                                     release)
-
+         # If we're looking for our own image, use the target archive_url if set
+        archive_url = test_image.get_archive_url_from_prefix(
+                self.archive_prefix, build_version)
         if self.src_as_payload:
             return test_image.find_payload_uri(archive_url, single=True)
         else:
             return test_image.find_image_uri(archive_url)
+
+
+    def _get_source_uri_from_release(self, release):
+        """Returns the source uri for a given release or None if not found.
+
+        Args:
+            release: required release number.
+        """
+        branch = get_release_branch(release)
+        return self._get_source_uri_from_build_version(
+                _build_version % dict(branch=branch, release=release))
 
 
     def generate_mp_image_npo_nmo_list(self):
@@ -353,24 +370,40 @@ class TestConfigGenerator(object):
                 self.board, name, self.use_mp_images, is_delta_update,
                 source_version, target_version, source_uri, payload_uri)
 
+
+    @staticmethod
+    def _parse_build_version(build_version):
+        """Returns a branch, release tuple from a full build_version.
+
+        Args:
+            build_version: Delta filename to parse e.g.
+                      'chromeos_R27-3905.0.0_R27-3905.0.0_stumpy_delta_dev.bin'
+        """
+        match = _build_version_re.match(build_version)
+        if not match:
+            logging.warn('version %s did not match version format',
+                         build_version)
+            return None
+
+        return match.group('branch'), match.group('release')
+
+
     @staticmethod
     def _parse_delta_filename(filename):
-        """Parses a delta payload name into its four components.
+        """Parses a delta payload name into its source/target versions.
 
         Args:
             filename: Delta filename to parse e.g.
                       'chromeos_R27-3905.0.0_R27-3905.0.0_stumpy_delta_dev.bin'
 
-        Returns: tuple with source_branch, source_release, target_branch and
-                 target_release.
+        Returns: tuple with source_version, and target_version.
         """
         match = _delta_re.match(filename)
         if not match:
             logging.warn('filename %s did not match delta format', filename)
             return None
 
-        return (match.group('s_branch'), match.group('s_release'),
-                match.group('t_branch'), match.group('t_release'))
+        return match.group('s_version'), match.group('t_version')
 
 
     def generate_test_image_npo_nmo_list(self):
@@ -399,24 +432,25 @@ class TestConfigGenerator(object):
         for payload_uri in payload_uri_list:
             # Infer the source and target release versions.
             file_name = os.path.basename(payload_uri)
-            source_branch, source_release, _, target_release = (
+            source_version, target_version = (
                     self._parse_delta_filename(file_name))
+            _, source_release = self._parse_build_version(source_version)
 
-            # For trybots and other non-release builders, the actual version
-            # may contain attempts or end in other characters.
-            if not target_release.startswith(self.tested_release):
+            # The target version should contain the tested release otherwise
+            # this is a malformed delta i.e. 940.0.1 in R28-940.0.1-a1.
+            if self.tested_release not in target_version:
                 raise FullReleaseTestError(
-                        'unexpected delta target release: %s != %s (%s)',
-                        target_release, self.tested_release, self.board)
+                        'delta target release %s does not contain %s (%s)',
+                        target_version, self.tested_release, self.board)
 
-            source_uri = self._get_source_uri(source_release, source_branch)
+            source_uri = self._get_source_uri_from_build_version(source_version)
             if not source_uri:
                 logging.warning('cannot find source for %s, %s', self.board,
-                                source_release)
+                                source_version)
                 continue
 
             # Determine delta type, make sure it was not already discovered.
-            delta_type = 'npo' if source_release == target_release else 'nmo'
+            delta_type = 'npo' if source_version == target_version else 'nmo'
             # Only add test configs we were asked to test.
             if (delta_type == 'npo' and not self.test_npo) or (
                 delta_type == 'nmo' and not self.test_nmo):
@@ -467,7 +501,7 @@ class TestConfigGenerator(object):
         # Construct test list.
         test_list = []
         for source_release in source_releases:
-            source_uri = self._get_source_uri(source_release)
+            source_uri = self._get_source_uri_from_release(source_release)
             if not source_uri:
                 logging.warning('cannot find source for %s, %s', self.board,
                                 source_release)
