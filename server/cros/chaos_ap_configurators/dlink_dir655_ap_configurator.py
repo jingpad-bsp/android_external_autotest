@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Class to control the Dlink Dir655 router."""
+
 import logging
 import os
 import time
@@ -209,6 +211,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
     def set_band(self, band):
         logging.debug('This router (%s) does not support multiple bands.' %
                       self.get_router_name())
+        return None
 
 
     def set_security_disabled(self):

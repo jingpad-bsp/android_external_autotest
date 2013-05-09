@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Class to control the Belkin router."""
+
 import logging
 import os
 import time
@@ -135,6 +137,11 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_ch_width(self, channel_width):
+        """
+        Adjusts the channel width.
+
+        @param channel_width: the channel width
+        """
         self.add_item_to_command_list(self._set_ch_width,(channel_width,),
                                       1, 900)
 
@@ -147,14 +154,14 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_radio(self, enabled=True):
-        logging.info('This router (%s) does not support radio',
-                     self.get_router_name())
+        logging.debug('This router (%s) does not support radio',
+                      self.get_router_name())
         return None
 
 
     def set_band(self, band):
-        logging.info('This router (%s) does not support multiple bands.',
-                     self.get_router_name())
+        logging.debug('This router (%s) does not support multiple bands.',
+                      self.get_router_name())
         return None
 
 

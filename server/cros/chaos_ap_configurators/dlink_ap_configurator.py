@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Class to control the DlinkAP router."""
+
 import os
 
 import ap_configurator
@@ -192,10 +194,12 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_id(str(position), 'channel_g')
 
 
-    # Experimental
     def get_band(self):
-        # The radio buttons do more than run a script that adjusts the possible
-        # channels.  We will just check the channel to popup.
+        """
+        This is experimental
+        The radio buttons do more than run a script that adjusts the possible
+        channels. We will just check the channel to popup.
+        """
         self.set_radioSetting(enabled=True)
         xpath = ('id("channel_g")')
         self._open_configuration_page()
