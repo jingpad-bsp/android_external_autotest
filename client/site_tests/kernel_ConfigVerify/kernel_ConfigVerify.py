@@ -78,9 +78,8 @@ class kernel_ConfigVerify(test.test):
             'builtin': [
                 'DEBUG_FS',
                 'ECRYPT_FS',
-                'EXT2_FS',
-                'EXT3_FS',
                 'EXT4_FS',
+                'EXT4_USE_FOR_EXT23',
                 'PROC_FS',
                 'SCSI_PROC_FS',
             ],
@@ -94,6 +93,8 @@ class kernel_ConfigVerify(test.test):
             ],
             'missing': [
                 # Sanity checks; one disabled, one does not exist.
+                'EXT2_FS',
+                'EXT3_FS',
                 'XFS_FS',
                 'IMPOSSIBLE_FS',
             ],
