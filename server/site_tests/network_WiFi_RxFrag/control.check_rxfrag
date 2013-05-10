@@ -6,6 +6,8 @@ AUTHOR = 'wiley@chromium.com'
 NAME = 'network_WiFi_RxFrag'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
+SUITE = 'wifi_matfunc'
+DEPENDENCIES = 'wificell'
 
 DOC = """
 This test verifies that DUT can successfuly reassemble fragmented

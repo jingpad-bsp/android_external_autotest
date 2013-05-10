@@ -6,6 +6,8 @@ AUTHOR = 'wiley@chromium.com'
 NAME = 'network_WiFi_MaskedBSSID'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
+SUITE = 'wifi_matfunc'
+DEPENDENCIES = 'wificell'
 
 DOC = """
 This test is designed to check that we can successfully scan for two
