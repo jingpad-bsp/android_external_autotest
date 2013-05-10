@@ -61,6 +61,7 @@ class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
                 intended_ip,
                 self.server_ip,
                 dhcp_options,
+                {},
                 should_respond=False)
         t1_handler.target_time_seconds = t1_deadline
         t1_handler.allowable_time_delta_seconds = 1.0
@@ -68,6 +69,7 @@ class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
                 intended_ip,
                 self.server_ip,
                 dhcp_options,
+                {},
                 should_respond=False)
         t2_handler.target_time_seconds = t2_deadline
         t2_handler.allowable_time_delta_seconds = 1.0
@@ -76,6 +78,7 @@ class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
                         intended_ip,
                         self.server_ip,
                         dhcp_options,
+                        {},
                         should_respond=False)
         rules = [t1_handler, t2_handler, discovery_handler]
         rules[-1].is_final_handler = True

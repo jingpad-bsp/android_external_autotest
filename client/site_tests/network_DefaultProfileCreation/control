@@ -5,6 +5,7 @@
 AUTHOR = "quiche@chromium.org"
 NAME = "network_DefaultProfileCreation"
 PURPOSE = "Verify that default profile is populated with default values"
+SUITE = "network_nightly"
 CRITERIA = """
 This test fails if a newly created default profile does not contain
 default values for the properties that should have them.
