@@ -103,6 +103,15 @@ class Modem(object):
             sim_obj = self.bus.get_object(self.service, props['Sim'])
             sim_props_iface = dbus.Interface(sim_obj, dbus.PROPERTIES_IFACE)
             sim_props = sim_props_iface.GetAll(mm1.SIM_INTERFACE)
+
+            # SIM cards may store an empty operator name or store a value
+            # different from the one obtained OTA. Rename the 'OperatorName'
+            # property obtained from the SIM card to 'SimOperatorName' in
+            # order to avoid a potential conflict with the 'OperatorName'
+            # property obtained from the Modem3gpp interface.
+            if 'OperatorName' in sim_props:
+                sim_props['SimOperatorName'] = sim_props.pop('OperatorName')
+
             self._CopyPropertiesCheckUnique(sim_props, props)
         except dbus.exceptions.DBusException:
             pass
