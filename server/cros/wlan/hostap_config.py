@@ -211,7 +211,7 @@ class HostapConfig(object):
         self.beacon_interval = beacon_interval
         self.dtim_period = dtim_period
         self.frag_threshold = frag_threshold
-        if len(ssid) > 32:
+        if ssid and len(ssid) > 32:
             raise error.TestFail('Tried to specify SSID that was too long.')
 
         self.ssid = ssid
