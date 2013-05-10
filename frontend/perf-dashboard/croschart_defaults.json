@@ -701,6 +701,81 @@
     ]
   },
   {
+    "test_name": "telemetry_Benchmarks.dromaeo_domcoreattr",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "dromaeo_domecoreattr",
+        "units": "runs_per_sec",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY*"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "telemetry_Benchmarks.dromaeo_domcoremodify",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "dromaeo_domecoremodify",
+        "units": "runs_per_sec",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY*"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "telemetry_Benchmarks.dromaeo_domcorequery",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "dromaeo_domecorequery",
+        "units": "runs_per_sec",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY*"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "telemetry_Benchmarks.dromaeo_domcoretraverse",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "dromaeo_domecoretraverse",
+        "units": "runs_per_sec",
+        "better_direction": "higher",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY*"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "telemetry_Benchmarks.kraken",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "kraken",
+        "units": "ms",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY*"
+        ]
+      }
+    ]
+  },
+  {
     "test_name": "telemetry_Benchmarks.octane",
     "master": "ChromiumPerf",
     "graphs": [
@@ -731,6 +806,36 @@
           "TELEMETRY--RegExp*",
           "TELEMETRY--Richards*",
           "TELEMETRY--Splay*"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "telemetry_Benchmarks.robohornetpro",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "robohornetpro",
+        "units": "ms",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY*"
+        ]
+      }
+    ]
+  },
+  {
+    "test_name": "telemetry_Benchmarks.sunspider",
+    "master": "ChromiumPerf",
+    "graphs": [
+      {
+        "graph_name": "sunspider",
+        "units": "ms",
+        "better_direction": "lower",
+        "info_url": "../../../../../scripts/doc/default.html",
+        "keys": [
+          "TELEMETRY*"
         ]
       }
     ]
