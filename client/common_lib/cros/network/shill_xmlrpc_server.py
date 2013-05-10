@@ -144,6 +144,26 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return successful is True
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def configure_bgscan(self, raw_params):
+        """Configure background scan parameters via shill.
+
+        @param raw_params dict from BgscanConfiguration.serialize().
+
+        """
+        params = xmlrpc_datatypes.BgscanConfiguration(raw_params)
+        if params.interface is None:
+            logging.error('No interface specified to set bgscan parameters on.')
+            return False
+
+        return self._shill_proxy.configure_bgscan(
+                params.interface,
+                method=params.method,
+                short_interval=params.short_interval,
+                long_interval=params.long_interval,
+                signal=params.signal)
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')

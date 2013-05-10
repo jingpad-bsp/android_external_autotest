@@ -1140,14 +1140,6 @@ class WiFiTest(object):
                                                              None))
 
 
-    def assert_ping_similarity(self, params):
-        """ Assert that two specified sets of ping parameters are 'similar' """
-        if "stats0" not in params or "stats1" not in params:
-            raise error.TestFail("Missing ping statistics keys")
-        self.client_proxy.assert_ping_similarity(params["stats0"],
-                                                 params["stats1"])
-
-
     def server_ping(self, params):
         """ Ping the client from the server """
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
@@ -1704,41 +1696,49 @@ class WiFiTest(object):
 
 
     def bgscan_set(self, params):
-        """ Control wpa_supplicant bgscan """
-        opts = ""
+        """Control wpa_supplicant bgscan.
+
+        @param params dict of site_wifitest params.
+
+        """
+        config = xmlrpc_datatypes.BgscanConfiguration()
         if params.get('short_interval', None):
-            opts += " BgscanShortInterval=%s" % params['short_interval']
+            config.short_interval = params['short_interval']
         if params.get('long_interval', None):
-            opts += " ScanInterval=%s" % params['long_interval']
+            config.long_interval = params['long_interval']
         if params.get('signal', None):
             signal = params['signal']
             if signal == 'auto':
                 if 'signal avg' not in self.client_signal_info:
                     raise error.TestError('No signal info')
-                else:
-                    signal = int(self.client_signal_info['signal avg'])
-                    if 'offset' in params:
-                        signal += int(params['offset'])
-                    if 'noise' in self.client_signal_info:
-                        # Compensate for real noise vs standard estimate
-                        signal -= 95 + int(self.client_signal_info['noise'])
+
+                config.set_auto_signal(
+                        self.client_signal_info['signal avg'],
+                        signal_offset=params.get('offset', None),
+                        signal_noise=self.client_signal_info.get('noise', None))
                 logging.info('Auto signal: %s' % repr(signal))
-            opts += " BgscanSignalThreshold=%s" % signal
+            config.signal = signal
         if params.get('method', None):
-            opts += " BgscanMethod=%s" % params['method']
-        self.client.run('%s/set-bgscan --interface %s %s' %
-                        (self.client_cmd_flimflam_lib, self.client_wlanif,
-                         opts))
+            config.method = params['method']
+        self.client_proxy.configure_bgscan(config)
 
 
     def bgscan_disable(self, params):
-        """ Disable wpa_supplicant bgscan """
-        self.bgscan_set({'method' : 'none'})
+        """Disable wpa_supplicant bgscan.
+
+        @param params dict (ignored).
+
+        """
+        self.client_proxy.disable_bgscan()
 
 
     def bgscan_enable(self, params):
-        """ Enable wpa_supplicant bgscan """
-        self.bgscan_set({'method' : 'default'})
+        """Enable wpa_supplicant bgscan.
+
+        @param params dict (ignored).
+
+        """
+        self.client_proxy.enable_bgscan()
 
 
     def scan(self, params):

@@ -99,3 +99,44 @@ class AssociationResult(xmlrpc_datatypes.XmlRpcStruct):
         result.configuration_time = raw[3]
         result.failure_reason = raw[4]
         return result
+
+
+class BgscanConfiguration(xmlrpc_datatypes.XmlRpcStruct):
+    """Describes how to configure wpa_supplicant on a DUT."""
+
+    RESET_VALUE = 'default'
+
+    def __init__(self, serialized=None):
+        """Construct a BgscanConfiguration.
+
+        @param serialized dict passed over the wire from the autotest server.
+
+        """
+        super(BgscanConfiguration, self).__init__()
+        if serialized is None:
+            serialized = {}
+        self.interface = serialized.get('interface', None)
+        self.signal = serialized.get('signal', None)
+        self.short_interval = serialized.get('short_interval', None)
+        self.long_interval = serialized.get('long_interval', None)
+        self.method = serialized.get('method', None)
+
+
+    def set_auto_signal(signal_average, signal_offset=None, signal_noise=None):
+        """Set the signal threshold automatically from observed parameters.
+
+        @param signal_average int average signal level.
+        @param signal_offset int amount to adjust the average by.
+        @param signal_noise int amount of background noise observed.
+
+        """
+        signal = signal_average
+        if signal_offset:
+            signal += signal_offset
+        if signal_noise:
+            # Compensate for real noise vs standard estimate
+            signal -= 95 + signal_noise
+        logging.debug('Setting signal via auto configuration: '
+                      'avg=%d, offset=%r, noise=%r => signal=%d.',
+                      signal_average, signal_offset, signal_noise, signal)
+        self.signal = signal

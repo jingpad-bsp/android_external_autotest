@@ -8,6 +8,7 @@ import signal
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
@@ -212,7 +213,7 @@ class WiFiClient(object):
         self._host.close()
 
 
-    def ping(self, ping_ip, ping_args, save_stats=None, count=None):
+    def ping(self, ping_ip, ping_args, count=None):
         """Ping an address from the client and return the command output.
 
         @param ping_ip string IPv4 address for the client to ping.
@@ -224,6 +225,7 @@ class WiFiClient(object):
         @return string raw output of the ping command
 
         """
+        logging.info('Pinging from the client.')
         if not count:
             count = self.DEFAULT_PING_COUNT
         # Timeout is 3s / ping packet.
@@ -235,9 +237,6 @@ class WiFiClient(object):
                               wifi_test_utils.ping_args(ping_args),
                               ping_ip),
                 timeout=timeout)
-        if save_stats:
-            stats = wifi_test_utils.parse_ping_output(ping_output)
-            self._ping_stats[save_stats] = stats
         return result.stdout
 
 
@@ -261,7 +260,7 @@ class WiFiClient(object):
                 self.host, cmd, pkill_argument=self.COMMAND_PING)
 
 
-    def ping_bg_stop(self, save_stats=None):
+    def ping_bg_stop(self):
         """Stop pinging an address from the client in the background.
 
         Clean up state from a previous call to ping_bg.  If requested,
@@ -277,60 +276,7 @@ class WiFiClient(object):
             return
         # Sending SIGINT gives us stats at the end, how nice.
         self._ping_thread.join(signal.SIGINT)
-        if save_stats:
-            stats = wifi_test_utils.parse_ping_output(
-                    self._ping_thread.result.stdout)
-            self._ping_stats[save_stats] = stats
         self._ping_thread = None
-
-
-    def assert_ping_similarity(self, key1, key2):
-        """Assert that two specified sets of ping results are 'similar'.
-
-        @param key1 string key given previously as a value for save_stats.
-        @param key2 string key given previously as a value for save_stats.
-
-        """
-        stats0 = self._ping_stats[key1]
-        stats1 = self._ping_stats[key2]
-        if 'dev' not in stats0 or 'dev' not in stats1:
-            raise error.TestFail('Missing standard dev from ping stats')
-        if 'min' not in stats0 or 'min' not in stats1:
-            raise error.TestFail('Missing max rtt from ping stats')
-        if 'avg' not in stats0 or 'avg' not in stats1:
-            raise error.TestFail('Missing avg rtt from ping stats')
-        if 'max' not in stats0 or 'max' not in stats1:
-            raise error.TestFail('Missing max rtt from ping stats')
-        try:
-            avg0 = float(stats0['avg'])
-            max0 = float(stats0['max'])
-            avg1 = float(stats1['avg'])
-            max1 = float(stats1['max'])
-        except ValueError:
-            raise error.TestFail('Failed to parse ping statistics from avg/max '
-                                 'pairs: %s/%s %s/%s',
-                                 stats0['avg'], stats0['max'],
-                                 stats1['avg'], stats1['max'])
-        # This check is meant to assert that ping latency remains 'similar'
-        # during WiFi background scans.  APs typically send beacons every 100ms,
-        # (the period is configurable) so bgscan algorithms like to sit in a
-        # channel for 100ms to see if they can catch a beacon.
-        #
-        # Assert that the maximum latency is under 200 ms + whatever the
-        # average was for the other sample.  This allows us to go off chanel,
-        # but forces us to serve some real traffic when we go back on.
-        # We'll do this check symmetrically because we don't actually know
-        # which is the control distribution and which is the potentially dirty
-        # distribution.
-        if max0 > 200 + avg1 or max1 > 200 + avg0:
-            for name, stats in zip([key1, key2], [stats0, stats1]):
-                logging.error('Ping %s min/avg/max/dev = %s/%s/%s/%s',
-                              name,
-                              stats['min'],
-                              stats['avg'],
-                              stats['max'],
-                              stats['dev'])
-            raise error.TestFail('Significant difference in rtt due to bgscan')
 
 
     def firewall_open(self, proto, src):
@@ -477,3 +423,31 @@ class WiFiClient(object):
             if ssid and ('\tSSID: %s' % ssid) not in scan_lines:
                 raise error.TestFail('SSID %s is not in scan results: %s' %
                                      (ssid, result.stdout))
+
+
+    def configure_bgscan(self, configuration):
+        """Control wpa_supplicant bgscan.
+
+        @param configuration BgscanConfiguration describes a configuration.
+
+        """
+        configuration.interface = self.wifi_if
+        self._shill_proxy.configure_bgscan(configuration)
+        logging.info('bgscan configured.')
+
+
+    def disable_bgscan(self):
+        """Disable wpa_supplicant bgscan."""
+        # Refers to the 'none method defined in wpa_supplicant.
+        params = xmlrpc_datatypes.BgscanConfiguration()
+        params.interface = self.wifi_if
+        params.method = 'none'
+        self.configure_bgscan(params)
+
+
+    def enable_bgscan(self):
+        """Enable wpa_supplicant bgscan."""
+        params = xmlrpc_datatypes.BgscanConfiguration()
+        params.interface = self.wifi_if
+        params.method = xmlrpc_datatypes.BgscanConfiguration.RESET_VALUE
+        self.configure_bgscan(params)
