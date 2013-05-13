@@ -59,7 +59,7 @@ def is_installed(host, filename):
     @return True if filename is installed on host; False otherwise.
 
     """
-    result = host.run("ls %s" % filename, ignore_status=True)
+    result = host.run('ls %s' % filename, ignore_status=True)
     m = re.search(filename, result.stdout)
     return m is not None
 
@@ -84,7 +84,7 @@ def get_install_path(host, filename, paths):
             return install_path
         return None
 
-    result = host.run("ls {%s}/%s" % (','.join(paths), filename),
+    result = host.run('ls {%s}/%s' % (','.join(paths), filename),
                       ignore_status=True)
     found_path = result.stdout.split('\n')[0]
     return found_path or None
@@ -155,7 +155,7 @@ def get_default_ssid(test_name, ipaddr, host):
                 break
     else:
         unique_name = ipaddr
-    return re.sub('[^a-zA-Z0-9_]', '_', "%s_%s" %
+    return re.sub('[^a-zA-Z0-9_]', '_', '%s_%s' %
             (test_name, unique_name))[0:32]
 
 
@@ -167,31 +167,31 @@ def ping_args(params):
     @return String of arguments that ping will understand.
 
     """
-    args = ""
+    args = ''
     if 'count' in params:
-        args += " -c %s" % params['count']
+        args += ' -c %s' % params['count']
     if 'size' in params:
-        args += " -s %s" % params['size']
+        args += ' -s %s' % params['size']
     if 'bcast' in params:
-        args += " -b"
+        args += ' -b'
     if 'flood' in params:
-        args += " -f"
+        args += ' -f'
     if 'interval' in params:
-        args += " -i %s" % params['interval']
+        args += ' -i %s' % params['interval']
     if 'interface' in params:
-        args += " -I %s" % params['interface']
+        args += ' -I %s' % params['interface']
     if 'qos' in params:
-        ac = string.lower(params['qos'])
+        ac = params['qos'].lower()
         if ac == 'be':
-            args += " -Q 0x04"
+            args += ' -Q 0x04'
         elif ac == 'bk':
-            args += " -Q 0x02"
+            args += ' -Q 0x02'
         elif ac == 'vi':
-            args += " -Q 0x08"
+            args += ' -Q 0x08'
         elif ac == 'vo':
-            args += " -Q 0x10"
+            args += ' -Q 0x10'
         else:
-            args += " -Q %s" % ac
+            raise error.TestFail('Unknown QoS value: %s' % ac)
     return args
 
 
@@ -253,8 +253,8 @@ def get_interface_mac(host, ifname, command_ip):
     @return string MAC address for interface on host.
 
     """
-    result = host.run("%s link show %s" % (command_ip, ifname))
-    macmatch = re.search("link/ether (\S*)", result.stdout)
+    result = host.run('%s link show %s' % (command_ip, ifname))
+    macmatch = re.search('link/ether (\S*)', result.stdout)
     if macmatch is not None:
         return macmatch.group(1)
     return None

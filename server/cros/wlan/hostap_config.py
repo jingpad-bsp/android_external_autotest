@@ -114,7 +114,8 @@ class HostapConfig(object):
 
     def __init__(self, mode=None, channel=None, frequency=None,
                  n_capabilities=None, hide_ssid=None, beacon_interval=None,
-                 dtim_period=None, frag_threshold=None, ssid=None, bssid=None):
+                 dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
+                 force_wmm=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -131,6 +132,9 @@ class HostapConfig(object):
         @param frag_threshold int maximum outgoing data frame size.
         @param ssid string up to 32 byte SSID overriding the router default.
         @param bssid string like 00:11:22:33:44:55.
+        @param force_wmm True if we should force WMM on, False if we should
+            force it off, None if we shouldn't force anything.
+
 
         """
         super(HostapConfig, self).__init__()
@@ -216,3 +220,5 @@ class HostapConfig(object):
 
         self.ssid = ssid
         self.bssid = bssid
+        if force_wmm is not None:
+            self.wmm_enabled = force_wmm
