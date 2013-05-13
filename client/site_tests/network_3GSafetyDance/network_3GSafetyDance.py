@@ -2,23 +2,32 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test, utils
+import dbus
+import dbus.mainloop.glib
+import logging
+import random
+import time
+
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
-
-import logging, re, socket, string, time, urllib2
-import dbus, dbus.mainloop.glib, gobject
-import random
-
-from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 class network_3GSafetyDance(test.test):
+    """
+    Stress tests all connection manager 3G operations.
+
+    This test runs a long series of 3G operations in pseudorandom order. All of
+    these 3G operations must return a convincing result (EINPROGRESS or no
+    error).
+
+    """
     version = 1
 
-    def filterexns(self, fn):
+    def _filterexns(self, fn):
         v = None
         try:
             v = fn()
@@ -29,17 +38,17 @@ class network_3GSafetyDance(test.test):
                 raise error
         return v
 
-    def enable(self):
+    def _enable(self):
         logging.info('Enable')
-        self.filterexns(lambda:
+        self._filterexns(lambda:
             self.flim.EnableTechnology('cellular'))
 
-    def disable(self):
+    def _disable(self):
         logging.info('Disable')
-        self.filterexns(lambda:
+        self._filterexns(lambda:
             self.flim.DisableTechnology('cellular'))
 
-    def ignoring(self, status):
+    def _ignoring(self, status):
         if ('AlreadyConnected' in status['reason'] or
             'Bearer already being connected' in status['reason'] or
             'Bearer already being disconnected' in status['reason'] or
@@ -52,33 +61,33 @@ class network_3GSafetyDance(test.test):
             return not self.flim.FindCellularService(timeout=0)
         return False
 
-    def connect(self):
+    def _connect(self):
         logging.info('Connect')
         self.service = self.flim.FindCellularService(timeout=5)
         if self.service:
-            (success, status) = self.filterexns(lambda:
+            (success, status) = self._filterexns(lambda:
                 self.flim.ConnectService(service=self.service,
                                          assoc_timeout=120,
                                          config_timeout=120))
-            if not success and not self.ignoring(status):
+            if not success and not self._ignoring(status):
                 raise error.TestFail('Could not connect: %s' % status)
 
-    def disconnect(self):
+    def _disconnect(self):
         logging.info('Disconnect')
         self.service = self.flim.FindCellularService(timeout=5)
         if self.service:
-            (success, status) = self.filterexns(lambda:
+            (success, status) = self._filterexns(lambda:
                 self.flim.DisconnectService(service=self.service,
                                             wait_timeout=60))
             if not success:
                 raise error.TestFail('Could not disconnect: %s' % status)
 
-    def op(self):
+    def _op(self):
         n = random.randint(0, len(self.ops) - 1)
         self.ops[n]()
         time.sleep(random.randint(5, 20) / 10.0)
 
-    def run_once_internal(self, ops=30, seed=None):
+    def _run_once_internal(self, ops=30, seed=None):
         if not seed:
             seed = int(time.time())
         self.okerrors = [
@@ -87,10 +96,10 @@ class network_3GSafetyDance(test.test):
             'org.chromium.flimflam.Error.AlreadyEnabled',
             'org.chromium.flimflam.Error.AlreadyDisabled'
         ]
-        self.ops = [ self.enable,
-                     self.disable,
-                     self.connect,
-                     self.disconnect ]
+        self.ops = [ self._enable,
+                     self._disable,
+                     self._connect,
+                     self._disconnect ]
         self.flim = flimflam.FlimFlam()
         self.manager = flimflam.DeviceManager(self.flim)
         self.device = self.flim.FindCellularDevice()
@@ -99,7 +108,7 @@ class network_3GSafetyDance(test.test):
 
         # Ensure that auto connect is turned off so that flimflam does
         # not interfere with running the test
-        self.enable()
+        self._enable()
         service = self.flim.FindCellularService(timeout=30)
         if not service:
             raise error.TestFail('Could not find cellular service')
@@ -107,19 +116,18 @@ class network_3GSafetyDance(test.test):
         props = service.GetProperties()
         favorite = props['Favorite']
         autoconnect = props['AutoConnect']
-        logging.info('Favorite = %s, AutoConnect = %s' %
-                     (favorite, autoconnect))
+        logging.info('Favorite = %s, AutoConnect = %s', favorite, autoconnect)
 
         if not favorite:
             logging.info('Enabling Favorite by connecting to service.')
-            self.enable()
-            self.connect()
+            self._enable()
+            self._connect()
 
             props = service.GetProperties()
             favorite = props['Favorite']
             autoconnect = props['AutoConnect']
-            logging.info('Favorite = %s, AutoConnect = %s' %
-                         (favorite, autoconnect))
+            logging.info(
+                'Favorite = %s, AutoConnect = %s', favorite, autoconnect)
 
         had_autoconnect = autoconnect
 
@@ -130,8 +138,8 @@ class network_3GSafetyDance(test.test):
             props = service.GetProperties()
             favorite = props['Favorite']
             autoconnect = props['AutoConnect']
-            logging.info('Favorite = %s, AutoConnect = %s' %
-                         (favorite, autoconnect))
+            logging.info(
+                'Favorite = %s, AutoConnect = %s', favorite, autoconnect)
 
         if not favorite:
             raise error.TestFail('Favorite=False, but we want it to be True')
@@ -139,29 +147,27 @@ class network_3GSafetyDance(test.test):
         if autoconnect:
             raise error.TestFail('AutoConnect=True, but we want it to be False')
 
-        logging.info('Seed: %d' % seed)
+        logging.info('Seed: %d', seed)
         random.seed(seed)
         try:
             for _ in xrange(ops):
-                self.op()
+                self._op()
         finally:
             # Re-enable auto connect
-            self.enable()
+            self._enable()
             if had_autoconnect:
                 service = self.flim.FindCellularService(timeout=5)
                 if service:
                     logging.info('Re-enabling AutoConnect.')
                     service.SetProperty("AutoConnect", dbus.Boolean(1))
 
-    def run_once(self, ops=30, seed=None, pseudo_modem=False):
+    def run_once(self, ops=30, seed=None,
+                 pseudo_modem=False,
+                 pseudomodem_family='3GPP'):
         # Use a backchannel so that flimflam will restart when the
         # test is over.  This ensures flimflam is in a known good
         # state even if this test fails.
         with backchannel.Backchannel():
-            fake_sim = sim.SIM(
-                sim.SIM.Carrier('att'),
-                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-            with pseudomodem.TestModemManagerContext(pseudo_modem,
-                                                     ['cromo', 'modemmanager'],
-                                                     fake_sim):
-                self.run_once_internal(ops, seed)
+            with pseudomodem.TestModemManagerContext(
+                pseudo_modem, family=pseudomodem_family):
+                self._run_once_internal(ops, seed)

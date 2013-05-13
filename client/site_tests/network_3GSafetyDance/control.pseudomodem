@@ -21,4 +21,11 @@ DOC = """
   these 3G operations must return a convincing result (EINPROGRESS or no error).
 """
 
-job.run_test('network_3GSafetyDance', pseudo_modem=True, tag='pseudomodem')
+# 3GPP
+job.run_test('network_3GSafetyDance', pseudo_modem=True, tag='pseudomodem.3GPP')
+
+# CDMA
+job.run_test('network_3GSafetyDance',
+             pseudo_modem=True,
+             pseudomodem_family='CDMA',
+             tag='pseudomodem.CDMA')
