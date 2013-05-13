@@ -33,6 +33,14 @@ DEFAULT_CARRIER = 'banana'
 DEFAULT_MANAGERS = ['cromo', 'modemmanager']
 PARENT_SLEEP_TIMEOUT = 2
 
+class TestModemManagerContextError(Exception):
+    """
+    Exception subclass for exceptions that can be raised by
+    TestModemManagerContext for specific errors related to it.
+
+    """
+    pass
+
 class TestModemManagerContext(object):
     """
     TestModemManagerContext is an easy way for an autotest to setup a pseudo
@@ -51,29 +59,51 @@ class TestModemManagerContext(object):
 
     """
     def __init__(self, use_pseudomodem,
+                 family='3GPP',
                  real_managers=DEFAULT_MANAGERS,
                  sim=None,
                  modem=None):
         """
-        Args:
-            use_pseudomodem -- Whether or not the context should create a
-                               pseudo modem manager.
+        @param use_pseudomodem: Whether or not the context should create a
+                                pseudo modem manager.
 
-            real_managers -- Array containing the names of real modem manager
-                             daemons that need to be stopped before starting
-                             the pseudo modem manager,
-                             e.g. ['cromo', 'modemmanager']
+        @param family: If the value of |modem| is None, a default Modem of
+                       family 3GPP or CDMA is initialized based on the value of
+                       this parameter, which is a string that contains either
+                       '3GPP' or 'CDMA'. The default value is '3GPP'.
 
-            sim -- An instance of sim.SIM. This is required for 3GPP modems
-                   as it encapsulates information about the carrier.
+        @param real_managers: Array containing the names of real modem manager
+                              daemons that need to be stopped before starting
+                              the pseudo modem manager,
+                              e.g. ['cromo', 'modemmanager']
 
-            modem -- An instance of a modem.Modem subclass. If none is provided
-                     the default modem is an instance of modem_3gpp.Modem3GPP.
+        @param sim: An instance of sim.SIM. This is required for 3GPP modems
+                    as it encapsulates information about the carrier.
+
+        @param modem: An instance of a modem.Modem subclass. If none is provided
+                      the default modem is defined by the |family| parameter.
 
         """
         self.use_pseudomodem = use_pseudomodem
         self.real_managers = real_managers
-        self.pseudo_modem = modem
+        if modem:
+            self.pseudo_modem = modem
+        elif family == '3GPP':
+            self.pseudo_modem = modem_3gpp.Modem3gpp()
+        elif family == 'CDMA':
+            # Import modem_cdma here to avoid circular imports.
+            import modem_cdma
+            self.pseudo_modem = modem_cdma.ModemCdma(
+                modem_cdma.ModemCdma.CdmaNetwork())
+        else:
+            raise TestModemManagerContextError(
+                "Invalid modem family value: " + str(family))
+        if not sim:
+            # Get a handle to the global 'sim' module here, as the name clashes
+            # with a local variable.
+            simmodule = globals()['sim']
+            sim = simmodule.SIM(simmodule.SIM.Carrier('test'),
+                                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
         self.sim = sim
         self.pseudo_modem_manager = None
 
@@ -261,7 +291,7 @@ class PseudoModemManager(object):
     """
 
     def __init__(self,
-                 modem=None,
+                 modem,
                  sim=None,
                  detach=True,
                  logfile=None):
@@ -269,9 +299,6 @@ class PseudoModemManager(object):
         logging.basicConfig(format='%(asctime)-15s %(message)s',
                             filename=logfile,
                             level=logging.DEBUG)
-        if not modem:
-            # Create default modem
-            modem = modem_3gpp.Modem3gpp()
         self.modem = modem
         self.sim = sim
         self.detach = detach
@@ -426,7 +453,7 @@ def Start(use_cdma=False, activated=True):
             modem_cdma.ModemCdma.CdmaNetwork(activated=activated))
         s = None
     else:
-        m = None
+        m = modem_3gpp.Modem3gpp()
         s = sim.SIM(sim.SIM.Carrier(), mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
     with PseudoModemManager(modem=m, sim=s, detach=False, logfile=None):
         pass

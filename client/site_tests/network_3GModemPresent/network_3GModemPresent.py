@@ -15,8 +15,7 @@ class network_3GModemPresent(test.test):
     version = 1
 
     def run_once(self, pseudo_modem=False):
-        with pseudomodem.TestModemManagerContext(pseudo_modem,
-                                                 ['cromo', 'modemmanager']):
+        with pseudomodem.TestModemManagerContext(pseudo_modem):
             flim = flimflam.FlimFlam()
 
             device = flim.FindCellularDevice()

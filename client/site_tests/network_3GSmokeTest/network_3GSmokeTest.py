@@ -19,7 +19,7 @@ from autotest_lib.client.cros.cellular import cell_tools
 
 # TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
 # cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
-from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 
 # Default timeouts in seconds
@@ -29,6 +29,15 @@ DISCONNECT_TIMEOUT = 60
 SHILL_LOG_SCOPES = 'cellular+dbus+device+dhcp+manager+modem+portal+service'
 
 class network_3GSmokeTest(test.test):
+    """
+    Tests that 3G modem can connect to the network
+
+    The test attempts to connect using the 3G network. The test then
+    disconnects from the network, and verifies that the modem still
+    responds to modem manager DBUS API calls.  It repeats the
+    connect/disconnect sequence several times.
+
+    """
     version = 1
 
     # TODO(benchan): Migrate to use ShillProxy when ShillProxy provides a
@@ -36,13 +45,12 @@ class network_3GSmokeTest(test.test):
     def DisconnectFrom3GNetwork(self, disconnect_timeout):
         """Attempts to disconnect from a 3G network.
 
-        Args:
-            disconnect_timeout: Timeout in seconds for disconnecting from
-                the network.
+        @param disconnect_timeout: Timeout in seconds for disconnecting from
+                                   the network.
 
-        Raises:
-            error.TestFail if it fails to disconnect from the network before
-               timeout.
+        @raises error.TestFail if it fails to disconnect from the network before
+                timeout.
+        @raises error.TestError If no cellular service is available.
 
         """
         logging.info('DisconnectFrom3GNetwork')
@@ -67,7 +75,7 @@ class network_3GSmokeTest(test.test):
         collect as many things as we can to ensure that the modem is
         responding correctly.
 
-        Returns: dictionary of information for each modem path.
+        @return A dictionary of information for each modem path.
         """
         results = {}
 
@@ -109,6 +117,10 @@ class network_3GSmokeTest(test.test):
 
 
     def run_once_internal(self):
+        """
+        Executes the test.
+
+        """
         # Get to a good starting state
         network.ResetAllModems(self.flim)
 
@@ -170,18 +182,16 @@ class network_3GSmokeTest(test.test):
                 time.sleep(self.sleep_kludge)
 
 
-    def run_once(self, connect_count=5, use_pseudomodem=False, sleep_kludge=5,
-                 fetch_timeout=120):
+    def run_once(self, connect_count=5, use_pseudomodem=False,
+                 pseudomodem_family='3GPP', sleep_kludge=5, fetch_timeout=120):
         self.connect_count = connect_count
         self.use_pseudomodem = use_pseudomodem
         self.sleep_kludge = sleep_kludge
         self.fetch_timeout = fetch_timeout
 
         with backchannel.Backchannel():
-            fake_sim = sim.SIM(sim.SIM.Carrier('att'),
-                               mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-            with pseudomodem.TestModemManagerContext(use_pseudomodem,
-                                                     sim=fake_sim):
+            with pseudomodem.TestModemManagerContext(
+                use_pseudomodem,family=pseudomodem_family):
                 with cell_tools.OtherDeviceShutdownContext('cellular'):
                     time.sleep(3)
                     self.flim = flimflam.FlimFlam()
