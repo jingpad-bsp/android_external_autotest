@@ -18,4 +18,13 @@ DOC = """
   Stress-tests enabling and disabling a technology at short intervals.
 """
 
-job.run_test('network_3GStressEnable', use_pseudomodem=True)
+# 3GPP
+job.run_test('network_3GStressEnable',
+             use_pseudomodem=True,
+             tag='pseudomodem.3GPP')
+
+# CDMA
+job.run_test('network_3GStressEnable',
+             use_pseudomodem=True,
+             pseudomodem_family='CDMA',
+             tag='pseudomodem.CDMA')
