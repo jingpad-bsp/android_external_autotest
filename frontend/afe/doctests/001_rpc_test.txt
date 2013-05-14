@@ -158,7 +158,8 @@ True
 ...           'test_time': 'SHORT',
 ...           'run_verify': 1,
 ...           'test_category': 'Functional',
-...           'path': '/my/path'}]
+...           'path': '/my/path',
+...           'test_retry': 0}]
 True
 >>> rpc_interface.delete_test('sleeptest')
 >>> rpc_interface.get_tests() == []
@@ -537,15 +538,18 @@ True
 ...         'owner': 'debug_user',
 ...         'priority': 'Low',
 ...         'synch_count': 1,
-...         'timeout': 72,
-...         'max_runtime_mins': 72*60,
-...         'run_verify': 1,
+...         'timeout': 24,
+...         'max_runtime_mins': 1440,
+...         'max_runtime_hrs' : 72,
+...         'run_verify': True,
 ...         'email_list': '',
 ...         'reboot_before': 'If dirty',
 ...         'reboot_after': 'Always',
 ...         'parse_failed_repair': True,
 ...         'drone_set': drone_set,
-...         'parameterized_job': None}
+...         'parameterized_job': None,
+...         'test_retry': 0,
+...         'parent_job': None}
 True
 
 # get_host_queue_entries returns a lot of data, so let's only check a couple
@@ -709,10 +713,6 @@ True
 >>> rpc_interface.modify_label(label_id, atomic_group='mini rack')
 >>> labels = rpc_interface.get_labels(id=label_id)
 >>> assert labels[0]['atomic_group']['id'] == mini_rack_group_id, labels
->>> rpc_interface.modify_label(label_id, atomic_group='dummy')
-Traceback (most recent call last):
-DoesNotExist: AtomicGroup matching query does not exist.
-
 >>> data = rpc_interface.get_labels(atomic_group__name='mini rack')
 >>> assert len(data) == 1
 >>> assert data[0]['name'] == 'one-label', data
@@ -864,16 +864,6 @@ ValidationError: {'atomic_group_name': u'Insufficient hosts in Atomic Group "min
 ...                          atomic_group_name='mini rack')
 Traceback (most recent call last):
 ValidationError: {'atomic_group_name': u'Insufficient hosts in Atomic Group "mini rack" with the supplied dependencies and meta_hosts.'}
-
-# fail to create a job in an atomic group.  Atomic Group not found.
->>> rpc_interface.create_job(name='my_atomic_job',
-...                          priority='High',
-...                          control_file=cf_info['control_file'],
-...                          control_type='Server',
-...                          synch_count=2,
-...                          atomic_group_name='nonexistant rack')
-Traceback (most recent call last):
-DoesNotExist: AtomicGroup matching query does not exist.
 
 # create a job in an atomic group.
 >>> job_id = rpc_interface.create_job(name='my_atomic_job',

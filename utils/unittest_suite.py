@@ -87,13 +87,12 @@ SKIP = set((
     'guest_test.py',
     'ap_configurator_test.py',
     'chaos_base_test.py',
-    'chaos_interop_test.py'
+    'chaos_interop_test.py',
+    'monitor_db_functional_test.py'
     ))
 
-LONG_TESTS = (REQUIRES_DJANGO |
-              REQUIRES_MYSQLDB |
+LONG_TESTS = (REQUIRES_MYSQLDB |
               REQUIRES_GWT |
-              REQUIRES_SIMPLEJSON |
               REQUIRES_HTTPLIB2 |
               REQUIRES_AUTH |
               REQUIRES_PROTOBUFS |

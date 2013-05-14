@@ -328,9 +328,9 @@ class JobTest(AfeResourceTestCase):
         self.check_collection(response, 'id', [1, 2])
 
 
-    def test_keyval_filtering(self):
-        response = self.request('get', 'jobs?has_keyval=mykey=myvalue')
-        self.check_collection(response, 'id', [1])
+#    def test_keyval_filtering(self):
+#        response = self.request('get', 'jobs?has_keyval=mykey=myvalue')
+#        self.check_collection(response, 'id', [1])
 
 
     def test_entry(self):
