@@ -21,22 +21,38 @@ Check that the 3G modem can handle a disconnect while connecting.
 
 ITERATIONS_PER_TEST=1
 
+# 3GPP
 job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=0,
              iterations=ITERATIONS_PER_TEST,
              use_pseudomodem=True,
-             tag='instant_disable')
+             tag='instant_disable.3GPP')
 
-# Since dbus-python emits our calls asynchronously, it is sometimes
-# (often?) the case that the disable arrives before the connect.
-# There's no good way to track what actually gets sent first, so we
-# sleep.
 job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=int(1000.0 / ITERATIONS_PER_TEST),
              iterations=ITERATIONS_PER_TEST,
              use_pseudomodem=True,
-             tag='disable_delay_ramp')
+             tag='disable_delay_ramp.3GPP')
+
+# CDMA
+job.run_test('network_3GDisableWhileConnecting',
+             timeout_s=20,
+             delay_before_disable_ms=0,
+             disable_delay_per_iteration_ms=0,
+             iterations=ITERATIONS_PER_TEST,
+             use_pseudomodem=True,
+             pseudomodem_family='CDMA',
+             tag='instant_disable.CDMA')
+
+job.run_test('network_3GDisableWhileConnecting',
+             timeout_s=20,
+             delay_before_disable_ms=0,
+             disable_delay_per_iteration_ms=int(1000.0 / ITERATIONS_PER_TEST),
+             iterations=ITERATIONS_PER_TEST,
+             use_pseudomodem=True,
+             pseudomodem_family='CDMA',
+             tag='disable_delay_ramp.CDMA')

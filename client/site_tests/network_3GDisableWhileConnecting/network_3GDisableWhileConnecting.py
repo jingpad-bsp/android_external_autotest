@@ -3,21 +3,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
+import dbus.mainloop.glib
+import gobject
+import logging
+import time
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
 from autotest_lib.client.cros.cellular import mm
-
-import functools, logging, pprint, time, traceback, sys
-import dbus, dbus.mainloop.glib, glib, gobject
-
-from autotest_lib.client.cros import flimflam_test_path
-from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
 from autotest_lib.client.cros.mainloop import ExceptionForward
-import flimflam
 
-import os
+from autotest_lib.client.cros import flimflam_test_path
+import flimflam
 
 DEVICE_TIMEOUT=60
 
@@ -287,12 +288,11 @@ class ModemDisableTester(DisableTester):
 
 class network_3GDisableWhileConnecting(test.test):
   version = 1
-  def run_once(self, use_pseudomodem=False, **kwargs):
+  def run_once(
+      self, use_pseudomodem=False, pseudomodem_family='3GPP', **kwargs):
     with backchannel.Backchannel():
-      fake_sim = sim.SIM(sim.SIM.Carrier('att'),
-          mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
       with pseudomodem.TestModemManagerContext(use_pseudomodem,
-                                               sim=fake_sim):
+                                               family=pseudomodem_family):
         try:
           dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
           self.main_loop = gobject.MainLoop()
