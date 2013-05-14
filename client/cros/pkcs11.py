@@ -9,8 +9,8 @@ import grp, logging, os, pwd, re, stat, sys, shutil, pwd, grp
 import common, constants
 from autotest_lib.client.bin import utils
 
-CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
-PKCS11_TOOL = '/usr/bin/pkcs11-tool --module %s %s'
+CRYPTOHOME_CMD = 'cryptohome'
+PKCS11_TOOL = 'pkcs11-tool --module %s %s'
 USER_TOKEN_NAME = 'User-Specific TPM Token'
 USER_CHAPS_DIR = '/home/chronos/user/.chaps'
 SYSTEM_CHAPS_DIR = '/var/lib/chaps'
