@@ -235,7 +235,7 @@ class WiFiTest(object):
         self.host_route_args = {}
 
         # Synchronize time on all devices
-        self.time_sync([])
+        wifi_test_utils.sync_host_times((self.client, self.server, self.router))
 
         # Find all repeated steps and create iterators for them
         self.iterated_steps = {}
@@ -1675,17 +1675,6 @@ class WiFiTest(object):
         ssids = params.get('ssid', [])
         self.client_proxy.scan(frequencies, ssids)
 
-
-    def time_sync(self, params):
-        for name in params or ['client', 'server', 'router']:
-            system = { 'client': self.client,
-                       'server': self.server,
-                       'router': self.router }.get(name)
-            epoch_seconds = time.time()
-            busybox_format = '%Y%m%d%H%M.%S'
-            busybox_date = datetime.datetime.utcnow().strftime(busybox_format)
-            system.run('date -u --set=@%s 2>/dev/null || date -u %s' % \
-                (epoch_seconds, busybox_date))
 
     def vpn_client_load_tunnel(self, params):
         """ Load the 'tun' device.

@@ -3,9 +3,11 @@
 # found in the LICENSE file.
 
 import base64
+import datetime
 import logging
 import os
 import re
+import time
 
 from autotest_lib.client.common_lib import error
 
@@ -258,3 +260,17 @@ def get_interface_mac(host, ifname, command_ip):
     if macmatch is not None:
         return macmatch.group(1)
     return None
+
+
+def sync_host_times(host_list):
+    """Sync system times on test machines to our local time.
+
+    @param host_list iterable object containing SSHHost objects.
+
+    """
+    for host in host_list:
+        epoch_seconds = time.time()
+        busybox_format = '%Y%m%d%H%M.%S'
+        busybox_date = datetime.datetime.utcnow().strftime(busybox_format)
+        host.run('date -u --set=@%s 2>/dev/null || date -u %s' % (epoch_seconds,
+                                                                  busybox_date))

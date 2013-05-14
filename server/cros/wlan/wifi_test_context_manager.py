@@ -180,6 +180,9 @@ class WiFiTestContextManager(object):
             self._enable_client_packet_captures = True
         if self.CMDLINE_ROUTER_PACKET_CAPTURES in self._cmdline_args:
             self._enable_router_packet_captures = True
+        wifi_test_utils.sync_host_times((self.client.host,
+                                         self.server.host,
+                                         self.router.host))
 
 
     def teardown(self):
