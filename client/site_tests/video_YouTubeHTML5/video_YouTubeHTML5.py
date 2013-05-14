@@ -85,15 +85,36 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
         logging.info('Verifying the YouTube video playback')
         playback = 0 # seconds
         prev_playback = 0
+        count = 0
         while (self.video_current_time() < self._video_duration
                and playback < PLAYBACK_TEST_TIME_S):
             time.sleep(1)
             if self.video_current_time() <= prev_playback:
-                player_status = self.get_player_status()
-                raise error.TestError(
-                    'Video is not playing. Player status: %s.' % player_status)
+                if (count < 2):
+                    logging.info('Retrying to video playback test.')
+                    current_seek_time = self.video_current_time
+                    self._driver.execute_script('player.seekTo(%d, true)' %
+                        (self.video_current_time() + 2))
+                    time.sleep(1)
+                    count = count + 1
+                else:
+                    player_status = self.get_player_status()
+                    raise error.TestError(
+                        'Video is not playing. Player status: %s.',
+                        player_status)
             prev_playback = self.video_current_time()
             playback = playback + 1
+
+    def wait_for_expected_resolution(self, expected_quality):
+        """Wait for some time for getting expected resolution."""
+        for count in range(5):
+            dummy_quality = self.get_playback_quality()
+            if dummy_quality == expected_quality:
+                logging.info('Expected resolution is set.')
+                break
+            else:
+                logging.info('Waiting for expected resolution.')
+                time.sleep(0.1)
 
     def verify_video_resolutions(self):
         """Verify available video resolutions like 360p, 480p, 720p and
@@ -109,6 +130,7 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
             logging.info('Playing video in %s quality.' % quality)
             self.set_playback_quality(quality)
             self.wait_for_player_state(PLAYER_PLAYING_STATE)
+            self.wait_for_expected_resolution(quality)
             current_quality = self.get_playback_quality()
             if quality != current_quality:
                  raise error.TestError(
