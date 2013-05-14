@@ -139,6 +139,9 @@ def modify_hosts(host_filter_data, update_data):
     """
     rpc_utils.check_modify_host(update_data)
     hosts = models.Host.query_objects(host_filter_data)
+    # Check all hosts before changing data for exception safety.
+    for host in hosts:
+        rpc_utils.check_modify_host_locking(host, update_data)
     for host in hosts:
         host.update_object(update_data)
 
