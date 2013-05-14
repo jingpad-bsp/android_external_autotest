@@ -24,7 +24,18 @@ DOC = """
   be run on a virtual machine.
 """
 
+# 3GPP
 job.run_test('network_3GModemControl', pseudo_modem=True,
-             autoconnect=False, tag='no-autoconnect-pseudomodem')
+             autoconnect=False, tag='no-autoconnect-pseudomodem.3GPP')
 job.run_test('network_3GModemControl', pseudo_modem=True,
-             autoconnect=True, tag='autoconnect-pseudomodem')
+             autoconnect=True, tag='autoconnect-pseudomodem.3GPP')
+
+# CDMA
+job.run_test('network_3GModemControl', pseudo_modem=True,
+             pseudomodem_family='CDMA',
+             autoconnect=False,
+             tag='no-autoconnect-pseudomodem.CDMA')
+job.run_test('network_3GModemControl', pseudo_modem=True,
+             pseudomodem_family='CDMA',
+             autoconnect=True,
+             tag='autoconnect-pseudomodem.CDMA')

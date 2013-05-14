@@ -16,7 +16,7 @@ from autotest_lib.client.cros.cellular import mm
 
 # TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
 # cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
-from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -291,7 +291,10 @@ class network_3GModemControl(test.test):
         commands.Enable()
         self.EnsureEnabled(check_idle=not self.autoconnect)
 
-        simple_connect_props = {'number': r'#777', 'apn': self.FindAPN()}
+        if self.pseudo_modem and self.pseudomodem_family == 'CDMA':
+            simple_connect_props = {'number': r'#777'}
+        else:
+            simple_connect_props = {'number': r'#777', 'apn': self.FindAPN()}
 
         # Icera modems behave weirdly if we cancel the operation while the
         # modem is connecting. Work around the issue by waiting until the
@@ -341,6 +344,7 @@ class network_3GModemControl(test.test):
 
     def run_once(self, autoconnect,
                  pseudo_modem=False,
+                 pseudomodem_family='3GPP',
                  mixed_iterations=2,
                  config=None, technology=None, slow_connect=False):
         # Use a backchannel so that flimflam will restart when the
@@ -348,6 +352,8 @@ class network_3GModemControl(test.test):
         # state even if this test fails.
         with backchannel.Backchannel():
             self.autoconnect = autoconnect
+            self.pseudo_modem = pseudo_modem
+            self.pseudomodem_family = pseudomodem_family
 
             if config and technology:
                 bs, verifier = emulator_config.StartDefault(config, technology)
@@ -358,11 +364,8 @@ class network_3GModemControl(test.test):
                 # 8960 (eg. lost connection, etc).
                 bs.ClearErrors()
 
-            fake_sim = sim.SIM(sim.SIM.Carrier('att'),
-                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-            with pseudomodem.TestModemManagerContext(pseudo_modem,
-                                                     ['cromo', 'modemmanager'],
-                                                     fake_sim):
+            with pseudomodem.TestModemManagerContext(
+                pseudo_modem, family=pseudomodem_family):
                 self.flim = flimflam.FlimFlam()
 
                 # Enabling flimflam debugging makes it easier to debug
