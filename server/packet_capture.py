@@ -4,12 +4,12 @@
 
 import logging
 import time
+from random import shuffle
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
 from autotest_lib.server.cros import time_util
-from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite import host_lock_manager
 
 """
@@ -74,21 +74,27 @@ class PacketCapture(object):
         Allocates a machine to capture packets.  Locks it so nobody else can
         use it.
 
-        @raises error.TestError
+        @raises error.TestError if unable to allocate or lock a tracer.
         """
         afe = frontend.AFE(debug=True)
         hosts_maybe = afe.get_hosts(multiple_labels=['packet_capture'])
         if not hosts_maybe:
             raise error.TestError('No packet capture machines available')
-        host_afe = tools.get_random_best_host(afe, hosts_maybe,
-                                              require_usable_hosts=True)
 
-        self._host = hosts.SSHHost(host_afe.hostname+'.cros')
+        self._host = None
+        # Shuffle order of hosts for load distribution.
+        shuffle(hosts_maybe)
+        for host in hosts_maybe:
+            if self.manager.lock([host.hostname]):
+                logging.info('locked %s', host.hostname)
+                self._host = hosts.SSHHost(host.hostname+'.cros')
+                break
+            else:
+                logging.info('Unable to lock %s', host.hostname)
+
         if not self._host:
-            raise error.TestError('Could not choose packet capture machine')
+            raise error.TestError('Could not allocate a packet tracer.')
 
-        self.manager.add([self._host.hostname])
-        self.manager.lock()  # Lock the host so nobody else can use it.
         logging.info('Allocated packet tracer: %s', self._host.hostname)
 
 
@@ -199,9 +205,11 @@ class PacketCapture(object):
         # Unlock the host to let other people use it.
         self.manager.unlock()
         # Put the wifi interface back in its normal configuration.
-        self._delete_files_and_interfaces()
-        self._host.run('%s phy0 interface add wlan0 type managed' % self._iw)
-        self._host.run('%s wlan0 up' % self._ifconfig)
+        if self._host is not None:
+            self._delete_files_and_interfaces()
+            self._host.run('%s phy0 interface add wlan0 type managed' %
+                           self._iw)
+            self._host.run('%s wlan0 up' % self._ifconfig)
 
 
     def get_datetime_float(self):

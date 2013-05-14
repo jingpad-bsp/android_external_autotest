@@ -6,8 +6,6 @@ import logging
 import os
 import pprint
 
-from datetime import datetime
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
@@ -89,6 +87,11 @@ class WiFiChaosConnectionTest(object):
         self.psk_password = ''
         download_chromium_prebuilt.check_webdriver_ready()
 
+        # Test on channel 5 for 2.4GHz band and channel 48 for 5GHz band.
+        # TODO(tgao): support user-specified channel.
+        self.band_channel_map = {self.generic_ap.band_2ghz: 5,
+                                 self.generic_ap.band_5ghz: 48}
+
 
     def __repr__(self):
         """@returns class name, DUT name + MAC addr and packet tracer name."""
@@ -156,12 +159,11 @@ class WiFiChaosConnectionTest(object):
             self.error_list.append(ap_info)
 
 
-    def _config_one_ap(self, ap, band, channel, security, mode, visibility):
+    def _config_one_ap(self, ap, band, security, mode, visibility):
         """Configures an AP for the test.
 
         @param ap: an APConfigurator object.
         @param band: a string, 2.4GHz or 5GHz.
-        @param channel: an integer.
         @param security: a string, AP security method.
         @param mode: a hexadecimal, 802.11 mode.
         @param visibility: a boolean
@@ -171,11 +173,11 @@ class WiFiChaosConnectionTest(object):
         # Setting the band gets you the bss
         ap.set_band(band)
         ssid = '_'.join([ap.get_router_short_name(),
-                         str(channel),
+                         str(self.band_channel_map[band]),
                          str(band).replace('.', '_')])
 
         ap.power_up_router()
-        ap.set_channel(channel)
+        ap.set_channel(self.band_channel_map[band])
         ap.set_radio(enabled=True)
         ap.set_ssid(ssid)
         if ap.is_visibility_supported():
@@ -194,8 +196,9 @@ class WiFiChaosConnectionTest(object):
         return {'configurator': ap,
                 'bss': ap.get_bss(),
                 'band': band,
-                'channel': channel,
-                'frequency': ChaosAP.FREQUENCY_TABLE[channel],
+                'channel': self.band_channel_map[band],
+                'frequency': ChaosAP.FREQUENCY_TABLE[
+                        self.band_channel_map[band]],
                 'radio': True,
                 'ssid': ssid,
                 'visibility': visibility,
@@ -221,12 +224,33 @@ class WiFiChaosConnectionTest(object):
                         return mode_type
 
 
-    def config_aps(self, aps, band, channel, security='', visibility=True):
+    def _mark_ap_to_unlock(self, ap, band):
+        """Checks if an AP can be unlocked after testing on band.
+
+        Assumption: we always test 2.4GHz before 5GHz, enforced in
+                    WiFiChaosTest.run() in chaos_interop_test.py
+
+        Rules for unlocking an AP:
+         - a single-band ap can be unlocked after testing on 2.4GHz band
+         - a dual-band ap can only be unlocked after testing on 5GHz band
+
+        @param band: a string, 2.4GHz or 5GHz.
+
+        @returns a boolean True == OK to unlock AP after testing on band.
+        """
+        supported_bands = ap.get_supported_bands()
+        bands_supported = [d['band'] for d in supported_bands]
+        if band in bands_supported:
+            if len(bands_supported) == 1 or band == self.generic_ap.band_5ghz:
+                return True
+        return False
+
+
+    def config_aps(self, aps, band, security='', visibility=True):
         """Configures a list of APs.
 
         @param aps: a list of APConfigurator objects.
         @param band: a string, 2.4GHz or 5GHz.
-        @param channel: an integer.
         @param security: a string, AP security method. Defaults to empty string
                          (i.e. open system). Other possible value is self.PSK.
         @param visibility: a boolean.  Defaults to True.
@@ -236,38 +260,23 @@ class WiFiChaosConnectionTest(object):
         configured_aps = []
         cartridge = ap_cartridge.APCartridge()
         for ap in aps:
-            if not ap.is_band_and_channel_supported(band, channel):
+            if not ap.is_band_and_channel_supported(
+                    band, self.band_channel_map[band]):
+                logging.info('Skip %s: band %s and channel %d not supported',
+                             ap.get_router_name(), band,
+                             self.band_channel_map[band])
                 continue
 
             logging.info('Configuring AP %s', ap.get_router_name())
             mode = self._get_mode_type(ap, band)
-            ap_info = self._config_one_ap(ap, band, channel, security, mode,
-                                          visibility)
+            ap_info = self._config_one_ap(ap, band, security, mode, visibility)
+            ap_info['ok_to_unlock'] = self._mark_ap_to_unlock(ap, band)
             configured_aps.append(ap_info)
             cartridge.push_configurator(ap)
 
         # Apply config settings to multiple APs in parallel.
         cartridge.run_configurators()
         return configured_aps
-
-
-    def get_bands_and_channels(self):
-        """Returns band and channel config for a generic dual-band AP.
-
-        Test on channel 5 for 2.4GHz band and channel 48 for 5GHz band.
-
-        @returns a list of tuples, (band, channel).
-        """
-        # Log server and DUT times
-        dt = datetime.now()
-        logging.info('Server time: %s', dt.strftime('%a %b %d %H:%M:%S %Y'))
-        logging.info('DUT time: %s', self.host.run('date').stdout.strip())
-
-        bands = [self.generic_ap.band_2ghz, self.generic_ap.band_5ghz]
-        # TODO(tgao): support passing in channel params someday?
-        channels = [5, 48]
-
-        return zip(bands, channels)
 
 
     def power_down(self, ap):

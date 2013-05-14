@@ -243,8 +243,7 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
             if set(hostnames) - locked_hosts != set():
                 # New hosts to lock!
                 logging.debug('Locking %r.', hostnames)
-                manager.add(hostnames)
-                manager.lock()
+                manager.lock(hostnames)
             locked_hosts = locked_hosts.union(hostnames)
         time.sleep(interval)
         # 'None' in expected_hosts means we had entries in the job with no

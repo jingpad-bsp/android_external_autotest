@@ -101,7 +101,7 @@ class ApBatchLocker(object):
         @param ap_locker: an ApLocker object, AP to be locked.
         @return a boolean, True iff ap_locker is locked.
         """
-        if self.manager.lock_one_host(ap_locker.configurator.host_name):
+        if self.manager.lock([ap_locker.configurator.host_name]):
             logging.info('locked %s', ap_locker.configurator.host_name)
             ap_locker.to_be_locked = False
             return True
@@ -160,6 +160,14 @@ class ApBatchLocker(object):
                 sleep(seconds_to_sleep)
 
         return []
+
+
+    def unlock_one_ap(self, host):
+        """Unlock one AP after we're done.
+
+        @param host: a string, host name.
+        """
+        self.manager.unlock(hosts=[host])
 
 
     def unlock_aps(self):

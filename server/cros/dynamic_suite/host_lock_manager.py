@@ -6,22 +6,19 @@ import logging
 import signal
 
 import common
-from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 """HostLockManager class, for the dynamic_suite module.
 
-A HostLockManager instance manages locking and unlocking a set of
-autotest DUTs.  Once a host is added to the managed set, it cannot be
-removed.  If the caller fails to unlock() locked hosts before the
-instance is destroyed, it will attempt to unlock() the hosts
-automatically, but this is to be avoided.
+A HostLockManager instance manages locking and unlocking a set of autotest DUTs.
+A caller can lock or unlock one or more DUTs. If the caller fails to unlock()
+locked hosts before the instance is destroyed, it will attempt to unlock() the
+hosts automatically, but this is to be avoided.
 
-Usage:
+Sample usage:
   manager = host_lock_manager.HostLockManager()
   try:
-      manager.add(['host1'])
-      manager.lock()
+      manager.lock(['host1'])
       # do things
   finally:
       manager.unlock()
@@ -29,10 +26,29 @@ Usage:
 
 class HostLockManager(object):
     """
-    @var _afe: an instance of AFE as defined in server/frontend.py.
-    @var _hosts: an iterable of DUT hostnames.
-    @var _hosts_are_locked: whether we believe the hosts are locked
+    @attribute _afe: an instance of AFE as defined in server/frontend.py.
+    @attribute _locked_hosts: a set of DUT hostnames.
+    @attribute LOCK: a string.
+    @attribute UNLOCK: a string.
     """
+
+    LOCK = 'lock'
+    UNLOCK = 'unlock'
+
+
+    @property
+    def locked_hosts(self):
+        """@returns set of locked hosts."""
+        return self._locked_hosts
+
+
+    @locked_hosts.setter
+    def locked_hosts(self, hosts):
+        """Sets value of locked_hosts.
+
+        @param hosts: a set of strings.
+        """
+        self._locked_hosts = hosts
 
 
     def __init__(self, afe=None):
@@ -44,70 +60,111 @@ class HostLockManager(object):
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
-        self._hosts = set()
-        self._hosts_are_locked = False
+        # Keep track of hosts locked by this instance.
+        self._locked_hosts = set()
 
 
     def __del__(self):
-        if self._hosts_are_locked:
-            logging.error('Caller failed to unlock %r!  '
-                          'Forcing unlock now.' % self._hosts)
+        if self._locked_hosts:
+            logging.warning('Caller failed to unlock %r! Forcing unlock now.',
+                            self._locked_hosts)
             self.unlock()
 
 
-    def add(self, hosts):
-        """Permanently associate this instance with |hosts|.
-
-        @param hosts: iterable of hostnames to take over locking/unlocking.
-        """
-        self._hosts = self._hosts.union(hosts)
-
-
-    def lock(self):
-        """Lock all DUTs in self._hosts."""
-        self._host_modifier(locked=True)
-        self._hosts_are_locked = True
-
-
-    def unlock(self):
-        """Unlock all DUTs in self._hosts."""
-        self._host_modifier(locked=False)
-        self._hosts_are_locked = False
-        self._hosts = set()
-
-
-    def lock_one_host(self, host):
-        """Attemps to lock one host if it's not already locked.
+    def _check_host(self, host, operation):
+        """Checks host for desired operation.
 
         @param host: a string, hostname.
-        @returns a boolean: False == host is already locked.
+        @param operation: a string, LOCK or UNLOCK.
+        @returns a string: host name, if desired operation can be performed on
+                           host or None otherwise.
         """
         mod_host = host.split('.')[0]
         host_info = self._afe.get_hosts(hostname=mod_host)
         if not host_info:
-            logging.error('Skip unknown host %s.', host)
-            return False
+            logging.warning('Skip unknown host %s.', host)
+            return None
 
         host_info = host_info[0]
-        if host_info.locked:
+        if operation == self.LOCK and host_info.locked:
             err = ('Contention detected: %s is locked by %s at %s.' %
                    (mod_host, host_info.locked_by, host_info.lock_time))
-            logging.error(err)
+            logging.warning(err)
+            return None
+        elif operation == self.UNLOCK and not host_info.locked:
+            logging.info('%s not locked.', mod_host)
+            return None
+
+        return mod_host
+
+
+    def lock(self, hosts):
+        """Attempt to lock hosts in AFE.
+
+        @param hosts: a list of strings, host names.
+        @returns a boolean, True == at least one host from hosts is locked.
+        """
+        # Filter out hosts that we may have already locked
+        new_hosts = set(hosts).difference(self._locked_hosts)
+        logging.info('Attempt to lock %s', new_hosts)
+        if not new_hosts:
             return False
 
-        self.add([mod_host])
-        self.lock()
-        return True
+        return self._host_modifier(new_hosts, self.LOCK)
 
 
-    def _host_modifier(self, **kwargs):
-        """Helper that runs the modify_host() RPC with specified args.
+    def unlock(self, hosts=None):
+        """Unlock hosts in AFE.
 
-        Passes kwargs through to the RPC directly.
+        @param hosts: a list of strings, host names.
+        @returns a boolean, True == at least one host from self._locked_hosts is
+                 unlocked.
         """
+        # Filter out hosts that we did not lock
+        updated_hosts = self._locked_hosts
+        if hosts:
+            unknown_hosts = set(hosts).difference(self._locked_hosts)
+            logging.warning('Skip unknown hosts: %s', unknown_hosts)
+            updated_hosts = set(hosts) - unknown_hosts
+            logging.info('Valid hosts: %s', updated_hosts)
+            updated_hosts = updated_hosts.intersection(self._locked_hosts)
+
+        if not updated_hosts:
+            return False
+
+        logging.info('Unlocking hosts: %s', updated_hosts)
+        return self._host_modifier(updated_hosts, self.UNLOCK)
+
+
+    def _host_modifier(self, hosts, operation):
+        """Helper that runs the modify_hosts() RPC with specified args.
+
+        @param: hosts, a set of strings, host names.
+        @param operation: a string, LOCK or UNLOCK.
+        @returns a boolean, if operation succeeded on at least one host in
+                 hosts.
+        """
+        updated_hosts = set()
+        for host in hosts:
+            mod_host = self._check_host(host, operation)
+            if mod_host is not None:
+                updated_hosts.add(mod_host)
+
+        logging.info('host_modifier: updated_hosts = %s', updated_hosts)
+        if not updated_hosts:
+            logging.info('host_modifier: no host to update')
+            return False
+
+        kwargs = {'locked': True if operation == self.LOCK else False}
         self._afe.run('modify_hosts',
-                      host_filter_data={'hostname__in': list(self._hosts)},
+                      host_filter_data={'hostname__in': list(updated_hosts)},
                       update_data=kwargs)
+
+        if operation == self.LOCK:
+            self._locked_hosts = self._locked_hosts.union(updated_hosts)
+        elif operation == self.UNLOCK:
+            self._locked_hosts = self._locked_hosts.difference(updated_hosts)
+        return True
 
 
 class HostsLockedBy(object):

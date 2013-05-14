@@ -6,21 +6,64 @@
 
 """Unit tests for server/cros/dynamic_suite/host_lock_manager.py."""
 
-import logging
 import mox
-import shutil
-import unittest
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.dynamic_suite import host_lock_manager
 from autotest_lib.server import frontend
 
 
 class HostLockManagerTest(mox.MoxTestBase):
     """Unit tests for host_lock_manager.HostLockManager.
+
+    @attribute HOST1: a string, fake host.
+    @attribute HOST2: a string, fake host.
+    @attribute HOST3: a string, fake host.
     """
 
-    _EXPECTED = ['h1', 'h2']
+    HOST1 = 'host1'
+    HOST2 = 'host2'
+    HOST3 = 'host3'
+
+
+    class FakeHost(object):
+        """Fake version of Host object defiend in server/frontend.py.
+
+        @attribute locked: a boolean, True == host is locked.
+        @attribute locked_by: a string, fake user.
+        @attribute lock_time: a string, fake timestamp.
+        """
+
+        def __init__(self, locked=False):
+            """Initialize.
+
+            @param locked: a boolean, True == host is locked.
+            """
+            self.locked = locked
+            self.locked_by = 'fake_user'
+            self.lock_time = 'fake time'
+
+
+    class MockHostLockManager(host_lock_manager.HostLockManager):
+        """Mock out _host_modifier() in HostLockManager class..
+
+        @attribute locked: a boolean, True == host is locked.
+        @attribute locked_by: a string, fake user.
+        @attribute lock_time: a string, fake timestamp.
+        """
+
+        def _host_modifier(self, hosts, operation):
+            """Overwrites original _host_modifier().
+
+            Add hosts to self.locked_hosts for LOCK and remove hosts from
+            self.locked_hosts for UNLOCK.
+
+            @param a set of strings, host names.
+            @param operation: a string, LOCK or UNLOCK.
+            """
+            if operation == self.LOCK:
+                self.locked_hosts = self.locked_hosts.union(hosts)
+            elif operation == self.UNLOCK:
+                self.locked_hosts = self.locked_hosts.difference(hosts)
 
 
     def setUp(self):
@@ -29,45 +72,132 @@ class HostLockManagerTest(mox.MoxTestBase):
         self.manager = host_lock_manager.HostLockManager(self.afe)
 
 
-    def testAddSemantics(self):
-        """Test that expected hosts are managed after add() is called."""
-        self.manager.add(self._EXPECTED[1:])
-        self.assertEquals(self._EXPECTED[1:], sorted(self.manager._hosts))
-        self.manager.add(self._EXPECTED)
-        self.assertEquals(sorted(self._EXPECTED), sorted(self.manager._hosts))
-
-
-    def testLockUnlock(self):
-        """Test that lock()/unlock() touch all add()d hosts."""
-        self.manager.add(self._EXPECTED)
-        self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue(
-                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
-                     update_data=mox.ContainsKeyValue('locked',
-                                                      True)).InAnyOrder()
-        self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue(
-                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
-                     update_data=mox.ContainsKeyValue('locked',
-                                                      False)).InAnyOrder()
+    def testCheckHost_SkipsUnknownHost(self):
+        """Test that host unknown to AFE is skipped."""
+        self.afe.get_hosts(hostname=self.HOST1).AndReturn(None)
         self.mox.ReplayAll()
-        self.manager.lock()
-        self.manager.unlock()
+        actual = self.manager._check_host(self.HOST1, None)
+        self.assertEquals(None, actual)
 
 
-    def testDestructorUnlocks(self):
-        """Test that failing to unlock manually calls it automatically."""
-        self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue(
-                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
-                     update_data=mox.ContainsKeyValue('locked',
-                                                      True)).InAnyOrder()
-        self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue(
-                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
-                     update_data=mox.ContainsKeyValue('locked',
-                                                      False)).InAnyOrder()
-        local_manager = host_lock_manager.HostLockManager(self.afe)
-        local_manager.add(self._EXPECTED)
+    def testCheckHost_DetectsLockedHost(self):
+        """Test that a host which is already locked is skipped."""
+        host_info = [self.FakeHost(locked=True)]
+        self.afe.get_hosts(hostname=self.HOST1).AndReturn(host_info)
         self.mox.ReplayAll()
-        local_manager.lock()
+        actual = self.manager._check_host(self.HOST1, self.manager.LOCK)
+        self.assertEquals(None, actual)
+
+
+    def testCheckHost_DetectsUnlockedHost(self):
+        """Test that a host which is already unlocked is skipped."""
+        host_info = [self.FakeHost()]
+        self.afe.get_hosts(hostname=self.HOST1).AndReturn(host_info)
+        self.mox.ReplayAll()
+        actual = self.manager._check_host(self.HOST1, self.manager.UNLOCK)
+        self.assertEquals(None, actual)
+
+
+    def testCheckHost_ReturnsHostToLock(self):
+        """Test that a host which can be locked is returned."""
+        host_info = [self.FakeHost()]
+        self.afe.get_hosts(hostname=self.HOST1).AndReturn(host_info)
+        self.mox.ReplayAll()
+        host_with_dot = '.'.join([self.HOST1, 'cros'])
+        actual = self.manager._check_host(host_with_dot, self.manager.LOCK)
+        self.assertEquals(self.HOST1, actual)
+
+
+    def testCheckHost_ReturnsHostToUnlock(self):
+        """Test that a host which can be unlocked is returned."""
+        host_info = [self.FakeHost(locked=True)]
+        self.afe.get_hosts(hostname=self.HOST1).AndReturn(host_info)
+        self.mox.ReplayAll()
+        host_with_dot = '.'.join([self.HOST1, 'cros'])
+        actual = self.manager._check_host(host_with_dot, self.manager.UNLOCK)
+        self.assertEquals(self.HOST1, actual)
+
+
+    def testLock_WithNonOverlappingHosts(self):
+        """Tests host locking, all hosts not in self.locked_hosts."""
+        hosts = [self.HOST2]
+        manager = self.MockHostLockManager(self.afe)
+        manager.locked_hosts = set([self.HOST1])
+        manager.lock(hosts)
+        self.assertEquals(set([self.HOST1, self.HOST2]), manager.locked_hosts)
+
+
+    def testLock_WithPartialOverlappingHosts(self):
+        """Tests host locking, some hosts not in self.locked_hosts."""
+        hosts = [self.HOST1, self.HOST2]
+        manager = self.MockHostLockManager(self.afe)
+        manager.locked_hosts = set([self.HOST1, self.HOST3])
+        manager.lock(hosts)
+        self.assertEquals(set([self.HOST1, self.HOST2, self.HOST3]),
+                          manager.locked_hosts)
+
+
+    def testLock_WithFullyOverlappingHosts(self):
+        """Tests host locking, all hosts in self.locked_hosts."""
+        hosts = [self.HOST1, self.HOST2]
+        self.manager.locked_hosts = set(hosts)
+        self.manager.lock(hosts)
+        self.assertEquals(set(hosts), self.manager.locked_hosts)
+
+
+    def testUnlock_WithNonOverlappingHosts(self):
+        """Tests host unlocking, all hosts not in self.locked_hosts."""
+        hosts = [self.HOST2]
+        self.manager.locked_hosts = set([self.HOST1])
+        self.manager.unlock(hosts)
+        self.assertEquals(set([self.HOST1]), self.manager.locked_hosts)
+
+
+    def testUnlock_WithPartialOverlappingHosts(self):
+        """Tests host locking, some hosts not in self.locked_hosts."""
+        hosts = [self.HOST1, self.HOST2]
+        manager = self.MockHostLockManager(self.afe)
+        manager.locked_hosts = set([self.HOST1, self.HOST3])
+        manager.unlock(hosts)
+        self.assertEquals(set([self.HOST3]), manager.locked_hosts)
+
+
+    def testUnlock_WithFullyOverlappingHosts(self):
+        """Tests host locking, all hosts in self.locked_hosts."""
+        hosts = [self.HOST1, self.HOST2]
+        manager = self.MockHostLockManager(self.afe)
+        manager.locked_hosts = set([self.HOST1, self.HOST2, self.HOST3])
+        manager.unlock(hosts)
+        self.assertEquals(set([self.HOST3]), manager.locked_hosts)
+
+
+    def testHostModifier_WithHostsToLock(self):
+        """Test host locking."""
+        hosts = set([self.HOST1])
+        self.manager.locked_hosts = set([self.HOST2])
+        self.mox.StubOutWithMock(self.manager, '_check_host')
+        self.manager._check_host(self.HOST1,
+                                 self.manager.LOCK).AndReturn(self.HOST1)
+        self.afe.run('modify_hosts',
+                     host_filter_data={'hostname__in': hosts},
+                     update_data={'locked': True})
+        self.mox.ReplayAll()
+        self.manager._host_modifier(hosts, self.manager.LOCK)
+        self.assertEquals(set([self.HOST1, self.HOST2]),
+                          self.manager.locked_hosts)
+
+
+    def testHostModifier_WithHostsToUnlock(self):
+        """Test host unlocking."""
+        hosts = set([self.HOST1])
+        self.manager.locked_hosts = set([self.HOST1, self.HOST2])
+        self.mox.StubOutWithMock(self.manager, '_check_host')
+        self.manager._check_host(self.HOST1,
+                                 self.manager.UNLOCK).AndReturn(self.HOST1)
+        self.afe.run('modify_hosts',
+                     host_filter_data={'hostname__in': hosts},
+                     update_data={'locked': False})
+        self.mox.ReplayAll()
+        self.manager._host_modifier(hosts, self.manager.UNLOCK)
+        self.assertEquals(set([self.HOST2]), self.manager.locked_hosts)
+

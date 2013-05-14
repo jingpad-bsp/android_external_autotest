@@ -6,12 +6,10 @@
 
 """Unit tests for server/cros/dynamic_suite/job_status.py."""
 
-import logging
 import mox
 import shutil
 import tempfile
 import time
-import unittest
 
 from autotest_lib.server.cros.dynamic_suite import job_status, host_lock_manager
 from autotest_lib.server.cros.dynamic_suite import host_spec
@@ -185,8 +183,7 @@ class StatusTest(mox.MoxTestBase):
             self.afe.get_hosts(mox.SameElementsAs(used_hostnames),
                                status='Running').AndReturn(running_hosts)
         if do_lock:
-            manager.add([h.hostname for h in running_hosts])
-            manager.lock()
+            manager.lock([h.hostname for h in running_hosts])
 
 
     def testWaitForSingleJobHostsToRunAndGetLocked(self):
