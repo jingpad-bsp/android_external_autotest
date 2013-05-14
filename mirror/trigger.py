@@ -1,6 +1,7 @@
 import email, os, re, smtplib
 
 from autotest_lib.server import frontend
+from autotest_lib.client.common_lib import control_data
 
 class trigger(object):
     """
@@ -199,7 +200,10 @@ class map_action(base_action):
 
 
     def _schedule_job(self, jobname, control, hosts):
-        control_type = ('Client', 'Server')[control.is_server]
+        if control.is_server:
+            control_type = control_data.CONTROL_TYPE_NAMES.SERVER
+        else:
+            control_type = control_data.CONTROL_TYPE_NAMES.CLIENT
 
         self._afe.create_job(control.control_file, jobname,
                              control_type=control_type, hosts=hosts)

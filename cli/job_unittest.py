@@ -10,7 +10,10 @@ import copy, getpass, unittest, sys, os
 import common
 from autotest_lib.cli import cli_mock, topic_common, job
 from autotest_lib.client.common_lib.test_utils import mock
+from autotest_lib.client.common_lib import control_data
 
+CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
+SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
 
 class job_unittest(cli_mock.cli_unittest):
     def setUp(self):
@@ -21,7 +24,7 @@ class job_unittest(cli_mock.cli_unittest):
                 u'control_file':
                 u"job.run_test('sleeptest')\n",
                 u'name': u'test_job0',
-                u'control_type': u'Server',
+                u'control_type': SERVER,
                 u'priority':
                 u'Medium',
                 u'owner': u'user0',
@@ -33,7 +36,7 @@ class job_unittest(cli_mock.cli_unittest):
                 u'control_file':
                 u"job.run_test('sleeptest')\n",
                 u'name': u'test_job1',
-                u'control_type': u'Client',
+                u'control_type': CLIENT,
                 u'priority':
                 u'High',
                 u'owner': u'user0',
@@ -49,7 +52,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'owner': u'Cringer',
                         u'invalid': False,
                         u'created_on': u'2008-07-02 13:02:40',
-                        u'control_type': u'Server',
+                        u'control_type': SERVER,
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 2},
                        {u'id': 338,          # Valid job
@@ -58,7 +61,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'owner': u'Fisto',
                         u'invalid': False,
                         u'created_on': u'2008-07-06 14:05:33',
-                        u'control_type': u'Client',
+                        u'control_type': CLIENT,
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 1},
                        {u'id': 339,          # Valid job
@@ -67,7 +70,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'owner': u'Roboto',
                         u'invalid': False,
                         u'created_on': u'2008-07-07 15:33:18',
-                        u'control_type': u'Server',
+                        u'control_type': SERVER,
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 1},
                        {u'id': 340,          # Invalid job priority
@@ -76,7 +79,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'owner': u'Panthor',
                         u'invalid': True,
                         u'created_on': u'2008-07-04 00:00:01',
-                        u'control_type': u'Server',
+                        u'control_type': SERVER,
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 2},
                        {u'id': 350,          # Invalid job created_on
@@ -85,7 +88,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'owner': u'Icer',
                         u'invalid': True,
                         u'created_on': u'Today',
-                        u'control_type': u'Client',
+                        u'control_type': CLIENT,
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 1},
                        {u'id': 420,          # Invalid job control_type
@@ -142,7 +145,7 @@ class job_list_unittest(job_unittest):
                             [{u'status_counts': {u'Completed': 1},
                               u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n    testkernel = job.kernel(\'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\')\n    \n    testkernel.install()\n    testkernel.boot(args=\'console_always_print=1\')\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
                               u'name': u'mytest',
-                              u'control_type': u'Client',
+                              u'control_type': CLIENT,
                               u'run_verify': 1,
                               u'priority': u'Medium',
                               u'owner': u'user0',
@@ -151,7 +154,7 @@ class job_list_unittest(job_unittest):
                               u'synch_count': 1,
                               u'id': 5964}])],
                      out_words_ok=['user0', 'Completed', '1', '5964'],
-                     out_words_no=['sleeptest', 'Priority', 'Client', '2008'])
+                     out_words_no=['sleeptest', 'Priority', CLIENT, '2008'])
 
 
     def test_job_list_jobs_id_verbose(self):
@@ -163,7 +166,7 @@ class job_list_unittest(job_unittest):
                             [{u'status_counts': {u'Completed': 1},
                               u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n    testkernel = job.kernel(\'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\')\n    \n    testkernel.install()\n    testkernel.boot(args=\'console_always_print=1\')\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
                               u'name': u'mytest',
-                              u'control_type': u'Client',
+                              u'control_type': CLIENT,
                               u'run_verify': 1,
                               u'priority': u'Medium',
                               u'owner': u'user0',
@@ -172,7 +175,7 @@ class job_list_unittest(job_unittest):
                               u'synch_count': 1,
                               u'id': 5964}])],
                      out_words_ok=['user0', 'Completed', '1', '5964',
-                                   'Client', '2008', 'Priority'],
+                                   CLIENT, '2008', 'Priority'],
                      out_words_no=['sleeptest'])
 
 
@@ -185,7 +188,7 @@ class job_list_unittest(job_unittest):
                             [{u'status_counts': {u'Completed': 1},
                               u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n    testkernel = job.kernel(\'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\')\n    \n    testkernel.install()\n    testkernel.boot(args=\'console_always_print=1\')\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
                               u'name': u'mytest',
-                              u'control_type': u'Client',
+                              u'control_type': CLIENT,
                               u'run_verify': 1,
                               u'priority': u'Medium',
                               u'owner': u'user0',
@@ -194,7 +197,7 @@ class job_list_unittest(job_unittest):
                               u'synch_count': 1,
                               u'id': 5964}])],
                      out_words_ok=['user0', 'Completed', '1', '5964'],
-                     out_words_no=['sleeptest', 'Priority', 'Client', '2008'])
+                     out_words_no=['sleeptest', 'Priority', CLIENT, '2008'])
 
 
     def test_job_list_jobs_all_verbose(self):
@@ -240,7 +243,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
-                                       u'control_type': u'Server',
+                                       u'control_type': SERVER,
                                        u'synchronizing': 0,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -261,7 +264,7 @@ class job_stat_unittest(job_unittest):
                             [{u'status_counts': {u'Queued': 1},
                               u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                               u'name': u'test_on_meta_hosts',
-                              u'control_type': u'Client',
+                              u'control_type': CLIENT,
                               u'run_verify': 1,
                               u'priority': u'Medium',
                               u'owner': u'user0',
@@ -279,7 +282,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'Xeon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -300,7 +303,7 @@ class job_stat_unittest(job_unittest):
                             [{u'status_counts': {u'Queued': 1},
                               u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                               u'name': u'test_on_meta_hosts',
-                              u'control_type': u'Client',
+                              u'control_type': CLIENT,
                               u'run_verify': 1,
                               u'priority': u'Medium',
                               u'owner': u'user0',
@@ -326,7 +329,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'Xeon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -352,7 +355,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'Xeon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -375,7 +378,7 @@ class job_stat_unittest(job_unittest):
                             [{u'status_counts': {u'Queued': 1, u'Running': 1},
                               u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                               u'name': u'test',
-                              u'control_type': u'Client',
+                              u'control_type': CLIENT,
                               u'run_verify': 1,
                               u'priority': u'Medium',
                               u'owner': u'user0',
@@ -401,7 +404,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -427,7 +430,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -450,7 +453,7 @@ class job_stat_unittest(job_unittest):
                                                  u'Queued': 4},
                               u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                               u'name': u'test_on_meta_hosts',
-                              u'control_type': u'Client',
+                              u'control_type': CLIENT,
                               u'run_verify': 1,
                               u'priority': u'Medium',
                               u'owner': u'user0',
@@ -468,7 +471,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'Xeon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -486,7 +489,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'Xeon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -504,7 +507,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'Athlon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -522,7 +525,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'x286',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -548,7 +551,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': u'Athlon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
                                        u'name': u'test_on_meta_hosts',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'run_verify': 1,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -578,7 +581,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
-                                       u'control_type': u'Server',
+                                       u'control_type': SERVER,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
@@ -610,7 +613,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
-                                       u'control_type': u'Server',
+                                       u'control_type': SERVER,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
@@ -630,7 +633,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
-                                       u'control_type': u'Server',
+                                       u'control_type': SERVER,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
@@ -650,7 +653,7 @@ class job_stat_unittest(job_unittest):
                              u'control_file':
                              u"job.run_test('sleeptest')\n",
                              u'name': u'job0',
-                             u'control_type': u'Server',
+                             u'control_type': SERVER,
                              u'priority':
                              u'Medium',
                              u'owner': u'user0',
@@ -664,7 +667,7 @@ class job_stat_unittest(job_unittest):
                              u'control_file':
                              u"job.run_test('sleeptest')\n",
                              u'name': u'mytest',
-                             u'control_type': u'Client',
+                             u'control_type': CLIENT,
                              u'priority':
                              u'High',
                              u'owner': u'user0',
@@ -686,7 +689,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
-                                       u'control_type': u'Server',
+                                       u'control_type': SERVER,
                                        u'synchronizing': 0,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -710,7 +713,7 @@ class job_stat_unittest(job_unittest):
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
-                                       u'control_type': u'Server',
+                                       u'control_type': SERVER,
                                        u'synchronizing': 0,
                                        u'priority': u'Medium',
                                        u'owner': u'user0',
@@ -731,7 +734,7 @@ class job_create_unittest(cli_mock.cli_unittest):
     trivial_ctrl_file = 'print "Hello"\n'
 
     data = {'priority': 'Medium', 'control_file': ctrl_file, 'hosts': ['host0'],
-            'name': 'test_job0', 'control_type': 'Client', 'email_list': '',
+            'name': 'test_job0', 'control_type': CLIENT, 'email_list': '',
             'meta_hosts': [], 'synch_count': 1, 'dependencies': []}
 
 
@@ -753,7 +756,7 @@ class job_create_unittest(cli_mock.cli_unittest):
     def test_execute_create_job_with_atomic_group(self):
         data = dict(self.data)
         data['atomic_group_name'] = 'my-atomic-group'
-        data['control_type'] = 'Server'
+        data['control_type'] = SERVER
         mock_ctrl_file = 'mock control file'
         data['control_file'] = mock_ctrl_file
         data['synch_count'] = 2
@@ -1273,7 +1276,7 @@ class job_create_unittest(cli_mock.cli_unittest):
 
 class job_clone_unittest(cli_mock.cli_unittest):
     job_data = {'control_file': u'NAME = \'Server Sleeptest\'\nAUTHOR = \'mbligh@google.com (Martin Bligh)\'\nTIME = \'SHORT\'\nTEST_CLASS = \'Software\'\nTEST_CATEGORY = \'Functional\'\nTEST_TYPE = \'server\'\nEXPERIMENTAL = \'False\'\n\nDOC = """\nruns sleep for one second on the list of machines.\n"""\n\ndef run(machine):\n    host = hosts.create_host(machine)\n    job.run_test(\'sleeptest\')\n\njob.parallel_simple(run, machines)\n',
-                    'control_type': u'Server',
+                    'control_type': SERVER,
                     'dependencies': [],
                     'email_list': u'',
                     'max_runtime_mins': 28800,
@@ -1460,7 +1463,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
 class job_abort_unittest(cli_mock.cli_unittest):
     results = [{u'status_counts': {u'Aborted': 1}, u'control_file':
                 u"job.run_test('sleeptest')\n", u'name': u'test_job0',
-                u'control_type': u'Server', u'priority':
+                u'control_type': SERVER, u'priority':
                 u'Medium', u'owner': u'user0', u'created_on':
                 u'2008-07-08 17:45:44', u'synch_count': 2, u'id': 180}]
 

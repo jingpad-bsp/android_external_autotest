@@ -9,6 +9,7 @@ from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.frontend import settings, thread_local
 from autotest_lib.client.common_lib import enum, host_protections, global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
+from autotest_lib.client.common_lib import control_data
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
@@ -571,9 +572,6 @@ class Test(dbmodels.Model, model_logic.ModelExtensions):
                 successfully. (optional, default: 0)
     """
     TestTime = enum.Enum('SHORT', 'MEDIUM', 'LONG', start_value=1)
-    TestTypes = model_attributes.TestTypes
-    # TODO(showard) - this should be merged with Job.ControlType (but right
-    # now they use opposite values)
 
     name = dbmodels.CharField(max_length=255, unique=True)
     author = dbmodels.CharField(max_length=255)
@@ -585,7 +583,8 @@ class Test(dbmodels.Model, model_logic.ModelExtensions):
     run_verify = dbmodels.BooleanField(default=True)
     test_time = dbmodels.SmallIntegerField(choices=TestTime.choices(),
                                            default=TestTime.MEDIUM)
-    test_type = dbmodels.SmallIntegerField(choices=TestTypes.choices())
+    test_type = dbmodels.SmallIntegerField(
+        choices=control_data.CONTROL_TYPE.choices())
     sync_count = dbmodels.IntegerField(default=1)
     path = dbmodels.CharField(max_length=255, unique=True)
     test_retry = dbmodels.IntegerField(blank=True, default=0)
@@ -1023,7 +1022,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         default=False)
 
     Priority = enum.Enum('Low', 'Medium', 'High', 'Urgent')
-    ControlType = enum.Enum('Server', 'Client', start_value=1)
 
     owner = dbmodels.CharField(max_length=255)
     name = dbmodels.CharField(max_length=255)
@@ -1031,9 +1029,10 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                                           blank=True, # to allow 0
                                           default=Priority.MEDIUM)
     control_file = dbmodels.TextField(null=True, blank=True)
-    control_type = dbmodels.SmallIntegerField(choices=ControlType.choices(),
-                                              blank=True, # to allow 0
-                                              default=ControlType.CLIENT)
+    control_type = dbmodels.SmallIntegerField(
+        choices=control_data.CONTROL_TYPE.choices(),
+        blank=True, # to allow 0
+        default=control_data.CONTROL_TYPE.CLIENT)
     created_on = dbmodels.DateTimeField()
     synch_count = dbmodels.IntegerField(null=True, default=1)
     timeout = dbmodels.IntegerField(default=DEFAULT_TIMEOUT)
@@ -1069,7 +1068,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
     def is_server_job(self):
         """Returns whether this job is of type server."""
-        return self.control_type == self.ControlType.SERVER
+        return self.control_type == control_data.CONTROL_TYPE.SERVER
 
 
     @classmethod

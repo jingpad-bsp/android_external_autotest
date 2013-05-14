@@ -37,7 +37,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.site_utils.graphite import stats
-
+from autotest_lib.client.common_lib import control_data
 
 def get_parameterized_autoupdate_image_url(job):
     """Get the parameterized autoupdate image url from a parameterized job."""
@@ -444,10 +444,7 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
 
     # Set up the parameterized job configs
     test_obj = models.Test.smart_get(test)
-    if test_obj.test_type == model_attributes.TestTypes.SERVER:
-        control_type = models.Job.ControlType.SERVER
-    else:
-        control_type = models.Job.ControlType.CLIENT
+    control_type = test_obj.test_type
 
     try:
         label = models.Label.smart_get(label)

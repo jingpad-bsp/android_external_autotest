@@ -6,7 +6,9 @@ import unittest
 import common
 from autotest_lib.mirror import trigger
 from autotest_lib.client.common_lib.test_utils import mock
+from aututest_lib.client.common_lib import control_data
 
+CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 
 class map_action_unittest(unittest.TestCase):
     def setUp(self):
@@ -60,7 +62,7 @@ class map_action_unittest(unittest.TestCase):
                 .and_return(control2))
         action._afe.create_job.expect_call(
                 control2.control_file, 'jobname 2.6.21',
-                control_type='Client', hosts=['mach1', 'mach3'])
+                control_type=CLIENT, hosts=['mach1', 'mach3'])
 
         control3 = self._make_control_dict('control contents3', is_server=True)
         (action._afe.generate_control_file.expect_call(
@@ -80,7 +82,7 @@ class map_action_unittest(unittest.TestCase):
                 .and_return(control1))
         action._afe.create_job.expect_call(
                 control1.control_file, 'jobname 2.6.21',
-                control_type='Client', hosts=['mach1'])
+                control_type=CLIENT, hosts=['mach1'])
 
         action(['2.6.21'])
         self.god.check_playback()

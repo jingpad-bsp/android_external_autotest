@@ -18,6 +18,7 @@ See topic_common.py for a High Level Design and Algorithm.
 
 import getpass, os, pwd, re, socket, sys
 from autotest_lib.cli import topic_common, action_common
+from autotest_lib.client.common_lib import control_data
 
 
 class job(topic_common.atest):
@@ -514,9 +515,9 @@ class job_create(job_create_or_clone):
         if options.synch_count:
             self.data['synch_count'] = options.synch_count
         if options.server:
-            self.data['control_type'] = 'Server'
+            self.data['control_type'] = control_data.CONTROL_TYPE_NAMES.SERVER
         else:
-            self.data['control_type'] = 'Client'
+            self.data['control_type'] = control_data.CONTROL_TYPE_NAMES.CLIENT
 
         return options, leftover
 
@@ -543,9 +544,9 @@ class job_create(job_create_or_clone):
             if 'synch_count' not in self.data:
                 self.data['synch_count'] = cf_info['synch_count']
             if cf_info['is_server']:
-                self.data['control_type'] = 'Server'
+                self.data['control_type'] = control_data.CONTROL_TYPE_NAMES.SERVER
             else:
-                self.data['control_type'] = 'Client'
+                self.data['control_type'] = control_data.CONTROL_TYPE_NAMES.CLIENT
 
             # Get the union of the 2 sets of dependencies
             deps = set(self.data['dependencies'])

@@ -6,6 +6,7 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, model_attributes, model_logic
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import control_data
 
 
 class AclGroupTest(unittest.TestCase,
@@ -264,7 +265,7 @@ class ParameterizedJobTest(unittest.TestCase,
         test = models.Test.objects.create(
                 name='name', author='author', test_class='class',
                 test_category='category',
-                test_type=model_attributes.TestTypes.SERVER, path='path')
+                test_type=control_data.CONTROL_TYPE.SERVER, path='path')
         parameterized_job = models.ParameterizedJob.objects.create(test=test)
         job = self._create_job(hosts=[1], control_file=None,
                                parameterized_job=parameterized_job)

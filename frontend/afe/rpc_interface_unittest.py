@@ -9,7 +9,10 @@ from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils
 from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import control_data
 
+CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
+SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
 
 _hqe_status = models.HostQueueEntry.Status
 
@@ -105,7 +108,7 @@ class RpcInterfaceTest(unittest.TestCase,
         keyval_dict = {'mykey': 'myvalue'}
         job_id = rpc_interface.create_job(name='test', priority='Medium',
                                           control_file='foo',
-                                          control_type='Client',
+                                          control_type=CLIENT,
                                           hosts=['host1'],
                                           keyvals=keyval_dict)
         jobs = rpc_interface.get_jobs(id=job_id)
@@ -116,7 +119,7 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_test_retry(self):
         job_id = rpc_interface.create_job(name='flake', priority='Medium',
                                           control_file='foo',
-                                          control_type='Client',
+                                          control_type=CLIENT,
                                           hosts=['host1'],
                                           test_retry=10)
         jobs = rpc_interface.get_jobs(id=job_id)
@@ -183,7 +186,7 @@ class RpcInterfaceTest(unittest.TestCase,
 
     def _create_job_helper(self, **kwargs):
         return rpc_interface.create_job('test', 'Medium', 'control file',
-                                        'Server', **kwargs)
+                                        SERVER, **kwargs)
 
 
     def test_one_time_hosts(self):
@@ -346,7 +349,7 @@ class RpcInterfaceTest(unittest.TestCase,
         string_type = model_attributes.ParameterTypes.STRING
 
         test = models.Test.objects.create(
-                name='test', test_type=model_attributes.TestTypes.SERVER)
+                name='test', test_type=control_data.CONTROL_TYPE.SERVER)
         test_parameter = test.testparameter_set.create(name='key')
         profiler = models.Profiler.objects.create(name='profiler')
 

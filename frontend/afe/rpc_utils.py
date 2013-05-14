@@ -9,6 +9,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 import datetime, os, inspect
 import django.http
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
+from autotest_lib.client.common_lib import control_data
 
 NULL_DATETIME = datetime.datetime.max
 NULL_DATE = datetime.date.max
@@ -205,7 +206,7 @@ def prepare_generate_control_file(tests, kernel, label, profilers):
              'tests together (tests %s and %s differ' % (
             test1.name, test2.name)})
 
-    is_server = (test_type == model_attributes.TestTypes.SERVER)
+    is_server = (test_type == control_data.CONTROL_TYPE.SERVER)
     if test_objects:
         synch_count = max(test.sync_count for test in test_objects)
     else:
@@ -671,8 +672,7 @@ def create_job_common(name, priority, control_type, control_file=None,
         if hosts or meta_hosts or one_time_hosts or atomic_group_name:
             raise model_logic.ValidationError({
                     'hostless': 'Hostless jobs cannot include any hosts!'})
-        server_type = models.Job.ControlType.get_string(
-                models.Job.ControlType.SERVER)
+        server_type = control_data.CONTROL_TYPE_NAMES.SERVER
         if control_type != server_type:
             raise model_logic.ValidationError({
                     'control_type': 'Hostless jobs cannot use client-side '

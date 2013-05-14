@@ -18,6 +18,7 @@ import common
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.tko import db
 
 
@@ -330,9 +331,9 @@ class AFE(RpcClient):
         control_file = self.generate_control_file(
                 tests=tests, kernel=kernel_info, use_container=use_container)
         if control_file.is_server:
-            dargs['control_type'] = 'Server'
+            dargs['control_type'] = control_data.CONTROL_TYPE_NAMES.SERVER
         else:
-            dargs['control_type'] = 'Client'
+            dargs['control_type'] = control_data.CONTROL_TYPE_NAMES.CLIENT
         dargs['dependencies'] = dargs.get('dependencies', []) + \
                                 control_file.dependencies
         dargs['control_file'] = control_file.control_file
@@ -345,7 +346,7 @@ class AFE(RpcClient):
 
 
     def create_job(self, control_file, name=' ', priority='Medium',
-                control_type='Client', **dargs):
+                control_type=control_data.CONTROL_TYPE_NAMES.CLIENT, **dargs):
         id = self.run('create_job', name=name, priority=priority,
                  control_file=control_file, control_type=control_type, **dargs)
         return self.get_jobs(id=id)[0]

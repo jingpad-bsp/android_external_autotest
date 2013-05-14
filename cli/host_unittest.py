@@ -8,7 +8,10 @@ import unittest, os, sys
 
 import common
 from autotest_lib.cli import cli_mock, host
+from autotest_lib.client.common_lib import control_data
 
+CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
+SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
 
 class host_ut(cli_mock.cli_unittest):
     def test_parse_lock_options_both_set(self):
@@ -957,7 +960,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'synchronizing': None,
                                        u'priority': u'Low',
                                        u'owner': u'user0',
@@ -981,7 +984,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                u'job': {u'control_file':
                                         u"job.run_test('sleeptest')\n\n",
                                         u'name': u'testjob',
-                                        u'control_type': u'Client',
+                                        u'control_type': CLIENT,
                                         u'synchronizing': 0,
                                         u'priority': u'Low',
                                         u'owner': u'user1',
@@ -1047,7 +1050,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'synchronizing': None,
                                        u'priority': u'Low',
                                        u'owner': u'user0',
@@ -1071,7 +1074,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                u'job': {u'control_file':
                                         u"job.run_test('sleeptest')\n\n",
                                         u'name': u'testjob',
-                                        u'control_type': u'Client',
+                                        u'control_type': CLIENT,
                                         u'synchronizing': 0,
                                         u'priority': u'Low',
                                         u'owner': u'user1',
@@ -1106,7 +1109,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'synchronizing': None,
                                        u'priority': u'Low',
                                        u'owner': u'user0',
@@ -1130,7 +1133,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                u'job': {u'control_file':
                                         u"job.run_test('sleeptest')\n\n",
                                         u'name': u'testjob',
-                                        u'control_type': u'Client',
+                                        u'control_type': CLIENT,
                                         u'synchronizing': 0,
                                         u'priority': u'Low',
                                         u'owner': u'user1',
@@ -1174,7 +1177,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
-                                       u'control_type': u'Client',
+                                       u'control_type': CLIENT,
                                        u'synchronizing': None,
                                        u'priority': u'Low',
                                        u'owner': u'user0',
@@ -1198,7 +1201,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                u'job': {u'control_file':
                                         u"job.run_test('sleeptest')\n\n",
                                         u'name': u'testjob',
-                                        u'control_type': u'Client',
+                                        u'control_type': CLIENT,
                                         u'synchronizing': 0,
                                         u'priority': u'Low',
                                         u'owner': u'user1',

@@ -4,6 +4,7 @@ from autotest_lib.frontend.afe import control_file, models, rpc_utils
 from autotest_lib.frontend.afe import model_attributes
 from autotest_lib.frontend import thread_local
 from autotest_lib.client.common_lib import host_protections
+from autotest_lib.client.common_lib import control_data
 
 
 class EntryWithInvalid(resource_lib.InstanceEntry):
@@ -379,7 +380,7 @@ class Test(resource_lib.InstanceEntry):
         rep.update({'author': self.instance.author,
                     'class': self.instance.test_class,
                     'control_file_type':
-                    model_attributes.TestTypes.get_string(
+                    control_data.CONTROL_TYPE.get_string(
                         self.instance.test_type),
                     'control_file_path': self.instance.path,
                     'sync_count': self.instance.sync_count,
@@ -394,7 +395,7 @@ class Test(resource_lib.InstanceEntry):
         cls._check_for_required_fields(input_dict,
                                        ('name', 'control_file_type',
                                         'control_file_path'))
-        test_type = model_attributes.TestTypes.get_value(
+        test_type = control_data.CONTROL_TYPE.get_value(
             input['control_file_type'])
         return models.Test.add_object(name=input_dict['name'],
                                       test_type=test_type,
@@ -470,7 +471,8 @@ class ExecutionInfo(resource_lib.Resource):
     @classmethod
     def execution_info_from_job(cls, job):
         return {'control_file': job.control_file,
-                'is_server': job.control_type == models.Job.ControlType.SERVER,
+                'is_server': 
+                job.control_type == control_data.CONTROL_TYPE.SERVER,
                 'dependencies': [label.name for label
                                  in job.dependency_labels.all()],
                 'machines_per_execution': job.synch_count,
@@ -671,9 +673,9 @@ class Job(resource_lib.InstanceEntry):
                                                         'is_server'))
 
         if execution_info['is_server']:
-            control_type = models.Job.ControlType.SERVER
+            control_type = control_data.CONTROL_TYPE.SERVER
         else:
-            control_type = models.Job.ControlType.CLIENT
+            control_type = control_data.CONTROL_TYPE.CLIENT
         options = dict(
                 name=input_dict['name'],
                 priority=input_dict.get('priority', None),

@@ -15,6 +15,7 @@ from autotest_lib.frontend import setup_test_environment
 from django.test import client
 from autotest_lib.frontend.shared import resource_test_utils
 from autotest_lib.frontend.afe import control_file, models, model_attributes
+from autotest_lib.client.common_lib import control_data
 
 class AfeResourceTestCase(resource_test_utils.ResourceTestCase):
     URI_PREFIX = 'http://testserver/afe/server/resources'
@@ -28,7 +29,7 @@ class AfeResourceTestCase(resource_test_utils.ResourceTestCase):
 
     def _add_additional_data(self):
         models.Test.objects.create(name='mytest',
-                                   test_type=model_attributes.TestTypes.SERVER,
+                                   test_type=control_data.CONTROL_TYPE.SERVER,
                                    path='/path/to/mytest')
 
 
@@ -367,7 +368,7 @@ class JobTest(AfeResourceTestCase):
         job = models.Job.objects.get(id=3)
         self.assertEquals(job.name, 'myjob')
         self.assertEquals(job.control_file, self.CONTROL_FILE_CONTENTS)
-        self.assertEquals(job.control_type, models.Job.ControlType.SERVER)
+        self.assertEquals(job.control_type, control_data.CONTROL_TYPE.SERVER)
         entries = job.hostqueueentry_set.order_by('host__hostname')
         self.assertEquals(entries[0].host.hostname, 'host1')
         self.assertEquals(entries[1].host.hostname, 'host2')

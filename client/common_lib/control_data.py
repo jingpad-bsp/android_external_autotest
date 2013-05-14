@@ -7,6 +7,9 @@ from autotest_lib.client.common_lib import enum
 
 REQUIRED_VARS = set(['author', 'doc', 'name', 'time', 'test_type'])
 
+CONTROL_TYPE = enum.Enum('Server', 'Client', start_value=1)
+CONTROL_TYPE_NAMES =  enum.Enum(*CONTROL_TYPE.names, string_values=True)
+
 class ControlVariableException(Exception):
     pass
 
@@ -16,7 +19,6 @@ class ControlData(object):
     # and in ascending order, test running faster comes first.
     TEST_TIME_LIST = ['fast', 'short', 'medium', 'long', 'lengthy']
     TEST_TIME = enum.Enum(*TEST_TIME_LIST, string_values=False)
-
 
     @staticmethod
     def get_test_time_index(time):
@@ -161,7 +163,7 @@ class ControlData(object):
 
 
     def set_test_type(self, val):
-        self._set_option('test_type', val, ['client', 'server'])
+        self._set_option('test_type', val, list(CONTROL_TYPE.names))
 
 
     def set_test_parameters(self, val):
