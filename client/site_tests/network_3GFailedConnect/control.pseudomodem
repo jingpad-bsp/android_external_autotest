@@ -10,7 +10,7 @@ This test will fail if a connect failure does not immediately cause the
 service to enter the Failed state.
 """
 SUITE = "smoke, network3g_pseudomodem"
-TIME = "SHORT"
+TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
@@ -23,4 +23,13 @@ DOC = """
   that has been factory reset and cannot start a data session.
 """
 
-job.run_test('network_3GFailedConnect', pseudo_modem=True, tag='pseudomodem')
+# 3GPP
+job.run_test('network_3GFailedConnect',
+             pseudo_modem=True,
+             tag='pseudomodem.3GPP')
+
+# CDMA
+job.run_test('network_3GFailedConnect',
+             pseudo_modem=True,
+             pseudomodem_family='CDMA',
+             tag='pseudomodem.CDMA')

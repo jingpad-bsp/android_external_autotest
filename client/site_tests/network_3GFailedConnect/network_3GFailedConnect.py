@@ -2,36 +2,64 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test, utils
+import dbus
+import dbus.mainloop.glib
+import logging
+
+from autotest_lib.client.bin import test
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.common_lib import error
-
-import logging, time
-import dbus, dbus.mainloop.glib, gobject
-
-from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim, modem_3gpp
+from autotest_lib.client.cros.cellular.pseudomodem import mm1
+from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
+from autotest_lib.client.cros.cellular.pseudomodem import modem_cdma
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 from autotest_lib.client.cros import flimflam_test_path, network
-import flimflam, mm
-
-class FailConnectModem3gpp(modem_3gpp.Modem3gpp):
-    """Custom fake Modem3gpp, that always fails to connect."""
-    def Connect(self, properties, return_cb, raise_cb):
-        logging.info('Connect call will fail.')
-        raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED))
+import flimflam
 
 
 class network_3GFailedConnect(test.test):
+    """
+    Tests that 3G connect failures are handled by shill properly.
+
+    This test will fail if a connect failure does not immediately cause the
+    service to enter the Failed state.
+
+    """
     version = 1
 
+    def GetFailConnectModem(self, family):
+        """
+        Returns the correct modem subclass based on |family|.
+
+        @param family: A string containing either '3GPP' or 'CDMA'.
+        @raises error.TestError, if |family| is not one of '3GPP' or 'CDMA'.
+
+        """
+        if family == '3GPP':
+            modem_class = modem_3gpp.Modem3gpp
+        elif family == 'CDMA':
+            modem_class = modem_cdma.ModemCdma
+        else:
+            raise error.TestError('Invalid pseudo modem family: ' + str(family))
+
+        class FailConnectModem(modem_class):
+            """Custom fake Modem that always fails to connect."""
+            def Connect(self, properties, return_cb, raise_cb):
+                logging.info('Connect call will fail.')
+                raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED))
+
+        return FailConnectModem()
+
     def ConnectTo3GNetwork(self, config_timeout):
-        """Attempts to connect to a 3G network using FlimFlam.
+        """
+        Attempts to connect to a 3G network using shill.
 
-        Args:
-        config_timeout:  Timeout (in seconds) before giving up on connect
+        @param config_timeout: Timeout (in seconds) before giving up on
+                               connect.
 
-        Raises:
-        error.TestFail if connection fails
+        @raises: error.TestFail if connection fails.
+
         """
         logging.info('ConnectTo3GNetwork')
         service = self.flim.FindCellularService()
@@ -52,7 +80,7 @@ class network_3GFailedConnect(test.test):
             raise error.TestFail('Service state should be failure not %s' %
                                  state)
 
-    def run_once_internal(self, connect_count):
+    def _run_once_internal(self, connect_count):
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
 
@@ -62,18 +90,16 @@ class network_3GFailedConnect(test.test):
         for ii in xrange(connect_count):
             self.ConnectTo3GNetwork(config_timeout=15)
 
-    def run_once(self, connect_count=4, pseudo_modem=False):
+    def run_once(self, connect_count=4,
+                 pseudo_modem=False, pseudomodem_family='3GPP'):
         with backchannel.Backchannel():
-            fake_sim = sim.SIM(sim.SIM.Carrier('att'),
-                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-            with pseudomodem.TestModemManagerContext(pseudo_modem,
-                                                     ['cromo', 'modemmanager'],
-                                                     sim=fake_sim,
-                                                     modem=FailConnectModem3gpp()):
+            with pseudomodem.TestModemManagerContext(
+                pseudo_modem,
+                modem=self.GetFailConnectModem(pseudomodem_family)):
                 self.flim = flimflam.FlimFlam()
                 self.device_manager = flimflam.DeviceManager(self.flim)
                 try:
                     self.device_manager.ShutdownAllExcept('cellular')
-                    self.run_once_internal(connect_count)
+                    self._run_once_internal(connect_count)
                 finally:
                     self.device_manager.RestoreDevices()
