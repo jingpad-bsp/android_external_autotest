@@ -49,7 +49,7 @@ class ModemCdma(modem.Modem):
             return '000000' + self._mdn[6:]
 
     def __init__(self,
-                 home_network,
+                 home_network=CdmaNetwork(),
                  bus=None,
                  device='pseudomodem0',
                  roaming_networks=[],

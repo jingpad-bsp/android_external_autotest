@@ -93,8 +93,7 @@ class TestModemManagerContext(object):
         elif family == 'CDMA':
             # Import modem_cdma here to avoid circular imports.
             import modem_cdma
-            self.pseudo_modem = modem_cdma.ModemCdma(
-                modem_cdma.ModemCdma.CdmaNetwork())
+            self.pseudo_modem = modem_cdma.ModemCdma()
         else:
             raise TestModemManagerContextError(
                 "Invalid modem family value: " + str(family))

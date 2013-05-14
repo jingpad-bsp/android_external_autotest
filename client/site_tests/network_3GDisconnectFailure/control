@@ -16,7 +16,7 @@ incorrect state upon certain failures of a Disconnect call.
 """
 
 SUITE = "network3g_pseudomodem"
-TIME = "SHORT"
+TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
@@ -29,4 +29,9 @@ modem state is DISCONNECTING and to clean up the service otherwise.
 
 """
 
-job.run_test('network_3GDisconnectFailure')
+# 3GPP
+job.run_test('network_3GDisconnectFailure', tag='3GPP')
+
+# CDMA
+job.run_test(
+    'network_3GDisconnectFailure', pseudomodem_family='CDMA', tag='CDMA')
