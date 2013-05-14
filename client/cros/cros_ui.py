@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common, os
+import common, os, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -102,6 +102,33 @@ def _wait_for_login_prompt(timeout=DEFAULT_TIMEOUT):
             constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE, os.F_OK),
         exception=utils.TimeoutError('Timed out waiting for login prompt'),
         timeout=timeout)
+
+
+def stop_and_wait_for_chrome_to_exit(timeout_secs=40):
+    """Stops the UI and waits for chrome to exit.
+
+    Stops the UI and waits for all chrome processes to exit or until
+    timeout_secs is reached.
+
+    Args:
+        timeout_secs: float number of seconds to wait.
+
+    Returns:
+        True upon successfully stopping the UI and all chrome processes exiting.
+        False otherwise.
+    """
+    status = utils.system("stop ui", ignore_status=True)
+    if status:
+        logging.error('stop ui returned non-zero status: %s', status)
+        return False
+    start_time = time.time()
+    while time.time() - start_time < timeout_secs:
+        status = utils.system('pgrep chrome', ignore_status=True)
+        if status == 1: return True
+        time.sleep(1)
+    logging.error('stop ui failed to stop chrome within %s seconds',
+                  timeout_secs)
+    return False
 
 
 def stop(allow_fail=False):

@@ -15,10 +15,14 @@ import logging
 import os
 import shutil
 import tarfile
+
 from autotest_lib.client.bin import profiler
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_ui
 
 
 class pgo(profiler.profiler):
+    """The pgo profiler collects PGO data for Chrome."""
     version = 1
 
     def initialize(self, source_dir='/tmp/pgo/chrome'):
@@ -32,6 +36,8 @@ class pgo(profiler.profiler):
 
 
     def stop(self, test):
+        if not cros_ui.stop_and_wait_for_chrome_to_exit(timeout_secs=40):
+            raise error.TestError('Could not stop Chrome')
         if os.path.isdir(self._source_dir):
             tar = tarfile.open(name=os.path.join(test.profdir, 'pgo.tar.bz2'),
                                mode='w:bz2')
@@ -43,3 +49,4 @@ class pgo(profiler.profiler):
                                os.path.join(test.profdir, 'profiledestination'))
         else:
             logging.error('PGO dir: %s not found', self._source_dir)
+        cros_ui.start(wait_for_login_prompt=False)
