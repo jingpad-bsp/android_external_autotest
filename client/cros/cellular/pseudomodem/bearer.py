@@ -86,7 +86,8 @@ class Bearer(dbus_std_ifaces.DBusProperties):
 
         self._AddProperty('Ip4Config')
         self.Set(mm1.I_BEARER, config_prop, {
-            'method': dbus.types.UInt32(mm1.MM_BEARER_IP_METHOD_DHCP)
+            'method': dbus.types.UInt32(mm1.MM_BEARER_IP_METHOD_DHCP,
+                                        variant_level=1)
         })
         self._active = True
         self.Set(mm1.I_BEARER, 'Connected', dbus.types.Boolean(True))

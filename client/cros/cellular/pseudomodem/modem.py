@@ -17,6 +17,10 @@ import modem_simple
 
 ALLOWED_BEARER_PROPERTIES = [
     'apn',
+    'operator-id',
+    'allowed-modes',
+    'preferred-mode',
+    'bands',
     'ip-type',
     'user',
     'password',
@@ -434,9 +438,29 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         @param bearer: Object path of the bearer to delete.
 
         """
-        self.Disconnect(bearer)
-        if bearer in self.bearers:
-            self.bearers.pop(bearer)
+        logging.info('Modem.DeleteBearer: ' + str(bearer))
+        if not bearer in self.bearers:
+            logging.info('Unknown bearer. Nothing to do.')
+            return
+        bearer_object = self.bearers[bearer]
+        if bearer_object.IsActive():
+            def _SuccessCallback():
+                logging.info('Modem: Bearer %s disconnected.', str(bearer))
+            def _ErrorCallback(error):
+                logging.info('Modem: Failed to disconnect bearer: %s',
+                             str(error))
+            self.Disconnect(bearer, _SuccessCallback, _ErrorCallback)
+
+        bearer_object.remove_from_connection()
+        self.bearers.pop(bearer)
+
+    def ClearBearers(self):
+        """
+        Deletes all bearers that are managed by this modem.
+
+        """
+        for b in self.bearers.keys():
+            self.DeleteBearer(b)
 
     @dbus.service.method(mm1.I_MODEM)
     def Reset(self):
@@ -465,7 +489,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             if manager:
                 manager.Remove(self)
 
-            self.bearers.clear()
+            self.ClearBearers()
 
             # Reappear.
             def _DelayedReappear():
