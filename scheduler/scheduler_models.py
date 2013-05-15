@@ -866,7 +866,7 @@ class Job(DBObject):
 
 
     def is_server_job(self):
-        return self.control_type != control_data.CONTROL_TYPE.SERVER
+        return self.control_type == control_data.CONTROL_TYPE.SERVER
 
 
     def tag(self):
