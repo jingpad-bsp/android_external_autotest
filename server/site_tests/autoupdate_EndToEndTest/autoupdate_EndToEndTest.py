@@ -215,10 +215,24 @@ class UpdateEventLogVerifier(object):
             return new_event
 
 
+class OmahaDevserverFailedToStart(error.TestError):
+    """Raised when a omaha devserver fails to start."""
+
+
 class OmahaDevserver(object):
     """Spawns a test-private devserver instance."""
+    # How long to wait for a devserver to start.
     _WAIT_FOR_DEVSERVER_STARTED_SECONDS = 15
+
+    # How long to sleep between checks to see if a devserver is up.
     _WAIT_SLEEP_INTERVAL = 1
+
+    # If a previous devserver exists, how long to wait in seconds before
+    # attempting to reconnect.
+    _TIME_TO_LET_PORT_FREE = 15
+
+    # How many times to attempt to start a devserver.
+    _NUM_DEVSERVER_ATTEMPTS = 5
 
 
     def __init__(self, omaha_host, devserver_dir, dut_ip_addr,
@@ -246,8 +260,42 @@ class OmahaDevserver(object):
         self._devserver_pid = None
 
 
+    def _wait_for_devserver_to_start(self):
+        """Waits until the devserver starts within the time limit.
+
+        Raises:
+            OmahaDevserverFailedToStart: If the time limit is reached and we
+                                         cannot connect to the devserver.
+        """
+        logging.warning('Waiting for devserver to start up.')
+        timeout = self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
+        netloc = self.get_netloc()
+        current_time = time.time()
+        deadline = current_time + timeout
+        while(current_time < deadline):
+            if dev_server.DevServer.devserver_healthy('http://%s' % netloc,
+                                                      timeout_min=0.1):
+                return
+
+            # TODO(milleral): Refactor once crbug.com/221626 is resolved.
+            time.sleep(self._WAIT_SLEEP_INTERVAL)
+            current_time = time.time()
+        else:
+            raise OmahaDevserverFailedToStart(
+                    'The test failed to establish a connection to the omaha '
+                    'devserver it set up on port %d. Check the dumped '
+                    'devserver logs for more information.' % self._omaha_port)
+
+
     def start_devserver(self):
-        """Starts the devserver and stores the remote pid in self._devserver_pid
+        """Starts the devserver and confirms it is up.
+
+        Stores the remote pid in self._devserver_pid and raises an exception
+        if the devserver failed to start.
+
+        Raises:
+            OmahaDevserverFailedToStart: If the time limit is reached and we
+                                         cannot connect to the devserver.
         """
         update_payload_url_base, update_payload_path, _ = self._split_url(
                 self._update_payload_lorry_url)
@@ -262,19 +310,33 @@ class OmahaDevserver(object):
                 '--max_updates=1',
                 '--host_log',
         ]
-        # In the remote case that a previous devserver is still running,
-        # kill it.
-        devserver_pid = self._remote_devserver_pid()
-        if devserver_pid:
-            logging.warning('Previous devserver still running. Killing.')
-            self._kill_devserver_pid(devserver_pid)
-            self._devserver_ssh.run('rm -f %s' % self._devserver_output,
-                                    ignore_status=True)
-
         remote_cmd = '( %s ) </dev/null >%s 2>&1 & echo $!' % (
-                ' '.join(cmdlist), self._devserver_output)
-        logging.info('Starting devserver with %r', remote_cmd)
-        self._devserver_pid = self._devserver_ssh.run_output(remote_cmd)
+                    ' '.join(cmdlist), self._devserver_output)
+
+        # Devserver may have some trouble re-using the port if previously
+        # created so create in a loop with a max number of attempts.
+        for i in range(self._NUM_DEVSERVER_ATTEMPTS):
+            # In the remote case that a previous devserver is still running,
+            # kill it.
+            devserver_pid = self._remote_devserver_pid()
+            if devserver_pid:
+                logging.warning('Previous devserver still running. Killing.')
+                self._kill_devserver_pid(devserver_pid)
+                self._devserver_ssh.run('rm -f %s' % self._devserver_output,
+                                        ignore_status=True)
+                time.sleep(self._TIME_TO_LET_PORT_FREE)
+
+            logging.info('Starting devserver with %r', remote_cmd)
+            self._devserver_pid = self._devserver_ssh.run_output(remote_cmd)
+            try:
+                self._wait_for_devserver_to_start()
+                return
+            except OmahaDevserverFailedToStart:
+                if i + 1 < self._NUM_DEVSERVER_ATTEMPTS:
+                    logging.error('Devserver failed to start, re-attempting.')
+                else:
+                    self.dump_devserver_log()
+                    raise
 
 
     def _kill_devserver_pid(self, pid):
@@ -307,25 +369,6 @@ class OmahaDevserver(object):
                                          ignore_status=True)
         if result.exit_status == 0:
             return result.stdout.strip()
-
-
-    def wait_for_devserver_to_start(self):
-        """Returns True if the devserver has started within the time limit."""
-        logging.warning('Waiting for devserver to start up.')
-        timeout = self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
-        netloc = self.get_netloc()
-        current_time = time.time()
-        deadline = current_time + timeout
-        while(current_time < deadline):
-            if dev_server.DevServer.devserver_healthy('http://%s' % netloc,
-                                                      timeout_min=0.1):
-                return True
-
-            time.sleep(self._WAIT_SLEEP_INTERVAL)
-            current_time = time.time()
-        else:
-            self.dump_devserver_log()
-            return False
 
 
     def get_netloc(self):
@@ -766,7 +809,6 @@ class autoupdate_EndToEndTest(test.test):
                 target_payload_url)
 
         self._omaha_devserver.start_devserver()
-        self._omaha_devserver.wait_for_devserver_to_start()
 
         # Trigger an update (test vs MP).
         omaha_netloc = self._omaha_devserver.get_netloc()
