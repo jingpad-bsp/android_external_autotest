@@ -505,7 +505,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
 
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             self._ah.record_sample(noise_file.name)
-            self._ah.loopback_test_channels(noise_file,
+            self._ah.loopback_test_channels(noise_file.name,
                     lambda ch: playback_sine(),
                     check_loop_output)
         return errors

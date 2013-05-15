@@ -122,7 +122,7 @@ class audiovideo_CRASFormatConversion(test.test):
         for primary in _TEST_SAMPLE_RATES:
             for secondary in _TEST_SAMPLE_RATES:
                 self._ah.loopback_test_channels(
-                    noise_file,
+                    noise_file.name,
                     lambda channel: self.play_two_freqs(playback_config, primary, secondary))
 
         # Record at all sample rates
