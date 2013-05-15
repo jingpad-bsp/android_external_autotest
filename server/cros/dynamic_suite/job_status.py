@@ -334,7 +334,7 @@ def wait_for_results(afe, tko, jobs):
                                          s.reason,
                                          s.test_started_time,
                                          s.test_finished_time,
-                                         job.id, job.owner)
+                                         job.id, job.owner, s.hostname)
         time.sleep(5)
 
 
