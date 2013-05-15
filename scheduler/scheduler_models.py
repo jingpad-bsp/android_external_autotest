@@ -26,6 +26,7 @@ from autotest_lib.database import database_connection
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.site_utils.graphite import stats
+from autotest_lib.client.common_lib import control_data
 
 _notify_email_statuses = []
 _base_url = None
@@ -865,7 +866,7 @@ class Job(DBObject):
 
 
     def is_server_job(self):
-        return self.control_type != 2
+        return self.control_type != control_data.CONTROL_TYPE.SERVER
 
 
     def tag(self):
