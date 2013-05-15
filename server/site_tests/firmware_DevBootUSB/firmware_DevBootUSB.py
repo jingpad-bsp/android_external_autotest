@@ -63,7 +63,7 @@ class firmware_DevBootUSB(FAFTSequence):
     def run_once(self):
         if (self.client_attr.has_keyboard and
                 not self.check_ec_capability(['keyboard'])):
-            raise error.TestError("TEST IT MANUALLY! This test can't be "
+            raise error.TestNAError("TEST IT MANUALLY! This test can't be "
                     "automated on non-Chrome-EC devices.")
 
         self.register_faft_sequence((

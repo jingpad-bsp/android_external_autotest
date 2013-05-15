@@ -62,7 +62,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
             return
 
         if self.client_attr.chrome_ec and not self.check_ec_capability(['lid']):
-            raise error.TestError("TEST IT MANUALLY! Chrome EC can't control "
+            raise error.TestNAError("TEST IT MANUALLY! Chrome EC can't control "
                     "lid on the device %s" % self.client_attr.platform)
 
         self.register_faft_sequence((

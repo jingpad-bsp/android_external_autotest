@@ -113,7 +113,7 @@ class firmware_SelfSignedBoot(FAFTSequence):
     def run_once(self):
         if (self.client_attr.has_keyboard and
                 not self.check_ec_capability(['keyboard'])):
-            raise error.TestError("TEST IT MANUALLY! This test can't be "
+            raise error.TestNAError("TEST IT MANUALLY! This test can't be "
                                   "automated on non-Chrome-EC devices.")
         # The old models need users to remove and insert USB stick during boot.
         remove_usb = (self.faft_client.system.get_platform_name() in

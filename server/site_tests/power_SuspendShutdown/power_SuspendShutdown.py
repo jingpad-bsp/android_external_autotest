@@ -59,7 +59,7 @@ class power_SuspendShutdown(test.test):
                     'This test does nothing on devices without a lid.')
 
         if client_attr.chrome_ec and not 'lid' in client_attr.ec_capability:
-            raise error.TestError("TEST IT MANUALLY! Chrome EC can't control "
+            raise error.TestNAError("TEST IT MANUALLY! Chrome EC can't control "
                     "lid on the device %s" % client_attr.platform)
 
 
