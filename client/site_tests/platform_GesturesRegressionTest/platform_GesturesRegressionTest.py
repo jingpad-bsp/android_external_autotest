@@ -7,6 +7,14 @@ import sys
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import site_utils
 
+
+_PLATFORM_MAPPINGS = {'daisy': 'snow',
+                      'daisy_spring': 'spring',
+                      'x86-alex': 'alex',
+                      'x86-mario': 'mario',
+                      'x86-zgb': 'zgb'}
+
+
 class platform_GesturesRegressionTest(test.test):
     """ Wrapper of regression test of gestures library.
 
@@ -23,10 +31,8 @@ class platform_GesturesRegressionTest(test.test):
     def run_once(self):
         """ Run the regression test and collect the results.
         """
-        # decide what tests to be executed, strip out prefix 'x86-' if exists
-        board = site_utils.get_current_board().replace('x86-', '')
-        if board == 'daisy':
-            board = 'snow'
+        board = site_utils.get_current_board()
+        platform = _PLATFORM_MAPPINGS.get(board, board)
 
         # find paths for touchpad tests
         root = os.path.join(self.autodir, 'deps', 'touchpad-tests')
@@ -39,11 +45,11 @@ class platform_GesturesRegressionTest(test.test):
         from test_runner import TestRunner
         runner = TestRunner(tests_dir, xorg_dir)
 
-        # run all tests for this board and extract results
-        results = runner.RunAll('%s*/*' % board)
+        # run all tests for this platform and extract results
+        results = runner.RunAll('%s*/*' % platform)
         self.test_results = {}
         for key, value in results.items():
-            score = value["score"]
+            score = value['score']
             not_integer = isinstance(score, bool) or not isinstance(score, int)
             if not_integer and not isinstance(score, float):
                 score = 0.0
