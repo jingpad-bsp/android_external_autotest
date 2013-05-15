@@ -30,7 +30,7 @@ score_aggregator = 'fuzzy.average'
 
 # Define some common criteria
 count_packets_criteria = '>= 3, ~ -3'
-drumroll_criteria = '<= 20, ~ +30'
+drumroll_criteria = '<= 2.0'
 # linearity_criteria is used for strictly straight line drawn with a ruler.
 linearity_criteria = '<= 0.8, ~ +2.4'
 # relaxed_linearity_criteria is used for lines drawn with thumb edge or

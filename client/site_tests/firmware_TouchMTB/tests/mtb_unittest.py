@@ -22,7 +22,7 @@ def get_mtb_packets(gesture_filename):
     """Get mtb_packets object by reading the gesture file."""
     parser = mtb.MtbParser()
     packets = parser.parse_file(gesture_filename)
-    mtb_packets = mtb.Mtb(packets)
+    mtb_packets = mtb.Mtb(packets=packets)
     return mtb_packets
 
 

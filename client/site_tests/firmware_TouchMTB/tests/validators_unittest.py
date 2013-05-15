@@ -12,8 +12,9 @@ import common_unittest_utils
 import common_util
 import test_conf as conf
 
-from common_unittest_utils import MockTouchDevice, parse_tests_data
+from common_unittest_utils import parse_tests_data
 from firmware_constants import GV
+from touch_device import TouchDevice
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -29,31 +30,43 @@ from validators import (CountPacketsValidator,
 )
 
 
+# Define supported platforms
+ALEX= 'alex'
+LUMPY = 'lumpy'
+LINK = 'link'
+PLATFORMS = [ALEX, LUMPY, LINK]
+
+
+def create_mocked_devices():
+    """Create mocked devices of specified platforms."""
+    description_path = common_unittest_utils.get_device_description_path()
+    mocked_device = {}
+    for platform in PLATFORMS:
+        description_filename = '%s.device' % platform
+        description_filepath = os.path.join(description_path,
+                                            description_filename)
+        if not os.path.isfile(description_filepath):
+            mocked_device[platform] = None
+            warn_msg = 'Warning: device description file %s does not exist'
+            print msg % description_filepath
+            continue
+        with open(description_filepath) as f:
+            device_description = f.read()
+        mocked_device[platform] = TouchDevice(
+                device_description=device_description)
+    return mocked_device
+
+
+mocked_device = create_mocked_devices()
+
+
 class BaseValidatorTest(unittest.TestCase):
     """A base class for all ValidatorTest classes."""
 
     def setUp(self):
         """Set up mocked devices for various test boards."""
-        # define supported platforms
-        self.ALEX= 'alex'
-        self.LUMPY = 'lumpy'
-        self.LINK = 'link'
-        self.supported_platforms = [self.ALEX, self.LUMPY, self.LINK]
-        self.mock_device = {}
-        description_path = common_unittest_utils.get_device_description_path()
-
-        for platform in self.supported_platforms:
-            description_filename = '%s.device' % platform
-            description_filepath = os.path.join(description_path,
-                                                description_filename)
-            if not os.path.isfile(description_filepath):
-                self.mock_device[platform] = None
-                warn_msg = 'Warning: device description file %s does not exist'
-                print msg % description_filepath
-                continue
-            query_cmd = 'cat %s' % description_filepath
-            device_description = common_util.simple_system_output(query_cmd)
-            self.mock_device[platform] = MockTouchDevice(device_description)
+        global mocked_device
+        self.mocked_device = mocked_device
 
 
 class CountTrackingIDValidatorTest(BaseValidatorTest):
@@ -75,7 +88,7 @@ class CountTrackingIDValidatorTest(BaseValidatorTest):
         """
         filename = 'two_finger_id_change.dat'
         score = self._test_count_tracking_id(filename, '== 2',
-                                             self.mock_device[self.LUMPY])
+                                             self.mocked_device[LUMPY])
         self.assertTrue(score == 0)
 
     def test_one_finger_fast_swipe_id_split(self):
@@ -85,7 +98,7 @@ class CountTrackingIDValidatorTest(BaseValidatorTest):
         """
         filename = 'one_finger_fast_swipe_id_split.dat'
         score = self._test_count_tracking_id(filename, '== 1',
-                                             self.mock_device[self.LUMPY])
+                                             self.mocked_device[LUMPY])
         self.assertTrue(score == 0)
 
     def test_two_fingers_fast_flick_id_split(self):
@@ -95,7 +108,7 @@ class CountTrackingIDValidatorTest(BaseValidatorTest):
         """
         filename = 'two_finger_fast_flick_id_split.dat'
         score = self._test_count_tracking_id(filename, '== 2',
-                                             self.mock_device[self.LUMPY])
+                                             self.mocked_device[LUMPY])
         self.assertTrue(score == 0)
 
 
@@ -120,7 +133,7 @@ class DrumrollValidatorTest(BaseValidatorTest):
         """
         filename = 'drumroll_lumpy.dat'
         score = self._test_drumroll(filename, self.criteria,
-                                    self.mock_device[self.LUMPY])
+                                    self.mocked_device[LUMPY])
         self.assertTrue(score == 0)
 
     def test_drumroll_lumpy_1(self):
@@ -131,7 +144,7 @@ class DrumrollValidatorTest(BaseValidatorTest):
         """
         filename = 'drumroll_lumpy_1.dat'
         score = self._test_drumroll(filename, self.criteria,
-                                    self.mock_device[self.LUMPY])
+                                    self.mocked_device[LUMPY])
         self.assertTrue(score <= 0.15)
 
     def test_no_drumroll_link(self):
@@ -142,7 +155,7 @@ class DrumrollValidatorTest(BaseValidatorTest):
         """
         filename = 'no_drumroll_link.dat'
         score = self._test_drumroll(filename, self.criteria,
-                                    self.mock_device[self.LINK])
+                                    self.mocked_device[LINK])
         self.assertTrue(score == 1)
 
 
@@ -168,7 +181,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """The scores are 0s due to strict criteria."""
         criteria_str = '<= 0.01, ~ +0.01'
         scores = self._test_linearity_criteria(criteria_str, (0, 1),
-                                               self.mock_device[self.ALEX])
+                                               self.mocked_device[ALEX])
         self.assertTrue(scores[0] == 0)
         self.assertTrue(scores[1] == 0)
 
@@ -176,7 +189,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """The validator gets score betwee 0 and 1."""
         criteria_str = '<= 0.01, ~ +3.0'
         scores = self._test_linearity_criteria(criteria_str, (0, 1),
-                                               self.mock_device[self.ALEX])
+                                               self.mocked_device[ALEX])
         self.assertTrue(scores[0] > 0 and scores[0] < 1)
         self.assertTrue(scores[1] > 0 and scores[1] < 1)
 
@@ -184,7 +197,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """The validator gets score of 1 due to very relaxed criteria."""
         criteria_str = '<= 10, ~ +10'
         scores = self._test_linearity_criteria(criteria_str, (0, 1),
-                                               self.mock_device[self.ALEX])
+                                               self.mocked_device[ALEX])
         self.assertTrue(scores[0] == 1)
         self.assertTrue(scores[1] == 1)
 
@@ -203,7 +216,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """Test two-finger jagged lines."""
         filename = 'two_finger_tracking.diagonal.slow.dat'
         scores = self._test_linearity_validator(filename, self.criteria, (0, 1),
-                self.mock_device[self.LUMPY], GV.DIAGONAL)
+                self.mocked_device[LUMPY], GV.DIAGONAL)
         self.assertTrue(scores[0] < 0.7)
         self.assertTrue(scores[1] < 0.7)
 
@@ -216,7 +229,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'stationary_finger_fat_finger_wobble.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 1,
-                self.mock_device[self.LUMPY], GV.HORIZONTAL)
+                self.mocked_device[LUMPY], GV.HORIZONTAL)
         self.assertTrue(scores[1] <= 0.1)
 
     def test_thumb_edge(self):
@@ -226,7 +239,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'thumb_edge_wobble.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 0,
-                self.mock_device[self.LUMPY], GV.HORIZONTAL)
+                self.mocked_device[LUMPY], GV.HORIZONTAL)
         self.assertTrue(scores[0] < 0.5)
 
     def test_two_close_fingers_merging_changed_ids_gaps(self):
@@ -236,7 +249,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 0,
-                self.mock_device[self.LUMPY], GV.VERTICAL)
+                self.mocked_device[LUMPY], GV.VERTICAL)
         self.assertTrue(scores[0] < 0.3)
 
     def test_jagged_two_finger_scroll(self):
@@ -247,7 +260,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'jagged_two_finger_scroll_horizontal.dat'
         scores = self._test_linearity_validator(filename, self.criteria, (0, 1),
-                self.mock_device[self.LUMPY], GV.HORIZONTAL)
+                self.mocked_device[LUMPY], GV.HORIZONTAL)
         self.assertTrue(scores[0] < 0.3)
         self.assertTrue(scores[1] < 0.3)
 
@@ -261,11 +274,11 @@ class LinearityValidatorTest(BaseValidatorTest):
         """
         filename = 'two_finger_tracking.bottom_left_to_top_right.slow.dat'
         scores = self._test_linearity_validator(filename, self.criteria, 0,
-                self.mock_device[self.LUMPY], GV.DIAGONAL)
+                self.mocked_device[LUMPY], GV.DIAGONAL)
         self.assertTrue(scores[0] < 0.3)
 
     def test_simple_linear_regression0(self):
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
         validator.init_check()
         # A perfect line from bottom left to top right
@@ -275,7 +288,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertEqual(spmse, 0)
 
     def test_simple_linear_regression1(self):
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
         validator.init_check()
         # Another perfect line from top left to bottom right
@@ -285,7 +298,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertEqual(spmse, 0)
 
     def test_simple_linear_regression2(self):
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
         validator.init_check()
         # An outlier in y axis
@@ -295,7 +308,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertTrue(spmse > 0)
 
     def test_simple_linear_regression3(self):
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         validator = LinearityValidator('<= 0.2, ~ +0.3', device=device, slot=0)
         validator.init_check()
         # Repeated values in x axis
@@ -326,9 +339,9 @@ class NoGapValidatorTest(BaseValidatorTest):
         Issue 7552: Cyapa : two finger scroll motion produces gaps in tracking
         """
         filename = 'two_finger_gaps.horizontal.dat'
-        mock_device = self.mock_device[self.LUMPY]
-        score0 = self._test_no_gap(filename, self.criteria, mock_device, 0)
-        score1 = self._test_no_gap(filename, self.criteria, mock_device, 1)
+        mocked_device = self.mocked_device[LUMPY]
+        score0 = self._test_no_gap(filename, self.criteria, mocked_device, 0)
+        score1 = self._test_no_gap(filename, self.criteria, mocked_device, 1)
         self.assertTrue(score0 <= 0.1)
         self.assertTrue(score1 <= 0.1)
 
@@ -338,15 +351,15 @@ class NoGapValidatorTest(BaseValidatorTest):
         Issue: 8005: Cyapa : gaps appear when new finger arrives or departs
         """
         filename = 'gap_new_finger_arriving_or_departing.dat'
-        mock_device = self.mock_device[self.LUMPY]
-        score = self._test_no_gap(filename, self.criteria, mock_device, 0)
+        mocked_device = self.mocked_device[LUMPY]
+        score = self._test_no_gap(filename, self.criteria, mocked_device, 0)
         self.assertTrue(score <= 0.3)
 
     def test_one_stationary_finger_2nd_finger_moving_gaps(self):
         """Test one stationary finger resulting in 2nd finger moving gaps."""
         filename = 'one_stationary_finger_2nd_finger_moving_gaps.dat'
-        mock_device = self.mock_device[self.LUMPY]
-        score = self._test_no_gap(filename, self.criteria, mock_device, 1)
+        mocked_device = self.mocked_device[LUMPY]
+        score = self._test_no_gap(filename, self.criteria, mocked_device, 1)
         self.assertTrue(score <= 0.1)
 
     def test_resting_finger_2nd_finger_moving_gaps(self):
@@ -355,8 +368,8 @@ class NoGapValidatorTest(BaseValidatorTest):
         Issue 7648: Cyapa : Resting finger plus one finger move generates a gap
         """
         filename = 'resting_finger_2nd_finger_moving_gaps.dat'
-        mock_device = self.mock_device[self.LUMPY]
-        score = self._test_no_gap(filename, self.criteria, mock_device, 1)
+        mocked_device = self.mocked_device[LUMPY]
+        score = self._test_no_gap(filename, self.criteria, mocked_device, 1)
         self.assertTrue(score <= 0.3)
 
 
@@ -380,7 +393,7 @@ class StationaryFingerValidatorTest(BaseValidatorTest):
         position
         """
         filename = 'stationary_finger_shift_with_2nd_finger_tap.dat'
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         score = self._test_stationary_finger(filename, self.criteria, device)
         self.assertTrue(score <= 0.1)
 
@@ -393,7 +406,7 @@ class StationaryFingerValidatorTest(BaseValidatorTest):
         """
         filename = ('stationary_finger_strongly_affected_by_2nd_moving_finger_'
                     'with_gaps.dat')
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         score = self._test_stationary_finger(filename, self.criteria, device)
         self.assertTrue(score <= 0.1)
 
@@ -424,7 +437,7 @@ class NoLevelJumpValidatorTest(BaseValidatorTest):
             'drag_edge_thumb.vertical_2.dat',
             'drag_edge_thumb.diagonal.dat',
         ]
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         for filename in filenames:
             self.assertTrue(self._get_score(filename, device) <= 0.6)
 
@@ -436,7 +449,7 @@ class NoLevelJumpValidatorTest(BaseValidatorTest):
             'drag_edge_thumb.vertical.curvy.dat',
             'drag_edge_thumb.vertical_2.curvy.dat',
         ]
-        device = self.mock_device[self.LUMPY]
+        device = self.mocked_device[LUMPY]
         for filename in filenames:
             self.assertTrue(self._get_score(filename, device) == 1.0)
 
@@ -456,7 +469,7 @@ class ReportRateValidatorTest(BaseValidatorTest):
 
     def test_level_jumps(self):
         """Test files with level jumps."""
-        lumpy = self.mock_device[self.LUMPY]
+        lumpy = self.mocked_device[LUMPY]
 
         filename = '2f_scroll_diagonal.dat'
         self.assertTrue(self._get_score(filename, device=lumpy) <= 0.5)

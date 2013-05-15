@@ -4,6 +4,7 @@
 
 """Touch device module provides some touch device related attributes."""
 
+import collections
 import glob
 import os
 import re
@@ -11,12 +12,20 @@ import re
 import common_util
 
 
+# Define AbsAxis class with axis attributes: min, max, and resolution
+AbsAxis = collections.namedtuple('AbsAxis', ['min', 'max', 'resolution'])
+
+
 class TouchDevice:
     """A class about touch device properties."""
-    def __init__(self, device_node=None, is_touchscreen=False):
-        self.device_info_file = '/proc/bus/input/devices'
+    def __init__(self, device_node=None, is_touchscreen=False,
+                 device_description=None):
+        """If the device_description is provided (i.e., not None), it is
+        used to create a mocked device for testing purpose.
+        """
         self.device_node = (device_node if device_node
                                 else self.get_device_node(is_touchscreen))
+        self.axis_x, self.axis_y = self.parse_abs_axes(device_description)
 
     def get_device_node(self, is_touchscreen):
         """Get the touch device node through xinput
@@ -43,20 +52,18 @@ class TouchDevice:
         height = float((bottom - top)) / resolution_y
         return (width, height)
 
-    def get_resolutions(self, device_description=None):
+    def get_resolutions(self):
         """Get the resolutions in x and y axis of the device."""
-        _, _, _, _, resolution_x, resolution_y = self.get_abs_axes(
-                device_description)
-        return (resolution_x, resolution_y)
+        return (self.axis_x.resolution, self.axis_y.resolution)
 
-    def get_edges(self, device_description=None):
+    def get_edges(self):
         """Get the left, right, top, and bottom edges of the device."""
-        left, right, top, bottom, _, _ = self.get_abs_axes(
-                device_description)
-        return (left, right, top, bottom)
+        return (self.axis_x.min, self.axis_x.max,
+                self.axis_y.min, self.axis_y.max)
 
-    def get_abs_axes(self, device_description=None):
-        """Get information about min, max, and resolution from ABS_X and ABS_Y
+    def parse_abs_axes(self, device_description):
+        """Prase to get information about min, max, and resolution of
+           ABS_X and ABS_Y
 
         Example of ABS_X:
                 A: 00 0 1280 0 0 12
@@ -69,31 +76,35 @@ class TouchDevice:
         cmd = 'evemu-describe %s' % self.device_node
         if device_description is None:
             device_description = common_util.simple_system_output(cmd)
-        found_x = found_y = False
-        left = right = top = bottom = None
-        resolution_x = resolution_y = None
+        axis_x = axis_y = None
         if device_description:
             for line in device_description.splitlines():
-                if not found_x:
+                if not axis_x:
                     result = re.search(pattern_x, line, re.I)
                     if result:
-                        left = int(result.group(1))
-                        right = int(result.group(2))
+                        min_x = int(result.group(1))
+                        max_x = int(result.group(2))
                         resolution_x = int(result.group(5))
-                        found_x = True
-                if not found_y:
+                        axis_x = AbsAxis(min_x, max_x, resolution_x)
+                if not axis_y:
                     result = re.search(pattern_y, line, re.I)
                     if result:
-                        top = int(result.group(1))
-                        bottom = int(result.group(2))
+                        min_y = int(result.group(1))
+                        max_y = int(result.group(2))
                         resolution_y = int(result.group(5))
-                        found_y = True
-        return (left, right, top, bottom, resolution_x, resolution_y)
+                        axis_y = AbsAxis(min_y, max_y, resolution_y)
+        return (axis_x, axis_y)
 
-    def get_dimensions(self, device_description=None):
+    def convert_point_pixel_to_mm(self, (pixel_x, pixel_y)):
+        """Convert the point coordinate from pixel to mm."""
+        mm_x = float(pixel_x - self.axis_x.min) / self.axis_x.resolution
+        mm_y = float(pixel_y - self.axis_y.min) / self.axis_y.resolution
+        return (mm_x, mm_y)
+
+    def get_dimensions(self):
         """Get the vendor-specified dimensions of the touch device."""
-        left, right, top, bottom = self.get_edges(device_description)
-        return (right - left, bottom - top)
+        return (self.axis_x.max - self.axis_x.min,
+                self.axis_y.max - self.axis_y.min)
 
     def get_display_geometry(self, screen_size, display_ratio):
         """Get a preferred display geometry when running the test."""

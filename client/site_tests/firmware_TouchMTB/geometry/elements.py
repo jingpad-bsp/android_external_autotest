@@ -62,6 +62,10 @@ class Point:
         dist_y = p.y - self.y
         return (dist_x ** 2 + dist_y ** 2 ) ** 0.5
 
+    def value(self):
+        """Return the point coordinates."""
+        return (self.x, self.y)
+
     # __bool__ is used in Python 3.x and __nonzero__ in Python 2.x
     __nonzero__ = __bool__
 

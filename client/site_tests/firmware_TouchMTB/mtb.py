@@ -187,8 +187,8 @@ class MtbEvent:
 
 class MtbEvemu:
     """A simplified class provides MTB utilities for evemu event format."""
-    def __init__(self):
-        self.mtb = Mtb()
+    def __init__(self, device):
+        self.mtb = Mtb(device=device)
         self.num_tracking_ids = 0
 
     def _convert_event(self, event):
@@ -271,7 +271,8 @@ class Mtb:
     LEVEL_JUMP_MAXIUM_ALLOWED = 10
     LEN_DISCARD = 5
 
-    def __init__(self, packets=None):
+    def __init__(self, device=None, packets=None):
+        self.device = device
         self.packets = packets
         self._define_check_event_func_list()
 
@@ -315,7 +316,7 @@ class Mtb:
         return abs(x - prev_x) if prev_x is not None else 0
 
     def _calc_distance(self, (x0, y0), (x1, y1)):
-        """Calculate the distance between two points."""
+        """Calculate the distance in pixels between two points."""
         dist_x = x1 - x0
         dist_y = y1 - y0
         return math.sqrt(dist_x * dist_x + dist_y * dist_y)
@@ -473,6 +474,22 @@ class Mtb:
         tid_data_dict = self.get_points_for_every_tracking_id()
         return max(max(get_radii_of_two_minimal_enclosing_circles(
                        tid_data.points) for tid_data in tid_data_dict.values()))
+
+    def get_list_of_rocs_of_all_tracking_ids(self):
+        """For each tracking ID, compute the minimal enclosing circles.
+
+        Return a list of radii of such minimal enclosing circles of
+        all tracking IDs.
+        Note: rocs denotes the radii of circles
+        """
+        list_rocs = []
+        for tid_data in self.get_points_for_every_tracking_id().values():
+            # Convert the point coordinates in pixels to in mms.
+            points_in_mm = [Point(*self.device.convert_point_pixel_to_mm(
+                    p.value())) for p in tid_data.points]
+            list_rocs += get_radii_of_two_minimal_enclosing_circles(
+                    points_in_mm)
+        return list_rocs
 
     def get_x_y_multiple_slots(self, target_slots):
         """Extract points in multiple slots.

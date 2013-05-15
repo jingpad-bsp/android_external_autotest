@@ -68,7 +68,7 @@ class TestFlow:
         self.system_device = self._non_blocking_open(self.device_node)
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
-        self.mtb_evemu = mtb.MtbEvemu()
+        self.mtb_evemu = mtb.MtbEvemu(device)
         self.robot = robot_wrapper.RobotWrapper(self.board, self.mode)
         self.robot_waiting = False
         self._rename_old_log_and_html_files()
