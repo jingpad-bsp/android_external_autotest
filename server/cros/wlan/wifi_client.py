@@ -292,21 +292,11 @@ class WiFiClient(object):
         return rule
 
 
-    def _firewall_close(self, rule):
-        """Removes firewall rule.
-
-        @param rule a string, firewall rule to remove.
-
-        """
-        if rule in self._firewall_rules:
-            self.host.run('%s -D %s' % (self._command_iptables, rule))
-            self._firewall_rules.remove(rule)
-
-
     def firewall_cleanup(self):
         """Cleans up firewall rules."""
         for rule in self._firewall_rules:
-            self._firewall_close(rule)
+            self.host.run('%s -D %s' % (self._command_iptables, rule))
+            self._firewall_rules.remove(rule)
 
 
     def start_capture(self):
