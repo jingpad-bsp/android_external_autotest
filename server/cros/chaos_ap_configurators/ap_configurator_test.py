@@ -49,7 +49,8 @@ class ConfiguratorTest(unittest.TestCase):
 
         factory = ap_configurator_factory.APConfiguratorFactory()
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('linksys e1200')
+        self.ap = factory._get_aps_with_hostnames(
+                   ['chromeos3-row1-rack2-host10'], factory.ap_list)[0]
         self.ap.power_up_router()
         self.run_initialization = False
         # All tests have to have a band pre-set.
