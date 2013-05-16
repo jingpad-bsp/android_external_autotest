@@ -112,11 +112,13 @@ class ServoTest(test.test):
 
         logging.info('Client command: %s', self._REMOTE_COMMAND)
         logging.info("Logging to %s", self._REMOTE_LOG_FILE)
-        full_cmd = ['ssh -n -q %s root@%s \'%s &> %s\'' % (
+        full_cmd = ['ssh -n %s root@%s \'%s &> %s\'' % (
                       self._SSH_CONFIG, self._client.ip,
                       self._REMOTE_COMMAND, self._REMOTE_LOG_FILE)]
         logging.info('Starting process %s', ' '.join(full_cmd))
-        self._remote_process = subprocess.Popen(full_cmd, shell=True)
+        self._remote_process = subprocess.Popen(full_cmd, shell=True,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE)
 
         # Connect to RPC object.
         logging.info('Connecting to client RPC server...')
@@ -130,6 +132,14 @@ class ServoTest(test.test):
         rpc_error = None
         while timeout > 0 and not succeed:
             time.sleep(1)
+            if self._remote_process.poll() is not None:
+                # The SSH process is gone. Log stderr.
+                logging.error('Remote process died!')
+                sout, serr = self._remote_process.communicate()
+                logging.error('Stdout: %s', sout)
+                logging.error('Stderr: %s', serr)
+                break
+
             try:
                 self.faft_client.system.is_available()
                 succeed = True
