@@ -33,6 +33,7 @@ from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.server.cros.wlan import netperf_runner
 from autotest_lib.server.cros.wlan import wifi_client
 
 class ScriptNotFound(Exception):
@@ -1412,118 +1413,42 @@ class WiFiTest(object):
             self.server_iperf(iperf_params)
 
 
-    def __run_netperf(self, mode, params):
-        if mode == 'server':
-            server = { 'host': self.client,
-                       'cmd': self.client_proxy.command_netserv }
-            client = { 'host': self.server,
-                       'cmd': self.hosting_server.cmd_netperf,
-                       'target': self.client_wifi_ip }
-
-            # Open up access from the server into our DUT
-            self.client_proxy.firewall_open('tcp', self.server_wifi_ip)
-            self.client_proxy.firewall_open('udp', self.server_wifi_ip)
-        else:
-            server = { 'host': self.server,
-                       'cmd': self.hosting_server.cmd_netserv }
-            client = { 'host': self.client,
-                       'cmd': self.client_proxy.command_netperf,
-                       'target': self.server_wifi_ip }
-
-        netperf_thread = remote_command.Command(server['host'],
-            "%s -p %s" % (server['cmd'],  self.defnetperfport))
-        # NB: block to allow server time to startup
-        time.sleep(self.defwaittime)
-
-        # Assemble arguments for client command
-        test = params.get('test', 'TCP_STREAM')
-        netperf_args = '-H %s -p %s -t %s -l %d' % (client['target'],
-                        self.defnetperfport, test, params.get('test_time', 15))
-
-        # Run netperf command and receive command results
-        t0 = time.time()
-        results = client['host'].run("%s %s" % (client['cmd'], netperf_args))
-        actual_time = time.time() - t0
-        logging.info('actual_time: %f', actual_time)
-
-        netperf_thread.join()
-
-        # Close up whatever firewall rules we created for netperf
-        self.client_proxy.firewall_cleanup()
-
+    def __run_netperf(self, server_serves, params):
+        runner = netperf_runner.NetperfRunner(self.client_proxy,
+                                              self.hosting_server)
+        test_type = params.get('test', 'TCP_STREAM')
+        netperf_result = runner.run(test_type,
+                                    server_serves=server_serves,
+                                    test_time=params.get('test_time', 15))
+        mode = 'server'
+        if server_serves:
+            mode = 'client'
         self.write_perf({
             'frequency'  : self.cur_frequency,
             'phymode'    : self.cur_phymode,
             'security'   : self.cur_security,
-            'test'       : test,
+            'test'       : test_type,
             'mode'       : mode,
-            'actual_time': actual_time,
+            'actual_time': netperf_result.duration_seconds,
         })
-
-        logging.info(results)
-
-        lines = results.stdout.splitlines()
-
-        # Each test type has a different form of output
-        if test in ['TCP_STREAM', 'TCP_MAERTS', 'TCP_SENDFILE']:
-            """Parses the following (works for both TCP_STREAM, TCP_MAERTS and
-            TCP_SENDFILE) and returns a singleton containing throughput.
-
-            TCP STREAM TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET to \
-            foo.bar.com (10.10.10.3) port 0 AF_INET
-            Recv   Send    Send
-            Socket Socket  Message  Elapsed
-            Size   Size    Size     Time     Throughput
-            bytes  bytes   bytes    secs.    10^6bits/sec
-
-            87380  16384  16384    2.00      941.28
-            """
-            self.write_perf({'Throughput':float(lines[6].split()[4])})
-        elif test == 'UDP_STREAM':
-            """Parses the following and returns a touple containing throughput
-            and the number of errors.
-
-            UDP UNIDIRECTIONAL SEND TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET \
-            to foo.bar.com (10.10.10.3) port 0 AF_INET
-            Socket  Message  Elapsed      Messages
-            Size    Size     Time         Okay Errors   Throughput
-            bytes   bytes    secs            #      #   10^6bits/sec
-
-            129024   65507   2.00         3673      0     961.87
-            131072           2.00         3673            961.87
-            """
-            udp_tokens = lines[5].split()
-            self.write_perf({'Throughput':float(udp_tokens[5]),
-                             'Errors':float(udp_tokens[4])})
-        elif test in ['TCP_RR', 'TCP_CRR', 'UDP_RR']:
-            """Parses the following which works for both rr (TCP and UDP)
-            and crr tests and returns a singleton containing transfer rate.
-
-            TCP REQUEST/RESPONSE TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET \
-            to foo.bar.com (10.10.10.3) port 0 AF_INET
-            Local /Remote
-            Socket Size   Request  Resp.   Elapsed  Trans.
-            Send   Recv   Size     Size    Time     Rate
-            bytes  Bytes  bytes    bytes   secs.    per sec
-
-            16384  87380  1        1       2.00     14118.53
-            16384  87380
-            """
-            self.write_perf({'Transfer_Rate':float(lines[6].split()[5])})
-        else:
-            raise error.TestError('Unhandled test')
-
+        if netperf_result.throughput:
+            self.write_perf({'Throughput': netperf_result.throughput})
+        if netperf_result.errors:
+            self.write_perf({'Errors': netperf_result.errors})
+        if netperf_result.transaction_rate:
+            self.write_perf(
+                    {'Transaction_Rate': netperf_result.transaction_rate})
         return True
 
 
     def client_netperf(self, params):
         """ Run netperf on the client against the server """
-        self.__run_netperf('client', params)
+        self.__run_netperf(True, params)
 
 
     def server_netperf(self, params):
         """ Run netperf on the server against the client """
-        self.__run_netperf('server', params)
+        self.__run_netperf(False, params)
 
 
     def client_start_capture(self, params):
