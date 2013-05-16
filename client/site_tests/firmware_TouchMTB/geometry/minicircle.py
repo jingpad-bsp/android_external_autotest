@@ -8,6 +8,12 @@
    [1] Emo Welzl. Smallest enclosing disks (balls and ellipsoids).
          http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.46.1450
    [2] Circumscribed circle. http://en.wikipedia.org/wiki/Circumscribed_circle
+
+ - get_two_farthest_clusters(): Classify the points into two farthest clusters
+
+ - get_radii_of_two_minimal_enclosing_circles(): Get the radii of the
+        two minimal enclosing circles
+
 """
 
 
@@ -104,11 +110,19 @@ def _b_minicircle(P, R):
     return D
 
 
+def _make_Set_of_Points(points):
+    """Convert the points to a set of Point objects.
+
+    @param points: could be a list/set of pairs_of_ints/Point_objects.
+    """
+    return Set([p if isinstance(p, Point) else Point(*p) for p in points])
+
+
 def minicircle(points):
     """Get the minimal enclosing circle of the points.
 
     @param points: a list of points which should be enclosed in the circle to be
                    built
     """
-    P = Set([Point(*p) for p in points])
+    P = _make_Set_of_Points(points)
     return _b_minicircle(P, Set()) if P else None

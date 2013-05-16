@@ -5,14 +5,17 @@
 """This module contains unit tests for geometry module."""
 
 
+import random
 import unittest
 
 import common_unittest_utils
 
 from math import sqrt
+from sets import Set
 
 from geometry.elements import Circle, Point
 from geometry.minicircle import minicircle
+from geometry.two_farthest_clusters import get_two_farthest_clusters
 
 
 class MinicircleTest(unittest.TestCase):
@@ -75,6 +78,47 @@ class MinicircleTest(unittest.TestCase):
             expected_circle = Circle(Point(*center_values), radius)
             actual_circle = minicircle(points)
             self.assertTrue(actual_circle == expected_circle)
+
+    def test_get_two_farthest_clusters(self):
+        tests = [
+            # Each row is a tuple of two separated clusters.
+            # two empty lists
+            ([], []),
+
+            # one point only
+            ([(3.5, 7.886612)], []),
+
+            # two points only
+            ([(3.5, 7.886612)], [(3.4, 7.02)]),
+
+            ([(1.2, 0), (2.3, 0), (0, 2.2)],
+             [(10, 5), (11.87, 3.45), (10.55, 7.6)]),
+
+            ([(100, 3.1), (101.1, 2.9), (99.8, 4.2)],
+             [(1.1, 55.3), (11.87, 73.45), (3.58, 67.7)]),
+
+            ([(101, 5.5), (102.1, 2.9), (89.8, 4.2), (65.2, 3.3)],
+             [(1.5, 5.3), (1.87, 3.5), (23.8, 14.9), (3.8, 2.7)]),
+        ]
+
+        # Shuffle the two clusters, and then test the get_two_farthest_clusters
+        # function. It should return cluster1 and cluster2.
+        # Since every point is unique in the tests, we could simply use Set
+        # to compare the clusters.
+        for expected_cluster1, expected_cluster2 in tests:
+            points = expected_cluster1 + expected_cluster2
+            # A fixed seed is used so that it gets the same shuffles every time.
+            random.shuffle(points, lambda: 0.1234)
+            actual_cluster1, actual_cluster2 = get_two_farthest_clusters(points)
+
+            # The set of the expected sets should be equal to the set of
+            # the actual sets.
+            expected_set1 = Set([Point(*p) for p in expected_cluster1])
+            expected_set2 = Set([Point(*p) for p in expected_cluster2])
+            actual_set1 = Set(actual_cluster1)
+            actual_set2 = Set(actual_cluster2)
+            self.assertTrue(Set([expected_set1, expected_set2]) ==
+                            Set([actual_set1, actual_set2]))
 
 
 if __name__ == '__main__':
