@@ -1106,10 +1106,8 @@ class WiFiTest(object):
                 raise error.TestFail('Unknown ping destination "%s"' %
                                      ping_dest)
         count = int(params.get('count', self.defpingcount))
-        save_stats = params.get('save_stats', None)
         stdout = self.client_proxy.ping(ping_ip,
                                         params,
-                                        save_stats=save_stats,
                                         count=count)
         stats = self.__get_pingstats(stdout)
         self.write_perf(stats)
@@ -1131,13 +1129,10 @@ class WiFiTest(object):
         """
         Stop a client background ping.
 
-        @param params dict May contain key 'save_stats' which maps to a
-                string key to save the statistics from the background ping
-                under.
+        @param params (ignored).
 
         """
-        self.client_proxy.ping_bg_stop(save_stats=params.get('save_stats',
-                                                             None))
+        self.client_proxy.ping_bg_stop()
 
 
     def server_ping(self, params):

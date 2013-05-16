@@ -219,8 +219,6 @@ class WiFiClient(object):
         @param ping_ip string IPv4 address for the client to ping.
         @param ping_args dict of parameters understood by
                 wifi_test_utils.ping_args().
-        @param save_stats string Key to save statistics of this ping
-                run under for later similarity assertion.
         @param count int number of times to ping the address.
         @return string raw output of the ping command
 
@@ -265,10 +263,6 @@ class WiFiClient(object):
 
         Clean up state from a previous call to ping_bg.  If requested,
         statistics from the background ping run may be saved.
-
-        @param save_stats string Key to save ping statistics under for
-                later comparison, or None if no statistics should be
-                saved.
 
         """
         if self._ping_thread is None:
