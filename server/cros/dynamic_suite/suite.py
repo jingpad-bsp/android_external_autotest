@@ -110,7 +110,8 @@ class Suite(object):
                          tko=None, pool=None, results_dir=None,
                          max_runtime_mins=24*60,
                          version_prefix=constants.VERSION_PREFIX,
-                         file_bugs=False):
+                         file_bugs=False, suite_job_id=None,
+                         ignore_deps=False):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -138,6 +139,11 @@ class Suite(object):
                                test.
         @param file_bugs: True if we should file bugs on test failures for
                           this suite run.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                             Default: None
+        @param ignore_deps: True if jobs should ignore the DEPENDENCIES
+                            attribute and skip applying of dependency labels.
+                            (Default:False)
         @return a Suite instance.
         """
         if cf_getter is None:
@@ -145,7 +151,8 @@ class Suite(object):
 
         return Suite(Suite.name_in_tag_predicate(name),
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix, file_bugs)
+                     max_runtime_mins, version_prefix, file_bugs, suite_job_id,
+                     ignore_deps)
 
 
     @staticmethod
@@ -155,7 +162,8 @@ class Suite(object):
                                        max_runtime_mins=24*60,
                                        version_prefix=constants.VERSION_PREFIX,
                                        file_bugs=False,
-                                       suite_job_id=None):
+                                       suite_job_id=None,
+                                       ignore_deps=False):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -186,6 +194,9 @@ class Suite(object):
                           this suite run.
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
                      Default: None
+        @param ignore_deps: True if jobs should ignore the DEPENDENCIES
+                            attribute and skip applying of dependency labels.
+                            (Default:False)
         @return a Suite instance.
         """
         if cf_getter is None:
@@ -205,7 +216,7 @@ class Suite(object):
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
                  pool=None, results_dir=None, max_runtime_mins=24*60,
                  version_prefix=constants.VERSION_PREFIX,
-                 file_bugs=False, suite_job_id=None):
+                 file_bugs=False, suite_job_id=None, ignore_deps=False):
         """
         Constructor
 
@@ -227,6 +238,9 @@ class Suite(object):
                                associated with the build
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
                              Default: None
+        @param ignore_deps: True if jobs should ignore the DEPENDENCIES
+                            attribute and skip applying of dependency labels.
+                            (Default:False)
         """
         self._predicate = predicate
         self._tag = tag
@@ -248,6 +262,7 @@ class Suite(object):
         self._version_prefix = version_prefix
         self._file_bugs = file_bugs
         self._suite_job_id = suite_job_id
+        self._ignore_deps = ignore_deps
 
 
     @property
@@ -281,7 +296,10 @@ class Suite(object):
                 test_name is used to preserve the higher level TEST_NAME
                 name of the job.
         """
-        job_deps = list(test.dependencies)
+        if self._ignore_deps:
+            job_deps = []
+        else:
+            job_deps = list(test.dependencies)
         if self._pool:
             meta_hosts = self._pool
             cros_label = self._version_prefix + self._build

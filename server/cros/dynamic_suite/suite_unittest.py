@@ -48,16 +48,17 @@ class SuiteTest(mox.MoxTestBase):
         self.getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
         self.devserver = dev_server.ImageServer(self._DEVSERVER_HOST)
 
-        self.files = {'one': FakeControlData(self._TAG, 'data_one',
-                                             'FAST', expr=True),
-                      'two': FakeControlData(self._TAG, 'data_two',
-                                             'SHORT'),
+        self.files = {'one': FakeControlData(self._TAG, 'data_one', 'FAST',
+                                             expr=True),
+                      'two': FakeControlData(self._TAG, 'data_two', 'SHORT',
+                                             dependencies=['feta']),
                       'three': FakeControlData(self._TAG, 'data_three',
                                                'MEDIUM'),
-                      'four': FakeControlData('other', 'data_four',
-                                              'LONG'),
-                      'five': FakeControlData(self._TAG, 'data_five',
-                                              'LONG'),
+                      'four': FakeControlData('other', 'data_four', 'LONG',
+                                              dependencies=['arugula']),
+                      'five': FakeControlData(self._TAG, 'data_five', 'LONG',
+                                              dependencies=['arugula',
+                                                            'caligula']),
                       'six': FakeControlData(self._TAG, 'data_six',
                                               'LENGTHY')}
 
@@ -174,13 +175,14 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def expect_job_scheduling(self, recorder, add_experimental,
-                              tests_to_skip=[]):
+                              tests_to_skip=[], ignore_deps=False):
         """Expect jobs to be scheduled for 'tests' in |self.files|.
 
         @param add_experimental: expect jobs for experimental tests as well.
         @param recorder: object with a record_entry to be used to record test
                          results.
         @param tests_to_skip: [list, of, test, names] that we expect to skip.
+        @param ignore_deps: If true, ignore tests' dependencies.
         """
         recorder.record_entry(
             StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
@@ -189,13 +191,17 @@ class SuiteTest(mox.MoxTestBase):
                 continue
             if test.name in tests_to_skip:
                 continue
+            if ignore_deps:
+                dependencies = []
+            else:
+                dependencies = test.dependencies
             self.afe.create_job(
                 control_file=test.text,
                 name=mox.And(mox.StrContains(self._BUILD),
                              mox.StrContains(test.name)),
                 control_type=mox.IgnoreArg(),
                 meta_hosts=[constants.VERSION_PREFIX + self._BUILD],
-                dependencies=[],
+                dependencies=dependencies,
                 keyvals={'build': self._BUILD, 'suite': self._TAG},
                 max_runtime_mins=24*60,
                 parent_job_id=None,
@@ -232,6 +238,21 @@ class SuiteTest(mox.MoxTestBase):
         suite = Suite.create_from_name(self._TAG, self._BUILD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
+        suite.schedule(recorder.record_entry, add_experimental=False)
+
+
+    def testScheduleStableTestsIgnoreDeps(self):
+        """Should schedule only stable tests with the AFE."""
+        self.mock_control_file_parsing()
+        recorder = self.mox.CreateMock(base_job.base_job)
+        self.expect_job_scheduling(recorder, add_experimental=False,
+                                   ignore_deps=True)
+
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name(self._TAG, self._BUILD,
+                                       self.devserver,
+                                       afe=self.afe, tko=self.tko,
+                                       ignore_deps=True)
         suite.schedule(recorder.record_entry, add_experimental=False)
 
 
