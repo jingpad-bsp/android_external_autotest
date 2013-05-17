@@ -687,7 +687,7 @@ def generate_full_control_file(test, env, control_code):
         original_name = control_data.parse_control_string(code).name
         for line in code.splitlines():
             if _name_re.match(line):
-                new_code.append('NAME = "%s.%s"' % (original_name,
+                new_code.append('NAME = "%s_%s"' % (original_name,
                                                     test.unique_name_suffix()))
             else:
                 new_code.append(line)
