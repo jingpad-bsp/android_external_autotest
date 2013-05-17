@@ -32,6 +32,11 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
         elif 'Invalid Wep key1 format' in text:
             alert.accept()
             raise RuntimeError('WEP key should be numbers. %s' % text)
+        elif 'system error' in text:
+            alert.accept()
+            raise RuntimeError('There was a system error on AP!')
+        elif 'Successful' in text:
+            alert.accept()
         else:
             raise RuntimeError('We have an unhandled alert: %s' % text)
 
@@ -78,9 +83,15 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
 
     def save_page(self, page_number):
-        self.click_button_by_xpath('//input[@type="button" and @value="Apply"]',
+        xpath_apply = ('//input[@type="button" and @value="Apply"]')
+        self.click_button_by_xpath(xpath_apply,
                                    alert_handler=self._alert_handler)
-        self.wait_for_object_by_xpath('//input[@type="button" and @value="OK"]')
+        try:
+            self.wait_for_object_by_xpath('//input[@type="button" and
+                                          @value="OK"]')
+        except:
+            self._handle_alert(xpath_apply, self._alert_handler)
+
 
     def is_update_interval_supported(self):
         """
