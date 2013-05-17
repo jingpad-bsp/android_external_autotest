@@ -75,12 +75,23 @@ class power_ARMSettings(test.test):
 
 
     def _verify_usb_power_settings(self):
-        expected_state = not self._on_ac
         errors = 0
         self._usbpower.query_devices()
         for dev in self._usbpower.devices:
-            if dev.autosuspend() != expected_state:
+            # whitelist MUST autosuspend
+            autosuspend = dev.autosuspend()
+            logging.debug("USB %s:%s whitelisted:%s autosuspend:%s",
+                          dev.vid, dev.pid, dev.whitelisted, autosuspend)
+            if dev.whitelisted and not autosuspend:
+                logging.error("Whitelisted USB %s:%s "
+                              "has autosuspend disabled", dev.vid, dev.pid)
                 errors += 1
+            elif not dev.whitelisted:
+                # TODO(crbug.com/242228): Deprecate warnings once we can
+                # definitively identify preferred USB autosuspend settings
+                logging.warning("Non-Whitelisted USB %s:%s present.  "
+                                "Should it be whitelisted?", dev.vid, dev.pid)
+
         return errors
 
 
