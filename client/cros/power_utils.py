@@ -1,7 +1,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging, os, re, shutil, tempfile
+import glob, logging, os, re, shutil
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -460,3 +460,129 @@ class Registers(object):
 
     def verify_rcba(self, match_list):
         return self._verify_registers('rcba', self._read_rcba, match_list)
+
+
+class USBDevicePower(object):
+    """Class for USB device related power information.
+
+    Public Methods:
+        autosuspend: Return boolean whether USB autosuspend is enabled or False
+                     if not or unable to determine
+
+    Public attributes:
+        vid: string of USB Vendor ID
+        pid: string of USB Product ID
+        whitelisted: Boolean if USB device is whitelisted for USB auto-suspend
+
+    Private attributes:
+       path: string to path of the USB devices in sysfs ( /sys/bus/usb/... )
+
+    TODO(tbroch): consider converting to use of pyusb although not clear its
+    beneficial if it doesn't parse power/control
+    """
+    def __init__(self, vid, pid, whitelisted, path):
+        self.vid = vid
+        self.pid = pid
+        self.whitelisted = whitelisted
+        self._path = path
+
+
+    def autosuspend(self):
+        """Determine current value of USB autosuspend for device."""
+        control_file = os.path.join(self._path, 'control')
+        if not os.path.exists(control_file):
+            logging.info('USB: power control file not found for %s', dir)
+            return False
+
+        out = utils.read_one_line(control_file)
+        logging.debug('USB: control set to %s for %s', out, control_file)
+        return (out == 'auto')
+
+
+class USBPower(object):
+    """Class to expose USB related power functionality.
+
+    Initially that includes the policy around USB auto-suspend and our
+    whitelisting of devices that are internal to CrOS system.
+
+    Example code:
+       usbdev_power = power_utils.USBPower()
+       for device in usbdev_power.devices
+           if device.is_whitelisted()
+               ...
+
+    Public attributes:
+        devices: list of USBDevicePower instances
+
+    Private functions:
+        _is_whitelisted: Returns Boolean if USB device is whitelisted for USB
+                         auto-suspend
+        _load_whitelist: Reads whitelist and stores int _whitelist attribute
+
+    Private attributes:
+        _wlist_file: path to laptop-mode-tools (LMT) USB autosuspend
+                         conf file.
+        _wlist_vname: string name of LMT USB autosuspend whitelist
+                          variable
+        _whitelisted: list of USB device vid:pid that are whitelisted.
+                        May be regular expressions.  See LMT for details.
+    """
+    def __init__(self):
+        self._wlist_file = \
+            '/etc/laptop-mode/conf.d/board-specific/usb-autosuspend.conf'
+        self._wlist_vname = '$AUTOSUSPEND_USBID_WHITELIST'
+        self._whitelisted = None
+        self.devices = []
+
+
+    def _load_whitelist(self):
+        """Load USB device whitelist for enabling USB autosuspend
+
+        CrOS whitelists only internal USB devices to enter USB auto-suspend mode
+        via laptop-mode tools.
+        """
+        cmd = "source %s && echo %s" % (self._wlist_file,
+                                        self._wlist_vname)
+        out = utils.system_output(cmd, ignore_status=True)
+        logging.debug('USB whitelist = %s', out)
+        self._whitelisted = out.split()
+
+
+    def _is_whitelisted(self, vid, pid):
+        """Check to see if USB device vid:pid is whitelisted.
+
+        Args:
+          vid: string of USB vendor ID
+          pid: string of USB product ID
+
+        Returns:
+          True if vid:pid in whitelist file else False
+        """
+        if self._whitelisted is None:
+            self._load_whitelist()
+
+        match_str = "%s:%s" % (vid, pid)
+        for re_str in self._whitelisted:
+            if re.match(re_str, match_str):
+                return True
+        return False
+
+
+    def query_devices(self):
+        """."""
+        dirs_path = '/sys/bus/usb/devices/*/power'
+        dirs = glob.glob(dirs_path)
+        if not dirs:
+            logging.info('USB power path not found')
+            return 1
+
+        for dirpath in dirs:
+            vid_path = os.path.join(dirpath, '..', 'idVendor')
+            pid_path = os.path.join(dirpath, '..', 'idProduct')
+            if not os.path.exists(vid_path):
+                logging.debug("No vid for USB @ %s", vid_path)
+                continue
+            vid = utils.read_one_line(vid_path)
+            pid = utils.read_one_line(pid_path)
+            whitelisted = self._is_whitelisted(vid, pid)
+            self.devices.append(USBDevicePower(vid, pid, whitelisted, dirpath))

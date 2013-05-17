@@ -2,13 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, os, re, commands
+import logging, re, commands
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_status
+from autotest_lib.client.cros import power_utils
 
 class power_ARMSettings(test.test):
     version = 1
+
+
+    def initialize(self):
+        self._usbpower = power_utils.USBPower()
+
 
     def run_once(self):
         if not self._check_cpu_type():
@@ -69,31 +75,12 @@ class power_ARMSettings(test.test):
 
 
     def _verify_usb_power_settings(self):
-        if self._on_ac:
-            expected_state = 'on'
-        else:
-            expected_state = 'auto'
-
-        dirs_path = '/sys/bus/usb/devices/*/power'
-        dirs = glob.glob(dirs_path)
-        if not dirs:
-            logging.info('USB power path not found')
-            return 1
-
+        expected_state = not self._on_ac
         errors = 0
-        for dir in dirs:
-            level_file = os.path.join(dir, 'level')
-            if not os.path.exists(level_file):
-                logging.info('USB: power level file not found for %s', dir)
-                continue
-
-            out = utils.read_one_line(level_file)
-            logging.debug('USB: path set to %s for %s',
-                           out, level_file)
-            if out != expected_state:
-                logging.info(level_file)
+        self._usbpower.query_devices()
+        for dev in self._usbpower.devices:
+            if dev.autosuspend() != expected_state:
                 errors += 1
-
         return errors
 
 

@@ -97,19 +97,7 @@ class power_x86Settings(test.test):
 
 
     def initialize(self):
-        """
-        Private attributes:
-          _usb_wlist_file: path to laptop-mode-tools (LMT) USB autosuspend
-            conf file.
-          _usb_wlist_vname: string name of LMT USB autosuspend whitelist
-            variable
-          _usb_whitelist: list of USB device vid:pid that are whitelisted.
-            May be regular expressions.  See LMT for details.
-        """
-        self._usb_wlist_file = \
-            '/etc/laptop-mode/conf.d/board-specific/usb-autosuspend.conf'
-        self._usb_wlist_vname = '$AUTOSUSPEND_USBID_WHITELIST'
-        self._usb_whitelist = None
+        self._usbpower = power_utils.USBPower()
 
 
     def run_once(self):
@@ -187,73 +175,13 @@ class power_x86Settings(test.test):
         return 1
 
 
-    def _load_usb_device_whitelist(self):
-        """Load USB device whitelist for enabling USB autosuspend
-
-        CrOS whitelists only internal USB devices to enter USB auto-suspend mode
-        via laptop-mode tools.
-        """
-        cmd = "source %s && echo %s" % (self._usb_wlist_file,
-                                        self._usb_wlist_vname)
-        out = utils.system_output(cmd, ignore_status=True)
-        logging.debug('USB whitelist = %s', out)
-        self._usb_whitelist = out.split()
-
-
-    def _usb_device_is_whitelisted(self, vid, pid):
-        """Check to see if USB vid:pid is whitelisted.
-
-        Args:
-          vid: string of USB vendor ID
-          pid: string of USB product ID
-
-        Returns:
-          True if vid:pid in whitelist file else False
-        """
-        if self._usb_whitelist is None:
-            self._load_usb_device_whitelist()
-
-        match_str = "%s:%s" % (vid, pid)
-        for re_str in self._usb_whitelist:
-            if re.match(re_str, match_str):
-                return True
-        return False
-
-
     def _verify_usb_power_settings(self):
-        if self._on_ac:
-            expected_state = 'on'
-        else:
-            expected_state = 'auto'
-
-        dirs_path = '/sys/bus/usb/devices/*/power'
-        dirs = glob.glob(dirs_path)
-        if not dirs:
-            logging.info('USB power path not found')
-            return 1
-
+        expected_state = not self._on_ac
         errors = 0
-        for dirpath in dirs:
-            level_file = os.path.join(dirpath, 'level')
-            if not os.path.exists(level_file):
-                logging.info('USB: power level file not found for %s', dir)
-                continue
-
-            vid = utils.read_one_line(os.path.join(dirpath, '..', 'idVendor'))
-            pid = utils.read_one_line(os.path.join(dirpath, '..', 'idProduct'))
-            whitelisted = self._usb_device_is_whitelisted(vid, pid)
-            if not whitelisted:
-                logging.info('USB: %s:%s @ %s is NOT whitelisted.  It should '
-                             'be an externally connected device', vid, pid,
-                             dirpath)
-            out = utils.read_one_line(level_file)
-            logging.debug('USB: %s:%s path set to %s for %s',
-                           vid, pid, out, level_file)
-            if out != expected_state and whitelisted and not self._on_ac:
+        self._usbpower.query_devices()
+        for dev in self._usbpower.devices:
+            if dev.autosuspend() != expected_state:
                 errors += 1
-                logging.error("Error(%d), %s == %s, but expected %s", errors,
-                              level_file, out, expected_state)
-
         return errors
 
 
@@ -408,7 +336,7 @@ class power_x86Settings(test.test):
         if self._cpu_type not in RAPL_CHECKS:
             return errors
 
-        test_domains=RAPL_CHECKS[self._cpu_type].keys()
+        test_domains = RAPL_CHECKS[self._cpu_type].keys()
         rapls = power_rapl.create_rapl(domains=test_domains)
 
         time.sleep(2)
