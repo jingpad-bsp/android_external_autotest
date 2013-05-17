@@ -286,9 +286,13 @@ class TestConfigGenerator(object):
         Args:
             build_version: the full build version i.e. R27-3823.0.0-a2.
         """
-         # If we're looking for our own image, use the target archive_url if set
-        archive_url = test_image.get_archive_url_from_prefix(
-                self.archive_prefix, build_version)
+        # If we're looking for our own image, use the target archive_url if set
+        if self.tested_release in build_version:
+            archive_url = self.archive_url
+        else:
+            archive_url = test_image.get_archive_url_from_prefix(
+                    self.archive_prefix, build_version)
+
         if self.src_as_payload:
             return test_image.find_payload_uri(archive_url, single=True)
         else:
