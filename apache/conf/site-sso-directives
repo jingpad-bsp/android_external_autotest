@@ -2,7 +2,9 @@
 <LocationMatch "^/(afe|new_tko|loginz).*">
     AuthType google-sso
     AuthName ChromeOSAutotest
-    TicketSigningKey /etc/apache2/sso_login_server_cert.crt
+    RpMode v2_v1accepted
+    KeysFile /var/lib/mod_google_sso/verifiers
+    TicketSigningKey /etc/apache2/google_sso/login.crt
     ServiceRoot /
     LoginServer https://login.corp.google.com
     Require group eng eng-intern nonconf
