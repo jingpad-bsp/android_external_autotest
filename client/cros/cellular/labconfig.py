@@ -94,22 +94,23 @@ class Configuration(object):
         # autotest: Getting IP address from eth0 by name is brittle
         if self.ip and not machine:
             machine = self.ip
-
-        log.debug('self.ip is : %s ' % self.ip)
-        # TODO(byronk): use sysfs to find network interface
-        possible_interfaces = ['eth0', 'eth1', 'eth_test']
-        log.debug('Looking for an up network interface in : %s' %
-                  possible_interfaces)
-        for interface in possible_interfaces:
-            machine = get_interface_ip(interface)
-            if machine:
-                log.debug('Got an IP address: %s Stopping the search.. ' %
-                          machine)
-                self.ip = machine
-                break
+        ifconfig = ''
         if not machine:
-            ifconfig = subprocess.Popen(['/sbin/ifconfig'],
-                                        stdout=subprocess.PIPE).communicate()[0]
+            log.debug('self.ip is : %s ' % self.ip)
+            # TODO(byronk): use sysfs to find network interface
+            possible_interfaces = ['eth0', 'eth1', 'eth_test']
+            log.debug('Looking for an up network interface in : %s' %
+                      possible_interfaces)
+            for interface in possible_interfaces:
+                machine = get_interface_ip(interface)
+                if machine:
+                    log.debug('Got an IP address: %s Stopping the search.. ' %
+                              machine)
+                    self.ip = machine
+                    break
+                ifconfig = subprocess.Popen(['/sbin/ifconfig'],
+                                     tdout=subprocess.PIPE).communicate()[0]
+        if not machine:
             raise LabConfigError(
                 'Could not determine which machine we are.\n'
                 '  Cell =  %s \n' % self.options.cell +
@@ -122,8 +123,9 @@ class Configuration(object):
                 return dut
 
         raise LabConfigError(
-            'Could not find DUT in lab configuration.  Cell = %s' %
-            self.options.cell)
+            'This machine %s not matching: (%s,%s) in config. Cell = %s: %s' %
+            (machine, dut['address'],
+             dut['name'], self.options.cell, self.cell['duts']))
 
     def get_technologies(self, machine=None):
         """Gets technologies to use for machine; defaults to all available.

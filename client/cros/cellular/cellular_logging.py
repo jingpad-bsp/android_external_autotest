@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import logging
+import sys
 
 LOG_FORMAT = ' %(name)s - %(filename)s - %(lineno)d- %(message)s'
 
@@ -18,7 +19,7 @@ def SetupCellularLogging(logger_name, format_string=LOG_FORMAT):
     """
     log = logging.getLogger(logger_name)
     log.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter(format_string)
     ch.setFormatter(formatter)

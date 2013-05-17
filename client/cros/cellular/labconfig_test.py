@@ -8,7 +8,8 @@
 import unittest
 import cellular
 import labconfig
-import labconfig_data
+# Use the same import line to keep this global on the same key
+from autotest_lib.client.cros.cellular import labconfig_data
 
 
 TEST_CELL = {

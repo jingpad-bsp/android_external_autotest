@@ -5,21 +5,14 @@
 
 
 import copy
-import logging
 import mock
 import prologix_scpi_driver
 import scpi
 import unittest
+import cellular_logging
 import cellular_system_error
 
-log = logging.getLogger('scpi_test')
-log.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter(' %(name)s - %(message)s')
-ch.setFormatter(formatter)
-log.propagate = False
-log.handlers = [ch]
+log = cellular_logging.SetupCellularLogging('scpi_test')
 
 # TODO:(byronk):
 # a hack for now. Should look this up in labconfig_data. crbug.com/225108

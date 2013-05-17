@@ -11,6 +11,10 @@ import cellular_logging
 import dbus
 
 from autotest_lib.client.cros.cellular import labconfig
+# Mock out routing in the network file
+import mock
+import sys
+sys.modules['routing'] = mock.MagicMock()
 from autotest_lib.client.cros import network
 import flimflam
 import base_station_pxt
@@ -28,7 +32,7 @@ technology_lte = 'Technology:LTE'
 
 class test_cell_tools(unittest.TestCase):
 
-    def xtest_CellularSmokeNoCallBoxSetup(self):
+    def test_CellularSmokeNoCallBoxSetup(self):
         self._reset_everything()
         logger.debug('making flimflam object..')
         self.flim = flimflam.FlimFlam()
@@ -55,7 +59,7 @@ class test_cell_tools(unittest.TestCase):
         logger.debug('Check connect to cellular ...')
         service = env.CheckedConnectToCellular()
 
-    def xtest_TurnOnPxtAndConnectToCellularWorks(self):
+    def test_TurnOnPxtAndConnectToCellularWorks(self):
         self._reset_everything()
         self.flim = flimflam.FlimFlam()
         #self.device = self.flim.FindCellularDevice()
