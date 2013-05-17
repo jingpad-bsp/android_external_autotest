@@ -25,7 +25,7 @@ def get_x86_cpu_arch():
         return 'Atom'
     if re.search(r'Intel.*Celeron.*8[14567][07]', cpuinfo):
         return 'Celeron'
-    if re.search(r'Intel.*Core.*i[357]-[23][0-9][0-9][0-9]', cpuinfo):
+    if re.search(r'Intel.*Core.*i[357]-[234][0-9][0-9][0-9]', cpuinfo):
         return 'Core'
 
     logging.info(cpuinfo)
