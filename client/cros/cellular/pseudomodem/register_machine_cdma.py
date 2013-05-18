@@ -15,7 +15,7 @@ class RegisterMachineCdma(register_machine.RegisterMachine):
     """
     def Cancel(self):
         logging.info('RegisterMachineCdma: Canceling register.')
-        super(RegisterMachine, self).Cancel()
+        super(RegisterMachineCdma, self).Cancel()
         state = self._modem.Get(mm1.I_MODEM, 'State')
         reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         if state == mm1.MM_MODEM_STATE_SEARCHING:
