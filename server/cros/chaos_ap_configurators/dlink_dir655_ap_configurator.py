@@ -90,7 +90,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
         self.get_url(page_url, page_title='D-LINK CORPORATION')
         # We wait for the page to load and avoid the intermediate page
         found_id = self.wait_for_objects_by_id(['w_enable', 'log_pass'],
-                                               wait_time=15)
+                                               wait_time=30)
         if 'log_pass' in found_id:
             self.login_to_ap()
         elif 'w_enable' not in found_id:
