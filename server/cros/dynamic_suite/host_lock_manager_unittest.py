@@ -179,7 +179,7 @@ class HostLockManagerTest(mox.MoxTestBase):
         self.manager._check_host(self.HOST1,
                                  self.manager.LOCK).AndReturn(self.HOST1)
         self.afe.run('modify_hosts',
-                     host_filter_data={'hostname__in': hosts},
+                     host_filter_data={'hostname__in': [self.HOST1]},
                      update_data={'locked': True})
         self.mox.ReplayAll()
         self.manager._host_modifier(hosts, self.manager.LOCK)
@@ -195,7 +195,7 @@ class HostLockManagerTest(mox.MoxTestBase):
         self.manager._check_host(self.HOST1,
                                  self.manager.UNLOCK).AndReturn(self.HOST1)
         self.afe.run('modify_hosts',
-                     host_filter_data={'hostname__in': hosts},
+                     host_filter_data={'hostname__in': [self.HOST1]},
                      update_data={'locked': False})
         self.mox.ReplayAll()
         self.manager._host_modifier(hosts, self.manager.UNLOCK)
