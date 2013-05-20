@@ -3,10 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import mox
 import pexpect
-import time
 import unittest
 
 import dli
@@ -37,6 +35,7 @@ class TestSentryRPMController(mox.MoxTestBase):
         self.ssh.sendline('%s %s' % (new_state, dut_hostname))
         self.ssh.expect('Command successful', timeout=60)
         self.ssh.sendline('logout')
+        self.ssh.close(force=True)
         self.mox.ReplayAll()
         self.assertTrue(self.rpm.queue_request(dut_hostname, new_state))
         self.mox.VerifyAll()
@@ -55,6 +54,7 @@ class TestSentryRPMController(mox.MoxTestBase):
         self.ssh.expect('Command successful',
                         timeout=60).AndRaise(pexpect.TIMEOUT('Timed Out'))
         self.ssh.sendline('logout')
+        self.ssh.close(force=True)
         self.mox.ReplayAll()
         self.assertFalse(self.rpm.queue_request(dut_hostname, new_state))
         self.mox.VerifyAll()
@@ -78,7 +78,7 @@ class TestWebPoweredRPMController(mox.MoxTestBase):
 
     def testSuccessfullyChangeOutlet(self):
         """Should return True if change was successful."""
-        test_status_list_final = [[8,'chromeos-rack8a-host8','u\'OFF\'']]
+        test_status_list_final = [[8, 'chromeos-rack8a-host8','u\'OFF\'']]
         self.dli_ps.statuslist().AndReturn(self.test_status_list_initial)
         self.dli_ps.off(8)
         self.dli_ps.statuslist().AndReturn(test_status_list_final)
@@ -90,7 +90,7 @@ class TestWebPoweredRPMController(mox.MoxTestBase):
 
     def testUnsuccessfullyChangeOutlet(self):
         """Should return False if Outlet State does not change."""
-        test_status_list_final = [[8,'chromeos-rack8a-host8','u\'ON\'']]
+        test_status_list_final = [[8, 'chromeos-rack8a-host8','u\'ON\'']]
         self.dli_ps.statuslist().AndReturn(self.test_status_list_initial)
         self.dli_ps.off(8)
         self.dli_ps.statuslist().AndReturn(test_status_list_final)
@@ -106,6 +106,149 @@ class TestWebPoweredRPMController(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertFalse(self.web_rpm.queue_request('chromeos-rack8a-host1',
                                                     'OFF'))
+        self.mox.VerifyAll()
+
+
+class TestCiscoPOEController(mox.MoxTestBase):
+    """Test CiscoPOEController."""
+
+
+    STREAM_WELCOME = 'This is a POE switch.\n\nUser Name:'
+    STREAM_PWD = 'Password:'
+    STREAM_DEVICE = '\nchromeos2-poe-sw8#'
+    STREAM_CONFIG = 'chromeos2-poe-sw8(config)#'
+    STREAM_CONFIG_IF = 'chromeos2-poe-sw8(config-if)#'
+    STREAM_STATUS = ('\n                                             '
+                     'Flow Link          Back   Mdix\n'
+                     'Port     Type         Duplex  Speed Neg      '
+                     'ctrl State       Pressure Mode\n'
+                     '-------- ------------ ------  ----- -------- '
+                     '---- ----------- -------- -------\n'
+                     'fa32     100M-Copper  Full    100   Enabled  '
+                     'Off  Up          Disabled Off\n')
+    SERVO = 'chromeos1-rack3-host12-servo'
+    SWITCH = 'chromeos2-poe-switch8'
+    PORT = 'fa32'
+
+
+    def setUp(self):
+        super(TestCiscoPOEController, self).setUp()
+        self.mox.StubOutWithMock(pexpect.spawn, '_spawn')
+        self.mox.StubOutWithMock(pexpect.spawn, 'read_nonblocking')
+        self.mox.StubOutWithMock(pexpect.spawn, 'sendline')
+        servo_interface = {self.SERVO:(self.SWITCH, self.PORT)}
+        self.poe = rpm_controller.CiscoPOEController(
+                self.SWITCH, servo_interface)
+        pexpect.spawn._spawn(mox.IgnoreArg(), mox.IgnoreArg())
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_WELCOME)
+        pexpect.spawn.sendline(self.poe._username)
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_PWD)
+        pexpect.spawn.sendline(self.poe._password)
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_DEVICE)
+
+
+    def testLogin(self):
+        """Test we can log into the switch."""
+        self.mox.ReplayAll()
+        self.assertNotEqual(self.poe._login(), None)
+        self.mox.VerifyAll()
+
+
+    def _EnterConfigurationHelper(self, success=True):
+        """A helper function for testing entering configuration terminal.
+
+        @param success: True if we want the process to pass, False if we
+                        want it to fail.
+        """
+        pexpect.spawn.sendline('configure terminal')
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_CONFIG)
+        pexpect.spawn.sendline('interface %s' % self.PORT)
+        if success:
+            pexpect.spawn.read_nonblocking(
+                    mox.IgnoreArg(),
+                    mox.IgnoreArg()).AndReturn(self.STREAM_CONFIG_IF)
+        else:
+            self.mox.StubOutWithMock(pexpect.spawn, '__str__')
+            exception = pexpect.TIMEOUT(
+                    'Could not enter configuration terminal.')
+            pexpect.spawn.read_nonblocking(
+                    mox.IgnoreArg(),
+                    mox.IgnoreArg()).MultipleTimes().AndRaise(exception)
+            pexpect.spawn.__str__().AndReturn('A pexpect.spawn object.')
+            pexpect.spawn.sendline('end')
+
+
+    def testSuccessfullyChangeOutlet(self):
+        """Should return True if change was successful."""
+        self._EnterConfigurationHelper()
+        pexpect.spawn.sendline('power inline auto')
+        pexpect.spawn.sendline('end')
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_DEVICE)
+        pexpect.spawn.sendline('show interface status %s' % self.PORT)
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_STATUS)
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_DEVICE)
+        pexpect.spawn.sendline('exit')
+        self.mox.ReplayAll()
+        self.assertTrue(self.poe.queue_request(self.SERVO, 'ON'))
+        self.mox.VerifyAll()
+
+
+    def testUnableToEnterConfigurationTerminal(self):
+        """Should return False if unable to enter configuration terminal."""
+        self._EnterConfigurationHelper(success=False)
+        pexpect.spawn.sendline('exit')
+        self.mox.ReplayAll()
+        self.assertFalse(self.poe.queue_request(self.SERVO, 'ON'))
+        self.mox.VerifyAll()
+
+
+    def testUnableToExitConfigurationTerminal(self):
+        """Should return False if unable to exit configuration terminal."""
+        self.mox.StubOutWithMock(pexpect.spawn, '__str__')
+        self.mox.StubOutWithMock(rpm_controller.CiscoPOEController,
+                                 '_enter_configuration_terminal')
+        self.poe._enter_configuration_terminal(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(True)
+        pexpect.spawn.sendline('power inline auto')
+        pexpect.spawn.sendline('end')
+        exception = pexpect.TIMEOUT('Could not exit configuration terminal.')
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(),
+                mox.IgnoreArg()).MultipleTimes().AndRaise(exception)
+        pexpect.spawn.__str__().AndReturn('A pexpect.spawn object.')
+        pexpect.spawn.sendline('exit')
+        self.mox.ReplayAll()
+        self.assertFalse(self.poe.queue_request(self.SERVO, 'ON'))
+        self.mox.VerifyAll()
+
+
+    def testUnableToVerifyState(self):
+        """Should return False if unable to verify current state."""
+        self.mox.StubOutWithMock(pexpect.spawn, '__str__')
+        self.mox.StubOutWithMock(rpm_controller.CiscoPOEController,
+                                 '_enter_configuration_terminal')
+        self.mox.StubOutWithMock(rpm_controller.CiscoPOEController,
+                                 '_exit_configuration_terminal')
+        self.poe._enter_configuration_terminal(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(True)
+        pexpect.spawn.sendline('power inline auto')
+        self.poe._exit_configuration_terminal(mox.IgnoreArg()).AndReturn(True)
+        pexpect.spawn.sendline('show interface status %s' % self.PORT)
+        exception = pexpect.TIMEOUT('Could not verify state.')
+        pexpect.spawn.read_nonblocking(
+                mox.IgnoreArg(),
+                mox.IgnoreArg()).MultipleTimes().AndRaise(exception)
+        pexpect.spawn.__str__().AndReturn('A pexpect.spawn object.')
+        pexpect.spawn.sendline('exit')
+        self.mox.ReplayAll()
+        self.assertFalse(self.poe.queue_request(self.SERVO, 'ON'))
         self.mox.VerifyAll()
 
 

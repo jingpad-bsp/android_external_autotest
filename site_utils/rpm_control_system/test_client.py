@@ -22,11 +22,11 @@ def test():
     Simple Integration Testing of RPM Infrastructure.
     """
     threading.Thread(target=queue_request,
-                     args=('chromeos-rack8e-hostbs1', 'ON')).start()
+                     args=('chromeos1-rack8e-hostbs1', 'ON')).start()
     threading.Thread(target=queue_request,
-                     args=('chromeos-rack8e-hostbs2.cros', 'OFF')).start()
+                     args=('chromeos1-rack8e-hostbs2.cros', 'OFF')).start()
     threading.Thread(target=queue_request,
-                     args=('chromeos-rack8e-hostbs3', 'OFF')).start()
+                     args=('chromeos1-rack8e-hostbs3', 'OFF')).start()
     threading.Thread(target=queue_request,
                      args=('chromeos-rack1-hostbs1', 'ON')).start()
     threading.Thread(target=queue_request,

@@ -6,20 +6,24 @@
 import atexit
 import errno
 import logging
+import os
 import re
 import sys
 import socket
 import threading
-import time
 import xmlrpclib
 
+import rpm_controller
+import rpm_logging_config
+import utils
 from config import rpm_config
 from MultiThreadedXMLRPCServer import MultiThreadedXMLRPCServer
-import rpm_controller
 from rpm_infrastructure_exception import RPMInfrastructureException
-import rpm_logging_config
 
 LOG_FILENAME_FORMAT = rpm_config.get('GENERAL','dispatcher_logname_format')
+
+# Servo-interface mapping file
+MAPPING_FILE = rpm_config.get('CiscoPOE', 'servo_interface_mapping_file')
 
 
 class RPMDispatcher(object):
@@ -63,6 +67,8 @@ class RPMDispatcher(object):
         self._worker_dict = {}
         self._frontend_server = rpm_config.get('RPM_INFRASTRUCTURE',
                                                'frontend_uri')
+        self._mapping_last_modified = os.path.getmtime(MAPPING_FILE)
+        self._servo_interface = utils.load_servo_interface_mapping()
         logging.info('Registering this rpm dispatcher with the frontend '
                      'server at %s.', self._frontend_server)
         client = xmlrpclib.ServerProxy(self._frontend_server)
@@ -125,6 +131,8 @@ class RPMDispatcher(object):
         logging.info('Received request to set DUT: %s to state: %s',
                      dut_hostname, new_state)
         rpm_controller = self._get_rpm_controller(dut_hostname)
+        if not rpm_controller:
+            return False
         return rpm_controller.queue_request(dut_hostname, new_state)
 
 
@@ -137,10 +145,29 @@ class RPMDispatcher(object):
         @param dut_hostname: hostname of the DUT whose RPMController we want.
 
         @return: RPMController instance responsible for this DUT's RPM.
+                 Return None on failure.
         """
-        rpm_hostname = re.sub('host[^.]*', 'rpm1', dut_hostname, count=1)
-        logging.info('RPM hostname for DUT %s is %s',  dut_hostname,
-                     rpm_hostname)
+        if dut_hostname.endswith('servo'):
+            # Servos are managed by Cisco POE switches.
+            reload_info = utils.reload_servo_interface_mapping_if_necessary(
+                    self._mapping_last_modified)
+            if reload_info:
+                self._mapping_last_modified, self._servo_interface = reload_info
+            switch_if_tuple = self._servo_interface.get(dut_hostname)
+            if not switch_if_tuple:
+                logging.error('Could not determine POE hostname for %s. '
+                              'Please check the servo-interface mapping file.',
+                              dut_hostname)
+                return None
+            else:
+                rpm_hostname = switch_if_tuple[0]
+            logging.info('POE hostname for DUT %s is %s', dut_hostname,
+                         rpm_hostname)
+        else:
+            # Regular DUTs are managed by RPMs.
+            rpm_hostname = re.sub('host[^.]*', 'rpm1', dut_hostname, count=1)
+            logging.info('RPM hostname for DUT %s is %s',  dut_hostname,
+                         rpm_hostname)
         rpm_controller = self._worker_dict_get(rpm_hostname)
         if not rpm_controller:
             rpm_controller = self._create_rpm_controller(rpm_hostname)
@@ -157,14 +184,21 @@ class RPMDispatcher(object):
         @return: RPMController instance responsible for this RPM.
         """
         hostname_elements = rpm_hostname.split('-')
-        rack_id = hostname_elements[-2]
-        rpm_typechecker = re.compile('rack[0-9]+[a-z]+')
-        if rpm_typechecker.match(rack_id):
-            logging.info('RPM is a webpowered device')
-            return rpm_controller.WebPoweredRPMController(rpm_hostname)
+        if hostname_elements[-2] == 'poe':
+            # POE switch hostname looks like 'chromeos2-poe-switch1'.
+            logging.info('The controller is a Cisco POE switch.')
+            return rpm_controller.CiscoPOEController(
+                    rpm_hostname, self._servo_interface)
         else:
-            logging.info('RPM is a Sentry CDU device')
-            return rpm_controller.SentryRPMController(rpm_hostname)
+            # The device is an RPM.
+            rack_id = hostname_elements[-2]
+            rpm_typechecker = re.compile('rack[0-9]+[a-z]+')
+            if rpm_typechecker.match(rack_id):
+                logging.info('RPM is a webpowered device.')
+                return rpm_controller.WebPoweredRPMController(rpm_hostname)
+            else:
+                logging.info('RPM is a Sentry CDU device.')
+                return rpm_controller.SentryRPMController(rpm_hostname)
 
 
     def _get_serveruri(self):

@@ -6,16 +6,18 @@
 import errno
 import heapq
 import logging
+import os
 import re
 import sys
 import socket
 import threading
 import xmlrpclib
 
+import rpm_logging_config
+import utils
 from config import rpm_config
 from MultiThreadedXMLRPCServer import MultiThreadedXMLRPCServer
 from rpm_infrastructure_exception import RPMInfrastructureException
-import rpm_logging_config
 
 DEFAULT_RPM_COUNT = 0
 TERMINATED = -1
@@ -33,6 +35,9 @@ VALID_STATE_VALUES = ['ON', 'OFF', 'CYCLE']
 # RPM Hostname regex.
 RPM_REGEX = re.compile('host[^.]*')
 
+# Servo-interface mapping file
+MAPPING_FILE = rpm_config.get('CiscoPOE', 'servo_interface_mapping_file')
+
 
 class RPMFrontendServer(object):
     """
@@ -49,13 +54,16 @@ class RPMFrontendServer(object):
     @var _dispatcher_minheap: Min heap that returns a list of format-
                               [ num_rpm's, dispatcher_uri ]
                               Used to choose the least loaded dispatcher.
-    @var _entry_dict: maps dispatcher URI to an entry (list) inside the min
+    @var _entry_dict: Maps dispatcher URI to an entry (list) inside the min
                      heap. If a dispatcher server shuts down this allows us to
                      invalidate the entry in the minheap.
     @var _lock: Used to protect data from multiple running threads all
                 manipulating the same data.
     @var _rpm_dict: Maps rpm hostname's to an already assigned dispatcher
                     server.
+    @var _mapping_last_modified: Last-modified time of the servo-interface
+                                 mapping file.
+    @var _servo_interface: Maps servo hostname to (switch_hostname, interface).
     """
 
 
@@ -69,6 +77,8 @@ class RPMFrontendServer(object):
         self._entry_dict = {}
         self._lock = threading.Lock()
         self._rpm_dict = {}
+        self._mapping_last_modified = os.path.getmtime(MAPPING_FILE)
+        self._servo_interface = utils.load_servo_interface_mapping()
 
 
     def queue_request(self, dut_hostname, new_state):
@@ -164,7 +174,23 @@ class RPMFrontendServer(object):
         @return: URI of dispatcher server responsible for this DUT's rpm. None
                  if no dispatcher servers are available.
         """
-        rpm_hostname = RPM_REGEX.sub(DEFAULT_RPM_ID, dut_hostname, count=1)
+        if dut_hostname.endswith('servo'):
+            # Servos are managed by Cisco POE switches.
+            reload_info = utils.reload_servo_interface_mapping_if_necessary(
+                    self._mapping_last_modified)
+            if reload_info:
+                self._mapping_last_modified, self._servo_interface = reload_info
+            switch_if_tuple = self._servo_interface.get(dut_hostname)
+            if not switch_if_tuple:
+                logging.error('Could not determine POE hostname for %s. '
+                              'Please check the servo-interface mapping file.',
+                              dut_hostname)
+                return None
+            else:
+                rpm_hostname = switch_if_tuple[0]
+        else:
+            # Regular DUTs are managed by RPMs.
+            rpm_hostname = RPM_REGEX.sub(DEFAULT_RPM_ID, dut_hostname, count=1)
         with self._lock:
             if self._rpm_dict.get(rpm_hostname):
                 return self._rpm_dict[rpm_hostname]

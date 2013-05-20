@@ -12,7 +12,7 @@ import time
 
 from config import rpm_config
 import dli_urllib
-
+import utils
 
 # Format Appears as: [Date] [Time] - [Msg Level] - [Message]
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
@@ -37,7 +37,8 @@ class RPMController(object):
     Implementation details:
     This is an abstract class, subclasses must implement the methods
     listed here. You must not instantiate this class but should
-    instantiate one of those leaf subclasses.
+    instantiate one of those leaf subclasses. Subclasses should
+    also set TYPE class attribute to indicate device type.
 
     @var behind_hydra: boolean value to represent whether or not this RPM is
                         behind a hydra device.
@@ -74,6 +75,11 @@ class RPMController(object):
     # state followed by DUT/Plug name.
     STATE_CMD = '%s %s'
     SUCCESS_MSG = None # Some RPM's may not return a success msg.
+
+    NEW_STATE_ON = 'ON'
+    NEW_STATE_OFF = 'OFF'
+    NEW_STATE_CYCLE = 'CYCLE'
+    TYPE = 'Should set TYPE in subclass.'
 
 
     def __init__(self, rpm_hostname, hydra_name=None):
@@ -393,30 +399,24 @@ class RPMController(object):
         @return: True if the attempt to change power state was successful,
                  False otherwise.
         """
-        if 'row' in dut_hostname:
-            # Because the devices with a row and a rack all have long
-            # hostnames, we can't store their full names in the rpm, therefore
-            # for these devices we drop the 'chromeosX' part of their name.
-            # For example: chromeos2-rack2-row1-host1 is just stored as
-            # rack2-row1-host1 inside the RPM.
-            dut_hostname = dut_hostname.split('-', 1)[1]
         ssh = self._login()
         if not ssh:
             return False
-        if new_state == 'CYCLE':
+        if new_state == self.NEW_STATE_CYCLE:
             logging.debug('Beginning Power Cycle for DUT: %s',
                           dut_hostname)
-            result = self._change_state(dut_hostname, 'OFF', ssh)
+            result = self._change_state(dut_hostname, self.NEW_STATE_OFF, ssh)
             if not result:
                 return result
             time.sleep(RPMController.CYCLE_SLEEP_TIME)
-            result = self._change_state(dut_hostname, 'ON', ssh)
+            result = self._change_state(dut_hostname, self.NEW_STATE_ON, ssh)
         else:
             # Try to change the state of the DUT's power outlet.
             result = self._change_state(dut_hostname, new_state, ssh)
 
         # Terminate hydra connection if necessary.
         self._logout(ssh)
+        ssh.close(force=True)
         return result
 
 
@@ -453,12 +453,11 @@ class RPMController(object):
     def type(self):
         """
         Get the type of RPM device we are interacting with.
-        To be implemented by the subclasses.
+        Class attribute TYPE should be set by the subclasses.
 
         @return: string representation of RPM device type.
         """
-        raise NotImplementedError('Abstract class. Subclasses should implement '
-                                  'type().')
+        return self.TYPE
 
 
 class SentryRPMController(RPMController):
@@ -479,6 +478,8 @@ class SentryRPMController(RPMController):
     SET_STATE_CMD = '%s %s'
     SUCCESS_MSG = 'Command successful'
     SET_OUTLET_NAME_CMD = 'set outlet name .A%d %s'
+    NUM_OF_OUTLETS = 17
+    TYPE = 'Sentry'
 
 
     def __init__(self, hostname, hydra_name=None):
@@ -489,8 +490,27 @@ class SentryRPMController(RPMController):
         self._password = rpm_config.get('SENTRY', 'password')
 
 
-    def type(self):
-        return 'Sentry'
+    def set_power_state(self, dut_hostname, new_state):
+        """
+        Set the state of the dut's outlet on this RPM.
+
+        Overload set_power_state in RPMController.
+        @param dut_hostname: hostname of DUT whose outlet we want to change.
+        @param new_state: ON/OFF/CYCLE - state or action we want to perform on
+                          the outlet.
+
+        @return: True if the attempt to change power state was successful,
+                 False otherwise.
+        """
+        if 'row' in dut_hostname:
+            # Because the devices with a row and a rack all have long
+            # hostnames, we can't store their full names in the rpm, therefore
+            # for these devices we drop the 'chromeosX' part of their name.
+            # For example: chromeos2-rack2-row1-host1 is just stored as
+            # rack2-row1-host1 inside the RPM.
+            dut_hostname = dut_hostname.split('-', 1)[1]
+        return super(SentryRPMController, self).set_power_state(
+                dut_hostname, new_state)
 
 
     def _setup_test_user(self, ssh):
@@ -523,7 +543,7 @@ class SentryRPMController(RPMController):
         names so there are no conflicts. For example trying to assign outlet
         2 a name already assigned to outlet 9.
         """
-        for outlet in range(1,17):
+        for outlet in range(1, self.NUM_OF_OUTLETS):
             outlet_name = 'Outlet_%d' % outlet
             ssh.sendline(self.SET_OUTLET_NAME_CMD % (outlet, outlet_name))
             ssh.expect(self.SUCCESS_MSG)
@@ -579,6 +599,9 @@ class WebPoweredRPMController(RPMController):
     """
 
 
+    TYPE = 'Webpowered'
+
+
     def __init__(self, hostname, powerswitch=None):
         username = rpm_config.get('WEBPOWERED', 'username')
         password = rpm_config.get('WEBPOWERED', 'password')
@@ -624,7 +647,7 @@ class WebPoweredRPMController(RPMController):
             return False
         outlet, state = outlet_and_state
         expected_state = new_state
-        if new_state == 'CYCLE':
+        if new_state == self.NEW_STATE_CYCLE:
             logging.debug('Beginning Power Cycle for DUT: %s',
                           dut_hostname)
             self._rpm.off(outlet)
@@ -633,11 +656,11 @@ class WebPoweredRPMController(RPMController):
             time.sleep(RPMController.CYCLE_SLEEP_TIME)
             self._rpm.on(outlet)
             logging.debug('Outlet for DUT: %s set to ON', dut_hostname)
-            expected_state = 'ON'
-        if new_state == 'OFF':
+            expected_state = self.NEW_STATE_ON
+        if new_state == self.NEW_STATE_OFF:
             self._rpm.off(outlet)
             logging.debug('Outlet for DUT: %s set to OFF', dut_hostname)
-        if new_state == 'ON':
+        if new_state == self.NEW_STATE_ON:
             self._rpm.on(outlet)
             logging.debug('Outlet for DUT: %s set to ON', dut_hostname)
         # Lookup the final state of the outlet
@@ -653,41 +676,296 @@ class WebPoweredRPMController(RPMController):
         return True
 
 
-    def type(self):
-        return 'Webpowered'
+class CiscoPOEController(RPMController):
+    """
+    This class implements power control for Cisco POE switch.
+
+    Example usage:
+      poe = CiscoPOEController('chromeos1-poe-switch1')
+      poe.queue_request('chromeos1-rack5-host12-servo', 'ON')
+    """
+
+
+    SSH_LOGIN_CMD = ('ssh -o StrictHostKeyChecking=no '
+                     '-o UserKnownHostsFile=/dev/null %s')
+    POE_USERNAME_PROMPT = 'User Name:'
+    POE_PROMPT = '%s#'
+    EXIT_CMD = 'exit'
+    END_CMD = 'end'
+    CONFIG = 'configure terminal'
+    CONFIG_PROMPT = '%s\(config\)#'
+    CONFIG_IF = 'interface %s'
+    CONFIG_IF_PROMPT = '%s\(config-if\)#'
+    SET_STATE_ON = 'power inline auto'
+    SET_STATE_OFF = 'power inline never'
+    CHECK_INTERFACE_STATE = 'show interface status %s'
+    INTERFACE_STATE_MSG = 'Port\s+.*%s(\s+(\S+)){6,6}'
+    CHECK_STATE_TIMEOUT = 60
+    CMD_TIMEOUT = 30
+    LOGIN_TIMEOUT = 60
+    PORT_UP = 'Up'
+    PORT_DOWN = 'Down'
+    TYPE = 'CiscoPOE'
+
+
+    def __init__(self, hostname, servo_interface):
+        """
+        Initialize controller class for a Cisco POE switch.
+
+        @param hostname: the Cisco POE switch host name.
+        @param servo_interface: a dictionary that maps servo hostname
+                                to (switch_hostname, interface).
+        """
+        super(CiscoPOEController, self).__init__(hostname)
+        self._username = rpm_config.get('CiscoPOE', 'username')
+        self._password = rpm_config.get('CiscoPOE', 'password')
+        # For a switch, e.g. 'chromeos2-poe-switch8',
+        # the device prompt looks like 'chromeos2-poe-sw8#'.
+        short_hostname = self.hostname.replace('switch', 'sw')
+        self.poe_prompt = self.POE_PROMPT % short_hostname
+        self.config_prompt = self.CONFIG_PROMPT % short_hostname
+        self.config_if_prompt = self.CONFIG_IF_PROMPT % short_hostname
+        self._servo_interface = servo_interface
+
+
+    def _login(self):
+        """
+        Log in into the Cisco POE switch.
+
+        Overload _login in RPMController, as it always prompts for a user name.
+
+        @return: ssh - a pexpect.spawn instance if the connection was successful
+                 or None if it was not.
+        """
+        hostname = '%s.%s' % (self.hostname, self._dns_zone)
+        cmd = self.SSH_LOGIN_CMD % (hostname)
+        try:
+            ssh = pexpect.spawn(cmd)
+        except pexpect.ExceptionPexpect:
+            logging.error('Could not connect to switch %s', hostname)
+            return None
+        # Wait for the username and password prompt.
+        try:
+            ssh.expect(self.POE_USERNAME_PROMPT, timeout=self.LOGIN_TIMEOUT)
+            ssh.sendline(self._username)
+            ssh.expect(self.PASSWORD_PROMPT, timeout=self.LOGIN_TIMEOUT)
+            ssh.sendline(self._password)
+            ssh.expect(self.poe_prompt, timeout=self.LOGIN_TIMEOUT)
+        except pexpect.ExceptionPexpect:
+            logging.error('Could not log into switch %s', hostname)
+            return None
+        return ssh
+
+
+    def _enter_configuration_terminal(self, interface, ssh):
+        """
+        Enter configuration terminal of |interface|.
+
+        This function expects that we've already logged into the switch
+        and the ssh is prompting the switch name. The work flow is
+            chromeos1-poe-sw1#
+            chromeos1-poe-sw1#configure terminal
+            chromeos1-poe-sw1(config)#interface fa36
+            chromeos1-poe-sw1(config-if)#
+        On success, the function exits with 'config-if' prompt.
+        On failure, the function exits with device prompt,
+        e.g. 'chromeos1-poe-sw1#' in the above case.
+
+        @param interface: the name of the interface.
+        @param ssh: pexpect.spawn instance to use.
+
+        @return: True on success otherwise False.
+        """
+        try:
+            # Enter configure terminal.
+            ssh.sendline(self.CONFIG)
+            ssh.expect(self.config_prompt, timeout=self.CMD_TIMEOUT)
+            # Enter configure terminal of the interface.
+            ssh.sendline(self.CONFIG_IF % interface)
+            ssh.expect(self.config_if_prompt, timeout=self.CMD_TIMEOUT)
+            return True
+        except pexpect.ExceptionPexpect, e:
+            ssh.sendline(self.END_CMD)
+            logging.exception(e)
+        return False
+
+
+    def _exit_configuration_terminal(self, ssh):
+        """
+        Exit interface configuration terminal.
+
+        On success, the function exits with device prompt,
+        e.g. 'chromeos1-poe-sw1#' in the above case.
+        On failure, the function exists with 'config-if' prompt.
+
+        @param ssh: pexpect.spawn instance to use.
+
+        @return: True on success otherwise False.
+        """
+        try:
+            ssh.sendline(self.END_CMD)
+            ssh.expect(self.poe_prompt, timeout=self.CMD_TIMEOUT)
+            return True
+        except pexpect.ExceptionPexpect, e:
+            logging.exception(e)
+        return False
+
+
+    def _verify_state(self, interface, expected_state, ssh):
+        """
+        Check whehter the current state of |interface| matches expected state.
+
+        This function tries to check the state of |interface| multiple
+        times until its state matches the expected state or time is out.
+
+        After the command of changing state has been executed,
+        the state of an interface doesn't always change immediately to
+        the expected state but requires some time. As such, we need
+        a retry logic here.
+
+        @param interface: the name of the interface.
+        @param expect_state: the expected state, 'ON' or 'OFF'
+        @param ssh: pexpect.spawn instance to use.
+
+        @return: True if the state of |interface| swiches to |expected_state|,
+                 otherwise False.
+        """
+        expected_state = (self.PORT_UP if expected_state == self.NEW_STATE_ON
+                          else self.PORT_DOWN)
+        try:
+            start = time.time()
+            while((time.time() - start) < self.CHECK_STATE_TIMEOUT):
+                ssh.sendline(self.CHECK_INTERFACE_STATE % interface)
+                state_matcher = '.*'.join([self.INTERFACE_STATE_MSG % interface,
+                                           self.poe_prompt])
+                ssh.expect(state_matcher, timeout=self.CMD_TIMEOUT)
+                state = ssh.match.group(2)
+                if state == expected_state:
+                    return True
+        except pexpect.ExceptionPexpect, e:
+            logging.exception(e)
+        return False
+
+
+    def _logout(self, ssh, admin_logout=False):
+        """
+        Log out of the Cisco POE switch after changing state.
+
+        Overload _logout in RPMController.
+
+        @param admin_logout: ignored by this method.
+        @param ssh: pexpect.spawn instance to use to send the logout command.
+        """
+        ssh.sendline(self.EXIT_CMD)
+
+
+    def _change_state(self, dut_hostname, new_state, ssh):
+        """
+        Perform the actual state change operation.
+
+        Overload _change_state in RPMController.
+
+        @param dut_hostname: hostname of servo, whose outlet we want to change.
+        @param new_state: ON/OFF - state or action we want to perform on
+                          the outlet.
+        @param ssh: The ssh connection used to execute the state change commands
+                    on the POE switch.
+
+        @return: True if the attempt to change power state was successful,
+                 False otherwise.
+        """
+        switch_if_tuple = self._servo_interface.get(dut_hostname)
+        if not switch_if_tuple:
+            logging.error('Could not find the interface for %s on switch %s. '
+                          'Maybe the mapping file is out of date?',
+                          dut_hostname, self.hostname)
+            return False
+        else:
+            interface = switch_if_tuple[1]
+        # Enter configuration terminal.
+        if not self._enter_configuration_terminal(interface, ssh):
+            logging.error('Could not enter configuration terminal for %s',
+                          interface)
+            return False
+        # Change the state.
+        if new_state == self.NEW_STATE_ON:
+            ssh.sendline(self.SET_STATE_ON)
+        elif new_state == self.NEW_STATE_OFF:
+            ssh.sendline(self.SET_STATE_OFF)
+        else:
+            logging.error('Unknown state request: %s', new_state)
+            return False
+        # Exit configuraiton terminal.
+        if not self._exit_configuration_terminal(ssh):
+            logging.error('Skipping verifying outlet state for DUT: %s, '
+                          'because could not exit configuration terminal.',
+                          dut_hostname)
+            return False
+        # Verify if the state has changed successfully.
+        if not self._verify_state(interface, new_state, ssh):
+            logging.error('Could not verify state on interface %s', interface)
+            return False
+
+        logging.debug('Outlet for DUT: %s set to %s',
+                      dut_hostname, new_state)
+        return True
 
 
 def test_in_order_requests():
     """Simple integration testing."""
     rpm = WebPoweredRPMController('chromeos-rack8e-rpm1')
-    rpm.queue_request('chromeos-rack8e-hostbs1', 'OFF')
-    rpm.queue_request('chromeos-rack8e-hostbs2', 'OFF')
-    rpm.queue_request('chromeos-rack8e-hostbs3', 'CYCLE')
+    rpm.queue_request('chromeos1-rack8e-hostbs1', 'OFF')
+    rpm.queue_request('chromeos1-rack8e-hostbs2', 'OFF')
+    rpm.queue_request('chromeos1-rack8e-hostbs3', 'CYCLE')
 
 
 def test_parrallel_webrequests():
     """Simple integration testing."""
     rpm = WebPoweredRPMController('chromeos-rack8e-rpm1')
     threading.Thread(target=rpm.queue_request,
-                     args=('chromeos-rack8e-hostbs1', 'OFF')).start()
+                     args=('chromeos1-rack8e-hostbs1', 'OFF')).start()
     threading.Thread(target=rpm.queue_request,
-                     args=('chromeos-rack8e-hostbs2', 'ON')).start()
+                     args=('chromeos1-rack8e-hostbs2', 'ON')).start()
 
 
 def test_parrallel_sshrequests():
     """Simple integration testing."""
     rpm = SentryRPMController('chromeos-rack8-rpm1')
-    rpm2 = SentryRPMController('chromeos2-row2-rack3-rpm1')
     threading.Thread(target=rpm.queue_request,
                      args=('chromeos-rack8-hostbs1', 'OFF')).start()
     threading.Thread(target=rpm.queue_request,
                      args=('chromeos-rack8-hostbs2', 'OFF')).start()
-    threading.Thread(target=rpm2.queue_request,
-                     args=('chromeos2-row2-rack3-hostbs', 'ON')).start()
-    threading.Thread(target=rpm2.queue_request,
-                     args=('chromeos2-row2-rack3-hostbs2', 'ON')).start()
-    threading.Thread(target=rpm2.queue_request,
-                     args=('chromeos2-row1-rack7-hostbs1', 'ON')).start()
+
+    # The following test are disabled as the
+    # outlets on the rpm are in actual use.
+    # rpm2 = SentryRPMController('chromeos2-row2-rack3-rpm1')
+    # threading.Thread(target=rpm2.queue_request,
+    #                  args=('chromeos2-row2-rack3-hostbs', 'ON')).start()
+    # threading.Thread(target=rpm2.queue_request,
+    #                  args=('chromeos2-row2-rack3-hostbs2', 'ON')).start()
+    # threading.Thread(target=rpm2.queue_request,
+    #                  args=('chromeos2-row1-rack7-hostbs1', 'ON')).start()
+
+
+def test_in_order_poerequests():
+    """Simple integration testing for poe controller."""
+    servo_interface = utils.load_servo_interface_mapping()
+    poe_controller = CiscoPOEController(
+            'chromeos1-poe-switch1', servo_interface)
+    poe_controller.queue_request('chromeos1-rack4-host1bs-servo', 'OFF')
+    poe_controller.queue_request('chromeos1-rack4-host1bs-servo', 'ON')
+    poe_controller.queue_request('chromeos1-rack4-host2bs-servo', 'CYCLE')
+
+
+def test_parrallel_poerequests():
+    """Simple integration testing for poe controller."""
+    servo_interface = utils.load_servo_interface_mapping()
+    poe_controller = CiscoPOEController(
+            'chromeos1-poe-switch1', servo_interface)
+    threading.Thread(target=poe_controller.queue_request,
+                     args=('chromeos1-rack4-host1bs-servo', 'CYCLE')).start()
+    threading.Thread(target=poe_controller.queue_request,
+                     args=('chromeos1-rack4-host2bs-servo', 'CYCLE')).start()
 
 
 if __name__ == '__main__':
@@ -695,3 +973,5 @@ if __name__ == '__main__':
     test_in_order_requests()
     test_parrallel_webrequests()
     test_parrallel_sshrequests()
+    test_in_order_poerequests()
+    test_parrallel_poerequests()
