@@ -1,14 +1,17 @@
 RewriteEngine On
 
+# These rules are disabled so our site specific ReWrite rules will work,
+# these are located in site-misc-directives.
 # This rule is meant for autotest installations under a single directory,
 # such as when pulling the code from git or from a tarball.
-RewriteCond /usr/local/autotest/results -d
-RewriteRule /results(.*) /usr/local/autotest/results/$1
+# RewriteCond /usr/local/autotest/results -d
+# RewriteRule /results(.*) /usr/local/autotest/results/$1
 
 # This rule is meant for autotest installations from a package such as RPM.
-RewriteCond /var/lib/autotest/results -d
-RewriteRule /results(.*) /var/lib/autotest/results/$1
+# RewriteCond /var/lib/autotest/results -d
+# RewriteRule /results(.*) /var/lib/autotest/results/$1
 
+Alias /results "/usr/local/autotest/results"
 <Location "/results">
     IndexHeadInsert "<img src='/afe/header.png'/><hr/>"
     Options +Indexes +FollowSymLinks +MultiViews
