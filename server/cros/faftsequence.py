@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ast
 import ctypes
 import logging
 import os
@@ -198,6 +199,7 @@ class FAFTSequence(ServoTest):
             'reboot_action': (self.sync_and_warm_reboot),
             'firmware_action': (None)
         })
+        self.setup_uart_capture()
         self.install_test_image(self._install_image_path, self._firmware_update)
         self.record_system_info()
         self.setup_gbb_flags()
@@ -215,6 +217,7 @@ class FAFTSequence(ServoTest):
             # don't fail.
             self._restore_routine_from_timeout()
         self.restore_ec_write_protect()
+        self.cleanup_uart_capture()
         self._faft_sequence = ()
         self._faft_template = {}
         super(FAFTSequence, self).cleanup()
@@ -925,6 +928,39 @@ class FAFTSequence(ServoTest):
         self.wait_fw_screen_and_close_lid()
 
 
+    def setup_uart_capture(self):
+        """Setup the CPU/EC UART capture."""
+        self.cpu_uart_file = os.path.join(self.resultsdir, 'cpu_uart.txt')
+        self.servo.set('cpu_uart_capture', 'on')
+        if self.client_attr.chrome_ec:
+            try:
+                self.servo.set('ec_uart_capture', 'on')
+                self.ec_uart_file = os.path.join(self.resultsdir, 'ec_uart.txt')
+            except error.TestFail as e:
+                if 'No control named' in str(e):
+                    logging.warn('The servod is too old that ec_uart_capture '
+                                 'not supported.')
+
+
+    def record_uart_capture(self):
+        """Record the CPU/EC UART output stream to files."""
+        if self.cpu_uart_file:
+            with open(self.cpu_uart_file, 'a') as f:
+                f.write(ast.literal_eval(self.servo.get('cpu_uart_stream')))
+        if self.ec_uart_file and self.client_attr.chrome_ec:
+            with open(self.ec_uart_file, 'a') as f:
+                f.write(ast.literal_eval(self.servo.get('ec_uart_stream')))
+
+
+    def cleanup_uart_capture(self):
+        """Cleanup the CPU/EC UART capture."""
+        # Flush the remaining UART output.
+        self.record_uart_capture()
+        self.servo.set('cpu_uart_capture', 'off')
+        if self.ec_uart_file and self.client_attr.chrome_ec:
+            self.servo.set('ec_uart_capture', 'off')
+
+
     def setup_gbb_flags(self):
         """Setup the GBB flags for FAFT test."""
         if self.client_attr.gbb_version < 1.1:
@@ -1473,6 +1509,9 @@ class FAFTSequence(ServoTest):
         for key in test:
             if key not in FAFT_STEP_KEYS:
                 raise error.TestError('Invalid key in FAFT step: %s', key)
+
+        # Record the UART output regularly.
+        self.record_uart_capture()
 
         if test['state_checker']:
             self._call_action(test['state_checker'], check_status=True)
