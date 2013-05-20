@@ -35,7 +35,6 @@ class EnableMachine(state_machine.StateMachine):
 
     def _HandleDisabledState(self):
         assert self._modem.disable_step is None
-        assert self._modem.connect_step is None
         assert self._modem.disconnect_step is None
         logging.info('EnableMachine: Setting power state to ON')
         self._modem.SetUInt32(mm1.I_MODEM, 'PowerState',
@@ -47,7 +46,6 @@ class EnableMachine(state_machine.StateMachine):
 
     def _HandleEnablingState(self):
         assert self._modem.disable_step is None
-        assert self._modem.connect_step is None
         assert self._modem.disconnect_step is None
         logging.info('EnableMachine: Setting state to ENABLED.')
         reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
@@ -56,7 +54,6 @@ class EnableMachine(state_machine.StateMachine):
 
     def _HandleEnabledState(self):
         assert self._modem.disable_step is None
-        assert self._modem.connect_step is None
         assert self._modem.disconnect_step is None
         logging.info('EnableMachine: Searching for networks.')
         self._modem.enable_step = None
