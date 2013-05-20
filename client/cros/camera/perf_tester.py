@@ -20,7 +20,6 @@ import grid_mapper
 
 from camera_utils import Pod
 from camera_utils import Pad
-from camera_utils import Unpad
 from multiprocessing import Pool
 
 _CORNER_MAX_NUM = 1000000
@@ -57,6 +56,27 @@ class ReturnValue(Pod):
 def _MTFComputeWrapper(args):
     '''Parallel MTF computation wrapper function.'''
     return mtf_calculator.Compute(*args)[0]
+
+
+def _SqueezeCorners(corners):
+    '''OpenCV returns corners in ndarray with dimension as [num_corners, 1, 2].
+       We want to squeeze it to smaller dimension as [num_corners, 2]
+
+    Args:
+        corners: the corners as ndarray
+
+    Returns:
+        Squeezed ndarray without the redundant single-demensional entries at
+        axis = 1
+    '''
+    # TODO(jchuang): it would be simplier and more general with newer numpy
+    # (>1.7), which supports 'axis' parameter in np.squeeze().
+    assert(len(corners.shape) == 3 and corners.shape[1] == 1 and
+           corners.shape[2] == 2)
+    if corners.shape[0] == 1:
+        return corners[0]
+    else:
+        return np.squeeze(corners)
 
 
 def _FindCornersOnConvexHull(hull):
@@ -234,14 +254,14 @@ def PrepareTest(pat_file):
     diag_len = math.sqrt(pat.shape[0] ** 2 + pat.shape[1] ** 2)
     min_corner_dist = diag_len * _CORNER_MIN_DISTANCE_RATIO
 
-    ret.corners = Unpad(
+    ret.corners = _SqueezeCorners(
         cv2.goodFeaturesToTrack(pat, _CORNER_MAX_NUM, _CORNER_QUALITY_RATIO,
                                 min_corner_dist))
 
     ret.pmatch_tol = diag_len * _POINT_MATCHING_MAX_TOLERANCE_RATIO
 
     # Locate four corners of the corner grid.
-    hull = Unpad(cv2.convexHull(Pad(ret.corners)))
+    hull = _SqueezeCorners(cv2.convexHull(Pad(ret.corners)))
     ret.four_corners = _FindCornersOnConvexHull(hull)
 
     # Locate edges.
@@ -379,7 +399,8 @@ def CheckVisualCorrectness(
     if sample_corners is None:
         ret.msg = "Can't find strong corners."
         return False, ret
-    sample_corners = Unpad(sample_corners)
+
+    sample_corners = _SqueezeCorners(sample_corners)
     ret.sample_corners = sample_corners
 
     # b) Check if we got the same amount of corners as the reference.
@@ -388,7 +409,7 @@ def CheckVisualCorrectness(
         return False, ret
 
     # Find the 4 corners of the square grid.
-    hull = Unpad(cv2.convexHull(Pad(sample_corners)))
+    hull = _SqueezeCorners(cv2.convexHull(Pad(sample_corners)))
     if hull.shape[0] < 4:
         ret.msg = "All the corners are co-linear."
         return False, ret
