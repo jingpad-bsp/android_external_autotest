@@ -2,69 +2,66 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Utility functions used for PKCS#11 library testing.
+"""Utility functions used for PKCS#11 library testing."""
 
 import grp, logging, os, pwd, re, stat, sys, shutil, pwd, grp
 
-import common, constants
 from autotest_lib.client.bin import utils
 
-CRYPTOHOME_CMD = 'cryptohome'
-PKCS11_TOOL = 'pkcs11-tool --module %s %s'
 USER_TOKEN_NAME = 'User-Specific TPM Token'
-USER_CHAPS_DIR = '/home/chronos/user/.chaps'
-SYSTEM_CHAPS_DIR = '/var/lib/chaps'
+USER_CHAPS_DIR = '.chaps'
 TMP_CHAPS_DIR = '/tmp/chaps'
 CHAPS_DIR_PERM = 0750
+CHAPS_SALT_PERM = 0600
 
 
 def __run_cmd(cmd, ignore_status=False):
+    """Runs a command and returns the output from both stdout and stderr."""
     return utils.system_output(cmd + ' 2>&1', retain_output=True,
                                ignore_status=ignore_status).strip()
 
-def __get_pkcs11_file_list():
+def __get_token_paths():
+    """Return a dict with a path for each PKCS #11 token currently loaded."""
+    token_paths = []
+    for line in __run_cmd('chaps_client --list').split('\n'):
+        match = re.search(r'Slot \d+: (/.*)\s*$', line);
+        if match:
+            token_paths.append(match.group(1))
+    return token_paths
+
+def __get_pkcs11_file_list(token_path):
     """Return string with PKCS#11 file paths and their associated metadata."""
     find_args = '-printf "\'%p\', \'%u:%g\', 0%m\n"'
-    file_list_output = __run_cmd('find %s ' % USER_CHAPS_DIR + find_args)
+    file_list_output = __run_cmd('find %s ' % token_path + find_args)
     return file_list_output
 
-def ensure_initial_state():
-    """Make sure we start an initial starting state for each sub-test.
-
-    This includes:
-    - ensuring chapsd is not running, if it is, it is killed.
-    - waiting for and ensuring that the tpm is already owned.
-    """
-    utils.system('pkill -TERM chapsd', ignore_status=True)
-    utils.system('pkill -KILL chapsd', ignore_status=True)
-
-    ensure_tpm_owned()
-
-def ensure_tpm_owned():
-    """Request for and wait for the TPM to get owned."""
-    take_ownership_cmd = (CRYPTOHOME_CMD + ' --action=tpm_take_ownership')
-    wait_ownership_cmd = (CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
-    __run_cmd(take_ownership_cmd)
-    # Ignore errors if the TPM is not being in the process of being owned.
-    __run_cmd(wait_ownership_cmd, ignore_status=True)
-
-def __verify_tokenname():
+def __verify_tokenname(token_path):
     """Verify that the TPM token name is correct."""
-    pkcs11_lib_path = 'libchaps.so'
-    pkcs11_label_cmd = PKCS11_TOOL % (pkcs11_lib_path, '-L')
-    pkcs11_cmd_output = __run_cmd(pkcs11_label_cmd)
-    m = re.search(r"token label:\s+(.*)\s*$", pkcs11_cmd_output,
-                  flags=re.MULTILINE)
-    if not m:
+    token_list = __run_cmd('p11_replay --list_tokens')
+    logging.error('token_list: ' + token_list)
+    match = re.search(r'^Slot \d+: (.*)\s*$', token_list, flags=re.MULTILINE)
+    if not match:
         logging.error('Could not read PKCS#11 token label!')
         return False
-    if m.group(1) != USER_TOKEN_NAME:
-        logging.error('Wrong or empty label on the PKCS#11 Token (Expected = %s'
-                      ', Got = %s', USER_TOKEN_NAME, m.group(1))
+    token_label = match.group(1)
+    # Accept the legacy token label.
+    if token_label == USER_TOKEN_NAME:
+        return True
+    # The token label should be a canonicalized username which means we should
+    # be able to map it to the token path. This will fail if the UTF-8 username
+    # is more than 32 bytes in length and was truncated to form the PKCS #11
+    # token label.
+    if len(token_label) == 32:
+        return True
+    obfuscate_cmd = 'cryptohome --action=obfuscate_user --user=%s' % token_label
+    expected_token_path = __run_cmd(obfuscate_cmd)
+    if token_path != expected_token_path:
+        logging.error('Wrong or empty label on the PKCS#11 Token (Got = %s',
+                      token_label)
         return False
     return True
 
-def __verify_permissions():
+def __verify_permissions(token_path):
     """Verify that the permissions on the initialized token dir are correct."""
     # List of 3-tuples consisting of (path, user:group, octal permissions)
     # Can be generated (for example), by:
@@ -72,9 +69,9 @@ def __verify_permissions():
     # for i in $paths; do echo \(\'$i\', $(stat --format="'%U:%G', 0%a" $i)\),;
     # done
     expected_permissions = [
-        ('/home/chronos/user/.chaps', 'chaps:chronos-access', 0750),
-        ('/home/chronos/user/.chaps/auth_data_salt', 'root:root', 0600),
-        ('/home/chronos/user/.chaps/database', 'chaps:chronos-access', 0750)]
+        (token_path, 'chaps:chronos-access', CHAPS_DIR_PERM),
+        ('%s/auth_data_salt' % token_path, 'root:root', CHAPS_SALT_PERM),
+        ('%s/database' % token_path, 'chaps:chronos-access', CHAPS_DIR_PERM)]
     for item in expected_permissions:
         path = item[0]
         (user, group) = item[1].split(':')
@@ -104,16 +101,22 @@ def __verify_permissions():
 
 def verify_pkcs11_initialized():
     """Checks if the PKCS#11 token is initialized properly."""
-    verify_cmd = (CRYPTOHOME_CMD + ' --action=pkcs11_token_status')
+    token_path_list = __get_token_paths()
+    if len(token_path_list) != 1:
+        logging.error('Expecting a single signed-in user with a token.')
+        return False
+
+    verify_cmd = ('cryptohome --action=pkcs11_token_status')
     __run_cmd(verify_cmd)
 
     verify_result = True
     # Do additional sanity tests.
-    if not __verify_tokenname():
+    if not __verify_tokenname(token_path_list[0]):
         logging.error('Verification of token name failed!')
         verify_result = False
-    if not __verify_permissions():
-        logging.error('PKCS#11 file list:\n%s', __get_pkcs11_file_list())
+    if not __verify_permissions(token_path_list[0]):
+        logging.error('PKCS#11 file list:\n%s',
+                      __get_pkcs11_file_list(token_path_list[0]))
         logging.error(
             'Verification of PKCS#11 subsystem and token permissions failed!')
         verify_result = False
@@ -122,8 +125,7 @@ def verify_pkcs11_initialized():
 def load_p11_test_token(auth_data='1234'):
     """Loads the test token onto a slot.
 
-    Args:
-        auth_data: The authorization data to use for the token.
+    @param auth_data: The authorization data to use for the token.
     """
     utils.system('sudo chaps_client --load --path=%s --auth="%s"' %
                  (TMP_CHAPS_DIR, auth_data))
@@ -131,9 +133,8 @@ def load_p11_test_token(auth_data='1234'):
 def change_p11_test_token_auth_data(auth_data, new_auth_data):
     """Changes authorization data for the test token.
 
-    Args:
-        auth_data: The current authorization data.
-        new_auth_data: The new authorization data.
+    @param auth_data: The current authorization data.
+    @param new_auth_data: The new authorization data.
     """
     utils.system('sudo chaps_client --change_auth --path=%s --auth="%s" '
                  '--new_auth="%s"' % (TMP_CHAPS_DIR, auth_data, new_auth_data))
@@ -143,21 +144,24 @@ def unload_p11_test_token():
     utils.system('sudo chaps_client --unload --path=%s' % TMP_CHAPS_DIR)
 
 def copytree_with_ownership(src, dst):
-    """ Like shutil.copytree but also copies owner and group attributes."""
+    """Like shutil.copytree but also copies owner and group attributes.
+    @param src: Source directory.
+    @param dst: Destination directory.
+    """
     utils.system('cp -rp %s %s' % (src, dst))
 
-def setup_p11_test_token(unload_user_token, auth_data='1234'):
+def setup_p11_test_token(unload_user_tokens, auth_data='1234'):
     """Configures a PKCS #11 token for testing.
 
     Any existing test token will be automatically cleaned up.
 
-    Args:
-        unload_user_token: Whether to unload the currently loaded user token.
-        auth_data: Initial token authorization data.
+    @param unload_user_tokens: Whether to unload all user tokens.
+    @param auth_data: Initial token authorization data.
     """
     cleanup_p11_test_token()
-    if unload_user_token:
-        utils.system('chaps_client --unload --path=%s' % USER_CHAPS_DIR)
+    if unload_user_tokens:
+        for path in __get_token_paths():
+            utils.system('sudo chaps_client --unload --path=%s' % path)
     os.makedirs(TMP_CHAPS_DIR)
     uid = pwd.getpwnam('chaps')[2]
     gid = grp.getgrnam('chronos-access')[2]
