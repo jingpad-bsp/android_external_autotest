@@ -12,6 +12,7 @@ import errno, logging, os, rtc, time, upstart
 SYSFS_POWER_STATE = '/sys/power/state'
 SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
 
+SETUID_HELPER = '/usr/bin/powerd_setuid_helper'
 
 class SuspendFailure(Exception):
     """Base class for a failure during a single suspend/resume cycle."""
@@ -99,7 +100,7 @@ def dbus_suspend(seconds):
     return alarm
 
 
-def do_suspend(seconds):
+def do_suspend(seconds, lockvt):
     """Do a suspend.
 
     Suspend the system to RAM (S3), waking up again after |seconds|, using
@@ -109,7 +110,11 @@ def do_suspend(seconds):
     @param seconds: The number of seconds to suspend the device.
     """
     alarm, wakeup_count = prepare_wakeup(seconds)
+    if lockvt:
+        os.system('%s -action lock_vt' % SETUID_HELPER)
     os.system('/usr/bin/powerd_suspend -w %d' % wakeup_count)
+    if lockvt:
+        os.system('%s -action unlock_vt' % SETUID_HELPER)
     check_wakeup(alarm)
     return alarm
 
