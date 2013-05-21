@@ -65,7 +65,8 @@ class DisconnectWhileStateIsDisconnectingTest(DisconnectFailTest):
 
     """
     def _SetupTestModem(self):
-        class _TestModem(self._GetModemClass()):
+        modem_class = self._GetModemClass()
+        class _TestModem(modem_class):
             def Disconnect(
                 self, bearer_path, return_cb, raise_cb, *return_cb_args):
                 """
@@ -77,6 +78,13 @@ class DisconnectWhileStateIsDisconnectingTest(DisconnectFailTest):
                 Refer to modem_simple.ModemSimple.Connect for documentation.
 
                 """
+                # Proceed normally, if this Disconnect was initiated by a call
+                # to Disable, which may happen due to auto-connect.
+                if self.disable_step:
+                    modem_class.Disconnect(
+                        self, bearer_path, return_cb, raise_cb, return_cb_args)
+                    return
+
                 self.ChangeState(mm1.MM_MODEM_STATE_DISCONNECTING,
                                  mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
                 time.sleep(5)
@@ -125,6 +133,13 @@ class DisconnectWhileDisconnectInProgressTest(DisconnectFailTest):
                 Refer to modem_simple.ModemSimple.Connect for documentation.
 
                 """
+                # Proceed normally, if this Disconnect was initiated by a call
+                # to Disable, which may happen due to auto-connect.
+                if self.disable_step:
+                    modem_class.Disconnect(
+                        self, bearer_path, return_cb, raise_cb, return_cb_args)
+                    return
+
                 # On the first call, set the state to DISCONNECTING.
                 self.disconnect_count += 1
                 if self.disconnect_count == 1:
@@ -171,7 +186,8 @@ class DisconnectFailOtherTest(DisconnectFailTest):
 
     """
     def _SetupTestModem(self):
-        class _TestModem(self._GetModemClass()):
+        modem_class = self._GetModemClass()
+        class _TestModem(modem_class):
             def Disconnect(
                 self, bearer_path, return_cb, raise_cb, *return_cb_args):
                 """
@@ -182,6 +198,13 @@ class DisconnectFailOtherTest(DisconnectFailTest):
                 Refer to modem_simple.ModemSimple.Connect for documentation.
 
                 """
+                # Proceed normally, if this Disconnect was initiated by a call
+                # to Disable, which may happen due to auto-connect.
+                if self.disable_step:
+                    modem_class.Disconnect(
+                        self, bearer_path, return_cb, raise_cb, return_cb_args)
+                    return
+
                 raise mm1.MMCoreError(mm1.MMCoreError.FAILED)
         self.test_modem = _TestModem()
 
