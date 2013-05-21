@@ -208,6 +208,12 @@ class FAFTSequence(ServoTest):
     def cleanup(self):
         """Autotest cleanup function."""
         logging.info('FAFTSequence cleaning up (id=%s)', self.run_id)
+        try:
+            self.faft_client.system.is_available()
+        except:
+            # Remote is not responding. Revive DUT so that subsequent tests
+            # don't fail.
+            self._restore_routine_from_timeout()
         self.restore_ec_write_protect()
         self._faft_sequence = ()
         self._faft_template = {}
