@@ -87,8 +87,8 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
         self.click_button_by_xpath(xpath_apply,
                                    alert_handler=self._alert_handler)
         try:
-            self.wait_for_object_by_xpath('//input[@type="button" and
-                                          @value="OK"]')
+            self.wait_for_object_by_xpath('//input[@type="button" and '
+                                          '@value="OK"]')
         except:
             self._handle_alert(xpath_apply, self._alert_handler)
 
