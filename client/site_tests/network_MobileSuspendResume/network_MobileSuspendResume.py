@@ -19,7 +19,7 @@ import flimflam
 
 class network_MobileSuspendResume(cros_ui_test.UITest):
     version = 1
-    TIMEOUT = 30
+    TIMEOUT = 60
 
     device_okerrors = [
         # Setting of device power can sometimes result with InProgress error
