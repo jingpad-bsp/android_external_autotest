@@ -43,7 +43,7 @@ class ServiceStopper(object):
         for service in self.services_to_stop:
             cmd = 'status %s' % service
             out = utils.system_output(cmd, ignore_status=True)
-            is_stopped = out.find('start/running') == -1
+            is_stopped = out.find('start/running') != 0
             if is_stopped:
                 continue
             try:
