@@ -252,18 +252,18 @@ class Servo(object):
         Note, key presses will remain on indefinitely. See
             _press_and_release_keys for release procedure.
         """
-        (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix]['none']
-        self.set_nocheck('kbd_m2_a0', m2_a0)
-        self.set_nocheck('kbd_m2_a1', m2_a1)
-        self.set_nocheck('kbd_m1_a0', m1_a0)
-        self.set_nocheck('kbd_m1_a1', m1_a1)
-        self.set_nocheck('kbd_en', 'on')
-
+        (m1_a1_n, m1_a0_n, m2_a1_n, m2_a0_n) = (
+                self.KEY_MATRIX[self._key_matrix]['none'])
         (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix][key]
-        self.set_nocheck('kbd_m2_a0', m2_a0)
-        self.set_nocheck('kbd_m2_a1', m2_a1)
-        self.set_nocheck('kbd_m1_a0', m1_a0)
-        self.set_nocheck('kbd_m1_a1', m1_a1)
+        self.set_get_all(['kbd_m2_a0:%s' % m2_a0_n,
+                          'kbd_m2_a1:%s' % m2_a1_n,
+                          'kbd_m1_a0:%s' % m1_a0_n,
+                          'kbd_m1_a1:%s' % m1_a1_n,
+                          'kbd_en:on',
+                          'kbd_m2_a0:%s' % m2_a0,
+                          'kbd_m2_a1:%s' % m2_a1,
+                          'kbd_m1_a0:%s' % m1_a0,
+                          'kbd_m1_a1:%s' % m1_a1])
 
 
     def _press_and_release_keys(self, key, press_secs=None):
@@ -433,6 +433,7 @@ class Servo(object):
         """
         rv = []
         try:
+            logging.info('Set/get all: %s', str(controls))
             rv = self._server.set_get_all(controls)
         except xmlrpclib.Fault as e:
             # TODO(waihong): Remove the following backward compatibility when
