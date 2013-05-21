@@ -1526,6 +1526,8 @@ class FAFTSequence(ServoTest):
                                 self.faft_client.bios.get_body_sha('a'),
                                 self.faft_client.bios.get_sig_sha('b'),
                                 self.faft_client.bios.get_body_sha('b'))
+        if not all(current_firmware_sha):
+            raise error.TestError('Failed to get firmware sha.')
         return current_firmware_sha
 
 
