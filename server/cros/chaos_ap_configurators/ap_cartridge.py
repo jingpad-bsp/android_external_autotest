@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import Queue
+import traceback
 from threading import Thread
 
 # Maximum configurators to run at once
@@ -17,22 +19,39 @@ class APCartridge(object):
 
 
     def push_configurators(self, configurators):
+        """Adds multiple configurators to the cartridge.
+
+        @param configurators: a list of configurator objects.
+        """
         for configurator in configurators:
             self.cartridge.put(configurator)
 
 
     def push_configurator(self, configurator):
+        """Adds a configurator to the cartridge.
+
+        @param configurator: a configurator object.
+        """
         self.cartridge.put(configurator)
 
 
     def _apply_settings(self):
         while True:
             configurator = self.cartridge.get()
-            configurator.apply_settings()
+            try:
+                configurator.apply_settings()
+            except Exception:
+                logging.error('Configuration failed for AP: %s\n%s',
+                              configurator.get_router_name(),
+                              ''.join(traceback.format_exc()))
+                configurator.reset_command_list()
+            logging.info('Configuration of AP %s complete.',
+                         configurator.get_router_name())
             self.cartridge.task_done()
 
 
     def run_configurators(self):
+        """Runs apply_settings for all configurators in the cartridge."""
         for i in range(THREAD_MAX):
             t = Thread(target=self._apply_settings)
             t.daemon = True

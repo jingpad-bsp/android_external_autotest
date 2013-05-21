@@ -34,6 +34,7 @@ class WiFiChaosConnectionTest(object):
     """
 
     PSK = 'psk'
+    FAILED_CONFIG_MSG = 'AP Configuration Failed!'
 
 
     @property
@@ -143,6 +144,14 @@ class WiFiChaosConnectionTest(object):
         self.host.run('restart shill SHILL_LOG_SCOPES=wifi SHILL_LOG_LEVEL=-5')
 
         ap_info['failed_iterations'] = []
+        # Check the AP was successfully configured
+        if not ap_info['configurator'].get_configuration_success():
+            ap_info['failed_iterations'].append(
+                {'error': self.FAILED_CONFIG_MSG,
+                 'try': 0})
+            self.error_list.append(ap_info)
+            return
+
         # Make iteration 1-indexed
         for iteration in range(1, tries+1):
             logging.info('Connection try %d', iteration)
@@ -284,8 +293,7 @@ class WiFiChaosConnectionTest(object):
 
         @param ap: an APConfigurator object.
         """
-        ap.power_down_router()
-        ap.apply_settings()
+        self.power_down_aps([ap])
 
 
     def power_down_aps(self, aps):
@@ -303,13 +311,32 @@ class WiFiChaosConnectionTest(object):
     def check_test_error(self):
         """Checks if any intermediate test failed.
 
-        @raises TestFail: if self.error_list is not empty.
+        @raises TestError: if the AP could not be configured
+        @raises TestFail: if self.error_list is not empty and
+                          the AP was configured.
         """
-        if self.error_list:
+        if len(self.error_list) == 0:
+            return
+
+        failures = self.error_list[0]['failed_iterations']
+        config_failure = False
+
+        if failures[0]['error'] == self.FAILED_CONFIG_MSG:
+            config_failure = True
+
+        if config_failure:
+            msg = ('\nThe AP was not configured correctly, '
+                   'see the ERROR log for more info.\n')
+        else:
             msg = '\nFailed with the following errors:\n'
-            msg += pprint.pformat(self.error_list)
-            # This is shared across tests; reset for the next AP.
-            self.error_list = []
+
+        msg += pprint.pformat(self.error_list)
+        # This is shared across tests; reset for the next AP.
+        self.error_list = []
+
+        if config_failure:
+            raise error.TestError(msg)
+        else:
             raise error.TestFail(msg)
 
 

@@ -69,12 +69,15 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         self.driver_connection_established = False
         self.router_on = False
+        self.configuration_success = False
+
 
     def __del__(self):
         try:
             self.driver.close()
         except:
             pass
+
 
     def add_item_to_command_list(self, method, args, page, priority):
         """
@@ -90,15 +93,28 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                                    'page': page,
                                    'priority': priority})
 
+
+    def reset_command_list(self):
+        """Resets all internal command state."""
+        self._command_list = []
+
+
     def get_router_name(self):
         """Returns a string to describe the router."""
         return ('Router name: %s, Controller class: %s, MAC '
                 'Address: %s' % (self.short_name, self.class_name,
                                  self.mac_address))
 
+
+    def get_configuration_success(self):
+        """Returns True if the configuration was a success; False otherwise"""
+        return self.configuration_success
+
+
     def get_router_short_name(self):
         """Returns a short string to describe the router."""
         return self.short_name
+
 
     def get_number_of_pages(self):
         """Returns the number of web pages used to configure the router.
@@ -109,6 +125,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         Note: The derived class must implement this method.
         """
         raise NotImplementedError
+
 
     def get_supported_bands(self):
         """Returns a list of dictionaries describing the supported bands.
@@ -128,12 +145,14 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
+
     def get_bss(self):
         """Returns the bss of the AP."""
         if self.current_band == self.band_2ghz:
             return self.config_data.get_bss()
         else:
             return self.config_data.get_bss5()
+
 
     def _get_channel_popup_position(self, channel):
         """Internal method that converts a channel value to a popup position."""
@@ -164,6 +183,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
+
     def is_visibility_supported(self):
         """
         Returns if AP supports setting the visibility (SSID broadcast).
@@ -171,6 +191,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         @return True if supported; False otherwise.
         """
         return True
+
 
     def is_band_and_channel_supported(self, band, channel):
         """
@@ -390,6 +411,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
+
     def establish_driver_connection(self):
         """Makes a connection to the webdriver service."""
         if self.driver_connection_established:
@@ -402,20 +424,18 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         base64_ext = (binascii.b2a_base64(f.read()).strip())
         base64_extensions.append(base64_ext)
         f.close()
-        try:
-            self.driver = webdriver.Remote('http://127.0.0.1:9515',
-                {'chrome.extensions': base64_extensions})
-        except Exception, e:
-            self.driver_connection_established = False
-            raise RuntimeError('Could not connect to webdriver, have you '
-                               'downloaded the prebuild components to the /tmp '
-                               'directory in the chroot?  Have you run: '
-                               '(outside-chroot) <path to chroot tmp directory>'
-                               '/chromium-webdriver-parts/.chromedriver?\n')
+        self.driver = webdriver.Remote('http://127.0.0.1:9515',
+            {'chrome.extensions': base64_extensions})
         self.driver_connection_established = True
 
+
     def apply_settings(self):
-        """Apply all settings to the access point."""
+        """Apply all settings to the access point.
+
+        @param skip_success_validation: Boolean to track if method was
+                                        executed successfully.
+        """
+        self.configuration_success = False
         if len(self._command_list) == 0:
             return
         self.establish_driver_connection()
@@ -444,6 +464,14 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
                 # If the router is off, no point in navigating
                 if not self.router_on:
+                    if len(self._command_list) == 0:
+                        # If all that was requested was to power off
+                        # the router then abort here and do not set the
+                        # configuration_success bit.  The reason is
+                        # because if we failed on the configuration that
+                        # failure should remain since all tests power
+                        # down the AP when they are done.
+                        return
                     break
 
                 self.navigate_to_page(i)
@@ -459,3 +487,4 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             logging.debug('Webdriver is still crashing, tell yell at team.')
         finally:
             self.driver_connection_established = False
+            self.configuration_success = True

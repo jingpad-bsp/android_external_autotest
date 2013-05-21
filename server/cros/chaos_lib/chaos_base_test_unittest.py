@@ -6,6 +6,11 @@
 
 """Unit tests for server/cros/chaos_lib/chaos_base_test.py."""
 
+""" To run this test, from the chroot:
+    $ ~/src/third_party/autotest/files/utils/unittest_suite.py
+      server.cros.chaos_lib.chaos_base_test_unittest --debug
+"""
+
 import mox
 
 from autotest_lib.client.common_lib import error
@@ -33,6 +38,7 @@ class WiFiChaosConnectionTestTest(mox.MoxTestBase):
 
 
     def setUp(self):
+        """Default test setup."""
         super(WiFiChaosConnectionTestTest, self).setUp()
         self.helper = self.MockBaseClass(self.mox)
         self.base_ap = ap_configurator.APConfigurator()
@@ -82,13 +88,26 @@ class WiFiChaosConnectionTestTest(mox.MoxTestBase):
         self.assertEquals(None, actual)
 
 
-    def testCheckTestError(self):
-        """Tests that error is raised if error_list is non-empty."""
-        # Empty error_list should NOT trigger an error.
+    def testCheckTestPass(self):
+        """Verify no exception is thrown when error_list is empty."""
         try:
             self.helper.check_test_error()
-        except error.TestFail as e:
+        except (error.TestFail, error.TestError) as e:
             self.fail('Should NOT raise an error here! %r' % e)
 
-        self.helper.error_list = ['error']
+
+    def testCheckTestFail(self):
+        """Verify TestFail is raised if error_list contains a failure."""
+        ap_info = {'failed_iterations': [{'error': 'Failed to connect to blah',
+                                          'try': 0}]}
+        self.helper.error_list = [ap_info]
         self.assertRaises(error.TestFail, self.helper.check_test_error)
+
+
+    def testCheckTestError(self):
+        """Verify TestError is raised if error_list contains a config error."""
+        ap_info = {'failed_iterations':
+                   [{'error': self.helper.FAILED_CONFIG_MSG,
+                     'try': 0}]}
+        self.helper.error_list = [ap_info]
+        self.assertRaises(error.TestError, self.helper.check_test_error)
