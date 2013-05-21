@@ -25,6 +25,7 @@ from autotest_lib.scheduler import gc_stats, host_scheduler, monitor_db_cleanup
 from autotest_lib.scheduler import scheduler_logging_config
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
+from autotest_lib.server import autoserv_utils
 from autotest_lib.site_utils.graphite import stats
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
@@ -52,7 +53,8 @@ system error on the Autotest server.  Full results may not be available.  Sorry.
 
 _db = None
 _shutdown = False
-_autoserv_path = os.path.join(drones.AUTOTEST_INSTALL_DIR, 'server', 'autoserv')
+_autoserv_directory = os.path.join(drones.AUTOTEST_INSTALL_DIR, 'server')
+_autoserv_path = os.path.join(_autoserv_directory, 'autoserv')
 _testing_mode = False
 _drone_manager = None
 
@@ -234,24 +236,15 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
     @param machines - string - A machine or comma separated list of machines
             for the (-m) flag.
     @param extra_args - list - Additional arguments to pass to autoserv.
-    @param job - Job object - If supplied, -u owner, -l name, and --test-retry
-            parameters will be added.
+    @param job - Job object - If supplied, -u owner, -l name, --test-retry,
+            and client -c or server -s parameters will be added.
     @param queue_entry - A HostQueueEntry object - If supplied and no Job
             object was supplied, this will be used to lookup the Job object.
     """
-    autoserv_argv = [_autoserv_path, '-p',
-                     '-r', drone_manager.WORKING_DIRECTORY]
-    if machines:
-        autoserv_argv += ['-m', machines]
-    if job or queue_entry:
-        if not job:
-            job = queue_entry.job
-        autoserv_argv += ['-u', job.owner, '-l', job.name]
-        if job.test_retry:
-            autoserv_argv += ['--test-retry='+str(job.test_retry)]
-    if verbose:
-        autoserv_argv.append('--verbose')
-    return autoserv_argv + extra_args
+    return autoserv_utils.autoserv_run_job_command(_autoserv_directory,
+            machines, results_directory=drone_manager.WORKING_DIRECTORY,
+            extra_args=extra_args, job=job, queue_entry=queue_entry,
+            verbose=verbose)
 
 
 class BaseDispatcher(object):
@@ -1788,6 +1781,7 @@ class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
         return control_path
 
 
+    # TODO: Refactor into autoserv_utils. crbug.com/243090
     def _command_line(self):
         execution_path = self.queue_entries[0].execution_path()
         control_path = self._write_control_file(execution_path)
@@ -1801,9 +1795,6 @@ class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
             ['-P', execution_tag, '-n',
              _drone_manager.absolute_path(control_path)],
             job=self.job, verbose=False)
-
-        if not self.job.is_server_job():
-            params.append('-c')
 
         if self.job.is_image_update_job():
             params += ['--image', self.job.update_image_path]
@@ -2045,6 +2036,7 @@ class GatherLogsTask(PostJobTask):
         self._set_ids(queue_entries=queue_entries)
 
 
+    # TODO: Refactor into autoserv_utils. crbug.com/243090
     def _generate_command(self, results_dir):
         host_list = ','.join(queue_entry.host.hostname
                              for queue_entry in self.queue_entries)
@@ -2232,6 +2224,7 @@ class ArchiveResultsTask(SelfThrottledPostJobTask):
         return drone_manager.ARCHIVER_PID_FILE
 
 
+    # TODO: Refactor into autoserv_utils. crbug.com/243090
     def _generate_command(self, results_dir):
         return [_autoserv_path , '-p',
                 '--pidfile-label=%s' % self._pidfile_label(), '-r', results_dir,
