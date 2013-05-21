@@ -18,6 +18,7 @@ import pyudev
 import re
 import select
 import serial
+import signal
 import StringIO
 import subprocess
 import threading
@@ -853,6 +854,12 @@ class factory_CameraPerformanceAls(test.test):
                                immediately after barcode is scanned)
         '''
         factory.log('%s run_once' % self.__class__)
+
+        # Add signal handler to close opened camera interface when get killed
+        # TODO: this should be done in autotest framework instead
+        signal_handler = lambda signum, frame: sys.exit(1)
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
 
         # Initialize variables and environment.
         assert test_type in [_TEST_TYPE_FULL, _TEST_TYPE_AB, _TEST_TYPE_MODULE]
