@@ -15,6 +15,7 @@ import mtb
 import test_conf as conf
 
 from firmware_constants import AXIS, GV, MTB, VAL
+from geometry.elements import Point, about_eq
 
 
 def get_mtb_packets(gesture_filename):
@@ -129,10 +130,10 @@ class MtbTest(unittest.TestCase):
     def _test_get_points_for_every_tracking_id(self, filename, expected_values):
         gesture_filename = self._get_filepath(filename)
         mtb_packets = get_mtb_packets(gesture_filename)
-        points = mtb_packets.get_points_for_every_tracking_id()
-        for tracking_id in expected_values:
-            self.assertEqual(len(points[tracking_id][MTB.POINTS]),
-                             expected_values[tracking_id])
+        tid_data_dict = mtb_packets.get_points_for_every_tracking_id()
+        for tid in expected_values:
+            self.assertEqual(len(tid_data_dict[tid].points),
+                             expected_values[tid])
 
     def test_get_points_for_every_tracking_id(self):
         self._test_get_points_for_every_tracking_id(
@@ -140,36 +141,37 @@ class MtbTest(unittest.TestCase):
         self._test_get_points_for_every_tracking_id(
                 'two_finger_without_slot_0.dat', {2097: 104, 2098: 10})
 
-    def _test_drumroll(self, filename, check_func):
+    def _test_drumroll(self, filename, expected_max_distance):
+        """expected_max_distance: unit in pixel"""
         gesture_filename = self._get_filepath(filename)
         mtb_packets = get_mtb_packets(gesture_filename)
-        max_distance = mtb_packets.get_max_distance_of_all_tracking_ids()
-        self.assertTrue(check_func(max_distance))
+        actual_max_distance = mtb_packets.get_max_distance_of_all_tracking_ids()
+        self.assertTrue(about_eq(actual_max_distance, expected_max_distance))
 
     def test_drumroll(self):
-        check_func = lambda x: x >= 50
-        self._test_drumroll('drumroll_lumpy.dat', check_func)
+        expected_max_distance = 52.0216301167
+        self._test_drumroll('drumroll_lumpy.dat', expected_max_distance)
 
     def test_drumroll1(self):
-        check_func = lambda x: x >= 50
-        self._test_drumroll('drumroll_lumpy_1.dat', check_func)
+        expected_max_distance = 43.5660418216
+        self._test_drumroll('drumroll_lumpy_1.dat', expected_max_distance)
 
     def test_drumroll_link(self):
-        check_func = lambda x: x >= 50
-        self._test_drumroll('drumroll_link.dat', check_func)
+        expected_max_distance = 25.6124969497
+        self._test_drumroll('drumroll_link.dat', expected_max_distance)
 
     def test_no_drumroll_link(self):
-        check_func = lambda x: x <= 20
-        self._test_drumroll('no_drumroll_link.dat', check_func)
+        expected_max_distance = 2.91547594742
+        self._test_drumroll('no_drumroll_link.dat', expected_max_distance)
 
     def test_no_drumroll_link(self):
-        check_func = lambda x: x >= 50
-        self._test_drumroll('drumroll_link_2.dat', check_func)
+        expected_max_distance = 24.8243831746
+        self._test_drumroll('drumroll_link_2.dat', expected_max_distance)
 
     def test_get_points_for_every_tracking_id2(self):
         gesture_filename = self._get_filepath('drumroll_link_2.dat')
         mtb_packets = get_mtb_packets(gesture_filename)
-        points = mtb_packets.get_points_for_every_tracking_id()
+        tid_data_dict = mtb_packets.get_points_for_every_tracking_id()
         # Check points in two tracking IDs: 95 and 104
         # Tracking ID 95: slot 0 (no explicit slot 0 assigned). This is the
         #                 only slot in the packet.
@@ -182,21 +184,24 @@ class MtbTest(unittest.TestCase):
         #                  slot in the packet. A slot 1 has already existed.
         list_104 = [(780, 373), (780, 372), (780, 372), (780, 372), (780, 373),
                     (780, 373), (781, 373)]
-        self.assertEqual(list_95, points[95][MTB.POINTS])
-        self.assertEqual(list_104, points[104][MTB.POINTS])
+        for i, xy_pair in enumerate(list_95):
+            self.assertEqual(Point(*xy_pair), tid_data_dict[95].points[i])
+        for i, xy_pair in enumerate(list_104):
+            self.assertEqual(Point(*xy_pair), tid_data_dict[104].points[i])
 
     def test_get_points_for_every_tracking_id3(self):
         filename = 'drumroll_3.dat'
         gesture_filename = self._get_filepath(filename)
         mtb_packets = get_mtb_packets(gesture_filename)
-        points = mtb_packets.get_points_for_every_tracking_id()
+        tid_data_dict = mtb_packets.get_points_for_every_tracking_id()
         # Check points in one tracking ID: 582
         # Tracking ID 582: slot 9. This is the 2nd slot in the packet.
         #                  A slot 8 has already existed.
         list_582 = [(682, 173), (667, 186), (664, 189), (664, 190), (664, 189),
                     (665, 189), (665, 189), (667, 188), (675, 185), (683, 181),
                     (693, 172), (469, 381), (471, 395), (471, 396)]
-        self.assertEqual(list_582, points[582][MTB.POINTS])
+        for i, xy_pair in enumerate(list_582):
+            self.assertEqual(Point(*xy_pair), tid_data_dict[582].points[i])
 
     def test_convert_to_evemu_format(self):
         evemu_filename = self._get_filepath('one_finger_swipe.evemu.dat')
@@ -216,19 +221,6 @@ class MtbTest(unittest.TestCase):
                 # Prefix, type, code, and value should be the same.
                 for i in [0, 2, 3, 4]:
                     self.assertEqual(evemu_original[i], evemu_converted[i])
-
-    def test_calc_farthest_distance(self):
-        filename = 'drumroll_no_points.dat'
-        gesture_filename = self._get_filepath(filename)
-        mtb_packets = get_mtb_packets(gesture_filename)
-        points = mtb_packets.get_points_for_every_tracking_id()
-        for tracking_id in points.keys():
-            # The function _calc_farthest_distance() should not incur any
-            # exception in the tracking id 242 in which there are no points.
-            if tracking_id == 242:
-                this_id_points = points[tracking_id][MTB.POINTS]
-                distance = mtb_packets._calc_farthest_distance(this_id_points)
-                self.assertEqual(distance, 0)
 
     def test_get_largest_gap_ratio(self):
         """Test get_largest_gap_ratio for one-finger and two-finger gestures."""

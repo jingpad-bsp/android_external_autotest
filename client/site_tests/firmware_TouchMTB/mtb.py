@@ -11,9 +11,19 @@ import os
 import re
 import sys
 
+from collections import defaultdict, namedtuple
+
 from firmware_constants import AXIS, GV, MTB, VAL
+from geometry.elements import Point
+from geometry.two_farthest_clusters import (
+        get_radii_of_two_minimal_enclosing_circles)
+
 sys.path.append('../../bin/input')
 from linux_input import *
+
+
+# Define TidData class to keep track of the slot, and points in a tracking ID.
+TidData = namedtuple('TidData', ['slot', 'points'])
 
 
 def make_pretty_packet(packet):
@@ -84,6 +94,97 @@ def convert_mtplot_file_to_evemu_file(mtplot_filename, evemu_ext='.evemu',
         evemu_f.write('\n'.join(evemu_packets))
 
 
+class MtbEvent:
+    """Determine what an MTB event is.
+
+    This class is just a bundle of a variety of classmethods about
+    MTB event classification.
+    """
+    @classmethod
+    def is_ABS_MT_TRACKING_ID(cls, event):
+        """Is this event ABS_MT_TRACKING_ID?"""
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_TRACKING_ID)
+
+    @classmethod
+    def is_new_contact(cls, event):
+        """Is this packet generating new contact (Tracking ID)?"""
+        return cls.is_ABS_MT_TRACKING_ID(event) and event[MTB.EV_VALUE] != -1
+
+    @classmethod
+    def is_finger_leaving(cls, event):
+        """Is the finger is leaving in this packet?"""
+        return cls.is_ABS_MT_TRACKING_ID(event) and event[MTB.EV_VALUE] == -1
+
+    @classmethod
+    def is_ABS_MT_SLOT(cls, event):
+        """Is this packet ABS_MT_SLOT?"""
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_SLOT)
+
+    @classmethod
+    def is_ABS_MT_POSITION_X(cls, event):
+        """Is this packet ABS_MT_POSITION_X?"""
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_POSITION_X)
+
+    @classmethod
+    def is_ABS_MT_POSITION_Y(cls, event):
+        """Is this packet ABS_MT_POSITION_Y?"""
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_POSITION_Y)
+
+    @classmethod
+    def is_EV_KEY(cls, event):
+        """Is this an EV_KEY event?"""
+        return (not event.get(MTB.SYN_REPORT) and event[MTB.EV_TYPE] == EV_KEY)
+
+    @classmethod
+    def is_BTN_LEFT(cls, event):
+        """Is this event BTN_LEFT?"""
+        return (cls.is_EV_KEY(event) and event[MTB.EV_CODE] == BTN_LEFT)
+
+    @classmethod
+    def is_BTN_TOOL_FINGER(cls, event):
+        """Is this event BTN_TOOL_FINGER?"""
+        return (cls.is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_FINGER)
+
+    @classmethod
+    def is_BTN_TOOL_DOUBLETAP(cls, event):
+        """Is this event BTN_TOOL_DOUBLETAP?"""
+        return (cls.is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_DOUBLETAP)
+
+    @classmethod
+    def is_BTN_TOOL_TRIPLETAP(cls, event):
+        """Is this event BTN_TOOL_TRIPLETAP?"""
+        return (cls.is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_TRIPLETAP)
+
+    @classmethod
+    def is_BTN_TOOL_QUADTAP(cls, event):
+        """Is this event BTN_TOOL_QUADTAP?"""
+        return (cls.is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_QUADTAP)
+
+    @classmethod
+    def is_BTN_TOOL_QUINTTAP(cls, event):
+        """Is this event BTN_TOOL_QUINTTAP?"""
+        return (cls.is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOOL_QUINTTAP)
+
+    @classmethod
+    def is_BTN_TOUCH(cls, event):
+        """Is this event BTN_TOUCH?"""
+        return (cls.is_EV_KEY(event) and
+                event[MTB.EV_CODE] == BTN_TOUCH)
+
+
 class MtbEvemu:
     """A simplified class provides MTB utilities for evemu event format."""
     def __init__(self):
@@ -105,10 +206,62 @@ class MtbEvemu:
     def process_event(self, event):
         """Process the event and count existing fingers."""
         converted_event = self._convert_event(event)
-        if self.mtb._is_new_contact(converted_event):
+        if MtbEvent.is_new_contact(converted_event):
             self.num_tracking_ids += 1
-        elif self.mtb._is_finger_leaving(converted_event):
+        elif MtbEvent.is_finger_leaving(converted_event):
             self.num_tracking_ids -= 1
+
+
+class MtbStateMachine:
+    """The state machine for MTB events.
+
+    It traces the slots, tracking IDs, x coordinates, y coordinates, etc. If
+    these values are not changed explicitly, the values are kept across events.
+
+    Note that the kernel driver only reports what is changed. Due to its
+    internal state machine, it is possible that either x or y in
+    self.points[tid] is None initially even the instance has been created.
+    """
+    def __init__(self):
+        # Set the default slot to 0 as it may not be displayed in the MTB events
+        self.tid = None
+        self.live_tids = []
+        self.slot = 0
+        self.slot_to_tid = {}
+        self.points = {}
+        self.new_tid = False
+
+    def add_event(self, event):
+        """Update the internal states with the event.
+
+        @param event: an MTB event
+        """
+        self.new_tid = False
+
+        # Switch the slot.
+        if MtbEvent.is_ABS_MT_SLOT(event):
+            self.slot = event[MTB.EV_VALUE]
+
+        # Get a new tracking ID.
+        elif MtbEvent.is_new_contact(event):
+            self.tid = event[MTB.EV_VALUE]
+            self.live_tids.append(self.tid)
+            self.slot_to_tid[self.slot] = self.tid
+            self.new_tid = True
+            self.points[self.tid] = Point()
+
+        # A slot is leaving. Remove the slot and its tracking ID.
+        elif MtbEvent.is_finger_leaving(event):
+            self.live_tids.remove(self.slot_to_tid[self.slot])
+            del self.slot_to_tid[self.slot]
+
+        # Update x value.
+        elif MtbEvent.is_ABS_MT_POSITION_X(event):
+            self.points[self.slot_to_tid[self.slot]].x = event[MTB.EV_VALUE]
+
+        # Update y value.
+        elif MtbEvent.is_ABS_MT_POSITION_Y(event):
+            self.points[self.slot_to_tid[self.slot]].y = event[MTB.EV_VALUE]
 
 
 class Mtb:
@@ -128,103 +281,34 @@ class Mtb:
         self.MAX_FINGERS = 5
         # One-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_FINGER: 0 -> 1 -> 0
-        self.check_event_func_list[1] = [self._is_BTN_TOUCH,
-                                         self._is_BTN_TOOL_FINGER]
+        self.check_event_func_list[1] = [MtbEvent.is_BTN_TOUCH,
+                                         MtbEvent.is_BTN_TOOL_FINGER]
 
         # Two-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_DOUBLETAP: 0 -> 1 -> 0
-        self.check_event_func_list[2] = [self._is_BTN_TOUCH,
-                                         self._is_BTN_TOOL_DOUBLETAP]
+        self.check_event_func_list[2] = [MtbEvent.is_BTN_TOUCH,
+                                         MtbEvent.is_BTN_TOOL_DOUBLETAP]
 
         # Three-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_TRIPLETAP: 0 -> 1 -> 0
-        self.check_event_func_list[3] = [self._is_BTN_TOUCH,
-                                         self._is_BTN_TOOL_TRIPLETAP]
+        self.check_event_func_list[3] = [MtbEvent.is_BTN_TOUCH,
+                                         MtbEvent.is_BTN_TOOL_TRIPLETAP]
 
         # Four-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_QUADTAP: 0 -> 1 -> 0
-        self.check_event_func_list[4] = [self._is_BTN_TOUCH,
-                                         self._is_BTN_TOOL_QUADTAP]
+        self.check_event_func_list[4] = [MtbEvent.is_BTN_TOUCH,
+                                         MtbEvent.is_BTN_TOOL_QUADTAP]
 
         # Five-finger touching the device should generate the following events:
         #     BTN_TOUCH, and BTN_TOOL_QUINTTAP: 0 -> 1 -> 0
-        self.check_event_func_list[5] = [self._is_BTN_TOUCH,
-                                         self._is_BTN_TOOL_QUINTTAP]
+        self.check_event_func_list[5] = [MtbEvent.is_BTN_TOUCH,
+                                         MtbEvent.is_BTN_TOOL_QUINTTAP]
 
         # Physical click should generate the following events:
         #     BTN_LEFT: 0 -> 1 -> 0
-        self.check_event_func_click = [self._is_BTN_LEFT,]
+        self.check_event_func_click = [MtbEvent.is_BTN_LEFT,]
 
 
-    def _is_ABS_MT_TRACKING_ID(self, event):
-        """Is this event ABS_MT_TRACKING_ID?"""
-        return (not event.get(MTB.SYN_REPORT) and
-                event[MTB.EV_TYPE] == EV_ABS and
-                event[MTB.EV_CODE] == ABS_MT_TRACKING_ID)
-
-    def _is_new_contact(self, event):
-        """Is this packet generating new contact (Tracking ID)?"""
-        return self._is_ABS_MT_TRACKING_ID(event) and event[MTB.EV_VALUE] != -1
-
-    def _is_finger_leaving(self, event):
-        """Is the finger is leaving in this packet?"""
-        return self._is_ABS_MT_TRACKING_ID(event) and event[MTB.EV_VALUE] == -1
-
-    def _is_ABS_MT_SLOT(self, event):
-        """Is this packet ABS_MT_SLOT?"""
-        return (not event.get(MTB.SYN_REPORT) and
-                event[MTB.EV_TYPE] == EV_ABS and
-                event[MTB.EV_CODE] == ABS_MT_SLOT)
-
-    def _is_ABS_MT_POSITION_X(self, event):
-        """Is this packet ABS_MT_POSITION_X?"""
-        return (not event.get(MTB.SYN_REPORT) and
-                event[MTB.EV_TYPE] == EV_ABS and
-                event[MTB.EV_CODE] == ABS_MT_POSITION_X)
-
-    def _is_ABS_MT_POSITION_Y(self, event):
-        """Is this packet ABS_MT_POSITION_Y?"""
-        return (not event.get(MTB.SYN_REPORT) and
-                event[MTB.EV_TYPE] == EV_ABS and
-                event[MTB.EV_CODE] == ABS_MT_POSITION_Y)
-
-    def _is_EV_KEY(self, event):
-        """Is this an EV_KEY event?"""
-        return (not event.get(MTB.SYN_REPORT) and event[MTB.EV_TYPE] == EV_KEY)
-
-    def _is_BTN_LEFT(self, event):
-        """Is this event BTN_LEFT?"""
-        return (self._is_EV_KEY(event) and event[MTB.EV_CODE] == BTN_LEFT)
-
-    def _is_BTN_TOOL_FINGER(self, event):
-        """Is this event BTN_TOOL_FINGER?"""
-        return (self._is_EV_KEY(event) and
-                event[MTB.EV_CODE] == BTN_TOOL_FINGER)
-
-    def _is_BTN_TOOL_DOUBLETAP(self, event):
-        """Is this event BTN_TOOL_DOUBLETAP?"""
-        return (self._is_EV_KEY(event) and
-                event[MTB.EV_CODE] == BTN_TOOL_DOUBLETAP)
-
-    def _is_BTN_TOOL_TRIPLETAP(self, event):
-        """Is this event BTN_TOOL_TRIPLETAP?"""
-        return (self._is_EV_KEY(event) and
-                event[MTB.EV_CODE] == BTN_TOOL_TRIPLETAP)
-
-    def _is_BTN_TOOL_QUADTAP(self, event):
-        """Is this event BTN_TOOL_QUADTAP?"""
-        return (self._is_EV_KEY(event) and
-                event[MTB.EV_CODE] == BTN_TOOL_QUADTAP)
-
-    def _is_BTN_TOOL_QUINTTAP(self, event):
-        """Is this event BTN_TOOL_QUINTTAP?"""
-        return (self._is_EV_KEY(event) and
-                event[MTB.EV_CODE] == BTN_TOOL_QUINTTAP)
-
-    def _is_BTN_TOUCH(self, event):
-        """Is this event BTN_TOUCH?"""
-        return (self._is_EV_KEY(event) and
-                event[MTB.EV_CODE] == BTN_TOUCH)
 
     def _calc_movement_for_axis(self, x, prev_x):
         """Calculate the distance moved in an axis."""
@@ -254,7 +338,7 @@ class Mtb:
         num_contacts = 0
         for packet in self.packets:
             for event in packet:
-                if self._is_new_contact(event):
+                if MtbEvent.is_new_contact(event):
                     num_contacts += 1
         return num_contacts
 
@@ -279,7 +363,7 @@ class Mtb:
                 target_slot_live = True
                 initial_default_slot_0 = False
             for event in packet:
-                if self._is_ABS_MT_SLOT(event):
+                if MtbEvent.is_ABS_MT_SLOT(event):
                     slot = event[MTB.EV_VALUE]
                     if slot == target_slot and not target_slot_live:
                         target_slot_live = True
@@ -287,13 +371,13 @@ class Mtb:
                     continue
 
                 # Update x value if available.
-                if self._is_ABS_MT_POSITION_X(event):
+                if MtbEvent.is_ABS_MT_POSITION_X(event):
                     prev_x = event[MTB.EV_VALUE]
                 # Update y value if available.
-                elif self._is_ABS_MT_POSITION_Y(event):
+                elif MtbEvent.is_ABS_MT_POSITION_Y(event):
                     prev_y = event[MTB.EV_VALUE]
                 # Check if the finger at the target_slot is leaving.
-                elif self._is_finger_leaving(event):
+                elif MtbEvent.is_finger_leaving(event):
                     target_slot_live = False
 
             # If target_slot is alive, and both x and y have
@@ -306,7 +390,7 @@ class Mtb:
                 list_y.append(prev_y)
         return (list_x, list_y)
 
-    def get_points_for_every_tracking_id(self):
+    def old_get_points_for_every_tracking_id(self):
         """Extract points in every tracking id.
 
         This method is applicable when fingers are contacting and leaving
@@ -326,11 +410,11 @@ class Mtb:
         y = {}
         for packet in self.packets:
             for event in packet:
-                if self._is_ABS_MT_SLOT(event):
+                if MtbEvent.is_ABS_MT_SLOT(event):
                     slot = event[MTB.EV_VALUE]
 
                 # Find a new tracking ID
-                if self._is_new_contact(event):
+                if MtbEvent.is_new_contact(event):
                     tracking_id = event[MTB.EV_VALUE]
                     tracking_ids_all.append(tracking_id)
                     tracking_ids_live.append(tracking_id)
@@ -342,17 +426,17 @@ class Mtb:
                     y[tracking_id] = None
 
                 # A tracking ID is leaving.
-                elif self._is_finger_leaving(event):
+                elif MtbEvent.is_finger_leaving(event):
                     leaving_tracking_id = slot_to_tracking_id[slot]
                     tracking_ids_live.remove(leaving_tracking_id)
                     del slot_to_tracking_id[slot]
 
                 # Update x value if available.
-                elif self._is_ABS_MT_POSITION_X(event):
+                elif MtbEvent.is_ABS_MT_POSITION_X(event):
                     x[slot_to_tracking_id[slot]] = event[MTB.EV_VALUE]
 
                 # Update y value if available.
-                elif self._is_ABS_MT_POSITION_Y(event):
+                elif MtbEvent.is_ABS_MT_POSITION_Y(event):
                     y[slot_to_tracking_id[slot]] = event[MTB.EV_VALUE]
 
             for tracking_id in tracking_ids_live:
@@ -362,29 +446,33 @@ class Mtb:
 
         return points
 
-    def _calc_farthest_distance(self, points):
-        """Calculate the farthest distance of points."""
-        # TODO(josephsih): track state across different tracking IDs.
-        # The evdev driver only reports the delta of a slot state. It may only
-        # reports x positions if y positions are exactly the same as those
-        # generated by previous finger with the same slot ID. In this special
-        # case, the points would be an empty list. If we could track the
-        # states including x, y positions and z pressure, we could fill in
-        # those information into the points. The empty points cases may happen
-        # when performing drumroll gestures.
-        if not points:
-            return 0
-        return max([self._calc_distance(point, points[0]) for point in points])
+    def get_points_for_every_tracking_id(self):
+        """Extract points in every tracking id.
+
+        This method is applicable when fingers are contacting and leaving
+        the touch device continuously. The same slot number, e.g., slot 0 or
+        slot 1, may be used for multiple times.
+        """
+        # tid_data_dict is a dictionary of TidData
+        tid_data_dict = {}
+        sm = MtbStateMachine()
+        for packet in self.packets:
+            for event in packet:
+                # Inject events into the state machine to update its state.
+                sm.add_event(event)
+            # Add the points in this packet into tid_data_dict.
+            for tid in sm.live_tids:
+                if sm.points[tid]:
+                    point = copy.deepcopy(sm.points[tid])
+                    tid_data_dict.setdefault(tid,
+                            TidData(sm.slot, [])).points.append(point)
+        return tid_data_dict
 
     def get_max_distance_of_all_tracking_ids(self):
         """Get the max moving distance of all tracking IDs."""
-        points = self.get_points_for_every_tracking_id()
-        max_distance = float('-infinity')
-        for tracking_id in sorted(points.keys()):
-            slot_points = points[tracking_id][MTB.POINTS]
-            distance = self._calc_farthest_distance(slot_points)
-            max_distance = max(max_distance, distance)
-        return max_distance
+        tid_data_dict = self.get_points_for_every_tracking_id()
+        return max(max(get_radii_of_two_minimal_enclosing_circles(
+                       tid_data.points) for tid_data in tid_data_dict.values()))
 
     def get_x_y_multiple_slots(self, target_slots):
         """Extract points in multiple slots.
@@ -406,19 +494,19 @@ class Mtb:
         y = self._init_dict(target_slots, None)
         for packet in self.packets:
             for event in packet:
-                if self._is_ABS_MT_SLOT(event):
+                if MtbEvent.is_ABS_MT_SLOT(event):
                     slot = event[MTB.EV_VALUE]
                 if slot not in target_slots:
                     continue
 
-                if self._is_ABS_MT_TRACKING_ID(event):
-                    if self._is_new_contact(event):
+                if MtbEvent.is_ABS_MT_TRACKING_ID(event):
+                    if MtbEvent.is_new_contact(event):
                         slot_exists[slot] = True
-                    elif self._is_finger_leaving(event):
+                    elif MtbEvent.is_finger_leaving(event):
                         slot_exists[slot] = False
-                elif self._is_ABS_MT_POSITION_X(event):
+                elif MtbEvent.is_ABS_MT_POSITION_X(event):
                     x[slot] = event[MTB.EV_VALUE]
-                elif self._is_ABS_MT_POSITION_Y(event):
+                elif MtbEvent.is_ABS_MT_POSITION_Y(event):
                     y[slot] = event[MTB.EV_VALUE]
 
             # Note:
@@ -494,11 +582,11 @@ class Mtb:
         max_x = max_y = float('-infinity')
         for packet in self.packets:
             for event in packet:
-                if self._is_ABS_MT_POSITION_X(event):
+                if MtbEvent.is_ABS_MT_POSITION_X(event):
                     x = event[MTB.EV_VALUE]
                     min_x = min(min_x, x)
                     max_x = max(max_x, x)
-                elif self._is_ABS_MT_POSITION_Y(event):
+                elif MtbEvent.is_ABS_MT_POSITION_Y(event):
                     y = event[MTB.EV_VALUE]
                     min_y = min(min_y, y)
                     max_y = max(max_y, y)
@@ -511,13 +599,15 @@ class Mtb:
         slot = None
         for packet in self.packets:
             for event in packet:
-                if self._is_ABS_MT_SLOT(event):
+                if MtbEvent.is_ABS_MT_SLOT(event):
                     slot = event[MTB.EV_VALUE]
-                elif self._is_ABS_MT_POSITION_X(event) and slot == target_slot:
+                elif (MtbEvent.is_ABS_MT_POSITION_X(event) and
+                      slot == target_slot):
                     x = event[MTB.EV_VALUE]
                     accu_x += self._calc_movement_for_axis(x, prev_x)
                     prev_x = x
-                elif self._is_ABS_MT_POSITION_Y(event) and slot == target_slot:
+                elif (MtbEvent.is_ABS_MT_POSITION_Y(event) and
+                      slot == target_slot):
                     y = event[MTB.EV_VALUE]
                     accu_y += self._calc_movement_for_axis(y, prev_y)
                     prev_y = y
@@ -635,25 +725,19 @@ class Mtb:
 
     def get_displacements_for_slots(self, min_slot):
         """Get the displacements for slots >= min_slot."""
-        points = self.get_points_for_every_tracking_id()
-        slots_to_delete = []
+        tid_data_dict = self.get_points_for_every_tracking_id()
 
-        # Collect those tracking IDs with slots < min_slot and delete them.
-        # Python does not allow to modify a dictionary while iterating over it.
-        for tid in points:
-            slot = points[tid][MTB.SLOT]
-            tid_points = points[tid][MTB.POINTS]
-            if (slot < min_slot) or (tid_points == []):
-                slots_to_delete.append(tid)
-        for tid in slots_to_delete:
-            del points[tid]
+        # Remove those tracking IDs with slots < min_slot
+        for tid, tid_data in tid_data_dict.items():
+            if tid_data.slot < min_slot:
+                del tid_data_dict[tid]
 
         # Calculate the displacements of the coordinates in the tracking IDs.
-        displacements = {}
-        for tid in points:
-            list_x, list_y = zip(*points[tid][MTB.POINTS])
-            displacements[tid] = {}
-            displacements[tid][MTB.SLOT] = points[tid][MTB.SLOT]
+        displacements = defaultdict(dict)
+        for tid, tid_data in tid_data_dict.items():
+            list_x, list_y = zip(*[(p.x, p.y) for p in tid_data.points])
+            # list_x, list_y = zip(*tid_data.points)
+            displacements[tid][MTB.SLOT] = tid_data.slot
             displacements[tid][AXIS.X] = self.calc_displacement(list_x)
             displacements[tid][AXIS.Y] = self.calc_displacement(list_y)
 

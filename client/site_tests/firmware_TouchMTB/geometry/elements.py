@@ -9,7 +9,7 @@
 TOLERANCE = 0.00000001
 
 
-def _about_eq(f1, f2):
+def about_eq(f1, f2):
     """Determine if two numbers are about equal within the TOLERANCE.
 
     @param f1: float number 1
@@ -20,21 +20,25 @@ def _about_eq(f1, f2):
 
 class Point:
     """A point class."""
-    def __init__(self, x, y):
+    def __init__(self, x=None, y=None):
         """Initialize a point.
 
         @param x: x coordinate
         @param y: y coordinate
         """
-        self.x = float(x)
-        self.y = float(y)
+        self.x = x if x is None else float(x)
+        self.y = y if y is None else float(y)
+
+    def __bool__(self):
+        """A boolean indicating if this point is defined."""
+        return self.x is not None and self.y is not None
 
     def __eq__(self, p):
         """Determine if this point is equal to the specified point, p.
 
         @param p: a point
         """
-        return _about_eq(self.x, p.x) and _about_eq(self.y, p.y)
+        return about_eq(self.x, p.x) and about_eq(self.y, p.y)
 
     def __hash__(self):
         """Redefine the hash function to meet the consistency requirement.
@@ -57,6 +61,9 @@ class Point:
         dist_x = p.x - self.x
         dist_y = p.y - self.y
         return (dist_x ** 2 + dist_y ** 2 ) ** 0.5
+
+    # __bool__ is used in Python 3.x and __nonzero__ in Python 2.x
+    __nonzero__ = __bool__
 
 
 class Circle:
@@ -86,7 +93,7 @@ class Circle:
 
         @param c: a circle
         """
-        return self.center == c.center and _about_eq(self.radius, c.radius)
+        return self.center == c.center and about_eq(self.radius, c.radius)
 
     def __hash__(self):
         """Redefine the hash function to meet the consistency requirement.

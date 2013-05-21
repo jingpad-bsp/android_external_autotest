@@ -106,7 +106,7 @@ class MinicircleTest(unittest.TestCase):
         # Since every point is unique in the tests, we could simply use Set
         # to compare the clusters.
         for expected_cluster1, expected_cluster2 in tests:
-            points = expected_cluster1 + expected_cluster2
+            points = [Point(*p) for p in expected_cluster1 + expected_cluster2]
             # A fixed seed is used so that it gets the same shuffles every time.
             random.shuffle(points, lambda: 0.1234)
             actual_cluster1, actual_cluster2 = get_two_farthest_clusters(points)

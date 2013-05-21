@@ -116,6 +116,7 @@ class DrumrollValidatorTest(BaseValidatorTest):
         """Should catch the drumroll on lumpy.
 
         Issue 7809: Lumpy: Drumroll bug in firmware
+        Max distance: 52.02 px
         """
         filename = 'drumroll_lumpy.dat'
         score = self._test_drumroll(filename, self.criteria,
@@ -126,16 +127,18 @@ class DrumrollValidatorTest(BaseValidatorTest):
         """Should catch the drumroll on lumpy.
 
         Issue 7809: Lumpy: Drumroll bug in firmware
+        Max distance: 43.57 px
         """
         filename = 'drumroll_lumpy_1.dat'
         score = self._test_drumroll(filename, self.criteria,
                                     self.mock_device[self.LUMPY])
-        self.assertTrue(score == 0)
+        self.assertTrue(score <= 0.15)
 
     def test_no_drumroll_link(self):
         """Should pass (score == 1) when there is no drumroll.
 
         Issue 7809: Lumpy: Drumroll bug in firmware
+        Max distance: 2.92 px
         """
         filename = 'no_drumroll_link.dat'
         score = self._test_drumroll(filename, self.criteria,
