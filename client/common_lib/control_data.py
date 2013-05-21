@@ -1,7 +1,13 @@
 # pylint: disable-msg=C0111
 # Copyright 2008 Google Inc. Released under the GPL v2
 
-import compiler, logging, textwrap
+import warnings
+with warnings.catch_warnings():
+    # The 'compiler' module is gone in Python 3.0.  Let's not say
+    # so in every log file.
+    warnings.simplefilter("ignore", DeprecationWarning)
+    import compiler
+import logging, textwrap
 
 from autotest_lib.client.common_lib import enum
 
