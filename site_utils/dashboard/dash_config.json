@@ -105,8 +105,6 @@
              {"categories": "pyauto_perf",
               "cc": ["dennisjeffrey@google.com",
                      "puneetster@google.com"]},
-             {"categories": "security",
-              "cc": ["sumitg@google.com"]},
              {"categories": "sync",
               "cc": ["rsimha@google.com"]},
              {"categories": "video",
