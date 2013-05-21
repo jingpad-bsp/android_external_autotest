@@ -250,12 +250,12 @@ def upload_to_chrome_dashboard(data_point_info, platform, test_name,
 
     """
 
-    # Start slow - only upload Telemetry results for one bot right now.
+    # Only upload Telemetry results right now (not ChromeOS-specific results).
     # TODO(dennisjeffrey): Remove the check below as soon as we're ready to
     # upload the full suite of perf results to the new dashboard.  The check is
     # only in place temporarily to allow a subset of results to be uploaded
     # until we're ready to upload everything.
-    if platform != 'lumpy' or not test_name.startswith('telemetry_Benchmarks'):
+    if not test_name.startswith('telemetry_Benchmarks'):
         return
 
     # Generate a warning and return if any expected values in |data_point_info|
