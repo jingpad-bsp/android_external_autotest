@@ -93,7 +93,7 @@ class login_OwnershipRetaken(test.test):
 
 
     def cleanup(self):
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(ownership.TESTUSER)
         if self._tempdir: self._tempdir.clean()
         cros_ui.start(allow_fail=True)
         super(login_OwnershipRetaken, self).cleanup()

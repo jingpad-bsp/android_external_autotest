@@ -20,7 +20,7 @@ class logging_LogVolume(cros_ui_test.UITest):
 
 
     def run_once(self, top_patterns=50):
-        login.wait_for_cryptohome()
+        login.wait_for_cryptohome(self.username)
 
         self._perf = {}
         self.log_stateful_used()

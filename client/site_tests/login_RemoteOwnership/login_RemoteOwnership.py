@@ -49,14 +49,14 @@ class login_RemoteOwnership(test.test):
             policy.generate_policy(self.srcdir, priv, pub, self._poldata), sm)
 
         # Rotate key gracefully.
-        username = ''.join(random.sample(string.ascii_lowercase,6)) + "@foo.com"
+        self.username = ''.join(random.sample(string.ascii_lowercase,6)) + "@foo.com"
         password = ''.join(random.sample(string.ascii_lowercase,6))
-        cryptohome.remove_vault(username)
-        cryptohome.mount_vault(username, password, create=True)
+        cryptohome.remove_vault(self.username)
+        cryptohome.mount_vault(self.username, password, create=True)
 
         (new_priv, new_pub) = ownership.pairgen_as_data()
 
-        if not sm.StartSession(username, ''):
+        if not sm.StartSession(self.username, ''):
             raise error.TestFail('Could not start session for random user')
 
         policy.push_policy_and_verify(
@@ -75,5 +75,5 @@ class login_RemoteOwnership(test.test):
 
 
     def cleanup(self):
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(self.username)
         super(login_RemoteOwnership, self).cleanup()

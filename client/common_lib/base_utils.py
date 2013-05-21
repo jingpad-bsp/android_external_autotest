@@ -79,12 +79,18 @@ class BgJob(object):
 
         if verbose:
             logging.debug("Running '%s'" % command)
-        self.sp = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
-                                   preexec_fn=self._reset_sigpipe, shell=True,
-                                   executable="/bin/bash",
-                                   stdin=stdin)
-
+        if type(command) == list:
+            self.sp = subprocess.Popen(command,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       preexec_fn=self._reset_sigpipe,
+                                       stdin=stdin)
+        else:
+            self.sp = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       preexec_fn=self._reset_sigpipe, shell=True,
+                                       executable="/bin/bash",
+                                       stdin=stdin)
 
     def output_prepare(self, stdout_file=None, stderr_file=None):
         self.stdout_file = stdout_file
@@ -1354,7 +1360,7 @@ class CmdResult(object):
                 "Duration: %s\n"
                 "%s"
                 "%s"
-                % (wrapper.fill(self.command), self.exit_status,
+                % (wrapper.fill(str(self.command)), self.exit_status,
                 self.duration, stdout, stderr))
 
 

@@ -16,6 +16,12 @@ class security_ProfilePermissions(cros_ui_test.UITest):
     version = 2
     _HOMEDIR_MODE = 0710
 
+    def initialize(self, creds='$default'):
+        try:
+            super(security_ProfilePermissions, self).initialize(creds)
+        except Exception as err:
+            raise error.TestFailRetry(err)
+
     def check_owner_mode(self, path, expected_owner, expected_mode):
         """
         Checks if the file/directory at 'path' is owned by 'expected_owner'
@@ -37,13 +43,16 @@ class security_ProfilePermissions(cros_ui_test.UITest):
 
 
     def run_once(self):
+        username = self.username or cryptohome.GUEST_USER_NAME
+        login.wait_for_cryptohome(username)
+
         """Check permissions within cryptohome for anything too permissive."""
         passes = []
 
         homepath = "/home/chronos"
         passes.append(self.check_owner_mode(homepath, "chronos", 0755))
 
-        user_mountpt = constants.CRYPTOHOME_MOUNT_PT
+        user_mountpt = cryptohome.user_path(username)
         passes.append(self.check_owner_mode(user_mountpt, "chronos",
                                             self._HOMEDIR_MODE))
 
@@ -59,13 +68,14 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             ('find -L "%s" -path "%s" -o '
              # Avoid false-positives on SingletonLock, SingletonCookie, etc.
              ' \\( -name "Singleton*" -a -type l \\) -o '
+             ' -path "%s/user" -prune -o '
              ' -path "%s/Downloads" -prune -o '
              ' -path "%s/flimflam" -prune -o '
              ' -path "%s/shill" -prune -o '
              ' -path "%s/.chaps" -prune -o '
              ' -path "%s/u-*" -prune -o '
              ' \\( -perm /022 -o \\! -user chronos \\) -ls') %
-            (homepath, homepath, user_mountpt, user_mountpt, user_mountpt,
+            (homepath, homepath, homepath, user_mountpt, user_mountpt, user_mountpt,
             user_mountpt, homepath),
             # /home/chronos/user and /home/chronos/user/Downloads are owned by
             # the chronos-access group and with a group execute permission.
@@ -96,10 +106,11 @@ class security_ProfilePermissions(cros_ui_test.UITest):
         # This next section only applies if we have a real vault mounted
         # (ie, not a BWSI tmpfs).
         if cryptohome.is_vault_mounted(
+                username,
                 device_regex=constants.CRYPTOHOME_DEV_REGEX_REGULAR_USER):
             # Also check the permissions of the underlying vault and
             # supporting directory structure.
-            vaultpath = cryptohome.get_mounted_vault_devices()[0]
+            vaultpath = cryptohome.get_mounted_vault_devices(username)[0]
 
             passes.append(self.check_owner_mode(vaultpath, "root", 0700))
             passes.append(self.check_owner_mode(vaultpath + "/../master.0",

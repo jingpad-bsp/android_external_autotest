@@ -123,7 +123,7 @@ class login_UserPolicyKeys(test.test):
         self._verify_key_file(key_file)
 
         # Restart the ui; the key should be deleted.
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(ownership.TESTUSER)
         cros_ui.restart()
         if os.path.exists(key_file):
             raise error.TestFail('%s exists after restarting ui!' %
@@ -141,5 +141,5 @@ class login_UserPolicyKeys(test.test):
 
 
     def cleanup(self):
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(ownership.TESTUSER)
         super(login_UserPolicyKeys, self).cleanup()

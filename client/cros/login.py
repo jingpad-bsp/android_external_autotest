@@ -91,7 +91,7 @@ def wait_for_browser_exit(crash_msg, timeout=cros_ui.DEFAULT_TIMEOUT):
       return False
 
 
-def wait_for_cryptohome(timeout=cros_ui.DEFAULT_TIMEOUT):
+def wait_for_cryptohome(user, timeout=cros_ui.DEFAULT_TIMEOUT):
     """Wait until cryptohome is mounted.
 
     Args:
@@ -101,7 +101,7 @@ def wait_for_cryptohome(timeout=cros_ui.DEFAULT_TIMEOUT):
         TimeoutError: cryptohome wasn't mounted before timeout
     """
     wait_for_condition(
-        condition=lambda: cryptohome.is_vault_mounted(),
+        condition=lambda: cryptohome.is_vault_mounted(user),
         timeout_msg='Timed out waiting for cryptohome to be mounted',
         timeout=timeout,
         process='cryptohomed',

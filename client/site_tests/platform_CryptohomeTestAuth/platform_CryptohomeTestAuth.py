@@ -23,7 +23,7 @@ class platform_CryptohomeTestAuth(test.test):
 
 
         # Ensure that the user directory is unmounted and does not exist.
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(test_user)
         cryptohome.remove_vault(test_user)
         if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
             raise error.TestFail('Could not remove the test user.')
@@ -43,7 +43,7 @@ class platform_CryptohomeTestAuth(test.test):
                                  'while mounted.')
 
         # Unmount the directory
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(test_user)
         # Ensure that the user directory is not mounted
         if cryptohome.is_vault_mounted(user=test_user, allow_fail=True):
             raise error.TestFail('Cryptohome did not unmount the user.')
@@ -63,7 +63,7 @@ class platform_CryptohomeTestAuth(test.test):
         cryptohome.mount_vault(test_user, test_password)
 
         # Finally, unmount and destroy the vault again.
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(test_user)
         cryptohome.remove_vault(test_user)
         if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
             raise error.TestFail('Could not destroy the vault.')

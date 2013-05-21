@@ -43,5 +43,5 @@ class platform_SessionManagerTerm(test.test):
 
 
     def cleanup(self):
-        cryptohome.unmount_vault()
+        cryptohome.unmount_vault(self._testuser)
         super(platform_SessionManagerTerm, self).cleanup()

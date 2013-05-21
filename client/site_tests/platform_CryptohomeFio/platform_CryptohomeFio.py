@@ -75,7 +75,7 @@ class platform_CryptohomeFio(test.test):
     def cleanup(self):
         logging.info('Finished with FS stress, cleaning up.')
         if self.__mount_cryptohome:
-            site_cryptohome.unmount_vault()
+            site_cryptohome.unmount_vault(TEST_USER)
             site_cryptohome.remove_vault(TEST_USER)
         else:
             shutil.rmtree(self.__work_dir)

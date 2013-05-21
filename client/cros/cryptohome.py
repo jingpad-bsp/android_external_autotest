@@ -9,6 +9,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
+GUEST_USER_NAME = '$guest'
 
 class ChromiumOSError(error.TestError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -22,18 +23,18 @@ def __run_cmd(cmd):
 
 def get_user_hash(user):
     """Get the user hash for the given user."""
-    hash_cmd = CRYPTOHOME_CMD + ' --action=obfuscate_user --user=%s' % user
-    return __run_cmd(hash_cmd)
+    return utils.system_output(['cryptohome', '--action=obfuscate_user',
+                                '--user=%s' % user])
 
 
 def user_path(user):
     """Get the user mount point for the given user."""
-    return utils.system_output('cryptohome-path user %s' % user)
+    return utils.system_output(['cryptohome-path', 'user', user])
 
 
 def system_path(user):
     """Get the system mount point for the given user."""
-    return utils.system_output('cryptohome-path system %s' % user)
+    return utils.system_output(['cryptohome-path', 'system', user])
 
 
 def ensure_clean_cryptohome_for(user, password=None):
@@ -131,11 +132,11 @@ def remove_all_vaults():
 
 def mount_vault(user, password, create=False):
     """Mount the given user's vault."""
-    cmd = (CRYPTOHOME_CMD + ' --action=mount --user=%s --password=%s' %
-           (user, password))
+    args = [CRYPTOHOME_CMD, '--action=mount', '--user=%s' % user,
+            '--password=%s' % password]
     if create:
-        cmd += ' --create'
-    __run_cmd(cmd)
+        args.append('--create')
+    print utils.system_output(args)
     # Ensure that the vault exists in the shadow directory.
     user_hash = get_user_hash(user)
     if not os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
@@ -150,21 +151,19 @@ def mount_vault(user, password, create=False):
 
 def mount_guest():
     """Mount the given user's vault."""
-    cmd = CRYPTOHOME_CMD + ' --action=mount_guest'
-    __run_cmd(cmd)
+    print utils.system_output([CRYPTOHOME_CMD, '--action=mount_guest'])
     # Ensure that the guest tmpfs is mounted.
     if not is_guest_vault_mounted(allow_fail=True):
         raise ChromiumOSError('Cryptohome did not mount tmpfs.')
 
 
 def test_auth(user, password):
-    cmd = (CRYPTOHOME_CMD + ' --action=test_auth --user=%s --password=%s' %
-           (user, password))
-    cmd += ' --async'
-    return 'Authentication succeeded' in __run_cmd(cmd)
+    cmd = [CRYPTOHOME_CMD, '--action=test_auth', '--user=%s' % user,
+           '--password=%s' % password, '--async']
+    return 'Authentication succeeded' in utils.system_output(cmd)
 
 
-def unmount_vault(user=None):
+def unmount_vault(user):
     """Unmount the given user's vault.
 
     Once unmounting for a specific user is supported, the user parameter will
@@ -173,19 +172,20 @@ def unmount_vault(user=None):
     cmd = (CRYPTOHOME_CMD + ' --action=unmount')
     __run_cmd(cmd)
     # Ensure that the vault is not mounted.
-    if is_vault_mounted(allow_fail=True):
+    if is_vault_mounted(user, allow_fail=True):
         raise ChromiumOSError('Cryptohome did not unmount the user.')
 
 
 def __get_mount_info(mount_point, allow_fail=False):
     """Get information about the active mount at a given mount point."""
+    print utils.system_output('cat /proc/$(pgrep cryptohomed)/mounts')
     mount_line = utils.system_output(
         'grep %s /proc/$(pgrep cryptohomed)/mounts' % mount_point,
         ignore_status=allow_fail)
     return mount_line.split()
 
 
-def __get_user_mount_info(user=None, allow_fail=False):
+def __get_user_mount_info(user, allow_fail=False):
     """Get information about the active mounts for a given user.
 
     Returns the active mounts at the user's user and system mount points. If no
@@ -193,18 +193,13 @@ def __get_user_mount_info(user=None, allow_fail=False):
     (regular users have a bind-mount at this mount point for backwards
     compatibility; the guest user has a mount at this mount point only).
     """
-    if user:
-        return [__get_mount_info(mount_point=user_path(user),
-                                 allow_fail=allow_fail),
-                __get_mount_info(mount_point=system_path(user),
-                                 allow_fail=allow_fail)]
-    else:
-        return [__get_mount_info(mount_point=constants.CRYPTOHOME_MOUNT_PT,
-                                 allow_fail=allow_fail)]
-
+    return [__get_mount_info(mount_point=user_path(user),
+                             allow_fail=allow_fail),
+            __get_mount_info(mount_point=system_path(user),
+                             allow_fail=allow_fail)]
 
 def is_vault_mounted(
-        user=None,
+        user,
         device_regex=constants.CRYPTOHOME_DEV_REGEX_ANY,
         fs_regex=constants.CRYPTOHOME_FS_REGEX_ANY,
         allow_fail=False):
@@ -225,13 +220,13 @@ def is_vault_mounted(
 def is_guest_vault_mounted(allow_fail=False):
     """Check whether a vault backed by tmpfs is mounted for the guest user."""
     return is_vault_mounted(
-        user=None,
+        user=GUEST_USER_NAME,
         device_regex=constants.CRYPTOHOME_DEV_REGEX_GUEST,
         fs_regex=constants.CRYPTOHOME_FS_REGEX_TMPFS,
         allow_fail=allow_fail)
 
 
-def get_mounted_vault_devices(user=None, allow_fail=False):
+def get_mounted_vault_devices(user, allow_fail=False):
     """Get the device(s) backing the vault mounted for the given user.
 
     Returns the devices mounted at the user's user and system mount points. If
