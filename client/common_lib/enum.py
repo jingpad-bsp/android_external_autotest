@@ -59,7 +59,7 @@ class Enum(object):
         Convert a string name to it's corresponding value.  If a value
         is passed in, it is returned.
         """
-        if isinstance(name, int) and not self.string_values:
+        if isinstance(name, (int, long)) and not self.string_values:
             # name is already a value
             return name
         return getattr(self, self.get_attr_name(name))
