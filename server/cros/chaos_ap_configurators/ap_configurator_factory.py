@@ -20,6 +20,7 @@ import buffalo_wzr_d1800h_ap_configurator
 import dlink_ap_configurator
 import dlink_dir655_ap_configurator
 import dlinkwbr1310_ap_configurator
+import keeboxw150nr_ap_configurator
 import linksys_ap_configurator
 import linksys_ap_15_configurator
 import linksyse_dual_band_configurator
@@ -122,6 +123,8 @@ class APConfiguratorFactory(object):
             linksyse1000_ap_configurator.Linksyse1000APConfigurator,
         'LinksysWRT160APConfigurator':
             linksyswrt160_ap_configurator.LinksysWRT160APConfigurator,
+        'Keeboxw150nrAPConfigurator':
+            keeboxw150nr_ap_configurator.Keeboxw150nrAPConfigurator,
     }
 
     BANDS = 'bands'
