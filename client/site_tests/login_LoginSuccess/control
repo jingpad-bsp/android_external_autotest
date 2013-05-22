@@ -13,8 +13,8 @@ TEST_CLASS = "login"
 TEST_TYPE = "client"
 
 DOC = """
-This is a helper test that will login a system through the login manager.
+This is a helper test that will login a system through the login manager. Sets
+client_success to True on success so callers can verify it ran correctly.
 """
 
 job.run_test('login_LoginSuccess')
-

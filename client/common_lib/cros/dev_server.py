@@ -401,6 +401,16 @@ class ImageServer(DevServer):
                                      "HTTP OK not accompanied by 'Success'." %
                                      image)
 
+    def get_update_url(self, image):
+        """Returns the url that should be passed to the updater.
+
+        @param image: the image that was fetched.
+        """
+        url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
+                                              type=str)
+        return (url_pattern % (self.url(), image))
+
+
     def _get_image_url(self, image):
         """Returns the url of the directory for this image on the devserver.
 

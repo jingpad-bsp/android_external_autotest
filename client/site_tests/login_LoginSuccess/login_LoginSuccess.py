@@ -47,7 +47,8 @@ class login_LoginSuccess(cros_ui_test.UITest):
 
 
     def run_once(self):
-        pass
+        self.job.set_state('client_success', True)
+
 
 
     def cleanup(self):

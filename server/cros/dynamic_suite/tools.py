@@ -4,6 +4,7 @@
 
 
 import random
+import re
 
 from autotest_lib.client.common_lib import global_config
 
@@ -12,26 +13,32 @@ _CONFIG = global_config.global_config
 
 
 def image_url_pattern():
+    """Returns image_url_pattern from global_config."""
     return _CONFIG.get_config_value('CROS', 'image_url_pattern', type=str)
 
 
 def firmware_url_pattern():
+    """Returns firmware_url_pattern from global_config."""
     return _CONFIG.get_config_value('CROS', 'firmware_url_pattern', type=str)
 
 
 def sharding_factor():
+    """Returns sharding_factor from global_config."""
     return _CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
 
 
 def infrastructure_user():
+    """Returns infrastructure_user from global_config."""
     return _CONFIG.get_config_value('CROS', 'infrastructure_user', type=str)
 
 
 def package_url_pattern():
+    """Returns package_url_pattern from global_config."""
     return _CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
 
 
 def try_job_timeout_mins():
+    """Returns try_job_timeout_mins from global_config."""
     return _CONFIG.get_config_value('SCHEDULER', 'try_job_timeout_mins',
                                     type=int, default=4*60)
 
@@ -45,6 +52,18 @@ def get_package_url(devserver_url, build):
     @return the url where you can find the packages for the build.
     """
     return package_url_pattern() % (devserver_url, build)
+
+
+def get_devserver_build_from_package_url(package_url):
+    """The inverse method of get_package_url.
+
+    @param package_url: a string specifying the package url.
+
+    @return tuple containing the devserver_url, build.
+    """
+    pattern = package_url_pattern()
+    re_pattern = pattern.replace('%s', '(\S+)')
+    return re.search(re_pattern, package_url).groups()
 
 
 def get_random_best_host(afe, host_list, require_usable_hosts=True):

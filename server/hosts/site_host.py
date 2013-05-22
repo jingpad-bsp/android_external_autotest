@@ -146,22 +146,18 @@ class SiteHost(remote.RemoteHost):
     #   including the 30 second dev-mode delay and time to start the
     #   network.
     # SHUTDOWN_TIMEOUT: Time to allow for shut down.
-    # REBOOT_TIMEOUT: Combination of shutdown and reboot times.
-    # _UPDATE_REBOOT_TIMEOUT: Time to allow for reboot after AU; this
-    #   time provides no allowance for the 30 second dev-mode delay,
-    #   but is deliberately generous to avoid try-job failures.
+    # REBOOT_TIMEOUT: How long to wait for a reboot.
     # _INSTALL_TIMEOUT: Time to allow for chromeos-install.
 
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 10
     BOOT_TIMEOUT = 45
     USB_BOOT_TIMEOUT = 150
-    SHUTDOWN_TIMEOUT = 5
-    REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
-    # TODO(jrbarnette) - temporarily set this value to 2 min to allow
-    # for http://crbug.com/224871.  Reset to 1 minute once that bug
-    # is fixed.
-    _UPDATE_REBOOT_TIMEOUT = 120
+
+    # We have a long timeout to ensure we don't flakily fail due to other
+    # issues. Shorter timeouts are vetted in platform_RebootAfterUpdate.
+    REBOOT_TIMEOUT = 300
+
     _INSTALL_TIMEOUT = 240
 
     # _USB_POWER_TIMEOUT: Time to allow for USB to power toggle ON and OFF.
@@ -290,6 +286,21 @@ class SiteHost(remote.RemoteHost):
         return self._AFE.get_hosts(hostname=self.hostname)
 
 
+    def lookup_job_repo_url(self):
+        """Looks up the job_repo_url for the host.
+
+        @returns job_repo_url from AFE or None if not found.
+
+        @raises KeyError if the host does not have a job_repo_url
+        """
+        if not self._host_in_AFE():
+            return None
+
+        hosts = self._AFE.get_hosts(hostname=self.hostname)
+        if hosts and constants.JOB_REPO_URL in hosts[0].attributes:
+            return hosts[0].attributes[constants.JOB_REPO_URL]
+
+
     def clear_cros_version_labels_and_job_repo_url(self):
         """Clear cros_version labels and host attribute job_repo_url."""
         if not self._host_in_AFE():
@@ -303,7 +314,7 @@ class SiteHost(remote.RemoteHost):
         for label in labels:
             label.remove_hosts(hosts=host_list)
 
-        self._AFE.set_host_attribute('job_repo_url', None,
+        self._AFE.set_host_attribute(constants.JOB_REPO_URL, None,
                                      hostname=self.hostname)
 
 
@@ -327,7 +338,7 @@ class SiteHost(remote.RemoteHost):
 
         label.add_hosts([self.hostname])
         repo_url = tools.get_package_url(devserver_url, image_name)
-        self._AFE.set_host_attribute('job_repo_url', repo_url,
+        self._AFE.set_host_attribute(constants.JOB_REPO_URL, repo_url,
                                      hostname=self.hostname)
 
 
@@ -366,7 +377,7 @@ class SiteHost(remote.RemoteHost):
             return False
 
         # Reboot to complete stateful update.
-        self.reboot(timeout=self._UPDATE_REBOOT_TIMEOUT, wait=True)
+        self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
         check_file_cmd = 'test -f %s; echo $?'
         for folder in folders_to_check:
             test_file_path = os.path.join(folder, test_file)
@@ -510,7 +521,7 @@ class SiteHost(remote.RemoteHost):
         if repair:
             # In case the system is in a bad state, we always reboot the machine
             # before machine_install.
-            self.reboot(timeout=self._UPDATE_REBOOT_TIMEOUT, wait=True)
+            self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
             self.run('stop update-engine; start update-engine')
             force_update = True
 
@@ -523,8 +534,8 @@ class SiteHost(remote.RemoteHost):
         # first. Stateful update does not update kernel and tends to run much
         # faster than a full reimage.
         try:
-            updated = self._try_stateful_update(update_url, force_update,
-                                                updater)
+            updated = self._try_stateful_update(
+                    update_url, force_update, updater)
             if updated:
                 logging.info('DUT is updated with stateful update.')
         except Exception as e:
@@ -536,7 +547,7 @@ class SiteHost(remote.RemoteHost):
         if not updated:
             # In case the system is in a bad state, we always reboot the
             # machine before machine_install.
-            self.reboot(timeout=self._UPDATE_REBOOT_TIMEOUT, wait=True)
+            self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
 
             # TODO(sosa): Remove temporary hack to get rid of bricked machines
             # that can't update due to a corrupted policy.
@@ -562,8 +573,7 @@ class SiteHost(remote.RemoteHost):
                 logging.info('Dumping %s', update_engine_log)
                 self.run('cat %s' % update_engine_log)
                 # Updater has returned successfully; reboot the host.
-                self.reboot(timeout=self._UPDATE_REBOOT_TIMEOUT,
-                            wait=True)
+                self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
 
         if updated:
             self._post_update_processing(updater, inactive_kernel)
