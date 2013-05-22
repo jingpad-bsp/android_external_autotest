@@ -171,7 +171,7 @@ class TestConfig(object):
 
     def unique_name_suffix(self):
         """Unique name suffix for the test config given the target version."""
-        return '%s_%s' % (self.name, self.source_release.replace('.', '_'))
+        return '%s_%s' % (self.name, self.source_release)
 
 
     def get_autotest_name(self):

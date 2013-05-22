@@ -79,12 +79,11 @@ def run_test(machine):
     """Execute a test configuration on a given machine."""
     host = hosts.create_host(machine, servo_args=servo_args)
     try:
-        unique_name_suffix = '%s_%s' % (test_conf['name'],
-                             test_conf['source_release'].replace('.', '_'))
         job.run_test(
-                "autoupdate_EndToEndTest_" + unique_name_suffix,
-                tag='%s_%s' % (test_conf['image_type'],
-                               test_conf['update_type']),
+                "autoupdate_EndToEndTest",
+                tag='%s_%s_%s' % (
+                        test_conf['name'], test_conf['image_type'],
+                        test_conf['update_type']),
                 host=host, test_conf=test_conf, use_servo=use_servo)
     except Exception as e:
         if not issubclass(type(e), error.TestBaseException):
