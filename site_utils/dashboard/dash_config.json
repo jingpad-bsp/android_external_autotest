@@ -113,9 +113,7 @@
               "cc": ["vbendeb@google.com",
                      "waihong@google.com",
                      "victoryang@google.com",
-                     "jrbarnette@google.com"]},
-             {"categories": "webrtc",
-              "cc": ["webrtc-cros-build@google.com"]}]},
+                     "jrbarnette@google.com"]}]},
         {"platforms": {"x86-generic-full": ["netbook_sandy_bridge"]},
          "filters": [
              {"categories": "bvt|browsertests|pyauto|sync",
