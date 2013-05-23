@@ -83,6 +83,8 @@ class FAFTSequence(ServoTest):
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
 
+    _SERVOD_LOG = '/var/log/servod.log'
+
     _ROOTFS_PARTITION_NUMBER = 3
 
     _HTTP_PREFIX = 'http://'
@@ -200,6 +202,7 @@ class FAFTSequence(ServoTest):
             'firmware_action': (None)
         })
         self.setup_uart_capture()
+        self.setup_servo_log()
         self.install_test_image(self._install_image_path, self._firmware_update)
         self.record_system_info()
         self.setup_gbb_flags()
@@ -217,6 +220,7 @@ class FAFTSequence(ServoTest):
             # don't fail.
             self._restore_routine_from_timeout()
         self.restore_ec_write_protect()
+        self.record_servo_log()
         self.cleanup_uart_capture()
         self._faft_sequence = ()
         self._faft_template = {}
@@ -959,6 +963,36 @@ class FAFTSequence(ServoTest):
         self.servo.set('cpu_uart_capture', 'off')
         if self.ec_uart_file and self.client_attr.chrome_ec:
             self.servo.set('ec_uart_capture', 'off')
+
+
+    def fetch_servo_log(self):
+        """Fetch the servo log."""
+        cmd = '[ -e %s ] && cat %s || echo NOTFOUND' % ((self._SERVOD_LOG,) * 2)
+        servo_log = self.servo.system_output(cmd)
+        return None if servo_log == 'NOTFOUND' else servo_log
+
+
+    def setup_servo_log(self):
+        """Setup the servo log capturing."""
+        self.servo_log_original_len = -1
+        if self.servo.is_localhost():
+            # No servo log recorded when servod runs locally.
+            return
+
+        servo_log = self.fetch_servo_log()
+        if servo_log:
+            self.servo_log_original_len = len(servo_log)
+        else:
+            logging.warn('Servo log file not found.')
+
+
+    def record_servo_log(self):
+        """Record the servo log to the results directory."""
+        if self.servo_log_original_len != -1:
+            servo_log = self.fetch_servo_log()
+            servo_log_file = os.path.join(self.resultsdir, 'servod.log')
+            with open(servo_log_file, 'a') as f:
+                f.write(servo_log[self.servo_log_original_len:])
 
 
     def setup_gbb_flags(self):
