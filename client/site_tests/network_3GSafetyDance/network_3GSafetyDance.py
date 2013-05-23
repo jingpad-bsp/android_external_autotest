@@ -11,6 +11,7 @@ import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
+from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 from autotest_lib.client.cros import flimflam_test_path
@@ -108,58 +109,11 @@ class network_3GSafetyDance(test.test):
 
         # Ensure that auto connect is turned off so that flimflam does
         # not interfere with running the test
-        self._enable()
-        service = self.flim.FindCellularService(timeout=30)
-        if not service:
-            raise error.TestFail('Could not find cellular service')
-
-        props = service.GetProperties()
-        favorite = props['Favorite']
-        autoconnect = props['AutoConnect']
-        logging.info('Favorite = %s, AutoConnect = %s', favorite, autoconnect)
-
-        if not favorite:
-            logging.info('Enabling Favorite by connecting to service.')
-            self._enable()
-            self._connect()
-
-            props = service.GetProperties()
-            favorite = props['Favorite']
-            autoconnect = props['AutoConnect']
-            logging.info(
-                'Favorite = %s, AutoConnect = %s', favorite, autoconnect)
-
-        had_autoconnect = autoconnect
-
-        if autoconnect:
-            logging.info('Disabling AutoConnect.')
-            service.SetProperty('AutoConnect', dbus.Boolean(0))
-
-            props = service.GetProperties()
-            favorite = props['Favorite']
-            autoconnect = props['AutoConnect']
-            logging.info(
-                'Favorite = %s, AutoConnect = %s', favorite, autoconnect)
-
-        if not favorite:
-            raise error.TestFail('Favorite=False, but we want it to be True')
-
-        if autoconnect:
-            raise error.TestFail('AutoConnect=True, but we want it to be False')
-
-        logging.info('Seed: %d', seed)
-        random.seed(seed)
-        try:
+        with cell_tools.AutoConnectContext(self.device, self.flim, False):
+            logging.info('Seed: %d', seed)
+            random.seed(seed)
             for _ in xrange(ops):
                 self._op()
-        finally:
-            # Re-enable auto connect
-            self._enable()
-            if had_autoconnect:
-                service = self.flim.FindCellularService(timeout=5)
-                if service:
-                    logging.info('Re-enabling AutoConnect.')
-                    service.SetProperty("AutoConnect", dbus.Boolean(1))
 
     def run_once(self, ops=30, seed=None,
                  pseudo_modem=False,
