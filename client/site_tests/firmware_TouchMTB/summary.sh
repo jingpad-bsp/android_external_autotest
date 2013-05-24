@@ -4,10 +4,25 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Read command flags
+. /usr/share/misc/shflags
+DEFINE_string log_root_dir '' 'the log root directory' 'd'
+
+PROG=$0
+FLAGS_HELP="USAGE: $PROG [flags]"
+
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+set -e
+
 PROJ="firmware_TouchMTB"
-TMP_DIR="/var/tmp"
-TEST_DIR="${TMP_DIR}/touch_firmware_test"
-SUMMARY_ROOT="${TMP_DIR}/summary"
+if [ -n "$FLAGS_log_root_dir" ]; then
+  LOG_ROOT="$FLAGS_log_root_dir"
+else
+  LOG_ROOT="/var/tmp"
+fi
+TEST_DIR="${LOG_ROOT}/touch_firmware_test"
+SUMMARY_ROOT="${LOG_ROOT}/summary"
 SUMMARY_BASE_DIR="summary_`date -u +%Y%m%d_%H%M%S`"
 SUMMARY_DIR="${SUMMARY_ROOT}/$SUMMARY_BASE_DIR"
 SUMMARY_FILE="${SUMMARY_DIR}/${SUMMARY_BASE_DIR}.txt"
@@ -33,7 +48,7 @@ if [ "$SCRIPT_BASE_DIR" != "$PROJ" ]; then
 fi
 
 # Make sure that TEST_DIR only contains the desired directories.
-echo "The following directories will be included in your summary."
+echo "The following directories in $TEST_DIR will be included in your summary."
 ls "$TEST_DIR" --hide=latest
 read -p "Is this correct (y/n)?" response
 if [ "$response" != "y" ]; then
