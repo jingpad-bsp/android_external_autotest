@@ -26,8 +26,29 @@ def _wait(secs, desc=None):
 
 class ExpectedUpdateEvent(object):
     """Defines an expected event in a host update process."""
+
+    # Omaha event types/results, from update_engine/omaha_request_action.h
+    # These are stored in dict form in order to easily print out the keys.
+    EVENT_TYPE_DICT = {
+            '0':'unknown', '1':'download_complete', '2':'install_complete',
+            '3':'update_complete', '13':'download_started',
+            '14':'download_finished'}
+
+    EVENT_RESULT_DICT = {
+            '0': 'error', '1':'success', '2':'success_reboot',
+            '9':'update_deferred'}
+
+    VALID_TYPES = set(EVENT_TYPE_DICT.values())
+    VALID_RESULTS = set(EVENT_RESULT_DICT.values())
+
     def __init__(self, event_type=None, event_result=None, version=None,
                  previous_version=None):
+        if event_type and event_type not in self.VALID_TYPES:
+            raise ValueError('event_type %s is not valid.' % event_type)
+
+        if event_result and event_result not in self.VALID_RESULTS:
+            raise ValueError('event_result %s is not valid.' % event_result)
+
         self._expected_attrs = {
             'event_type': event_type,
             'event_result': event_result,
@@ -66,14 +87,37 @@ class ExpectedUpdateEvent(object):
         @return True if actual value is present and matches, False otherwise.
 
         """
-        if not (actual_attr_val and
-                str(actual_attr_val) == str(expected_attr_val)):
-            if ('version' in attr_name and actual_attr_val and expected_attr_val
-                    in actual_attr_val):
+        # None values are assumed to be missing and non-matching.
+        if not actual_attr_val:
+            logging.error('No value found for %s -- expected %s', attr_name,
+                          expected_attr_val)
+            return False
+
+        helper_dict = None
+        if attr_name == 'event_type':
+            helper_dict = self.EVENT_TYPE_DICT
+        elif attr_name == 'event_result':
+            helper_dict = self.EVENT_RESULT_DICT
+
+        # Convert to strings for easy matching.
+        expected_attr_val = str(expected_attr_val)
+        actual_attr_val = str(actual_attr_val)
+
+        # For event_type|result use the more helpful string form.
+        # If we get a code that is not in our known codes, use
+        # "Unknown value $value" instead.
+        if helper_dict:
+            actual_attr_val = helper_dict.get(
+                    actual_attr_val, 'Unknown value: %s' % actual_attr_val)
+
+        if not actual_attr_val == expected_attr_val:
+            if ('version' in attr_name and
+                expected_attr_val in actual_attr_val):
                 # We allow for version like 2940.0.0 in 2940.0.0-a1 to allow
                 # this test to pass for developer images and non-release images.
                 logging.info("Expected version %s in %s but doesn't "
-                             "match exactly")
+                             "match exactly", expected_attr_val,
+                             actual_attr_val)
                 return True
 
             logging.error(
@@ -470,18 +514,6 @@ class autoupdate_EndToEndTest(test.test):
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
     _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
 
-    # Omaha event types/results, from update_engine/omaha_request_action.h
-    EVENT_TYPE_UNKNOWN = 0
-    EVENT_TYPE_DOWNLOAD_COMPLETE = 1
-    EVENT_TYPE_INSTALL_COMPLETE = 2
-    EVENT_TYPE_UPDATE_COMPLETE = 3
-    EVENT_TYPE_DOWNLOAD_STARTED = 13
-    EVENT_TYPE_DOWNLOAD_FINISHED = 14
-    EVENT_RESULT_ERROR = 0
-    EVENT_RESULT_SUCCESS = 1
-    EVENT_RESULT_SUCCESS_REBOOT = 2
-    EVENT_RESULT_UPDATE_DEFERRED = 9
-
 
     def _servo_dut_power_up(self):
         """Powers up the DUT, optionally simulating a Ctrl-D key press."""
@@ -698,9 +730,17 @@ class autoupdate_EndToEndTest(test.test):
                 self._install_mp_image(image_url)
 
         else:
-            self._host.machine_install(self._payload_to_update_url(image_url),
-                                       force_update=True)
-
+            try:
+                self._host.machine_install(
+                        self._payload_to_update_url(image_url),
+                        force_update=True)
+            except error.AutoservRunError:
+                logging.fatal('Error re-imaging the machine with the source '
+                              'image %s', image_url)
+                raise error.TestFail(
+                        'Could not update to pre-conditions of test. This is '
+                        'most likely a problem with the autotest lab and not '
+                        'autoupdate.')
 
     def _stage_images_onto_devserver(self, lorry_devserver, test_conf):
         """Stages images that will be used by the test onto the devserver.
@@ -755,7 +795,7 @@ class autoupdate_EndToEndTest(test.test):
         self._omaha_devserver = None
 
 
-    def _verify_preconditions(self, test_conf):
+    def _verify_preconditions(self):
         """Validate input args make sense."""
         if self._use_servo and not self._host.servo:
             raise error.AutotestError('Servo use specified but no servo '
@@ -763,6 +803,21 @@ class autoupdate_EndToEndTest(test.test):
 
         if not self._use_test_image and not self._use_servo:
             raise error.TestError("Can't install mp image without servo.")
+
+
+    def _log_error_and_fail(self, message):
+        """Dumps relevant AU error log, and fails with message.
+
+        Raises:
+            error.TestFail: with message given -- always.
+        """
+        if not self._use_servo:
+            logging.error('Test failed -- dumping snippet of update_engine log')
+            error_log = self._host.run_output(
+                    'tail -n 40 /var/log/update_engine.log')
+            logging.error(error_log)
+
+        raise error.TestFail(message)
 
 
     def run_once(self, host, test_conf, use_servo):
@@ -783,7 +838,7 @@ class autoupdate_EndToEndTest(test.test):
             self._dev_mode = self._host.servo.get('dev_mode') == 'on'
 
         # Verify that our arguments are sane.
-        self._verify_preconditions(test_conf)
+        self._verify_preconditions()
 
         # Stage source images and update payloads on lorry/devserver. We use
         # the payload URI as argument for the lab's devserver load-balancing
@@ -836,23 +891,23 @@ class autoupdate_EndToEndTest(test.test):
                      version=test_conf['source_release'])),
                 (self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
                  ExpectedUpdateEvent(
-                     event_type=self.EVENT_TYPE_DOWNLOAD_STARTED,
-                     event_result=self.EVENT_RESULT_SUCCESS,
+                     event_type='download_started',
+                     event_result='success',
                      version=test_conf['source_release'])),
                 (self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS,
                  ExpectedUpdateEvent(
-                     event_type=self.EVENT_TYPE_DOWNLOAD_FINISHED,
-                     event_result=self.EVENT_RESULT_SUCCESS,
+                     event_type='download_finished',
+                     event_result='success',
                      version=test_conf['source_release'])),
                 (self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
                  ExpectedUpdateEvent(
-                     event_type=self.EVENT_TYPE_UPDATE_COMPLETE,
-                     event_result=self.EVENT_RESULT_SUCCESS,
+                     event_type='update_complete',
+                     event_result='success',
                      version=test_conf['source_release'])))
 
         if not log_verifier.verify_expected_event_chain(chain):
-            raise error.TestFail(
-                    'could not verify that update was successful')
+            self._log_error_and_fail(
+                    'update failed to apply, see logs for the culprit.')
 
         # Wait after an update completion (safety margin).
         _wait(self._WAIT_AFTER_UPDATE_SECONDS, 'after update completion')
@@ -880,13 +935,14 @@ class autoupdate_EndToEndTest(test.test):
         chain = ExpectedUpdateEventChain(
                 (self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
                  ExpectedUpdateEvent(
-                     event_type=self.EVENT_TYPE_UPDATE_COMPLETE,
-                     event_result=self.EVENT_RESULT_SUCCESS_REBOOT,
+                     event_type='update_complete',
+                     event_result='success_reboot',
                      version=test_conf['target_release'],
                      previous_version=test_conf['source_release'])))
         if not log_verifier.verify_expected_event_chain(chain):
-            raise error.TestFail('could not verify that machine rebooted '
-                                 'after update')
+            self._log_error_and_fail(
+                 'after reboot, update engine did not report it had just '
+                 'updated.')
 
         # On test images, make sure we're using a different partition after
         # the update.
