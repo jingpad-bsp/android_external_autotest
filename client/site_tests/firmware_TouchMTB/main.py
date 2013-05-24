@@ -24,9 +24,9 @@ from report_html import ReportHtml
 from telemetry.core import browser_options, browser_finder
 
 
-def _display_test_result(report_html_name):
+def _display_test_result(report_html_name, flag_skip_html):
     """Display the test result html doc using telemetry."""
-    if os.path.isdir('/usr/local/telemetry'):
+    if not flag_skip_html and os.path.isdir('/usr/local/telemetry'):
         base_url = os.path.basename(report_html_name)
         url = os.path.join('file://' + conf.docroot, base_url)
         logging.info('Navigate to the URL: %s', url)
@@ -187,7 +187,7 @@ class firmware_TouchMTB:
     def main(self):
         """A helper to enter gtk main loop."""
         upload_choice = fw.win.main()
-        if upload_choice and not options[OPTIONS.REPLAY]:
+        if upload_choice and not self.options[OPTIONS.REPLAY]:
             print 'Uploading %s to %s ...' % (self.log_dir, self.gs.bucket)
             self.gs.upload(self.log_dir)
         firmware_utils.start_power_management()
@@ -195,7 +195,8 @@ class firmware_TouchMTB:
         # Release simple x before launching the Chrome browser to display the
         # html test result.
         del self.simple_x
-        _display_test_result(self.report_html_name)
+        flag_skip_html = self.options[OPTIONS.SKIP_HTML]
+        _display_test_result(self.report_html_name, flag_skip_html)
 
 
 def _usage_and_exit():
@@ -223,6 +224,8 @@ def _usage_and_exit():
     print '        log_dir is a log sub-directory in %s' % conf.log_root_dir
     print '  -s, --%s' % OPTIONS.SIMPLIFIED
     print '        Use one variation per gesture'
+    print '  --%s' % OPTIONS.SKIP_HTML
+    print '        Do not show the html test result.'
     print '  -t, --%s' % OPTIONS.TOUCHSCREEN
     print '        Use the touchscreen instead of a touchpad'
     print
@@ -268,6 +271,7 @@ def _parse_options():
                OPTIONS.REPLAY: None,
                OPTIONS.RESUME: None,
                OPTIONS.SIMPLIFIED: False,
+               OPTIONS.SKIP_HTML: False,
                OPTIONS.TOUCHSCREEN: False}
 
     # Get the environment OPTIONS
@@ -284,6 +288,7 @@ def _parse_options():
                     OPTIONS.REPLAY + '=',
                     OPTIONS.RESUME + '=',
                     OPTIONS.SIMPLIFIED,
+                    OPTIONS.SKIP_HTML,
                     OPTIONS.TOUCHSCREEN]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
@@ -314,6 +319,8 @@ def _parse_options():
                 _usage_and_exit()
         elif opt in ('-s', '--%s' % OPTIONS.SIMPLIFIED):
             options[OPTIONS.SIMPLIFIED] = True
+        elif opt in ('--%s' % OPTIONS.SKIP_HTML):
+            options[OPTIONS.SKIP_HTML] = True
         elif opt in ('-t', '--%s' % OPTIONS.TOUCHSCREEN):
             options[OPTIONS.TOUCHSCREEN] = True
         else:

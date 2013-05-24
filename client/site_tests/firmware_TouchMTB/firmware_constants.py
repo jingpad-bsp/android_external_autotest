@@ -143,6 +143,7 @@ OPTIONS.MODE = 'mode'
 OPTIONS.REPLAY = 'replay'
 OPTIONS.RESUME = 'resume'
 OPTIONS.SIMPLIFIED = 'simplified'
+OPTIONS.SKIP_HTML = 'skip_html'
 OPTIONS.TOUCHSCREEN = 'touchscreen'
 
 
