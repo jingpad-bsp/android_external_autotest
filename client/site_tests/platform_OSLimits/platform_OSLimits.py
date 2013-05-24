@@ -81,6 +81,8 @@ class platform_OSLimits(test.test):
 
         ref_equal = {'leases': 1,
                      'panic': -1,
+                     'sched_rt_period_us': 1000000,
+                     'sched_rt_runtime_us': 800000,
                      'sysrq': 1,
                      'suid-dump': 2,
                      'tcp_syncookies': 1,
@@ -98,6 +100,8 @@ class platform_OSLimits(test.test):
                    'panic': '/proc/sys/kernel/panic',
                    'pid_max': '/proc/sys/kernel/pid_max',
                    'randomize_va_space': '/proc/sys/kernel/randomize_va_space',
+                   'sched_rt_period_us': '/proc/sys/kernel/sched_rt_period_us',
+                   'sched_rt_runtime_us': '/proc/sys/kernel/sched_rt_runtime_us',
                    'suid-dump': '/proc/sys/fs/suid_dumpable',
                    'sysrq': '/proc/sys/kernel/sysrq',
                    'tcp_syncookies': '/proc/sys/net/ipv4/tcp_syncookies',
