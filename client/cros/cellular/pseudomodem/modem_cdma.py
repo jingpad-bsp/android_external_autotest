@@ -203,7 +203,7 @@ class ModemCdma(modem.Modem):
         status_changes = {}
         if state == mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
             self.home_network.activated = True
-            status_changes['mdn'] = self.home_network.mdn
+            status_changes['mdn'] = [self.home_network.mdn]
             self.Set(mm1.I_MODEM, 'OwnNumbers', status_changes['mdn'])
 
             if self.IsPendingActivation():

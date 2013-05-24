@@ -5,7 +5,6 @@
 import dbus
 import dbus_std_ifaces
 import mm1
-import pseudomodem
 
 class Bearer(dbus_std_ifaces.DBusProperties):
     """
@@ -26,6 +25,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         dbus_std_ifaces.DBusProperties.__init__(self, path, bus, config)
 
     def _InitializeProperties(self):
+        import pseudomodem
         props = {
             'Interface': pseudomodem.IFACE_NAME,
             'Connected': dbus.types.Boolean(False),
