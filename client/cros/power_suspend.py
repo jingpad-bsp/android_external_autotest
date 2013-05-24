@@ -223,10 +223,14 @@ class Suspender(object):
                     early_wakeup = True
             time.sleep(0.05 * retry)
         if early_wakeup:
-            logging.debug('Early wakeup, dumping eventlog if it exists:\n' +
-                    utils.system_output('mosys eventlog list | tail -n %d' %
-                    self._RELEVANT_EVENTLOG_LINES, ignore_status=True))
-            raise sys_power.EarlyWakeupError('Woke up at %f' % seconds)
+            logging.debug('Early wakeup, dumping eventlog if it exists:\n')
+            eventlog = utils.system_output('mosys eventlog list | tail -n %d' %
+                    self._RELEVANT_EVENTLOG_LINES, ignore_status=True)
+            why = (['unknown'] + re.findall(r'Wake Source \| .*', eventlog))[-1]
+            if why == 'Wake Source | GPIO | 12' and utils.get_board() == 'link':
+                logging.warn('Whitelisted EarlyWakeup (crbug/220014), retrying')
+                return None
+            raise sys_power.EarlyWakeupError('Woke up early due to ' + why)
         if utils.get_board() in ['lumpy', 'stumpy', 'kiev']:
             logging.debug('RTC read failure (crosbug/36004), dumping nvram:\n' +
                     utils.system_output('mosys nvram dump', ignore_status=True))
@@ -351,7 +355,7 @@ class Suspender(object):
                 if hwclock_ts:
                     break
             else:
-                raise error.TestError('Could not read RTC after 10 retries.')
+                raise error.TestError('Ten tries failed due to whitelisted bug')
 
             # calculate general measurements
             start_resume = self._ts('start_resume_time')
