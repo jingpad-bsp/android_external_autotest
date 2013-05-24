@@ -132,6 +132,12 @@ def get_view_info(suite_job_id, view, build, suite):
     job_name = '%s-%s' % (suite_job_id, getpass.getuser())
     experimental = False
     test_name = ''
+    # raw test name is the test_name from tko status view. tko_job_keyvals may
+    # have a record of the hash of this name mapping to job_id-owner, which can
+    # be used to reference the test to its job url. The change is made to
+    # support tests in different jobs within a suite that shares the same test
+    # class, e.g., AU suite.
+    raw_test_name = view['test_name']
     if 'job_keyvals' in view:
         # For a test invocation like:
         # NAME = "dummy_Fail"
@@ -197,6 +203,7 @@ def get_view_info(suite_job_id, view, build, suite):
             exp_job_name = constants.EXPERIMENTAL_PREFIX + std_job_name
         std_job_hash = hashlib.md5(std_job_name).hexdigest()
         exp_job_hash = hashlib.md5(exp_job_name).hexdigest()
+        raw_test_name_hash = hashlib.md5(raw_test_name).hexdigest()
 
         # In the experimental abort case both these clauses can evaluate
         # to True.
@@ -205,6 +212,8 @@ def get_view_info(suite_job_id, view, build, suite):
         if exp_job_hash in view['job_keyvals']:
             experimental = True
             job_name = view['job_keyvals'][exp_job_hash]
+        if raw_test_name_hash in view['job_keyvals']:
+            job_name = view['job_keyvals'][raw_test_name_hash]
 
     # If the name being returned is the test name it needs to include the tag
     return job_name, experimental, std_job_name if not test_name else test_name

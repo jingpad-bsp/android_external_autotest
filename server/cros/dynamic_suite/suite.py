@@ -404,6 +404,8 @@ class Suite(object):
                 if (self._results_dir and
                     job_status.is_for_infrastructure_fail(result)):
                     self._remember_provided_job_id(result)
+                elif (self._results_dir and isinstance(result, Status)):
+                    self._remember_test_status_job_id(result)
 
                 # I'd love to grab the actual tko test object here, as that
                 # includes almost all of the needed information: test name,
@@ -477,6 +479,22 @@ class Suite(object):
             utils.write_keyval(
                 self._results_dir,
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
+
+
+    def _remember_test_status_job_id(self, status):
+        """
+        Record provided status as a test status keyval, for later referencing.
+
+        @param status: Test status, including properties such as id, test_name
+                       and owner.
+        """
+        if status.id and status.owner and status.test_name:
+            test_id_owner = '%s-%s' % (status.id, status.owner)
+            logging.debug('Adding status keyval for %s=%s',
+                          status.test_name, test_id_owner)
+            utils.write_keyval(
+                self._results_dir,
+                {hashlib.md5(status.test_name).hexdigest(): test_id_owner})
 
 
     @staticmethod
