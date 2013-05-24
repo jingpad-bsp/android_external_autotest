@@ -1,0 +1,20 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "graphics_WebGLAquarium"
+PURPOSE = "Execute the WebGL aquarium test suite."
+CRITERIA = "All suite tests must not crash/hang."
+SUITE = "graphics"
+TIME = "medium"
+TEST_CATEGORY = "Performance"
+TEST_CLASS = "graphics"
+TEST_TYPE = "client"
+EXPERIMENTAL = "True"
+
+DOC = """
+This runs the WebGL aquarium test.
+"""
+
+job.run_test('graphics_WebGLAquarium')
