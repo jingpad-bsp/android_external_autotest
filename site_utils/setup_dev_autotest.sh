@@ -63,6 +63,20 @@ if [ -z "${AUTOTEST_DIR}" ]; then
   fi
 fi
 
+
+# Sanity check AUTOTEST_DIR. If it's null, or doesn't exist on the filesystem
+# then die.
+if [ -z "${AUTOTEST_DIR}" ]; then
+  echo "No AUTOTEST_DIR. Aborting script."
+  exit 1
+fi
+
+if [ ! -d "${AUTOTEST_DIR}" ]; then
+  echo "Directory " ${AUTOTEST_DIR} " does not exist. Aborting script."
+  exit 1
+fi
+
+
 SHADOW_CONFIG_PATH="${AUTOTEST_DIR}/shadow_config.ini"
 echo "Autotest supports local overrides of global configuration through a "
 echo "'shadow' configuration file.  Setting one up for you now."
@@ -84,6 +98,8 @@ if [ -f ${SHADOW_CONFIG_PATH} ]; then
   fi
 fi
 
+CROS_CHECKOUT=$(readlink -f ${AUTOTEST_DIR}/../../../..)
+
 # Create clean shadow config if we're replacing it/creating a new one.
 if [ $CLOBBER -eq 0 ]; then
   cat > "${SHADOW_CONFIG_PATH}" <<EOF
@@ -99,6 +115,9 @@ hostname: localhost
 
 [SCHEDULER]
 drones: localhost
+
+[CROS]
+source_tree: ${CROS_CHECKOUT}
 EOF
   echo -e "Done!\n"
 fi
