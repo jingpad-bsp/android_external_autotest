@@ -352,6 +352,9 @@ class FAFTSequence(ServoTest):
           error.TestFail: This exception is already raised, with a decription
                           why it failed.
         """
+        # DUT is disconnected. Capture the UART output for debug.
+        self.record_uart_capture()
+
         next_checker_matched = False
         if next_step is not None:
             next_test = {}
