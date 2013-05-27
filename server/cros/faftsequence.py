@@ -1238,9 +1238,6 @@ class FAFTSequence(ServoTest):
         # Set kernel part highest priority.
         self.faft_client.system.run_shell_command('cgpt prioritize -i%s %s' %
                 (self.KERNEL_MAP[part], root_dev))
-        # Safer to sync and wait until the cgpt status written to the disk.
-        self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.delay.sync)
 
 
     def warm_reboot(self):

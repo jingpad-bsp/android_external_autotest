@@ -33,7 +33,7 @@ class firmware_CorruptKernelB(FAFTSequence):
             {   # Step 1, prioritize kernel B
                 'state_checker': (self.checkers.root_part_checker, 'a'),
                 'userspace_action': (self.reset_and_prioritize_kernel, 'b'),
-                'reboot_action': self.full_power_off_and_on,
+                'reboot_action': self.warm_reboot,
             },
             {   # Step 2, expected kernel B boot and corrupt kernel B
                 'state_checker': (self.checkers.root_part_checker, 'b'),
@@ -46,7 +46,7 @@ class firmware_CorruptKernelB(FAFTSequence):
             {   # Step 4, expected kernel B boot and prioritize kerenl A
                 'state_checker': (self.checkers.root_part_checker, 'b'),
                 'userspace_action': (self.reset_and_prioritize_kernel, 'a'),
-                'reboot_action': self.full_power_off_and_on,
+                'reboot_action': self.warm_reboot,
             },
             {   # Step 5, expected kernel A boot
                 'state_checker': (self.checkers.root_part_checker, 'a'),
