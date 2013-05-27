@@ -192,8 +192,10 @@ gesture_names_robot_interaction = {
 # Define the manual list which is gesture_names_complete - gesture_names_robot
 gesture_names_manual = {}
 for dev in DEV.DEVICE_TYPE_LIST:
-    gesture_names_manual[dev] = list(set(gesture_names_complete[dev]) -
-                                     set(gesture_names_robot[dev]))
+    complete_gesture_list = gesture_names_complete[dev]
+    manual_set = set(complete_gesture_list) - set(gesture_names_robot[dev])
+    gesture_names_manual[dev] = [gesture for gesture in complete_gesture_list
+                                 if gesture in manual_set]
 
 
 # Define those gestures that the robot needs to pause so the user
