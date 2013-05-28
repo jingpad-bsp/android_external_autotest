@@ -903,6 +903,7 @@ def get_static_data():
 
     result['status_dictionary'] = {"Aborted": "Aborted",
                                    "Verifying": "Verifying Host",
+                                   "Provisioning": "Provisioning Host",
                                    "Pending": "Waiting on other hosts",
                                    "Running": "Running autoserv",
                                    "Completed": "Autoserv completed",

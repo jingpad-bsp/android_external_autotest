@@ -53,7 +53,7 @@ class MockGlobalConfig(object):
 # the SpecialTask names here must match the suffixes used on the SpecialTask
 # results directories
 _PidfileType = enum.Enum('verify', 'cleanup', 'repair', 'job', 'gather',
-                         'parse', 'archive')
+                         'parse', 'archive', 'provision')
 
 
 _PIDFILE_TO_PIDFILE_TYPE = {

@@ -360,7 +360,7 @@ class Host(model_logic.ModelWithInvalid, dbmodels.Model,
     """
     Status = enum.Enum('Verifying', 'Running', 'Ready', 'Repairing',
                        'Repair Failed', 'Cleaning', 'Pending', 'Resetting',
-                       string_values=True)
+                       'Provisioning', string_values=True)
     Protection = host_protections.Protection
 
     hostname = dbmodels.CharField(max_length=255, unique=True)
@@ -1546,7 +1546,7 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
     queue_entry: Host queue entry waiting on this task (or None, if task was not
                  started in preparation of a job)
     """
-    Task = enum.Enum('Verify', 'Cleanup', 'Repair', 'Reset',
+    Task = enum.Enum('Verify', 'Cleanup', 'Repair', 'Reset', 'Provision',
                      string_values=True)
 
     host = dbmodels.ForeignKey(Host, blank=False, null=False)

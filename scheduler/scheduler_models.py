@@ -758,7 +758,8 @@ class HostQueueEntry(DBObject):
             assert not dispatcher.get_agents_for_entry(self)
             self.host.set_status(models.Host.Status.READY)
         elif (self.status == Status.VERIFYING or
-              self.status == Status.RESETTING):
+              self.status == Status.RESETTING or
+              self.status == Status.PROVISIONING):
             models.SpecialTask.objects.create(
                     task=models.SpecialTask.Task.CLEANUP,
                     host=models.Host.objects.get(id=self.host.id),
@@ -1212,6 +1213,32 @@ class Job(DBObject):
                  self._should_run_verify(queue_entry))))
 
 
+    def _should_run_provision(self, queue_entry):
+        """
+        Determine if the queue_entry needs to have a provision task run before
+        it to provision queue_entry.host.
+
+        @param queue_entry: The host queue entry in question.
+        @returns: True if we should schedule a provision task, False otherwise.
+
+        """
+        # If we get to this point, it means that the scheduler has already
+        # vetted that all the unprovisionable labels match, so we can just
+        # find all labels on the job that aren't on the host to get the list
+        # of what we need to provision.  (See the scheduling logic in
+        # host_scheduler.py:is_host_eligable_for_job() where we discard all
+        # provisionable labels when assigning jobs to hosts.)
+        job_labels = {x.name for x in queue_entry.get_labels()}
+        _, host_labels = queue_entry.host.platform_and_labels()
+        # If there are any labels on the job that are not on the host, then
+        # that means there is provisioning work to do.  If there's no
+        # provisioning work to do, then obviously we have no reason to schedule
+        # a provision task!
+        if job_labels - set(host_labels):
+            return True
+        return False
+
+
     def _queue_special_task(self, queue_entry, task):
         """
         Create a special task and associate it with a host queue entry.
@@ -1253,6 +1280,11 @@ class Job(DBObject):
                 self._queue_special_task(hqe_model,
                                          models.SpecialTask.Task.VERIFY)
                 task_queued = True
+
+        if self._should_run_provision(queue_entry):
+            self._queue_special_task(hqe_model,
+                                     models.SpecialTask.Task.PROVISION)
+            task_queued = True
 
         if not task_queued:
             queue_entry.on_pending()

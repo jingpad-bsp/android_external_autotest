@@ -26,6 +26,7 @@ from autotest_lib.scheduler import scheduler_logging_config
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
 from autotest_lib.server import autoserv_utils
+from autotest_lib.server.cros import provision
 from autotest_lib.site_utils.graphite import stats
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
@@ -517,7 +518,7 @@ class BaseDispatcher(object):
         self._assert_host_has_no_agent(special_task)
 
         special_agent_task_classes = (CleanupTask, VerifyTask, RepairTask,
-                                      ResetTask)
+                                      ResetTask, ProvisionTask)
         for agent_task_class in special_agent_task_classes:
             if agent_task_class.TASK_TYPE == special_task.task:
                 return agent_task_class(task=special_task)
@@ -616,7 +617,8 @@ class BaseDispatcher(object):
         task_priority_order = [models.SpecialTask.Task.REPAIR,
                                models.SpecialTask.Task.CLEANUP,
                                models.SpecialTask.Task.VERIFY,
-                               models.SpecialTask.Task.RESET]
+                               models.SpecialTask.Task.RESET,
+                               models.SpecialTask.Task.PROVISION]
         def task_priority_key(task):
             return task_priority_order.index(task.task)
         return sorted(queued_tasks, key=task_priority_key)
@@ -638,7 +640,7 @@ class BaseDispatcher(object):
         message = ('Recovering active host %s - this probably indicates a '
                    'scheduler bug')
         self._reverify_hosts_where(
-                "status IN ('Repairing', 'Verifying', 'Cleaning')",
+                "status IN ('Repairing', 'Verifying', 'Cleaning', 'Provisioning')",
                 print_message=message)
 
 
@@ -1556,6 +1558,19 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
         if self.queue_entry.status != models.HostQueueEntry.Status.QUEUED:
             return # entry has been aborted
 
+        self._actually_fail_queue_entry()
+
+
+    # TODO(milleral): http://crbug.com/268607
+    # All this used to be a part of _fail_queue_entry.  The
+    # exact semantics of when one should and should not be failing a queue
+    # entry need to be worked out, because provisioning has placed us in a
+    # case where we want to fail a queue entry that could be requeued,
+    # which makes us fail the two above if statements, and thus
+    # _fail_queue_entry() would exit early and have no effect.
+    # What's left here with _actually_fail_queue_entry is a hack to be able to
+    # bypass the checks and unconditionally execute the code.
+    def _actually_fail_queue_entry(self):
         self.queue_entry.set_execution_subdir()
         queued_key, queued_time = self._job_queued_keyval(
             self.queue_entry.job)
@@ -1865,6 +1880,103 @@ class ResetTask(PreJobTask):
                 self.queue_entry.on_pending()
             else:
                 self.host.set_status(models.Host.Status.READY)
+
+
+class ProvisionTask(PreJobTask):
+    TASK_TYPE = models.SpecialTask.Task.PROVISION
+
+    def __init__(self, task):
+        # Provisioning requires that we be associated with a job/queue entry
+        assert task.queue_entry, "No HQE associated with provision task!"
+        # task.queue_entry is an afe model HostQueueEntry object.
+        # self.queue_entry is a scheduler models HostQueueEntry object, but
+        # it gets constructed and assigned in __init__, so it's not available
+        # yet.  Therefore, we're stuck pulling labels off of the afe model
+        # so that we can pass the --provision args into the __init__ call.
+        labels = {x.name for x in task.queue_entry.job.dependency_labels.all()}
+        _, provisionable = provision.filter_labels(labels)
+        extra_command_args = ['--provision', ','.join(provisionable)]
+        super(ProvisionTask, self).__init__(task, extra_command_args)
+        self._set_ids(host=self.host, queue_entries=[self.queue_entry])
+
+
+    def _command_line(self):
+        # If we give queue_entry to _autoserv_command_line, then it will append
+        # -c for this invocation if the queue_entry is a client side test. We
+        # don't want that, as it messes with provisioning, so we just drop it
+        # from the arguments here.
+        # Note that we also don't verify job_repo_url as provisioining tasks are
+        # required to stage whatever content we need, and the job itself will
+        # force autotest to be staged if it isn't already.
+        return _autoserv_command_line(self.host.hostname,
+                                      self._extra_command_args)
+
+
+    def prolog(self):
+        super(ProvisionTask, self).prolog()
+        # add check for previous provision task and abort if exist.
+        logging.info("starting provision task for host: %s", self.host.hostname)
+        self.queue_entry.set_status(
+                models.HostQueueEntry.Status.PROVISIONING)
+        self.host.set_status(models.Host.Status.PROVISIONING)
+
+
+    def epilog(self):
+        # TODO(milleral) Here, we override the PreJobTask's epilog, because
+        # it's written with the idea that pre-job special task failures are a
+        # problem with the host and not with something about the HQE.
+        # In our case, the HQE's DEPENDENCIES specify what the provision task
+        # does, so if the provision fails, it can be the fault of the HQE, and
+        # thus we fail the HQE.  This difference is handled only here for now,
+        # but some refactoring of PreJobTask should likely happen sometime in
+        # the future?
+
+        if not self.success:
+            # TODO(milleral) http://crbug.com/231452
+            # In our own setup, we don't really use the results
+            # repository, so I *think* this call can be elided.  However, I'd
+            # like to limit what I can possibly break for now, and it would be
+            # called if I called PreJobTask's epilog, so I'm keeping the call
+            # to it for now.
+            self._copy_to_results_repository()
+            # _actually_fail_queue_entry() is a hack around the fact that we do
+            # indeed want to abort the queue entry here, but the rest of the
+            # scheduler code expects that we will reschedule onto some other
+            # host.
+            self._actually_fail_queue_entry()
+            # This abort will mark the aborted bit on the HQE itself, to
+            # signify that we're killing it.  Technically it also will do
+            # the recursive aborting of all child jobs, but that shouldn't
+            # matter here, as only suites have children, and those
+            # are hostless and thus don't have provisioning.
+            queue_entry = models.HostQueueEntry.objects.get(
+                    id=self.queue_entry.id)
+            queue_entry.abort()
+            # Calling abort will set the aborted bit.  However, complete is
+            # still unset, so we end up kicking off a QueueTask and aborting
+            # that also, which causes some chaos because we effectivly abort
+            # something twice.  The end effect of which is that it hides the
+            # reason field we try to inject via the abort reason.
+            # Thus, we manually poke the complete bit here, so suppress
+            # the QueueTask abort.
+            # TODO(milleral) http://crbug.com/268596
+            # We really should be calling set_status here, but if we set the
+            # HQE to status='Aborted', then suddenly we stop getting a reason
+            # field showing up in run_suite.  So for the moment, the tests will
+            # be getting marked as Failed instead of Aborted, which should get
+            # fixed.
+            self.queue_entry.update_field('complete', 1)
+            # The machine is in some totally unknown state, so let's kick off
+            # a repair task to get it back to some known sane state.
+            models.SpecialTask.objects.create(
+                    host=models.Host.objects.get(id=self.host.id),
+                    task=models.SpecialTask.Task.REPAIR,
+                    queue_entry=queue_entry,
+                    requested_by=self.task.requested_by)
+        elif self._should_pending():
+            self.queue_entry.on_pending()
+        else:
+            self.host.set_status(models.Host.Status.READY)
 
 
 class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
