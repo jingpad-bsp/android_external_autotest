@@ -6,7 +6,8 @@
 
 # Read command flags
 . /usr/share/misc/shflags
-DEFINE_string log_root_dir '' 'the log root directory' 'd'
+DEFINE_string "log_root_dir" "" "the log root directory" "d"
+DEFINE_boolean "metrics" false "display the summary metrics" "m"
 
 PROG=$0
 FLAGS_HELP="USAGE: $PROG [flags]"
@@ -64,7 +65,9 @@ find "$TEST_DIR" \( -name \*.log -o -name \*.html \) \
   -exec cp -t "$SUMMARY_DIR" {} \;
 
 # Run firmware_summary module to derive the summary report.
-python "${SCRIPT_DIR}/$SUMMARY_MODULE" -d "$SUMMARY_DIR" > "$SUMMARY_FILE"
+display_metrics=`[ $FLAGS_metrics -eq $FLAGS_TRUE ] && echo "-m" || echo ""`
+python "${SCRIPT_DIR}/$SUMMARY_MODULE" $display_metrics -d "$SUMMARY_DIR" > \
+       "$SUMMARY_FILE"
 
 # Create a tarball for the summary files.
 cd $SUMMARY_ROOT

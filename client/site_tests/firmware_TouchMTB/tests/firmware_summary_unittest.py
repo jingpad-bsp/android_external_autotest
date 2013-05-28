@@ -55,7 +55,7 @@ class FirmwareSummaryTest(unittest.TestCase):
         """Score = sum / count, rounded to the 4th digit."""
         result= self.slog.get_result(fw=fw, gesture=gesture,
                                      validator=validator)
-        average = result.stat_score.average
+        average = result.stat_scores.average
         return round(average, self._round_digits)
 
 
@@ -78,6 +78,18 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
                                                gesture=gesture,
                                                validator=validator)
                 self.assertAlmostEqual(actual_score, expected_score)
+
+    def test_by_gesture_DrumrollValidator(self):
+        validator = 'DrumrollValidator'
+        expected_scores = {
+            'fw_11.23': {
+                'drumroll': 0.75,
+            },
+            'fw_11.27': {
+                'drumroll': 0.66666667,
+            }
+        }
+        self._test_by_gesture(validator, expected_scores)
 
     def test_by_gesture_LinearityBothEndsValidator(self):
         validator = 'Linearity(BothEnds)Validator'
@@ -149,8 +161,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
 
     def test_final_weighted_average(self):
         expected_weighted_averages = {
-            'fw_11.23': 0.83536569,
-            'fw_11.27': 0.93257017,
+            'fw_11.23': 0.82926814,
+            'fw_11.27': 0.91357706,
         }
         final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():

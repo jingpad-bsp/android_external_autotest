@@ -19,9 +19,9 @@ The structure of this module:
             key: (fw, round_name, gesture_name, variation_name, validator_name)
             vlog: name, details, criteria, score, metrics
 
-    TestResult: encapsulation of score_list and metrics_list
+    TestResult: encapsulation of scores and metrics
                 used by a client program to query the test results
-      --> StatisticsScore: includes average, ssd, and count
+      --> StatisticsScores: includes average, ssd, and count
       --> StatisticsMetrics: includes average, min, max, and more
 
 
@@ -36,7 +36,7 @@ How the logs work:
             (fw, round_name, gesture_name, variation_name, validator_name).
     (4) The client program, i.e., firmware_summary module, contains a
         SummaryLog, and queries all statistics using get_result() which returns
-        a TestResult object containing both StatisticsScore and
+        a TestResult object containing both StatisticsScores and
         StatisticsMetrics.
 
 """
@@ -46,10 +46,13 @@ import glob
 import numpy as n
 import pickle
 import os
+
 import validators as val
 
-from common_util import Debug, print_and_exit
+from collections import defaultdict
 from sets import Set
+
+from common_util import Debug, print_and_exit
 
 
 def _setup_debug(debug_flag):
@@ -77,35 +80,28 @@ def _calc_sample_standard_deviation(sample):
     return n.std(n.array(sample), ddof=1)
 
 
-class Metrics:
-    """A temporary place holder for Metrics."""
-    pass
-
-
-class GestureLog:
-    """A class handling the logs related with a gesture."""
-
-    def __init__(self):
-        self.name = None
-        self.variation = None
-        self.prompt = None
-        self.vlogs = []
+class Metric:
+    """A class to handle the name and the value of a metric."""
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
 
 class ValidatorLog:
     """A class handling the logs reported by validators."""
-
     def __init__(self):
         self.name = None
         self.details = []
         self.criteria = None
         self.score = None
+        self.metrics = []
         self.error = None
 
     def reset(self):
         """Reset all attributes."""
         self.details = []
         self.score = None
+        self.metrics = []
         self.error = None
 
     def insert_details(self, msg):
@@ -113,9 +109,17 @@ class ValidatorLog:
         self.details.append(msg)
 
 
+class GestureLog:
+    """A class handling the logs related with a gesture."""
+    def __init__(self):
+        self.name = None
+        self.variation = None
+        self.prompt = None
+        self.vlogs = []
+
+
 class RoundLog:
     """Manipulate the test result log generated in a single round."""
-
     def __init__(self, fw=None, round_name=None):
         self._fw = fw
         self._round_name = round_name
@@ -146,21 +150,42 @@ class RoundLog:
             self._glogs.append(glog)
 
 
-class StatisticsScore:
+class StatisticsScores:
     """A statistics class to compute the average, ssd, and count of
     aggregate scores.
     """
-    def __init__(self, score_list):
-        self.average = n.average(n.array(score_list))
-        self.ssd = _calc_sample_standard_deviation(score_list)
-        self.count = len(score_list)
-        self.all_data = (self.average, self.ssd, self.count)
+    def __init__(self, scores):
+        self.all_data = ()
+        if scores:
+            self.average = n.average(n.array(scores))
+            self.ssd = _calc_sample_standard_deviation(scores)
+            self.count = len(scores)
+            self.all_data = (self.average, self.ssd, self.count)
+
+
+class StatisticsMetrics:
+    """A statistics class to compute the average, min, and max of
+    aggregate metrics.
+    """
+    def __init__(self, metrics):
+        self.all_data = {}
+        if metrics:
+            all_values = defaultdict(list)
+            for metric in metrics:
+                all_values[metric.name].append(metric.value)
+
+            for name, values in all_values.items():
+                ave = n.average(n.array(values))
+                min_ = min(values)
+                max_ = max(values)
+                self.all_data[name] = (ave, min_, max_)
 
 
 class TestResult:
     """A class includes the statistics of the score and the metrics."""
-    def __init__(self, score_list):
-        self.stat_score = StatisticsScore(score_list)
+    def __init__(self, scores, metrics):
+        self.stat_scores = StatisticsScores(scores)
+        self.stat_metrics = StatisticsMetrics(metrics)
 
 
 class SimpleTable:
@@ -185,6 +210,10 @@ class SimpleTable:
         return filter(lambda (k, vlog): all(map(match, k, key)),
                       self._table.items())
 
+    def items(self):
+        """Return the table items."""
+        return self._table.items()
+
 
 class SummaryLog:
     """A class to manipulate the summary logs.
@@ -192,7 +221,6 @@ class SummaryLog:
     A summary log may consist of result logs of different firmware versions
     where every firmware version may consist of multiple rounds.
     """
-
     def __init__(self, log_dir, segment_weights, validator_weights, debug_flag):
         self.log_dir = log_dir
         self.segment_weights = segment_weights
@@ -217,7 +245,7 @@ class SummaryLog:
             err_msg = 'Error: no log files in the test result directory: %s'
             print_and_exit(err_msg % log_dir)
 
-        self._log_table = SimpleTable()
+        self.log_table = SimpleTable()
         self.fws = Set()
         self.gestures = Set()
         self.validators = Set()
@@ -242,7 +270,7 @@ class SummaryLog:
             for vlog in glog.vlogs:
                 self.validators.add(vlog.name)
                 key = (fw, round_name, glog.name, glog.variation, vlog.name)
-                self._log_table.insert(key, vlog)
+                self.log_table.insert(key, vlog)
 
     def _compute_extended_validator_weight(self, validators):
         """Compute extended validator weight from validator weight and segment
@@ -319,18 +347,23 @@ class SummaryLog:
 
     def get_result(self, fw=None, round=None, gesture=None, variation=None,
                    validator=None):
-        """Get the result score statistics of a validator."""
+        """Get the result statistics of a validator which include both
+        the score and the metrics.
+        """
         key = (fw, round, gesture, variation, validator)
-        rows = self._log_table.search(key)
-        score_list = [vlog.score for _key, vlogs in rows for vlog in vlogs]
-        return TestResult(score_list) if score_list else None
+        rows = self.log_table.search(key)
+        scores = [vlog.score for _key, vlogs in rows for vlog in vlogs]
+        metrics = [metric for _key, vlogs in rows
+                              for vlog in vlogs
+                                  for metric in vlog.metrics]
+        return TestResult(scores, metrics)
 
     def get_final_weighted_average(self):
         """Calculate the final weighted average."""
         weighted_average = {}
         for fw in self.fws:
             scores = [self.get_result(fw=fw,
-                                      validator=validator).stat_score.average
+                                      validator=validator).stat_scores.average
                       for validator in self.validators]
             _, weights = zip(*sorted(self.ext_validator_weights.items()))
             weighted_average[fw] = n.average(scores, weights=weights)

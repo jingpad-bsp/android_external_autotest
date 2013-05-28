@@ -118,12 +118,20 @@ class DrumrollValidatorTest(BaseValidatorTest):
     def setUp(self):
         super(DrumrollValidatorTest, self).setUp()
         self.criteria = conf.drumroll_criteria
+        self.unittest_path_lumpy = os.path.join(os.getcwd(), 'tests/logs/lumpy')
 
     def _test_drumroll(self, filename, criteria, device):
         packets = parse_tests_data(filename)
         validator = DrumrollValidator(criteria, device=device)
         vlog = validator.check(packets)
         return vlog.score
+
+    def _get_drumroll_metrics(self, filename, criteria, device):
+        packets = parse_tests_data(filename,
+                                   gesture_dir=self.unittest_path_lumpy)
+        validator = DrumrollValidator(criteria, device=device)
+        metrics = validator.check(packets).metrics
+        return metrics
 
     def test_drumroll_lumpy(self):
         """Should catch the drumroll on lumpy.
@@ -157,6 +165,44 @@ class DrumrollValidatorTest(BaseValidatorTest):
         score = self._test_drumroll(filename, self.criteria,
                                     self.mocked_device[LINK])
         self.assertTrue(score == 1)
+
+    def test_drumroll_metrics(self):
+        """Test the drumroll metrics."""
+        expected_max_values = {
+            '20130506_030025-fw_11.27-robot_sim/'
+            'drumroll.fast-lumpy-fw_11.27-manual-20130528_044804.dat':
+            2.29402908535,
+
+            '20130506_030025-fw_11.27-robot_sim/'
+            'drumroll.fast-lumpy-fw_11.27-manual-20130528_044820.dat':
+            0.719567771497,
+
+            '20130506_031746-fw_11.27-robot_sim/'
+            'drumroll.fast-lumpy-fw_11.27-manual-20130528_044728.dat':
+            0.833491481592,
+
+            '20130506_032458-fw_11.23-robot_sim/'
+            'drumroll.fast-lumpy-fw_11.23-manual-20130528_044856.dat':
+            1.18368539364,
+
+            '20130506_032458-fw_11.23-robot_sim/'
+            'drumroll.fast-lumpy-fw_11.23-manual-20130528_044907.dat':
+            0.851161282019,
+
+            '20130506_032659-fw_11.23-robot_sim/'
+            'drumroll.fast-lumpy-fw_11.23-manual-20130528_044933.dat':
+            2.64245519251,
+
+            '20130506_032659-fw_11.23-robot_sim/'
+            'drumroll.fast-lumpy-fw_11.23-manual-20130528_044947.dat':
+            0.910624022916,
+        }
+        criteria = self.criteria
+        device = self.mocked_device[LUMPY]
+        for filename, expected_max_value in expected_max_values.items():
+            metrics = self._get_drumroll_metrics(filename, criteria, device)
+            actual_max_value = max([m.value for m in metrics])
+            self.assertAlmostEqual(expected_max_value, actual_max_value)
 
 
 class LinearityValidatorTest(BaseValidatorTest):

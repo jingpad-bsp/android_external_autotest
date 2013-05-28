@@ -622,8 +622,11 @@ class DrumrollValidator(BaseValidator):
         # For each tracking ID, compute the minimal enclosing circles,
         #     rocs = (radius_of_circle1, radius_of_circle2)
         # Return a list of such minimal enclosing circles of all tracking IDs.
-        max_radius = max(self.packets.get_list_of_rocs_of_all_tracking_ids())
+        rocs = self.packets.get_list_of_rocs_of_all_tracking_ids()
+        max_radius = max(rocs)
         self.log_details('Max radius: %.2f mm' % max_radius)
+        self.vlog.metrics = [firmware_log.Metric('circle_radius_mm', roc)
+                             for roc in rocs]
         self.vlog.score = self.fc.mf.grade(max_radius)
         return self.vlog
 

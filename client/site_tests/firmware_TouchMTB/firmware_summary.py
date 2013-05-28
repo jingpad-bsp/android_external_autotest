@@ -61,7 +61,7 @@ from test_conf import (log_root_dir, segment_weights, validator_weights)
 class FirmwareSummary:
     """Summary for touch device firmware tests."""
 
-    def __init__(self, log_dir, debug_flag=False,
+    def __init__(self, log_dir, display_metrics=False, debug_flag=False,
                  segment_weights=segment_weights,
                  validator_weights=validator_weights):
         """ segment_weights and validator_weights are passed as arguments
@@ -74,6 +74,7 @@ class FirmwareSummary:
             print error_msg % log_dir
             sys.exit(-1)
 
+        self.display_metrics = display_metrics
         self.slog = firmware_log.SummaryLog(log_dir, segment_weights,
                                             validator_weights, debug_flag)
 
@@ -150,16 +151,17 @@ class FirmwareSummary:
     def _print_result_stats(self, gesture=None):
         """Print the result statistics of validators."""
         for validator in self.slog.validators:
-            stat_score_data = [validator,]
+            stat_scores_data = [validator,]
+            stat_metrics_data = []
             for fw in self.slog.fws:
                 result = self.slog.get_result(fw=fw, gesture=gesture,
                                               validator=validator)
                 if result:
-                    fw_stat_score = result.stat_score.all_data
-                    if fw_stat_score:
-                        stat_score_data += fw_stat_score
+                    stat_scores_data += result.stat_scores.all_data
+                    stat_metrics_data.append(result.stat_metrics.all_data)
+
             # Print the score statistics of all firmwares on the same row.
-            self._print_statistics_score(stat_score_data)
+            self._print_statistics_score(stat_scores_data)
 
     def _print_result_stats_by_gesture(self):
         """Print the summary of the test results by gesture."""
@@ -175,6 +177,25 @@ class FirmwareSummary:
         self._print_summary_title('Test Summary (by validator)')
         self._print_result_stats()
 
+    def _print_metrics_by_file(self):
+        """Print the metrics per file."""
+        if not self.display_metrics:
+            return
+
+        print '\n\nMetrics (by file)'
+        print '-' * 80
+        for key, vlog_list in sorted(self.slog.log_table.items()):
+            flag_print_key = False
+            for vlog in vlog_list:
+                stat_metrics = firmware_log.StatisticsMetrics(vlog.metrics)
+                if stat_metrics.all_data:
+                    if not flag_print_key:
+                        fw, round_name, gesture, variation, validator = key
+                        print '%s.%s' % (gesture, variation)
+                        print '  %s' % validator
+                        flag_print_key = True
+                    print '      %s: %s' % (fw, stat_metrics.all_data)
+
     def _print_final_weighted_averages(self):
         """Print the final weighted averages of all validators."""
         title_str = 'Test Summary (final weighted averages)'
@@ -188,6 +209,7 @@ class FirmwareSummary:
         """Print the summary of the test results."""
         self._print_result_stats_by_gesture()
         self._print_result_stats_by_validator()
+        self._print_metrics_by_file()
         self._print_final_weighted_averages()
 
 
@@ -260,5 +282,6 @@ def _parse_options():
 if __name__ == '__main__':
     options = _parse_options()
     summary = FirmwareSummary(options[OPTIONS.DIR],
+                              display_metrics=options[OPTIONS.METRICS],
                               debug_flag=options[OPTIONS.DEBUG])
     summary.print_result_summary()
