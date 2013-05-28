@@ -165,17 +165,12 @@ class ChaosAPList(object):
     """ Object containing information about all AP's in the chaos lab. """
 
     DYNAMIC_AP_CONFIG_FILE = 'chaos_dynamic_ap_list.conf'
-    STATIC_AP_CONFIG_FILE = 'chaos_static_ap_list.conf'
 
 
-    def __init__(self, static_config=True):
+    def __init__(self):
         self.ap_config = ConfigParser.RawConfigParser()
-        if static_config:
-            config_file = self.STATIC_AP_CONFIG_FILE
-        else:
-            config_file = self.DYNAMIC_AP_CONFIG_FILE
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            config_file)
+                            self.DYNAMIC_AP_CONFIG_FILE)
 
         logging.debug('Reading config from "%s"', path)
         self.ap_config.read(path)

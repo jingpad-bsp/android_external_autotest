@@ -6,10 +6,10 @@
 
 import logging
 
+from autotest_lib.server.cros import chaos_config
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_ap_configurators import \
         ap_configurator_config
-from autotest_lib.server.cros.chaos_config import ChaosAPList
 
 import asus_ap_configurator
 import asus_ac66r_ap_configurator
@@ -132,10 +132,10 @@ class APConfiguratorFactory(object):
 
 
     def __init__(self):
-        chaos_config = ChaosAPList(static_config=False)
+        chaos_ap_list = chaos_config.ChaosAPList()
 
         self.ap_list = []
-        for ap in chaos_config:
+        for ap in chaos_ap_list:
             configurator = self.CONFIGURATOR_MAP[ap.get_class()]
             self.ap_list.append(configurator(ap_config=ap))
 
