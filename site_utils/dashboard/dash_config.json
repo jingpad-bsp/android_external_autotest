@@ -91,11 +91,6 @@
               "trigger": "completed", "cc": ["josephsih@google.com"]},
              {"categories": "logging|platform",
               "cc": ["scunningham@google.com"]},
-             {"categories": "network",
-              "cc": ["stanleyw@google.com",
-                     "thieule@google.com",
-                     "xiaowenx@google.com",
-                     "armansito@google.com"]},
              {"categories": "mton_au|nton_au|regression",
               "cc": ["chromeos-test@google.com"]},
              {"categories": "perfalerts",
@@ -130,14 +125,7 @@
          "filters": [
              {"categories": "enterprise",
               "cc": ["craigdh@google.com",
-                     "scunningham@google.com"]}]},
-        {"platforms": {"x86-mario": ["netbook_mario_mp_cdma_gobi2k"],
-                       "x86-alex": ["netbook_alex_cdma_gobi2k"],
-                       "x86-alex": ["netbook_alex_cdma_gobi3k"]},
-         "filters": [
-             {"categories": "network_3g",
-              "cc": ["jglasgow@google.com",
-                     "rochberg@google.com"]}]}],
+                     "scunningham@google.com"]}]}],
     "plots": {
         "10": {
             "test": "platform_BootPerfServer",
