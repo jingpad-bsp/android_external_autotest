@@ -1202,28 +1202,44 @@ class Job(DBObject):
         return self.run_verify
 
 
-    def schedule_pre_job_tasks(self, queue_entry):
+    def _queue_special_task(self, queue_entry, task):
         """
-        Get a list of tasks to perform before the host_queue_entry
-        may be used to run this Job (such as Cleanup & Verify).
+        Create a special task and associate it with a host queue entry.
 
-        @returns A list of tasks to be done to the given queue_entry before
-                it should be considered be ready to run this job.  The last
-                task in the list calls HostQueueEntry.on_pending(), which
-                continues the flow of the job.
+        @param queue_entry: The queue entry this special task should be
+                            associated with.
+        @param task: One of the members of the enum models.SpecialTask.Task.
+        @returns: None
+
         """
-        if self._should_run_cleanup(queue_entry):
-            task = models.SpecialTask.Task.CLEANUP
-        elif self._should_run_verify(queue_entry):
-            task = models.SpecialTask.Task.VERIFY
-        else:
-            queue_entry.on_pending()
-            return
-
-        queue_entry = models.HostQueueEntry.objects.get(id=queue_entry.id)
         models.SpecialTask.objects.create(
                 host=models.Host.objects.get(id=queue_entry.host_id),
                 queue_entry=queue_entry, task=task)
+
+
+    def schedule_pre_job_tasks(self, queue_entry):
+        """
+        Queue all of the special tasks that need to be run before a host
+        queue entry may run.
+
+        If no special taskes need to be scheduled, then |on_pending| will be
+        called directly.
+
+        @returns None
+
+        """
+        task_queued = False
+        hqe_model = models.HostQueueEntry.objects.get(id=queue_entry.id)
+
+        if self._should_run_cleanup(queue_entry):
+            self._queue_special_task(hqe_model, models.SpecialTask.Task.CLEANUP)
+            task_queued = True
+        if self._should_run_verify(queue_entry):
+            self._queue_special_task(hqe_model, models.SpecialTask.Task.VERIFY)
+            task_queued = True
+
+        if not task_queued:
+            queue_entry.on_pending()
 
 
     def _assign_new_group(self, queue_entries, group_name=''):

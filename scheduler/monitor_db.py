@@ -1676,6 +1676,32 @@ class PreJobTask(SpecialAgentTask):
                 requested_by=self.task.requested_by)
 
 
+    def _should_pending(self):
+        """
+        Decide if we should call the host queue entry's on_pending method.
+        We should if:
+        1) There exists an associated host queue entry.
+        2) The current special task completed successfully.
+        3) There do not exist any more special tasks to be run before the
+           host queue entry starts.
+
+        @returns: True if we should call pending, false if not.
+
+        """
+        if not self.queue_entry or not self.success:
+            return False
+
+        # We know if this is the last one when we create it, so we could add
+        # another column to the database to keep track of this information, but
+        # I expect the overhead of querying here to be minimal.
+        queue_entry = models.HostQueueEntry.objects.get(id=self.queue_entry.id)
+        queued = models.SpecialTask.objects.filter(
+                host__id=self.host.id, is_active=False,
+                is_complete=False, queue_entry=queue_entry)
+        queued = queued.exclude(id=self.task.id)
+        return queued.count() == 0
+
+
 class VerifyTask(PreJobTask):
     TASK_TYPE = models.SpecialTask.Task.VERIFY
 
@@ -1706,7 +1732,7 @@ class VerifyTask(PreJobTask):
     def epilog(self):
         super(VerifyTask, self).epilog()
         if self.success:
-            if self.queue_entry:
+            if self._should_pending():
                 self.queue_entry.on_pending()
             else:
                 self.host.set_status(models.Host.Status.READY)
@@ -1748,7 +1774,8 @@ class CleanupTask(PreJobTask):
                     queue_entry=entry,
                     task=models.SpecialTask.Task.VERIFY)
         else:
-            self.queue_entry.on_pending()
+            if self._should_pending():
+                self.queue_entry.on_pending()
 
 
     def epilog(self):
