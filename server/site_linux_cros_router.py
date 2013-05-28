@@ -4,6 +4,7 @@
 
 import re
 from autotest_lib.server import site_linux_router
+from autotest_lib.server.cros.wlan import netperf_runner
 
 def isLinuxCrosRouter(router):
     """Detect if a remote system is a CrOS router (stumpy cell).
