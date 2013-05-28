@@ -7,10 +7,10 @@ import time
 from random import shuffle
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import hosts
 from autotest_lib.server import frontend
+from autotest_lib.server import hosts
+from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros import time_util
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager
 
 """
 PacketCapture and PacketCapture manager, together, form a mini-suite of code

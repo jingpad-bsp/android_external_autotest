@@ -11,11 +11,12 @@ import shutil
 import tempfile
 import time
 
-from autotest_lib.server.cros.dynamic_suite import job_status, host_lock_manager
+from autotest_lib.server import frontend
+from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.dynamic_suite import host_spec
+from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost, FakeJob
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeStatus
-from autotest_lib.server import frontend
 
 
 DEFAULT_WAITTIMEOUT_MINS = 60 * 4

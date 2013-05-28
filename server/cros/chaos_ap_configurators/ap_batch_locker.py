@@ -7,10 +7,11 @@ import random
 
 from time import sleep
 
-from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
+import common
+from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_factory
-from autotest_lib.server.cros.dynamic_suite import host_lock_manager
+from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 
 
 # Max number of retry attempts to lock an ap.
