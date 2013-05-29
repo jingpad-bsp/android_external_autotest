@@ -11,6 +11,9 @@ import xmlrpclib
 
 import web_driver_core_helpers
 
+from autotest_lib.server.cros.chaos_ap_configurators import \
+    download_chromium_prebuilt
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
                              'chrome_test', 'test_src', 'third_party',
                              'webdriver', 'pylib'))
@@ -24,6 +27,7 @@ except ImportError:
 
 class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     """Base class for objects to configure access points using webdriver."""
+
 
     def __init__(self, ap_config=None):
         super(APConfigurator, self).__init__()
@@ -96,6 +100,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
     def reset_command_list(self):
         """Resets all internal command state."""
+        logging.error('Dumping command list %s', self._command_list)
         self._command_list = []
 
 
@@ -417,6 +422,10 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         if self.driver_connection_established:
             return
         # Load the Auth extension
+        webdriver_server = download_chromium_prebuilt.check_webdriver_ready()
+        if webdriver_server is None:
+            raise RuntimeError('Unable to connect to webdriver locally or '
+                               'via the lab service.')
         extension_path = os.path.join(os.path.dirname(__file__),
                                       'basic_auth_extension.crx')
         f = open(extension_path, 'rb')
@@ -424,7 +433,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         base64_ext = (binascii.b2a_base64(f.read()).strip())
         base64_extensions.append(base64_ext)
         f.close()
-        self.driver = webdriver.Remote('http://127.0.0.1:9515',
+        webdriver_url = ('http://%s:9515' % webdriver_server)
+        self.driver = webdriver.Remote(webdriver_url,
             {'chrome.extensions': base64_extensions})
         self.driver_connection_established = True
 
