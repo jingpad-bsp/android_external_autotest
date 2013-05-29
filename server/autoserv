@@ -82,6 +82,7 @@ def run_autoserv(pid_file_manager, results, parser):
     verify = parser.options.verify
     repair = parser.options.repair
     cleanup = parser.options.cleanup
+    provision = parser.options.provision
     no_tee = parser.options.no_tee
     parse_job = parser.options.parse_job
     execution_tag = parser.options.execution_tag
@@ -99,8 +100,12 @@ def run_autoserv(pid_file_manager, results, parser):
     if client and server:
         parser.parser.error("Can not specify a test as both server and client!")
 
-    if len(parser.args) < 1 and not (verify or repair or cleanup
-                                     or collect_crashinfo):
+    if provision and client:
+        parser.parser.error("Cannot specify provisioning and client!")
+
+    is_special_task = (verify or repair or cleanup or collect_crashinfo or
+                       provision)
+    if len(parser.args) < 1 and not is_special_task:
         parser.parser.error("Missing argument: control file")
 
     # We have a control file unless it's just a verify/repair/cleanup job
@@ -151,6 +156,8 @@ def run_autoserv(pid_file_manager, results, parser):
                 job.repair(host_protection)
             elif verify:
                 job.verify()
+            elif provision:
+                job.provision(provision)
             else:
                 job.run(cleanup, install_before, install_after,
                         only_collect_crashinfo=collect_crashinfo)

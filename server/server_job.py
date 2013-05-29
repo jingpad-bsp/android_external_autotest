@@ -35,9 +35,9 @@ CRASHDUMPS_CONTROL_FILE = _control_segment_path('crashdumps')
 CRASHINFO_CONTROL_FILE = _control_segment_path('crashinfo')
 INSTALL_CONTROL_FILE = _control_segment_path('install')
 CLEANUP_CONTROL_FILE = _control_segment_path('cleanup')
-
 VERIFY_CONTROL_FILE = _control_segment_path('verify')
 REPAIR_CONTROL_FILE = _control_segment_path('repair')
+PROVISION_CONTROL_FILE = _control_segment_path('provision')
 
 
 # by default provide a stub that generates no site data
@@ -360,6 +360,19 @@ class base_server_job(base_job.base_job):
                      'protection_level': host_protection}
 
         self._execute_code(REPAIR_CONTROL_FILE, namespace, protect=False)
+
+
+    def provision(self, labels):
+        """
+        Provision all hosts to match |labels|.
+
+        @param labels: A comma seperated string of labels to provision the
+                       host to.
+
+        """
+        namespace = {'provision_labels': labels}
+        control = self._load_control_file(PROVISION_CONTROL_FILE)
+        self.run(control=control, namespace=namespace)
 
 
     def precheck(self):
