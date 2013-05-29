@@ -10,6 +10,8 @@ import sys
 import xmlrpclib
 
 import web_driver_core_helpers
+from autotest_lib.server.cros.chaos_ap_configurators import \
+        ap_configurator_config
 
 from autotest_lib.server.cros.chaos_ap_configurators import \
     download_chromium_prebuilt
@@ -35,27 +37,6 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
             verbose=False)
 
-        # Possible bands
-        self.band_2ghz = '2.4GHz'
-        self.band_5ghz = '5GHz'
-        # Set a default band, this can be overriden by the subclasses
-        self.current_band = self.band_2ghz
-
-        # Possible modes
-        self.mode_a = 0x00001
-        self.mode_b = 0x00010
-        self.mode_g = 0x00100
-        self.mode_n = 0x01000
-        self.mode_auto = 0x10000
-        self.mode_m = 0x0111
-        self.mode_d = 0x1011
-
-        # Possible security types
-        self.security_type_disabled = 0
-        self.security_type_wep = 1
-        self.security_type_wpapsk = 2
-        self.security_type_wpa2psk = 3
-
         if ap_config:
             # This allows the ability to build a generic configurator
             # which can be used to get access to the members above.
@@ -66,8 +47,31 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             self.host_name = ap_config.get_wan_host()
             self.config_data = ap_config
 
-        self.wep_authentication_open = 0x00011
-        self.wep_authentication_shared = 0x00012
+        config = ap_configurator_config.APConfiguratorConfig()
+
+        # Possible bands
+        self.band_2ghz = config.BAND_2GHZ
+        self.band_5ghz = config.BAND_5GHZ
+        # Set a default band, this can be overriden by the subclasses
+        self.current_band = config.BAND_2GHZ
+
+        # Possible modes
+        self.mode_a = config.MODE_A
+        self.mode_b = config.MODE_B
+        self.mode_g = config.MODE_G
+        self.mode_n = config.MODE_N
+        self.mode_auto = config.MODE_AUTO
+        self.mode_m = config.MODE_M
+        self.mode_d = config.MODE_D
+
+        # Possible security types
+        self.security_type_disabled = config.SECURITY_TYPE_DISABLED
+        self.security_type_wep = config.SECURITY_TYPE_WEP
+        self.security_type_wpapsk = config.SECURITY_TYPE_WPAPSK
+        self.security_type_wpa2psk = config.SECURITY_TYPE_WPA2PSK
+
+        self.wep_authentication_open = config.WEP_AUTHENTICATION_OPEN
+        self.wep_authentication_shared = config.WEP_AUTHENTICATION_SHARED
 
         self._command_list = []
 
@@ -223,9 +227,9 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         @param security_mode: one of the following modes:
                          self.security_disabled,
-                         self.security_wep, self.security_wpapsk,
-                         self.security_wpa2psk, self.security_wpa8021x,
-                         or self.security_wpa28021x
+                         self.security_wep,
+                         self.security_wpapsk,
+                         self.security_wpa2psk
 
         @return True if the security mode is supported; False otherwise.
         """
@@ -390,9 +394,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         Note: The derived class must implement this method.
 
         @param key_value: encryption key to use
-        @param authentication: one of two supported authentication types:
-                               wep_authentication_open or
-                               wep_authentication_shared
+        @param authentication: one of two supported WEP authentication types:
+                               open or shared.
         """
         raise NotImplementedError
 

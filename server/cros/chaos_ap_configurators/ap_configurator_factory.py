@@ -7,7 +7,8 @@
 import logging
 
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
+from autotest_lib.server.cros.chaos_ap_configurators import \
+        ap_configurator_config
 from autotest_lib.server.cros.chaos_config import ChaosAPList
 
 import asus_ap_configurator
@@ -54,10 +55,7 @@ class APConfiguratorFactory(object):
     @attribute SECURITIES: a string, security methods supported by an AP.
     @attribute HOSTNAMES: a string, AP hostname.
     @attribute ap_list: a list of APConfigurator objects.
-    @attribute generic_ap: a generic APConfigurator object.
-    @attribute valid_modes: a set of hex numbers.
-    @attribute valid_securities: a set of strings.
-    @attribute valid_bands: a set of strings.
+    @attribute ap_config: an APConfiguratorConfig object.
     """
 
     CONFIGURATOR_MAP = {
@@ -141,31 +139,6 @@ class APConfiguratorFactory(object):
             configurator = self.CONFIGURATOR_MAP[ap.get_class()]
             self.ap_list.append(configurator(ap_config=ap))
 
-        # Used to fetch AP attributes such as bands, modes, securities
-        self.generic_ap = ap_configurator.APConfigurator()
-        # All possible values for 802.11 mode
-        self.valid_modes = set([
-            self.generic_ap.mode_a,
-            self.generic_ap.mode_auto,
-            self.generic_ap.mode_b,
-            self.generic_ap.mode_d,
-            self.generic_ap.mode_g,
-            self.generic_ap.mode_m,
-            self.generic_ap.mode_n,
-            ])
-        # All possible values for security method
-        self.valid_securities = set([
-            self.generic_ap.security_type_disabled,
-            self.generic_ap.security_type_wep,
-            self.generic_ap.security_type_wpapsk,
-            self.generic_ap.security_type_wpa2psk,
-            ])
-        # All possible values for bands
-        self.valid_bands = set([
-            self.generic_ap.band_2ghz,
-            self.generic_ap.band_5ghz,
-            ])
-
 
     def _cleanup_ap_spec(self, key, value):
         """Validates AP attribute.
@@ -175,10 +148,13 @@ class APConfiguratorFactory(object):
 
         @returns a list of strings, valid values for key. Or None.
         """
+        # Used to fetch AP attributes such as bands, modes, securities
+        config = ap_configurator_config.APConfiguratorConfig()
+
         attr_dict = {
-            self.BANDS: self.valid_bands,
-            self.MODES: self.valid_modes,
-            self.SECURITIES: self.valid_securities,
+            self.BANDS: config.VALID_BANDS,
+            self.MODES: config.VALID_MODES,
+            self.SECURITIES: config.VALID_SECURITIES,
             }
 
         invalid_value = set(value).difference(attr_dict[key])
@@ -193,8 +169,7 @@ class APConfiguratorFactory(object):
     def _get_aps_with_modes(self, modes, ap_list):
         """Returns all configurators that support a given 802.11 mode.
 
-        @param mode: a list of hex numbers, 802.11 modes. Valid values in
-                     self.valid_modes.
+        @param mode: a list of hex numbers, 802.11 modes.
         @param ap_list: a list of APConfigurator objects.
 
         @returns aps: a list of APConfigurators. Or None.
@@ -221,8 +196,7 @@ class APConfiguratorFactory(object):
     def _get_aps_with_securities(self, securities, ap_list):
         """Returns all configurators that support a given security mode.
 
-        @param securities: a list of integers, security mode. Valid values in
-                           self.valid_securities.
+        @param securities: a list of integers, security mode.
         @param ap_list: a list of APConfigurator objects.
 
         @returns aps: a list of APConfigurators. Or None.
@@ -246,8 +220,7 @@ class APConfiguratorFactory(object):
     def _get_aps_with_bands(self, bands, ap_list):
         """Returns all APs that support bands.
 
-        @param bands: a list of strings, bands supported. Valid values in
-                      self.valid_bands.
+        @param bands: a list of strings, bands supported.
         @param ap_list: a list of APConfigurator objects.
 
         @returns aps: a list of APConfigurators. Or None.

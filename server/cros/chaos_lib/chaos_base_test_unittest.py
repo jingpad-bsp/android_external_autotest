@@ -14,7 +14,8 @@
 import mox
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
+from autotest_lib.server.cros.chaos_ap_configurators import \
+    ap_configurator_config
 from autotest_lib.server.cros.chaos_lib import chaos_base_test
 
 
@@ -32,59 +33,59 @@ class WiFiChaosConnectionTestTest(mox.MoxTestBase):
             self.capturer = mox_obj.CreateMockAnything()
             self.connector = mox_obj.CreateMockAnything()
             self.disconnector = mox_obj.CreateMockAnything()
-            self.generic_ap = mox_obj.CreateMockAnything()
             self.outputdir = None
             self.error_list = []
+            self.ap_config = ap_configurator_config.APConfiguratorConfig()
 
 
     def setUp(self):
         """Default test setup."""
         super(WiFiChaosConnectionTestTest, self).setUp()
         self.helper = self.MockBaseClass(self.mox)
-        self.base_ap = ap_configurator.APConfigurator()
+        self.ap_config = ap_configurator_config.APConfiguratorConfig()
 
 
     def _setup_mode_test(self):
-        self.helper.generic_ap.mode_n = self.base_ap.mode_n
+        #self.helper.ap_config.mode_n = self.ap_config.MODE_N
         self.mock_ap = self.mox.CreateMockAnything()
 
 
     def testGetModeType_ReturnsNon80211n(self):
         """Returns a non-802.11n mode on a given band."""
         self._setup_mode_test()
-        modes = [{'band': self.base_ap.band_2ghz,
-                  'modes': [self.base_ap.mode_g]}]
+        modes = [{'band': self.ap_config.BAND_2GHZ,
+                  'modes': [self.ap_config.MODE_G]}]
 
         self.mock_ap.get_supported_modes().AndReturn(modes)
         self.mox.ReplayAll()
         actual = self.helper._get_mode_type(self.mock_ap,
-                                            self.base_ap.band_2ghz)
-        self.assertEquals(self.base_ap.mode_g, actual)
+                                            self.ap_config.BAND_2GHZ)
+        self.assertEquals(self.ap_config.MODE_G, actual)
 
 
     def testGetModeType_ReturnsNoneForBandMismatch(self):
         """Returns None if AP does not support the given band."""
         self._setup_mode_test()
-        modes = [{'band': self.base_ap.band_2ghz,
-                  'modes': [self.base_ap.mode_g]}]
+        modes = [{'band': self.ap_config.BAND_2GHZ,
+                  'modes': [self.ap_config.MODE_G]}]
 
         self.mock_ap.get_supported_modes().AndReturn(modes)
         self.mox.ReplayAll()
         actual = self.helper._get_mode_type(self.mock_ap,
-                                            self.base_ap.band_5ghz)
+                                            self.ap_config.BAND_5GHZ)
         self.assertEquals(None, actual)
 
 
     def testGetModeType_ReturnsNoneFor80211n(self):
         """Returns None if AP only supports 802.11n on the given band."""
         self._setup_mode_test()
-        modes = [{'band': self.base_ap.band_2ghz,
-                  'modes': [self.base_ap.mode_n]}]
+        modes = [{'band': self.ap_config.BAND_2GHZ,
+                  'modes': [self.ap_config.MODE_N]}]
 
         self.mock_ap.get_supported_modes().AndReturn(modes)
         self.mox.ReplayAll()
         actual = self.helper._get_mode_type(self.mock_ap,
-                                            self.base_ap.band_2ghz)
+                                            self.ap_config.BAND_2GHZ)
         self.assertEquals(None, actual)
 
 

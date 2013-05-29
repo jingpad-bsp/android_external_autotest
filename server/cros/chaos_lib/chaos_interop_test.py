@@ -46,7 +46,7 @@ class WifiChaosTest(object):
         if self._test == self.PSK_TEST:
             logging.info('Perform additional setup for PSK test.')
             helper.psk_password = 'chromeos'
-            psk_spec = {'securities': [helper.generic_ap.security_type_wpapsk]}
+            psk_spec = {'securities': [helper.ap_config.SECURITY_TYPE_WPAPSK]}
             # Update ap_spec w/ PSK security
             self._ap_spec = dict(self._ap_spec.items() + psk_spec.items())
 
@@ -84,11 +84,11 @@ class WifiChaosTest(object):
                     # Test 2.4GHz band first, followed by 5GHz band. Release
                     # APs as soon as we're done using them.
                     aps_unlocked = set()
-                    for band in [helper.generic_ap.band_2ghz,
-                                 helper.generic_ap.band_5ghz]:
+                    for band in [helper.ap_config.BAND_2GHZ,
+                                 helper.ap_config.BAND_5GHZ]:
 
                         # Remove 2.4GHz-only APs before APs for 5GHz run
-                        if band == helper.generic_ap.band_5ghz:
+                        if band == helper.ap_config.BAND_5GHZ:
                             ap_batch = list(set(ap_batch) - aps_unlocked)
 
                         for ap_info in helper.config_aps(

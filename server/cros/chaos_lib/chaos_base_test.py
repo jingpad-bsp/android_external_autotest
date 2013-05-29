@@ -9,9 +9,8 @@ import pprint
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
 from autotest_lib.server.cros.chaos_ap_configurators import \
-    ap_configurator_factory
+    ap_configurator_config
 from autotest_lib.server.cros.chaos_ap_configurators import \
     download_chromium_prebuilt
 from autotest_lib.server.cros.chaos_config import ChaosAP
@@ -26,7 +25,7 @@ class WiFiChaosConnectionTest(object):
     @attribute connector: a TracingConnector object.
     @attribute disconnector: a Disconnector object.
     @attribute error_list: a list of errors, intermediate test failures.
-    @attribute generic_ap: a generic APConfigurator object.
+    @attribute ap_config: an APConfiguratorConfig object.
     @attribute factory: an APConfiguratorFactory object.
     @attribute psk_password: a string, password used for PSK authentication.
 
@@ -83,15 +82,14 @@ class WiFiChaosConnectionTest(object):
         self.connector = connector.TracingConnector(self.host, self.capturer)
         self.disconnector = disconnector.Disconnector(self.host)
         self.error_list = []
-        self.generic_ap = ap_configurator.APConfigurator()
-        self.factory = ap_configurator_factory.APConfiguratorFactory()
+        self.ap_config = ap_configurator_config.APConfiguratorConfig()
         self.psk_password = ''
         download_chromium_prebuilt.check_webdriver_ready()
 
         # Test on channel 5 for 2.4GHz band and channel 48 for 5GHz band.
         # TODO(tgao): support user-specified channel.
-        self.band_channel_map = {self.generic_ap.band_2ghz: 5,
-                                 self.generic_ap.band_5ghz: 48}
+        self.band_channel_map = {self.ap_config.BAND_2GHZ: 5,
+                                 self.ap_config.BAND_5GHZ: 48}
 
 
     def __repr__(self):
@@ -228,8 +226,8 @@ class WiFiChaosConnectionTest(object):
         for mode in ap.get_supported_modes():
             if mode['band'] == band:
                 for mode_type in mode['modes']:
-                    if (mode_type & self.generic_ap.mode_n !=
-                        self.generic_ap.mode_n):
+                    if (mode_type & self.ap_config.MODE_N !=
+                        self.ap_config.MODE_N):
                         return mode_type
 
 
@@ -250,7 +248,7 @@ class WiFiChaosConnectionTest(object):
         supported_bands = ap.get_supported_bands()
         bands_supported = [d['band'] for d in supported_bands]
         if band in bands_supported:
-            if len(bands_supported) == 1 or band == self.generic_ap.band_5ghz:
+            if len(bands_supported) == 1 or band == self.ap_config.BAND_5GHZ:
                 return True
         return False
 

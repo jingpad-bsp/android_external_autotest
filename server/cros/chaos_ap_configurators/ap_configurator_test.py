@@ -50,7 +50,7 @@ class ConfiguratorTest(unittest.TestCase):
         factory = ap_configurator_factory.APConfiguratorFactory()
         # Set self.ap to the one you want to test against.
         self.ap = factory._get_aps_with_hostnames(
-                   ['chromeos3-row1-rack2-host10'], factory.ap_list)[0]
+                   ['chromeos3-row1-rack2-host11'], factory.ap_list)[0]
         self.ap.power_up_router()
         self.run_initialization = False
         # All tests have to have a band pre-set.
@@ -126,7 +126,7 @@ class ConfiguratorTest(unittest.TestCase):
         self.assertTrue(bands_info, msg='Invalid band sent.')
         for bands in bands_info:
             band = bands['band']
-            if band == self.ap.band_2ghz:
+            if band == self.ap.config.BAND_2GHZ:
                 self.ap.set_band(band)
                 self.ap.set_ssid('ssid2')
                 self.ap.apply_settings()
@@ -138,7 +138,7 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_band(self):
         """Test switching the band."""
-        self.ap.set_band(self.ap.band_2ghz)
+        self.ap.set_band(self.ap.config.BAND_2GHZ)
         self.ap.apply_settings()
         self.ap.set_band(self.ap.band_5ghz)
         self.ap.apply_settings()
