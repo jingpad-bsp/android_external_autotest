@@ -114,6 +114,8 @@ class network_3GSafetyDance(test.test):
         # Ensure that auto connect is turned off so that flimflam does
         # not interfere with running the test
         with cell_tools.AutoConnectContext(self.device, self.flim, False):
+            # Start in a known state.
+            self._disable()
             logging.info('Seed: %d', seed)
             random.seed(seed)
             for _ in xrange(ops):
