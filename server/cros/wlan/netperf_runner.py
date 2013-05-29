@@ -6,6 +6,8 @@ import logging
 import time
 import os.path
 
+from autotest_lib.client.common_lib import error
+
 class NetperfResult(object):
     """Encapsulates logic to parse and represent netperf results."""
 
@@ -13,14 +15,14 @@ class NetperfResult(object):
     def from_netperf_results(test_type, results, duration_seconds):
         """Parse the text output of netperf and return a NetperfResult.
 
-        @param test_type string one of NetperfRunner.TEST_TYPE_* below.
+        @param test_type string one of NetperfConfig.TEST_TYPE_* below.
         @param results string raw results from netperf.
         @param duration_seconds float number of seconds the test ran for.
         @return NetperfResult result.
 
         """
         lines = results.splitlines()
-        if test_type in NetperfRunner.TCP_STREAM_TESTS:
+        if test_type in NetperfConfig.TCP_STREAM_TESTS:
             """Parses the following (works for both TCP_STREAM, TCP_MAERTS and
             TCP_SENDFILE) and returns a singleton containing throughput.
 
@@ -36,7 +38,7 @@ class NetperfResult(object):
             return NetperfResult(duration_seconds,
                                  throughput=float(lines[6].split()[4]))
 
-        if test_type in NetperfRunner.UDP_STREAM_TESTS:
+        if test_type in NetperfConfig.UDP_STREAM_TESTS:
             """Parses the following and returns a tuple containing throughput
             and the number of errors.
 
@@ -54,7 +56,7 @@ class NetperfResult(object):
                                  throughput=float(udp_tokens[5]),
                                  errors=float(udp_tokens[4]))
 
-        if test_type in NetperfRunner.REQUEST_RESPONSE_TESTS:
+        if test_type in NetperfConfig.REQUEST_RESPONSE_TESTS:
             """Parses the following which works for both rr (TCP and UDP)
             and crr tests and returns a singleton containing transfer rate.
 
@@ -88,15 +90,105 @@ class NetperfResult(object):
         self.throughput = throughput
         self.errors = errors
         self.transaction_rate = transaction_rate
+        logging.info('netperf duration: %f seconds', duration_seconds)
+        if throughput is not None:
+            logging.info('netperf throughput: %f Mbps', throughput)
+        if errors is not None:
+            logging.info('netperf errors: %f UDP errors', errors)
+        if transaction_rate is not None:
+            logging.info('netperf transaction_rate: %f transactions/sec',
+                         transaction_rate)
 
 
-class NetperfRunner(object):
-    """Delegate to run netperf on a client/server pair."""
+    def __repr__(self):
+        return ('%s(duration_seconds=%f, throughput=%r, '
+                'errors=%r, transaction_rate=%r)' % (self.__class__.__name__,
+                                                     self.duration_seconds,
+                                                     self.throughput,
+                                                     self.errors,
+                                                     self.transaction_rate))
+
+
+class NetperfAssertion(object):
+    """Defines a set of expectations for netperf results."""
+
+    def __init__(self, duration_min=None, duration_max=None,
+                 throughput_min=None, throughput_max=None,
+                 error_min=None, error_max=None,
+                 transaction_rate_min=None, transaction_rate_max=None):
+        """Construct a NetperfAssertion.
+
+        Leaving bounds undefined sets them to values which are permissive.
+
+        @param duration_min float minimal test duration in seconds.
+        @param duration_max float maximal test duration in seconds.
+        @param throughput_min float minimal throughput in Mbps.
+        @param throughput_max float maximal throughput in Mbps.
+        @param error_min int minimal number of UDP frame errors.
+        @param error_max int max number of UDP frame errors.
+        @param transaction_rate_min float minimal number of transactions
+                per second.
+        @param transaction_rate_max float max number of transactions per second.
+
+        """
+        self.duration_bounds = (duration_min, duration_max)
+        self.throughput_bounds = (throughput_min, throughput_max)
+        self.error_bounds = (error_min, error_max)
+        self.transaction_rate_bounds = (transaction_rate_min,
+                                        transaction_rate_max)
+
+
+    def _passes(self, value, bounds):
+        if bounds[0] is None and bounds[1] is None:
+            return True
+
+        if value is None:
+            # We have bounds requirements, but no value to check?
+            return False
+
+        if bounds[0] is not None and bounds[0] > value:
+            return False
+
+        if bounds[1] is not None and bounds[1] < value:
+            return False
+
+        return True
+
+
+    def passes(self, result):
+        """Check that a result matches the given assertion.
+
+        @param result NetperfResult object produced by a test.
+        @return True iff all this assertion passes for the give result.
+
+        """
+        if (self._passes(result.duration_seconds, self.duration_bounds) and
+            self._passes(result.throughput, self.throughput_bounds) and
+            self._passes(result.errors, self.error_bounds) and
+            self._passes(result.transaction_rate,
+                         self.transaction_rate_bounds)):
+            return True
+
+        return False
+
+
+    def __repr__(self):
+        return ('%s(duration_min=%r, duration_max=%r, '
+                'thoughput_min=%r, throughput_max=%r, '
+                'error_min=%r, error_max=%r, '
+                'transaction_rate_min=%r, transaction_rate_max=%r)' % (
+                    self.__class__.__name__,
+                    self.duration_bounds[0], self.duration_bounds[1],
+                    self.throughput_bounds[0], self.throughput_bounds[1],
+                    self.error_bounds[0], self.error_bounds[1],
+                    self.transaction_rate_bounds[0],
+                    self.transaction_rate_bounds[1]))
+
+
+class NetperfConfig(object):
+    """Defines a single netperf run."""
 
     DEFAULT_TEST_TIME = 15
-    NETPERF_PORT = 12865
-    NETPERF_DATA_PORT = 12866
-    NETSERV_STARTUP_WAIT_TIME = 3
     # Measures how many times we can connect, request a byte, and receive a
     # byte per second.
     TEST_TYPE_TCP_CRR = 'TCP_CRR'
@@ -139,10 +231,41 @@ class NetperfRunner(object):
         @param test_type string test type.
 
         """
-        if (test_type not in NetperfRunner.REQUEST_RESPONSE_TESTS and
-            test_type not in NetperfRunner.TCP_STREAM_TESTS and
-            test_type not in NetperfRunner.UDP_STREAM_TESTS):
+        if (test_type not in NetperfConfig.REQUEST_RESPONSE_TESTS and
+            test_type not in NetperfConfig.TCP_STREAM_TESTS and
+            test_type not in NetperfConfig.UDP_STREAM_TESTS):
             raise error.TestFail('Invalid netperf test type: %r.' % test_type)
+
+
+    def __init__(self, test_type, server_serves=True, test_time=None):
+        """Construct a NetperfConfig.
+
+        @param test_type string one of TEST_TYPE_* above.
+        @param server_serves bool True iff server is acting as the netperf
+            server.
+        @param test_time int number of seconds to run the test for.
+
+        """
+        self._assert_is_valid_test_type(test_type)
+        self.test_type = test_type
+        self.server_serves = server_serves
+        self.test_time = test_time or self.DEFAULT_TEST_TIME
+
+
+    def __repr__(self):
+        return '%s(test_type=%r, server_serves=%r, test_time=%r' % (
+                self.__class__.__name__,
+                self.test_type,
+                self.server_serves,
+                self.test_time)
+
+
+class NetperfRunner(object):
+    """Delegate to run netperf on a client/server pair."""
+
+    NETPERF_DATA_PORT = 12866
+    NETPERF_PORT = 12865
+    NETSERV_STARTUP_WAIT_TIME = 3
 
 
     def __init__(self, client, server):
@@ -179,22 +302,17 @@ class NetperfRunner(object):
         start_time = time.time()
         result = client_host.run(netperf, timeout=timeout)
         duration = time.time() - start_time
-        logging.info('netperf duration: %f seconds', duration)
         return result.stdout, duration
 
 
-    def run(self, test_type, server_serves=True, test_time=None):
+    def run(self, config):
         """Run netperf.
 
-        @param test_type string one of TEST_TYPE_* above.
-        @param server_serves bool True iff server is acting as the netperf
-            server.
-        @param test_time int number of seconds to run the test for.
+        @param config NetperfConfig defines the parameters of the test.
         @return NetperfResult summarizing the resulting test.
 
         """
-        self._assert_is_valid_test_type(test_type)
-        if server_serves:
+        if config.server_serves:
             server_host = self._server_proxy.host
             client_host = self._client_proxy.host
             command_netserv = self._server_proxy.cmd_netserv
@@ -206,25 +324,23 @@ class NetperfRunner(object):
             command_netserv = self._client_proxy.command_netserv
             command_netperf = self._server_proxy.cmd_netperf
             target_ip = self._client_proxy.wifi_ip
-        if test_time is None:
-            test_time = self.DEFAULT_TEST_TIME
 
         netserv = '%s -p %d &> /dev/null' % (command_netserv, self.NETPERF_PORT)
         netperf = '%s -H %s -p %s -t %s -l %d -- -P 0,%d' % (
                 command_netperf,
                 target_ip,
                 self.NETPERF_PORT,
-                test_type,
-                test_time,
+                config.test_type,
+                config.test_time,
                 self.NETPERF_DATA_PORT)
-        self._client_proxy.firewall_open('tcp', target_ip)
-        self._client_proxy.firewall_open('udp', target_ip)
+        self._client_proxy.firewall_open('tcp', self._server_proxy.wifi_ip)
+        self._client_proxy.firewall_open('udp', self._server_proxy.wifi_ip)
         try:
-            raw_result,duration = self._run_body(client_host, server_host,
-                                                 netperf, netserv,
-                                                 test_time + 1)
+            raw_result,duration = self._run_body(
+                    client_host, server_host, netperf, netserv,
+                    config.test_time + self.NETSERV_STARTUP_WAIT_TIME)
         finally:
             server_host.run('pkill %s' % os.path.basename(command_netserv))
             self._client_proxy.firewall_cleanup()
-        return NetperfResult.from_netperf_results(test_type, raw_result,
+        return NetperfResult.from_netperf_results(config.test_type, raw_result,
                                                   duration)

@@ -222,3 +222,21 @@ class HostapConfig(object):
         self.bssid = bssid
         if force_wmm is not None:
             self.wmm_enabled = force_wmm
+
+
+    def __repr__(self):
+        return ('%s(mode=%r, channel=%r, frequency=%r, '
+                'n_capabilities=%r, hide_ssid=%r, beacon_interval=%r, '
+                'dtim_period=%r, frag_threshold=%r, ssid=%r, bssid=%r, '
+                'wmm_enabled=%r)' % (self.__class__.__name__,
+                                     self.hw_mode,
+                                     self.channel,
+                                     self.frequency,
+                                     self.n_capabilities,
+                                     self.hide_ssid,
+                                     self.beacon_interval,
+                                     self.dtim_period,
+                                     self.frag_threshold,
+                                     self.ssid,
+                                     self.bssid,
+                                     self.wmm_enabled))

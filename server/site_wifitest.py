@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import common
-import datetime
 import fnmatch
 import logging
 import os
@@ -1417,9 +1416,11 @@ class WiFiTest(object):
         runner = netperf_runner.NetperfRunner(self.client_proxy,
                                               self.hosting_server)
         test_type = params.get('test', 'TCP_STREAM')
-        netperf_result = runner.run(test_type,
-                                    server_serves=server_serves,
-                                    test_time=params.get('test_time', 15))
+        netperf_config = netperf_runner.NetperfConfig(
+                test_type,
+                server_serves=server_serves,
+                test_time=params.get('test_time', 15))
+        netperf_result = runner.run(netperf_config)
         mode = 'server'
         if server_serves:
             mode = 'client'
