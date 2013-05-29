@@ -169,23 +169,38 @@ def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS,
     return True
 
 
-def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
+def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS,
+                            start_time=None, wait_timeout_mins=None):
     """
     Wait for the jobs specified by each |job.id| to finish.
 
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param interval: polling interval in seconds.
     @param jobs: the jobs to poll on.
+    @param start_time: Time to compare to the current time to see if a timeout
+                       has occurred. Defaults to now.
+    @param wait_timeout_mins: Time in minutes to wait before aborting the jobs
+                               we are waiting on. Defaults to no timeout.
+
+    @returns True if the jobs have finished, False if they get aborted.
     """
+    if not start_time:
+        start_time = datetime.datetime.utcnow()
     job_ids = [j.id for j in jobs]
     while job_ids:
+        if wait_timeout_mins and _abort_jobs_if_timedout(afe, jobs, start_time,
+                    wait_timeout_mins):
+            # The timeout parameter is not None and we have indeed timed out.
+            return False
         for job_id in list(job_ids):
             if not afe.get_jobs(id=job_id, finished=True):
                 continue
             job_ids.remove(job_id)
             logging.debug('Re-imaging job %d finished.', job_id)
         if job_ids:
+            logging.debug('Waiting %ds before polling again.', interval)
             time.sleep(interval)
+    return True
 
 
 def wait_for_and_lock_job_hosts(afe, jobs, manager,

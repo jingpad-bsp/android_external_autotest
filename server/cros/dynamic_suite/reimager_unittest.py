@@ -320,11 +320,14 @@ class ReimagerTest(mox.MoxTestBase):
             wait_timeout_mins=mox.IgnoreArg()).AndReturn(True)
 
         if ex:
-            job_status.wait_for_jobs_to_finish(self.afe,
-                                               [canary_job]).AndRaise(ex)
+            job_status.wait_for_jobs_to_finish(
+                self.afe, [canary_job], start_time=mox.IgnoreArg(),
+                wait_timeout_mins=mox.IgnoreArg()).AndRaise(ex)
             return
         else:
-            job_status.wait_for_jobs_to_finish(self.afe, [canary_job])
+            job_status.wait_for_jobs_to_finish(
+                self.afe, [canary_job], start_time=mox.IgnoreArg(),
+                wait_timeout_mins=mox.IgnoreArg()).AndReturn(True)
 
             job_status.check_job_abort_status(mox.IgnoreArg(), mox.IgnoreArg()
                 ).AndReturn(tryjob_aborted)

@@ -302,10 +302,18 @@ class Reimager(object):
             if not job_status.wait_for_jobs_to_start(self._afe,
                     [self._canary_job], start_time=start_time,
                     wait_timeout_mins=timeout_mins):
-                raise error.ReimageAbortedException('Try job was aborted.')
+                raise error.ReimageAbortedException(
+                    'Try job was aborted, timed out while waiting for hosts to'
+                    ' start reimaging.')
             logging.debug('Re-imaging job running.')
 
-            job_status.wait_for_jobs_to_finish(self._afe, [self._canary_job])
+            if not job_status.wait_for_jobs_to_finish(
+                    self._afe, [self._canary_job], start_time=start_time,
+                    wait_timeout_mins=timeout_mins):
+                raise error.ReimageAbortedException(
+                    'Try job was aborted, timed out while waiting for hosts to'
+                    ' finish reimaging.')
+
             logging.debug('Re-imaging job finished.')
 
             if job_status.check_job_abort_status(self._afe, [self._canary_job]):
