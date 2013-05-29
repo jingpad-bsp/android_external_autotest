@@ -25,13 +25,20 @@ class audiovideo_VDA(chrome_test.ChromeBinaryTest):
             skip_deps=bool(SKIP_DEPS_ARG in arguments))
 
 
-    def run_once(self, videos):
-        path = os.path.join(self.cr_source_dir, 'content', 'common',
-                            'gpu', 'testdata', '')
+    def run_once(self, videos, use_cr_source_dir=True, gtest_filter=''):
+        # Check if using test video under source test-data directory.
+        if use_cr_source_dir:
+            path = os.path.join(self.cr_source_dir, 'content', 'common',
+                                'gpu', 'testdata', '')
+        else:
+            path = ''
 
         last_test_failure = None
         for video in videos:
             cmd_line = ('--test_video_data="%s%s"' % (path, video))
+
+            if gtest_filter:
+              cmd_line = '%s --gtest_filter=%s' % (cmd_line, gtest_filter)
 
             try:
                 self.run_chrome_binary_test(self.binary, cmd_line)

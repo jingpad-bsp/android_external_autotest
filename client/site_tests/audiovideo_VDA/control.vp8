@@ -25,4 +25,4 @@ This is a wrapper test for Chrome video_decode_accelerator_unittest.
 # the bots green.
 videos = ['test-25fps.vp8:320:240:250:250:35:150:11']
 
-job.run_test('audiovideo_VDA', videos=videos);
+job.run_test('audiovideo_VDA', videos=videos)
