@@ -21,7 +21,7 @@ class audiovideo_VDA(chrome_test.ChromeBinaryTest):
 
     def initialize(self, arguments=[]):
         chrome_test.ChromeBinaryTest.initialize(
-            self, nuke_browser_norestart=False,
+            self, nuke_browser_norestart=True,
             skip_deps=bool(SKIP_DEPS_ARG in arguments))
 
 
