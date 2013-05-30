@@ -523,9 +523,11 @@ class logging_UserCrash(crash_test.CrashTest):
           if not result['crashed']:
             raise error.TestFail('failure after setting up queue: %d' %
                                  result['returncode'])
-          if not self._log_reader.can_find(full_message):
-            raise error.TestFail('expected full message: ' + full_message)
-
+          utils.poll_for_condition(
+              lambda: self._log_reader.can_find(full_message),
+              timeout=20,
+              exception=error.TestFail('expected full message: ' +
+                                       full_message))
           if crash_dir_size != len(os.listdir(crash_dir)):
             utils.system('ls -l %s' % crash_dir)
             raise error.TestFail('expected no new files (now %d were %d)',
