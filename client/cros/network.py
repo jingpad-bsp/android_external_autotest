@@ -11,6 +11,9 @@ import urllib2
 import common
 
 # Import 'flimflam_test_path' first in order to import 'routing'.
+# Disable warning about flimflam_test_path not being used since it is used
+# to find routing but not explicitly used as a module.
+# pylint: disable-msg=W0611
 import flimflam_test_path
 import routing
 
@@ -20,7 +23,7 @@ from autotest_lib.client.cros.cellular import mm
 
 
 def _Bug24628WorkaroundEnable(modem):
-    """Enable a modem.  Try again if a SerialResponseTimeout is received."""
+    """Enables a modem.  Try again if a SerialResponseTimeout is received."""
     # http://code.google.com/p/chromium-os/issues/detail?id=24628
     tries = 5
     while tries > 0:
@@ -28,7 +31,7 @@ def _Bug24628WorkaroundEnable(modem):
             modem.Enable(True)
             return
         except dbus.exceptions.DBusException, e:
-            logging.error('Enable failed: %s' % e)
+            logging.error('Enable failed: %s', e)
             tries -= 1
             if tries > 0:
                 logging.error('_Bug24628WorkaroundEnable:  sleeping')
@@ -39,14 +42,18 @@ def _Bug24628WorkaroundEnable(modem):
 
 
 # TODO(rochberg):  Move modem-specific functions to cellular/cell_utils
-def ResetAllModems(flim):
-    """Disable/Enable cycle all modems to ensure valid starting state."""
-    service = flim.FindCellularService()
-    if not service:
-        flim.EnableTechnology('cellular')
-        service = flim.FindCellularService()
+def ResetAllModems(conn_mgr):
+    """
+    Disables/Enables cycle all modems to ensure valid starting state.
 
-    logging.info('ResetAllModems: found service %s' % service)
+    @param conn_mgr: Connection manager (shill)
+    """
+    service = conn_mgr.FindCellularService()
+    if not service:
+        conn_mgr.EnableTechnology('cellular')
+        service = conn_mgr.FindCellularService()
+
+    logging.info('ResetAllModems: found service %s', service)
 
     try:
         if service and service.GetProperties()['Favorite']:
@@ -71,37 +78,34 @@ def ResetAllModems(flim):
             sleep_interval=1,
             timeout=30)
         modem.Enable(False)
-        utils.poll_for_condition(
-            modem.IsDisabled,
-            exception=
-                utils.TimeoutError('Timed out waiting for modem disable'),
-            sleep_interval=1,
-            timeout=30)
-
-        # Shill disables the modem when it processes the disabled state change
-        # signal.  We'll wait for shill to process this signal before
-        # re-enabling the modem to make sure shill doesn't disable it while
-        # we're enabling it.
-        cm_device = flim.FindElementByPropertySubstring('Device',
-                                                        'DBus.Object',
-                                                        path)
+        # Although we disable at the ModemManager level, we need to wait for
+        # shill to process the disable to ensure the modem is in a stable state
+        # before continuing else we may end up trying to enable a modem that
+        # is still in the process of disabling.
+        cm_device = conn_mgr.FindElementByPropertySubstring('Device',
+                                                            'DBus.Object',
+                                                            path)
         utils.poll_for_condition(
             lambda: not cm_device.GetProperties()['Powered'],
             exception=utils.TimeoutError(
                 'Timed out waiting for shill device disable'),
             sleep_interval=1,
             timeout=30)
+        assert modem.IsDisabled()
 
         if 'Y3300XXKB1' in version:
             _Bug24628WorkaroundEnable(modem)
         else:
             modem.Enable(True)
+            # Wait for shill to process the enable for the same reason as
+            # above (during disable).
             utils.poll_for_condition(
-                modem.IsEnabled,
-                exception=
-                    utils.TimeoutError('Timed out waiting for modem enable'),
+                lambda: cm_device.GetProperties()['Powered'],
+                exception=utils.TimeoutError(
+                    'Timed out waiting for shill device enable'),
                 sleep_interval=1,
                 timeout=30)
+            assert modem.IsEnabled()
 
 
 def ClearGobiModemFaultInjection():
@@ -135,14 +139,19 @@ class IpTablesContext(object):
         self.rules.remove(rule)
 
     def AllowHost(self, host):
+        """
+        Allows the specified host through the firewall.
+
+        @param host: Name of host to allow
+        """
         for proto in ['tcp', 'udp']:
             rule = 'INPUT -s %s/32 -p %s -m %s -j ACCEPT' % (host, proto, proto)
             output = self._IpTables('-S INPUT')
             current = [x.rstrip() for x in output.splitlines()]
-            logging.error('current: %s' % current)
+            logging.error('current: %s', current)
             if '-A ' + rule in current:
                 # Already have the rule
-                logging.info('Not adding redundant %s' % rule)
+                logging.info('Not adding redundant %s', rule)
                 continue
             self._IpTables('-A '+ rule)
             self.rules.append(rule)
@@ -161,20 +170,26 @@ class IpTablesContext(object):
         return False
 
 
-def NameServersForService(flim, service):
-    """Return the list of name servers used by a connected service."""
+def NameServersForService(conn_mgr, service):
+    """
+    Returns the list of name servers used by a connected service.
+
+    @param conn_mgr: Connection manager (shill)
+    @param service: Name of the connected service
+    @return: List of name servers used by |service|
+    """
     service_properties = service.GetProperties(utf8_strings=True)
     device_path = service_properties['Device']
-    device = flim.GetObjectInterface('Device', device_path)
+    device = conn_mgr.GetObjectInterface('Device', device_path)
     if device is None:
-        logging.error('No device for service %s' % service)
+        logging.error('No device for service %s', service)
         return []
 
     properties = device.GetProperties(utf8_strings=True)
 
     hosts = []
     for path in properties['IPConfigs']:
-        ipconfig = flim.GetObjectInterface('IPConfig', path)
+        ipconfig = conn_mgr.GetObjectInterface('IPConfig', path)
         ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
         hosts += ipconfig_properties['NameServers']
 
@@ -184,7 +199,8 @@ def NameServersForService(flim, service):
 
 
 def CheckInterfaceForDestination(host, expected_interface):
-    """Checks that routes for host go through a given interface.
+    """
+    Checks that routes for host go through a given interface.
 
     The concern here is that our network setup may have gone wrong
     and our test connections may go over some other network than
@@ -192,12 +208,9 @@ def CheckInterfaceForDestination(host, expected_interface):
     for the supplied host and make sure they go through the given
     network interface.
 
-    Args:
-        host: Destination host
-        expected_interface: Expected interface name
-
-    Raises:
-        error.TestFail if the routes for the given host go through
+    @param host: Destination host
+    @param expected_interface: Expected interface name
+    @raises: error.TestFail if the routes for the given host go through
             a different interface than the expected one.
 
     """
@@ -219,23 +232,21 @@ FETCH_URL_PATTERN_FOR_TEST = \
     'http://testing-chargen.appspot.com/download?size=%d'
 
 def FetchUrl(url_pattern, bytes_to_fetch=10, fetch_timeout=10):
-    """Fetch a specified number of bytes from a URL.
+    """
+    Fetches a specified number of bytes from a URL.
 
-    Args:
-        url_pattern: URL pattern for fetching a specified number of bytes.
+    @param url_pattern: URL pattern for fetching a specified number of bytes.
             %d in the pattern is to be filled in with the number of bytes to
             fetch.
-        bytes_to_fetch: Number of bytes to fetch.
-        fetch_timeout: Number of seconds to wait for the fetch to complete
+    @param bytes_to_fetch: Number of bytes to fetch.
+    @param fetch_timeout: Number of seconds to wait for the fetch to complete
             before it times out.
-
-    Returns:
-        The time in seconds spent for fetching the specified number of bytes.
-
-    Raises:
-        error.TestError if one of the following happens:
+    @return: The time in seconds spent for fetching the specified number of
+            bytes.
+    @raises: error.TestError if one of the following happens:
             - The fetch takes no time.
-            - The number of bytes fetched differs from the specified number.
+            - The number of bytes fetched differs from the specified
+              number.
 
     """
     url = url_pattern % bytes_to_fetch
