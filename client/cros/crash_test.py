@@ -78,7 +78,8 @@ class CrashTest(test.test):
     _MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
     _PAUSE_FILE = '/var/lib/crash_sender_paused'
     _SYSTEM_CRASH_DIR = '/var/spool/crash'
-    _USER_CRASH_DIR = '/home/chronos/user/crash'
+    _FALLBACK_USER_CRASH_DIR = '/home/chronos/crash'
+    _USER_CRASH_DIRS = '/home/chronos/u-*/crash'
 
     def _set_system_sending(self, is_enabled):
         """Sets whether or not the system crash_sender is allowed to run.
@@ -158,7 +159,8 @@ class CrashTest(test.test):
         This will remove all crash reports which are waiting to be sent.
         """
         utils.system('rm -rf ' + self._SYSTEM_CRASH_DIR)
-        utils.system('rm -rf ' + self._USER_CRASH_DIR)
+        utils.system('rm -rf %s %s' % (self._USER_CRASH_DIRS,
+                                       self._FALLBACK_USER_CRASH_DIR))
 
 
     def _kill_running_sender(self):
@@ -297,13 +299,17 @@ class CrashTest(test.test):
     def _get_crash_dir(self, username):
         """Returns full path to the crash directory for a given username
 
+        This only really works (currently) when no one is logged in.  That
+        is OK (currently) as the only test that uses this runs when no one
+        is actually logged in.
+
         Args:
             username: username to use:
                 'chronos': Returns user crash directory.
                 'root': Returns system crash directory.
         """
         if username == 'chronos':
-            return self._USER_CRASH_DIR
+            return self._FALLBACK_USER_CRASH_DIR
         else:
             return self._SYSTEM_CRASH_DIR
 
