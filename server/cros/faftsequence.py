@@ -292,7 +292,7 @@ class FAFTSequence(ServoTest):
             self.wait_for_client()
             return
         except AssertionError:
-            pass
+            logging.info('Cold reboot doesn\'t help.')
 
         # DUT may be broken by a corrupted firmware. Restore firmware.
         # We assume the recovery boot still works fine. Since the recovery
@@ -329,11 +329,6 @@ class FAFTSequence(ServoTest):
         Raises:
             error.TestError: if failed to boot the USB image.
         """
-        # DUT works fine and is already in recovery boot, done.
-        if self._sshd_test(self._client.ip, timeout=5):
-            if self.checkers.crossystem_checker({'mainfw_type': 'recovery'}):
-                return
-
         logging.info('Try boot into USB image...')
         self.servo.switch_usbkey('host')
         self.enable_rec_mode_and_reboot()
