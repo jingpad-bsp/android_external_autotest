@@ -321,7 +321,8 @@ class SuiteSpec(object):
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
                  skip_reimage=False, add_experimental=True, file_bugs=False,
-                 max_runtime_mins=24*60, firmware_reimage=False,
+                 file_experimental_bugs=False, max_runtime_mins=24*60,
+                 firmware_reimage=False,
                  try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
                  suite_dependencies=None,
                  reimage_type=constants.REIMAGE_TYPE_OS,
@@ -348,6 +349,11 @@ class SuiteSpec(object):
                              Default: False
         @param add_experimental: schedule experimental tests as well, or not.
                                  Default: True
+        @param file_bugs: File bugs when tests in this suite fail.
+                          Default: False
+        @param file_experimental_bugs: File bugs when experimental tests in
+                                       this suite fail.
+                                       Default: False
         @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
                                  this suite will run.
         @param firmware_reimage: True if we should use the FwReimager,
@@ -391,6 +397,7 @@ class SuiteSpec(object):
         self.skip_reimage = skip_reimage
         self.add_experimental = add_experimental
         self.file_bugs = file_bugs
+        self.file_experimental_bugs = file_experimental_bugs
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
         self.firmware_reimage = firmware_reimage
@@ -596,6 +603,7 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
         max_runtime_mins=spec.max_runtime_mins,
         version_prefix=reimager.version_prefix,
         file_bugs=spec.file_bugs,
+        file_experimental_bugs=spec.file_experimental_bugs,
         suite_job_id=suite_job_id)
 
     # Now we get to asychronously schedule tests.

@@ -322,18 +322,16 @@ def wait_for_results(afe, tko, jobs):
                 for s in statuses:
                     if _status_for_test(s):
                         yield Status(s.status, s.test_name, s.reason,
-                                     s.test_started_time,
-                                     s.test_finished_time,
-                                     job.id, job.owner, s.hostname)
+                                     s.test_started_time, s.test_finished_time,
+                                     job.id, job.owner, s.hostname, job.name)
                     else:
                         if s.status != 'GOOD':
                             yield Status(s.status,
                                          '%s_%s' % (entries[0]['job']['name'],
                                                     s.test_name),
-                                         s.reason,
-                                         s.test_started_time,
-                                         s.test_finished_time,
-                                         job.id, job.owner, s.hostname)
+                                         s.reason, s.test_started_time,
+                                         s.test_finished_time, job.id,
+                                         job.owner, s.hostname, job.name)
         time.sleep(5)
 
 
@@ -449,7 +447,8 @@ class Status(object):
 
 
     def __init__(self, status, test_name, reason='', begin_time_str=None,
-                 end_time_str=None, job_id=None, owner=None, hostname=None):
+                 end_time_str=None, job_id=None, owner=None, hostname=None,
+                 job_name=''):
         """
         Constructor
 
@@ -464,6 +463,8 @@ class Status(object):
         @param owner: the owner of the job that generated this Status.
         @param hostname: The name of the host the test that generated this
                          result ran on.
+        @param job_name: The job name; Contains the test name with/without the
+                         experimental prefix, the tag and the build.
         """
         self._status = status
         self._test_name = test_name
@@ -471,6 +472,7 @@ class Status(object):
         self._id = job_id
         self._owner = owner
         self._hostname = hostname
+        self._job_name = job_name
 
         if begin_time_str and begin_time_str != 'None':
             self._begin_timestamp = int(time.mktime(

@@ -110,8 +110,8 @@ class Suite(object):
                          tko=None, pool=None, results_dir=None,
                          max_runtime_mins=24*60,
                          version_prefix=constants.VERSION_PREFIX,
-                         file_bugs=False, suite_job_id=None,
-                         ignore_deps=False):
+                         file_bugs=False, file_experimental_bugs=False,
+                         suite_job_id=None, ignore_deps=False):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -139,6 +139,8 @@ class Suite(object):
                                test.
         @param file_bugs: True if we should file bugs on test failures for
                           this suite run.
+        @param file_experimental_bugs: True if we should file bugs on
+                                       experimental test failures.
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
                              Default: None
         @param ignore_deps: True if jobs should ignore the DEPENDENCIES
@@ -151,8 +153,8 @@ class Suite(object):
 
         return Suite(Suite.name_in_tag_predicate(name),
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix, file_bugs, suite_job_id,
-                     ignore_deps)
+                     max_runtime_mins, version_prefix, file_bugs,
+                     file_experimental_bugs, suite_job_id, ignore_deps)
 
 
     @staticmethod
@@ -162,6 +164,7 @@ class Suite(object):
                                        max_runtime_mins=24*60,
                                        version_prefix=constants.VERSION_PREFIX,
                                        file_bugs=False,
+                                       file_experimental_bugs=False,
                                        suite_job_id=None,
                                        ignore_deps=False):
         """
@@ -192,6 +195,8 @@ class Suite(object):
                                test.
         @param file_bugs: True if we should file bugs on test failures for
                           this suite run.
+        @param file_experimental_bugs: True if we should file bugs on
+                                       experimental test failures.
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
                      Default: None
         @param ignore_deps: True if jobs should ignore the DEPENDENCIES
@@ -210,13 +215,15 @@ class Suite(object):
 
         return Suite(in_tag_not_in_blacklist_predicate,
                      name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix, file_bugs, suite_job_id)
+                     max_runtime_mins, version_prefix, file_bugs,
+                     file_experimental_bugs, suite_job_id)
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
                  pool=None, results_dir=None, max_runtime_mins=24*60,
                  version_prefix=constants.VERSION_PREFIX,
-                 file_bugs=False, suite_job_id=None, ignore_deps=False):
+                 file_bugs=False, file_experimental_bugs=False,
+                 suite_job_id=None, ignore_deps=False):
         """
         Constructor
 
@@ -261,6 +268,7 @@ class Suite(object):
         self._max_runtime_mins = max_runtime_mins
         self._version_prefix = version_prefix
         self._file_bugs = file_bugs
+        self._file_experimental_bugs = file_experimental_bugs
         self._suite_job_id = suite_job_id
         self._ignore_deps = ignore_deps
 
@@ -383,6 +391,19 @@ class Suite(object):
                    'Exception while scheduling suite').record_result(record)
 
 
+    def should_file_bug(self, result):
+        """
+        Returns True if this failure requires a bug.
+
+        @param result: A result, encapsulating the status of the failed job.
+        @return: True if we should file bugs for this failure.
+        """
+        return (self._file_bugs and
+                (constants.EXPERIMENTAL_PREFIX not in result._job_name or
+                 self._file_experimental_bugs) and
+                result.is_worse_than(job_status.Status('WARN', '', 'reason')))
+
+
     def wait(self, record, bug_template={}):
         """
         Polls for the job statuses, using |record| to print status when each
@@ -407,15 +428,7 @@ class Suite(object):
                 elif (self._results_dir and isinstance(result, Status)):
                     self._remember_test_status_job_id(result)
 
-                # I'd love to grab the actual tko test object here, as that
-                # includes almost all of the needed information: test name,
-                # status, reason, etc. However, doing so would cause a
-                # bunch of database traffic to grab data that we already
-                # have laying around in memory across several objects here.
-                worse = result.is_worse_than(
-                    job_status.Status('WARN', '', 'reason'))
-
-                if self._file_bugs and worse:
+                if self.should_file_bug(result):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
 
