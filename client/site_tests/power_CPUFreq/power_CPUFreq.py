@@ -6,8 +6,16 @@ import glob, logging, os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
+SYSFS_CPUQUIET_ENABLE = '/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable'
+
 class power_CPUFreq(test.test):
     version = 1
+
+    def initialize(self):
+        # Store the setting if the system has CPUQuiet feature
+        if os.path.exists(SYSFS_CPUQUIET_ENABLE):
+            self.is_cpuquiet_enabled = utils.read_file(SYSFS_CPUQUIET_ENABLE)
+            utils.write_one_line(SYSFS_CPUQUIET_ENABLE, '0')
 
     def run_once(self):
         cpufreq_path = '/sys/devices/system/cpu/cpu*/cpufreq'
@@ -97,6 +105,12 @@ class power_CPUFreq(test.test):
         for cpu in cpus:
             # restore cpufreq state
             cpu.restore_state()
+
+    def cleanup(self):
+        # Restore the original setting if system has CPUQuiet feature
+        if os.path.exists(SYSFS_CPUQUIET_ENABLE):
+            utils.open_write_close(
+                SYSFS_CPUQUIET_ENABLE, self.is_cpuquiet_enabled)
 
 class cpufreq(object):
     def __init__(self, path):
