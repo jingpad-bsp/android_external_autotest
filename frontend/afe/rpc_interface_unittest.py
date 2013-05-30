@@ -3,7 +3,7 @@
 
 import datetime, unittest
 import common
-#pylint: disable-msg=W0611
+
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils

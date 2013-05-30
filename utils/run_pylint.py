@@ -59,7 +59,11 @@ sys.path.insert(0, autotest_root)
 
 # patch up pylint import checker to handle our importing magic
 ROOT_MODULE = 'autotest_lib.'
-COMMON_MODULE = 'common'
+
+# A list of modules for pylint to ignore, specifically, these modules
+# are imported for their side-effects and are not meant to be used.
+_IGNORE_MODULES=['common', 'setup_django_environment',
+                 'setup_django_lite_environment', 'setup_test_environment']
 
 
 class pylint_error(Exception):
@@ -88,25 +92,25 @@ def patch_modname(modname):
 
 def patch_consumed_list(to_consume=None, consumed=None):
     """
-    Patches consumed modules list.
+    Patches the consumed modules list to ignore modules with side effects.
 
-    Prevents pylint from flagging 'common' as an unused import if we're
-    importing from autotest_lib. to_consume and consumed are dictionaries pylint
-    uses to record what 'names' (functions/modules/classes) it sees in a given
-    scope. When a name is referenced it's moved from one dictionary to the other
-    and after all visitors of the ast have been visited the entries left in
-    to_consume are reported by pylint as unused.
+    Autotest relies on importing certain modules solely for their side
+    effects. Pylint doesn't understand this and flags them as unused, since
+    they're not referenced anywhere in the code. To overcome this we need
+    to transplant said modules into the dictionary of modules pylint has
+    already seen, before pylint checks it.
 
-    @param modname: name of a module, contains '.'
     @param to_consume: a dictionary of names pylint needs to see referenced.
     @param consumed: a dictionary of names that pylint has seen referenced.
-    @return modified modname string.
     """
-    if (to_consume is not None and
-          consumed is not None and
-          COMMON_MODULE in to_consume):
-        consumed[COMMON_MODULE] = to_consume[COMMON_MODULE]
-        del to_consume[COMMON_MODULE]
+    ignore_modules = []
+    if (to_consume is not None and consumed is not None):
+        ignore_modules = [module_name for module_name in _IGNORE_MODULES
+                          if module_name in to_consume]
+
+    for module_name in ignore_modules:
+        consumed[module_name] = to_consume[module_name]
+        del to_consume[module_name]
 
 
 class CustomImportsChecker(imports.ImportsChecker):
@@ -125,7 +129,7 @@ class CustomVariablesChecker(variables.VariablesChecker):
 
         _to_consume eg: [({to reference}, {referenced}, 'scope type')]
         Enteries are appended to this list as we drill deeper in scope.
-        If we ever come across an 'import common' we immediately move it
+        If we ever come across a module to ignore,  we immediately move it
         to the consumed list.
 
         @param node: node of the ast we're currently checking.
@@ -397,25 +401,30 @@ def main():
     # this stage anyone who makes a tiny change to a file will be tasked with
     # cleaning all the lint in it. See chromium-os:37364.
 
-    # Note: There are three major sources of E1101/E1103/E1120 false positives:
-    # * common_lib.enum.Enum objects
-    # * DB model objects (scheduler models are the worst, but Django models also
-    #   generate some errors)
+    # Note:
+    # 1. There are three major sources of E1101/E1103/E1120 false positives:
+    #    * common_lib.enum.Enum objects
+    #    * DB model objects (scheduler models are the worst, but Django models
+    #      also generate some errors)
+    # 2. Docstrings are optional on private methods, and any methods that begin
+    #    with either 'set_' or 'get_'.
     pylint_rc = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              'pylintrc')
+
+    no_docstring_rgx = r'((_.*)|(set_.*)|(get_.*))'
     if pylint_version >= 0.21:
         pylint_base_opts = ['--rcfile=%s' % pylint_rc,
                             '--reports=no',
                             '--disable=W,R,E,C,F',
                             '--enable=W0611,W1201,C0111,C0112',
-                            '--no-docstring-rgx=_.*',]
+                            '--no-docstring-rgx=%s' % no_docstring_rgx,]
     else:
         all_failures = 'error,warning,refactor,convention'
         pylint_base_opts = ['--disable-msg-cat=%s' % all_failures,
                             '--reports=no',
                             '--include-ids=y',
                             '--ignore-docstrings=n',
-                            '--no-docstring-rgx=_.*',]
+                            '--no-docstring-rgx=%s' % no_docstring_rgx,]
 
     # run_pylint can be invoked directly with command line arguments,
     # or through a presubmit hook which uses the arguments in pylintrc. In the

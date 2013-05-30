@@ -28,7 +28,7 @@ Most options should be fairly self explanatory, use --help to display them.
 
 import common
 import logging, re, os, sys, optparse, compiler
-#pylint: disable-msg=W0611
+
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 from autotest_lib.client.common_lib import control_data, utils
