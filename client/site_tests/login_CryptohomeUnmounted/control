@@ -15,7 +15,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-RETRIES = 1
+RETRIES = 5
 
 DOC = """
 This test checks that cryptohome is mounted and unmounted when appropriate.
