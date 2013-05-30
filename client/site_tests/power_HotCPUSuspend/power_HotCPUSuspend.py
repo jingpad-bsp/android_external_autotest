@@ -15,6 +15,7 @@ PROC_STAT_CPU_FIELDS = ['user', 'nice', 'system', 'idle', 'iowait', 'irq',
                         'softirq', 'steal', 'guest', 'guest_nice']
 PROC_STAT_CPU_IDLE_FIELDS = ['idle', 'iowait']
 
+SYSFS_CPUQUIET_ENABLE = '/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable'
 
 def cpu_stress():
     sha512_hash = open('/dev/urandom', 'r').read(64)
@@ -59,6 +60,12 @@ class power_HotCPUSuspend(test.test):
 
     version = 1
 
+    def initialize(self):
+        # Store the setting if the system has CPUQuiet feature
+        if os.path.exists(SYSFS_CPUQUIET_ENABLE):
+            self.is_cpuquiet_enabled = utils.read_file(SYSFS_CPUQUIET_ENABLE)
+            utils.write_one_line(SYSFS_CPUQUIET_ENABLE, '0')
+
     def run_once(self):
         # create processs pool with enough workers to spin all CPUs
         cpus = multiprocessing.cpu_count()
@@ -96,3 +103,9 @@ class power_HotCPUSuspend(test.test):
             # kill off the workers
             logging.info('killing %d workers', workers)
             pool.terminate()
+
+    def cleanup(self):
+        # Restore the original setting if system has CPUQuiet feature
+        if os.path.exists(SYSFS_CPUQUIET_ENABLE):
+            utils.open_write_close(
+                SYSFS_CPUQUIET_ENABLE, self.is_cpuquiet_enabled)
