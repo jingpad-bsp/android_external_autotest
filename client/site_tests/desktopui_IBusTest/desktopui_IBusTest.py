@@ -286,7 +286,7 @@ class desktopui_IBusTest(cros_ui_test.UITest):
         time.sleep(2)
         start_time = time.time()
         while time.time() - start_time < timeout:
-            if os.system('pgrep ^ibus-daemon$') == 0:
+            if os.system('pgrep ^ibus-daemon$ >/dev/null') == 0:
                 return
             time.sleep(1)
         raise error.TestFail('ibus-daemon is not running')

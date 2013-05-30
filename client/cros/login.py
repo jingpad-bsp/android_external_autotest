@@ -59,7 +59,7 @@ def wait_for_browser(timeout=cros_ui.DEFAULT_TIMEOUT):
         TimeoutError: Chrome didn't start before timeout
     """
     wait_for_condition(
-        lambda: os.system('pgrep ^%s$' % constants.BROWSER) == 0,
+        lambda: os.system('pgrep ^%s$ >/dev/null' % constants.BROWSER) == 0,
         timeout_msg='Timed out waiting for Chrome to start',
         timeout=timeout,
         process=constants.BROWSER,
@@ -81,7 +81,7 @@ def wait_for_browser_exit(crash_msg, timeout=cros_ui.DEFAULT_TIMEOUT):
     """
     try:
       wait_for_condition(
-          lambda: os.system('pgrep ^%s$' % constants.BROWSER) != 0,
+          lambda: os.system('pgrep ^%s$ >/dev/null' % constants.BROWSER) != 0,
           timeout_msg='Timed out waiting for Chrome to exit',
           timeout=timeout,
           process=constants.BROWSER,

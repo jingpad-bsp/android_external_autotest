@@ -269,7 +269,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         self.toggle_ime_process()
         start_time = time.time()
         while time.time() - start_time < 10:
-            if os.system('pgrep ^ibus-daemon$') == 0:
+            if os.system('pgrep ^ibus-daemon$ >/dev/null') == 0:
                 return
             time.sleep(1)
         self.log_error('test_ibus_start_process',
@@ -281,7 +281,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         self.toggle_ime_process()
         start_time = time.time()
         while time.time() - start_time < 10:
-            if os.system('pgrep ^ibus-daemon$') != 0:
+            if os.system('pgrep ^ibus-daemon$ >/dev/null') != 0:
                 return
             time.sleep(1)
         self.log_error('test_ibus_stop_process',

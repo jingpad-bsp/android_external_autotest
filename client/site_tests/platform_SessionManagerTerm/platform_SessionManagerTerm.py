@@ -34,7 +34,7 @@ class platform_SessionManagerTerm(test.test):
         # Check if the binary is running again (using os.system(), since it
         # doesn't raise an exception if the command fails).
         utils.poll_for_condition(
-            lambda: os.system('pgrep %s' % binary) == 0,
+            lambda: os.system('pgrep %s >/dev/null' % binary) == 0,
             error.TestFail('%s is probably not running after TERM' % binary),
             timeout=20)
         # Assuming the process came back, did it exit appropriately?
