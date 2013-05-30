@@ -6,6 +6,7 @@ from autotest_lib.server import installable_object, prebuild, utils
 from autotest_lib.client.common_lib import base_job, error, autotemp
 from autotest_lib.client.common_lib import global_config, packages
 from autotest_lib.client.common_lib import utils as client_utils
+from autotest_lib.site_utils.graphite import stats
 
 AUTOTEST_SVN = 'svn://test.kernel.org/autotest/trunk/client'
 AUTOTEST_HTTP = 'http://test.kernel.org/svn/autotest/trunk/client'
@@ -938,9 +939,13 @@ class log_collector(object):
             pass
 
         # Copy all dirs in default to results_dir
+        timer = stats.Timer('collect_client_job_results')
+        timer.start()
         try:
             self.host.get_file(self.client_results_dir + '/',
                                self.server_results_dir, preserve_symlinks=True)
+            # Only report time used for successful get_file calls.
+            timer.stop();
         except Exception:
             # well, don't stop running just because we couldn't get logs
             e_msg = "Unexpected error copying test result logs, continuing ..."
