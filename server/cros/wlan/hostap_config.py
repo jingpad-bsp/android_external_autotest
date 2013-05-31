@@ -72,7 +72,8 @@ class HostapConfig(object):
     N_CAPABILITY_HT40_PLUS = object()
     N_CAPABILITY_HT40_MINUS = object()
     N_CAPABILITY_GREENFIELD = object()
-    N_CAPABILITY_SHORT_GI = object()
+    N_CAPABILITY_SGI20 = object()
+    N_CAPABILITY_SGI40 = object()
 
     @property
     def ht_packet_capture_mode(self):
@@ -186,28 +187,27 @@ class HostapConfig(object):
             n_capabilities = []
         self.n_capabilities = set()
         for cap in n_capabilities:
+            self.wmm_enabled = True
             if cap == self.N_CAPABILITY_HT40:
-                self.wmm_enabled = True
                 self.n_capabilities.add('[HT40-]')
                 self.n_capabilities.add('[HT40+]')
             elif cap == self.N_CAPABILITY_HT40_PLUS:
-                self.wmm_enabled = True
                 self.n_capabilities.add('[HT40+]')
             elif cap == self.N_CAPABILITY_HT40_MINUS:
-                self.wmm_enabled = True
                 self.n_capabilities.add('[HT40-]')
             elif cap == self.N_CAPABILITY_GREENFIELD:
                 logging.warning('Greenfield flag is ignored for hostap...')
                 #TODO(wiley) Why does this not work?
                 #self.n_capabilities.add('[GF]')
-            elif cap == self.N_CAPABILITY_SHORT_GI:
+            elif cap == self.N_CAPABILITY_SGI20:
                 self.n_capabilities.add('[SHORT-GI-20]')
+            elif cap == self.N_CAPABILITY_SGI40:
                 self.n_capabilities.add('[SHORT-GI-40]')
             elif cap == self.N_CAPABILITY_HT20:
                 # This isn't a real thing.  HT mode implies 20 supported.
-                self.wmm_enabled = True
+                pass
             elif cap == self.N_CAPABILITY_WMM:
-                self.wmm_enabled = True
+                pass
             else:
                 raise error.TestError('Unknown capability: %r' % cap)
 
