@@ -4,6 +4,7 @@
 
 import cgi
 import collections
+import HTMLParser
 import json
 import logging
 import re
@@ -14,7 +15,6 @@ import common
 
 from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.server.cros.dynamic_suite import job_status
-from autotest_lib.site_utils import phapi_lib
 from autotest_lib.site_utils.suite_scheduler import base_event
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
@@ -22,12 +22,12 @@ from autotest_lib.site_utils.suite_scheduler import base_event
 try:
     __import__('chromite')
     __import__('gdata')
+    from autotest_lib.site_utils import phapi_lib
 except ImportError, e:
     fundamental_libs = False
     logging.info('Bug filing disabled. %s', e)
 else:
     from chromite.lib import cros_build_lib, gdata_lib, gs
-    from gdata import client
     fundamental_libs = True
 
 
@@ -66,6 +66,7 @@ class TestFailure(object):
         BUG_CONFIG_SECTION, 'buildbot_builders', default='')
     _build_prefix = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'build_prefix', default='')
+
 
     # Number of times to retry if a gs command fails. Defaults to 10,
     # which is far too long given that we already wait on these files
@@ -231,15 +232,20 @@ class Reporter(object):
         BUG_CONFIG_SECTION, 'password', default='')
     _SEARCH_MARKER = 'ANCHOR  '
 
-    _api_key = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'api_key', default='')
+    # Credentials for access to the project hosting api
+    _oauth_credentials = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'credentials', default='')
+
     _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome',
-                          'Type-Bug', 'Restrict-View-EditIssue']
-    _OWNER = 'beeps@chromium.org'
+                          'Type-Bug', 'Restrict-View-Google']
+    _CHROMIUM_EMAIL_ADDRESS = '@chromium.org'
+    _OWNER = 'beeps%s' % _CHROMIUM_EMAIL_ADDRESS
 
     _LAB_ERROR_TEMPLATE = {
-        'labels': ['Hardware-Lab'],
+        'labels': ['Bug-Filer-Bug'],
         'owner': _OWNER,
+        # Set the status to Invalid so we don't dedupe against these bugs.
+        'status': 'Invalid',
     }
 
     def _get_tracker(self, project, user, password):
@@ -262,14 +268,19 @@ class Reporter(object):
 
         self._tracker = self._get_tracker(self._project_name,
                                           self._username, self._password)
-        self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                                 self._api_key,
-                                 self._project_name)
+
+        try:
+            self._phapi_client = phapi_lib.ProjectHostingApiClient(
+                                     self._oauth_credentials,
+                                     self._project_name)
+        except phapi_lib.ProjectHostingApiException as e:
+            logging.error('Unable to create project hosting api client: %s', e)
+            self._phapi_client = None
 
 
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
-        return fundamental_libs and self._tracker
+        return fundamental_libs and self._tracker and self._phapi_client
 
 
     def _get_owner(self, failure):
@@ -324,14 +335,13 @@ class Reporter(object):
                 if match_area(test_name, area.lower())]
 
 
-    def _resolve_slotvals(self, override, **kwargs):
+    def _format_issue_options(self, override, **kwargs):
         """
         Override the default issue configuration with a suite specific
         configuration when one is specified in the suite's bug_template.
-        The bug_template is specified in the suite control file.
-
-        TODO(beeps): crbug.com/226124. Modify gdata_lib to support cclist,
-        explore the possibility of specifying comments, id in the template.
+        The bug_template is specified in the suite control file. After
+        overriding the correct options, format them in a way that's understood
+        by the project hosting api.
 
         @param override: Suite specific dictionary with issue config operations.
         @param kwargs: Keyword args containing the default issue config options.
@@ -340,65 +350,66 @@ class Reporter(object):
         """
         if override:
             kwargs.update((k,v) for k,v in override.iteritems() if v)
+
+        kwargs['labels'] = list(set(kwargs['labels'] + kwargs['milestone'] +
+                                    self._PREDEFINED_LABELS))
+
+        kwargs['cc'] = list(map(lambda cc: {'name': cc},
+                                set(kwargs['cc'] + kwargs['sheriffs'])))
+
+        # The existence of an owner key will cause the api to try and match
+        # the value under the key to a member of the project, resulting in a
+        # 404 or 500 Http response when the owner is invalid.
+        if (self._CHROMIUM_EMAIL_ADDRESS not in kwargs['owner']):
+            del(kwargs['owner'])
+        else:
+            kwargs['owner'] = {'name': kwargs['owner']}
         return kwargs
 
 
-    def _create_bug_report(self, summary, title, name, owner, milestone='',
+    def _create_bug_report(self, description, title, name, owner, milestone='',
                            bug_template={}, sheriffs=[]):
         """
         Creates a new bug report.
 
-        @param summary: A summary of the failure.
+        @param description: A summary of the failure.
         @param title: Title of the bug.
         @param name: Failing Test name, used to assigning labels.
         @param owner: The owner of the new bug.
-        @return: id of the created issue.
+        @return: id of the created issue, or None if an issue wasn't created.
+                 Note that if either the description or title fields are missing
+                 we won't be able to create a bug.
         """
-        issue_options = self._resolve_slotvals(
-            bug_template, title=title,
-            summary=summary, labels=self._get_labels(name.lower()),
-            status='Untriaged', owner=owner, ccs=[self._OWNER])
+        issue = self._format_issue_options(bug_template, title=title,
+            description=description, labels=self._get_labels(name.lower()),
+            status='Untriaged', milestone=[milestone], owner=owner,
+            cc=[self._OWNER], sheriffs=sheriffs)
 
-        issue_options['labels'] = set(issue_options['labels'] +
-                                      self._PREDEFINED_LABELS +
-                                      [milestone])
-        issue_options['ccs'] = set(issue_options['ccs'] + sheriffs)
-
-        issue = gdata_lib.Issue(**issue_options)
-        bugid = self._tracker.CreateTrackerIssue(issue)
-        logging.info('Filing new bug %s, with summary %s', bugid, summary)
-
-        # The tracker api will not allow us to assign an owner to a new bug,
-        # To work around this we must first create a bug and then update it
-        # with an owner. crbug.com/221757.
-        if issue_options['owner']:
-            self._modify_bug_report(issue.id, owner=issue_options['owner'])
-        return issue.id
+        try:
+            bug = self._phapi_client.create_issue(issue)
+        except phapi_lib.ProjectHostingApiException as e:
+            logging.error('Unable to create a bug for issue with title: %s and '
+                          'description %s', title, description)
+        else:
+            logging.info('Filing new bug %s, with description %s',
+                         bug.get('id'), description)
+            return bug.get('id')
 
 
-    def _modify_bug_report(self, issue_id, comment='', owner=''):
+    def _modify_bug_report(self, issue_id, comment=''):
         """
-        Modifies an existing bug report with a new comment or owner.
-
-        We'll catch a RequestError in at least the following cases:
-        1. If the bug report isn't really updated.
-        Eg: Update a bug with the same owner it's assigned to, without any
-            comment.
-        2. If the new owner of the bug is invalid:
-        Eg: owner='beeps@'.
-
-        Note owner='---' will un-assign without an exception on the chromium
-        tracker; owner='' will not un-assign an issue. New issues created with
-        owner='' will automatically get an owner='---'.
+        Modifies an existing bug report with a new comment.
 
         @param issue_id: Id of the issue to update with.
         @param comment: Comment to update the issue with.
-        @param owner: Owner the issue with issue_id needs to get assigned to.
         """
         try:
-            self._tracker.AppendTrackerIssueById(issue_id, comment, owner)
-        except client.RequestError as e:
-            logging.debug(e)
+            self._phapi_client.update_issue(issue_id, {'content': comment})
+        except phapi_lib.ProjectHostingApiException as e:
+            logging.warning('Unable to add comment %s to existing issue %s: %s',
+                            comment, issue_id, e)
+        else:
+            logging.info('Added comment %s, to issue %s', comment, issue_id)
 
 
     def _find_issue_by_marker(self, marker):
@@ -426,6 +437,11 @@ class Reporter(object):
         @return A gdata_lib.Issue instance of the issue that was found, or
                 None if no issue was found.
         """
+
+        # Note that this method cannot handle markers which have already been
+        # html escaped, as it will try and unescape them by converting the &
+        # to &amp again, thereby failing deduplication.
+        marker = HTMLParser.HTMLParser().unescape(marker)
         html_escaped_marker = cgi.escape(marker, quote=True)
 
         # The tracker frontend stores summaries and comments as html elements,
@@ -449,15 +465,14 @@ class Reporter(object):
         # match in the comments. Note that the comments are returned as
         # unescaped text.
         #
-        # TODO beeps: when we start merging issues this could return bloated
+        # TODO(beeps): when we start merging issues this could return bloated
         # results, for now we only search open issues.
         markers = ['"' + self._SEARCH_MARKER + html_escaped_marker + '"',
                    self._SEARCH_MARKER + marker,
-                   self._SEARCH_MARKER + marker[:marker.rfind(',')]]
+                   self._SEARCH_MARKER + ','.join(marker.split(',')[:2])]
         for decorated_marker in markers:
-            # This will return at most 25 matches, as that's how the
-            # code.google.com API limits this query.
-            issues = self._tracker.GetTrackerIssuesByText(decorated_marker)
+            issues = self._phapi_client.get_tracker_issues_by_text(
+                decorated_marker)
             if issues:
                 break
 
@@ -477,15 +492,15 @@ class Reporter(object):
             self._create_bug_report(
                 'Query: %s, results: %s' % (marker, issue_ids),
                 'Multiple results for a specific query', '',
-                self._OWNER, self._LAB_ERROR_TEMPLATE)
+                self._OWNER, bug_template=self._LAB_ERROR_TEMPLATE)
 
         if all_issues:
             return all_issues[0]
 
         unescaped_clean_marker = re.sub('[0-9]+', '', marker)
         for issue in issues:
-            if any(unescaped_clean_marker in re.sub('[0-9]+', '', comment.text)
-                   for comment in issue.comments if comment.text):
+            if any(unescaped_clean_marker in re.sub('[0-9]+', '', comment)
+                   for comment in issue.comments):
                 return issue
 
 

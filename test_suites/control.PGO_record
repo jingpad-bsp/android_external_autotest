@@ -42,9 +42,9 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['davidjames@chromium.org', 'asharif@chromium.org',
-            'bjanakiraman@chromium.org', 'scottz@chromium.org',
-            'beeps@chromium.org', 'dennisjeffrey@chromium.org']
+    'cc': ['davidjames@chromium.org', 'asharif@chromium.org',
+           'bjanakiraman@chromium.org', 'scottz@chromium.org',
+           'beeps@chromium.org', 'dennisjeffrey@chromium.org']
 }
 
 dynamic_suite.reimage_and_run(
