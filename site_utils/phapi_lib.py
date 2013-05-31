@@ -259,6 +259,33 @@ class ProjectHostingApiClient():
                       if isinstance(each, dict)])
 
 
+    def create_issue(self, request_body):
+        """
+        Convert the request body into an issue on the frontend tracker.
+
+        @param request_body: A python dictionary with key-value pairs
+                             that represent the fields of the issue.
+                             eg: {
+                                'title': 'bug title',
+                                'description': 'bug description',
+                                'labels': ['Type-Bug'],
+                                'owner': {'name': 'owner@'},
+                                'cc': [{'name': 'cc1'}, {'name': 'cc2'}]
+                             }
+                             Note the title and descriptions fields of a
+                             new bug are not optional, all other fields are.
+        @raises: ProjectHostingApiException, if request execution fails.
+
+        @return: The response body, which will contain the metadata of the
+                 issue created, or an error response code and information
+                 about a failure.
+        """
+        issues = self._codesite_service.issues()
+        request = issues.insert(projectId=self._project_name, sendEmail=True,
+                                body=request_body)
+        return self._execute_request(request)
+
+
     def _populate_issue_updates(self, t_issue):
         """
         Populates a tracker issue with updates.
