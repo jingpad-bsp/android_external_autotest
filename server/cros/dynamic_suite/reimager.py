@@ -148,8 +148,7 @@ class Reimager(object):
               devserver, record, check_hosts, tests_to_skip,
               dependencies, num):
             return self.wait(build, pool, record, check_hosts,
-                      tests_to_skip,
-                      dependencies, timeout_mins)
+                      tests_to_skip, timeout_mins)
 
         return False
 
@@ -260,6 +259,7 @@ class Reimager(object):
     def wait(self, build, pool, record, check_hosts,
                 tests_to_skip,
                 dependencies={'':[]},
+                scheduled_tests=[],
                 timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
         #pylint: disable-msg=C0111
         """
@@ -276,10 +276,16 @@ class Reimager(object):
                prototype:
                  record(base_job.status_log_entry)
         @param check_hosts: require appropriate hosts to be available now.
-        @param dependencies: test-name-indexed dict of labels, e.g.
-                             {'test1': ['label1', 'label2']}
-                             Defaults to trivial set of dependencies, to cope
-                             with builds that have no dependency information.
+        @param tests_to_skip: DEPRECATED
+        @param dependencies: DEPRECATED
+        @param scheduled_tests: A list of ControlData objects corresponding to
+                                all tests that were scheduled as part of the
+                                same suite as this Reimage job. Used to
+                                determine which unsatisfied-dependency-jobs
+                                should be considered ERRORs, and which merely
+                                WARNings. Defaults to [], in which case no
+                                unsatisfied-dependency warnings or errors will
+                                be logged.
         @param timeout_mins: Amount of time in mins to wait before timing out
                              this reimage attempt.
 
@@ -333,15 +339,24 @@ class Reimager(object):
 
         # Currently, this leads to us skipping even tests with no DEPENDENCIES
         # in certain cases: http://crosbug.com/34635
-        per_test_specs = self._build_host_specs_from_dependencies(
-            self._board_label, pool, dependencies)
-        doomed_tests = self._discover_unrunnable_tests(per_test_specs,
+        dep_dictionary = {control_file: control_file.dependencies for
+                          control_file in scheduled_tests}
+        per_key_specs = self._build_host_specs_from_dependencies(
+            self._board_label, pool, dep_dictionary)
+        doomed_tests = self._discover_unrunnable_tests(per_key_specs,
             self._to_reimage.doomed_specs)
-        for test_name in doomed_tests:
-            Status('ERROR', test_name,
-                   'Failed to reimage machine with appropriate labels.',
-                   begin_time_str=begin_time_str).record_all(record)
-        tests_to_skip.extend(doomed_tests)
+        for control_file in doomed_tests:
+            if control_file.experimental:
+                status = 'WARN'
+                prefix = '(Experimental test) '
+            else:
+                status = 'ERROR'
+                prefix = ''
+
+            Status(status, control_file.name,
+                   prefix + 'Failed to reimage machine with appropriate '
+                   'labels.', begin_time_str=begin_time_str).record_all(record)
+
         return should_continue
 
 
@@ -361,21 +376,25 @@ class Reimager(object):
 
     def _build_host_specs_from_dependencies(self, board, pool, deps):
         """
-        Return a dict of {test name: HostSpec}, given some test dependencies.
+        Return a dict of {key: HostSpec}, given some test dependencies.
 
-        Given a dict of test dependency sets, build and return a dict
-        mapping each test to an appropriate HostSpec -- an object that
-        specifies the kind of host needed to run the named test in the suite.
+        Given a dict of keys (of any type) mapping to dependency label lists,
+        build and return a dict mapping each test to an appropriate HostSpec
+        -- an object that specifies the kind of host needed to run the
+        key-specified test in the suite.
 
         @param board: which kind of devices to reimage.
         @param pool: the pool of machines to use for scheduling purposes.
-        @param deps: test-name-indexed dict of labels, e.g.
-                     {'test1': ['label1', 'label2']}
-        @return test-name-indexed dict of HostSpecs.
+        @param deps: arbitrary-key-indexed dict of labels, e.g.
+                     {'test1': ['label1', 'label2']} or
+                     {ControlData(...): ['label1', 'label2']}
+        @returns: dict of form {key: HostSpecs}, where keys match those
+                  passed in deps parameter
+
         """
         base = [l for l in [board, pool] if l is not None]
         return dict(
-            [(name, HostSpec(base, d)) for name, d in deps.iteritems()])
+            [(key, HostSpec(base, d)) for key, d in deps.iteritems()])
 
 
     def _build_host_group(self, host_specs, num, require_usable_hosts=True):
@@ -479,16 +498,17 @@ class Reimager(object):
         return hosts_to_use
 
 
-    def _discover_unrunnable_tests(self, per_test_specs, bad_specs):
+    def _discover_unrunnable_tests(self, per_key_specs, bad_specs):
         """
         Exclude tests by name based on a blacklist of bad HostSpecs.
 
-        @param per_test_specs: {'test/name/control': HostSpec}
+        @param per_key_specs: a dictionary from of type {key: HostSpec}
+                              where key is any hashable type.
         @param bad_specs: iterable of HostSpec whose associated tests should
                           be excluded.
-        @return iterable of test names that are associated with bad_specs.
+        @return iterable of keys that are associated with bad_specs.
         """
-        return [n for n, s in per_test_specs.iteritems() if s in bad_specs]
+        return [n for n, s in per_key_specs.iteritems() if s in bad_specs]
 
 
     def clear_reimaged_host_state(self, build):

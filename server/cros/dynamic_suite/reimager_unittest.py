@@ -440,8 +440,12 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertTrue(bad_test in tests_to_skip)
 
 
-    def testPartialFailedReimageWithDependencies(self):
-        """Attempt a reimage with failing hosts, ERROR on unrunnable tests."""
+    def testPartialFailedReimageAttemptWithDependencies(self):
+        """Attempt a reimage, using reimager.attempt, with failing hosts.
+
+        This will not error on unrunnable tests, because it relies on the
+        now deprecated dependencies paramater to Reimager.wait, rather than
+        using the scheulded_tests parameter."""
         canary = FakeJob(hostnames=['host1', 'host2'])
         statuses = {
             canary.hostnames[0]: job_status.Status('FAIL', canary.hostnames[0]),
@@ -452,9 +456,6 @@ class ReimagerTest(mox.MoxTestBase):
         self.expect_attempt(canary, statuses, doomed_specs=[bad_spec])
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record_entry(StatusContains.CreateFromStrings('START'))
-        rjob.record_entry(StatusContains.CreateFromStrings('ERROR', bad_test))
-        rjob.record_entry(StatusContains.CreateFromStrings('END ERROR'))
         comparator = mox.Or(mox.StrContains(canary.hostnames[0]),
                             mox.StrContains(canary.hostnames[1]))
         self.reimager._clear_build_state(comparator)
@@ -467,7 +468,7 @@ class ReimagerTest(mox.MoxTestBase):
                                               tests_to_skip,
                                               self._DEPENDENCIES))
         self.reimager.clear_reimaged_host_state(self._BUILD)
-        self.assertTrue(bad_test in tests_to_skip)
+        self.assertEquals(0, len(tests_to_skip))
 
 
     def testFailedReimage(self):

@@ -2,9 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from itertools import chain
 
-
+#pylint: disable-msg=C0111
 def order_by_complexity(host_spec_list):
     """
     Returns a new list of HostSpecs, ordered from most to least complex.
@@ -81,11 +80,13 @@ class HostGroup(object):
         raise NotImplementedError()
 
 
+    #pylint: disable-msg=C0111
     @property
     def unsatisfied_specs(self):
         return []
 
 
+    #pylint: disable-msg=C0111
     @property
     def doomed_specs(self):
         return []
@@ -244,6 +245,21 @@ class MetaHostGroup(HostGroup):
         return [self._spec]
 
 
+def _safeunion(iter_a, iter_b):
+    """Returns an immutable set that contains the union of two iterables.
+
+    This function returns a frozen set containing the all the elements of
+    two iterables, regardless of whether those iterables are lists, sets,
+    or whatever.
+
+    @param iter_a: The first iterable.
+    @param iter_b: The second iterable.
+    @returns: An immutable union of the contents of iter_a and iter_b.
+    """
+    return frozenset({a for a in iter_a} | {b for b in iter_b})
+
+
+
 class HostSpec(object):
     """Specifies a kind of host on which dependency-having tests can be run.
 
@@ -252,23 +268,26 @@ class HostSpec(object):
     """
 
     def __init__(self, base, extended=[]):
-        self._labels = frozenset(base + extended)
+        self._labels = _safeunion(base, extended)
         # To amortize cost of __hash__()
         self._str = 'HostSpec %r' % sorted(self._labels)
         self._trivial = extended == []
 
 
+    #pylint: disable-msg=C0111
     @property
     def labels(self):
         # Can I just do this as a set?  Inquiring minds want to know.
         return sorted(self._labels)
 
 
+    #pylint: disable-msg=C0111
     @property
     def is_trivial(self):
         return self._trivial
 
 
+    #pylint: disable-msg=C0111
     def is_subset(self, other):
         return self._labels <= other._labels
 

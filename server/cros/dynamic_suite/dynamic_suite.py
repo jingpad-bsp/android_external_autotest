@@ -510,8 +510,9 @@ def _gatherAndParseDependencies(suite_spec):
                        name, build, and devserver fields. Used to retrieve
                        dependency info for the suite from devserver.
 
-    @return A dictionary mapping test name (string) to per-test dependencies
-            (list of strings)
+    @return A dictionary mapping ultra-long form test name string similar to
+        /build/daisy//usr/local/autotest/client/site_tests/power_Resume/control
+        to per-test dependencies (list of strings)
     """
     # Gather per-suite:per-test DEPENDENCIES info, if this build has it.
     all_dependencies = {}
@@ -612,7 +613,8 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
         # because not enough machines became available.
         reimage_successful = reimager.wait(
             spec.build, spec.pool, spec.job.record_entry,
-            spec.check_hosts, tests_to_skip, spec.dependencies,
+            spec.check_hosts, tests_to_skip,
+            scheduled_tests=suite.tests,
             timeout_mins=spec.try_job_timeout_mins)
     else:
         reimage_successful = True
