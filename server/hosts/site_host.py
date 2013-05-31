@@ -673,7 +673,7 @@ class SiteHost(remote.RemoteHost):
 
         self.run('chromeos-install --yes', timeout=self._INSTALL_TIMEOUT)
         self.servo.power_long_press()
-        self.servo.switch_usbkey('host')
+        self.servo.switch_usbkey('off')
         self.servo.power_short_press()
         if not self.wait_up(timeout=self.BOOT_TIMEOUT):
             raise error.AutoservError('DUT failed to reboot installed '
