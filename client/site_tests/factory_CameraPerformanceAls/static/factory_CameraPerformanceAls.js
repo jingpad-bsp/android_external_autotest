@@ -22,15 +22,15 @@ window.onkeydown = function(event) {
     }
 }
 
-function InitLayout(talkToFixture, testFull, ignoreEnterKey) {
-    if (testFull) {
-        document.getElementById("test_sn_label").hidden = true;
-        document.getElementById("test_sn").hidden = true;
-        document.getElementById("menu_placeholder").style.height = "30%";
-    } else {
+function InitLayout(talkToFixture, inputSerialNumber, ignoreEnterKey) {
+    if (inputSerialNumber) {
         var snInputBox = document.getElementById("serial_number");
         snInputBox.disabled = false;
         snInputBox.autofocus = true;
+    } else {
+        document.getElementById("test_sn_label").hidden = true;
+        document.getElementById("test_sn").hidden = true;
+        document.getElementById("menu_placeholder").style.height = "30%";
     }
 
     useFixture = talkToFixture;

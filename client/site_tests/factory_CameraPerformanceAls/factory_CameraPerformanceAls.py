@@ -222,6 +222,7 @@ class factory_CameraPerformanceAls(test.test):
 
     _TEST_CHART_FILE = 'test_chart.png'
     _TEST_SAMPLE_FILE = 'sample.png'
+    _DUMMY_SERIAL_NUMBER = 'dummy_sn'
 
     _PACKET_SIZE = 65000
 
@@ -348,6 +349,9 @@ class factory_CameraPerformanceAls(test.test):
         }
         self.result_dict[row_name] = result_map[result]
 
+    def update_fail_cause(self, fail_cause):
+        self.fail_cause = fail_cause
+
     def reset_data(self):
         self.target = None
         self.target_colorful = None
@@ -361,6 +365,7 @@ class factory_CameraPerformanceAls(test.test):
 
         for var in self.status_names:
             self.update_result(var, None)
+        self.fail_cause = ''
         self.progress = 0
         self.ui.CallJSFunction("ResetUiData", "")
 
@@ -461,9 +466,10 @@ class factory_CameraPerformanceAls(test.test):
         cam_result = get_str(self.cam_pass, 'Camera: ', False)
         if self.use_als:
             als_result = get_str(self.als_pass, 'ALS: ')
-            self.update_status(msg=cam_result + '<br>' + als_result)
+            self.update_status(msg=cam_result + ' ' + self.fail_cause +
+                               '<br>' + als_result)
         else:
-            self.update_status(msg=cam_result)
+            self.update_status(msg=cam_result + ' ' + self.fail_cause)
 
         # Reset serial number if passed. Otherwise, operator may forget to input
         # serial number again.
@@ -483,14 +489,25 @@ class factory_CameraPerformanceAls(test.test):
         self.reset_data()
         self.update_status(mid='start_test')
 
-        if self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
-            self.serial_number = event.data.get('sn', '')
-
         if self.talk_to_fixture and not self.setup_fixture():
             self.update_status(mid='fixture_fail')
             self.ui.CallJSFunction("OnRemoveFixtureConnection")
             return
         self.update_pbar(pid='start_test')
+
+        if self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
+            if self.auto_serial_number:
+                # If fails to get serial number, it will display failed in
+                # test_camera_functionality() later
+                ret, auto_sn, error_message = self.auto_get_serial_number()
+                if ret:
+                    self.serial_number = auto_sn
+                    self.log('Read serial number %s\n' % auto_sn)
+                else:
+                    self.serial_number = self._DUMMY_SERIAL_NUMBER
+                    self.log('No serial number detected: %s\n' % error_message)
+            else:
+                self.serial_number = event.data.get('sn', '')
 
         if self.type == _TEST_TYPE_FULL:
             with leds.Blinker(self._LED_RUNNING_TEST):
@@ -524,11 +541,19 @@ class factory_CameraPerformanceAls(test.test):
         img /= n_samples
         return img.round().astype(np.uint8)
 
-    def verify_firmware(self, device_string, firmware_string):
-        '''Checks the firmware version of camera module.'''
+    def read_usb_attribute(self, device_string, pattern):
+        '''Read and matches regexp pattern in 'lsusb -v' output.
+
+        Args:
+          device_string: keyword to search for the camera device
+          pattern: regexp pattern with one matching group in MULTILINE mode
+
+        Returns:
+          A tuple of (is successful, matched string, error message when failed).
+        '''
         lsusb_output = SpawnOutput(['lsusb', '-v'], log=True)
 
-        # Split into blocks for different
+        # Split into several blocks of individual USB device
         splitter = re.compile(r'^Bus\s+\d+\s+Device\s+\d+',
                               flags = re.MULTILINE)
         blocks = splitter.split(lsusb_output)
@@ -536,6 +561,7 @@ class factory_CameraPerformanceAls(test.test):
 
         err_message = None
         ret = False
+        matched_string = None
         if len(matched_blocks) == 0:
             err_message = 'No matched camera device for "%s"' % device_string
         elif len(matched_blocks) > 1:
@@ -543,21 +569,60 @@ class factory_CameraPerformanceAls(test.test):
                            device_string)
         else:
             # Camera module should publish firmware version in 'bcdDevice' field
-            search_result = re.search(r'^\s*bcdDevice\s+(\S+)',
+            search_result = re.search(pattern,
                                       matched_blocks[0], flags = re.MULTILINE)
             if search_result:
-                if firmware_string == search_result.group(1):
-                    ret = True
-                else:
-                    err_message = ('Wrong firmware version %s, expecting %s' %
-                                   (search_result.group(1), firmware_string))
+                matched_string = search_result.group(1)
+                ret = True
             else:
-                err_message = ('bcdDevice not found in lsusb output for "%s"' %
-                               device_string)
+                err_message = (
+                    'Regexp "%s" not matched in lsusb output for "%s"' %
+                    (pattern, device_string))
+
+        return (ret, matched_string, err_message)
+
+    def verify_firmware(self, device_string, firmware_string):
+        '''Checks the firmware version of camera module.
+
+        Args:
+          device_string: keyword to search for the camera device
+          firmware_string: expected firmware string in bcdDevice field
+
+        Returns:
+          A tuple of (is successful, error message when failed).
+        '''
+        ret, matched_string, err_message = self.read_usb_attribute(
+            device_string,
+            r'^\s*bcdDevice\s+(\S+)')
+
+        if ret:
+            if firmware_string != matched_string:
+                err_message = ('Wrong firmware version %s, expecting %s' %
+                               (matched_string, firmware_string))
+                ret = False
 
         return (ret, err_message)
 
+    def auto_get_serial_number(self):
+        '''Auto read the firmware version of camera module.
+
+        Returns:
+          A tuple of (is successful, matched string, error message when failed).
+        '''
+        if not self.auto_serial_number:
+            return (False, None, 'auto_serial_number is not defined')
+        ret, matched_string, err_message = self.read_usb_attribute(
+            self.auto_serial_number[0],
+            self.auto_serial_number[1])
+        return (ret, matched_string, err_message)
+
     def test_camera_functionality(self):
+        # Check serial number
+        if self.serial_number == self._DUMMY_SERIAL_NUMBER:
+            self.update_result('cam_stat', False)
+            self.update_fail_cause("NoCamera")
+            return False
+
         # Check firmware version
         if self.config['firmware']['check_firmware']:
             device_string = self.config['firmware']['device_string']
@@ -566,6 +631,7 @@ class factory_CameraPerformanceAls(test.test):
                                                       firmware_string)
             if not ret:
                 self.update_result('cam_stat', False)
+                self.update_fail_cause("NoCamera")
                 self.log(error_message + '\n')
                 return False
 
@@ -575,6 +641,7 @@ class factory_CameraPerformanceAls(test.test):
         if not cam.isOpened():
             cam.release()
             self.update_result('cam_stat', False)
+            self.update_fail_cause("BadCamera")
             self.log('Failed to initialize the camera. '
                      'Could be bad module, bad connection or '
                      'bad USB initialization.\n')
@@ -590,6 +657,7 @@ class factory_CameraPerformanceAls(test.test):
             conf['img_height'] != cam.get(cv.CV_CAP_PROP_FRAME_HEIGHT)):
             cam.release()
             self.update_result('cam_stat', False)
+            self.update_fail_cause("BadCamera")
             self.log("Can't set the image size. "
                      "Possibly caused by bad USB initialization.\n")
             return False
@@ -601,6 +669,7 @@ class factory_CameraPerformanceAls(test.test):
         if not success:
             cam.release()
             self.update_result('cam_stat', False)
+            self.update_fail_cause("BadCamera")
             self.log("Failed to capture an image with the camera.\n")
             return False
         self.update_pbar(pid='try_read_cam')
@@ -620,6 +689,7 @@ class factory_CameraPerformanceAls(test.test):
         if self.target_colorful is None:
             cam.release()
             self.update_result('cam_stat', False)
+            self.update_fail_cause("BadCamera")
             self.log("Error reading images from the camera!\n")
             return False
         if self.unit_test:
@@ -676,6 +746,13 @@ class factory_CameraPerformanceAls(test.test):
                 log_visual_data(int(tar_data.edges.shape[0]), 'edges',
                                 'Found square edges count: %d')
 
+            if 'shift' in tar_data.msg:
+                self.update_fail_cause('Shift')
+            elif 'tilt' in tar_data.msg:
+                self.update_fail_cause('Tilt')
+            else:
+                self.update_fail_cause('WrongImage')
+
             self.log('Visual correctness: %s\n' % tar_data.msg)
             return
         self.update_pbar(pid='check_vc')
@@ -694,6 +771,7 @@ class factory_CameraPerformanceAls(test.test):
                             'Len shading ratio: %f')
         if not success:
             self.log('Lens shading: %s\n' % tar_ls.msg)
+            self.update_fail_cause('LenShading')
             return
         self.update_pbar(pid='check_ls')
 
@@ -715,6 +793,7 @@ class factory_CameraPerformanceAls(test.test):
                             'Lowest MTF value: %f')
         if not success:
             self.log('Sharpness: %s\n' % tar_mtf.msg)
+            self.update_fail_cause('MTF')
 
         finish_log_visual_data()
         self.update_pbar(pid='check_mtf')
@@ -725,10 +804,12 @@ class factory_CameraPerformanceAls(test.test):
         conf = self.config['als']
         if not calib_result:
             self.update_result('als_stat', False)
+            self.update_fail_cause("ALS")
             self.log('ALS calibration data is incorrect.\n')
             return False
         if subprocess.call(conf['save_vpd'] % calib_result, shell=True):
             self.update_result('als_stat', False)
+            self.update_fail_cause("ALS")
             self.log('Writing VPD data failed!\n')
             return False
         self.log('Successfully calibrated ALS scales.\n')
@@ -758,6 +839,7 @@ class factory_CameraPerformanceAls(test.test):
                        scale_path=conf['scale_path'])
         if not self.als.detected:
             self.update_result('als_stat', False)
+            self.update_fail_cause("ALS")
             self.log('Failed to initialize the ALS.\n')
             return
         self.als.set_scale_factor(conf['calibscale'])
@@ -782,6 +864,7 @@ class factory_CameraPerformanceAls(test.test):
                 # Check if it is a false read.
                 if not val:
                     self.update_result('als_stat', False)
+                    self.update_fail_cause("ALS")
                     self.log('The ALS value is stuck at zero.\n')
                     return
                 # Compute calibration data if it is the calibration target.
@@ -802,6 +885,7 @@ class factory_CameraPerformanceAls(test.test):
                     if ((li > conf['luxs'][j] and vals[j] >= vals[i]) or
                         (li < conf['luxs'][j] and vals[j] <= vals[i])):
                         self.update_result('als_stat', False)
+                        self.update_fail_cause("ALS")
                         self.log('The ordering of ALS values is wrong.\n')
                         return
         except (FixtureException, serial.serialutil.SerialException) as e:
@@ -812,6 +896,7 @@ class factory_CameraPerformanceAls(test.test):
             return
         except:
             self.update_result('als_stat', False)
+            self.update_fail_cause("ALS")
             self.log('Failed to read values from ALS or unknown error.\n')
             return
         self.log('Successfully recorded ALS values.\n')
@@ -825,7 +910,8 @@ class factory_CameraPerformanceAls(test.test):
 
     def run_once(self, test_type = _TEST_TYPE_FULL, unit_test = False,
                  use_als = True, log_good_image = False,
-                 device_index = -1, ignore_enter_key = False):
+                 device_index = -1, ignore_enter_key = False,
+                 auto_serial_number = None):
         '''The entry point of the test.
 
         Args:
@@ -852,6 +938,9 @@ class factory_CameraPerformanceAls(test.test):
                               (Some barcode reader automatically input enter
                                key, but we may prefer not to start the test
                                immediately after barcode is scanned)
+            auto_serial_number: None or (module keyword, regexp pattern with one
+                                matching group in MULTILINE mode)
+                                Ex: ('VendorName', r'^\s*iSerial\s+\S+\s+(\S+)')
         '''
         factory.log('%s run_once' % self.__class__)
 
@@ -867,18 +956,21 @@ class factory_CameraPerformanceAls(test.test):
         assert use_als in [True, False]
         assert log_good_image in [True, False]
         assert ignore_enter_key in [True, False]
+        assert auto_serial_number is None or type(auto_serial_number) == tuple
         self.type = test_type
         self.unit_test = unit_test
         self.use_als = use_als
         self.log_good_image = log_good_image
         self.device_index = device_index
         self.ignore_enter_key = ignore_enter_key
+        self.auto_serial_number = auto_serial_number
 
         self.talk_to_fixture = use_als
         self.config_loaded = False
         self.status_names = self._STATUS_NAMES
         self.status_labels = self._STATUS_LABELS
         self.result_dict = {}
+        self.fail_cause = ''
         self.base_config = PluggableConfig({})
         os.chdir(self.srcdir)
 
@@ -894,10 +986,15 @@ class factory_CameraPerformanceAls(test.test):
                               on_insert=self.on_u2s_insert,
                               on_remove=self.on_u2s_remove)
 
+        if self.type == _TEST_TYPE_FULL or self.auto_serial_number:
+            input_serial_number = False
+        else:
+            input_serial_number = True
+
         # Startup the UI.
         self.ui = UI()
         self.register_events(['sync_fixture', 'exit_test', 'run_test'])
         self.ui.CallJSFunction("InitLayout", self.talk_to_fixture,
-                               self.type == _TEST_TYPE_FULL,
+                               input_serial_number,
                                self.ignore_enter_key)
         self.ui.Run()
