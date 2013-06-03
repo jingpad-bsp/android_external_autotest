@@ -231,7 +231,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpa2psk(self, shared_key):
         popup = '//select[@name="security_mode2"]'
-        self.select_item_from_popup_by_xpath('WPA Personal', popup,
+        self.select_item_from_popup_by_xpath('WPA2 Personal', popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,
