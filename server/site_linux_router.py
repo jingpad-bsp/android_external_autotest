@@ -8,6 +8,7 @@ import re
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.server.cros.wlan import hostap_config
 
 def isLinuxRouter(host):
     """Check if host is a linux router.
@@ -18,6 +19,7 @@ def isLinuxRouter(host):
     """
     router_uname = host.run('uname').stdout
     return re.search('Linux', router_uname)
+
 
 class LinuxRouter(site_linux_system.LinuxSystem):
     """Linux/mac80211-style WiFi Router support for WiFiTest class.
@@ -188,6 +190,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             'interface': interface
         })
 
+
     def _kill_process_instance(self, process, instance=None, wait=0):
         """Kill a process on the router.
 
@@ -214,6 +217,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         else:
             self.router.run(cmd, ignore_status=True)
 
+
     def kill_hostapd_instance(self, instance):
         """Kills a hostapd instance.
 
@@ -221,6 +225,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         self._kill_process_instance('hostapd', instance, 30)
+
 
     def kill_hostapd(self):
         """Kill all hostapd instances."""
@@ -251,10 +256,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.deconfig()
         # Start with the default hostapd config parameters.
         conf = self.__get_default_hostap_config()
-        conf['ssid'] = (self.defssid + configuration.ssid_suffix)[-32:]
-        if configuration.ssid:
-            # Let test writers overwrite the default SSID.
-            conf['ssid'] = configuration.ssid
+        conf['ssid'] = configuration.get_ssid(self.defssid)
         if configuration.bssid:
             conf['bssid'] = configuration.bssid
         conf['channel'] = configuration.channel
@@ -432,6 +434,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         logging.info("AP configured.")
         self.hostapd['configured'] = True
 
+
     @staticmethod
     def ip_addr(netblock, idx):
         """Simple IPv4 calculator.
@@ -460,57 +463,28 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                   for a, m, o in zip(addr, mask, offset)]))
 
 
-    def station_config(self, params):
-        """Configure a station based AP.
+    def ibss_configure(self, config):
+        """Configure a station based AP in IBSS mode.
 
-        @param params dict of site_wifitest parameters.
+        Extract relevant configuration objects from |config| despite not
+        actually being a hostap managed endpoint.
+
+        @param config HostapConfig object.
 
         """
-        # keep parameter modifications local-only
-        orig_params = params
-        params = params.copy()
-
-        if 'multi_interface' in params:
-            raise NotImplementedError("station with multi_interface")
-
-        if self.station['type'] != 'ibss':
-            raise NotImplementedError("non-ibss station")
-
         if self.station['configured'] or self.hostapd['configured']:
             self.deconfig()
-
-        local_server = params.pop('local_server', False)
-        mode = None
-        conf = self.station['conf']
-        for k, v in params.iteritems():
-            if k == 'ssid_suffix':
-                conf['ssid'] = self.defssid + v
-            elif k == 'channel':
-                freq = int(v)
-                if freq > 2484:
-                    mode = 'a'
-            elif k == 'mode':
-                if v == '11a':
-                    mode = 'a'
-            else:
-                conf[k] = v
-
-        interface = self._get_wlanif(freq, self.phytype, mode)
-
-        # Run interface configuration commands
-        for k, v in conf.iteritems():
-            if k != 'ssid':
-                self.router.run("%s dev %s set %s %s" %
-                                (self.cmd_iw, interface, k, v))
-
+        interface = self._get_wlanif(config.frequency, self.phytype,
+                                     config.hw_mode)
+        ssid = config.get_ssid(self.defssid)
+        self.station['conf']['ssid'] = ssid
         # Connect the station
-        self.router.run("%s link set %s up" % (self.cmd_ip, interface))
-        self.router.run("%s dev %s ibss join %s %d" %
-                        (self.cmd_iw, interface, conf['ssid'], freq))
-
-        if self.force_local_server or local_server is not False:
-            self.start_local_server(interface)
-
+        self.router.run('%s link set %s up' % (self.cmd_ip, interface))
+        self.router.run('%s dev %s ibss join %s %d' % (self.cmd_iw, interface,
+                                                       ssid, config.frequency))
+        # Always start a local server.
+        self.start_local_server(interface)
+        # Remember that this interface is up.
         self.station['configured'] = True
         self.station['interface'] = interface
 
@@ -525,6 +499,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         return '%d.%d.%d.%d' % (192, 168, index, 254)
+
 
     def start_local_server(self, interface):
         """Start a local server on an interface.
@@ -562,6 +537,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_ip, interface))
         self.start_dhcp_server(interface)
 
+
     def start_dhcp_server(self, interface):
         """Start a dhcp server on an interface.
 
@@ -593,6 +569,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """
         self._kill_process_instance('dhcpd', instance, 0)
 
+
     def stop_dhcp_servers(self):
         """Stop all dhcp servers on the router."""
         self.stop_dhcp_server(None)
@@ -607,7 +584,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if self.apmode:
             self.hostap_config(params)
         else:
-            self.station_config(params)
+            config = hostap_config.HostapConfig(
+                    ssid=self.get_ssid(),
+                    frequency=int(params.get('channel', None)))
+            self.ibss_configure(config)
 
 
     def get_wifi_ip(self, ap_num):
@@ -720,7 +700,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     def get_ssid(self):
         """@return string ssid for the network stemming from this router."""
-        return self.hostapd['conf']['ssid']
+        if self.hostapd['configured']:
+            return self.hostapd['conf']['ssid']
+
+        return self.station['conf']['ssid']
 
 
     def set_txpower(self, params):

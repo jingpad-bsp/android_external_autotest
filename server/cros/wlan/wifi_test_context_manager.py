@@ -122,7 +122,8 @@ class WiFiTestContextManager(object):
         return self.server.wifi_ip
 
 
-    def configure(self, configuration_parameters, multi_interface=None):
+    def configure(self, configuration_parameters, multi_interface=None,
+                  is_ibss=None):
         """Configure a router with the given parameters.
 
         Configures an AP according to the specified parameters and
@@ -132,9 +133,18 @@ class WiFiTestContextManager(object):
         @param configuration_parameters HostapConfig object.
         @param multi_interface True iff having multiple configured interfaces
                 is expected for this configure call.
+        @param is_ibss True iff this is an IBSS endpoint.
 
         """
-        self.router.hostap_configure(configuration_parameters, multi_interface)
+        if is_ibss:
+            if multi_interface:
+                raise error.TestFail('IBSS mode does not support multiple '
+                                     'interfaces.')
+
+            self.router.ibss_configure(configuration_parameters)
+        else:
+            self.router.hostap_configure(configuration_parameters,
+                                         multi_interface=multi_interface)
         if self._enable_client_packet_captures:
             self.client.start_capture()
         if self._enable_router_packet_captures:

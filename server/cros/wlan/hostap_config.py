@@ -153,7 +153,7 @@ class HostapConfig(object):
                 break
         else:
             raise error.TestError('Invalid channel %r or frequency %r '
-                                  'specified.' % channel, frequency)
+                                  'specified.' % (channel, frequency))
 
         self.is_11n = False
         self.require_ht = False
@@ -240,3 +240,13 @@ class HostapConfig(object):
                                      self.ssid,
                                      self.bssid,
                                      self.wmm_enabled))
+
+
+    def get_ssid(self, default_ssid):
+        """Build up the SSID for this network given a router's default SSID.
+
+        @param default_ssid string default ssid for a router.
+        @return string configured ssid or a slight mutation of the default ssid.
+
+        """
+        return self.ssid or (default_ssid + self.ssid_suffix)[-32:]

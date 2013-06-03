@@ -12,6 +12,10 @@ class AssociationParameters(xmlrpc_datatypes.XmlRpcStruct):
     DEFAULT_DISCOVERY_TIMEOUT = 15
     DEFAULT_ASSOCIATION_TIMEOUT = 15
     DEFAULT_CONFIGURATION_TIMEOUT = 15
+    # Mode for most routers and access points.
+    STATION_TYPE_MANAGED = 'managed'
+    # Mode for certain kinds of p2p networks like old Android phone hotspots.
+    STATION_TYPE_IBSS = 'ibss'
 
     def __init__(self, serialized=None):
         """Construct an AssociationParameters.
@@ -48,6 +52,9 @@ class AssociationParameters(xmlrpc_datatypes.XmlRpcStruct):
         self.is_hidden = serialized.get('is_hidden', False)
         # Passing false tells shill not to remember the configured service.
         self.save_credentials = serialized.get('save_credentials', False)
+        # Station type to connect with.  Usually left unfilled unless we're
+        # connecting to a non-managed BSS.
+        self.station_type = serialized.get('station_type', None)
 
 
 class AssociationResult(xmlrpc_datatypes.XmlRpcStruct):

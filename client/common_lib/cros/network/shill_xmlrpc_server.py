@@ -114,6 +114,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 params.security,
                 params.psk,
                 params.save_credentials,
+                station_type=params.station_type,
                 hidden_network=params.is_hidden,
                 discovery_timeout_seconds=params.discovery_timeout,
                 association_timeout_seconds=params.association_timeout,
