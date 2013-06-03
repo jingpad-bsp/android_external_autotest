@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging
 
 OPENSSL = '/usr/bin/openssl'
-TLSDATE = '/usr/sbin/tlsdate'
+TLSDATE = '/usr/bin/tlsdate'
 
 class platform_AccurateTime(test.test):
     version = 1
@@ -25,7 +25,7 @@ class platform_AccurateTime(test.test):
         time.sleep(1)
 
     def tlsdate(self):
-        proc = subprocess.Popen([TLSDATE, '-H', 'localhost', '-p', '4433',
+        proc = subprocess.Popen([TLSDATE, '-H', '127.0.0.1', '-p', '4433',
                                  '-C', self.srcdir,
                                  '-nv'], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
