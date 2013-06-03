@@ -107,6 +107,10 @@ class network_3GSafetyDance(test.test):
         if not self.device:
             raise error.TestFail('Could not find cellular device.')
 
+        self.flim.SetDebugTags(
+                'dbus+service+device+modem+cellular+portal+network+'
+                'manager+dhcp')
+
         # Ensure that auto connect is turned off so that flimflam does
         # not interfere with running the test
         with cell_tools.AutoConnectContext(self.device, self.flim, False):
