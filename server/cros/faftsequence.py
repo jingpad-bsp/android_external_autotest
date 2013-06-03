@@ -1565,6 +1565,9 @@ class FAFTSequence(ServoTest):
                             install_deps=test['install_deps_after_boot'])
                 else:
                     self.wait_for_client()
+                # Stop update-engine as it may change firmware/kernel.
+                logging.info('Stopping update-engine...')
+                self.faft_client.system.run_shell_command('stop update-engine')
             except AssertionError:
                 logging.error('wait_for_client() timed out.')
                 self._restore_routine_from_timeout(next_step)
