@@ -137,8 +137,11 @@ class _Options(_Constant):
     """Constants about command line options."""
     pass
 OPTIONS = _Options()
+OPTIONS.DEBUG = 'debug'
+OPTIONS.DIR = 'directory'
 OPTIONS.HELP = 'help'
 OPTIONS.ITERATIONS = 'iterations'
+OPTIONS.METRICS = 'show_metrics'
 OPTIONS.MODE = 'mode'
 OPTIONS.REPLAY = 'replay'
 OPTIONS.RESUME = 'resume'

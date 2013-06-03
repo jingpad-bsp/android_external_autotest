@@ -47,19 +47,21 @@ Test Summary (by validator)          :   fw_2.4  fw_2.4.a     count
 """
 
 
+import getopt
 import os
 import sys
 
 import firmware_log
 
 from common_util import print_and_exit
+from firmware_constants import OPTIONS
 from test_conf import (log_root_dir, segment_weights, validator_weights)
 
 
 class FirmwareSummary:
     """Summary for touch device firmware tests."""
 
-    def __init__(self, log_dir=log_root_dir, debug_flag=False,
+    def __init__(self, log_dir, debug_flag=False,
                  segment_weights=segment_weights,
                  validator_weights=validator_weights):
         """ segment_weights and validator_weights are passed as arguments
@@ -191,24 +193,72 @@ class FirmwareSummary:
 
 def _usage_and_exit():
     """Print the usage message and exit."""
-    print 'Usage: python %s log_directory [-d]' % sys.argv[0]
-    print '       -d: enable debug flag'
+    prog = sys.argv[0]
+    print 'Usage: $ python %s [options]\n' % prog
+    print 'options:'
+    print '  -D, --%s' % OPTIONS.DEBUG
+    print '        enable debug flag'
+    print '  -d, --%s' % OPTIONS.DIR
+    print '        specify which log directory to derive the summary'
+    print '  -h, --%s' % OPTIONS.HELP
+    print '        show this help'
+    print '  -m, --%s' % OPTIONS.METRICS
+    print '        display the detailed summary metrics of various validators'
+    print
+    print 'Examples:'
+    print '    # Specify the log root directory.'
+    print '    $ python %s -d /tmp' % prog
+    print '    # Turn on the metrics flag.'
+    print '    $ python %s -m' % prog
     sys.exit(-1)
 
 
-if __name__ == '__main__':
-    # Parse the command options.
-    debug_flag = False
-    argc = len(sys.argv)
-    if argc < 2 or argc > 3:
-        _usage_and_exit()
-    elif argc == 3:
-        if sys.argv[2] == '-d':
-            debug_flag = True
-        else:
-            _usage_and_exit()
-    log_dir = sys.argv[1]
+def _parsing_error(msg):
+    """Print the usage and exit when encountering parsing error."""
+    print 'Error: %s' % msg
+    _usage_and_exit()
 
-    # Calculate and print the summary.
-    summary = FirmwareSummary(log_dir=log_dir, debug_flag=debug_flag)
+
+def _parse_options():
+    """Parse the options."""
+    # Set the default values of options.
+    options = {OPTIONS.DEBUG: False,
+               OPTIONS.DIR: log_root_dir,
+               OPTIONS.METRICS: False,
+    }
+
+    try:
+        short_opt = 'Dd:hm'
+        long_opt = [OPTIONS.DEBUG,
+                    OPTIONS.DIR + '=',
+                    OPTIONS.HELP,
+                    OPTIONS.METRICS,
+        ]
+        opts, args = getopt.getopt(sys.argv[1:], short_opt, long_opt)
+    except getopt.GetoptError, err:
+        _parsing_error(str(err))
+
+    for opt, arg in opts:
+        if opt in ('-h', '--%s' % OPTIONS.HELP):
+            _usage_and_exit()
+        elif opt in ('-D', '--%s' % OPTIONS.DEBUG):
+            options[OPTIONS.DEBUG] = True
+        elif opt in ('-d', '--%s' % OPTIONS.DIR):
+            options[OPTIONS.DIR] = arg
+            if not os.path.isdir(arg):
+                print 'Error: the log directory %s does not exist.' % arg
+                _usage_and_exit()
+        elif opt in ('-m', '--%s' % OPTIONS.METRICS):
+            options[OPTIONS.METRICS] = True
+        else:
+            msg = 'This option "%s" is not supported.' % opt
+            _parsing_error(opt)
+
+    return options
+
+
+if __name__ == '__main__':
+    options = _parse_options()
+    summary = FirmwareSummary(options[OPTIONS.DIR],
+                              debug_flag=options[OPTIONS.DEBUG])
     summary.print_result_summary()
