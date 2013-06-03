@@ -72,6 +72,7 @@
          "filters": [
              {"categories": "bvt",
               "sheriffs": true,
+              "include_experimental": false,
               "cc": ["chromeos-test@google.com",
                      "chromeos-tpms@google.com"]},
              {"categories": "audio",

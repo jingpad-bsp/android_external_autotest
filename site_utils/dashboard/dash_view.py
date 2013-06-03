@@ -352,6 +352,7 @@ class AutotestDashView(object):
         -start (job_started_time)
         -finish (job_finished_time)
         -attr
+        -experimental (optional boolean)
       The actual test data. Used to fill popups and test status.
       Populated by QueryTests().
       """
@@ -838,8 +839,9 @@ class AutotestDashView(object):
       @return Sorted or empty List of multiple test dictionaries for test
           instances in the given category that completed on the given netbook
           and board in the given build. The test dictionaries include common
-          fields 'test_name', 'tag', 'hostname', 'status' and an embedded
-          dictionary of varying attributes under 'attr'.
+          fields 'test_name', 'tag', 'hostname', 'status', experimental
+          (optional) and an embedded dictionary of varying attributes under
+          'attr'.
 
       """
       test_details = []

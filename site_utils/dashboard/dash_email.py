@@ -1,6 +1,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# pylint: disable-msg=C0111
 
 """Handle dashboard analysis and email of test results.
 
@@ -14,7 +15,6 @@ __author__ = ['truty@google.com (Mike Truty)']
 
 import logging
 import os
-import subprocess
 
 import dash_util
 
@@ -52,7 +52,8 @@ class DashEmailNotifier(EmailNotifier):
   """Class to check for failed tests and send emails."""
 
   def __init__(self, base_dir, netbook, board_type, categories,
-               use_sheriffs, extra_emails, trigger, prefix):
+               use_sheriffs, extra_emails, trigger, prefix,
+               include_experimental=True):
     """Specialize EmailNotifier and set a few of our own variables.
 
     Args:
@@ -64,6 +65,8 @@ class DashEmailNotifier(EmailNotifier):
       extra_emails: Add others to receive the email
       trigger: Send email on test finished, failed or result state changed
       prefix: Custom prefix for cache tracking.
+      include_experimental: Include failure results for tests marked
+                            experimental (Default: True)
     """
     super(DashEmailNotifier, self).__init__(
         base_dir, netbook, board_type, use_sheriffs, extra_emails,
@@ -76,6 +79,7 @@ class DashEmailNotifier(EmailNotifier):
     self._crash_summaries = self._dash_view.GetCrashes().GetTestSummaries()
     self._crashes = {}
     self._previous_build = {}
+    self._include_experimental = include_experimental
 
   def _FindTestFailures(self, build, category, test_name):
     """Scans test details for failures, retrieves artifacts, and finds crashes.
@@ -103,6 +107,11 @@ class DashEmailNotifier(EmailNotifier):
     failed_test_dict = self._failed_tests.setdefault(build, {})
     test_details = self.GetTestDetails(category, test_name, build)
     for t in test_details:
+      # Skip experimental tests if flag says to do so
+      if not self._include_experimental:
+        if t.get('experimental', False):
+          continue
+
       # Attempt to load pre-processed test artifacts from server.
       summary = self._crash_summaries.RetrieveTestSummary(t['tag'], test_name)
       if summary and summary.get('crashes'):
@@ -314,6 +323,7 @@ def EmailFromConfig(dash_base_dir, dash_view, email_options,
                       if b.startswith(board_prefix)]:
           for filter_ in mailer['filters']:
             use_sheriffs = filter_.get('sheriffs', False)
+            include_experimental = filter_.get('include_experimental', True)
             cc = filter_.get('cc', None)
             if not use_sheriffs and not cc:
               logging.warning('Email requires sheriffs or cc.')
@@ -327,7 +337,8 @@ def EmailFromConfig(dash_base_dir, dash_view, email_options,
                                                  filter_.get('categories'))
             notifier = DashEmailNotifier(dash_base_dir, netbook, board,
                                          categories, use_sheriffs, cc, trigger,
-                                         prefix + trigger)
+                                         prefix + trigger,
+                                         include_experimental)
             notifier.CheckItems((categories, filter_.get('tests')))
             notifier.GenerateEmail()
 
