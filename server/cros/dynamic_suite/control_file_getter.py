@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import common
-import compiler, logging, os, random, re, time, urllib2
-from autotest_lib.client.common_lib import control_data, error, utils
+import os, re
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 
 
@@ -176,6 +176,10 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
 
 
 class DevServerGetter(CacheingAndFilteringControlFileGetter):
+    """Class that can list and fetch known control files from DevServer.
+
+    @var _CONTROL_PATTERN: control file name format to match.
+    """
     def __init__(self, build, ds):
         """
         @param build: The build from which to get control files.
@@ -188,7 +192,12 @@ class DevServerGetter(CacheingAndFilteringControlFileGetter):
 
     @staticmethod
     def create(build, ds=None):
-        """Wraps constructor.  Can be mocked for testing purposes."""
+        """Wraps constructor.  Can be mocked for testing purposes.
+        @param build: The build from which to get control files.
+        @param ds: An existing dev_server.DevServer object to use
+                  (default=None)
+        @returns: New DevServerGetter.
+        """
         return DevServerGetter(build, ds)
 
 
