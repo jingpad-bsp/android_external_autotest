@@ -297,8 +297,8 @@ class SiteHost(remote.RemoteHost):
             return None
 
         hosts = self._AFE.get_hosts(hostname=self.hostname)
-        if hosts and constants.JOB_REPO_URL in hosts[0].attributes:
-            return hosts[0].attributes[constants.JOB_REPO_URL]
+        if hosts and ds_constants.JOB_REPO_URL in hosts[0].attributes:
+            return hosts[0].attributes[ds_constants.JOB_REPO_URL]
 
 
     def clear_cros_version_labels_and_job_repo_url(self):
@@ -314,7 +314,7 @@ class SiteHost(remote.RemoteHost):
         for label in labels:
             label.remove_hosts(hosts=host_list)
 
-        self._AFE.set_host_attribute(constants.JOB_REPO_URL, None,
+        self._AFE.set_host_attribute(ds_constants.JOB_REPO_URL, None,
                                      hostname=self.hostname)
 
 
@@ -338,7 +338,7 @@ class SiteHost(remote.RemoteHost):
 
         label.add_hosts([self.hostname])
         repo_url = tools.get_package_url(devserver_url, image_name)
-        self._AFE.set_host_attribute(constants.JOB_REPO_URL, repo_url,
+        self._AFE.set_host_attribute(ds_constants.JOB_REPO_URL, repo_url,
                                      hostname=self.hostname)
 
 
