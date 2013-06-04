@@ -7,35 +7,14 @@ import logging
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.frontend.afe.json_rpc import proxy
-from autotest_lib.server import frontend
 from autotest_lib.server import test
+from autotest_lib.server.cros import provision
 
 
 _CONFIG = global_config.global_config
 # pylint: disable-msg=E1120
 _IMAGE_URL_PATTERN = _CONFIG.get_config_value(
         'CROS', 'image_url_pattern', type=str)
-_CHROMEOS_VERSION_PREFIX = 'cros-version:'
-
-
-# This has been copied out of dynamic_suite's reimager.py, which will be killed
-# off in a future CL.  See the TODO below about how to get rid of this.
-def _ensure_version_label(name):
-    """
-    Ensure that a label called exists in the autotest DB.
-
-    @param name: the label to check for/create.
-    """
-    afe = frontend.AFE()
-    try:
-        afe.create_label(name=name)
-    except proxy.ValidationError as ve:
-        if ('name' in ve.problem_keys and
-            'This value must be unique' in ve.problem_keys['name']):
-            logging.debug('Version label %s already exists', name)
-        else:
-            raise ve
 
 
 class provision_AutoUpdate(test.test):
@@ -85,7 +64,7 @@ class provision_AutoUpdate(test.test):
         # TODO(milleral):  http://crbug.com/249424
         # Consider making the add-a-label-to-a-host call automatically create a
         # label if it does not already exist.
-        _ensure_version_label(_CHROMEOS_VERSION_PREFIX + image)
+        provision.ensure_label_exists(provision.cros_version_to_label(image))
 
         try:
             host.machine_install(force_update=True, update_url=url)

@@ -1,0 +1,50 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+
+from autotest_lib.client.common_lib import utils
+from autotest_lib.server.cros import provision
+
+
+# provision_labels should be a string like "name:setting,name:setting"
+# non-provisionable labels are currently skipped, so they're safe to pass in.
+# However, this is more of a current safeguard/leftover from some shady code in
+# the proof of concept, so I don't assure that passing in non-provisionable
+# labels will always be an okay and accepted thing to do.
+provision_labels = locals().get('provision_labels') or ','.join(args)
+
+
+def provision_machine(machine):
+    """
+    Run the appropriate provisioning tests to make the machine's labels match
+    those given in provision_labels.
+    """
+    host = hosts.create_host(machine)
+
+    labels_list = provision_labels.split(',')
+    fixed, provisionable = provision.filter_labels(labels_list)
+
+    job.record('START', None, 'provision')
+    for label in fixed:
+        job.record('INFO', None, 'provision',
+                "Can't provision label '%s'. Skipping." % label)
+
+    try:
+        for name, value in provision.split_labels(provisionable).items():
+            test = provision.provisioner_for(name)
+            # sysinfo isn't really going to get us anything incredibly
+            # interesting here, and it takes a non-trivial amount of time, so
+            # we might as well just turn it off.
+            job.run_test(test, host=host, value=value, disable_sysinfo=True)
+    except Exception as e:
+        job.record('END FAIL', None, 'provision',
+                   'Failed on %s with: %s' % (machine, e))
+    else:
+        job.record('END GOOD', None, 'provision',
+                   '%s provisioned successfully' % machine)
+
+
+job.parallel_simple(provision_machine, machines)
+
+# vim: set syntax=python :
