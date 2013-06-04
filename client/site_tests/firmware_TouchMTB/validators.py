@@ -72,6 +72,9 @@ END_PERCENTAGE = 0.1
 VALIDATOR = 'Validator'
 
 
+show_spec_v2 = False
+
+
 def validate(packets, gesture, variation):
     """Validate a single gesture."""
     if packets is None:
@@ -152,6 +155,14 @@ def init_base_validator(device):
     BaseValidator._device = device
 
 
+def set_show_spec_v2(flag=True):
+    """Set/reset show_spec_v2 to determine whether to adopt the v2 version
+    of some validators.
+    """
+    global show_spec_v2
+    show_spec_v2 = flag
+
+
 class BaseValidator(object):
     """Base class of validators."""
     aggregator = 'fuzzy.average'
@@ -220,12 +231,12 @@ class BaseValidator(object):
         self.vlog.insert_details(formatted_msg)
 
 
-class LinearityValidator(BaseValidator):
+class LinearityValidator1(BaseValidator):
     """Validator to verify linearity.
 
     Example:
         To check the linearity of the line drawn in slot 1:
-          LinearityValidator('<= 0.03, ~ +0.07', slot=1)
+          LinearityValidator1('<= 0.03, ~ +0.07', slot=1)
     """
     # Define the partial group size for calculating Mean Squared Error
     MSE_PARTIAL_GROUP_SIZE = 1
@@ -235,7 +246,8 @@ class LinearityValidator(BaseValidator):
         self._segments = segments
         self.slot = slot
         name = get_derived_name(self.__class__.__name__, segments)
-        super(LinearityValidator, self).__init__(criteria_str, mf, device, name)
+        super(LinearityValidator1, self).__init__(criteria_str, mf, device,
+                                                  name)
 
     def _simple_linear_regression(self, ax, ay):
         """Calculate the simple linear regression and returns the
@@ -346,6 +358,144 @@ class LinearityValidator(BaseValidator):
         self.log_details(msg_device % (self.slot, deviation))
         self.vlog.score = self.fc.mf.grade(deviation)
         return self.vlog
+
+
+class LinearityValidator2(BaseValidator):
+    """A new validator to verify linearity based on x-t and y-t
+
+    Example:
+        To check the linearity of the line drawn in slot 1:
+          LinearityValidator2('<= 0.03, ~ +0.07', slot=1)
+    """
+    # Define the partial group size for calculating Mean Squared Error
+    MSE_PARTIAL_GROUP_SIZE = 1
+
+    def __init__(self, criteria_str, mf=None, device=None, slot=0,
+                 segments=VAL.WHOLE):
+        self._segments = segments
+        self.slot = slot
+        name = get_derived_name(self.__class__.__name__, segments)
+        super(LinearityValidator2, self).__init__(criteria_str, mf, device,
+                                                  name)
+
+    def _calc_residuals(self, line, list_t, list_y):
+        """Calculate the residuals of the points in list_t, list_y against
+        the line.
+
+        @param line: the regression line of list_t and list_y
+        @param list_t: a list of time instants
+        @param list_y: a list of x/y coordinates
+
+        This method returns the list of residuals, where
+            residual[i] = line[t_i] - y_i
+        where t_i is an element in list_t and
+              y_i is a corresponding element in list_y.
+
+        We calculate the vertical distance (y distance) here because the
+        horizontal axis, list_t, always represent the time instants, and the
+        vertical axis, list_y, could be either the coordinates in x or y axis.
+        """
+        return [float(line(t) - y) for t, y in zip(list_t, list_y)]
+
+    def _do_simple_linear_regression(self, list_t, list_y):
+        """Calculate the simple linear regression line and returns the
+        sum of squared residuals.
+
+        @param list_t: the list of time instants
+        @param list_y: the list of x or y coordinates of touch contacts
+
+        It calculates the residuals (fitting errors) of the points at the
+        specified segments against the computed simple linear regression line.
+
+        Reference:
+        - Simple linear regression:
+          http://en.wikipedia.org/wiki/Simple_linear_regression
+        - numpy.polyfit(): used to calculate the simple linear regression line.
+          http://docs.scipy.org/doc/numpy/reference/generated/numpy.polyfit.html
+        """
+        # At least 2 points to determine a line.
+        if len(list_t) < 2 or len(list_y) < 2:
+            return []
+
+        # Calculate the simple linear regression line.
+        degree = 1
+        regress_line = n.poly1d(n.polyfit(list_t, list_y, degree))
+
+        # Compute the fitting errors of the specified segments.
+        if self._segments == VAL.BOTH_ENDS:
+            begin_segment = self.packets.get_segments_x_and_y(
+                    list_t, list_y, VAL.BEGIN, END_PERCENTAGE)
+            end_segment = self.packets.get_segments_x_and_y(
+                    list_t, list_y, VAL.END, END_PERCENTAGE)
+            begin_error = self._calc_residuals(regress_line, *begin_segment)
+            end_error = self._calc_residuals(regress_line, *end_segment)
+            return begin_error + end_error
+        else:
+            target_segment = self.packets.get_segments_x_and_y(
+                    list_t, list_y, self._segments, END_PERCENTAGE)
+            return self._calc_residuals(regress_line, *target_segment)
+
+    def _calc_errors_single_axis(self, list_t, list_y):
+        """Calculate various errors for axis-time.
+
+        @param list_t: the list of time instants
+        @param list_y: the list of x or y coordinates of touch contacts
+        """
+        # It is fine if axis-time is a horizontal line.
+        errors_px = self._do_simple_linear_regression(list_t, list_y)
+        if not errors_px:
+            return (0, 0)
+
+        # Calculate the max errors
+        max_err_px = max(map(abs, errors_px))
+
+        # Calculate the root mean square errors
+        e2 = [e * e for e in errors_px]
+        rms_err_px = (float(sum(e2)) / len(e2)) ** 0.5
+
+        return (max_err_px, rms_err_px)
+
+    def _calc_errors_all_axes(self, list_t, list_x, list_y):
+        """Calculate various errors for all axes."""
+        # Calculate max error and average squared error
+        (max_err_x_px, rms_err_x_px) = self._calc_errors_single_axis(
+                list_t, list_x)
+        (max_err_y_px, rms_err_y_px) = self._calc_errors_single_axis(
+                list_t, list_y)
+
+        # Convert the unit from pixels to mms
+        self.max_err_x_mm, self.max_err_y_mm = self.device.pixel_to_mm(
+                (max_err_x_px, max_err_y_px))
+        self.rms_err_x_mm, self.rms_err_y_mm = self.device.pixel_to_mm(
+                (rms_err_x_px, rms_err_y_px))
+
+    def check(self, packets, variation=None):
+        """Check if the packets conforms to specified criteria."""
+        self.init_check(packets)
+        points, list_t= self.packets.get_points_and_time_for_slot(self.slot)
+        list_x = [p.x for p in points]
+        list_y = [p.y for p in points]
+
+        # Calculate various errors
+        self._calc_errors_all_axes(list_t, list_x, list_y)
+
+        self.log_details('max_err: (%.2f, %.2f) mm' %
+                         (self.max_err_x_mm, self.max_err_y_mm))
+        self.log_details('rms_err: (%.2f, %.2f) mm' %
+                         (self.rms_err_x_mm, self.rms_err_y_mm))
+
+        # Calculate the score based on the max error
+        max_err = max(self.max_err_x_mm, self.max_err_y_mm)
+        self.vlog.score = self.fc.mf.grade(max_err)
+        return self.vlog
+
+
+def LinearityValidator(*args, **kwargs):
+    """A wrapper determining the class that is actually used based on
+    show_spec_v2 option.
+    """
+    return (LinearityValidator2(*args, **kwargs) if show_spec_v2 else
+            LinearityValidator1(*args, **kwargs))
 
 
 class RangeValidator(BaseValidator):

@@ -60,6 +60,12 @@ class firmware_TouchMTB:
         self._check_device(self.touch_device)
         validators.init_base_validator(self.touch_device)
 
+        # Set show_spec_v2 in validators module if proper.
+        # This option makes the validators module to use the
+        # the validators of spec v2 if available.
+        if options[OPTIONS.SHOW_SPEC_V2]:
+            validators.set_show_spec_v2()
+
         # Create the keyboard device.
         self.keyboard = keyboard_device.KeyboardDevice()
         self._check_device(self.keyboard)

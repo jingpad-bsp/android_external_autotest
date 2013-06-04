@@ -1,7 +1,7 @@
 (lp0
 S'fw_11.23'
 p1
-aS'20130506_032458'
+aS'20130506_032659'
 p2
 a(lp3
 (ifirmware_log
@@ -43,7 +43,7 @@ p21
 g10
 (lp23
 sg12
-F0.94577107357302359
+F0.36382394337270535
 sg13
 S'Linearity(Middle)Validator'
 p24
@@ -53,9 +53,9 @@ S'<= 0.8, ~ +2.4'
 p25
 sg18
 (lp26
-S'    ave fitting error: 11.59 px'
+S'    max_err: (2.21, 0.73) mm'
 p27
-aS'    deviation slot0: 1.16 mm'
+aS'    rms_err: (1.58, 0.26) mm'
 p28
 asba(ifirmware_log
 ValidatorLog
@@ -64,7 +64,7 @@ p29
 g10
 (lp31
 sg12
-F0.94212651775285949
+I0
 sg13
 S'Linearity(BothEnds)Validator'
 p32
@@ -73,9 +73,9 @@ Nsg16
 g25
 sg18
 (lp33
-S'    ave fitting error: 11.71 px'
+S'    max_err: (8.77, 0.72) mm'
 p34
-aS'    deviation slot0: 1.17 mm'
+aS'    rms_err: (4.22, 0.43) mm'
 p35
 asba(ifirmware_log
 ValidatorLog
@@ -84,7 +84,7 @@ p36
 g10
 (lp38
 sg12
-I0
+F0.71675131747071119
 sg13
 S'NoGapValidator'
 p39
@@ -94,7 +94,7 @@ S'<= 1.8, ~ +1.0'
 p40
 sg18
 (lp41
-S'    Largest gap ratio slot0: 3.807887'
+S'    Largest gap ratio slot0: 2.157277'
 p42
 asba(ifirmware_log
 ValidatorLog
@@ -113,7 +113,7 @@ S'<= 5, ~ +30'
 p47
 sg18
 (lp48
-S"    Reversed motions slot0: {'X': -1} px"
+S"    Reversed motions slot0: {'X': 0} px"
 p49
 asba(ifirmware_log
 ValidatorLog
@@ -150,7 +150,7 @@ S'>= 60'
 p60
 sg18
 (lp61
-S'    Report rate: 103.11 Hz'
+S'    Report rate: 103.09 Hz'
 p62
 asbasS'prompt'
 p63
@@ -196,7 +196,7 @@ p78
 g10
 (lp80
 sg12
-F0.0045812747813227528
+I0
 sg13
 g24
 sg15
@@ -204,9 +204,9 @@ Nsg16
 g25
 sg18
 (lp81
-S'    ave fitting error: 30.97 px'
+S'    max_err: (5.59, 1.23) mm'
 p82
-aS'    deviation slot0: 3.10 mm'
+aS'    rms_err: (3.37, 0.59) mm'
 p83
 asba(ifirmware_log
 ValidatorLog
@@ -215,7 +215,7 @@ p84
 g10
 (lp86
 sg12
-F0.033081595883976189
+I0
 sg13
 g32
 sg15
@@ -223,9 +223,9 @@ Nsg16
 g25
 sg18
 (lp87
-S'    ave fitting error: 29.21 px'
+S'    max_err: (6.20, 0.37) mm'
 p88
-aS'    deviation slot0: 2.92 mm'
+aS'    rms_err: (3.17, 0.74) mm'
 p89
 asba(ifirmware_log
 ValidatorLog
@@ -234,7 +234,7 @@ p90
 g10
 (lp92
 sg12
-I0
+F0.163774566964973
 sg13
 g39
 sg15
@@ -242,7 +242,7 @@ Nsg16
 g40
 sg18
 (lp93
-S'    Largest gap ratio slot0: 4.472136'
+S'    Largest gap ratio slot0: 2.534758'
 p94
 asba(ifirmware_log
 ValidatorLog
@@ -268,7 +268,7 @@ p100
 g10
 (lp102
 sg12
-F0.95677272882130038
+I1
 sg13
 g53
 sg15
@@ -276,7 +276,7 @@ Nsg16
 g47
 sg18
 (lp103
-S"    Reversed motions slot0: {'X': -9} px"
+S"    Reversed motions slot0: {'X': -2} px"
 p104
 asba(ifirmware_log
 ValidatorLog
@@ -293,7 +293,7 @@ Nsg16
 g60
 sg18
 (lp108
-S'    Report rate: 102.53 Hz'
+S'    Report rate: 103.60 Hz'
 p109
 asbasg63
 S'Take 3 seconds to draw a straight, horizontal line from left to right using a ruler.'
@@ -332,7 +332,7 @@ p119
 g10
 (lp121
 sg12
-I1
+F0.0068930935379321046
 sg13
 g24
 sg15
@@ -340,9 +340,9 @@ Nsg16
 g25
 sg18
 (lp122
-S'    ave fitting error: 5.60 px'
+S'    max_err: (3.07, 0.54) mm'
 p123
-aS'    deviation slot0: 0.56 mm'
+aS'    rms_err: (1.44, 0.29) mm'
 p124
 asba(ifirmware_log
 ValidatorLog
@@ -351,7 +351,7 @@ p125
 g10
 (lp127
 sg12
-F0.58829130065883228
+F0.68207950677155615
 sg13
 g32
 sg15
@@ -359,9 +359,9 @@ Nsg16
 g25
 sg18
 (lp128
-S'    ave fitting error: 18.64 px'
+S'    max_err: (-0.33, 1.72) mm'
 p129
-aS'    deviation slot0: 1.86 mm'
+aS'    rms_err: (3.68, 0.69) mm'
 p130
 asba(ifirmware_log
 ValidatorLog
@@ -378,7 +378,7 @@ Nsg16
 g40
 sg18
 (lp134
-S'    Largest gap ratio slot0: 3.847077'
+S'    Largest gap ratio slot0: 3.794733'
 p135
 asba(ifirmware_log
 ValidatorLog
@@ -412,7 +412,7 @@ Nsg16
 g47
 sg18
 (lp144
-S"    Reversed motions slot0: {'X': 2} px"
+S"    Reversed motions slot0: {'X': 0} px"
 p145
 asba(ifirmware_log
 ValidatorLog
@@ -429,7 +429,7 @@ Nsg16
 g60
 sg18
 (lp149
-S'    Report rate: 103.44 Hz'
+S'    Report rate: 103.90 Hz'
 p150
 asbasg63
 S'Take 3 seconds to draw a straight, horizontal line from right to left using a ruler.'
@@ -471,7 +471,7 @@ p162
 g10
 (lp164
 sg12
-F0.019320609216848361
+F0.36212235862284814
 sg13
 g24
 sg15
@@ -479,9 +479,9 @@ Nsg16
 g25
 sg18
 (lp165
-S'    ave fitting error: 29.87 px'
+S'    max_err: (2.21, 0.99) mm'
 p166
-aS'    deviation slot0: 2.99 mm'
+aS'    rms_err: (1.45, 0.49) mm'
 p167
 asba(ifirmware_log
 ValidatorLog
@@ -490,7 +490,7 @@ p168
 g10
 (lp170
 sg12
-F0.49393038611523254
+I0
 sg13
 g32
 sg15
@@ -498,9 +498,9 @@ Nsg16
 g25
 sg18
 (lp171
-S'    ave fitting error: 20.09 px'
+S'    max_err: (3.34, 0.80) mm'
 p172
-aS'    deviation slot0: 2.01 mm'
+aS'    rms_err: (2.05, 0.32) mm'
 p173
 asba(ifirmware_log
 ValidatorLog
@@ -517,7 +517,7 @@ Nsg16
 g40
 sg18
 (lp177
-S'    Largest gap ratio slot0: 3.726780'
+S'    Largest gap ratio slot0: 4.642796'
 p178
 asba(ifirmware_log
 ValidatorLog
@@ -543,7 +543,7 @@ p184
 g10
 (lp186
 sg12
-F0.90450849718747373
+I1
 sg13
 g53
 sg15
@@ -551,7 +551,7 @@ Nsg16
 g47
 sg18
 (lp187
-S"    Reversed motions slot0: {'X': 11} px"
+S"    Reversed motions slot0: {'X': 0} px"
 p188
 asba(ifirmware_log
 ValidatorLog
@@ -568,7 +568,7 @@ Nsg16
 g60
 sg18
 (lp192
-S'    Report rate: 103.54 Hz'
+S'    Report rate: 103.59 Hz'
 p193
 asbasg63
 S'Take 3 seconds to draw a straight, horizontal line from right to left using a ruler.'
@@ -607,7 +607,7 @@ p203
 g10
 (lp205
 sg12
-I1
+F0.84874542835457367
 sg13
 S'Linearity(Middle)Validator'
 p206
@@ -616,9 +616,9 @@ Nsg16
 g25
 sg18
 (lp207
-S'    ave fitting error: 4.88 px'
+S'    max_err: (1.41, 0.46) mm'
 p208
-aS'    deviation slot0: 0.49 mm'
+aS'    rms_err: (1.11, 0.30) mm'
 p209
 asba(ifirmware_log
 ValidatorLog
@@ -627,7 +627,7 @@ p210
 g10
 (lp212
 sg12
-F0.99544971889924594
+F0.081332172330224717
 sg13
 S'Linearity(BothEnds)Validator'
 p213
@@ -636,9 +636,9 @@ Nsg16
 g25
 sg18
 (lp214
-S'    ave fitting error: 9.03 px'
+S'    max_err: (2.76, 1.31) mm'
 p215
-aS'    deviation slot0: 0.90 mm'
+aS'    rms_err: (1.88, 0.73) mm'
 p216
 asba(ifirmware_log
 ValidatorLog
@@ -647,7 +647,7 @@ p217
 g10
 (lp219
 sg12
-F0.64089447074049577
+I0
 sg13
 g39
 sg15
@@ -655,7 +655,7 @@ Nsg16
 g40
 sg18
 (lp220
-S'    Largest gap ratio slot0: 2.209072'
+S'    Largest gap ratio slot0: 5.215362'
 p221
 asba(ifirmware_log
 ValidatorLog
@@ -713,7 +713,7 @@ Nsg16
 g60
 sg18
 (lp240
-S'    Report rate: 102.72 Hz'
+S'    Report rate: 101.65 Hz'
 p241
 asbasg63
 S'Take 2 seconds to draw a striaght horizontal line from the center off left edge.'
@@ -756,7 +756,7 @@ p254
 g10
 (lp256
 sg12
-F0.6942793301025707
+F0.1582349321788169
 sg13
 g206
 sg15
@@ -764,9 +764,9 @@ Nsg16
 g25
 sg18
 (lp257
-S'    ave fitting error: 16.95 px'
+S'    max_err: (2.57, 0.74) mm'
 p258
-aS'    deviation slot0: 1.70 mm'
+aS'    rms_err: (1.42, 0.39) mm'
 p259
 asba(ifirmware_log
 ValidatorLog
@@ -775,7 +775,7 @@ p260
 g10
 (lp262
 sg12
-F0.065305828170709734
+I0
 sg13
 g213
 sg15
@@ -783,9 +783,9 @@ Nsg16
 g25
 sg18
 (lp263
-S'    ave fitting error: 28.05 px'
+S'    max_err: (8.03, 1.43) mm'
 p264
-aS'    deviation slot0: 2.81 mm'
+aS'    rms_err: (3.96, 0.53) mm'
 p265
 asba(ifirmware_log
 ValidatorLog
@@ -802,7 +802,7 @@ Nsg16
 g40
 sg18
 (lp269
-S'    Largest gap ratio slot0: 11.401754'
+S'    Largest gap ratio slot0: 10.295630'
 p270
 asba(ifirmware_log
 ValidatorLog
@@ -811,7 +811,7 @@ p271
 g10
 (lp273
 sg12
-I1
+F0.97552825814757682
 sg13
 g225
 sg15
@@ -819,7 +819,7 @@ Nsg16
 g47
 sg18
 (lp274
-S"    Reversed motions slot0: {'X': 4} px"
+S"    Reversed motions slot0: {'X': 8} px"
 p275
 asba(ifirmware_log
 ValidatorLog
@@ -857,7 +857,7 @@ Nsg16
 g60
 sg18
 (lp286
-S'    Report rate: 100.77 Hz'
+S'    Report rate: 97.52 Hz'
 p287
 asbasg63
 S'Take 2 seconds to draw a striaght horizontal line from the center off left edge.'
@@ -897,7 +897,7 @@ p298
 g10
 (lp300
 sg12
-I1
+F0.95078215471052063
 sg13
 S'Linearity(Middle)Validator'
 p301
@@ -906,9 +906,9 @@ Nsg16
 g25
 sg18
 (lp302
-S'    ave fitting error: 4.99 px'
+S'    max_err: (1.14, 0.75) mm'
 p303
-aS'    deviation slot0: 0.50 mm'
+aS'    rms_err: (0.87, 0.28) mm'
 p304
 asba(ifirmware_log
 ValidatorLog
@@ -917,7 +917,7 @@ p305
 g10
 (lp307
 sg12
-I1
+I0
 sg13
 S'Linearity(BothEnds)Validator'
 p308
@@ -926,9 +926,9 @@ Nsg16
 g25
 sg18
 (lp309
-S'    ave fitting error: 6.92 px'
+S'    max_err: (7.04, 0.20) mm'
 p310
-aS'    deviation slot0: 0.69 mm'
+aS'    rms_err: (2.74, 0.40) mm'
 p311
 asba(ifirmware_log
 ValidatorLog
@@ -937,7 +937,7 @@ p312
 g10
 (lp314
 sg12
-I1
+F0.95972458211701417
 sg13
 S'Linearity(Middle)Validator'
 p315
@@ -946,9 +946,9 @@ Nsg16
 g25
 sg18
 (lp316
-S'    ave fitting error: 5.82 px'
+S'    max_err: (1.11, 0.55) mm'
 p317
-aS'    deviation slot1: 0.58 mm'
+aS'    rms_err: (0.84, 0.25) mm'
 p318
 asba(ifirmware_log
 ValidatorLog
@@ -957,7 +957,7 @@ p319
 g10
 (lp321
 sg12
-F0.95292237168779104
+I0
 sg13
 S'Linearity(BothEnds)Validator'
 p322
@@ -966,9 +966,9 @@ Nsg16
 g25
 sg18
 (lp323
-S'    ave fitting error: 11.34 px'
+S'    max_err: (6.50, 0.38) mm'
 p324
-aS'    deviation slot1: 1.13 mm'
+aS'    rms_err: (2.56, 0.27) mm'
 p325
 asba(ifirmware_log
 ValidatorLog
@@ -985,7 +985,7 @@ Nsg16
 g40
 sg18
 (lp329
-S'    Largest gap ratio slot0: 2.850439'
+S'    Largest gap ratio slot0: 3.038963'
 p330
 asba(ifirmware_log
 ValidatorLog
@@ -994,7 +994,7 @@ p331
 g10
 (lp333
 sg12
-F0.83652708916575547
+I0
 sg13
 g39
 sg15
@@ -1002,7 +1002,7 @@ Nsg16
 g40
 sg18
 (lp334
-S'    Largest gap ratio slot1: 2.064982'
+S'    Largest gap ratio slot1: 3.590110'
 p335
 asba(ifirmware_log
 ValidatorLog
@@ -1055,7 +1055,7 @@ Nsg16
 g60
 sg18
 (lp351
-S'    Report rate: 85.71 Hz'
+S'    Report rate: 86.24 Hz'
 p352
 asbasg63
 S'Take 1 second to draw a horizontal line from left to right using a ruler with TWO fingers at the same time.'
@@ -1098,7 +1098,7 @@ p365
 g10
 (lp367
 sg12
-F0.60351502499249532
+F0.98100475752530525
 sg13
 g301
 sg15
@@ -1106,9 +1106,9 @@ Nsg16
 g25
 sg18
 (lp368
-S'    ave fitting error: 18.41 px'
+S'    max_err: (0.97, 1.01) mm'
 p369
-aS'    deviation slot0: 1.84 mm'
+aS'    rms_err: (0.73, 0.46) mm'
 p370
 asba(ifirmware_log
 ValidatorLog
@@ -1117,7 +1117,7 @@ p371
 g10
 (lp373
 sg12
-F0.72522259676280854
+I0
 sg13
 g308
 sg15
@@ -1125,9 +1125,9 @@ Nsg16
 g25
 sg18
 (lp374
-S'    ave fitting error: 16.43 px'
+S'    max_err: (5.13, 0.55) mm'
 p375
-aS'    deviation slot0: 1.64 mm'
+aS'    rms_err: (1.74, 0.40) mm'
 p376
 asba(ifirmware_log
 ValidatorLog
@@ -1136,7 +1136,7 @@ p377
 g10
 (lp379
 sg12
-F0.5965054358489229
+F0.87537549830562122
 sg13
 g315
 sg15
@@ -1144,9 +1144,9 @@ Nsg16
 g25
 sg18
 (lp380
-S'    ave fitting error: 18.52 px'
+S'    max_err: (1.00, 1.35) mm'
 p381
-aS'    deviation slot1: 1.85 mm'
+aS'    rms_err: (0.72, 0.52) mm'
 p382
 asba(ifirmware_log
 ValidatorLog
@@ -1155,7 +1155,7 @@ p383
 g10
 (lp385
 sg12
-F0.50557597852331448
+I0
 sg13
 g322
 sg15
@@ -1163,9 +1163,9 @@ Nsg16
 g25
 sg18
 (lp386
-S'    ave fitting error: 19.91 px'
+S'    max_err: (4.59, 0.23) mm'
 p387
-aS'    deviation slot1: 1.99 mm'
+aS'    rms_err: (1.75, 0.39) mm'
 p388
 asba(ifirmware_log
 ValidatorLog
@@ -1174,7 +1174,7 @@ p389
 g10
 (lp391
 sg12
-I0
+F0.080165971619802434
 sg13
 g39
 sg15
@@ -1182,7 +1182,7 @@ Nsg16
 g40
 sg18
 (lp392
-S'    Largest gap ratio slot0: 4.216370'
+S'    Largest gap ratio slot0: 2.617250'
 p393
 asba(ifirmware_log
 ValidatorLog
@@ -1199,7 +1199,7 @@ Nsg16
 g40
 sg18
 (lp397
-S'    Largest gap ratio slot1: 3.807887'
+S'    Largest gap ratio slot1: 3.640055'
 p398
 asba(ifirmware_log
 ValidatorLog
@@ -1233,7 +1233,7 @@ Nsg16
 g47
 sg18
 (lp407
-S"    Reversed motions slot1: {'X': 0} px"
+S"    Reversed motions slot1: {'X': -1} px"
 p408
 asba(ifirmware_log
 ValidatorLog
@@ -1250,7 +1250,7 @@ Nsg16
 g60
 sg18
 (lp412
-S'    Report rate: 85.69 Hz'
+S'    Report rate: 86.23 Hz'
 p413
 asbasg63
 S'Take 1 second to draw a horizontal line from left to right using a ruler with TWO fingers at the same time.'
@@ -1297,9 +1297,9 @@ Nsg16
 g25
 sg18
 (lp426
-S'    ave fitting error: 3.35 px'
+S'    max_err: (0.00, 0.00) mm'
 p427
-aS'    deviation slot0: 0.34 mm'
+aS'    rms_err: (0.00, 0.00) mm'
 p428
 asba(ifirmware_log
 ValidatorLog
@@ -1308,7 +1308,7 @@ p429
 g10
 (lp431
 sg12
-F0.88505320355229622
+I1
 sg13
 g308
 sg15
@@ -1316,9 +1316,9 @@ Nsg16
 g25
 sg18
 (lp432
-S'    ave fitting error: 13.28 px'
+S'    max_err: (0.00, 0.00) mm'
 p433
-aS'    deviation slot0: 1.33 mm'
+aS'    rms_err: (0.00, 0.00) mm'
 p434
 asba(ifirmware_log
 ValidatorLog
@@ -1327,7 +1327,7 @@ p435
 g10
 (lp437
 sg12
-I1
+F0.85143831107423373
 sg13
 g315
 sg15
@@ -1335,9 +1335,9 @@ Nsg16
 g25
 sg18
 (lp438
-S'    ave fitting error: 6.78 px'
+S'    max_err: (1.40, 0.56) mm'
 p439
-aS'    deviation slot1: 0.68 mm'
+aS'    rms_err: (0.60, 0.34) mm'
 p440
 asba(ifirmware_log
 ValidatorLog
@@ -1346,7 +1346,7 @@ p441
 g10
 (lp443
 sg12
-F0.58580385039478267
+F0.99454700160916698
 sg13
 g322
 sg15
@@ -1354,9 +1354,9 @@ Nsg16
 g25
 sg18
 (lp444
-S'    ave fitting error: 18.68 px'
+S'    max_err: (0.91, 0.79) mm'
 p445
-aS'    deviation slot1: 1.87 mm'
+aS'    rms_err: (1.42, 0.24) mm'
 p446
 asba(ifirmware_log
 ValidatorLog
@@ -1373,7 +1373,7 @@ Nsg16
 g40
 sg18
 (lp450
-S'    Largest gap ratio slot0: 3.000000'
+S'    Largest gap ratio slot0: 6.082763'
 p451
 asba(ifirmware_log
 ValidatorLog
@@ -1390,7 +1390,7 @@ Nsg16
 g40
 sg18
 (lp455
-S'    Largest gap ratio slot1: 3.820995'
+S'    Largest gap ratio slot1: 3.726780'
 p456
 asba(ifirmware_log
 ValidatorLog
@@ -1441,7 +1441,7 @@ Nsg16
 g60
 sg18
 (lp470
-S'    Report rate: 86.69 Hz'
+S'    Report rate: 86.85 Hz'
 p471
 asbasg63
 S'Take 1 second to draw a horizontal line from right to left using a ruler with TWO fingers at the same time.'
@@ -1482,7 +1482,7 @@ p482
 g10
 (lp484
 sg12
-F0.99905691308406974
+F0.37569128653169204
 sg13
 g301
 sg15
@@ -1490,9 +1490,9 @@ Nsg16
 g25
 sg18
 (lp485
-S'    ave fitting error: 8.47 px'
+S'    max_err: (2.19, 1.44) mm'
 p486
-aS'    deviation slot0: 0.85 mm'
+aS'    rms_err: (1.31, 0.80) mm'
 p487
 asba(ifirmware_log
 ValidatorLog
@@ -1501,7 +1501,7 @@ p488
 g10
 (lp490
 sg12
-F0.32748947890267088
+F0.50867155855547441
 sg13
 g308
 sg15
@@ -1509,9 +1509,9 @@ Nsg16
 g25
 sg18
 (lp491
-S'    ave fitting error: 22.69 px'
+S'    max_err: (1.99, 1.26) mm'
 p492
-aS'    deviation slot0: 2.27 mm'
+aS'    rms_err: (1.46, 0.56) mm'
 p493
 asba(ifirmware_log
 ValidatorLog
@@ -1520,7 +1520,7 @@ p494
 g10
 (lp496
 sg12
-I1
+F0.1715393831024305
 sg13
 g315
 sg15
@@ -1528,9 +1528,9 @@ Nsg16
 g25
 sg18
 (lp497
-S'    ave fitting error: 6.86 px'
+S'    max_err: (2.55, 1.68) mm'
 p498
-aS'    deviation slot1: 0.69 mm'
+aS'    rms_err: (1.46, 0.79) mm'
 p499
 asba(ifirmware_log
 ValidatorLog
@@ -1539,7 +1539,7 @@ p500
 g10
 (lp502
 sg12
-F0.011216710581886169
+F0.56268036524380394
 sg13
 g322
 sg15
@@ -1547,9 +1547,9 @@ Nsg16
 g25
 sg18
 (lp503
-S'    ave fitting error: 30.38 px'
+S'    max_err: (1.90, 1.27) mm'
 p504
-aS'    deviation slot1: 3.04 mm'
+aS'    rms_err: (1.64, 0.59) mm'
 p505
 asba(ifirmware_log
 ValidatorLog
@@ -1558,7 +1558,7 @@ p506
 g10
 (lp508
 sg12
-I0
+F0.44922410520889894
 sg13
 g39
 sg15
@@ -1566,7 +1566,7 @@ Nsg16
 g40
 sg18
 (lp509
-S'    Largest gap ratio slot0: 5.590170'
+S'    Largest gap ratio slot0: 2.332381'
 p510
 asba(ifirmware_log
 ValidatorLog
@@ -1575,7 +1575,7 @@ p511
 g10
 (lp513
 sg12
-I0
+F0.14699155180484647
 sg13
 g39
 sg15
@@ -1583,7 +1583,7 @@ Nsg16
 g40
 sg18
 (lp514
-S'    Largest gap ratio slot1: 3.363086'
+S'    Largest gap ratio slot1: 2.549510'
 p515
 asba(ifirmware_log
 ValidatorLog
@@ -1617,7 +1617,7 @@ Nsg16
 g47
 sg18
 (lp524
-S"    Reversed motions slot1: {'X': 0} px"
+S"    Reversed motions slot1: {'X': 1} px"
 p525
 asba(ifirmware_log
 ValidatorLog
@@ -1634,7 +1634,7 @@ Nsg16
 g60
 sg18
 (lp529
-S'    Report rate: 85.95 Hz'
+S'    Report rate: 85.84 Hz'
 p530
 asbasg63
 S'Take 1 second to draw a horizontal line from right to left using a ruler with TWO fingers at the same time.'
@@ -1665,7 +1665,7 @@ S'>= 5'
 p538
 sg18
 (lp539
-S'    count of trackid IDs: 22'
+S'    count of trackid IDs: 16'
 p540
 asba(ifirmware_log
 ValidatorLog
@@ -1682,7 +1682,7 @@ S'circle_radius_mm'
 p546
 sS'value'
 p547
-F1.1836853936376439
+F0.17159383568311934
 sba(ifirmware_log
 Metric
 p548
@@ -1690,7 +1690,7 @@ p548
 g13
 g546
 sg547
-F0.54829280498653166
+F0.125
 sba(ifirmware_log
 Metric
 p550
@@ -1698,7 +1698,7 @@ p550
 g13
 g546
 sg547
-F0.54416092391048265
+F0.22336511658794411
 sba(ifirmware_log
 Metric
 p552
@@ -1706,7 +1706,7 @@ p552
 g13
 g546
 sg547
-F0.52068331172710614
+F0.38810436740650095
 sba(ifirmware_log
 Metric
 p554
@@ -1714,7 +1714,7 @@ p554
 g13
 g546
 sg547
-F0.28336396893191979
+F0.70123898288038355
 sba(ifirmware_log
 Metric
 p556
@@ -1722,7 +1722,7 @@ p556
 g13
 g546
 sg547
-F0.63513996707637399
+F0.71956777149743234
 sba(ifirmware_log
 Metric
 p558
@@ -1730,7 +1730,7 @@ p558
 g13
 g546
 sg547
-I0
+F0.13462912017836418
 sba(ifirmware_log
 Metric
 p560
@@ -1738,7 +1738,7 @@ p560
 g13
 g546
 sg547
-F0.10833333333333647
+F0.55901699437494745
 sba(ifirmware_log
 Metric
 p562
@@ -1746,7 +1746,7 @@ p562
 g13
 g546
 sg547
-F0.28879539085272038
+F0.4583333333333357
 sba(ifirmware_log
 Metric
 p564
@@ -1754,7 +1754,7 @@ p564
 g13
 g546
 sg547
-F0.26352313834736346
+F0.56410382384248037
 sba(ifirmware_log
 Metric
 p566
@@ -1762,7 +1762,7 @@ p566
 g13
 g546
 sg547
-F0.11736111111231495
+I0
 sba(ifirmware_log
 Metric
 p568
@@ -1770,7 +1770,7 @@ p568
 g13
 g546
 sg547
-I0
+F0.21424933553637041
 sba(ifirmware_log
 Metric
 p570
@@ -1778,7 +1778,7 @@ p570
 g13
 g546
 sg547
-F0.38876761777526947
+F0.45069390943299864
 sba(ifirmware_log
 Metric
 p572
@@ -1786,7 +1786,7 @@ p572
 g13
 g546
 sg547
-F0.34999999999999787
+F0.44454154268153073
 sba(ifirmware_log
 Metric
 p574
@@ -1794,7 +1794,7 @@ p574
 g13
 g546
 sg547
-F0.19525624189766527
+F0.14999999999999858
 sba(ifirmware_log
 Metric
 p576
@@ -1802,7 +1802,7 @@ p576
 g13
 g546
 sg547
-F0.22422706745123056
+F0.17400510848183942
 sba(ifirmware_log
 Metric
 p578
@@ -1810,7 +1810,7 @@ p578
 g13
 g546
 sg547
-I0
+F0.19525624189767074
 sba(ifirmware_log
 Metric
 p580
@@ -1818,7 +1818,7 @@ p580
 g13
 g546
 sg547
-F0.27950849718747373
+F0.13462912017836154
 sba(ifirmware_log
 Metric
 p582
@@ -1826,7 +1826,7 @@ p582
 g13
 g546
 sg547
-F0.25550365566000788
+I0
 sba(ifirmware_log
 Metric
 p584
@@ -1834,7 +1834,7 @@ p584
 g13
 g546
 sg547
-F0.69000805148281841
+F0.27950849718747373
 sba(ifirmware_log
 Metric
 p586
@@ -1842,7 +1842,7 @@ p586
 g13
 g546
 sg547
-F0.065085413965885089
+I0
 sba(ifirmware_log
 Metric
 p588
@@ -1850,7 +1850,7 @@ p588
 g13
 g546
 sg547
-F0.16944444444275319
+F0.25495097567964009
 sba(ifirmware_log
 Metric
 p590
@@ -1858,7 +1858,7 @@ p590
 g13
 g546
 sg547
-F0.23109041039770353
+I0
 sba(ifirmware_log
 Metric
 p592
@@ -1866,7 +1866,7 @@ p592
 g13
 g546
 sg547
-F0.30000000000000071
+F0.065085413965889641
 sba(ifirmware_log
 Metric
 p594
@@ -1874,7 +1874,7 @@ p594
 g13
 g546
 sg547
-F0.25
+F0.56000992054704601
 sba(ifirmware_log
 Metric
 p596
@@ -1882,7 +1882,7 @@ p596
 g13
 g546
 sg547
-F0.13462912017836418
+F0.70123898288038355
 sba(ifirmware_log
 Metric
 p598
@@ -1890,7 +1890,7 @@ p598
 g13
 g546
 sg547
-F0.065085413965887823
+F0.36524345001351777
 sba(ifirmware_log
 Metric
 p600
@@ -1898,7 +1898,7 @@ p600
 g13
 g546
 sg547
-F0.083333333333335702
+F0.2358495283014175
 sba(ifirmware_log
 Metric
 p602
@@ -1906,7 +1906,7 @@ p602
 g13
 g546
 sg547
-F1.1254937188234784
+F0.084722222223825236
 sba(ifirmware_log
 Metric
 p604
@@ -1914,7 +1914,7 @@ p604
 g13
 g546
 sg547
-F0.39039411480902303
+F0.041666666666664298
 sba(ifirmware_log
 Metric
 p606
@@ -1922,7 +1922,7 @@ p606
 g13
 g546
 sg547
-I0
+F0.75166481891864545
 sba(ifirmware_log
 Metric
 p608
@@ -1930,137 +1930,41 @@ p608
 g13
 g546
 sg547
-F0.2059421450940217
-sba(ifirmware_log
-Metric
-p610
-(dp611
-g13
-g546
-sg547
-I0
-sba(ifirmware_log
-Metric
-p612
-(dp613
-g13
-g546
-sg547
-F0.17400510848184622
-sba(ifirmware_log
-Metric
-p614
-(dp615
-g13
-g546
-sg547
-F0.16007810593582211
-sba(ifirmware_log
-Metric
-p616
-(dp617
-g13
-g546
-sg547
-F0.041666666666664298
-sba(ifirmware_log
-Metric
-p618
-(dp619
-g13
-g546
-sg547
-F0.065085413965885089
-sba(ifirmware_log
-Metric
-p620
-(dp621
-g13
-g546
-sg547
-F0.125
-sba(ifirmware_log
-Metric
-p622
-(dp623
-g13
-g546
-sg547
-F0.10833333333333374
-sba(ifirmware_log
-Metric
-p624
-(dp625
-g13
-g546
-sg547
-F0.13462912017836154
-sba(ifirmware_log
-Metric
-p626
-(dp627
-g13
-g546
-sg547
-F0.51394425616444472
-sba(ifirmware_log
-Metric
-p628
-(dp629
-g13
-g546
-sg547
-F0.5068968775248508
-sba(ifirmware_log
-Metric
-p630
-(dp631
-g13
-g546
-sg547
-F0.35247143304261114
-sba(ifirmware_log
-Metric
-p632
-(dp633
-g13
-g546
-sg547
-I0
+F2.6424551925140487
 sbasg12
-I1
+I0
 sg13
 S'DrumrollValidator'
-p634
+p610
 sg15
 Nsg16
 S'<= 2.0'
-p635
+p611
 sg18
-(lp636
-S'    Max radius: 1.18 mm'
-p637
+(lp612
+S'    Max radius: 2.64 mm'
+p613
 asbasg63
 S'Use the index and middle finger of one hand to make a "drum roll" as fast as possible by alternately tapping each finger for 5 seconds.'
-p638
+p614
 sg13
 S'drumroll'
-p639
+p615
 sg66
 S'fast'
-p640
+p616
 sba(ifirmware_log
 GestureLog
-p641
-(dp642
+p617
+(dp618
 g6
-(lp643
+(lp619
 (ifirmware_log
 ValidatorLog
-p644
-(dp645
+p620
+(dp621
 g10
-(lp646
+(lp622
 sg12
 I1
 sg13
@@ -2069,23 +1973,119 @@ sg15
 Nsg16
 g538
 sg18
-(lp647
-S'    count of trackid IDs: 25'
-p648
+(lp623
+S'    count of trackid IDs: 16'
+p624
 asba(ifirmware_log
 ValidatorLog
-p649
-(dp650
+p625
+(dp626
 g10
-(lp651
+(lp627
 (ifirmware_log
+Metric
+p628
+(dp629
+g13
+g546
+sg547
+F0.43863424398968803
+sba(ifirmware_log
+Metric
+p630
+(dp631
+g13
+g546
+sg547
+F0.46703854230673097
+sba(ifirmware_log
+Metric
+p632
+(dp633
+g13
+g546
+sg547
+F0.25495097567963865
+sba(ifirmware_log
+Metric
+p634
+(dp635
+g13
+g546
+sg547
+F0.20000000000000284
+sba(ifirmware_log
+Metric
+p636
+(dp637
+g13
+g546
+sg547
+I0
+sba(ifirmware_log
+Metric
+p638
+(dp639
+g13
+g546
+sg547
+I0
+sba(ifirmware_log
+Metric
+p640
+(dp641
+g13
+g546
+sg547
+F0.45765100725820257
+sba(ifirmware_log
+Metric
+p642
+(dp643
+g13
+g546
+sg547
+F0.43341665865574031
+sba(ifirmware_log
+Metric
+p644
+(dp645
+g13
+g546
+sg547
+F0.28879539085272299
+sba(ifirmware_log
+Metric
+p646
+(dp647
+g13
+g546
+sg547
+F0.55901699437494745
+sba(ifirmware_log
+Metric
+p648
+(dp649
+g13
+g546
+sg547
+F0.29154759474226793
+sba(ifirmware_log
+Metric
+p650
+(dp651
+g13
+g546
+sg547
+F0.40731164699500033
+sba(ifirmware_log
 Metric
 p652
 (dp653
 g13
 g546
 sg547
-F0.1943650631615087
+F0.40216428373378682
 sba(ifirmware_log
 Metric
 p654
@@ -2093,7 +2093,7 @@ p654
 g13
 g546
 sg547
-F0.32499999999999735
+F0.57759078170545097
 sba(ifirmware_log
 Metric
 p656
@@ -2101,7 +2101,7 @@ p656
 g13
 g546
 sg547
-F0.25344843876242662
+I0
 sba(ifirmware_log
 Metric
 p658
@@ -2109,7 +2109,7 @@ p658
 g13
 g546
 sg547
-F0.3028796974231055
+F0.13017082793178017
 sba(ifirmware_log
 Metric
 p660
@@ -2117,7 +2117,7 @@ p660
 g13
 g546
 sg547
-F0.30258658591382265
+F0.27180466842510781
 sba(ifirmware_log
 Metric
 p662
@@ -2125,7 +2125,7 @@ p662
 g13
 g546
 sg547
-F0.42065598049392838
+F0.91062402291566169
 sba(ifirmware_log
 Metric
 p664
@@ -2133,7 +2133,7 @@ p664
 g13
 g546
 sg547
-I0
+F0.15567951410224304
 sba(ifirmware_log
 Metric
 p666
@@ -2141,7 +2141,7 @@ p666
 g13
 g546
 sg547
-F0.10833333333333647
+F0.15567951410224304
 sba(ifirmware_log
 Metric
 p668
@@ -2149,7 +2149,7 @@ p668
 g13
 g546
 sg547
-F0.19525624189766527
+F0.8367015264982155
 sba(ifirmware_log
 Metric
 p670
@@ -2157,7 +2157,7 @@ p670
 g13
 g546
 sg547
-I0
+F0.6553201083779191
 sba(ifirmware_log
 Metric
 p672
@@ -2165,7 +2165,7 @@ p672
 g13
 g546
 sg547
-F0.19525624189767074
+I0
 sba(ifirmware_log
 Metric
 p674
@@ -2173,7 +2173,7 @@ p674
 g13
 g546
 sg547
-F0.25401771591754885
+F0.22422706745123108
 sba(ifirmware_log
 Metric
 p676
@@ -2181,7 +2181,7 @@ p676
 g13
 g546
 sg547
-F0.14999999999999858
+F0.15567951410224304
 sba(ifirmware_log
 Metric
 p678
@@ -2189,7 +2189,7 @@ p678
 g13
 g546
 sg547
-F0.15180396715643654
+F0.13017082793178017
 sba(ifirmware_log
 Metric
 p680
@@ -2197,7 +2197,7 @@ p680
 g13
 g546
 sg547
-F0.74330343736592841
+F0.25671536334582379
 sba(ifirmware_log
 Metric
 p682
@@ -2205,7 +2205,7 @@ p682
 g13
 g546
 sg547
-I0
+F0.73048690002703731
 sba(ifirmware_log
 Metric
 p684
@@ -2213,7 +2213,7 @@ p684
 g13
 g546
 sg547
-F0.25495097567963937
+I0
 sba(ifirmware_log
 Metric
 p686
@@ -2221,7 +2221,7 @@ p686
 g13
 g546
 sg547
-F0.23584952830141451
+F0.17159383568311659
 sba(ifirmware_log
 Metric
 p688
@@ -2229,7 +2229,7 @@ p688
 g13
 g546
 sg547
-F0.1666666666666643
+F0.050000000000000711
 sba(ifirmware_log
 Metric
 p690
@@ -2237,263 +2237,23 @@ p690
 g13
 g546
 sg547
-F0.20000000000000284
-sba(ifirmware_log
-Metric
-p692
-(dp693
-g13
-g546
-sg547
-F0.35365158623205256
-sba(ifirmware_log
-Metric
-p694
-(dp695
-g13
-g546
-sg547
-I0
-sba(ifirmware_log
-Metric
-p696
-(dp697
-g13
-g546
-sg547
-F0.097182531580755585
-sba(ifirmware_log
-Metric
-p698
-(dp699
-g13
-g546
-sg547
-F0.049999999999997158
-sba(ifirmware_log
-Metric
-p700
-(dp701
-g13
-g546
-sg547
-F0.21666666666667023
-sba(ifirmware_log
-Metric
-p702
-(dp703
-g13
-g546
-sg547
-F0.21424933553636877
-sba(ifirmware_log
-Metric
-p704
-(dp705
-g13
-g546
-sg547
-I0
-sba(ifirmware_log
-Metric
-p706
-(dp707
-g13
-g546
-sg547
-F0.10963619850360899
-sba(ifirmware_log
-Metric
-p708
-(dp709
-g13
-g546
-sg547
-F0.1715938356831197
-sba(ifirmware_log
-Metric
-p710
-(dp711
-g13
-g546
-sg547
-F0.3847617684817155
-sba(ifirmware_log
-Metric
-p712
-(dp713
-g13
-g546
-sg547
-F0.26099395273519266
-sba(ifirmware_log
-Metric
-p714
-(dp715
-g13
-g546
-sg547
-I0
-sba(ifirmware_log
-Metric
-p716
-(dp717
-g13
-g546
-sg547
-F0.15180396715608299
-sba(ifirmware_log
-Metric
-p718
-(dp719
-g13
-g546
-sg547
-I0
-sba(ifirmware_log
-Metric
-p720
-(dp721
-g13
-g546
-sg547
-F0.38765677832043383
-sba(ifirmware_log
-Metric
-p722
-(dp723
-g13
-g546
-sg547
-F0.85116128201859909
-sba(ifirmware_log
-Metric
-p724
-(dp725
-g13
-g546
-sg547
-F0.48225454320767125
-sba(ifirmware_log
-Metric
-p726
-(dp727
-g13
-g546
-sg547
-F0.45765100725819557
-sba(ifirmware_log
-Metric
-p728
-(dp729
-g13
-g546
-sg547
-F0.29999999999999716
-sba(ifirmware_log
-Metric
-p730
-(dp731
-g13
-g546
-sg547
-I0
-sba(ifirmware_log
-Metric
-p732
-(dp733
-g13
-g546
-sg547
-F0.041666666666664298
-sba(ifirmware_log
-Metric
-p734
-(dp735
-g13
-g546
-sg547
-F0.041666666666664298
-sba(ifirmware_log
-Metric
-p736
-(dp737
-g13
-g546
-sg547
-F0.32890859550516177
-sba(ifirmware_log
-Metric
-p738
-(dp739
-g13
-g546
-sg547
-F0.16007810593581989
-sba(ifirmware_log
-Metric
-p740
-(dp741
-g13
-g546
-sg547
-F0.11333333333296025
-sba(ifirmware_log
-Metric
-p742
-(dp743
-g13
-g546
-sg547
-F0.083333333333328596
-sba(ifirmware_log
-Metric
-p744
-(dp745
-g13
-g546
-sg547
-F0.32015621187164423
-sba(ifirmware_log
-Metric
-p746
-(dp747
-g13
-g546
-sg547
-F0.3028796974231055
-sba(ifirmware_log
-Metric
-p748
-(dp749
-g13
-g546
-sg547
-F0.64031242374328401
-sba(ifirmware_log
-Metric
-p750
-(dp751
-g13
-g546
-sg547
 I0
 sbasg12
 I1
 sg13
-g634
+g610
 sg15
 Nsg16
-g635
+g611
 sg18
-(lp752
-S'    Max radius: 0.85 mm'
-p753
+(lp692
+S'    Max radius: 0.91 mm'
+p693
 asbasg63
 S'Use the index and middle finger of one hand to make a "drum roll" as fast as possible by alternately tapping each finger for 5 seconds.'
-p754
+p694
 sg13
-g639
+g615
 sg66
-g640
+g616
 sbaa.

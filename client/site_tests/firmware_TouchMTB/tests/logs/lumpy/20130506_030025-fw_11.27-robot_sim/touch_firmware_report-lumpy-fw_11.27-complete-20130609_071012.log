@@ -43,7 +43,7 @@ p21
 g10
 (lp23
 sg12
-I1
+F0.37847221445303592
 sg13
 S'Linearity(Middle)Validator'
 p24
@@ -53,9 +53,9 @@ S'<= 0.8, ~ +2.4'
 p25
 sg18
 (lp26
-S'    ave fitting error: 4.40 px'
+S'    max_err: (2.19, 0.43) mm'
 p27
-aS'    deviation slot0: 0.44 mm'
+aS'    rms_err: (1.33, 0.21) mm'
 p28
 asba(ifirmware_log
 ValidatorLog
@@ -64,7 +64,7 @@ p29
 g10
 (lp31
 sg12
-I1
+I0
 sg13
 S'Linearity(BothEnds)Validator'
 p32
@@ -73,9 +73,9 @@ Nsg16
 g25
 sg18
 (lp33
-S'    ave fitting error: 5.45 px'
+S'    max_err: (6.60, 0.57) mm'
 p34
-aS'    deviation slot0: 0.54 mm'
+aS'    rms_err: (2.84, 0.29) mm'
 p35
 asba(ifirmware_log
 ValidatorLog
@@ -196,7 +196,7 @@ p78
 g10
 (lp80
 sg12
-F0.086579603071570255
+F0.081275945356666157
 sg13
 g24
 sg15
@@ -204,9 +204,9 @@ Nsg16
 g25
 sg18
 (lp81
-S'    ave fitting error: 27.44 px'
+S'    max_err: (2.76, 2.16) mm'
 p82
-aS'    deviation slot0: 2.74 mm'
+aS'    rms_err: (1.62, 1.33) mm'
 p83
 asba(ifirmware_log
 ValidatorLog
@@ -215,7 +215,7 @@ p84
 g10
 (lp86
 sg12
-F0.46311336452040214
+F0.70990784315385269
 sg13
 g32
 sg15
@@ -223,9 +223,9 @@ Nsg16
 g25
 sg18
 (lp87
-S'    ave fitting error: 20.56 px'
+S'    max_err: (1.67, 0.84) mm'
 p88
-aS'    deviation slot0: 2.06 mm'
+aS'    rms_err: (1.53, 0.96) mm'
 p89
 asba(ifirmware_log
 ValidatorLog
@@ -332,7 +332,7 @@ p119
 g10
 (lp121
 sg12
-I1
+F0.430036253560518
 sg13
 g24
 sg15
@@ -340,9 +340,9 @@ Nsg16
 g25
 sg18
 (lp122
-S'    ave fitting error: 3.78 px'
+S'    max_err: (2.11, 0.42) mm'
 p123
-aS'    deviation slot0: 0.38 mm'
+aS'    rms_err: (0.91, 0.14) mm'
 p124
 asba(ifirmware_log
 ValidatorLog
@@ -351,7 +351,7 @@ p125
 g10
 (lp127
 sg12
-I1
+F0.60531107047427835
 sg13
 g32
 sg15
@@ -359,9 +359,9 @@ Nsg16
 g25
 sg18
 (lp128
-S'    ave fitting error: 2.02 px'
+S'    max_err: (1.84, 0.18) mm'
 p129
-aS'    deviation slot0: 0.20 mm'
+aS'    rms_err: (2.03, 0.10) mm'
 p130
 asba(ifirmware_log
 ValidatorLog
@@ -471,7 +471,7 @@ p162
 g10
 (lp164
 sg12
-F0.99818102112406093
+F0.27426919975395175
 sg13
 g24
 sg15
@@ -479,9 +479,9 @@ Nsg16
 g25
 sg18
 (lp165
-S'    ave fitting error: 8.65 px'
+S'    max_err: (2.36, 0.59) mm'
 p166
-aS'    deviation slot0: 0.87 mm'
+aS'    rms_err: (1.40, 0.35) mm'
 p167
 asba(ifirmware_log
 ValidatorLog
@@ -490,7 +490,7 @@ p168
 g10
 (lp170
 sg12
-F0.98949537084336869
+I0
 sg13
 g32
 sg15
@@ -498,9 +498,9 @@ Nsg16
 g25
 sg18
 (lp171
-S'    ave fitting error: 9.57 px'
+S'    max_err: (3.21, -0.06) mm'
 p172
-aS'    deviation slot0: 0.96 mm'
+aS'    rms_err: (2.63, 0.62) mm'
 p173
 asba(ifirmware_log
 ValidatorLog
@@ -607,7 +607,7 @@ p203
 g10
 (lp205
 sg12
-I1
+F0.16256668626211701
 sg13
 S'Linearity(Middle)Validator'
 p206
@@ -616,9 +616,9 @@ Nsg16
 g25
 sg18
 (lp207
-S'    ave fitting error: 7.07 px'
+S'    max_err: (2.57, 0.86) mm'
 p208
-aS'    deviation slot0: 0.71 mm'
+aS'    rms_err: (1.75, 0.40) mm'
 p209
 asba(ifirmware_log
 ValidatorLog
@@ -627,7 +627,7 @@ p210
 g10
 (lp212
 sg12
-F0.86631886012723869
+F0.99996656923176164
 sg13
 S'Linearity(BothEnds)Validator'
 p213
@@ -636,9 +636,9 @@ Nsg16
 g25
 sg18
 (lp214
-S'    ave fitting error: 13.72 px'
+S'    max_err: (0.09, 0.81) mm'
 p215
-aS'    deviation slot0: 1.37 mm'
+aS'    rms_err: (3.48, 0.75) mm'
 p216
 asba(ifirmware_log
 ValidatorLog
@@ -764,9 +764,9 @@ Nsg16
 g25
 sg18
 (lp257
-S'    ave fitting error: 45.89 px'
+S'    max_err: (2.49, 4.55) mm'
 p258
-aS'    deviation slot0: 4.59 mm'
+aS'    rms_err: (1.20, 2.12) mm'
 p259
 asba(ifirmware_log
 ValidatorLog
@@ -775,7 +775,7 @@ p260
 g10
 (lp262
 sg12
-F0.53178255007922159
+F0.82162209402616759
 sg13
 g213
 sg15
@@ -783,9 +783,9 @@ Nsg16
 g25
 sg18
 (lp263
-S'    ave fitting error: 19.51 px'
+S'    max_err: (-0.48, 1.47) mm'
 p264
-aS'    deviation slot0: 1.95 mm'
+aS'    rms_err: (3.18, 0.45) mm'
 p265
 asba(ifirmware_log
 ValidatorLog
@@ -897,7 +897,7 @@ p298
 g10
 (lp300
 sg12
-I1
+F0.53361972616711173
 sg13
 S'Linearity(Middle)Validator'
 p301
@@ -906,9 +906,9 @@ Nsg16
 g25
 sg18
 (lp302
-S'    ave fitting error: 5.78 px'
+S'    max_err: (1.95, 0.70) mm'
 p303
-aS'    deviation slot0: 0.58 mm'
+aS'    rms_err: (1.56, 0.25) mm'
 p304
 asba(ifirmware_log
 ValidatorLog
@@ -917,7 +917,7 @@ p305
 g10
 (lp307
 sg12
-F0.85279858552626742
+I0
 sg13
 S'Linearity(BothEnds)Validator'
 p308
@@ -926,9 +926,9 @@ Nsg16
 g25
 sg18
 (lp309
-S'    ave fitting error: 14.02 px'
+S'    max_err: (7.01, 0.15) mm'
 p310
-aS'    deviation slot0: 1.40 mm'
+aS'    rms_err: (4.16, 0.45) mm'
 p311
 asba(ifirmware_log
 ValidatorLog
@@ -937,7 +937,7 @@ p312
 g10
 (lp314
 sg12
-I1
+F0.38927249560983523
 sg13
 S'Linearity(Middle)Validator'
 p315
@@ -946,9 +946,9 @@ Nsg16
 g25
 sg18
 (lp316
-S'    ave fitting error: 5.77 px'
+S'    max_err: (2.17, 0.53) mm'
 p317
-aS'    deviation slot1: 0.58 mm'
+aS'    rms_err: (1.44, 0.23) mm'
 p318
 asba(ifirmware_log
 ValidatorLog
@@ -957,7 +957,7 @@ p319
 g10
 (lp321
 sg12
-F0.99459481418391293
+I0
 sg13
 S'Linearity(BothEnds)Validator'
 p322
@@ -966,9 +966,9 @@ Nsg16
 g25
 sg18
 (lp323
-S'    ave fitting error: 9.12 px'
+S'    max_err: (6.03, 0.26) mm'
 p324
-aS'    deviation slot1: 0.91 mm'
+aS'    rms_err: (3.65, 0.25) mm'
 p325
 asba(ifirmware_log
 ValidatorLog
@@ -1098,7 +1098,7 @@ p365
 g10
 (lp367
 sg12
-I1
+F0.98808498482718088
 sg13
 g301
 sg15
@@ -1106,9 +1106,9 @@ Nsg16
 g25
 sg18
 (lp368
-S'    ave fitting error: 6.34 px'
+S'    max_err: (0.97, 0.72) mm'
 p369
-aS'    deviation slot0: 0.63 mm'
+aS'    rms_err: (0.93, 0.43) mm'
 p370
 asba(ifirmware_log
 ValidatorLog
@@ -1117,7 +1117,7 @@ p371
 g10
 (lp373
 sg12
-F0.99873751877364425
+I0
 sg13
 g308
 sg15
@@ -1125,9 +1125,9 @@ Nsg16
 g25
 sg18
 (lp374
-S'    ave fitting error: 8.54 px'
+S'    max_err: (5.49, 0.53) mm'
 p375
-aS'    deviation slot0: 0.85 mm'
+aS'    rms_err: (2.06, 0.35) mm'
 p376
 asba(ifirmware_log
 ValidatorLog
@@ -1136,7 +1136,7 @@ p377
 g10
 (lp379
 sg12
-F0.99986707351939419
+F0.85433520450031986
 sg13
 g315
 sg15
@@ -1144,9 +1144,9 @@ Nsg16
 g25
 sg18
 (lp380
-S'    ave fitting error: 8.18 px'
+S'    max_err: (1.40, 0.87) mm'
 p381
-aS'    deviation slot1: 0.82 mm'
+aS'    rms_err: (0.98, 0.52) mm'
 p382
 asba(ifirmware_log
 ValidatorLog
@@ -1155,7 +1155,7 @@ p383
 g10
 (lp385
 sg12
-F0.16757988588236866
+I0
 sg13
 g322
 sg15
@@ -1163,9 +1163,9 @@ Nsg16
 g25
 sg18
 (lp386
-S'    ave fitting error: 25.56 px'
+S'    max_err: (3.68, 2.04) mm'
 p387
-aS'    deviation slot1: 2.56 mm'
+aS'    rms_err: (1.47, 0.69) mm'
 p388
 asba(ifirmware_log
 ValidatorLog
@@ -1297,9 +1297,9 @@ Nsg16
 g25
 sg18
 (lp426
-S'    ave fitting error: 3.29 px'
+S'    max_err: (0.00, 0.00) mm'
 p427
-aS'    deviation slot0: 0.33 mm'
+aS'    rms_err: (0.00, 0.00) mm'
 p428
 asba(ifirmware_log
 ValidatorLog
@@ -1308,7 +1308,7 @@ p429
 g10
 (lp431
 sg12
-F0.92783171058710545
+I1
 sg13
 g308
 sg15
@@ -1316,9 +1316,9 @@ Nsg16
 g25
 sg18
 (lp432
-S'    ave fitting error: 12.16 px'
+S'    max_err: (0.00, 0.00) mm'
 p433
-aS'    deviation slot0: 1.22 mm'
+aS'    rms_err: (0.00, 0.00) mm'
 p434
 asba(ifirmware_log
 ValidatorLog
@@ -1327,7 +1327,7 @@ p435
 g10
 (lp437
 sg12
-I1
+F0.69551584673157529
 sg13
 g315
 sg15
@@ -1335,9 +1335,9 @@ Nsg16
 g25
 sg18
 (lp438
-S'    ave fitting error: 4.19 px'
+S'    max_err: (1.69, 0.25) mm'
 p439
-aS'    deviation slot1: 0.42 mm'
+aS'    rms_err: (0.98, 0.15) mm'
 p440
 asba(ifirmware_log
 ValidatorLog
@@ -1346,7 +1346,7 @@ p441
 g10
 (lp443
 sg12
-F0.38028659418153471
+F0.99880847718524701
 sg13
 g322
 sg15
@@ -1354,9 +1354,9 @@ Nsg16
 g25
 sg18
 (lp444
-S'    ave fitting error: 21.85 px'
+S'    max_err: (-0.95, 0.85) mm'
 p445
-aS'    deviation slot1: 2.18 mm'
+aS'    rms_err: (2.36, 0.29) mm'
 p446
 asba(ifirmware_log
 ValidatorLog
@@ -1482,7 +1482,7 @@ p482
 g10
 (lp484
 sg12
-I1
+F0.47390838419436182
 sg13
 g301
 sg15
@@ -1490,9 +1490,9 @@ Nsg16
 g25
 sg18
 (lp485
-S'    ave fitting error: 6.54 px'
+S'    max_err: (2.04, 0.60) mm'
 p486
-aS'    deviation slot0: 0.65 mm'
+aS'    rms_err: (1.10, 0.26) mm'
 p487
 asba(ifirmware_log
 ValidatorLog
@@ -1501,7 +1501,7 @@ p488
 g10
 (lp490
 sg12
-F0.94810013741477039
+F0.9471430876503919
 sg13
 g308
 sg15
@@ -1509,9 +1509,9 @@ Nsg16
 g25
 sg18
 (lp491
-S'    ave fitting error: 11.51 px'
+S'    max_err: (1.15, 0.04) mm'
 p492
-aS'    deviation slot0: 1.15 mm'
+aS'    rms_err: (1.86, 0.45) mm'
 p493
 asba(ifirmware_log
 ValidatorLog
@@ -1520,7 +1520,7 @@ p494
 g10
 (lp496
 sg12
-I1
+F0.76631624673997589
 sg13
 g315
 sg15
@@ -1528,9 +1528,9 @@ Nsg16
 g25
 sg18
 (lp497
-S'    ave fitting error: 6.66 px'
+S'    max_err: (1.57, 0.69) mm'
 p498
-aS'    deviation slot1: 0.67 mm'
+aS'    rms_err: (1.01, 0.28) mm'
 p499
 asba(ifirmware_log
 ValidatorLog
@@ -1539,7 +1539,7 @@ p500
 g10
 (lp502
 sg12
-F0.9738580334774094
+F0.7988622280274269
 sg13
 g322
 sg15
@@ -1547,9 +1547,9 @@ Nsg16
 g25
 sg18
 (lp503
-S'    ave fitting error: 10.48 px'
+S'    max_err: (1.51, -0.14) mm'
 p504
-aS'    deviation slot1: 1.05 mm'
+aS'    rms_err: (1.26, 0.42) mm'
 p505
 asba(ifirmware_log
 ValidatorLog

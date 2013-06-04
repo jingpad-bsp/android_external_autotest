@@ -23,7 +23,7 @@ from linux_input import *
 
 
 # Define TidData class to keep track of the slot, and points in a tracking ID.
-TidData = namedtuple('TidData', ['slot', 'points'])
+TidData = namedtuple('TidData', ['slot', 'points', 'syn_time'])
 
 
 def make_pretty_packet(packet):
@@ -184,6 +184,11 @@ class MtbEvent:
         return (cls.is_EV_KEY(event) and
                 event[MTB.EV_CODE] == BTN_TOUCH)
 
+    @classmethod
+    def is_SYN_REPORT(self, event):
+        """Determine if this event is SYN_REPORT."""
+        return event.get(MTB.SYN_REPORT, False)
+
 
 class MtbEvemu:
     """A simplified class provides MTB utilities for evemu event format."""
@@ -229,6 +234,7 @@ class MtbStateMachine:
         self.slot = 0
         self.slot_to_tid = {}
         self.points = {}
+        self.syn_time = None
         self.new_tid = False
 
     def add_event(self, event):
@@ -262,6 +268,9 @@ class MtbStateMachine:
         # Update y value.
         elif MtbEvent.is_ABS_MT_POSITION_Y(event):
             self.points[self.slot_to_tid[self.slot]].y = event[MTB.EV_VALUE]
+
+        elif MtbEvent.is_SYN_REPORT(event):
+            self.syn_time = event[MTB.EV_TIME]
 
 
 class Mtb:
@@ -466,8 +475,17 @@ class Mtb:
                 if sm.points[tid]:
                     point = copy.deepcopy(sm.points[tid])
                     tid_data_dict.setdefault(tid,
-                            TidData(sm.slot, [])).points.append(point)
+                            TidData(sm.slot, [], [])).points.append(point)
+                    tid_data_dict[tid].syn_time.append(sm.syn_time)
         return tid_data_dict
+
+    def get_points_and_time_for_slot(self, slot):
+        """Extract the points and the syn report time for the specified slot."""
+        tid_data_dict = self.get_points_for_every_tracking_id()
+        for tid_data in tid_data_dict.values():
+            if tid_data.slot == slot:
+                return (tid_data.points, tid_data.syn_time)
+        return ([], [])
 
     def get_max_distance_of_all_tracking_ids(self):
         """Get the max moving distance of all tracking IDs."""
@@ -485,8 +503,8 @@ class Mtb:
         list_rocs = []
         for tid_data in self.get_points_for_every_tracking_id().values():
             # Convert the point coordinates in pixels to in mms.
-            points_in_mm = [Point(*self.device.convert_point_pixel_to_mm(
-                    p.value())) for p in tid_data.points]
+            points_in_mm = [Point(*self.device.pixel_to_mm(p.value()))
+                            for p in tid_data.points]
             list_rocs += get_radii_of_two_minimal_enclosing_circles(
                     points_in_mm)
         return list_rocs

@@ -95,14 +95,14 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         validator = 'Linearity(BothEnds)Validator'
         expected_scores = {
             'fw_11.23': {
-                'one_finger_tracking': 0.67842352,
-                'two_finger_tracking': 0.79016602,
-                'one_finger_to_edge': 0.67996557,
+                'one_finger_tracking': 0.35101279,
+                'two_finger_tracking': 0.24538648,
+                'one_finger_to_edge': 0.08247109,
             },
             'fw_11.27': {
-                'one_finger_tracking': 0.87874238,
-                'two_finger_tracking': 0.80599838,
-                'one_finger_to_edge': 0.79936714,
+                'one_finger_tracking': 0.38586982,
+                'two_finger_tracking': 0.47745385,
+                'one_finger_to_edge': 0.60719622,
             }
         }
         self._test_by_gesture(validator, expected_scores)
@@ -111,14 +111,14 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         validator = 'Linearity(Middle)Validator'
         expected_scores = {
             'fw_11.23': {
-                'one_finger_tracking': 0.72945338,
-                'two_finger_tracking': 0.91632697,
-                'one_finger_to_edge': 0.92356771,
+                'one_finger_tracking': 0.25467808,
+                'two_finger_tracking': 0.53296994,
+                'one_finger_to_edge': 0.36334750,
             },
             'fw_11.27': {
-                'one_finger_tracking': 0.84746010,
-                'two_finger_tracking': 0.99998892,
-                'one_finger_to_edge': 0.66666667,
+                'one_finger_tracking': 0.32825869,
+                'two_finger_tracking': 0.59816216,
+                'one_finger_to_edge': 0.07031646,
             }
         }
         self._test_by_gesture(validator, expected_scores)
@@ -140,16 +140,15 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         self._test_by_gesture(validator, expected_scores)
 
     def test_by_validator(self):
-        validator = 'CountTrackingIDValidator'
         expected_scores = {
             'fw_11.23': {
-                'Linearity(BothEnds)Validator': 0.74249667,
-                'Linearity(Middle)Validator': 0.86396891,
+                'Linearity(BothEnds)Validator': 0.25229180,
+                'Linearity(Middle)Validator': 0.42922620,
                 'NoGapValidator': 0.10836890,
             },
             'fw_11.27': {
-                'Linearity(BothEnds)Validator': 0.82583506,
-                'Linearity(Middle)Validator': 0.90879180,
+                'Linearity(BothEnds)Validator': 0.46982161,
+                'Linearity(Middle)Validator': 0.44564036,
                 'NoGapValidator': 0.68257590,
             }
         }
@@ -161,8 +160,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
 
     def test_final_weighted_average(self):
         expected_weighted_averages = {
-            'fw_11.23': 0.82926814,
-            'fw_11.27': 0.91357706,
+            'fw_11.23': 0.76478509,
+            'fw_11.27': 0.85200420,
         }
         final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():

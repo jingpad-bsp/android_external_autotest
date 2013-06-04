@@ -95,7 +95,7 @@ class TouchDevice:
                         axis_y = AbsAxis(min_y, max_y, resolution_y)
         return (axis_x, axis_y)
 
-    def convert_point_pixel_to_mm(self, (pixel_x, pixel_y)):
+    def pixel_to_mm(self, (pixel_x, pixel_y)):
         """Convert the point coordinate from pixel to mm."""
         mm_x = float(pixel_x - self.axis_x.min) / self.axis_x.resolution
         mm_y = float(pixel_y - self.axis_y.min) / self.axis_y.resolution

@@ -11,6 +11,7 @@ import unittest
 import common_unittest_utils
 import common_util
 import test_conf as conf
+import validators
 
 from common_unittest_utils import parse_tests_data
 from firmware_constants import GV
@@ -211,6 +212,7 @@ class LinearityValidatorTest(BaseValidatorTest):
     def setUp(self):
         super(LinearityValidatorTest, self).setUp()
         self.criteria = conf.linearity_criteria
+        validators.show_new_spec = False
 
     def _test_linearity_criteria(self, criteria_str, slots, device):
         filename = '2f_scroll_diagonal.dat'
@@ -362,6 +364,50 @@ class LinearityValidatorTest(BaseValidatorTest):
         list_y = [20, 40, 60, 80, 100, 120, 140, 160]
         spmse = validator._simple_linear_regression(list_x, list_y)
         self.assertTrue(spmse > 0)
+
+
+class LinearityValidator2Test(BaseValidatorTest):
+    """Unit tests for LinearityValidator2 class."""
+
+    def setUp(self):
+        super(LinearityValidator2Test, self).setUp()
+        validators.set_show_spec_v2(True)
+        self.validator = LinearityValidator(conf.linearity_criteria,
+                                            device=self.mocked_device[LUMPY],
+                                            slot=0)
+        self.validator.init_check()
+
+    def test_simple_linear_regression0(self):
+        """A perfect y-t line from bottom left to top right"""
+        list_y = [20, 40, 60, 80, 100, 120, 140, 160]
+        list_t = [i * 0.1 for i in range(len(list_y))]
+        (max_err_px, rms_err_px) = self.validator._calc_errors_single_axis(
+                list_t, list_y)
+        self.assertAlmostEqual(max_err_px, 0)
+        self.assertAlmostEqual(rms_err_px, 0)
+
+    def test_simple_linear_regression1(self):
+        """A y-t line taken from a real example.
+
+        Refer to the "Numerical example" in the wiki page:
+            http://en.wikipedia.org/wiki/Simple_linear_regression
+        """
+        list_t = [1.47, 1.50, 1.52, 1.55, 1.57, 1.60, 1.63, 1.65, 1.68, 1.70,
+                  1.73, 1.75, 1.78, 1.80, 1.83]
+        list_y = [52.21, 53.12, 54.48, 55.84, 57.20, 58.57, 59.93, 61.29,
+                  63.11, 64.47, 66.28, 68.10, 69.92, 72.19, 74.46]
+        expected_max_err = 1.3938545467809007
+        expected_rms_err = 0.70666155991311708
+        (max_err, rms_err) = self.validator._calc_errors_single_axis(
+                list_t, list_y)
+        self.assertAlmostEqual(max_err, expected_max_err)
+        self.assertAlmostEqual(rms_err, expected_rms_err)
+
+    def tearDown(self):
+        """Reset the show_spec_v2 so that other unit tests for spec v1 could be
+        conducted as uaual.
+        """
+        validators.set_show_spec_v2(False)
 
 
 class NoGapValidatorTest(BaseValidatorTest):
