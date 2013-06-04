@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import wifi_cell_test_base
 
 
@@ -14,7 +13,8 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
         """Hook into super class to take control files parameters.
 
         @param commandline_args dict of parsed parameters from the autotest.
-        @param additional_params list of dicts describing router configs.
+        @param additional_params list of tuple(HostapConfig,
+                                               AssociationParameters).
 
         """
         self._configurations = additional_params
@@ -22,12 +22,10 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once_impl(self):
         """Sets up a router, connects to it, pings it, and repeats."""
-        for configuration in self._configurations:
-            self.context.configure(configuration)
-            assoc_params = xmlrpc_datatypes.AssociationParameters()
-            assoc_params.ssid = self.context.router.get_ssid()
-            assoc_params.is_hidden = configuration.hide_ssid or False
-            self.assert_connect_wifi(assoc_params)
+        for router_conf, client_conf in self._configurations:
+            self.context.configure(router_conf)
+            client_conf.ssid = self.context.router.get_ssid()
+            self.assert_connect_wifi(client_conf)
             self.assert_ping_from_dut()
-            self.context.client.shill.disconnect(assoc_params.ssid)
+            self.context.client.shill.disconnect(client_conf.ssid)
             self.context.router.deconfig()

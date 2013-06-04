@@ -16,6 +16,7 @@ channel on the channel below the center channel).
 """
 
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
 
 
@@ -23,9 +24,10 @@ def run(machine):
     caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
             hostap_config.HostapConfig.N_CAPABILITY_HT40_MINUS]
     n = hostap_config.HostapConfig.MODE_11N_PURE
-    configurations = [hostap_config.HostapConfig(frequency=5240,
-                                                 mode=n,
-                                                 n_capabilities=caps)]
+    configurations = [(hostap_config.HostapConfig(frequency=5240,
+                                                  mode=n,
+                                                  n_capabilities=caps),
+                       xmlrpc_datatypes.AssociationParameters())]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,

@@ -15,13 +15,16 @@ on channels 48, 64.
 """
 
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
 
 
 def run(machine):
     a_mode = hostap_config.HostapConfig.MODE_11A
-    configurations = [hostap_config.HostapConfig(channel=48, mode=a_mode),
-                      hostap_config.HostapConfig(channel=64, mode=a_mode)]
+    configurations = [(hostap_config.HostapConfig(channel=48, mode=a_mode),
+                       xmlrpc_datatypes.AssociationParameters()),
+                      (hostap_config.HostapConfig(channel=64, mode=a_mode),
+                       xmlrpc_datatypes.AssociationParameters())]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,

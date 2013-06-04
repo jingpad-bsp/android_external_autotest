@@ -15,6 +15,7 @@ on 5 GHz channel with short guard intervals enabled (both 20/40 Mhz).
 """
 
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
 
 
@@ -26,10 +27,12 @@ def run(machine):
               hostap_config.HostapConfig.N_CAPABILITY_HT40_MINUS,
               hostap_config.HostapConfig.N_CAPABILITY_SGI40]
     n = hostap_config.HostapConfig.MODE_11N_PURE
-    configurations = [hostap_config.HostapConfig(frequency=5240, mode=n,
+    configurations = [(hostap_config.HostapConfig(frequency=5240, mode=n,
                                                  n_capabilities=caps20),
-                      hostap_config.HostapConfig(frequency=5240, mode=n,
-                                                 n_capabilities=caps40)]
+                       xmlrpc_datatypes.AssociationParameters()),
+                      (hostap_config.HostapConfig(frequency=5240, mode=n,
+                                                 n_capabilities=caps40),
+                       xmlrpc_datatypes.AssociationParameters())]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,

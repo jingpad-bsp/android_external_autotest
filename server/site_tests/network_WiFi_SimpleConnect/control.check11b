@@ -15,14 +15,18 @@ on channels 1, 6, and 11 (2.4 Ghz band) and correctly send IP traffic.
 """
 
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
 
 
 def run(machine):
     b_mode = hostap_config.HostapConfig.MODE_11B
-    configurations = [hostap_config.HostapConfig(channel=1, mode=b_mode),
-                      hostap_config.HostapConfig(channel=6, mode=b_mode),
-                      hostap_config.HostapConfig(channel=11, mode=b_mode)]
+    configurations = [(hostap_config.HostapConfig(channel=1, mode=b_mode),
+                       xmlrpc_datatypes.AssociationParameters()),
+                      (hostap_config.HostapConfig(channel=6, mode=b_mode),
+                       xmlrpc_datatypes.AssociationParameters()),
+                      (hostap_config.HostapConfig(channel=11, mode=b_mode),
+                       xmlrpc_datatypes.AssociationParameters())]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,

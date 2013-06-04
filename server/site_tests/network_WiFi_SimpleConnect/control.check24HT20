@@ -15,6 +15,7 @@ on 2.4 GHz channels (20MHz channels only).
 """
 
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
 
 
@@ -23,9 +24,12 @@ def run(machine):
             hostap_config.HostapConfig.N_CAPABILITY_HT20]
     n = hostap_config.HostapConfig.MODE_11N_PURE
     configurations = [
-            hostap_config.HostapConfig(channel=1, mode=n, n_capabilities=caps),
-            hostap_config.HostapConfig(channel=6, mode=n, n_capabilities=caps),
-            hostap_config.HostapConfig(channel=11, mode=n, n_capabilities=caps)]
+            (hostap_config.HostapConfig(channel=1, mode=n, n_capabilities=caps),
+             xmlrpc_datatypes.AssociationParameters()),
+            (hostap_config.HostapConfig(channel=6, mode=n, n_capabilities=caps),
+             xmlrpc_datatypes.AssociationParameters()),
+            (hostap_config.HostapConfig(channel=11, mode=n, n_capabilities=caps),
+             xmlrpc_datatypes.AssociationParameters())]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,
