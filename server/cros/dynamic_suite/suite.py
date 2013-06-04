@@ -82,6 +82,35 @@ class Suite(object):
 
 
     @staticmethod
+    def not_in_blacklist_predicate(blacklist):
+        """Returns predicate that takes a control file and looks for its
+        path to not be in given blacklist.
+
+        @param blacklist: A list of strings both paths on control_files that
+                          should be blacklisted.
+
+        @return a callable that takes a ControlData and looks for it to be
+                absent from blacklist.
+        """
+        return lambda t: hasattr(t, 'path') and \
+                         not any(b.endswith(t.path) for b in blacklist)
+
+
+    @staticmethod
+    def test_name_equals_predicate(test_name):
+        """Returns predicate that matched based on a test's name.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        and returns True if the test name is equal to |test_name|.
+
+        @param test_name: the test name to base the predicate on.
+        @return a callable that takes a ControlData and looks for |test_name|
+                in that ControlData's name.
+        """
+        return lambda t: hasattr(t, 'name') and test_name == t.name
+
+
+    @staticmethod
     def list_all_suites(build, devserver, cf_getter=None):
         """
         Parses all ControlData objects with a SUITE tag and extracts all
@@ -127,7 +156,7 @@ class Suite(object):
         if cf_getter is None:
             cf_getter = Suite.create_ds_getter(build, devserver)
 
-        return Suite(Suite.name_in_tag_predicate(name),
+        return Suite([Suite.name_in_tag_predicate(name)],
                      name, build, cf_getter, **dargs)
 
 
@@ -155,17 +184,13 @@ class Suite(object):
         if cf_getter is None:
             cf_getter = Suite.create_ds_getter(build, devserver)
 
-        def in_tag_not_in_blacklist_predicate(test):
-            #pylint: disable-msg=C0111
-            return (Suite.name_in_tag_predicate(name)(test) and
-                    hasattr(test, 'path') and
-                    True not in [b.endswith(test.path) for b in blacklist])
+        predicates = [Suite.name_in_tag_predicate(name),
+                      Suite.not_in_blacklist_predicate(blacklist)]
 
-        return Suite(in_tag_not_in_blacklist_predicate,
-                     name, build, cf_getter, **dargs)
+        return Suite(predicates, name, build, cf_getter, **dargs)
 
 
-    def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
+    def __init__(self, predicates, tag, build, cf_getter, afe=None, tko=None,
                  pool=None, results_dir=None, max_runtime_mins=24*60,
                  version_prefix=constants.VERSION_PREFIX,
                  file_bugs=False, file_experimental_bugs=False,
@@ -173,9 +198,10 @@ class Suite(object):
         """
         Constructor
 
-        @param predicate: a function that should return True when run over a
-               ControlData representation of a control file that should be in
-               this Suite.
+        @param predicates: A list of callables that accept ControlData
+                           representations of control files. A test will be
+                           included in suite is all callables in this list
+                           return True on the given control file.
         @param tag: a string with which to tag jobs run in this suite.
         @param build: the build on which we're running this suite.
         @param cf_getter: a control_file_getter.ControlFileGetter
@@ -195,7 +221,11 @@ class Suite(object):
                             attribute and skip applying of dependency labels.
                             (Default:False)
         """
-        self._predicate = predicate
+        def combined_predicate(test):
+            #pylint: disable-msg=C0111
+            return all((f(test) for f in predicates))
+        self._predicate = combined_predicate
+
         self._tag = tag
         self._build = build
         self._cf_getter = cf_getter
