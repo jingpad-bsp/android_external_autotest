@@ -478,15 +478,15 @@ class Suite(object):
         tests = {}
         files = cf_getter.get_control_file_list()
         matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
+        parsed_count = 0
         for file in filter(lambda f: not matcher.match(f), files):
-            logging.debug('Considering %s', file)
             text = cf_getter.get_control_file_contents(file)
             try:
                 found_test = control_data.parse_control_string(
                         text, raise_warnings=True)
+                parsed_count += 1
                 if not add_experimental and found_test.experimental:
                     continue
-
                 found_test.text = text
                 found_test.path = file
                 tests[file] = found_test
@@ -494,6 +494,7 @@ class Suite(object):
                 logging.warn("Skipping %s\n%s", file, e)
             except Exception, e:
                 logging.error("Bad %s\n%s", file, e)
+        logging.debug('Parsed %s control files.', parsed_count)
         tests = [test for test in tests.itervalues() if predicate(test)]
         tests.sort(key=lambda t:
                    control_data.ControlData.get_test_time_index(t.time),
