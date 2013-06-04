@@ -4,7 +4,6 @@
 
 import re
 from autotest_lib.server import site_linux_router
-from autotest_lib.server.cros.wlan import netperf_runner
 
 def isLinuxCrosRouter(router):
     """Detect if a remote system is a CrOS router (stumpy cell).
@@ -64,30 +63,6 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
         self.router.run('cat <<EOF >%s\n%s\nEOF\n' %
             (dhcpd_conf_file, dhcp_conf))
         self.router.run('dnsmasq --conf-file=%s' % dhcpd_conf_file)
-
-        # Punch hole in firewall, to allow DHCP and iperf traffic. Avoid
-        # creating duplicate iptable rule instances by deleting
-        # (possibly) existing instance first.
-        self.router.run('%s -D INPUT -i %s -p udp --dport bootps -j ACCEPT' %
-                        (self.cmd_iptables, params['interface']),
-                        ignore_status=True)
-        self.router.run('%s -A INPUT -i %s -p udp --dport bootps -j ACCEPT' %
-                        (self.cmd_iptables, params['interface']))
-
-        # Punch a hole to allow iperf traffic (port used in site_wifitest.py)
-        # TODO(tgao): remove rules below when Stumpy AP boots w/ properly
-        #             configured firewall. See crosbug.com/36757
-        for port in set([netperf_runner.NetperfRunner.NETPERF_PORT,
-                         netperf_runner.NetperfRunner.NETPERF_DATA_PORT,
-                         # This is the iperf port.
-                         # TODO(wiley) Change this to a common constant.
-                         12866]):
-            for protocol in ['udp', 'tcp']:
-                rule = 'INPUT -i %s -p %s --dport %d -j ACCEPT' % (
-                        params['interface'], protocol, port)
-                self.router.run('%s -D %s' % (self.cmd_iptables, rule),
-                                ignore_status=True)
-                self.router.run('%s -I %s' % (self.cmd_iptables, rule))
 
 
     def stop_dhcp_server(self, instance):
