@@ -106,12 +106,7 @@ class Suite(object):
 
 
     @staticmethod
-    def create_from_name(name, build, devserver, cf_getter=None, afe=None,
-                         tko=None, pool=None, results_dir=None,
-                         max_runtime_mins=24*60,
-                         version_prefix=constants.VERSION_PREFIX,
-                         file_bugs=False, file_experimental_bugs=False,
-                         suite_job_id=None, ignore_deps=False):
+    def create_from_name(name, build, devserver, cf_getter=None, **dargs):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -123,50 +118,22 @@ class Suite(object):
         @param name: a value of the SUITE control file variable to search for.
         @param build: the build on which we're running this suite.
         @param devserver: the devserver which contains the build.
-        @param cf_getter: a control_file_getter.ControlFileGetter.
-                          If None, default to using a DevServerGetter.
-        @param afe: an instance of AFE as defined in server/frontend.py.
-        @param tko: an instance of TKO as defined in server/frontend.py.
-        @param pool: Specify the pool of machines to use for scheduling
-                     purposes.
-        @param results_dir: The directory where the job can write results to.
-                            This must be set if you want job_id of sub-jobs
-                            list in the job keyvals.
-        @param max_runtime_mins: Maximum suite runtime, in minutes.
-        @param version_prefix: a string, a prefix to be concatenated with the
-                               build name to form a label which the DUT needs
-                               to be labeled with to be eligible to run this
-                               test.
-        @param file_bugs: True if we should file bugs on test failures for
-                          this suite run.
-        @param file_experimental_bugs: True if we should file bugs on
-                                       experimental test failures.
-        @param suite_job_id: Job id that will act as parent id to all sub jobs.
-                             Default: None
-        @param ignore_deps: True if jobs should ignore the DEPENDENCIES
-                            attribute and skip applying of dependency labels.
-                            (Default:False)
+        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
+                          using DevServerGetter.
+        @param **dargs: Any other Suite constructor parameters, as described
+                        in Suite.__init__ docstring.
         @return a Suite instance.
         """
         if cf_getter is None:
             cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite(Suite.name_in_tag_predicate(name),
-                     name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix, file_bugs,
-                     file_experimental_bugs, suite_job_id, ignore_deps)
+                     name, build, cf_getter, **dargs)
 
 
     @staticmethod
     def create_from_name_and_blacklist(name, blacklist, build, devserver,
-                                       cf_getter=None, afe=None, tko=None,
-                                       pool=None, results_dir=None,
-                                       max_runtime_mins=24*60,
-                                       version_prefix=constants.VERSION_PREFIX,
-                                       file_bugs=False,
-                                       file_experimental_bugs=False,
-                                       suite_job_id=None,
-                                       ignore_deps=False):
+                                       cf_getter=None, **dargs):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -179,29 +146,10 @@ class Suite(object):
         @param blacklist: iterable of control file paths to skip.
         @param build: the build on which we're running this suite.
         @param devserver: the devserver which contains the build.
-        @param cf_getter: a control_file_getter.ControlFileGetter.
-                          If None, default to using a DevServerGetter.
-        @param afe: an instance of AFE as defined in server/frontend.py.
-        @param tko: an instance of TKO as defined in server/frontend.py.
-        @param pool: Specify the pool of machines to use for scheduling
-                     purposes.
-        @param results_dir: The directory where the job can write results to.
-                            This must be set if you want job_id of sub-jobs
-                            list in the job keyvals.
-        @param max_runtime_mins: Maximum suite runtime, in minutes.
-        @param version_prefix: a string, a prefix to be concatenated with the
-                               build name to form a label which the DUT needs
-                               to be labeled with to be eligible to run this
-                               test.
-        @param file_bugs: True if we should file bugs on test failures for
-                          this suite run.
-        @param file_experimental_bugs: True if we should file bugs on
-                                       experimental test failures.
-        @param suite_job_id: Job id that will act as parent id to all sub jobs.
-                     Default: None
-        @param ignore_deps: True if jobs should ignore the DEPENDENCIES
-                            attribute and skip applying of dependency labels.
-                            (Default:False)
+        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
+                          using DevServerGetter.
+        @param **dargs: Any other Suite constructor parameters, as described
+                        in Suite.__init__ docstring.
         @return a Suite instance.
         """
         if cf_getter is None:
@@ -214,9 +162,7 @@ class Suite(object):
                     True not in [b.endswith(test.path) for b in blacklist])
 
         return Suite(in_tag_not_in_blacklist_predicate,
-                     name, build, cf_getter, afe, tko, pool, results_dir,
-                     max_runtime_mins, version_prefix, file_bugs,
-                     file_experimental_bugs, suite_job_id)
+                     name, build, cf_getter, **dargs)
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,

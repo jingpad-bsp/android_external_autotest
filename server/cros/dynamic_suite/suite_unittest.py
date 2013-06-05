@@ -266,7 +266,8 @@ class SuiteTest(mox.MoxTestBase):
         suite = Suite.create_from_name(self._TAG, self._BUILD,
                                        self.devserver,
                                        self.getter,
-                                       self.afe, self.tko, file_bugs=file_bugs)
+                                       afe=self.afe, tko=self.tko,
+                                       file_bugs=file_bugs)
         self.mox.ResetAll()
         return suite
 
