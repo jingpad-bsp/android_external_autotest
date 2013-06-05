@@ -105,6 +105,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     def reset_command_list(self):
         """Resets all internal command state."""
         logging.error('Dumping command list %s', self._command_list)
+        self.configuration_success = False
         self._command_list = []
 
 

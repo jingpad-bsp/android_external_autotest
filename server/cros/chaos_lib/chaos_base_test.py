@@ -5,6 +5,7 @@
 import logging
 import os
 import pprint
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import wifi_test_utils
@@ -265,6 +266,7 @@ class WiFiChaosConnectionTest(object):
         @returns a list of dicts, each a return by _config_one_ap().
         """
         configured_aps = []
+        scan_list = []
         cartridge = ap_cartridge.APCartridge()
         for ap in aps:
             if not ap.is_band_and_channel_supported(
@@ -280,9 +282,33 @@ class WiFiChaosConnectionTest(object):
             ap_info['ok_to_unlock'] = self._mark_ap_to_unlock(ap, band)
             configured_aps.append(ap_info)
             cartridge.push_configurator(ap)
-
+            scan_list.append(ap)
         # Apply config settings to multiple APs in parallel.
         cartridge.run_configurators()
+        # iw mlan0 scan for ARM and iw wlan0 scan for x86
+        scan_bss = 'for device in $(iw dev | grep Interface | awk \
+                    \'{ print $2 }\'); do iw $device scan; done'
+        start_time = int(time.time())
+        # Setting 180s as timeout
+        logging.info('Waiting for the DUT to find BSS... ')
+        while (int(time.time()) - start_time) < 180 and len(scan_list):
+           # If command failed: Device or resource busy (-16), run again.
+           scan_result = self.host.run(scan_bss, ignore_status=True)
+           if 'busy' in str(scan_result):
+               continue
+           for ap in scan_list:
+               bss = ap.get_bss()
+               if bss in str(scan_result):
+                   # Remove ap from list if we found bss in scan
+                   logging.debug('Found bss %s in scan', bss)
+                   scan_list.remove(ap)
+               else:
+                   continue
+        if len(scan_list):
+            for ap in scan_list:
+                logging.error('AP was not listed in scan:')
+                logging.error(ap)
+                ap.reset_command_list()
         return configured_aps
 
 
