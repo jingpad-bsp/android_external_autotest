@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
-from autotest_lib.server import site_host_attributes
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.cros.servo import servo
@@ -388,57 +387,63 @@ class SiteHost(remote.RemoteHost):
         return True
 
 
-    def _post_update_processing(self, updater, inactive_kernel=None):
+    def _post_update_processing(self, updater, expected_kernel=None):
         """After the DUT is updated, confirm machine_install succeeded.
 
         @param updater: ChromiumOSUpdater instance used to update the DUT.
-        @param inactive_kernel: kernel state of inactive kernel before reboot.
+        @param expected_kernel: kernel expected to be active after reboot,
+            or `None` to skip rollback checking.
 
         """
-
-        # Touch the lab machine file to leave a marker that distinguishes
-        # this image from other test images.
+        # Touch the lab machine file to leave a marker that
+        # distinguishes this image from other test images.
+        # Afterwards, we must re-run the autoreboot script because
+        # it depends on the _LAB_MACHINE_FILE.
         self.run('touch %s' % self._LAB_MACHINE_FILE)
-
-        # Kick off the autoreboot script as the _LAB_MACHINE_FILE was
-        # missing on the first boot.
         self.run('start autoreboot')
 
-        # Following the reboot, verify the correct version.
-        if not updater.check_version_to_confirm_install():
-            # Print out crossystem to make it easier to debug the rollback.
+        # Figure out the newly active kernel.
+        active_kernel, _ = updater.get_kernel_state()
+
+        # Check for rollback due to a bad build.
+        if expected_kernel and active_kernel != expected_kernel:
+            # Print out some information to make it easier to debug
+            # the rollback.
             logging.debug('Dumping partition table.')
             self.run('cgpt show $(rootdev -s -d)')
             logging.debug('Dumping crossystem for firmware debugging.')
             self.run('crossystem --all')
-            logging.error('Expected Chromium OS version: %s. '
-                          'Found Chromium OS %s',
-                          updater.update_version, updater.get_build_id())
-            raise autoupdater.ChromiumOSError('Updater failed on host %s' %
-                                  self.hostname)
-
-        # Figure out newly active kernel.
-        new_active_kernel, _ = updater.get_kernel_state()
-
-        # Ensure that previously inactive kernel is now the active kernel.
-        if inactive_kernel and new_active_kernel != inactive_kernel:
             raise autoupdater.ChromiumOSError(
-                'Update failed. New kernel partition is not active after'
-                ' boot.')
+                'Build %s failed to boot on %s; system rolled back '
+                'to previous build' % (updater.update_version,
+                                           self.hostname))
 
-        host_attributes = None
-        if self._host_in_AFE():
-            host_attributes = site_host_attributes.HostAttributes(self.hostname)
+        # Check that we've got the build we meant to install.
+        if not updater.check_version_to_confirm_install():
+            raise autoupdater.ChromiumOSError(
+                'Failed to update %s to build %s; found build '
+                '%s instead' % (self.hostname,
+                                 updater.update_version,
+                                 updater.get_build_id()))
 
-        if host_attributes and host_attributes.has_chromeos_firmware:
-            # Wait until tries == 0 and success, or until timeout.
+        # Make sure chromeos-setgoodkernel runs.
+        try:
             utils.poll_for_condition(
-                lambda: (updater.get_kernel_tries(new_active_kernel) == 0
-                         and updater.get_kernel_success(new_active_kernel)),
-                exception=autoupdater.ChromiumOSError(
-                    'Update failed. Timed out waiting for system to mark'
-                    ' new kernel as successful.'),
+                lambda: (updater.get_kernel_tries(active_kernel) == 0
+                         and updater.get_kernel_success(active_kernel)),
+                exception=autoupdater.ChromiumOSError(),
                 timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
+        except autoupdater.ChromiumOSError as e:
+            services_status = self.run('status system-services').stdout
+            if services_status != 'system-services start/running\n':
+                event = ('Chrome failed to reach login screen')
+            else:
+                event = ('update-engine failed to call '
+                         'chromeos-setgoodkernel')
+            raise autoupdater.ChromiumOSError(
+                    'After update and reboot, %s '
+                    'within %d seconds' % (event,
+                                           self._KERNEL_UPDATE_TIMEOUT))
 
 
     def _stage_image_for_update(self, image_name=None):
