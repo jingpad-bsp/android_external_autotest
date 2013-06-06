@@ -266,8 +266,8 @@ class UITest(pyauto_test.PyAutoTest):
         self._log_reader = cros_logging.LogReader()
         self._log_reader.set_start_by_current()
 
-        if creds:
-            self.start_authserver()
+        # Do not use gaia even for incognito browsing.
+        self.start_authserver()
 
         # Run tcpdump on 'lo' interface to investigate network
         # issues in the lab during login.
