@@ -216,6 +216,8 @@ def _usage_and_exit():
     print '            robot: using robot to perform gestures automatically'
     print '            robot_int: using robot with finger interaction'
     print '            robot_sim: robot simulation, for developer only'
+    print '  --%s' % OPTIONS.SHOW_SPEC_V2
+    print '        Show the results derived with the validator spec v2.'
     print '  --%s log_dir' % OPTIONS.REPLAY
     print '        Replay the gesture files and get the test results.'
     print '        log_dir is a log sub-directory in %s' % conf.log_root_dir
@@ -250,6 +252,9 @@ def _usage_and_exit():
                                                            example_log_dir)
     print '  $ DISPLAY=:0 OPTIONS="--resume %s" python main.py\n' % \
             example_log_dir
+    print '  # Show the results derived with the new validator spec.'
+    print '  $ DISPLAY=:0 OPTIONS="--show_spec_v2" python main.py\n'
+
     sys.exit(1)
 
 
@@ -270,6 +275,7 @@ def _parse_options():
                OPTIONS.MODE: MODE.MANUAL,
                OPTIONS.REPLAY: None,
                OPTIONS.RESUME: None,
+               OPTIONS.SHOW_SPEC_V2: False,
                OPTIONS.SIMPLIFIED: False,
                OPTIONS.SKIP_HTML: False,
                OPTIONS.TOUCHSCREEN: False}
@@ -287,6 +293,7 @@ def _parse_options():
                     OPTIONS.MODE + '=',
                     OPTIONS.REPLAY + '=',
                     OPTIONS.RESUME + '=',
+                    OPTIONS.SHOW_SPEC_V2,
                     OPTIONS.SIMPLIFIED,
                     OPTIONS.SKIP_HTML,
                     OPTIONS.TOUCHSCREEN]
@@ -317,9 +324,11 @@ def _parse_options():
             else:
                 print 'Error: the log directory "%s" does not exist.' % log_dir
                 _usage_and_exit()
+        elif opt in ('--%s' % OPTIONS.SHOW_SPEC_V2,):
+            options[OPTIONS.SHOW_SPEC_V2] = True
         elif opt in ('-s', '--%s' % OPTIONS.SIMPLIFIED):
             options[OPTIONS.SIMPLIFIED] = True
-        elif opt in ('--%s' % OPTIONS.SKIP_HTML):
+        elif opt in ('--%s' % OPTIONS.SKIP_HTML,):
             options[OPTIONS.SKIP_HTML] = True
         elif opt in ('-t', '--%s' % OPTIONS.TOUCHSCREEN):
             options[OPTIONS.TOUCHSCREEN] = True
