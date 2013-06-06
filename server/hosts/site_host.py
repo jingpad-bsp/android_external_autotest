@@ -21,6 +21,7 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
+from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.cros.servo import servo
@@ -657,21 +658,6 @@ class SiteHost(remote.RemoteHost):
             self.run('rm -rf ' + path)
 
 
-    def _get_label_from_afe(self, label_prefix):
-        """Retrieve a host's specific label from the AFE.
-
-        Looks for a host label that has the form <label_prefix>:<value>
-        and returns the "<value>" part of the label. None is returned
-        if there is not a label matching the pattern
-
-        @returns the label that matches the prefix or 'None'
-        """
-        labels = self._AFE.get_labels(name__startswith=label_prefix,
-                                      host__hostname__in=[self.hostname])
-        if labels and len(labels) == 1:
-            return labels[0].name.split(label_prefix, 1)[1]
-
-
     def _get_board_from_afe(self):
         """Retrieve this host's board from its labels in the AFE.
 
@@ -681,7 +667,7 @@ class SiteHost(remote.RemoteHost):
 
         @returns board from label, or `None`.
         """
-        return self._get_label_from_afe(ds_constants.BOARD_PREFIX)
+        return server_utils.get_board_from_afe(self.hostname, self._AFE)
 
 
     def get_build(self):
@@ -692,7 +678,7 @@ class SiteHost(remote.RemoteHost):
         @returns The current build or None if it could not find it or if there
                  were multiple build labels assigned to this host.
         """
-        return self._get_label_from_afe(ds_constants.VERSION_PREFIX)
+        return server_utils.get_build_from_afe(self.hostname, self._AFE)
 
 
     def _install_repair(self):

@@ -10,9 +10,11 @@ import sys, os, re, traceback, signal, time, logging, getpass
 
 import common
 
-from autotest_lib.client.common_lib.global_config import global_config
-require_atfork = global_config.get_config_value(
+from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import global_config
+require_atfork = global_config.global_config.get_config_value(
         'AUTOSERV', 'require_atfork_module', type=bool, default=True)
+
 
 try:
     import atfork
@@ -31,9 +33,14 @@ except ImportError, e:
         print e
         sys.exit(1)
 
+from autotest_lib.server import frontend
+from autotest_lib.server.hosts import site_host
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import server_job, utils, autoserv_parser, autotest
+from autotest_lib.server import utils as server_utils
+
 from autotest_lib.client.common_lib import pidfile, logging_manager
+from autotest_lib.site_utils.graphite import stats
 
 def log_alarm(signum, frame):
     logging.error("Received SIGALARM. Ignoring and continuing on.")
@@ -185,6 +192,14 @@ def run_autoserv(pid_file_manager, results, parser):
 
 
 def main():
+    # White list of tests with run time measurement enabled.
+    measure_run_time_tests_names = global_config.global_config.get_config_value(
+                        'AUTOSERV', 'measure_run_time_tests', type=str)
+    if measure_run_time_tests_names:
+        measure_run_time_tests = [t.strip() for t in
+                                  measure_run_time_tests_names.split(',')]
+    else:
+        measure_run_time_tests = []
     # grab the parser
     parser = autoserv_parser.autoserv_parser
     parser.parse_args()
@@ -239,6 +254,24 @@ def main():
     autotest.BaseAutotest.set_install_in_tmpdir(
         parser.options.install_in_tmpdir)
 
+    timer = None
+    try:
+        # Take the first argument as control file name, get the test name from
+        # the control file. If the test name exists in the list of tests with
+        # run time measurement enabled, start a timer to begin measurement.
+        if (len(parser.args) > 0 and parser.args[0] != '' and
+            parser.options.machines):
+            test_name = control_data.parse_control(parser.args[0]).name
+            if test_name in measure_run_time_tests:
+                machines = parser.options.machines.replace(',', ' '
+                                                           ).strip().split()
+                afe = frontend.AFE()
+                board = server_utils.get_board_from_afe(machines[0], afe)
+                timer = stats.Timer('autoserv_run_time.%s.%s' %
+                                    (board, test_name))
+                timer.start()
+    except control_data.ControlVariableException as e:
+        logging.error(str(e))
     exit_code = 0
     try:
         try:
@@ -253,6 +286,8 @@ def main():
     finally:
         if pid_file_manager:
             pid_file_manager.close_file(exit_code)
+        if timer:
+            timer.stop()
     sys.exit(exit_code)
 
 
