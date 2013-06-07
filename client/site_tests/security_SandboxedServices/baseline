@@ -19,7 +19,6 @@ debugd,root,No,No,No,No,No
 cras,cras,Yes,Yes,No,No,No
 tcsd,tss,No,No,No,No,No
 cromo,cromo,No,No,No,No,No
-unclutter,chronos,No,No,No,No,No
 wimax-manager,root,No,No,No,No,No
 mtpd,mtp,Yes,Yes,No,No,Yes
 tlsdated,root,No,No,No,No,No
