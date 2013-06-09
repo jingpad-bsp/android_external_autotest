@@ -484,6 +484,13 @@ class LinearityValidator2(BaseValidator):
         self.log_details('rms_err: (%.2f, %.2f) mm' %
                          (self.rms_err_x_mm, self.rms_err_y_mm))
 
+        self.vlog.metrics = [
+                firmware_log.Metric('max_err_x_mm', self.max_err_x_mm),
+                firmware_log.Metric('max_err_y_mm', self.max_err_y_mm),
+                firmware_log.Metric('rms_err_x_mm', self.rms_err_x_mm),
+                firmware_log.Metric('rms_err_y_mm', self.rms_err_y_mm),
+        ]
+
         # Calculate the score based on the max error
         max_err = max(self.max_err_x_mm, self.max_err_y_mm)
         self.vlog.score = self.fc.mf.grade(max_err)
