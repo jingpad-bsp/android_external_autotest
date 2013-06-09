@@ -23,12 +23,7 @@ def _print_log(log_dir):
     filenames = glob.glob(os.path.join(log_dir, '*.log'))
     for filename in filenames:
         print 'Printing %s ...' % filename
-
-        with open(filename) as log_file:
-            fw = pickle.load(log_file)
-            date = pickle.load(log_file)
-            glogs = pickle.load(log_file)
-
+        fw, date, glogs = pickle.load(open(filename))
         prefix_spaces = ' ' * 2
         print prefix_spaces + 'fw:   ', fw
         print prefix_spaces + 'date: ', date
