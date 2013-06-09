@@ -16,9 +16,9 @@
 #       inside chroot on the host.
 #
 # Usage:
-#   (cr) .../firmware_TouchMTB $ tools/host_replay.sh -m $MACHINE_IP
+#   (cr) .../firmware_TouchMTB $ tools/host_replay.sh -m $MACHINE_IP -s
 # Example:
-#   (cr) .../firmware_TouchMTB $ tools/host_replay.sh -m 172.30.210.110
+#   (cr) .../firmware_TouchMTB $ tools/host_replay.sh -m 172.30.210.110 -s
 
 
 # Confirm that current working directory is firmware_TouchMTB.
@@ -40,6 +40,7 @@ assert_inside_chroot
 # Read command flags
 . /usr/share/misc/shflags
 DEFINE_string machine_ip "" "the machine ip address" "m"
+DEFINE_boolean show_spec_v2 false "show the spec v2" "s"
 
 FLAGS_HELP="USAGE: $PROG [flags]"
 
@@ -64,7 +65,10 @@ HOST_TMP_LOG_DIR="/tmp/touch_firmware_logs"
 # Invoke the machine replay script.
 run_remote_machine_replay() {
   echo Replaying on the machine_ip: $FLAGS_machine_ip
-  ssh root@$FLAGS_machine_ip "${MACHINE_PROJ_DIR}/${MACHINE_REPLAY} -b $board"
+  [ ${FLAGS_show_spec_v2} -eq ${FLAGS_TRUE} ] && show_spec="-s" \
+                                               || show_spec=""
+  ssh root@$FLAGS_machine_ip "${MACHINE_PROJ_DIR}/${MACHINE_REPLAY} -b $board \
+      $show_spec"
 }
 
 
