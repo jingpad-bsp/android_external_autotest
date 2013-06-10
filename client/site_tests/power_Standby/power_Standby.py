@@ -31,7 +31,11 @@ class power_Standby(test.test):
         power_stats.assert_battery_state(percent_initial_charge_min)
         charge_avail = power_stats.battery[0].charge_now
 
-        max_hours = charge_avail * power_stats.battery[0].voltage_min_design / \
+        voltage_design = power_stats.battery[0].voltage_min_design
+        if voltage_design == 0:
+            voltage_design = power_stats.battery[0].voltage_max_design
+
+        max_hours = charge_avail * voltage_design / \
             (max_milliwatts_standby / 1000)
         if max_hours < test_hours:
             raise error.TestFail('Battery not charged adequately for test')
