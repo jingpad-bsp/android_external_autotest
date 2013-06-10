@@ -168,6 +168,7 @@ class BatteryStat(DevStat):
     float power_now:          Battery discharge rate [W]
     float remaining_time:     Remaining discharging time [h]
     float voltage_min_design: Minimum voltage by design [V]
+    float voltage_max_design: Maximum voltage by design [V]
     float voltage_now:        Voltage now [V]
     """
 
@@ -178,6 +179,7 @@ class BatteryStat(DevStat):
         'charge_now':           ['charge_now', float],
         'current_now':          ['current_now', float],
         'voltage_min_design':   ['voltage_min_design', float],
+        'voltage_max_design':   ['voltage_max_design', float],
         'voltage_now':          ['voltage_now', float],
         'energy':               ['energy_now', float],
         'energy_full':          ['energy_full', float],
@@ -245,6 +247,8 @@ class BatteryStat(DevStat):
                                       BATTERY_DATA_SCALE
 
         self.voltage_min_design = self.voltage_min_design / \
+                                  BATTERY_DATA_SCALE
+        self.voltage_max_design = self.voltage_max_design / \
                                   BATTERY_DATA_SCALE
         self.voltage_now = self.voltage_now / \
                            BATTERY_DATA_SCALE
