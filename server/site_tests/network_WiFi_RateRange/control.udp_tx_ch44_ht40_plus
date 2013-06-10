@@ -13,7 +13,6 @@ This test takes rate vs. range measurement on for UDP uptream test
 """
 
 
-from autotest_lib.server import site_attenuator
 from autotest_lib.server.cros.wlan import hostap_config
 from autotest_lib.server.cros.wlan import iperf_config
 

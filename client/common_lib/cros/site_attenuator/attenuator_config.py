@@ -178,21 +178,19 @@ def run(args):
 
 
 def main():
+    """Program entry point."""
+
     parser = argparse.ArgumentParser(
         description='BeagleBone attenuator params')
     # BeagleBone supports up to 4 variable attenuators.
     parser.add_argument(
-        '-p', '--port', nargs='?', type=int, default=0, choices=c.VALID_PORTS,
+        '-p', '--port', type=int, choices=c.VALID_PORTS,
         help='0-based port of variable attenuator')
-    # NB: rough measurements indicate fixed path loss w/o cable:
-    #  2.4GHz ~= 8dB and 5GHz ~= 9dB
     parser.add_argument(
-        '-f', '--fixed_loss', nargs='?', type=int, default=30,
-        help='fixed path loss in dB')
+        '-f', '--fixed_loss', type=int, help='fixed path loss in dB')
     parser.add_argument(
-        '-t', '--total_loss', nargs='?', type=int,
-        choices=c.VALID_TOTAL_ATTENUATION,
-        help='Desired attenuation in dB (including fixed path loss)')
+        '-t', '--total_loss', type=int,
+        help='Desired total attenuation in dB (including fixed path loss)')
 
     run(parser.parse_args())
 

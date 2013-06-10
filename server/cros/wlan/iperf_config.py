@@ -150,8 +150,8 @@ class IperfConfig(object):
 
     def __str__(self):
         """@return class name and iperf config params."""
-        return (('class: %s, protocol = %s, is_downstream = %s, test_time = %d,'
-                 ' bufsize = %s, tcp_wnd_size = %s, udp_bw = %s') %
+        return (('%s(protocol = %s, is_downstream = %s, test_time = %d,'
+                 ' bufsize = %s, tcp_wnd_size = %s, udp_bw = %s)') %
                 (self.__class__.__name__, self._protocol, self._is_downstream,
                  self._test_time, self._bufsize, self._tcp_wnd_size,
                  self._udp_bw))

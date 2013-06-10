@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server import hosts
 from autotest_lib.server import site_attenuator
@@ -25,6 +24,19 @@ class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):
     CMDLINE_ATTEN_ADDR = 'atten_addr'
 
 
+    def _get_attenuator_address(self):
+        """@return string address of WiFi attenuator host in test."""
+        hostname = self.client.host.hostname
+        if utils.host_is_in_lab_zone(hostname):
+            return wifi_test_utils.get_attenuator_addr_in_lab(hostname)
+
+        elif self.CMDLINE_ATTEN_ADDR in self._cmdline_args:
+            return self._cmdline_args[self.CMDLINE_ATTEN_ADDR]
+
+        raise error.TestError('Test not running in lab zone and no '
+                              'attenuator address given')
+
+
     def __init__(self, test_name, host, cmdline_args, debug_dir):
         """Construct a WiFiTestContextManager.
 
@@ -39,7 +51,11 @@ class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):
         """
         super(RvRTestContextManager, self).__init__(
                 test_name, host, cmdline_args, debug_dir)
-        self._attenuator = None
+
+
+        self._attenuator_address = self._get_attenuator_address()
+        attenuator_host = hosts.SSHHost(self._attenuator_address, port=22)
+        self._attenuator = site_attenuator.Attenuator(attenuator_host)
 
 
     @property
@@ -48,32 +64,13 @@ class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):
         return self._attenuator
 
 
-    @property
-    def attenuator_address(self):
-        """@return string address of WiFi attenuator host in test."""
-        hostname = self.client.host.hostname
-        if utils.host_is_in_lab_zone(hostname):
-            return wifi_test_utils.get_attenuator_addr_in_lab(hostname)
-
-        elif self.CMDLINE_ATTEN_ADDR in self._cmdline_args:
-            return self._cmdline_args[self.CMDLINE_ATTEN_ADDR]
-
-        raise error.TestError('Test not running in lab zone and no '
-                              'attenuator address given')
+    def teardown(self):
+        """Tears down the state used in a WiFi RvR test."""
+        super(RvRTestContextManager, self).teardown()
+        self._attenuator.cleanup()
 
 
-    def _set_up_attenuator(self):
-        """Creates and initializes variable attenuators."""
-        logging.info('Creating attenuator object ...')
-        attenuator_host = hosts.SSHHost(self.attenuator_address, port=22)
-        self._attenuator = site_attenuator.Attenuator(attenuator_host)
-        for port in [0, 1]:  # We only use ports 0 and 1.
-            self._attenuator.init_atten_port(port)
-        logging.info('Attenuator ports initialized.')
-
-
-    def setup(self):
-        """Construct the state used in a WiFi test."""
-        super(RvRTestContextManager, self).setup()
-        self._set_up_attenuator()
-
+    def configure(self, ap_config):
+        """Configures AP and variable attenuators for a WiFi RvR test."""
+        super(RvRTestContextManager, self).configure(ap_config)
+        self._attenuator.config(self.client.host.hostname, ap_config.frequency)

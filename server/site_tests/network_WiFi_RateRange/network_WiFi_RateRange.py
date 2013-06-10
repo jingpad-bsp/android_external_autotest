@@ -40,6 +40,9 @@ class network_WiFi_RateRange(rvr_test_base.RvRTestBase):
             raise error.TestError('Missing Iperf configuration.')
         self._iperf_config = iperf_config
 
+        self.write_attr_keyval({'ap_config': str(ap_config),
+                                'iperf_config': str(iperf_config)})
+
 
     def run_once_impl(self):
         """Sets up a router, connects to it, pings it, and repeats."""
@@ -52,9 +55,16 @@ class network_WiFi_RateRange(rvr_test_base.RvRTestBase):
         assoc_params.ssid = self.context.router.get_ssid()
         self.assert_connect_wifi(assoc_params)
 
-        perf_data = iperf_helper.run(self._iperf_config)
-        self.write_perf_keyval(perf_data)
-        iperf_helper.perf_data = dict()  # Reset perf data for next run
+        # FIXME(tgao): do not hard code
+        atten_step = 2
+        start_atten = 60
+        end_atten = 101
+        for atten in range(start_atten, end_atten+1, atten_step):
+            self.context.attenuator.set_total_attenuation(atten)
+            logging.info('RvR test: current attenuation = %d dB', atten)
+            perf_data = iperf_helper.run(self._iperf_config)
+            perf_data['total_atten_db'] = atten
+            self.write_perf_keyval(perf_data)
 
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()

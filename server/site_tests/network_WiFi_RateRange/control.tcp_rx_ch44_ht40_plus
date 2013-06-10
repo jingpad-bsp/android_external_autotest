@@ -8,7 +8,7 @@ TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 
 DOC = """
-This test takes rate vs. range measurement on for UDP downstream test
+This test takes rate vs. range measurement on for TCP downstream test
 (AP -> DUT) using channel 44 (5220MHz), HT40+.
 """
 
@@ -27,7 +27,7 @@ def run(machine):
                                            n_capabilities=caps)
 
     iperf_config_obj = iperf_config.IperfConfig(
-            protocol=iperf_config.IperfConfig.PROTOCOL_UDP,
+            protocol=iperf_config.IperfConfig.PROTOCOL_TCP,
             is_downstream=True,
             test_time=60)
 

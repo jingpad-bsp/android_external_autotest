@@ -98,16 +98,9 @@ PINS_FOR_PORT = [VA0, VA1, VA2, VA3]
 
 VALID_PORTS = range(0, 4)
 
-# NB: desired/total attenuation = fixed attenuation + variable attenuation
-# TODO(tgao): adjust values of FIXED_ATTENUATION and MAX_VARIABLE_ATTENUATION
-#             based on actual fixed path loss (w/ cable loss)
-FIXED_ATTENUATION = 30
 # By design attenuator supports variable attenuation from 0dB to roughly 95dB
 # on each variable attenuator (stored as a 7-bit integer, MSB is always 0).
 MAX_VARIABLE_ATTENUATION = 95
-# Range of valid variable attenuation level.
-VALID_TOTAL_ATTENUATION = range(
-    FIXED_ATTENUATION, FIXED_ATTENUATION + MAX_VARIABLE_ATTENUATION, 1)
 
 VALID_BIT_VALUE = ['0', '1']
 
