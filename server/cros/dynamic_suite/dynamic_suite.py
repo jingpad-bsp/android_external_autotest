@@ -43,7 +43,8 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='bvt', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
-    skip_reimage=dynamic_suite.skip_reimage(globals()))
+    skip_reimage=dynamic_suite.skip_reimage(globals()),
+    devserver_url=devserver_url)
 
 This will -- at runtime -- find all control files that contain "bvt" in their
 "SUITE=" clause, schedule jobs to reimage |num| or less devices in the
@@ -326,7 +327,7 @@ class SuiteSpec(object):
                  try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
                  suite_dependencies=None,
                  reimage_type=constants.REIMAGE_TYPE_OS,
-                 bug_template={}, **dargs):
+                 bug_template={}, devserver_url=None, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -370,6 +371,7 @@ class SuiteSpec(object):
                              should be done before running tests.
         @param bug_template: A template dictionary specifying the default bug
                              filing options for failures in this suite.
+        @param devserver_url: url to the selected devserver.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -385,7 +387,10 @@ class SuiteSpec(object):
                     "reimage_and_run() needs %s=<%r>" % (key, expected))
         self.build = build
         self.board = 'board:%s' % board
-        self.devserver = dev_server.ImageServer.resolve(self.build)
+        if devserver_url:
+            self.devserver = dev_server.ImageServer(devserver_url)
+        else:
+            self.devserver = dev_server.ImageServer.resolve(self.build)
         self.name = name
         self.job = job
         if pool:
@@ -454,6 +459,7 @@ def reimage_and_run(**dargs):
                          suite wishes to have done to the machines it will
                          run on. Valid arguments are given as constants in this
                          file.
+    @param devserver_url: url to the selected devserver.
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for

@@ -56,5 +56,6 @@ if new_globals['SKIP_IMAGE']:
     AFE.set_host_attribute(constants.JOB_REPO_URL, repo_url, hostname=m)
 else:
     ds.trigger_download(new_globals['build'])
+new_globals['devserver_url'] = ds.url()
 
 execfile(os.path.join(job.autodir, SUITE_CONTROL_FILE), new_globals, locals())
