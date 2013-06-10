@@ -50,4 +50,5 @@ _BUG_TEMPLATE = {
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='PGO_record', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
-    file_bugs=True, skip_reimage=False, bug_template=_BUG_TEMPLATE)
+    file_bugs=True, skip_reimage=False, bug_template=_BUG_TEMPLATE,
+    devserver_url=devserver_url)

@@ -45,4 +45,4 @@ dynamic_suite.reimage_and_run(
     build=build, board=board, name='perf_v2', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
     file_bugs=False, skip_reimage=dynamic_suite.skip_reimage(globals()),
-    bug_template=_BUG_TEMPLATE)
+    bug_template=_BUG_TEMPLATE, devserver_url=devserver_url)

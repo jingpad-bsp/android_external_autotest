@@ -340,6 +340,7 @@ class SiteHost(remote.RemoteHost):
 
         @param image_name: The name of the image e.g.
                 lumpy-release/R27-3837.0.0
+
         """
         if not self._host_in_AFE():
             return
@@ -392,7 +393,7 @@ class SiteHost(remote.RemoteHost):
         ds.stage_artifacts(image_name, ['autotest'])
 
         if ds.url() != devserver_url:
-            logging.info('Devserver url changed, new devserver is %s'
+            logging.info('Devserver url changed, new devserver is %s, '
                          'old devserver was %s',
                          ds.url(), devserver_url)
             self.update_job_repo_url(ds.url(), image_name)
@@ -563,19 +564,27 @@ class SiteHost(remote.RemoteHost):
         @raises autoupdater.ChromiumOSError
 
         """
-        if not update_url:
+        if update_url:
+            logging.debug('update url is set to %s', update_url)
+        else:
+            logging.debug('update url is not set, resolving...')
             if self._parser.options.image:
                 requested_build = self._parser.options.image
                 if requested_build.startswith('http://'):
                     update_url = requested_build
+                    logging.debug('update url is retrieved from requested_build'
+                                  ': %s', update_url)
                 else:
                     # Try to stage any build that does not start with
                     # http:// on the devservers defined in
                     # global_config.ini.
-                    update_url = self._stage_image_for_update(
-                            requested_build)
+                    update_url = self._stage_image_for_update(requested_build)
+                    logging.debug('Build staged, and update_url is set to: %s',
+                                  update_url)
             elif repair:
                 update_url = self._stage_image_for_update()
+                logging.debug('Build staged, and update_url is set to: %s',
+                              update_url)
             else:
                 raise autoupdater.ChromiumOSError(
                     'Update failed. No update URL provided.')
