@@ -30,7 +30,10 @@ class platform_DebugDaemonGetPerfData(test.test):
         'busy'     : 'ls',
     }
 
-    def GzipString(self, string):
+    _dbus_debugd_object = '/org/chromium/debugd'
+    _dbus_debugd_name = 'org.chromium.debugd'
+
+    def gzip_string(self, string):
         """
         Gzip a string.
 
@@ -46,16 +49,42 @@ class platform_DebugDaemonGetPerfData(test.test):
         return string_file.getvalue()
 
 
+    def validate_get_perf_method(self, get_perf_method, duration, profile_type):
+        """
+        Validate a debugd method that returns perf data.
+
+        @param get_perf_method: The debugd method to test.
+
+        @param duration: The duration to use for perf data collection.
+
+        @param profile_type: A label to use for storing into perf keyvals.
+        """
+        bus = dbus.SystemBus()
+        proxy = bus.get_object(self._dbus_debugd_name, self._dbus_debugd_object)
+        iface = dbus.Interface(proxy, dbus_interface=self._dbus_debugd_name)
+        iface_function = getattr(iface, get_perf_method)
+        result = iface_function(duration)
+        logging.info('%s() for %s seconds returned: %s', get_perf_method,
+                     duration, result)
+        if not result:
+            raise error.TestFail('No perf output found: %s' % result)
+        if len(result) < 10:
+            raise error.TestFail('Perf output too small')
+
+        result = ''.join(chr(b) for b in result)
+        key = '%s_size_%s_%d' % (get_perf_method, profile_type, duration)
+        keyvals = {}
+        keyvals[key] = len(result)
+        keyvals[key + '_zipped'] = len(self.gzip_string(result))
+        self.write_perf_keyval(keyvals)
+
+
     def run_once(self, *args, **kwargs):
         """
         Primary autotest function.
         """
 
-        bus = dbus.SystemBus()
-        proxy = bus.get_object('org.chromium.debugd', '/org/chromium/debugd')
-        iface = dbus.Interface(proxy, dbus_interface='org.chromium.debugd')
-
-        keyvals = {}
+        get_perf_methods = ['GetPerfData', 'GetRichPerfData']
 
         # Open /dev/null to redirect unnecessary output.
         devnull = open('/dev/null', 'w')
@@ -68,17 +97,9 @@ class platform_DebugDaemonGetPerfData(test.test):
 
             for duration in self._profile_duration_seconds:
                 # Collect perf data from debugd.
-                result = iface.GetPerfData(duration)
-                logging.info('Result: %s', result)
-                if not result:
-                    raise error.TestFail('No perf output found: %s' % result)
-                if len(result) < 10:
-                    raise error.TestFail('Perf output too small')
-
-                result = "".join(chr(b) for b in result)
-                key = 'perf_data_size_%s_%d' % (profile_type, duration)
-                keyvals[key] = len(result)
-                keyvals[key + '_zipped'] = len(self.GzipString(result))
+                for get_perf_method in get_perf_methods:
+                    self.validate_get_perf_method(get_perf_method, duration,
+                                                  profile_type)
 
             # Terminate the process and actually wait for it to terminate.
             process.terminate()
@@ -86,5 +107,3 @@ class platform_DebugDaemonGetPerfData(test.test):
                 pass
 
         devnull.close()
-
-        self.write_perf_keyval(keyvals)
