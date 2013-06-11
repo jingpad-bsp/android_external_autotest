@@ -174,6 +174,8 @@ def main(argv):
         logging.error('Script must be invoked inside the chroot.')
         return 1
 
+    logging.getLogger('').setLevel(logging.INFO)
+
     arguments = parse_arguments(argv)
     try:
         validate_arguments(arguments)
