@@ -14,7 +14,6 @@ version = 1
 
 
 def setup(tarball, topdir):
-    use_flags = os.environ.get('USE', '').split()
     srcdir = os.path.join(topdir, 'src')
     utils.extract_tarball_to_dir(tarball, srcdir)
     os.chdir(srcdir)
@@ -22,18 +21,12 @@ def setup(tarball, topdir):
     for patch in patches:
         utils.system('patch -p1 < ../%s' % patch)
 
-    # USE-flag-specific behavior is specified here.
-    if 'opengles' in use_flags:
-        gl_target = '--enable-glesv2'
-    else:
-        gl_target = '--enable-gl'
-
     # glmark2 does not have any runtime option to specify its data dir, so we
     # have to set the prefix dir to where it's being run on target machine.
     # And we can only install glmark2 to inside the build sandbox (destdir), so
     # we have to do additional work to move the installed files to the correct
     # path and it will get installed on target machine correctly.
-    utils.system('./waf configure %s --prefix=%s' % (gl_target, PREFIX_DIR))
+    utils.system('./waf configure --enable-gl --prefix=%s' % PREFIX_DIR)
     utils.system('./waf')
     utils.system('./waf install --destdir=%s' % topdir)
     utils.system('mv %s/* %s' % (topdir + PREFIX_DIR, topdir))
