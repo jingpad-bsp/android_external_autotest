@@ -4,7 +4,6 @@
 
 import cgi
 import collections
-import HTMLParser
 import json
 import logging
 import re
@@ -15,6 +14,7 @@ import common
 
 from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.site_utils import phapi_lib
 from autotest_lib.site_utils.suite_scheduler import base_event
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
@@ -22,7 +22,6 @@ from autotest_lib.site_utils.suite_scheduler import base_event
 try:
     __import__('chromite')
     __import__('gdata')
-    from autotest_lib.site_utils import phapi_lib
 except ImportError, e:
     fundamental_libs = False
     logging.info('Bug filing disabled. %s', e)
@@ -67,7 +66,6 @@ class TestFailure(object):
         BUG_CONFIG_SECTION, 'buildbot_builders', default='')
     _build_prefix = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'build_prefix', default='')
-
 
     # Number of times to retry if a gs command fails. Defaults to 10,
     # which is far too long given that we already wait on these files
@@ -233,10 +231,8 @@ class Reporter(object):
         BUG_CONFIG_SECTION, 'password', default='')
     _SEARCH_MARKER = 'ANCHOR  '
 
-    # Credentials for access to the project hosting api
-    _oauth_credentials = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'credentials', default='')
-
+    _api_key = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'api_key', default='')
     _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome',
                           'Type-Bug', 'Restrict-View-EditIssue']
     _CHROMIUM_EMAIL_ADDRESS = '@chromium.org'
@@ -268,13 +264,13 @@ class Reporter(object):
         self._tracker = self._get_tracker(self._project_name,
                                           self._username, self._password)
         self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                                 self._oauth_credentials,
+                                 self._api_key,
                                  self._project_name)
 
 
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
-        return fundamental_libs and self._tracker and self._phapi_client
+        return fundamental_libs and self._tracker
 
 
     def _get_owner(self, failure):
@@ -440,11 +436,6 @@ class Reporter(object):
         @return A gdata_lib.Issue instance of the issue that was found, or
                 None if no issue was found.
         """
-
-        # Note that this method cannot handle markers which have already been
-        # html escaped, as it will try and unescape them by converting the &
-        # to &amp again, thereby failing deduplication.
-        marker = HTMLParser.HTMLParser().unescape(marker)
         html_escaped_marker = cgi.escape(marker, quote=True)
 
         # The tracker frontend stores summaries and comments as html elements,
@@ -468,14 +459,15 @@ class Reporter(object):
         # match in the comments. Note that the comments are returned as
         # unescaped text.
         #
-        # TODO(beeps): when we start merging issues this could return bloated
+        # TODO beeps: when we start merging issues this could return bloated
         # results, for now we only search open issues.
         markers = ['"' + self._SEARCH_MARKER + html_escaped_marker + '"',
                    self._SEARCH_MARKER + marker,
-                   self._SEARCH_MARKER + ','.join(marker.split(',')[:2])]
+                   self._SEARCH_MARKER + marker[:marker.rfind(',')]]
         for decorated_marker in markers:
-            issues = self._phapi_client.get_tracker_issues_by_text(
-                decorated_marker)
+            # This will return at most 25 matches, as that's how the
+            # code.google.com API limits this query.
+            issues = self._tracker.GetTrackerIssuesByText(decorated_marker)
             if issues:
                 break
 
@@ -495,15 +487,15 @@ class Reporter(object):
             self._create_bug_report(
                 'Query: %s, results: %s' % (marker, issue_ids),
                 'Multiple results for a specific query', '',
-                self._OWNER, bug_template=self._LAB_ERROR_TEMPLATE)
+                self._OWNER, self._LAB_ERROR_TEMPLATE)
 
         if all_issues:
             return all_issues[0]
 
         unescaped_clean_marker = re.sub('[0-9]+', '', marker)
         for issue in issues:
-            if any(unescaped_clean_marker in re.sub('[0-9]+', '', comment)
-                   for comment in issue.comments):
+            if any(unescaped_clean_marker in re.sub('[0-9]+', '', comment.text)
+                   for comment in issue.comments if comment.text):
                 return issue
 
 
