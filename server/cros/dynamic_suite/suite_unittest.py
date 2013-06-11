@@ -127,6 +127,27 @@ class SuiteTest(mox.MoxTestBase):
         self.assertTrue(self.files['six'] in tests)
 
 
+    def testAdHocSuiteCreation(self):
+        """Should be able to schedule an ad-hoc suite by specifying
+        a single test name."""
+        self.expect_control_file_parsing()
+        self.mox.ReplayAll()
+        predicate = Suite.test_name_equals_predicate('name-data_five')
+        suite = Suite.create_from_predicates(predicate, self._BUILD,
+                                       devserver=None,
+                                       cf_getter=self.getter,
+                                       afe=self.afe, tko=self.tko)
+
+        self.assertFalse(self.files['one'] in suite.tests)
+        self.assertFalse(self.files['two'] in suite.tests)
+        self.assertFalse(self.files['one'] in suite.unstable_tests())
+        self.assertFalse(self.files['two'] in suite.stable_tests())
+        self.assertFalse(self.files['one'] in suite.stable_tests())
+        self.assertFalse(self.files['two'] in suite.unstable_tests())
+        self.assertFalse(self.files['four'] in suite.tests)
+        self.assertTrue(self.files['five'] in suite.tests)
+
+
     def testStableUnstableFilter(self):
         """Should distinguish between experimental and stable tests."""
         self.expect_control_file_parsing()

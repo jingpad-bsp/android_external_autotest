@@ -135,6 +135,37 @@ class Suite(object):
 
 
     @staticmethod
+    def create_from_predicates(predicates, build, devserver, cf_getter=None,
+                               name='ad_hoc_suite', **dargs):
+        """
+        Create a Suite using a given predicate test filters.
+
+        Uses supplied predicate(s) to instantiate a Suite. Looks for tests in
+        |autotest_dir| and will schedule them using |afe|.  Pulls control files
+        from the default dev server. Results will be pulled from |tko| upon
+        completion.
+
+        @param predicates: A list of callables that accept ControlData
+                           representations of control files. A test will be
+                           included in suite is all callables in this list
+                           return True on the given control file.
+        @param build: the build on which we're running this suite.
+        @param devserver: the devserver which contains the build.
+        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
+                          using DevServerGetter.
+        @param name: name of suite. Defaults to 'ad_hoc_suite'
+        @param **dargs: Any other Suite constructor parameters, as described
+                        in Suite.__init__ docstring.
+        @return a Suite instance.
+        """
+        if cf_getter is None:
+            cf_getter = Suite.create_ds_getter(build, devserver)
+
+        return Suite(predicates,
+                     name, build, cf_getter, **dargs)
+
+
+    @staticmethod
     def create_from_name(name, build, devserver, cf_getter=None, **dargs):
         """
         Create a Suite using a predicate based on the SUITE control file var.

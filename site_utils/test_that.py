@@ -34,26 +34,42 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=''):
     @param suite_name: Name of suite to schedule.
     @param afe: afe object to schedule against (typically a directAFE)
     @param build: Build to schedule suite for.
+    @returns: The number of tests scheduled.
     """
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
     devserver = dev_server.ImageServer('')
     my_suite = suite.Suite.create_from_name(suite_name, build, devserver,
-                                            fs_getter, afe, ignore_deps=True)
+                                            fs_getter, afe=afe,
+                                            ignore_deps=True)
     if len(my_suite.tests) == 0:
         raise ValueError('Suite named %s does not exist, or contains no '
                          'tests.' % suite_name)
     my_suite.schedule(lambda x: None) # Schedule tests, discard record calls.
+    return len(my_suite.tests)
 
 
-def schedule_local_test(autotest_path, suite_name, afe, build=''):
+def schedule_local_test(autotest_path, test_name, afe, build=''):
     #temporarily disabling pylint
     #pylint: disable-msg=C0111
     """
     Schedule an individual test against a mock afe object, for a local run.
-
-    NOT YET IMPLEMENTED
+    @param autotest_path: Absolute path to autotest (in sysroot).
+    @param test_name: Name of test to schedule.
+    @param afe: afe object to schedule against (typically a directAFE)
+    @param build: Build to schedule suite for.
+    @returns: The number of tests scheduled (may be >1 if there are
+              multiple tests with the same name).
     """
-    pass
+    fs_getter = suite.Suite.create_fs_getter(autotest_path)
+    devserver = dev_server.ImageServer('')
+    predicates = [suite.Suite.test_name_equals_predicate(test_name)]
+    suite_name = 'suite_' + test_name
+    my_suite = suite.Suite.create_from_predicates(predicates, build, devserver,
+            fs_getter, afe=afe, name=suite_name, ignore_deps=True)
+    if len(my_suite.tests) == 0:
+        raise ValueError('No tests named %s.' % test_name)
+    my_suite.schedule(lambda x: None) # Schedule tests, discard record calls.
+    return len(my_suite.tests)
 
 
 def run_job(job, host, sysroot_autotest_path):
@@ -107,10 +123,12 @@ def perform_local_run(afe, autotest_path, tests, remote, build=''):
         suitematch = re.match(r'suite:(.*)', test)
         if suitematch:
             suitename = suitematch.group(1)
-            logging.info('Scheduling suite %s.', suitename)
-            schedule_local_suite(autotest_path, suitename, afe)
+            logging.info('Scheduling suite %s...', suitename)
+            ntests = schedule_local_suite(autotest_path, suitename, afe)
         else:
-            logging.info('Would schedule test %s.', test)
+            logging.info('Scheduling test %s...', test)
+            ntests = schedule_local_test(autotest_path, test, afe)
+        logging.info('... scheduled %s tests.', ntests)
 
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path)
