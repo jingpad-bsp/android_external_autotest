@@ -235,8 +235,7 @@ class Reporter(object):
         BUG_CONFIG_SECTION, 'api_key', default='')
     _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome',
                           'Type-Bug', 'Restrict-View-EditIssue']
-    _CHROMIUM_EMAIL_ADDRESS = '@chromium.org'
-    _OWNER = 'beeps%s' % _CHROMIUM_EMAIL_ADDRESS
+    _OWNER = 'beeps@chromium.org'
 
     _LAB_ERROR_TEMPLATE = {
         'labels': ['Hardware-Lab'],
@@ -325,13 +324,14 @@ class Reporter(object):
                 if match_area(test_name, area.lower())]
 
 
-    def _format_issue_options(self, override, **kwargs):
+    def _resolve_slotvals(self, override, **kwargs):
         """
         Override the default issue configuration with a suite specific
         configuration when one is specified in the suite's bug_template.
-        The bug_template is specified in the suite control file. After
-        overriding the correct options, format them in a way that's understood
-        by the project hosting api.
+        The bug_template is specified in the suite control file.
+
+        TODO(beeps): crbug.com/226124. Modify gdata_lib to support cclist,
+        explore the possibility of specifying comments, id in the template.
 
         @param override: Suite specific dictionary with issue config operations.
         @param kwargs: Keyword args containing the default issue config options.
@@ -340,50 +340,40 @@ class Reporter(object):
         """
         if override:
             kwargs.update((k,v) for k,v in override.iteritems() if v)
-
-        kwargs['labels'] = list(set(kwargs['labels'] + kwargs['milestone'] +
-                                    self._PREDEFINED_LABELS))
-
-        kwargs['ccs'] = list(map(lambda cc: {'name': cc},
-                                 set(kwargs['ccs'] + kwargs['sheriffs'])))
-
-        # The existence of an owner key will cause the api to try and match
-        # the value under the key to a member of the project, resulting in a
-        # 404 or 500 Http response when the owner is invalid.
-        if (self._CHROMIUM_EMAIL_ADDRESS not in kwargs['owner']):
-            del(kwargs['owner'])
-        else:
-            kwargs['owner'] = {'name': kwargs['owner']}
         return kwargs
 
 
-    def _create_bug_report(self, description, title, name, owner, milestone='',
+    def _create_bug_report(self, summary, title, name, owner, milestone='',
                            bug_template={}, sheriffs=[]):
         """
         Creates a new bug report.
 
-        @param description: A summary of the failure.
+        @param summary: A summary of the failure.
         @param title: Title of the bug.
         @param name: Failing Test name, used to assigning labels.
         @param owner: The owner of the new bug.
-        @return: id of the created issue, or None if an issue wasn't created.
-                 Note that if either the description or title fields are missing
-                 we won't be able to create a bug.
+        @return: id of the created issue.
         """
-        issue = self._format_issue_options(bug_template, title=title,
-            description=description, labels=self._get_labels(name.lower()),
-            status='Untriaged', milestone=[milestone], owner=owner,
-            ccs=[self._OWNER], sheriffs=sheriffs)
+        issue_options = self._resolve_slotvals(
+            bug_template, title=title,
+            summary=summary, labels=self._get_labels(name.lower()),
+            status='Untriaged', owner=owner, ccs=[self._OWNER])
 
-        try:
-            bug = self._phapi_client.create_issue(issue)
-        except phapi_lib.ProjectHostingApiException as e:
-            logging.error('Unable to create a bug for issue with title: %s and '
-                          'description %s', title, description)
-        else:
-            logging.info('Filing new bug %s, with description %s',
-                         bug.get('id'), description)
-            return bug.get('id')
+        issue_options['labels'] = set(issue_options['labels'] +
+                                      self._PREDEFINED_LABELS +
+                                      [milestone])
+        issue_options['ccs'] = set(issue_options['ccs'] + sheriffs)
+
+        issue = gdata_lib.Issue(**issue_options)
+        bugid = self._tracker.CreateTrackerIssue(issue)
+        logging.info('Filing new bug %s, with summary %s', bugid, summary)
+
+        # The tracker api will not allow us to assign an owner to a new bug,
+        # To work around this we must first create a bug and then update it
+        # with an owner. crbug.com/221757.
+        if issue_options['owner']:
+            self._modify_bug_report(issue.id, owner=issue_options['owner'])
+        return issue.id
 
 
     def _modify_bug_report(self, issue_id, comment='', owner=''):
