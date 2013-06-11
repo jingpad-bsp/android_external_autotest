@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "wiley@chromium.org"
-NAME = "wifi_matfunc"
+NAME = "stumpycelltrial"
 PURPOSE = "Verify basic WiFi functionality."
-CRITERIA = "All tests with SUITE=wifi_matfunc must pass."
+CRITERIA = "All tests with SUITE=stumpycelltrial must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "General"
@@ -13,7 +13,8 @@ TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-This is an example of a dynamic test suite.
+This suite is running the same set of tests as wificell, but on stumpy cells.
+This lets us compare results.
 
 @param build: The name of the image to test.
           Ex: x86-mario-release/R17-1412.33.0-a1-b29
