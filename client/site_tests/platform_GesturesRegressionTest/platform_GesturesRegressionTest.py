@@ -42,8 +42,8 @@ class platform_GesturesRegressionTest(test.test):
 
         # create test runner
         sys.path.append(framework_dir)
-        from test_runner import TestRunner
-        runner = TestRunner(tests_dir, xorg_dir)
+        from test_runner import ParallelTestRunner
+        runner = ParallelTestRunner(tests_dir, xorg_dir)
 
         # run all tests for this platform and extract results
         results = runner.RunAll('%s*/*' % platform)
