@@ -657,6 +657,13 @@ class OsReimager(Reimager):
         self._control_file = 'autoupdate'
         self._url_pattern = tools.image_url_pattern()
 
+
+    class FakeReimageJob(object):
+        def __init__(self):
+            self.id = None
+            self.owner = None
+
+
     def _schedule_reimage_job(self, params, host_group, devserver,
                               suite_job_id=None):
         """Schedules the reimaging of a group of hosts with a Chrome OS image.
@@ -679,9 +686,50 @@ class OsReimager(Reimager):
         @return a frontend.Job object for the scheduled reimaging job.
 
         """
-        params['devserver_url'] = devserver.url()
-        return self._schedule_reimage_job_base(host_group, params,
-                                               suite_job_id=suite_job_id)
+        # TODO(milleral) http://crbug.com/250586
+        # Remove this hack once we can drop tryjobs completely.
+        return self.FakeReimageJob()
+
+
+    def wait(self, build, pool, record, check_hosts,
+                tests_to_skip,
+                dependencies={'':[]},
+                scheduled_tests=[],
+                timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS):
+        #pylint: disable-msg=C0111
+        """
+        Synchronously wait on reimages to finish.
+
+        If any machines fail that cause needed DEPENDENCIES to not be
+        available, we also error out all of the now-unrunnable tests.
+
+        @param build: the build being installed e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
+        @param record: callable that records job status.
+               prototype:
+                 record(base_job.status_log_entry)
+        @param check_hosts: require appropriate hosts to be available now.
+        @param tests_to_skip: DEPRECATED
+        @param dependencies: DEPRECATED
+        @param scheduled_tests: A list of ControlData objects corresponding to
+                                all tests that were scheduled as part of the
+                                same suite as this Reimage job. Used to
+                                determine which unsatisfied-dependency-jobs
+                                should be considered ERRORs, and which merely
+                                WARNings. Defaults to [], in which case no
+                                unsatisfied-dependency warnings or errors will
+                                be logged.
+        @param timeout_mins: Amount of time in mins to wait before timing out
+                             this reimage attempt.
+
+        @return True if at least one reimaging jobs succeed, False if they all
+                fail or at least one is aborted.
+        """
+        # TODO(milleral) http://crbug.com/250586
+        # Remove this hack once we can drop tryjobs completely.
+        return True
 
 
 @reimage_type(constants.REIMAGE_TYPE_FIRMWARE)

@@ -10,6 +10,7 @@ from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import metahost_scheduler, scheduler_config
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.site_utils.graphite import stats
+from autotest_lib.server.cros import provision
 
 
 get_site_metahost_schedulers = utils.import_site_function(
@@ -305,6 +306,10 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
             return True
 
         job_dependencies = self._job_dependencies.get(queue_entry.job_id, set())
+        # Remove provisionable labels from the set of job_dependencies that we
+        # need to satisfy
+        job_dependencies = set([dep for dep in job_dependencies if
+                not provision.can_provision(self._labels[dep].name)])
         host_labels = self._host_labels.get(host_id, set())
 
         return (self._is_acl_accessible(host_id, queue_entry) and

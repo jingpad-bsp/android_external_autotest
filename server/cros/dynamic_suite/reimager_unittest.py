@@ -20,7 +20,7 @@ from autotest_lib.server.cros.dynamic_suite.host_spec import ExplicitHostGroup
 from autotest_lib.server.cros.dynamic_suite.host_spec import HostGroup
 from autotest_lib.server.cros.dynamic_suite.host_spec import HostSpec
 from autotest_lib.server.cros.dynamic_suite.host_spec import MetaHostGroup
-from autotest_lib.server.cros.dynamic_suite.reimager import OsReimager
+from autotest_lib.server.cros.dynamic_suite.reimager import FwReimager
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost, FakeJob
 from autotest_lib.server import frontend
 
@@ -37,7 +37,7 @@ class ReimagerTest(mox.MoxTestBase):
 
     _DEVSERVER_URL = 'http://nothing:8082'
     _BUILD = 'build'
-    _UPDATE_URL = _DEVSERVER_URL + '/update/' + _BUILD
+    _UPDATE_URL = _DEVSERVER_URL + '/static/build/firmware_from_source.tar.bz2'
     _URL = '%s/%s'
     _NUM = 4
     _BOARD = 'board'
@@ -51,7 +51,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
         self.devserver = dev_server.ImageServer(self._DEVSERVER_URL)
-        self.reimager = OsReimager('', self._BOARD, afe=self.afe, tko=self.tko)
+        self.reimager = FwReimager('', self._BOARD, afe=self.afe, tko=self.tko)
         # Having these ordered by complexity is important!
         host_spec_list = [HostSpec([self._BOARD, self._POOL])]
         for dep_list in self._DEPENDENCIES.itervalues():
@@ -235,9 +235,11 @@ class ReimagerTest(mox.MoxTestBase):
         """Should be able to create a job with the AFE."""
         # Fake out getting the autoupdate control file contents.
         cf_getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
-        cf_getter.get_control_file_contents_by_name('autoupdate').AndReturn('')
+        cf_getter.get_control_file_contents_by_name('fwupdate').AndReturn('')
         self.reimager._cf_getter = cf_getter
 
+        self.mox.StubOutWithMock(self.devserver, 'stage_artifacts')
+        self.devserver.stage_artifacts(mox.IgnoreArg(), mox.IgnoreArg())
         hosts_per_spec = {HostSpec(['l1']): [FakeHost('h1')],
                           HostSpec(['l2']): [FakeHost('h2')],
                           HostSpec(['l3']): [FakeHost('h4')]}
@@ -302,6 +304,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
         self.mox.StubOutWithMock(job_status, 'check_and_record_reimage_results')
         self.mox.StubOutWithMock(job_status, 'check_job_abort_status')
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'stage_artifacts')
 
         self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
@@ -335,7 +338,7 @@ class ReimagerTest(mox.MoxTestBase):
                 return
             job_status.gather_per_host_results(
                 mox.IgnoreArg(), mox.IgnoreArg(), [canary_job],
-                mox.StrContains(OsReimager.JOB_NAME)).AndReturn(statuses)
+                mox.StrContains(FwReimager.JOB_NAME)).AndReturn(statuses)
 
         if statuses:
             ret_val = reduce(lambda v, s: v or s.is_good(),
