@@ -33,6 +33,18 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     """
 
 
+    def get_capabilities(self):
+        """@return iterable object of AP capabilities for this system."""
+        caps = set()
+        try:
+            self.cmd_send_management_frame = wifi_test_utils.must_be_installed(
+                    self.router, '/usr/bin/send_management_frame')
+            caps.add(self.CAPABILITY_SEND_MANAGEMENT_FRAME)
+        except error.TestFail:
+            pass
+        return super(LinuxRouter, self).get_capabilities().union(caps)
+
+
     def __init__(self, host, params, defssid):
         """Build a LinuxRouter.
 
@@ -735,6 +747,21 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_hostapd_cli,
                          self.hostapd['conf']['ctrl_interface'],
                          params['client']))
+
+
+    def send_management_frame(self, frame_type, instance=0):
+        """Injects a management frame into an active hostapd session.
+
+        @param frame_type string the type of frame to send.
+        @param instance int indicating which hostapd instance to inject into.
+
+        """
+        hostap_interface = self.hostapd_instances[instance]['interface']
+        interface = self._get_wlanif(0, 'monitor', same_phy_as=hostap_interface)
+        self.router.run("%s link set %s up" % (self.cmd_ip, interface))
+        self.router.run('%s %s %s' %
+                        (self.cmd_send_management_frame, interface, frame_type))
+        self._release_wlanif(interface)
 
 
     def _pre_config_hook(self, config):

@@ -213,13 +213,15 @@ class WiFiClient(object):
         self._host.close()
 
 
-    def ping(self, ping_ip, ping_args, count=None):
+    def ping(self, ping_ip, ping_args, count=None, ignore_status=False):
         """Ping an address from the client and return the command output.
 
         @param ping_ip string IPv4 address for the client to ping.
         @param ping_args dict of parameters understood by
                 wifi_test_utils.ping_args().
         @param count int number of times to ping the address.
+        @param ignore_status bool whether to consider an error exit status
+                from the ping command to be a fatal error.
         @return string raw output of the ping command
 
         """
@@ -233,7 +235,7 @@ class WiFiClient(object):
                 '%s %s %s' % (self.COMMAND_PING,
                               wifi_test_utils.ping_args(ping_args),
                               ping_ip),
-                timeout=timeout)
+                timeout=timeout, ignore_status=ignore_status)
         return result.stdout
 
 

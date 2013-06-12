@@ -23,6 +23,7 @@ class LinuxSystem(object):
     CAPABILITY_MULTI_AP = 'multi_ap'
     CAPABILITY_MULTI_AP_SAME_BAND = 'multi_ap_same_band'
     CAPABILITY_IBSS = 'ibss_supported'
+    CAPABILITY_SEND_MANAGEMENT_FRAME = 'send_management_frame'
 
 
     @property
@@ -250,7 +251,7 @@ class LinuxSystem(object):
         return phys[0]
 
 
-    def _get_wlanif(self, frequency, phytype, mode = None):
+    def _get_wlanif(self, frequency, phytype, mode = None, same_phy_as = None):
         """Get a WiFi device that supports the given frequency, mode, and type.
 
         This function is used by inherited classes, so we use the single '_'
@@ -263,10 +264,18 @@ class LinuxSystem(object):
         @param frequency int WiFi frequency to support.
         @param phytype string type of phy (e.g. 'monitor').
         @param mode string 'a' 'b' or 'g'.
+        @param same_phy_as string create the interface on the same phy as this.
         @return string WiFi device.
 
         """
-        if mode in ('b', 'g') and self.phydev2 is not None:
+        if same_phy_as:
+            for phy, wlanif_i, phytype_i in self.wlanifs_in_use:
+                if wlanif_i == same_phy_as:
+                     break
+            else:
+                raise error.TestFail('Unable to find phy for interface %s' %
+                                     same_phy_as)
+        elif mode in ('b', 'g') and self.phydev2 is not None:
             phy = self.phydev2
         elif mode == 'a' and self.phydev5 is not None:
             phy = self.phydev5
