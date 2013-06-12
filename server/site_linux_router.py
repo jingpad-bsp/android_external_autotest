@@ -277,6 +277,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['dtim_period'] = configuration.dtim_period
         if configuration.frag_threshold:
             conf['fragm_threshold'] = configuration.frag_threshold
+        if configuration.wep_keys:
+            for idx,key in enumerate(configuration.wep_keys):
+                conf['wep_key%d' % idx] = key
+            conf['wep_default_key'] = configuration.wep_default_key
+
         self.start_hostapd(conf, {})
         # Configure transmit power
         tx_power_params = {'interface': conf['interface']}

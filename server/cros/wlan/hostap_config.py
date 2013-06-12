@@ -116,7 +116,7 @@ class HostapConfig(object):
     def __init__(self, mode=None, channel=None, frequency=None,
                  n_capabilities=None, hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
-                 force_wmm=None):
+                 force_wmm=None, wep_keys=None, wep_default_key=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -135,7 +135,8 @@ class HostapConfig(object):
         @param bssid string like 00:11:22:33:44:55.
         @param force_wmm True if we should force WMM on, False if we should
             force it off, None if we shouldn't force anything.
-
+        @param wep_keys list of string wep keys
+        @param wep_default_key int index into wep_keys to use as default key.
 
         """
         super(HostapConfig, self).__init__()
@@ -222,24 +223,35 @@ class HostapConfig(object):
         self.bssid = bssid
         if force_wmm is not None:
             self.wmm_enabled = force_wmm
+        if wep_keys and len(wep_keys) > 4:
+            raise error.TestFail('More than 4 WEP keys specified (%d).' %
+                                 len(self.wep_keys))
+
+        self.wep_keys = wep_keys
+        self.wep_default_key = wep_default_key
+        if self.wep_default_key is None and self.wep_keys:
+            self.wep_default_key = 0
 
 
     def __repr__(self):
         return ('%s(mode=%r, channel=%r, frequency=%r, '
                 'n_capabilities=%r, hide_ssid=%r, beacon_interval=%r, '
                 'dtim_period=%r, frag_threshold=%r, ssid=%r, bssid=%r, '
-                'wmm_enabled=%r)' % (self.__class__.__name__,
-                                     self.hw_mode,
-                                     self.channel,
-                                     self.frequency,
-                                     self.n_capabilities,
-                                     self.hide_ssid,
-                                     self.beacon_interval,
-                                     self.dtim_period,
-                                     self.frag_threshold,
-                                     self.ssid,
-                                     self.bssid,
-                                     self.wmm_enabled))
+                'wmm_enabled=%r, wep_keys=%r, wep_default_key=%r)' % (
+                        self.__class__.__name__,
+                        self.hw_mode,
+                        self.channel,
+                        self.frequency,
+                        self.n_capabilities,
+                        self.hide_ssid,
+                        self.beacon_interval,
+                        self.dtim_period,
+                        self.frag_threshold,
+                        self.ssid,
+                        self.bssid,
+                        self.wmm_enabled,
+                        self.wep_keys,
+                        self.wep_default_key))
 
 
     def get_ssid(self, default_ssid):
@@ -250,3 +262,12 @@ class HostapConfig(object):
 
         """
         return self.ssid or (default_ssid + self.ssid_suffix)[-32:]
+
+
+    def get_shill_compatible_psk(self):
+        """@return string shill psk for the encryption in this configuration."""
+        if self.wep_keys:
+            return '%d:%s' % (self.wep_default_key,
+                              self.wep_keys[self.wep_default_key])
+
+        raise error.TestFail('Failed to build shill compatible psk.')
