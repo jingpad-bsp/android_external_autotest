@@ -3,23 +3,24 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-perf"
-NAME = "Telemetry Scrolling Benchmark"
+NAME = "Telemetry Smoothness Measurement"
 SUITE = "perf_v2"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "performance"
 TEST_TYPE = "server"
+EXPERIMENTAL = "True"
 
 DOC = """
-This server side test suite executes the Telemetry Scrolling Benchmark.
+This server side test suite executes the Telemetry Smoothness Measurement.
 This is part of Chrome for Chrome OS performance testing.
 """
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="scrolling_benchmark", page_sets=["top_25.json"],
-                 tag="scrolling_benchmark")
+                 benchmark="smoothness_measurement", page_sets=["top_25.json"],
+                 tag="smoothness_measurement")
 
 
 parallel_simple(run_benchmark, machines)
