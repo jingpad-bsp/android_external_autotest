@@ -153,9 +153,8 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
 
     @_timer.decorate
     def _get_labels(self):
-        labels = scheduler_models.Label.fetch(
-                where="id IN (SELECT label_id FROM afe_hosts_labels)")
-        return dict((label.id, label) for label in labels)
+        return dict((label.id, label) for label
+                    in scheduler_models.Label.fetch())
 
 
     def recovery_on_startup(self):
@@ -163,7 +162,6 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
             metahost_scheduler.recovery_on_startup()
 
 
-    @_timer.decorate
     def refresh(self, pending_queue_entries):
         self._hosts_available = self._get_ready_hosts()
 
