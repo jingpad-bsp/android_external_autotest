@@ -47,21 +47,12 @@
                                        "https://*.talkgadget.google.com/*",
 "https://*.talkgadget.google.com/talkgadget/oauth/chrome-remote-desktop/rel/*",
                                        "https://www.googleapis.com/*"],
-        "api_permissions": ["clipboardRead", "clipboardWrite"]
+        "api_permissions": ["clipboardRead", "clipboardWrite", "storage"]
       },
       { "id": "icppfcnhkcmnfdhfhphakoifcfokfdhg",
         "name": "Google Play Music",
         "effective_host_permissions": [],
         "api_permissions": []
-      },
-      { "id": "kjebfhglflhjjjiceimfkgicifkhjlnm",
-        "name": "Scratchpad",
-        "effective_host_permissions": ["https://docs.google.com/*",
-                                       "https://www.google.com/*"],
-        "api_permissions": ["contextMenus",
-                            "management",
-                            "notifications",
-                            "tabs"]
       },
       { "id": "pjkljhegncpnkpknbcohdijeoejaedia",
         "name": "Gmail",
@@ -98,12 +89,20 @@
       { "id": "kbpgddbgniojgndnhlkjbkpknjhppkbk",
         "name": "Google+ Hangouts",
         "effective_host_permissions": [],
-        "api_permissions": ["background", "tabs"]
+        "api_permissions": []
       },
       { "id": "hkhhlkdconhgemhegnplaldnmnmkaemd",
         "name": "Get Started",
         "effective_host_permissions": [],
-        "api_permissions": ["unlimitedStorage"]
+        "api_permissions": ["alarms",
+                            "app.runtime",
+                            "app.currentWindowInternal",
+                            "app.window",
+                            "storage",
+                            "unlimitedStorage",
+                            "notifications",
+                            "webRequestInternal",
+                            "webview"]
       },
       { "id": "mmimngoggfoobjdlefbcabngfnmieonb",
         "name": "Google Play Books",
