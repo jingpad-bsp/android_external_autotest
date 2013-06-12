@@ -13,6 +13,7 @@ import unittest
 
 import at_channel
 import task_loop
+from wardmodem_exceptions import *
 
 class ATTransceiverTestCase(unittest.TestCase):
     """
@@ -26,7 +27,10 @@ class ATTransceiverTestCase(unittest.TestCase):
         # Create a temporary pty pair for the ATTransceiver constructor
         master, slave = os.openpty()
 
-        self._at_transceiver = at_transceiver.ATTransceiver(slave, slave)
+        self._at_transceiver = at_transceiver.ATTransceiver(
+                mm_at_port=slave,
+                plugin_at_to_wardmodem_conf=None,
+                modem_at_port=slave)
 
         # Now replace internal objects in _at_transceiver with mocks
         self._at_transceiver._modem_response_timeout_milliseconds = 0
@@ -37,6 +41,12 @@ class ATTransceiverTestCase(unittest.TestCase):
         self._mock_task_loop = self._mox.CreateMock(task_loop.TaskLoop)
         self._at_transceiver._task_loop = self._mock_task_loop
 
+
+class ATTransceiverCommonTestCase(ATTransceiverTestCase):
+    """
+    Tests common to all three modes of ATTransceiver.
+
+    """
 
     def test_successful_mode_selection(self):
         """
@@ -73,6 +83,121 @@ class ATTransceiverTestCase(unittest.TestCase):
                at_transceiver.ATTransceiverMode.SPLIT_VERIFY)
         self.assertEqual(self._at_transceiver.mode,
                          at_transceiver.ATTransceiverMode.WARDMODEM)
+
+
+    def test_update_at_to_wardmodem(self):
+        """
+        Test that _at_to_wardmodem is updated correctly under different
+        scenarios.
+
+        """
+        # The diffs if this test fails can be rather long.
+        self.maxDiff = None
+        self._at_transceiver._at_to_wardmodem = {}
+
+        # Test initialization
+        raw_map = {'AT1=': ('STATE_MACHINE1', 'function1'),
+                   'AT2=1,2': ('STATE_MACHINE2', 'function2'),
+                   'AT3=*,care,do': ('STATE_MACHINE3', 'function3', (0, 1)),
+                   'AT4?': ('STATE_MACHINE4', 'function4'),
+                   'AT5=': ('STATE_MACHINE5', 'function5', ()),
+                   'AT5=*': ('STATE_MACHINE6', 'function6')}
+        parsed_map = {'AT1=': {(): ('STATE_MACHINE1', 'function1', ())},
+                      'AT2=': {('1','2'): ('STATE_MACHINE2', 'function2', ())},
+                      'AT3=': {('*','care','do'): ('STATE_MACHINE3',
+                                                   'function3', (0, 1))},
+                      'AT4?': {(): ('STATE_MACHINE4', 'function4', ())},
+                      'AT5=': {(): ('STATE_MACHINE5', 'function5', ()),
+                               ('*',): ('STATE_MACHINE6', 'function6', ())}}
+
+        self._at_transceiver._update_at_to_wardmodem(raw_map)
+        self.assertEqual(parsed_map, self._at_transceiver._at_to_wardmodem)
+
+        # Test update
+        raw_good_update = {'AT1=': ('STATE_MACHINE7', 'function7'),
+                           'AT5=2': ('STATE_MACHINE8', 'function8', 0),
+                           'AT6?': ('STATE_MACHINE9', 'function9')}
+        parsed_map = {'AT1=': {(): ('STATE_MACHINE7', 'function7', ())},
+                      'AT2=': {('1','2'): ('STATE_MACHINE2', 'function2', ())},
+                      'AT3=': {('*','care','do'): ('STATE_MACHINE3',
+                                                   'function3', (0, 1))},
+                      'AT4?': {(): ('STATE_MACHINE4', 'function4', ())},
+                      'AT5=': {(): ('STATE_MACHINE5', 'function5', ()),
+                               ('*',): ('STATE_MACHINE6', 'function6', ()),
+                               ('2',): ('STATE_MACHINE8', 'function8', (0,))},
+                      'AT6?': {(): ('STATE_MACHINE9', 'function9', ())}}
+        self._at_transceiver._update_at_to_wardmodem(raw_good_update)
+        self.assertEqual(parsed_map, self._at_transceiver._at_to_wardmodem)
+
+
+    def test_find_wardmodem_action_for_at(self):
+        """
+        Setup _at_to_wardmodem in the test and then test whether we can find
+        actions for AT commands off of that map.
+
+        """
+        raw_map = {'AT1=': ('STATE_MACHINE1', 'function1'),
+                   'AT2=1,2': ('STATE_MACHINE2', 'function2'),
+                   'AT3=*,b,c': ('STATE_MACHINE3', 'function3', (0, 1)),
+                   'AT4?': ('STATE_MACHINE4', 'function4'),
+                   'AT5=': ('STATE_MACHINE5', 'function5', ()),
+                   'AT5=*': ('STATE_MACHINE6', 'function6')}
+        self._at_transceiver._update_at_to_wardmodem(raw_map)
+
+        self.assertEqual(
+                ('STATE_MACHINE1', 'function1', ()),
+                self._at_transceiver._find_wardmodem_action_for_at('AT1='))
+        self.assertEqual(
+                ('STATE_MACHINE2', 'function2', ()),
+                self._at_transceiver._find_wardmodem_action_for_at('AT2=1,2'))
+        self.assertEqual(
+                ('STATE_MACHINE3', 'function3', ('a','b')),
+                self._at_transceiver._find_wardmodem_action_for_at('AT3=a,b,c'))
+        self.assertEqual(
+                ('STATE_MACHINE3', 'function3', ('','b')),
+                self._at_transceiver._find_wardmodem_action_for_at('AT3=,b,c'))
+        self.assertEqual(
+                ('STATE_MACHINE5', 'function5', ()),
+                self._at_transceiver._find_wardmodem_action_for_at('AT5='))
+        self.assertEqual(
+                ('STATE_MACHINE6', 'function6', ()),
+                self._at_transceiver._find_wardmodem_action_for_at('AT5=s'))
+        failed_as_expected = False
+        try:
+            self._at_transceiver._find_wardmodem_action_for_at('DOESNOTEXIST')
+        except ATTransceiverException:
+            failed_as_expected = True
+        self.assertTrue(failed_as_expected)
+
+
+    def test_post_wardmodem_request(self):
+        """
+        Test that a wardmodem request can be posted successfully end-to-end.
+
+        """
+        raw_map = {'AT=*': ('TestMachine', 'test_function', 0)}
+        arg = 'fake_arg'
+        command = 'AT=' + arg
+        class TestMachine(object):
+            #pylint: disable=C0111
+            def test_function(self, arg):
+                pass
+            # Needed in a test machine.
+            def get_well_known_name(self):
+                pass
+
+        mock_test_machine = self._mox.CreateMock(TestMachine)
+        self._at_transceiver._update_at_to_wardmodem(raw_map)
+        mock_test_machine.get_well_known_name().AndReturn('TestMachine')
+        self._mock_task_loop.post_task(
+                self._at_transceiver._execute_state_machine_function,
+                command, mox.IgnoreArg(), mock_test_machine.test_function,
+                (arg,))
+
+        self._mox.ReplayAll()
+        self._at_transceiver.register_state_machine(mock_test_machine)
+        self._at_transceiver._post_wardmodem_request(command)
+        self._mox.VerifyAll()
 
 
 class ATTransceiverWardModemTestCase(ATTransceiverTestCase):

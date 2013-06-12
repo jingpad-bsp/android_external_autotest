@@ -15,6 +15,7 @@ _instance = None
 def get_instance():
     """
     Return the singleton instance of the TaskLoop class.
+
     """
     global _instance
     if _instance is None:
@@ -52,6 +53,7 @@ class TaskLoop(object):
 
     @var max_random_delay_ms: When random_delays is True, the maximum delay
             inserted between posted tasks.
+
     """
 
 
@@ -80,6 +82,7 @@ class TaskLoop(object):
         If True, all tasks posted henceforth are immediately marked active
         ignoring any delay requested. With this switch, all other delay related
         switches are ignored.
+
         """
         return self._ignore_delays
 
@@ -90,6 +93,7 @@ class TaskLoop(object):
         Set |ignore_delays|.
 
         @param value: Boolean value for the |ignore_delays| flag
+
         """
         self._logger.debug('Turning %s delays ignored mode.', ('on' if value
                            else 'off'))
@@ -104,6 +108,7 @@ class TaskLoop(object):
         If True, arbitrary delays in range [0, |max_random_delay_ms|] are
         inserted in all posted tasks henceforth, ignoring the actual delay
         requested.
+
         """
         return self._random_delays
 
@@ -114,6 +119,7 @@ class TaskLoop(object):
         Set |random_delays|.
 
         @param value: Boolean value for the random_delays flag.
+
         """
         self._logger.debug('Turning %s random delays.', ('on' if value else
                                                          'off'))
@@ -125,6 +131,7 @@ class TaskLoop(object):
         """
         The maximum arbitrary delay inserted in posted tasks in milliseconds.
         Type: int
+
         """
         return self._max_random_delay_ms
 
@@ -136,6 +143,7 @@ class TaskLoop(object):
 
         @param value: Non-negative int value for |max_random_delay_ms|. Negative
                 values are clamped to 0.
+
         """
         if value < 0:
             self._logger.warning(
@@ -155,6 +163,7 @@ class TaskLoop(object):
         This call is blocking. The thread that calls TaskLoop.start(...) becomes
         the task loop itself and is blocked as such till TaskLoop.stop(...) is
         called.
+
         """
         self._logger.info('Task Loop is now processing tasks...')
         self._mainloop.run()
@@ -163,6 +172,7 @@ class TaskLoop(object):
     def stop(self):
         """
         Stop the task loop.
+
         """
         self._logger.info('Task Loop quitting.')
         self._mainloop.quit()
@@ -189,6 +199,7 @@ class TaskLoop(object):
                 first call is also delayed by this amount. Default: 0
 
         @return: An integer ID that can be used to cancel the posted task.
+
         """
         assert callback is not None
 
@@ -217,6 +228,7 @@ class TaskLoop(object):
         @param delay_ms: The delay before the call to |callback|. Default: 0
 
         @return: An integer ID that can be used to cancel the posted task.
+
         """
         assert callback is not None
         post_id = self._next_post_id
@@ -239,6 +251,7 @@ class TaskLoop(object):
                 return value from |callback| is ignored.
 
         @return: An integer ID that can be used to cancel the posted task.
+
         """
         self._logger.debug('Task posted: %s', repr(callback))
         self._logger.debug('Arguments: %s, Keyword arguments: %s',
@@ -254,6 +267,7 @@ class TaskLoop(object):
                 of the functions that post a task.
 
         @return: True if the posted task was removed.
+
         """
         if post_id in self._posted_tasks:
             retval = glib.source_remove(self._posted_tasks[post_id])
@@ -274,6 +288,7 @@ class TaskLoop(object):
         @param user_delay_ms: The delay requested by the user.
 
         @return The actual delay to be posted.
+
         """
         next_delay_ms = user_delay_ms
         if self.ignore_delays:
@@ -294,6 +309,7 @@ class TaskLoop(object):
         @param callback: The user callback that must be called.
 
         @param delay_ms: The user requested delay between calls.
+
         """
         retval = callback()
         self._logger.debug('Ignored return value from repeated task: %s',
