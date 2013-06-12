@@ -232,7 +232,7 @@ class TestBaseAutotest(unittest.TestCase):
         os.remove.expect_call("temp")
 
         run_obj.execute_control.expect_call(timeout=30,
-                                            client_disconnect_timeout=120)
+                                            client_disconnect_timeout=240)
 
         # run and check output
         self.base_autotest.run(control, timeout=30)
