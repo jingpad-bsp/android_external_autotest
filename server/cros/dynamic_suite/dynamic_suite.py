@@ -597,7 +597,7 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
     # as this is going to go poke at the control files which are
     # only available after |finish_download| completes.
     suite = Suite.create_from_name_and_blacklist(
-        spec.name, tests_to_skip, spec.build, spec.devserver,
+        spec.name, tests_to_skip, spec.build, spec.board, spec.devserver,
         afe=afe, tko=tko, pool=spec.pool,
         results_dir=spec.job.resultdir,
         max_runtime_mins=spec.max_runtime_mins,

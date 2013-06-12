@@ -33,6 +33,7 @@ class SuiteTest(mox.MoxTestBase):
     @var _TAG: fake suite tag
     """
 
+    _BOARD = 'board:board'
     _BUILD = 'build'
     _TAG = 'suite_tag'
     _DEVSERVER_HOST = 'http://dontcare:8080'
@@ -134,7 +135,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         predicate = Suite.test_name_equals_predicate('name-data_five')
         suite = Suite.create_from_predicates([predicate], self._BUILD,
-                                       devserver=None,
+                                       self._BOARD, devserver=None,
                                        cf_getter=self.getter,
                                        afe=self.afe, tko=self.tko)
 
@@ -152,7 +153,7 @@ class SuiteTest(mox.MoxTestBase):
         """Should distinguish between experimental and stable tests."""
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD,
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
                                        devserver=None,
                                        cf_getter=self.getter,
                                        afe=self.afe, tko=self.tko)
@@ -172,7 +173,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
         suite = Suite.create_from_name_and_blacklist(
-            self._TAG, ['two'], self._BUILD, self.devserver,
+            self._TAG, ['two'], self._BUILD, self._BOARD, self.devserver,
             cf_getter=self.getter,
             afe=self.afe, tko=self.tko)
 
@@ -212,16 +213,16 @@ class SuiteTest(mox.MoxTestBase):
                 continue
             if test.name in tests_to_skip:
                 continue
-            if ignore_deps:
-                dependencies = []
-            else:
-                dependencies = test.dependencies
+            dependencies = []
+            if not ignore_deps:
+                dependencies.extend(test.dependencies)
+            dependencies.append(constants.VERSION_PREFIX + self._BUILD)
             self.afe.create_job(
                 control_file=test.text,
                 name=mox.And(mox.StrContains(self._BUILD),
                              mox.StrContains(test.name)),
                 control_type=mox.IgnoreArg(),
-                meta_hosts=[constants.VERSION_PREFIX + self._BUILD],
+                meta_hosts=[self._BOARD],
                 dependencies=dependencies,
                 keyvals={'build': self._BUILD, 'suite': self._TAG},
                 max_runtime_mins=24*60,
@@ -234,7 +235,7 @@ class SuiteTest(mox.MoxTestBase):
         """Should schedule stable and experimental tests with the AFE."""
         self.mock_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD,
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        results_dir=self.tmpdir)
@@ -256,7 +257,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_job_scheduling(recorder, add_experimental=False)
 
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD,
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
         suite.schedule(recorder.record_entry, add_experimental=False)
@@ -270,7 +271,7 @@ class SuiteTest(mox.MoxTestBase):
                                    ignore_deps=True)
 
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD,
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        ignore_deps=True)
@@ -284,7 +285,7 @@ class SuiteTest(mox.MoxTestBase):
         """
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD,
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
                                        self.devserver,
                                        self.getter,
                                        afe=self.afe, tko=self.tko,
@@ -433,7 +434,7 @@ class SuiteTest(mox.MoxTestBase):
                                                 owner=test_fallout.username,
                                                 hostname=test_fallout.hostname)
 
-            return all(result.__dict__.get(k) == v for k,v in
+            return all(result.__dict__.get(k) == v for k, v in
                        expected_result.__dict__.iteritems()
                        if 'timestamp' not in str(k))
 

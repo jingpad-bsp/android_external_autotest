@@ -63,7 +63,7 @@ def main():
             print suite
         return
 
-    suite = Suite.create_from_name(args[0], '', devserver, fs_getter)
+    suite = Suite.create_from_name(args[0], '', '', devserver, fs_getter)
     # If in test list, print firmware_FAFTSetup before other tests
     # NOTE: the test.name value can be *different* from the directory
     # name that appears in test.path

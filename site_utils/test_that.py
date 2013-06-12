@@ -32,6 +32,7 @@ _autoserv_proc = None
 _sigint_handler_lock = threading.Lock()
 
 _AUTOSERV_SIGINT_TIMEOUT_SECONDS = 5
+_NO_BOARD = 'ad_hoc_board'
 
 _QUICKMERGE_SCRIPTNAME = '/mnt/host/source/chromite/bin/autotest_quickmerge'
 
@@ -47,9 +48,8 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=''):
     """
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
     devserver = dev_server.ImageServer('')
-    my_suite = suite.Suite.create_from_name(suite_name, build, devserver,
-                                            fs_getter, afe=afe,
-                                            ignore_deps=True)
+    my_suite = suite.Suite.create_from_name(suite_name, build, _NO_BOARD,
+            devserver, fs_getter, afe=afe, ignore_deps=True)
     if len(my_suite.tests) == 0:
         raise ValueError('Suite named %s does not exist, or contains no '
                          'tests.' % suite_name)
@@ -73,8 +73,8 @@ def schedule_local_test(autotest_path, test_name, afe, build=''):
     devserver = dev_server.ImageServer('')
     predicates = [suite.Suite.test_name_equals_predicate(test_name)]
     suite_name = 'suite_' + test_name
-    my_suite = suite.Suite.create_from_predicates(predicates, build, devserver,
-            fs_getter, afe=afe, name=suite_name, ignore_deps=True)
+    my_suite = suite.Suite.create_from_predicates(predicates, build, _NO_BOARD,
+            devserver, fs_getter, afe=afe, name=suite_name, ignore_deps=True)
     if len(my_suite.tests) == 0:
         raise ValueError('No tests named %s.' % test_name)
     my_suite.schedule(lambda x: None) # Schedule tests, discard record calls.

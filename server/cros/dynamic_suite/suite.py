@@ -135,8 +135,8 @@ class Suite(object):
 
 
     @staticmethod
-    def create_from_predicates(predicates, build, devserver, cf_getter=None,
-                               name='ad_hoc_suite', **dargs):
+    def create_from_predicates(predicates, build, board, devserver,
+                               cf_getter=None, name='ad_hoc_suite', **dargs):
         """
         Create a Suite using a given predicate test filters.
 
@@ -150,6 +150,7 @@ class Suite(object):
                            included in suite is all callables in this list
                            return True on the given control file.
         @param build: the build on which we're running this suite.
+        @param board: the board on which we're running this suite.
         @param devserver: the devserver which contains the build.
         @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
                           using DevServerGetter.
@@ -162,11 +163,12 @@ class Suite(object):
             cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite(predicates,
-                     name, build, cf_getter, **dargs)
+                     name, build, board, cf_getter, **dargs)
 
 
     @staticmethod
-    def create_from_name(name, build, devserver, cf_getter=None, **dargs):
+    def create_from_name(name, build, board, devserver, cf_getter=None,
+                         **dargs):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -177,6 +179,7 @@ class Suite(object):
 
         @param name: a value of the SUITE control file variable to search for.
         @param build: the build on which we're running this suite.
+        @param board: the board on which we're running this suite.
         @param devserver: the devserver which contains the build.
         @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
                           using DevServerGetter.
@@ -188,11 +191,11 @@ class Suite(object):
             cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite([Suite.name_in_tag_predicate(name)],
-                     name, build, cf_getter, **dargs)
+                     name, build, board, cf_getter, **dargs)
 
 
     @staticmethod
-    def create_from_name_and_blacklist(name, blacklist, build, devserver,
+    def create_from_name_and_blacklist(name, blacklist, build, board, devserver,
                                        cf_getter=None, **dargs):
         """
         Create a Suite using a predicate based on the SUITE control file var.
@@ -205,6 +208,7 @@ class Suite(object):
         @param name: a value of the SUITE control file variable to search for.
         @param blacklist: iterable of control file paths to skip.
         @param build: the build on which we're running this suite.
+        @param board: the board on which we're running this suite.
         @param devserver: the devserver which contains the build.
         @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
                           using DevServerGetter.
@@ -218,11 +222,11 @@ class Suite(object):
         predicates = [Suite.name_in_tag_predicate(name),
                       Suite.not_in_blacklist_predicate(blacklist)]
 
-        return Suite(predicates, name, build, cf_getter, **dargs)
+        return Suite(predicates, name, build, board, cf_getter, **dargs)
 
 
-    def __init__(self, predicates, tag, build, cf_getter, afe=None, tko=None,
-                 pool=None, results_dir=None, max_runtime_mins=24*60,
+    def __init__(self, predicates, tag, build, board, cf_getter, afe=None,
+                 tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
                  version_prefix=constants.VERSION_PREFIX,
                  file_bugs=False, file_experimental_bugs=False,
                  suite_job_id=None, ignore_deps=False):
@@ -235,6 +239,7 @@ class Suite(object):
                            return True on the given control file.
         @param tag: a string with which to tag jobs run in this suite.
         @param build: the build on which we're running this suite.
+        @param board: the board on which we're running this suite.
         @param cf_getter: a control_file_getter.ControlFileGetter
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
@@ -259,6 +264,7 @@ class Suite(object):
 
         self._tag = tag
         self._build = build
+        self._board = board
         self._cf_getter = cf_getter
         self._results_dir = results_dir
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
@@ -315,18 +321,18 @@ class Suite(object):
             job_deps = []
         else:
             job_deps = list(test.dependencies)
+
+        cros_label = self._version_prefix + self._build
+        job_deps.append(cros_label)
+
         if self._pool:
-            meta_hosts = self._pool
-            cros_label = self._version_prefix + self._build
-            job_deps.append(cros_label)
-        else:
-            # No pool specified use any machines with the following label.
-            meta_hosts = self._version_prefix + self._build
+            job_deps.append(self._pool)
+
         test_obj = self._afe.create_job(
             control_file=test.text,
             name='/'.join([self._build, self._tag, test.name]),
             control_type=test.test_type.capitalize(),
-            meta_hosts=[meta_hosts],
+            meta_hosts=[self._board],
             dependencies=job_deps,
             keyvals={constants.JOB_BUILD_KEY: self._build,
                      constants.JOB_SUITE_KEY: self._tag},
