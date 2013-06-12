@@ -79,7 +79,7 @@ class ActivationStateTest(ActivationTest):
 
         # The modem state should be REGISTERED.
         if not self.test.modem_state() == mm1.MM_MODEM_STATE_REGISTERED:
-            raise error.TestError('Modem should be in the REGISTERED state.')
+            raise error.TestFail('Modem should be in the REGISTERED state.')
 
         # Service should appear as 'activated'.
         self.test.check_service_activation_state('activated')
@@ -119,7 +119,7 @@ class ActivationSuccessTest(ActivationTest):
 
         # The modem state should be REGISTERED.
         if not self.test.modem_state() == mm1.MM_MODEM_STATE_REGISTERED:
-            raise error.TestError('Modem should be in the REGISTERED state.')
+            raise error.TestFail('Modem should be in the REGISTERED state.')
 
         # Service should appear as 'not-activated'.
         self.test.check_service_activation_state('not-activated')
@@ -193,7 +193,7 @@ class ActivationFailureRetryTest(ActivationTest):
 
         # The modem state should be REGISTERED.
         if not self.test.modem_state() == mm1.MM_MODEM_STATE_REGISTERED:
-            raise error.TestError('Modem should be in the REGISTERED state.')
+            raise error.TestFail('Modem should be in the REGISTERED state.')
 
         # Service should appear as 'not-activated'.
         self.test.check_service_activation_state('not-activated')
@@ -251,12 +251,12 @@ class network_CDMAActivate(test.test):
         Searches for a cellular service and returns it.
 
         @return A dbus.service.Object instance.
-        @raises error.TestError, if no cellular service is found.
+        @raises error.TestFail, if no cellular service is found.
 
         """
         service = self.flim.FindCellularService()
         if not service:
-            raise error.TestError('Could not find cellular service.')
+            raise error.TestFail('Could not find cellular service.')
         return service
 
     def check_service_activation_state(self, expected_state):
@@ -266,20 +266,18 @@ class network_CDMAActivate(test.test):
 
         @param expected_state: The activation state the service is expected to
                                be in.
-        @raises error.TestError, if no cellular service is found or the service
+        @raises error.TestFail, if no cellular service is found or the service
                 activation state doesn't match |expected_state| within timeout.
 
         """
         service = self.find_cellular_service()
-        if not service:
-            raise error.TestError('Could not find cellular service.')
         state = self.flim.WaitForServiceState(
             service=service,
             expected_states=[expected_state],
             timeout=ACTIVATION_STATE_TIMEOUT,
             property_name='Cellular.ActivationState')[0]
         if state != expected_state:
-            raise error.TestError(
+            raise error.TestFail(
                     'Service activation state should be \'%s\', but it is '
                     '\'%s\'.' % (expected_state, state))
 
