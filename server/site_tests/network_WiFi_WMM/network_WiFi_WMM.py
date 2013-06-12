@@ -12,7 +12,7 @@ class network_WiFi_WMM(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Body of the test."""
         configuration = hostap_config.HostapConfig(
                 frequency=2437,
@@ -21,10 +21,12 @@ class network_WiFi_WMM(wifi_cell_test_base.WiFiCellTestBase):
         self.context.configure(configuration)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
-        self.assert_connect_wifi(assoc_params)
+        self.context.assert_connect_wifi(assoc_params)
         for qos in ('BE', 'BK', 'VI', 'VO'):
             ping_params = {'qos': qos}
-            self.assert_ping_from_dut(additional_ping_params=ping_params)
-            self.assert_ping_from_server(additional_ping_params=ping_params)
+            self.context.assert_ping_from_dut(
+                    additional_ping_params=ping_params)
+            self.context.assert_ping_from_server(
+                    additional_ping_params=ping_params)
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()

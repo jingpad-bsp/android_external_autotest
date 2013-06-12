@@ -13,7 +13,7 @@ class network_WiFi_BeaconInterval(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Body of the test."""
         bint_val = 200
         configuration = hostap_config.HostapConfig(
@@ -23,10 +23,10 @@ class network_WiFi_BeaconInterval(wifi_cell_test_base.WiFiCellTestBase):
         self.context.configure(configuration)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
-        self.assert_connect_wifi(assoc_params)
+        self.context.assert_connect_wifi(assoc_params)
         self.context.client.check_iw_link_value(
                 wifi_client.WiFiClient.IW_LINK_KEY_BEACON_INTERVAL,
                 bint_val)
-        self.assert_ping_from_dut()
+        self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()

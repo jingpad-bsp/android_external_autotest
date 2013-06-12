@@ -12,7 +12,7 @@ class network_WiFi_IBSS(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Body of the test."""
         self.context.router.create_wifi_device(device_type='ibss')
         configuration = hostap_config.HostapConfig(
@@ -22,7 +22,7 @@ class network_WiFi_IBSS(wifi_cell_test_base.WiFiCellTestBase):
         assoc_params.ssid = self.context.router.get_ssid()
         assoc_params.station_type = \
                 xmlrpc_datatypes.AssociationParameters.STATION_TYPE_IBSS
-        self.assert_connect_wifi(assoc_params)
-        self.assert_ping_from_dut()
+        self.context.assert_connect_wifi(assoc_params)
+        self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()

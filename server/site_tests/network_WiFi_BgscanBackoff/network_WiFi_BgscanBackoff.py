@@ -63,7 +63,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
             raise error.TestFail('Significant difference in rtt due to bgscan')
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Body of the test."""
         ap_config = hostap_config.HostapConfig(
                 frequency=2412,
@@ -76,7 +76,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         self.context.client.configure_bgscan(bgscan_config)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
-        self.assert_connect_wifi(assoc_params)
+        self.context.assert_connect_wifi(assoc_params)
         period_seconds = 0.1 # Ping every 100 ms.
         duration_seconds = 10 # Ping for 10 seconds.
         count = int(duration_seconds * 1.0 / period_seconds)
@@ -88,7 +88,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         self.context.client.shill.disconnect(assoc_params.ssid)
         # No bgscan, but take 10 seconds to get some reasonable statistics.
         self.context.client.disable_bgscan()
-        self.assert_connect_wifi(assoc_params)
+        self.context.assert_connect_wifi(assoc_params)
         ping_output = self.context.client.ping(self.context.get_wifi_addr(),
                                                {'interval': period_seconds},
                                                count=count)

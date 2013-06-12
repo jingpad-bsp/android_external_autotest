@@ -12,7 +12,7 @@ class network_WiFi_Powersave(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Test body.
 
         Powersave mode takes advantage of DTIM intervals, and so the two
@@ -31,9 +31,9 @@ class network_WiFi_Powersave(wifi_cell_test_base.WiFiCellTestBase):
         assoc_params.ssid = self.context.router.get_ssid()
         self.context.client.powersave_switch(True)
         self.context.client.check_powersave(True)
-        self.assert_connect_wifi(assoc_params)
-        self.assert_ping_from_dut()
-        self.assert_ping_from_server()
+        self.context.assert_connect_wifi(assoc_params)
+        self.context.assert_ping_from_dut()
+        self.context.assert_ping_from_server()
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.client.powersave_switch(False)
         self.context.client.check_powersave(False)

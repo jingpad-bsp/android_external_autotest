@@ -25,7 +25,7 @@ class network_WiFi_Netperf(wifi_cell_test_base.WiFiCellTestBase):
         self._configurations = additional_params
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Test body."""
         runner = netperf_runner.NetperfRunner(self.context.client,
                                               self.context.server)
@@ -35,7 +35,7 @@ class network_WiFi_Netperf(wifi_cell_test_base.WiFiCellTestBase):
             self.context.configure(hostap_config)
             assoc_params = xmlrpc_datatypes.AssociationParameters()
             assoc_params.ssid = self.context.router.get_ssid()
-            self.assert_connect_wifi(assoc_params)
+            self.context.assert_connect_wifi(assoc_params)
             netperf_result = runner.run(netperf_config)
             if not netperf_assertions.passes(netperf_result):
                 logging.error('===========================================')

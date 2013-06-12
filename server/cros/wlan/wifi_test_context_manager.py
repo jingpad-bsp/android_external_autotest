@@ -6,6 +6,7 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_bridge_router
 from autotest_lib.server import site_linux_cros_router
@@ -201,3 +202,84 @@ class WiFiTestContextManager(object):
         self.client.shill.clean_profiles()
         self.client.close()
         self._router.destroy()
+
+
+    def assert_connect_wifi(self, wifi_params, expect_failure=False):
+        """Connect to a WiFi network and check for success.
+
+        Connect a DUT to a WiFi network and check that we connect successfully.
+
+        @param wifi_params AssociationParameters describing network to connect.
+        @param expect_failure bool True is connecting should fail.
+
+        """
+        logging.info('Connecting to %s.', wifi_params.ssid)
+        serialized_assoc_result = self.client.shill.connect_wifi(
+                wifi_params.serialize())
+        assoc_result = xmlrpc_datatypes.AssociationResult(
+                serialized=serialized_assoc_result)
+        logging.info('Finished connection attempt to %s with times: '
+                     'discovery=%.2f, association=%.2f, configuration=%.2f.',
+                     wifi_params.ssid,
+                     assoc_result.discovery_time,
+                     assoc_result.association_time,
+                     assoc_result.configuration_time)
+
+        if assoc_result.success and expect_failure:
+            raise error.TestFail(
+                    'Expected connect to fail, but it was successful.')
+
+        if not assoc_result.success and not expect_failure:
+            raise error.TestFail('Expected connect to succeed, but it failed '
+                                 'with reason: %s.' %
+                                 assoc_result.failure_reason)
+
+        logging.info('Connected successfully to %s.', wifi_params.ssid)
+
+
+    def assert_ping_from_dut(self, additional_ping_params=None, ap_num=None):
+        """Ping a host on the WiFi network from the DUT.
+
+        Ping a host reachable on the WiFi network from the DUT, and
+        check that the ping is successful.  The host we ping depends
+        on the test setup, sometimes that host may be the server and
+        sometimes it will be the router itself.  Ping-ability may be
+        used to confirm that a WiFi network is operating correctly.
+
+        @param additional_ping_params dict of optional parameters to ping.
+        @param ap_num int which AP to ping if more than one is configured.
+
+        """
+        logging.info('Pinging from DUT.')
+        if ap_num is None:
+            ap_num = 0
+        if additional_ping_params is None:
+            additional_ping_params = {}
+        ping_ip = self.get_wifi_addr(ap_num=ap_num)
+        result = self.client.ping(ping_ip, additional_ping_params)
+        stats = wifi_test_utils.parse_ping_output(result)
+        # These are percentages.
+        if float(stats['loss']) > 20:
+            raise error.TestFail('Client lost ping packets: %r.', stats)
+        logging.info('Ping successful.')
+
+
+    def assert_ping_from_server(self, additional_ping_params=None):
+        """Ping the DUT across the WiFi network from the server.
+
+        Check that the ping is mostly successful and fail the test if it
+        is not.
+
+        @param additional_ping_params dict of optional parameters to ping.
+
+        """
+        logging.info('Pinging from server.')
+        if additional_ping_params is None:
+            additional_ping_params = {}
+        ping_count = 10
+        stats = self.server.ping(self.client.wifi_ip, ping_count,
+                                 additional_ping_params)
+        # These are percentages.
+        if float(stats['loss']) > 20:
+            raise error.TestFail('Server lost ping packets: %r.', stats)
+        logging.info('Ping successful.')

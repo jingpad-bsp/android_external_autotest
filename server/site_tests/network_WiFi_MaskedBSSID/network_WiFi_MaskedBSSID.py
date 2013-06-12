@@ -12,7 +12,7 @@ class network_WiFi_MaskedBSSID(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Test body.
 
         Set up two APs on the same channel/bssid but with different SSIDs.

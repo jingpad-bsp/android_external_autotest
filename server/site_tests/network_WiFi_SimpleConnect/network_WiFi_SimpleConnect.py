@@ -20,12 +20,12 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
         self._configurations = additional_params
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Sets up a router, connects to it, pings it, and repeats."""
         for router_conf, client_conf in self._configurations:
             self.context.configure(router_conf)
             client_conf.ssid = self.context.router.get_ssid()
-            self.assert_connect_wifi(client_conf)
-            self.assert_ping_from_dut()
+            self.context.assert_connect_wifi(client_conf)
+            self.context.assert_ping_from_dut()
             self.context.client.shill.disconnect(client_conf.ssid)
             self.context.router.deconfig()

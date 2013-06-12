@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
 from autotest_lib.client.common_lib.cros.wlan import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import rvr_test_base
 from autotest_lib.server.cros.wlan import iperf_runner
@@ -25,7 +23,7 @@ class network_WiFi_RateRange(rvr_test_base.RvRTestBase):
     def parse_additional_arguments(self, raw_cmdline_args, additional_params):
         """Hook into super class to take control files parameters.
 
-        This method is invoked before run_once_impl() below.
+        This method is invoked before run_once() below.
 
         @param raw_cmdline_args dict of parsed parameters from the autotest.
         @param additional_params list of dicts describing router configs.
@@ -44,7 +42,7 @@ class network_WiFi_RateRange(rvr_test_base.RvRTestBase):
                                 'iperf_config': str(iperf_config)})
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Sets up a router, connects to it, pings it, and repeats."""
         iperf_helper = iperf_runner.IperfRunner(
                 dut=self.context.client,
@@ -53,7 +51,7 @@ class network_WiFi_RateRange(rvr_test_base.RvRTestBase):
         self.context.configure(self._ap_config)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
-        self.assert_connect_wifi(assoc_params)
+        self.context.assert_connect_wifi(assoc_params)
 
         # FIXME(tgao): do not hard code
         atten_step = 2

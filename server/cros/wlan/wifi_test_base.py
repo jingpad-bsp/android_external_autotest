@@ -4,9 +4,7 @@
 
 import logging
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import test
 
 
@@ -27,45 +25,12 @@ class WiFiTestBase(test.test):
         return self._wifi_context
 
 
-    def assert_connect_wifi(self, wifi_params, expect_failure=False):
-        """Connect to a WiFi network and check for success.
-
-        Connect a DUT to a WiFi network and check that we connect successfully.
-
-        @param wifi_params AssociationParameters describing network to connect.
-        @param expect_failure bool True is connecting should fail.
-
-        """
-        logging.info('Connecting to %s.', wifi_params.ssid)
-        serialized_assoc_result = self.context.client.shill.connect_wifi(
-                wifi_params.serialize())
-        assoc_result = xmlrpc_datatypes.AssociationResult(
-                serialized=serialized_assoc_result)
-        logging.info('Finished connection attempt to %s with times: '
-                     'discovery=%.2f, association=%.2f, configuration=%.2f.',
-                     wifi_params.ssid,
-                     assoc_result.discovery_time,
-                     assoc_result.association_time,
-                     assoc_result.configuration_time)
-
-        if assoc_result.success and expect_failure:
-            raise error.TestFail(
-                    'Expected connect to fail, but it was successful.')
-
-        if not assoc_result.success and not expect_failure:
-            raise error.TestFail('Expected connect to succeed, but it failed '
-                                 'with reason: %s.' %
-                                 assoc_result.failure_reason)
-
-        logging.info('Connected successfully to %s.', wifi_params.ssid)
-
-
     def parse_additional_arguments(self, commandline_args, additional_params):
         """Parse additional arguments for use in test.
 
         Subclasses should override this method do any other commandline parsing
         and setting grabbing that they need to do.  For test clarity, do not
-        parse additional settings in the body of run_once_impl.
+        parse additional settings in the body of run_once.
 
         @param commandline_args dict of argument key, value pairs.
         @param additional_params object defined by test control file.
@@ -74,13 +39,8 @@ class WiFiTestBase(test.test):
         pass
 
 
-    def run_once(self, host, raw_cmdline_args, additional_params=None):
-        """Wrapper around bodies of test subclasses.
-
-        This is the entry point from autotest proper.  We use it to set up
-        an appropriate context for the test, call into the actual test logic,
-        and clean up the final state of the test.
-
+    def warmup(self, host, raw_cmdline_args, additional_params=None):
+        """
         Use the additional_params argument to pass in custom test data from
         control file to reuse test logic.  This object will be passed down via
         parse_additional_arguments.
@@ -95,16 +55,13 @@ class WiFiTestBase(test.test):
                      cmdline_args)
         self._wifi_context = self.get_context(host, cmdline_args,
                                               additional_params)
-        with self.context:
-            self.parse_additional_arguments(cmdline_args, additional_params)
-            logging.debug('Calling into actual test logic.')
-            self.run_once_impl()
-            logging.debug('Actual test logic completed successfully.')
+
+        self._wifi_context.setup()
+        self.parse_additional_arguments(cmdline_args, additional_params)
 
 
-    def run_once_impl(self):
-        """Body of the test.  Override this in your subclass."""
-        raise NotImplementedError('You must define your own run_once_impl()!')
+    def cleanup(self):
+        self._wifi_context.teardown()
 
 
     def get_context(self, host, cmdline_args, additional_params):

@@ -13,7 +13,7 @@ class network_WiFi_DTIMPeriod(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """DTIM period test.
 
         DTIM stands for delivery traffic information message and refers to
@@ -40,11 +40,11 @@ class network_WiFi_DTIMPeriod(wifi_cell_test_base.WiFiCellTestBase):
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
         self.context.client.powersave_switch(True)
-        self.assert_connect_wifi(assoc_params)
+        self.context.assert_connect_wifi(assoc_params)
         self.context.client.check_iw_link_value(
                 wifi_client.WiFiClient.IW_LITNK_KEY_DTIM_PERIOD,
                 dtim_val)
-        self.assert_ping_from_dut()
+        self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.client.powersave_switch(False)
         self.context.router.deconfig()

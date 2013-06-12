@@ -12,7 +12,7 @@ class network_WiFi_RxFrag(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
-    def run_once_impl(self):
+    def run_once(self):
         """Test body.
 
         When fragthreshold is set, packets larger than the threshold are
@@ -28,10 +28,14 @@ class network_WiFi_RxFrag(wifi_cell_test_base.WiFiCellTestBase):
         self.context.configure(configuration)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
-        self.assert_connect_wifi(assoc_params)
-        self.assert_ping_from_server(additional_ping_params={'size': 256})
-        self.assert_ping_from_server(additional_ping_params={'size': 512})
-        self.assert_ping_from_server(additional_ping_params={'size': 1024})
-        self.assert_ping_from_server(additional_ping_params={'size': 1500})
+        self.context.assert_connect_wifi(assoc_params)
+        self.context.assert_ping_from_server(
+                additional_ping_params={'size': 256})
+        self.context.assert_ping_from_server(
+                additional_ping_params={'size': 512})
+        self.context.assert_ping_from_server(
+                additional_ping_params={'size': 1024})
+        self.context.assert_ping_from_server(
+                additional_ping_params={'size': 1500})
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()
