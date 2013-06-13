@@ -88,7 +88,9 @@ SKIP = set((
     'ap_configurator_test.py',
     'chaos_base_test.py',
     'chaos_interop_test.py',
-    'monitor_db_functional_test.py'
+    'monitor_db_functional_test.py',
+    # crbug.com/249377
+    'reporting_unittest.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |
