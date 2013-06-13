@@ -35,10 +35,9 @@ class Attenuator(object):
     HOST2 = 'chromeos3-grover-host2.cros'
     VALID_HOSTS = [HOST1, HOST2]
     # Look up fixed path loss by AP frequency, host name and port number.
-    # TODO(tgao): recalibrate and measure fixed path loss in test cell #1.
-    FREQ_LOSS_MAP = {2437: {HOST1: [43, 43], HOST2: [43, 43]},
-                     5220: {HOST1: [46, 46], HOST2: [46, 46]},
-                     5765: {HOST1: [47, 48], HOST2: [47, 48]}}
+    FREQ_LOSS_MAP = {2437: {HOST1: [44, 44], HOST2: [43, 43]},
+                     5220: {HOST1: [49, 46], HOST2: [46, 46]},
+                     5765: {HOST1: [49, 47], HOST2: [47, 48]}}
     # We only use 2 ports out of the 4 available.
     PORTS = [0, 1]
 
@@ -158,18 +157,19 @@ class Attenuator(object):
                             total_db))
 
 
-    def _approximate_frequency(self, freq):
+    @staticmethod
+    def _approximate_frequency(freq):
         """Finds an approximate frequency to freq.
 
-        In case freq is not present in self.FREQ_LOSS_MAP, we use a value
+        In case freq is not present in FREQ_LOSS_MAP, we use a value
         from a nearby channel as an approximation.
 
         @param freq an integer, frequency in MHz.
-        @returns an integer, approximate frequency from self.FREQ_LOSS_MAP.
+        @returns an integer, approximate frequency from FREQ_LOSS_MAP.
         """
         old_offset = None
         approx_freq = None
-        for f in sorted(self.FREQ_LOSS_MAP.keys()):
+        for f in sorted(Attenuator.FREQ_LOSS_MAP.keys()):
             new_offset = abs(f - freq)
             if old_offset is not None and new_offset > old_offset:
                 break
