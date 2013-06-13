@@ -7,12 +7,14 @@ import argparse
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 
 import common
-from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros import dev_server, retry
 from autotest_lib.server.cros.dynamic_suite import suite
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server import autoserv_utils
@@ -25,6 +27,11 @@ except ImportError:
     print '  - Be run in the chroot.'
     print '  - (not yet supported) be run after running '
     print '    ../utils/build_externals.py'
+
+_autoserv_proc = None
+_sigint_handler_lock = threading.Lock()
+
+_AUTOSERV_SIGINT_TIMEOUT_SECONDS = 5
 
 
 def schedule_local_suite(autotest_path, suite_name, afe, build=''):
@@ -89,7 +96,10 @@ def run_job(job, host, sysroot_autotest_path):
                 os.path.join(sysroot_autotest_path, 'server'),
                 machines=host, job=job, verbose=False,
                 extra_args=[temp_file.name])
-        subprocess.call(command)
+        global _autoserv_proc
+        _autoserv_proc = subprocess.Popen(command)
+        _autoserv_proc.wait()
+        _autoserv_proc = None
 
 
 def setup_local_afe():
@@ -183,6 +193,40 @@ def parse_arguments(argv):
     return parser.parse_args(argv)
 
 
+def sigint_handler(signum, stack_frame):
+    #pylint: disable-msg=C0111
+    """Handle SIGINT or SIGTERM to a local test_that run.
+
+    This handler sends a SIGINT to the running autoserv process,
+    if one is running, giving it up to 5 seconds to clean up and exit. After
+    the timeout elapses, autoserv is killed. In either case, after autoserv
+    exits then this process exits with status 1.
+    """
+    # If multiple signals arrive before handler is unset, ignore duplicates
+    if not _sigint_handler_lock.acquire(False):
+        return
+    try:
+        # Ignore future signals by unsetting handler.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+
+        logging.warning('Received SIGINT or SIGTERM. Cleaning up and exiting.')
+        if _autoserv_proc:
+            logging.warning('Sending SIGINT to autoserv process. Waiting up '
+                            'to %s seconds for cleanup.',
+                            _AUTOSERV_SIGINT_TIMEOUT_SECONDS)
+            _autoserv_proc.send_signal(signal.SIGINT)
+            timed_out, _ = retry.timeout(_autoserv_proc.wait,
+                    timeout_sec=_AUTOSERV_SIGINT_TIMEOUT_SECONDS)
+            if timed_out:
+                _autoserv_proc.kill()
+                logging.warning('Timed out waiting for autoserv to handle '
+                                'SIGINT. Killed autoserv.')
+    finally:
+        _sigint_handler_lock.release() # this is not really necessary?
+        sys.exit(1)
+
+
 def main(argv):
     """
     Entry point for test_that script.
@@ -224,11 +268,24 @@ def main(argv):
     if os.path.dirname(realpath) != sysroot_site_utils_path:
         script_command = os.path.join(sysroot_site_utils_path,
                                       os.path.basename(realpath))
-        return subprocess.call([script_command] + argv)
+        proc = None
+        def resend_sig(signum, stack_frame):
+            #pylint: disable-msg=C0111
+            if proc:
+                proc.send_signal(signum)
+        signal.signal(signal.SIGINT, resend_sig)
+        signal.signal(signal.SIGTERM, resend_sig)
+
+        proc = subprocess.Popen([script_command] + argv)
+
+        return proc.wait()
 
     # Hard coded to True temporarily. This will eventually be parsed to false
     # if we are doing a run in the test lab.
     local_run = True
+
+    signal.signal(signal.SIGINT, sigint_handler)
+    signal.signal(signal.SIGTERM, sigint_handler)
 
     if local_run:
         afe = setup_local_afe()
