@@ -173,6 +173,7 @@ class ProjectHostingApiClient():
         comments. Eg: if we're searching for the marker '123', issues that
         contain a comment of '123' will appear in the output, but the string
         '123' itself may not, because the output only contains issue summaries.
+        Also note that this method will only search through open issues.
 
         @param search_marker: The anchor string used in the search.
         @raises: ProjectHostingApiException, if the request execution fails.
@@ -181,7 +182,7 @@ class ProjectHostingApiClient():
         """
         issues = self._codesite_service.issues()
         request = issues.list(projectId=self._project_name,
-                              q=search_marker,
+                              q=search_marker, can='open',
                               maxResults=self._max_results_for_issue)
         return self._execute_request(request)
 
