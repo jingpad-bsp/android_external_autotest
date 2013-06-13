@@ -112,7 +112,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         raw = self._shill_proxy.connect_to_wifi_network(
                 params.ssid,
                 params.security,
-                params.psk,
+                params.security_parameters,
                 params.save_credentials,
                 # FIXME(wiley): comment out b/c this breaks RvR tests
                 #station_type=params.station_type,

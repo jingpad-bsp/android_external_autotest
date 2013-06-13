@@ -3,12 +3,12 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib.cros import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
+
 
 class AssociationParameters(xmlrpc_datatypes.XmlRpcStruct):
     """Describes parameters used in WiFi connection attempts."""
 
-    DEFAULT_SECURITY = 'none'
-    DEFAULT_PSK = ''
     DEFAULT_DISCOVERY_TIMEOUT = 15
     DEFAULT_ASSOCIATION_TIMEOUT = 15
     DEFAULT_CONFIGURATION_TIMEOUT = 15
@@ -16,6 +16,18 @@ class AssociationParameters(xmlrpc_datatypes.XmlRpcStruct):
     STATION_TYPE_MANAGED = 'managed'
     # Mode for certain kinds of p2p networks like old Android phone hotspots.
     STATION_TYPE_IBSS = 'ibss'
+
+    @property
+    def security(self):
+        """@return string security type for this network."""
+        return self.security_config.security
+
+
+    @property
+    def security_parameters(self):
+        """@return dict of service property/value pairs related to security."""
+        return self.security_config.get_shill_service_properties()
+
 
     def __init__(self, serialized=None):
         """Construct an AssociationParameters.
@@ -28,10 +40,11 @@ class AssociationParameters(xmlrpc_datatypes.XmlRpcStruct):
             serialized = {}
         # The network to connect to (e.g. 'GoogleGuest').
         self.ssid = serialized.get('ssid', None)
-        # Which encryption to use (e.g. 'wpa').
-        self.security = serialized.get('security', self.DEFAULT_SECURITY)
-        # Passphrase for this network (e.g. 'password123').
-        self.psk = serialized.get('psk', self.DEFAULT_PSK)
+        # Marshall our bundle of security configuration.
+        serialized_security_config = serialized.get('security_config', {})
+        self.security_config = (
+                xmlrpc_security_types.deserialize(serialized_security_config) or
+                xmlrpc_security_types.SecurityConfig())
         # Max delta in seconds between XMLRPC call to connect in the proxy
         # and when shill finds the service.  Presumably callers call connect
         # quickly after configuring the AP so that this is an approximation
