@@ -133,7 +133,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
         predicate = Suite.test_name_equals_predicate('name-data_five')
-        suite = Suite.create_from_predicates(predicate, self._BUILD,
+        suite = Suite.create_from_predicates([predicate], self._BUILD,
                                        devserver=None,
                                        cf_getter=self.getter,
                                        afe=self.afe, tko=self.tko)
