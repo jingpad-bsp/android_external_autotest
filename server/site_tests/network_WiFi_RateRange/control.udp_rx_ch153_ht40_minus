@@ -8,8 +8,8 @@ TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 
 DOC = """
-This test takes rate vs. range measurement on for TCP downstream test
-(AP -> DUT) using channel 153 (5765MHz), HT40+.
+This test takes rate vs. range measurement on for UDP downstream test
+(AP -> DUT) using channel 153 (5765MHz), HT40-.
 """
 
 
@@ -21,13 +21,13 @@ def run(machine):
     # AP config params.
     n_mode = hostap_config.HostapConfig.MODE_11N_PURE
     caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
-            hostap_config.HostapConfig.N_CAPABILITY_HT40_PLUS]
+            hostap_config.HostapConfig.N_CAPABILITY_HT40_MINUS]
     ap_config = hostap_config.HostapConfig(channel=153,
                                            mode=n_mode,
                                            n_capabilities=caps)
 
     iperf_config_obj = iperf_config.IperfConfig(
-            protocol=iperf_config.IperfConfig.PROTOCOL_TCP,
+            protocol=iperf_config.IperfConfig.PROTOCOL_UDP,
             is_downstream=True,
             test_time=60)
 
