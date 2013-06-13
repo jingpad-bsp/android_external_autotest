@@ -114,7 +114,9 @@ public class UserPreferencesView extends TabView implements ClickHandler {
         values.put("id", user.get("id"));
         values.put("reboot_before", new JSONString(rebootBefore.getSelectedChoice()));
         values.put("reboot_after", new JSONString(rebootAfter.getSelectedChoice()));
-        values.put("drone_set", new JSONString(droneSet.getItemText(droneSet.getSelectedIndex())));
+        if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
+          values.put("drone_set", new JSONString(droneSet.getItemText(droneSet.getSelectedIndex())));
+        }
         values.put("show_experimental", JSONBoolean.getInstance(showExperimental.getValue()));
         proxy.rpcCall("modify_user", values, new JsonRpcCallback() {
             @Override
