@@ -1,0 +1,33 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "factory_TPM"
+SUITE = ""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "factory"
+TEST_TYPE = "client"
+
+DOC = """
+Verifies that the TPM is correctly endorsed and attestation by this TPM will be
+possible.
+
+For this test to succeed the TPM must be enabled and either not owned or owned
+using the normal flow which also collects endorsement data from the TPM before
+discarding the owner password.  This test will take ownership of the TPM if it
+is not already owned.
+
+This test will clear the TPM at the end of the test.  For this to work either
+the TPM must not be owned when the test starts or the owner password must be
+available.  Once the TPM has been cleared it will be in a disabled state and the
+system must be restarted before the TPM can be used again (including running
+this test again).
+
+On systems where 'crossystem clear_tpm_owner_request' is available it is the
+recommended method for clearing the TPM because it does not leave the TPM in a
+disabled state.
+"""
+
+job.run_test('factory_TPM', clear_tpm_owner=True)

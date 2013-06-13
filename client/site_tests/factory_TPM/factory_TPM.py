@@ -6,8 +6,8 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, pexpect
 from autotest_lib.client.cros import cryptohome
 
-
 class factory_TPM(test.test):
+    """ Tests the TPM for a valid endorsement key."""
     version = 1
 
     def __tpm_clear(self, tpm_password):
@@ -22,17 +22,18 @@ class factory_TPM(test.test):
         finally:
             tpm_clear.close()
 
-    def run_once(self):
+    def run_once(self, clear_tpm_owner=True):
         status = cryptohome.get_tpm_status()
         if not status['Enabled']:
             raise error.TestError("TPM is not enabled.")
         if not status['Owned']:
             cryptohome.take_tpm_ownership()
-        status = cryptohome.get_tpm_status()
-        if status['Password'] == '':
-            raise error.TestError("TPM owner password is not available. "
-                                  "Boot in recovery mode to clear the TPM.")
         result = cryptohome.verify_ek()
-        self.__tpm_clear(status['Password'])
+        if clear_tpm_owner:
+            status = cryptohome.get_tpm_status()
+            if status['Password'] == '':
+                raise error.TestError("TPM owner password is not available. "
+                                      "Boot in recovery mode to clear the TPM.")
+            self.__tpm_clear(status['Password'])
         if not result:
             raise error.TestFail("TPM endorsement key is not valid.")

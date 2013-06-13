@@ -14,10 +14,10 @@ DOC = """
 Verifies that the TPM is correctly endorsed and attestation by this TPM will be
 possible.
 
-For this test to succeed the TPM must be enabled but not owned.  This test will
-take ownership of the TPM and will clear the TPM.  When this test has finished
-the TPM will be in a disabled state.  The system must be restarted before using
-the TPM (including running this test again).
+For this test to succeed the TPM must be enabled and either not owned or owned
+using the normal flow which also collects endorsement data from the TPM before
+discarding the owner password.  This test will take ownership of the TPM if it
+is not already owned.  This test may be run repeatedly without reboot.
 """
 
-job.run_test('factory_TPM')
+job.run_test('factory_TPM', clear_tpm_owner=False)
