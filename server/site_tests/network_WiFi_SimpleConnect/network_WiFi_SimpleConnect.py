@@ -23,6 +23,8 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self):
         """Sets up a router, connects to it, pings it, and repeats."""
         for router_conf, client_conf in self._configurations:
+            router_conf.security_config.install_files(self.context.router.host,
+                                                      self.context.client.host)
             self.context.configure(router_conf)
             client_conf.ssid = self.context.router.get_ssid()
             self.context.assert_connect_wifi(client_conf)

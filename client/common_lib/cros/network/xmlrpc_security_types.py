@@ -2,7 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import os
+import random
+import stat
+import string
 import sys
+import tempfile
 
 from autotest_lib.client.common_lib.cros import xmlrpc_datatypes
 
@@ -54,6 +60,17 @@ class SecurityConfig(xmlrpc_datatypes.XmlRpcStruct):
     def get_shill_service_properties(self):
         """@return dict of shill service properties."""
         return {}
+
+
+    def install_files(self, router_host, client_host):
+        """Install the necessary credentials on the hosts involved.
+
+        @param router_host host object representing the router.
+        @param client_host host object representing the DUT.
+
+        """
+        # Unless we're installing certificates, we usually don't need this.
+        pass
 
 
     def __repr__(self):
@@ -171,3 +188,144 @@ class WPAConfig(SecurityConfig):
                 self.wpa_mode,
                 self.wpa_ciphers,
                 self.wpa2_ciphers)
+
+
+class DynamicWEPConfig(SecurityConfig):
+    """Configuration settings bundle for dynamic WEP.
+
+    This is a WEP encrypted connection where the keys are negotiated after the
+    client authenticates via 802.1x.
+
+    """
+    DEFAULT_REKEY_PERIOD = 20
+    SERVICE_PROPERTY_CA_CERT = 'EAP.CACert'
+    SERVICE_PROPERTY_CLIENT_CERT = 'EAP.ClientCert'
+    SERVICE_PROPERTY_EAP_IDENTITY = 'EAP.Identity'
+    SERVICE_PROPERTY_EAP_KEY_MGMT = 'EAP.KeyMgmt'
+    SERVICE_PROPERTY_PRIVATE_KEY = 'EAP.PrivateKey'
+
+    def __init__(self, serialized=None,
+                 use_short_keys=None, wep_rekey_period=None,
+                 server_ca_cert=None, server_cert=None, server_key=None,
+                 client_ca_cert=None, client_cert=None, client_key=None):
+        """Construct a DynamicWEPConfig.
+
+        @param serialized dict containing a serialized DynamicWEPConfig.
+        @param use_short_keys bool force hostapd to use 40 bit WEP keys.
+        @param wep_rekey_period int number of second between rekeys.
+        @param server_ca_cert string PEM encoded CA certificate for the server.
+        @param server_cert string PEM encoded identity certificate for server.
+        @param server_key string PEM encoded private key for server.
+        @param client_ca_cert string PEM encoded CA certificate for client.
+        @param client_cert string PEM encoded identity certificate for client.
+        @param client_key string PEM encoded private key for client.
+
+        """
+        super(DynamicWEPConfig, self).__init__(serialized=serialized,
+                                               security='wep')
+        if serialized is None:
+            serialized = {}
+        self.use_short_keys = serialized.get('use_short_keys',
+                                             use_short_keys or False)
+        self.wep_rekey_period = serialized.get('wep_rekey_period',
+                                               wep_rekey_period or
+                                               self.DEFAULT_REKEY_PERIOD)
+        self.server_ca_cert = serialized.get('server_ca_cert', server_ca_cert)
+        self.server_cert = serialized.get('server_cert', server_cert)
+        self.server_key = serialized.get('server_key', server_key)
+        self.client_ca_cert = serialized.get('client_ca_cert', client_ca_cert)
+        self.client_cert = serialized.get('client_cert', client_cert)
+        self.client_key = serialized.get('client_key', client_key)
+
+        suffix_letters = string.ascii_lowercase + string.digits
+        suffix = ''.join(random.choice(suffix_letters) for x in range(10))
+        logging.debug('Choosing unique suffix %s.', suffix)
+        self.server_ca_cert_file = serialized.get(
+                'server_ca_cert_file',
+                '/tmp/hostapd_ca_cert_file.' + suffix)
+        self.server_cert_file = serialized.get(
+                'server_cert_file',
+                '/tmp/hostapd_cert_file.' + suffix)
+        self.server_key_file = serialized.get(
+                'server_key_file',
+                '/tmp/hostapd_key_file.' + suffix)
+        self.server_eap_user_file = serialized.get(
+                'server_eap_user_file',
+                '/tmp/hostapd_eap_user_file.' + suffix)
+        self.client_ca_cert_file = serialized.get(
+                'client_ca_cert_file',
+                '/tmp/pkg_ca_cert.' + suffix)
+        self.client_cert_file = serialized.get(
+                'client_cert_file',
+                '/tmp/pkg_cert.' + suffix)
+        self.client_key_file = serialized.get(
+                'client_key_file',
+                '/tmp/pkg_key.' + suffix)
+
+
+    def get_hostapd_config(self):
+        """@return dict fragment of hostapd configuration for security."""
+        key_len = 13 # 128 bit WEP, 104 secret bits.
+        if self.use_short_keys:
+            key_len = 5 # 64 bit WEP, 40 bits of secret.
+        ret = {'ieee8021x': 1, # Enable 802.1x support.
+               'eap_server' : 1, # Do EAP inside hostapd to avoid RADIUS.
+               'wep_key_len_broadcast': key_len,
+               'wep_key_len_unicast': key_len,
+               'wep_rekey_period': self.wep_rekey_period,
+               'ca_cert': self.server_ca_cert_file,
+               'server_cert': self.server_cert_file,
+               'private_key': self.server_key_file,
+               'eap_user_file': self.server_eap_user_file}
+        return ret
+
+
+    def install_files(self, router_host, client_host):
+        """Install the necessary credentials on the hosts involved.
+
+        @param router_host host object representing the router.
+        @param client_host host object representing the DUT.
+
+        """
+        files = [(router_host, self.server_ca_cert, self.server_ca_cert_file),
+                 (router_host, self.server_cert, self.server_cert_file),
+                 (router_host, self.server_key, self.server_key_file),
+                 (router_host, '* TLS', self.server_eap_user_file),
+                 (client_host, self.client_ca_cert, self.client_ca_cert_file),
+                 (client_host, self.client_cert, self.client_cert_file),
+                 (client_host, self.client_key, self.client_key_file)]
+        for host, content, path in files:
+            # Write the contents to local disk first so we can use the easy
+            # built in mechanism to do this.
+            with tempfile.NamedTemporaryFile() as f:
+                f.write(content)
+                f.flush()
+                os.chmod(f.name, stat.S_IRUSR | stat.S_IWUSR |
+                                 stat.S_IRGRP | stat.S_IWGRP |
+                                 stat.S_IROTH | stat.S_IWOTH)
+                host.send_file(f.name, path, delete_dest=True)
+
+
+    def get_shill_service_properties(self):
+        """@return dict of shill service properties."""
+        return {self.SERVICE_PROPERTY_EAP_KEY_MGMT: 'IEEE8021X',
+                # We hardcoded this user into those certificates.
+                self.SERVICE_PROPERTY_EAP_IDENTITY: 'chromeos',
+                self.SERVICE_PROPERTY_CA_CERT: self.client_ca_cert_file,
+                self.SERVICE_PROPERTY_CLIENT_CERT: self.client_cert_file,
+                self.SERVICE_PROPERTY_PRIVATE_KEY: self.client_key_file}
+
+
+    def __repr__(self):
+        return ('%s(use_short_keys=%r, wep_rekey_period=%r, '
+                'server_ca_cert=%r, server_cert=%r, server_key=%r, '
+                'client_ca_cert=%r, client_cert=%r, client_key=%r)' % (
+                self.__class__.__name__,
+                self.use_short_keys,
+                self.wep_rekey_period,
+                self.server_ca_cert,
+                self.server_cert,
+                self.server_key,
+                self.client_ca_cert,
+                self.client_cert,
+                self.client_key))
