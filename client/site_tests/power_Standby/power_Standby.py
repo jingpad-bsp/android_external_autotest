@@ -29,13 +29,10 @@ class power_Standby(test.test):
         # Query initial power status
         power_stats = power_status.get_status()
         power_stats.assert_battery_state(percent_initial_charge_min)
-        charge_avail = power_stats.battery[0].charge_now
+        charge_start = power_stats.battery[0].charge_now
+        voltage_start = power_stats.battery[0].voltage_now
 
-        voltage_design = power_stats.battery[0].voltage_min_design
-        if voltage_design == 0:
-            voltage_design = power_stats.battery[0].voltage_max_design
-
-        max_hours = charge_avail * voltage_design / \
+        max_hours = charge_start * voltage_start / \
             (max_milliwatts_standby / 1000)
         if max_hours < test_hours:
             raise error.TestFail('Battery not charged adequately for test')
@@ -71,14 +68,14 @@ class power_Standby(test.test):
             elapsed_hours += actual_hours
             logging.debug("elapsed_hours = %.4f", elapsed_hours)
 
-
-        charge_used = charge_avail - power_stats.battery[0].charge_now
-        if charge_used <= 0:
-            raise error.TestFail("Charge used reading is suspect.")
+        charge_end = power_stats.battery[0].charge_now
+        voltage_end = power_stats.battery[0].voltage_now
         standby_hours = power_stats.battery[0].charge_full_design / \
-            charge_used * elapsed_hours
-        energy_used = charge_used * power_stats.battery[0].voltage_min_design
-        standby_milliwatts = energy_used / standby_hours * 1000
+            (charge_start - charge_end) * elapsed_hours
+        energy_used = charge_start * voltage_start - charge_end * voltage_end
+        if energy_used <= 0:
+            raise error.TestError("Energy used reading is suspect.")
+        standby_milliwatts = energy_used / elapsed_hours * 1000
 
         results = {}
         results['milliwatts_standby_power'] = standby_milliwatts
