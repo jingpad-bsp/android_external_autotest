@@ -18,9 +18,11 @@ _LSOF_USER = 2
 _LSOF_FD = 3
 _LSOF_TYPE = 4
 _LSOF_DEVICE = 5
+# In certain cases, the size/offset column is empty, making it more
+# reliable to locate the last couple columns by counting from the right.
 _LSOF_SIZE_OFF = 6
-_LSOF_NODE = 7
-_LSOF_NAME = 8
+_LSOF_NODE = -3
+_LSOF_NAME = -2
 
 # We do this as a UITest so that we include any daemons that
 # might be spawned at login, in our test results.
