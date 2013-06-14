@@ -8,38 +8,20 @@
 import datetime, logging, shelve, sys
 
 import common
-from autotest_lib.client.common_lib import global_config, mail
-from autotest_lib.database import database_connection
+from autotest_lib.client.common_lib import mail
+from autotest_lib.frontend import setup_django_readonly_environment
 
+# Django and the models are only setup after
+# the setup_django_readonly_environment module is imported.
+from autotest_lib.frontend.tko import models as tko_models
+from django.db import models as django_models
 
-_GLOBAL_CONF = global_config.global_config
-_CONF_SECTION = 'AUTOTEST_WEB'
-
-_MYSQL_READONLY_LOGIN_CREDENTIALS = {
-    'host': _GLOBAL_CONF.get_config_value(_CONF_SECTION, 'readonly_host'),
-    'username': _GLOBAL_CONF.get_config_value(_CONF_SECTION, 'readonly_user'),
-    'password': _GLOBAL_CONF.get_config_value(
-            _CONF_SECTION, 'readonly_password'),
-    'db_name': _GLOBAL_CONF.get_config_value(_CONF_SECTION, 'database'),
-}
 
 _STORAGE_FILE = 'failure_storage'
 _DAYS_TO_BE_FAILING_TOO_LONG = 60
 _TEST_PASS_STATUS_INDEX = 6
 _MAIL_RESULTS_FROM = 'chromeos-test-health@google.com'
 _MAIL_RESULTS_TO = 'chromeos-lab-infrastructure@google.com'
-
-
-def connect_to_db():
-    """
-    Create a readonly connection to the Autotest database.
-
-    @return a readonly connection to the Autotest database.
-
-    """
-    db = database_connection.DatabaseConnection(_CONF_SECTION)
-    db.connect(**_MYSQL_READONLY_LOGIN_CREDENTIALS)
-    return db
 
 
 def load_storage():
@@ -65,49 +47,46 @@ def save_storage(storage):
     storage.close()
 
 
-def get_last_pass_times(db):
+def get_last_pass_times():
     """
     Get all the tests that have passed and the time they last passed.
 
-    @param db: The Autotest database connection.
     @return the dict of test_name:last_finish_time pairs for tests that have
             passed.
 
     """
-    query = ('SELECT test, MAX(started_time) FROM tko_tests '
-             'WHERE status = %s GROUP BY test' % _TEST_PASS_STATUS_INDEX)
+    results = tko_models.Test.objects.values('test').filter(
+        status=_TEST_PASS_STATUS_INDEX).annotate(
+        last_pass=django_models.Max('started_time'))
+    # The shelve module does not accept Unicode objects as keys but utf-8
+    # strings are.
+    return {result['test'].encode('utf8'): result['last_pass']
+            for result in results}
 
-    passed_tests = {result[0]: result[1] for result in db.execute(query)}
 
-    return passed_tests
-
-
-def get_all_test_names(db):
+def get_all_test_names():
     """
     Get all the test names from the database.
 
-    @param db: The Autotest database connection.
     @return a list of all the test names.
 
     """
-    query = 'SELECT DISTINCT test FROM tko_tests'
-    return [row[0] for row in db.execute(query)]
+    test_names = tko_models.Test.objects.values('test').distinct()
+    return [test['test'].encode('utf8') for test in test_names]
 
 
-def get_tests_to_analyze(db):
+def get_tests_to_analyze():
     """
     Get all the tests as well as the last time they have passed.
 
     The minimum datetime is given as last pass time for tests that have never
     passed.
 
-    @param db: The Autotest database connection.
-
     @return the dict of test_name:last_finish_time pairs.
 
     """
-    last_passes = get_last_pass_times(db)
-    all_test_names = get_all_test_names(db)
+    last_passes = get_last_pass_times()
+    all_test_names = get_all_test_names()
     failures_names = (set(all_test_names) - set(last_passes.keys()))
     always_failed = {test: datetime.datetime.min for test in failures_names}
     return dict(always_failed.items() + last_passes.items())
@@ -161,9 +140,8 @@ def main():
     important if a nice way to test this code can be determined.
 
     """
-    db = connect_to_db()
     storage = load_storage()
-    tests = get_tests_to_analyze(db)
+    tests = get_tests_to_analyze()
     email_about_test_failure(tests, storage)
     save_storage(storage)
 

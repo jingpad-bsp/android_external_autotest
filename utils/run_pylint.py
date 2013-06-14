@@ -63,7 +63,8 @@ ROOT_MODULE = 'autotest_lib.'
 # A list of modules for pylint to ignore, specifically, these modules
 # are imported for their side-effects and are not meant to be used.
 _IGNORE_MODULES=['common', 'setup_django_environment',
-                 'setup_django_lite_environment', 'setup_test_environment']
+                 'setup_django_lite_environment',
+                 'setup_django_readonly_environment', 'setup_test_environment']
 
 
 class pylint_error(Exception):
