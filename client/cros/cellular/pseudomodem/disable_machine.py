@@ -135,7 +135,13 @@ class DisableMachine(state_machine.StateMachine):
                 # cycle has been initiated but it hasn't triggered any state
                 # transitions yet would not be detected in a state handler.
                 logging.info('There is an ongoing Enable, canceling it.')
+                logging.info('This should bring the modem to a disabled state.'
+                             ' DisableMachine will not start.')
                 self._modem.enable_step.Cancel()
+                assert self._modem.Get(mm1.I_MODEM, 'State') == \
+                    mm1.MM_MODEM_STATE_DISABLED
+                if self.return_cb:
+                    self.return_cb()
             if self._modem.connect_step:
                 logging.info('There is an ongoing Connect, canceling it.')
                 self._modem.connect_step.Cancel()
