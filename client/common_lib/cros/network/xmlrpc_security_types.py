@@ -95,3 +95,79 @@ class WEPConfig(SecurityConfig):
         return '%s(wep_keys=%r, wep_default_key=%r)' % (self.__class__.__name__,
                                                         self.wep_keys,
                                                         self.wep_default_key)
+
+
+class WPAConfig(SecurityConfig):
+    """Abstracts security configuration for a WPA encrypted WiFi network."""
+
+    # We have the option of turning on WPA, WPA2, or both via a bitfield.
+    MODE_PURE_WPA = 1
+    MODE_PURE_WPA2 = 2
+    MODE_MIXED_WPA = MODE_PURE_WPA | MODE_PURE_WPA2
+
+    # WPA2 mandates the use of AES in CCMP mode.
+    # WPA allows the use of 'ordinary' AES, but mandates support for TKIP.
+    # The protocol however seems to indicate that you just list a bunch of
+    # different ciphers that you support and we'll start speaking one.
+    CIPHER_CCMP = 'CCMP'
+    CIPHER_TKIP = 'TKIP'
+
+    def __init__(self, serialized=None, psk=None,
+                 wpa_mode=None, wpa_ciphers=None, wpa2_ciphers=None):
+        """Construct a WPAConfig.
+
+        @param serialized dict a serialized WPAConfig.
+        @param psk string a passphrase (64 hex characters or an ASCII phrase up
+                to 63 characters long).
+        @param wpa_mode int one of MODE_* above.
+        @param wpa_ciphers list of ciphers to advertise in the WPA IE.
+        @param wpa2_ciphers list of ciphers to advertise in the WPA2 IE.
+                hostapd will fall back on WPA ciphers for WPA2 if this is
+                left unpopulated.
+
+        """
+        super(WPAConfig, self).__init__(serialized=serialized, security='psk')
+        if serialized is None:
+            serialized = {}
+        self.psk = serialized.get('psk', psk or '')
+        self.wpa_mode = serialized.get('wpa_mode', wpa_mode or None)
+        self.wpa_ciphers = serialized.get('wpa_ciphers', wpa_ciphers or [])
+        self.wpa2_ciphers = serialized.get('wpa2_ciphers', wpa2_ciphers or [])
+
+
+    def get_hostapd_config(self):
+        """@return dict fragment of hostapd configuration for security."""
+        if not self.wpa_mode:
+            raise error.TestFail('Cannot configure WPA unless we know which '
+                                 'mode to use.')
+
+        if self.MODE_PURE_WPA & self.wpa_mode and not self.wpa_ciphers:
+            raise error.TestFail('Cannot configure WPA unless we know which '
+                                 'ciphers to use.')
+
+        if not self.wpa_ciphers and not self.wpa2_ciphers:
+            raise error.TestFail('Cannot configure WPA2 unless we have some '
+                                 'ciphers.')
+
+        ret = {'wpa': self.wpa_mode,
+               'wpa_key_mgmt': 'WPA-PSK',
+               'wpa_passphrase': self.psk}
+        if self.wpa_ciphers:
+            ret['wpa_pairwise'] = ' '.join(self.wpa_ciphers)
+        if self.wpa2_ciphers:
+            ret['rsn_pairwise'] = ' '.join(self.wpa2_ciphers)
+        return ret
+
+
+    def get_shill_service_properties(self):
+        """@return dict of shill service properties."""
+        return {self.SERVICE_PROPERTY_PASSPHRASE: self.psk}
+
+
+    def __repr__(self):
+        return '%s(psk=%r, wpa_mode=%r, wpa_ciphers=%r, wpa2_ciphers=%r)' % (
+                self.__class__.__name__,
+                self.psk,
+                self.wpa_mode,
+                self.wpa_ciphers,
+                self.wpa2_ciphers)
