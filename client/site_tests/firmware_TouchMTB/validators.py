@@ -739,19 +739,37 @@ class PhysicalClickValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, fingers, mf=None, device=None):
-        name = self.__class__.__name__
+        self.criteria_str = criteria_str
+        self.name = self.__class__.__name__
         super(PhysicalClickValidator, self).__init__(criteria_str, mf, device,
-                                                     name)
+                                                     self.name)
         self.fingers = fingers
+
+    def _get_expected_number(self):
+        """Get the expected number of counts from the criteria string.
+
+        E.g., criteria_str: '== 1'
+        """
+        try:
+            expected_count = int(self.criteria_str.split('==')[-1].strip())
+        except Exception, e:
+            print 'Error: %s in the criteria string of %s' % (e, self.name)
+            exit(-1)
+        return expected_count
 
     def check(self, packets, variation=None):
         """Check the number of packets in the specified slot."""
         self.init_check(packets)
-        # Get the number of packets in that slot
-        count = self.packets.get_physical_clicks(self.fingers)
+        # Get the number of physical clicks made with the specified number
+        # of fingers.
+        click_count = self.packets.get_physical_clicks(self.fingers)
         msg = 'Count of %d-finger physical clicks: %s'
-        self.log_details(msg % (self.fingers, count))
-        self.vlog.score = self.fc.mf.grade(count)
+        self.log_details(msg % (self.fingers, click_count))
+        expected_click_count = self._get_expected_number()
+        click_hit_rate = float(click_count) / expected_click_count
+        metric_name = '{}f_click_hit_rate_%'.format(self.fingers)
+        self.vlog.metrics = [firmware_log.Metric(metric_name, click_hit_rate)]
+        self.vlog.score = self.fc.mf.grade(click_count)
         return self.vlog
 
 

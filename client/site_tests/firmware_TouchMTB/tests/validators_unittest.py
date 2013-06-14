@@ -5,6 +5,7 @@
 
 """This module contains unit tests for the classes in the validators module."""
 
+import glob
 import os.path
 import unittest
 
@@ -36,6 +37,8 @@ ALEX= 'alex'
 LUMPY = 'lumpy'
 LINK = 'link'
 PLATFORMS = [ALEX, LUMPY, LINK]
+
+unittest_path_lumpy = os.path.join(os.getcwd(), 'tests/logs/lumpy')
 
 
 def create_mocked_devices():
@@ -119,7 +122,6 @@ class DrumrollValidatorTest(BaseValidatorTest):
     def setUp(self):
         super(DrumrollValidatorTest, self).setUp()
         self.criteria = conf.drumroll_criteria
-        self.unittest_path_lumpy = os.path.join(os.getcwd(), 'tests/logs/lumpy')
 
     def _test_drumroll(self, filename, criteria, device):
         packets = parse_tests_data(filename)
@@ -128,8 +130,7 @@ class DrumrollValidatorTest(BaseValidatorTest):
         return vlog.score
 
     def _get_drumroll_metrics(self, filename, criteria, device):
-        packets = parse_tests_data(filename,
-                                   gesture_dir=self.unittest_path_lumpy)
+        packets = parse_tests_data(filename, gesture_dir=unittest_path_lumpy)
         validator = DrumrollValidator(criteria, device=device)
         metrics = validator.check(packets).metrics
         return metrics
@@ -463,6 +464,63 @@ class NoGapValidatorTest(BaseValidatorTest):
         mocked_device = self.mocked_device[LUMPY]
         score = self._test_no_gap(filename, self.criteria, mocked_device, 1)
         self.assertTrue(score <= 0.3)
+
+
+class PhysicalClickValidatorTest(BaseValidatorTest):
+    """Unit tests for PhysicalClickValidator class."""
+
+    def setUp(self):
+        super(PhysicalClickValidatorTest, self).setUp()
+        self.device = self.mocked_device[LUMPY]
+        self.criteria = '== 1'
+
+    def _test_physical_clicks(self, gesture_dir, files, expected_score):
+        gesture_path = os.path.join(unittest_path_lumpy, gesture_dir)
+        for filename, fingers in files.items():
+            packets = parse_tests_data(os.path.join(gesture_path, filename))
+            validator = PhysicalClickValidator(self.criteria,
+                                               fingers=fingers,
+                                               device=self.device)
+            vlog = validator.check(packets)
+            actual_score = vlog.score
+            self.assertTrue(actual_score == expected_score)
+
+    def test_physical_clicks_success(self):
+        """All physcial click files in the gesture_dir should pass."""
+        gesture_dir = '20130506_030025-fw_11.27-robot_sim'
+        gesture_path = os.path.join(unittest_path_lumpy, gesture_dir)
+
+        # Get all 1f physical click files.
+        file_prefix = 'one_finger_physical_click'
+        fingers = 1
+        files1 = [(filepath, fingers) for filepath in glob.glob(
+            os.path.join(gesture_path, file_prefix + '*.dat'))]
+
+        # Get all 2f physical click files.
+        file_prefix = 'two_fingers_physical_click'
+        fingers = 2
+        files2 = [(filepath, fingers) for filepath in glob.glob(
+            os.path.join(gesture_path, file_prefix + '*.dat'))]
+
+        # files is a dictionary of {filename: fingers}
+        files = dict(files1 + files2)
+        expected_score = 1.0
+        self._test_physical_clicks(gesture_dir, files, expected_score)
+
+    def test_physical_clicks_failure(self):
+        """All physcial click files specified below should fail."""
+        gesture_dir = '20130506_032458-fw_11.23-robot_sim'
+        # files is a dictionary of {filename: fingers}
+        files = {
+            'one_finger_physical_click.bottom_side-lumpy-fw_11.23-complete-'
+                '20130614_065744.dat': 1,
+            'one_finger_physical_click.center-lumpy-fw_11.23-complete-'
+                '20130614_065727.dat': 1,
+            'two_fingers_physical_click-lumpy-fw_11.23-complete-'
+                '20130614_065757.dat': 2,
+        }
+        expected_score = 0.0
+        self._test_physical_clicks(gesture_dir, files, expected_score)
 
 
 class StationaryFingerValidatorTest(BaseValidatorTest):
