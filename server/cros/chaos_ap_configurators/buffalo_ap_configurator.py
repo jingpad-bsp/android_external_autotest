@@ -174,6 +174,11 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
     def _set_security_disabled(self):
         xpath = '//select[@name="ath0_security_mode"]'
         self.select_item_from_popup_by_xpath('Disabled', xpath)
+        # Sometime the buffalo interface will go down
+        if self.driver.title.find('DD-WRT') == -1:
+            page_url = urlparse.urljoin(self.admin_interface_url,
+                                        'WL_WPATable.asp')
+            self.get_url(page_url, page_title='DD-WRT')
 
 
     def set_security_wep(self, key_value, authentication):
