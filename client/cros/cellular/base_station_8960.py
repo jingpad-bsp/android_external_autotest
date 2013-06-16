@@ -200,7 +200,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
               cause a return
             timeout: in seconds.
         Returns: state
-        Raises:  cellular_system_error.Timeout
+        Raises:  cellular_system_error.InstrumentTimeout
         """
         start = time.time()
         while time.time() - start <= timeout:

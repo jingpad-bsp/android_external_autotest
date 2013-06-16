@@ -25,6 +25,13 @@ class BadScpiCommand(CellularSystemError):
     """
     pass
 
+class ConnectionFailure(CellularSystemError):
+    """
+    Indicates a connection failure with the cellular network used for the test.
+    For example, the cellular network was not found, an unexpected connection
+    drop happened, etc.
+    """
+    pass
 
 class SocketTimeout(CellularSystemError):
     """

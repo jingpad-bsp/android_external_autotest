@@ -43,7 +43,7 @@ class BaseStationPxt(base_station_interface.BaseStationInterface):
     def _Verify(self):
         idn = self.c.Query('*IDN?')
         if 'E6621' not in idn:
-            raise cellular_system_error.BadGpibCommand(
+            raise cellular_system_error.BadScpiCommand(
                 'Not actually a E6621 PXT:  *IDN? says ' + idn)
 
     def _Reset(self):
@@ -177,7 +177,7 @@ class BaseStationPxt(base_station_interface.BaseStationInterface):
               cause a return
             timeout: in seconds.
         Returns: state
-        Raises: cellular_system_error.Timeout
+        Raises: cellular_system_error.InstrumentTimeout
         """
         start = time.time()
         # TODO(byronk): consider utils.poll_for_condition()
@@ -191,7 +191,7 @@ class BaseStationPxt(base_station_interface.BaseStationInterface):
         if state in interested:
             return state
 
-        raise cellular_system_error.Timeout(
+        raise cellular_system_error.InstrumentTimeout(
             'Timed out waiting for state in %s.  State was %s.' %
             (interested, state))
 

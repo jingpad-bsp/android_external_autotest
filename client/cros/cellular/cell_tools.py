@@ -179,7 +179,7 @@ def SetFirmwareForTechnologyFamily(manager, modem_path, family):
     # We do not currently support any multi-family modems besides Gobi
     gobi = manager.GetModem(modem_path).GobiModem()
     if not gobi:
-        raise cellular_system_error.BadGpibCommand(
+        raise cellular_system_error.BadScpiCommand(
             'Modem %s does not support %s, cannot change technologies' %
             modem_path, family)
 
