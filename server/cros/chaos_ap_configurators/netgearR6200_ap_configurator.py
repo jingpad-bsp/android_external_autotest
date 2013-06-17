@@ -80,9 +80,9 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
             elif mode == self.mode_n:
                 router_mode = 'Up to 867 Mbps'
         if not router_mode:
-            raise RuntimeException('You selected a mode that is not assigned '
-                                   'to this router. Select either b, g or n '
-                                   'for 2.4Ghz or either g, a or n for 5Ghz.')
+            raise RuntimeError('You selected a mode that is not assigned '
+                               'to this router. Select either b, g or n '
+                               'for 2.4Ghz or either g, a or n for 5Ghz.')
         self.select_item_from_popup_by_xpath(router_mode, xpath)
 
 
@@ -92,5 +92,5 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
                           'R6200 router.')
             return None
         super(NetgearR6200APConfigurator, self).set_security_wep(
-        key_value, authentication)
+                key_value, authentication)
 

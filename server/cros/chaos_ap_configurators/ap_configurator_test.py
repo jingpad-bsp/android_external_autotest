@@ -17,13 +17,14 @@ import ap_configurator_factory
 
 
 class ConfiguratorTest(unittest.TestCase):
-    """This test needs to be run against the UI interface.
+    """This test needs to be run against the UI interface of a real AP.
 
     The purpose of this test is to act as a basic acceptance test when
     developing a new AP configurator class.  Use this to make sure all core
     functionality is implemented.
 
-    This test does not verify that everything works.
+    This test does not verify that everything works for ALL APs. It only
+    tests against one Netgear dual-band AP ('chromeos3-row1-rack2-host11').
 
     This class provides a fast way to test without having to run_remote_test
     because chances are you don't need a ChromeOS device.  You will need to
@@ -34,6 +35,11 @@ class ConfiguratorTest(unittest.TestCase):
       $ cd ~/chromeos/src/third_party/autotest/files
       $ python utils/unittest_suite.py \
         server.cros.chaos_ap_configurators.ap_configurator_test --debug
+
+    To run a single test, from outside chroot, e.g.
+      $ cd ~/chromeos/src/third_party/autotest/files/\
+           server/cros/chaos_ap_configurators
+      $ python -m unittest ap_configurator_test.ConfiguratorTest.test_ssid
     """
 
     def setUp(self):
@@ -126,7 +132,7 @@ class ConfiguratorTest(unittest.TestCase):
         self.assertTrue(bands_info, msg='Invalid band sent.')
         for bands in bands_info:
             band = bands['band']
-            if band == self.ap.config.BAND_2GHZ:
+            if band == self.ap.band_2ghz:
                 self.ap.set_band(band)
                 self.ap.set_ssid('ssid2')
                 self.ap.apply_settings()
@@ -138,7 +144,7 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_band(self):
         """Test switching the band."""
-        self.ap.set_band(self.ap.config.BAND_2GHZ)
+        self.ap.set_band(self.ap.band_2ghz)
         self.ap.apply_settings()
         self.ap.set_band(self.ap.band_5ghz)
         self.ap.apply_settings()
@@ -148,12 +154,10 @@ class ConfiguratorTest(unittest.TestCase):
         """Test switching between bands and change settings for each band."""
         bands_info = self.ap.get_supported_bands()
         self.assertTrue(bands_info, msg='Invalid band sent.')
-        bands_set = []
-        for bands in bands_info:
-            bands_set.append(bands['band'])
+        bands_set = [d['band'] for d in bands_info]
         for band in bands_set:
             self.ap.set_band(band)
-            self.ap.set_ssid('pqrstu')
+            self.ap.set_ssid('pqrstu_' + band)
             self.ap.set_visibility(True)
             if self.ap.is_security_mode_supported(self.ap.security_type_wep):
                 self.ap.set_security_wep('test2',
@@ -163,13 +167,13 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_invalid_security(self):
         """Test an exception is thrown for an invalid configuration."""
-        # Set security to a good state.
         self.disabled_security_on_all_bands()
         for mode in self.ap.get_supported_modes():
             if not self.ap.mode_n in mode['modes']:
                 return
         if not self.ap.is_security_mode_supported(self.ap.security_type_wep):
             return
+        # FIXME(krisr): which part of this config is invalid?
         self.ap.set_mode(self.ap.mode_n)
         self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
         try:
@@ -180,6 +184,7 @@ class ConfiguratorTest(unittest.TestCase):
             if message.find('no handler was specified') != -1:
                 self.fail('Subclass did not handle an alert.')
             return
+        # FIXME(krisr): is this test still valid?
         self.fail('An exception should have been thrown but was not.')
 
 
@@ -232,6 +237,7 @@ class ConfiguratorTest(unittest.TestCase):
                         msg='Returned an invalid mode list.  Is this method'
                         ' implemented?')
         for band_modes in modes_info:
+            self.ap.set_band(band_modes['band'])
             for mode in band_modes['modes']:
                 self.ap.set_mode(mode)
                 self.ap.apply_settings()
