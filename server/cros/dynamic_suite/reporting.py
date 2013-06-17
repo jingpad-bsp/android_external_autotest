@@ -489,10 +489,8 @@ class Reporter(object):
 
         if len(all_issues) > 1:
             issue_ids = [issue.id for issue in all_issues]
-            self._create_bug_report(
-                'Query: %s, results: %s' % (marker, issue_ids),
-                'Multiple results for a specific query', '',
-                self._OWNER, bug_template=self._LAB_ERROR_TEMPLATE)
+            logging.warning('Multiple results for a specific query. Query: %s, '
+                            'results: %s', marker, issue_ids)
 
         if all_issues:
             return all_issues[0]
