@@ -79,14 +79,40 @@ class SecurityConfig(xmlrpc_datatypes.XmlRpcStruct):
 
 class WEPConfig(SecurityConfig):
     """Abstracts security configuration for a WiFi network using static WEP."""
+    # Open system authentication means that we don't do a 4 way AUTH handshake,
+    # and simply start using the WEP keys after association finishes.
+    AUTH_ALGORITHM_OPEN = 1
+    # This refers to a mode where the AP sends a plaintext challenge and the
+    # client sends back the challenge encrypted with the WEP key as part of a 4
+    # part auth handshake.
+    AUTH_ALGORITHM_SHARED = 2
+    AUTH_ALGORITHM_DEFAULT = AUTH_ALGORITHM_OPEN
 
-    def __init__(self, serialized=None, wep_keys=None, wep_default_key=None):
+    def __init__(self, serialized=None, wep_keys=None, wep_default_key=None,
+                 auth_algorithm=None):
+        """Construct a WEPConfig object.
+
+        @param serialized dict resulting from serializing a WEPConfig.
+        @param wep_keys list of string WEP keys.
+        @param wep_default_key int 0 based index into |wep_keys| for the default
+                key.
+        @param auth_algorithm int bitfield of AUTH_ALGORITHM_* defined above.
+
+        """
         super(WEPConfig, self).__init__(serialized=serialized, security='wep')
         if serialized is None:
             serialized = {}
         self.wep_keys = serialized.get('wep_keys', wep_keys or [])
         self.wep_default_key = serialized.get('wep_default_key',
                                               wep_default_key or 0)
+        self.auth_algorithm = serialized.get('auth_algorithm',
+                                             auth_algorithm or
+                                             self.AUTH_ALGORITHM_DEFAULT)
+        if self.auth_algorithm & ~(self.AUTH_ALGORITHM_OPEN |
+                                   self.AUTH_ALGORITHM_SHARED):
+            raise error.TestFail('Invalid authentication mode specified (%d).' %
+                                 self.auth_algorithm)
+
         if self.wep_keys and len(self.wep_keys) > 4:
             raise error.TestFail('More than 4 WEP keys specified (%d).' %
                                  len(self.wep_keys))
@@ -98,6 +124,7 @@ class WEPConfig(SecurityConfig):
         for idx,key in enumerate(self.wep_keys):
             ret['wep_key%d' % idx] = key
         ret['wep_default_key'] = self.wep_default_key
+        ret['auth_algs'] = self.auth_algorithm
         return ret
 
 

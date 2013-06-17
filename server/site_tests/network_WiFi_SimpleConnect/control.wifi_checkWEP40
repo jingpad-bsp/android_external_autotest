@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_SimpleConnect.wifi_checkOpenWEP40'
+NAME = 'network_WiFi_SimpleConnect.wifi_checkWEP40'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
@@ -11,7 +11,8 @@ DEPENDENCIES = 'wificell'
 
 DOC = """
 This test case verifies that the DUT can connect to an AP using
-WEP open system authentication with 40-bit pre-shared keys.
+WEP both open and shared system authentication and 40-bit
+pre-shared keys.
 """
 
 import copy
@@ -24,17 +25,21 @@ from autotest_lib.server.cros.wlan import hostap_config
 def run(machine):
     wep_keys = ['0123456789', '89abcdef01', '9876543210', 'fedcba9876']
     master_wep_config = xmlrpc_security_types.WEPConfig(wep_keys=wep_keys)
+    auth_algs = (xmlrpc_security_types.WEPConfig.AUTH_ALGORITHM_OPEN,
+                 xmlrpc_security_types.WEPConfig.AUTH_ALGORITHM_SHARED)
     configurations = []
-    for i in range(len(wep_keys)):
-        wep_config = copy.copy(master_wep_config)
-        wep_config.wep_default_key = i
-        ap_config = hostap_config.HostapConfig(
-                frequency=2412,
-                mode=hostap_config.HostapConfig.MODE_11G,
-                security_config=wep_config)
-        assoc_params = xmlrpc_datatypes.AssociationParameters()
-        assoc_params.security_config = wep_config
-        configurations.append((ap_config, assoc_params))
+    for auth_algorithm in auth_algs:
+        for i in range(len(wep_keys)):
+            wep_config = copy.copy(master_wep_config)
+            wep_config.wep_default_key = i
+            wep_config.auth_algorithm = auth_algorithm
+            ap_config = hostap_config.HostapConfig(
+                    frequency=2412,
+                    mode=hostap_config.HostapConfig.MODE_11G,
+                    security_config=wep_config)
+            assoc_params = xmlrpc_datatypes.AssociationParameters()
+            assoc_params.security_config = wep_config
+            configurations.append((ap_config, assoc_params))
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,
