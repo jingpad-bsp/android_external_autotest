@@ -33,6 +33,8 @@ _sigint_handler_lock = threading.Lock()
 
 _AUTOSERV_SIGINT_TIMEOUT_SECONDS = 5
 
+_QUICKMERGE_SCRIPTNAME = '/mnt/host/source/chromite/bin/autotest_quickmerge'
+
 
 def schedule_local_suite(autotest_path, suite_name, afe, build=''):
     """
@@ -262,10 +264,13 @@ def main(argv):
                       sysroot_autotest_path)
         return 1
 
-    # If we are not running the sysroot version of script, re-execute
-    # that version of script with the same arguments.
+    # If we are not running the sysroot version of script, perform
+    # a quickmerge if necessary and then re-execute
+    # the sysroot version of script with the same arguments.
     realpath = os.path.realpath(__file__)
     if os.path.dirname(realpath) != sysroot_site_utils_path:
+        subprocess.call([_QUICKMERGE_SCRIPTNAME, '--board='+arguments.board])
+
         script_command = os.path.join(sysroot_site_utils_path,
                                       os.path.basename(realpath))
         proc = None
