@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_RxFrag'
+NAME = 'network_WiFi_RxFrag.wifi_rxfrag'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'

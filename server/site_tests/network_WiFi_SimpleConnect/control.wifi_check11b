@@ -3,15 +3,15 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_SimpleConnect'
+NAME = 'network_WiFi_SimpleConnect.wifi_check11b'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
 DEPENDENCIES = 'wificell'
 
 DOC = """
-This test verifies that DUT can connect to an open 802.11n network
-on 5 GHz channel (20MHz channel only).
+This test attempts to verify that we can connect to a router over 802.11b
+on channels 1, 6, and 11 (2.4 Ghz band) and correctly send IP traffic.
 """
 
 
@@ -20,11 +20,12 @@ from autotest_lib.server.cros.wlan import hostap_config
 
 
 def run(machine):
-    caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
-            hostap_config.HostapConfig.N_CAPABILITY_HT20]
-    n = hostap_config.HostapConfig.MODE_11N_PURE
-    configurations = [(hostap_config.HostapConfig(frequency=5240, mode=n,
-                                                  n_capabilities=caps),
+    b_mode = hostap_config.HostapConfig.MODE_11B
+    configurations = [(hostap_config.HostapConfig(channel=1, mode=b_mode),
+                       xmlrpc_datatypes.AssociationParameters()),
+                      (hostap_config.HostapConfig(channel=6, mode=b_mode),
+                       xmlrpc_datatypes.AssociationParameters()),
+                      (hostap_config.HostapConfig(channel=11, mode=b_mode),
                        xmlrpc_datatypes.AssociationParameters())]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',

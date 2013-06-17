@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_Netperf'
+NAME = 'network_WiFi_Netperf.wifi_txampdu'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
 DEPENDENCIES = 'wificell'
 
 DOC = """
-This test uses netperf to measure receiving TCP throughput of
+This test uses netperf to measure transmitting TCP throughput of
 a DUT on an open 802.11n network over 5 GHz band (20MHz channel only).
 It asserts that we meet a minimum throughput level selected to guarantee
 that we must be using some frame aggregation techniques.
@@ -29,10 +29,11 @@ def run(machine):
                 mode=hostap_config.HostapConfig.MODE_11N_PURE)
     netperf_config = netperf_runner.NetperfConfig(
             netperf_runner.NetperfConfig.TEST_TYPE_TCP_STREAM,
-            test_time=60)
-    # TODO(wiley) On a lumpy this number could be more like 45, but on daisy
-    #             we only get around 29 Mbps.  We could do much better though...
-    MINIMAL_N_THROUGHPUT = 27.0
+            test_time=60,
+            server_serves=False)
+    # TODO(wiley) lumpy/daisy have different behavior here and we should
+    #             express that in our requirements. (50 Mbps vs 40 Mbps)
+    MINIMAL_N_THROUGHPUT = 38.0
     netperf_assertions = netperf_runner.NetperfAssertion(
             throughput_min=MINIMAL_N_THROUGHPUT)
     additional_params = [(ap_config, netperf_config, netperf_assertions)]

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_MaskedBSSID'
+NAME = 'network_WiFi_MaskedBSSID.wifi_masked_bssid'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'

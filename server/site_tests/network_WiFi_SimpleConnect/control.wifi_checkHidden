@@ -3,30 +3,36 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_SimpleConnect'
+NAME = 'network_WiFi_SimpleConnect.wifi_checkHidden'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
 DEPENDENCIES = 'wificell'
 
 DOC = """
-This test verifies that DUT can connect to an open 802.11n network
-on 2.4 GHz channel (40MHz-channel).
+This test attempts to verify that we can connect to a hidden network on both
+2.4 and 5 Ghz channels.
 """
 
+import copy
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
 
 
 def run(machine):
-    from autotest_lib.server.cros.wlan import hostap_config
-    caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
-            hostap_config.HostapConfig.N_CAPABILITY_HT40]
+    g = hostap_config.HostapConfig.MODE_11G
     n = hostap_config.HostapConfig.MODE_11N_PURE
-    configurations = [(hostap_config.HostapConfig(frequency=2437, mode=n,
-                                                  n_capabilities=caps),
-                       xmlrpc_datatypes.AssociationParameters())]
+    assoc_params = xmlrpc_datatypes.AssociationParameters()
+    assoc_params.is_hidden = True
+    configurations = [
+            (hostap_config.HostapConfig(channel=6, mode=g, hide_ssid=True),
+             copy.copy(assoc_params)),
+            (hostap_config.HostapConfig(channel=36, mode=n, hide_ssid=True),
+             copy.copy(assoc_params)),
+            (hostap_config.HostapConfig(channel=48, mode=n, hide_ssid=True),
+             copy.copy(assoc_params))]
+
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
                  host=host,

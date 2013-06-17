@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_BgscanBackoff'
+NAME = 'network_WiFi_BgscanBackoff.wifi_bgscan_backoff'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'

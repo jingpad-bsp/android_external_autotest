@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_SimpleConnect'
+NAME = 'network_WiFi_SimpleConnect.wifi_WPA'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
@@ -11,7 +11,9 @@ DEPENDENCIES = 'wificell'
 
 DOC = """
 This tests verifies that we can connect to an AP broadcasting a WPA network
-using TKIP.  TKIP is deprecated for having some security holes, and WPA is deprecated in favor of WPA2, but routers of a certain age only support this mode.
+using TKIP.  TKIP is deprecated for having some security holes, and WPA is
+deprecated in favor of WPA2, but routers of a certain age only support
+kkjthis mode.
 """
 
 import copy

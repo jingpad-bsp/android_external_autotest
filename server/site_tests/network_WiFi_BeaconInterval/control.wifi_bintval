@@ -3,21 +3,21 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_Powersave'
+NAME = 'network_WiFi_BeaconInterval.wifi_bintval'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
 DEPENDENCIES = 'wificell'
 
 DOC = """
-This test verifies that DUT can enter and exit Power Save mode
-successfully without connectivity interruption.
+This test verifies that the beacon interval set on the AP was successfully
+adopted by the DUT.
 """
 
 
 def run(machine):
     host = hosts.create_host(machine)
-    job.run_test('network_WiFi_Powersave',
+    job.run_test('network_WiFi_BeaconInterval',
                  host=host,
                  raw_cmdline_args=args)
 
