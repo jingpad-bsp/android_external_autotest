@@ -62,6 +62,9 @@ import firmware_log
 import fuzzy
 import mtb
 
+from collections import namedtuple
+
+from common_util import print_and_exit
 from firmware_constants import AXIS, GV, MTB, VAL
 
 
@@ -515,57 +518,41 @@ class RangeValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None):
-        name = self.__class__.__name__
-        super(RangeValidator, self).__init__(criteria_str, mf, device, name)
+        self.name = self.__class__.__name__
+        super(RangeValidator, self).__init__(criteria_str, mf, device,
+                                             self.name)
 
     def check(self, packets, variation=None):
         """Check the left/right or top/bottom range based on the direction."""
         self.init_check(packets)
-        actual_range = self.packets.get_range()
-        spec = self.device.get_edges()
-        spec_width = spec[1] - spec[0]
-        spec_height = spec[3] - spec[2]
-        diff = map(lambda a, b: abs(a - b), actual_range, spec)
+        valid_directions = [GV.CL, GV.CR, GV.CT, GV.CB]
+        Range = namedtuple('Range', valid_directions)
+        actual_range = Range(*self.packets.get_range())
+        spec_range = Range(self.device.axis_x.min, self.device.axis_x.max,
+                           self.device.axis_y.min, self.device.axis_y.max)
 
-        if self.is_horizontal(variation):
-            if GV.CL in variation:
-                diff_x = diff[0:1]
-                actual_range_axis = actual_range[0:1]
-            elif GV.CR in variation:
-                diff_x = diff[1:2]
-                actual_range_axis = actual_range[1:2]
-            else:
-                # For GV.LR and GV.RL, we check both min_x and max_x
-                diff_x = diff[0:2]
-                actual_range_axis = actual_range[0:2]
-            ave_deviation = 1.0 * sum(diff_x) / len(diff_x) / spec_width
-            spec_range_axis = spec[0:2]
-        elif self.is_vertical(variation):
-            if GV.CT in variation:
-                diff_y = diff[2:3]
-                actual_range_axis = actual_range[2:3]
-            elif GV.CB in variation:
-                diff_y = diff[3:4]
-                actual_range_axis = actual_range[3:4]
-            else:
-                # For GV.TB and GV.BT, we check both min_y and max_y
-                diff_y = diff[2:4]
-                actual_range_axis = actual_range[2:4]
-            ave_deviation = 1.0 * sum(diff_y) / len(diff_y) / spec_height
-            spec_range_axis = spec[2:4]
-        elif self.is_diagonal(variation):
-            # No need to check range on diagonal lines since we have
-            # checked range on horizontal/vertical lines.
-            return None
+        direction = self.get_direction_in_variation(variation)
+        if direction in valid_directions:
+            actual_edge = getattr(actual_range, direction)
+            spec_edge = getattr(spec_range, direction)
+            short_of_range_px = abs(actual_edge - spec_edge)
         else:
-            error_msg = 'A direction variation is missing in this gesture.'
-            self.insert_error(error_msg)
-            return None
+            err_msg = 'Error: the gesture variation %s is not allowed in %s.'
+            print_and_exit(err_msg % (variation, self.name))
 
-        self.log_details('actual: %s' % str(actual_range_axis))
-        self.log_details('spec: %s' % str(spec_range_axis))
-        self.log_details('ave_deviation: %f' % ave_deviation)
-        self.vlog.score = self.fc.mf.grade(ave_deviation)
+        axis_spec = (self.device.axis_x if self.is_horizontal(variation)
+                                        else self.device.axis_y)
+        deviation_ratio = (float(short_of_range_px) /
+                           (axis_spec.max - axis_spec.min))
+        self.log_details('actual: %s' % str(actual_edge))
+        self.log_details('spec: %s' % str(spec_edge))
+        self.log_details('deviation_ratio: %f' % deviation_ratio)
+        metric_name = 'short_of_range_{}_mm'.format(direction.split('_')[-1])
+        short_of_range_mm = self.device.pixel_to_mm_single_axis(
+                short_of_range_px, axis_spec)
+        self.vlog.metrics = [firmware_log.Metric(metric_name,
+                                                 short_of_range_mm)]
+        self.vlog.score = self.fc.mf.grade(deviation_ratio)
         return self.vlog
 
 

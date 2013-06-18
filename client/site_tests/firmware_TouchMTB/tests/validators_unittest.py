@@ -523,6 +523,63 @@ class PhysicalClickValidatorTest(BaseValidatorTest):
         self._test_physical_clicks(gesture_dir, files, expected_score)
 
 
+class RangeValidatorTest(BaseValidatorTest):
+    """Unit tests for RangeValidator class."""
+
+    def setUp(self):
+        super(RangeValidatorTest, self).setUp()
+        self.device = self.mocked_device[LUMPY]
+
+    def _test_range(self, filename, expected_short_of_range_px):
+        filepath = os.path.join(unittest_path_lumpy, filename)
+        packets = parse_tests_data(filepath)
+        validator = RangeValidator(conf.range_criteria, device=self.device)
+
+        # Extract the gesture variation from the filename
+        variation = (filename.split('/')[-1].split('.')[1],)
+
+        # Determine the axis based on the direction in the gesture variation
+        axis = (self.device.axis_x if validator.is_horizontal(variation)
+                else self.device.axis_y if validator.is_vertical(variation)
+                else None)
+        self.assertTrue(axis is not None)
+
+        # Convert from pixels to mms.
+        expected_short_of_range_mm = self.device.pixel_to_mm_single_axis(
+                expected_short_of_range_px, axis)
+
+        vlog = validator.check(packets, variation)
+
+        # There is only one metric in the metrics list.
+        self.assertEqual(len(vlog.metrics), 1)
+        actual_short_of_range_mm = vlog.metrics[0].value
+        self.assertEqual(actual_short_of_range_mm, expected_short_of_range_mm)
+
+    def test_range(self):
+        """All physical click files specified below should fail."""
+        # files_px is a dictionary of {filename: short_of_range_px}
+        files_px = {
+            '20130506_030025-fw_11.27-robot_sim/'
+            'one_finger_to_edge.center_to_left.slow-lumpy-fw_11.27-'
+                'robot_sim-20130506_031554.dat': 0,
+
+            '20130506_030025-fw_11.27-robot_sim/'
+            'one_finger_to_edge.center_to_left.slow-lumpy-fw_11.27-'
+                'robot_sim-20130506_031608.dat': 0,
+
+            '20130506_032458-fw_11.23-robot_sim/'
+            'one_finger_to_edge.center_to_left.slow-lumpy-fw_11.23-'
+                'robot_sim-20130506_032538.dat': 1,
+
+            '20130506_032458-fw_11.23-robot_sim/'
+            'one_finger_to_edge.center_to_left.slow-lumpy-fw_11.23-'
+                'robot_sim-20130506_032549.dat': 1,
+        }
+
+        for filename, short_of_range_px in files_px.items():
+            self._test_range(filename, short_of_range_px)
+
+
 class StationaryFingerValidatorTest(BaseValidatorTest):
     """Unit tests for LinearityValidator class."""
 

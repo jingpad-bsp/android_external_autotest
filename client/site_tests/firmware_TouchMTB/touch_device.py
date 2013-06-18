@@ -101,6 +101,11 @@ class TouchDevice:
         mm_y = float(pixel_y - self.axis_y.min) / self.axis_y.resolution
         return (mm_x, mm_y)
 
+    def pixel_to_mm_single_axis(self, value_pixel, axis):
+        """Convert the coordinate from pixel to mm."""
+        value_mm = float(value_pixel - axis.min) / axis.resolution
+        return value_mm
+
     def get_dimensions(self):
         """Get the vendor-specified dimensions of the touch device."""
         return (self.axis_x.max - self.axis_x.min,
