@@ -266,6 +266,7 @@ class NetperfRunner(object):
     NETPERF_DATA_PORT = 12866
     NETPERF_PORT = 12865
     NETSERV_STARTUP_WAIT_TIME = 3
+    NETPERF_COMMAND_TIMEOUT_MARGIN = 5
 
 
     def __init__(self, client, server):
@@ -338,7 +339,7 @@ class NetperfRunner(object):
         try:
             raw_result,duration = self._run_body(
                     client_host, server_host, netperf, netserv,
-                    config.test_time + self.NETSERV_STARTUP_WAIT_TIME)
+                    config.test_time + self.NETPERF_COMMAND_TIMEOUT_MARGIN)
         finally:
             server_host.run('pkill %s' % os.path.basename(command_netserv))
             self._client_proxy.firewall_cleanup()
