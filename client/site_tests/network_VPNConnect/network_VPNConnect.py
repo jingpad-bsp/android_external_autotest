@@ -2,15 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import tempfile
-
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.client.cros import shill_temporary_profile
+from autotest_lib.client.cros import tpm_store
 from autotest_lib.client.cros import virtual_ethernet_pair
 from autotest_lib.client.cros import vpn_server
-
 
 # This hacks the path so that we can import shill_proxy.
 # pylint: disable=W0611
@@ -108,23 +106,12 @@ class network_VPNConnect(test.test):
             raise error.TestFail('Unknown vpn server type %s' % self._vpn_type)
 
 
-    def make_temp_file(self, contents):
-        """Creates a temporary file with |contents| that will delete on exit.
+    def get_vpn_client_properties(self, tpm):
+        """Returns VPN configuration properties.
 
-        @param contents string contents the data the temporary file should have.
-        @return file name that was created.
+        @param tpm object TPM store instance to add credentials if necessary.
 
         """
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file.file.write(contents)
-        temp_file.file.flush()
-        # Save a reference so the file deletion happens when |this| destructs.
-        self._temp_files.append(temp_file)
-        return temp_file.name
-
-
-    def get_vpn_client_properties(self):
-        """Returns VPN configuration properties."""
         if self._vpn_type == 'l2tpipsec-psk':
             return {
                 'L2TPIPsec.Password': vpn_server.L2TPIPSecVPNServer.CHAP_SECRET,
@@ -137,6 +124,10 @@ class network_VPNConnect(test.test):
                 'VPN.Domain': 'test-vpn-psk-domain'
             }
         if self._vpn_type == 'openvpn':
+            tpm.install_certificate(site_eap_certs.client_cert_1,
+                                    site_eap_certs.cert_1_tpm_key_id)
+            tpm.install_private_key(site_eap_certs.client_private_key_1,
+                                    site_eap_certs.cert_1_tpm_key_id)
             return {
                 'Name': 'test-vpn-openvpn',
                 'Provider.Host': self.SERVER_ADDRESS,
@@ -144,10 +135,8 @@ class network_VPNConnect(test.test):
                 'Type': 'vpn',
                 'VPN.Domain': 'test-openvpn-domain',
                 'OpenVPN.CACertPEM': [ site_eap_certs.ca_cert_1 ],
-                'OpenVPN.Cert': self.make_temp_file(
-                        site_eap_certs.client_cert_1),
-                'OpenVPN.Key': self.make_temp_file(
-                        site_eap_certs.client_private_key_1),
+                'OpenVPN.Pkcs11.ID': site_eap_certs.cert_1_tpm_key_id,
+                'OpenVPN.Pkcs11.PIN': tpm.PIN,
                 'OpenVPN.Verb': '5'
             }
         else:
@@ -157,12 +146,13 @@ class network_VPNConnect(test.test):
     def connect_vpn(self):
         """Connects the client to the VPN server."""
         proxy = self._shill_proxy
-        service = proxy.get_service(self.get_vpn_client_properties())
-        service.Connect()
-        result = proxy.wait_for_property_in(service,
-                                            proxy.SERVICE_PROPERTY_STATE,
-                                            ('ready', 'online'),
-                                            self.CONNECT_TIMEOUT_SECONDS)
+        with tpm_store.TPMStore() as tpm:
+            service = proxy.get_service(self.get_vpn_client_properties(tpm))
+            service.Connect()
+            result = proxy.wait_for_property_in(service,
+                                                proxy.SERVICE_PROPERTY_STATE,
+                                                ('ready', 'online'),
+                                                self.CONNECT_TIMEOUT_SECONDS)
         (successful, _, _) = result
         if not successful:
             raise error.TestFail('VPN connection failed')
@@ -177,7 +167,6 @@ class network_VPNConnect(test.test):
         client_address_and_prefix = '%s/%d' % (self.CLIENT_ADDRESS,
                                                self.NETWORK_PREFIX)
         self._vpn_type = vpn_type
-        self._temp_files = []
 
         with shill_temporary_profile.ShillTemporaryProfile(
                 manager, profile_name=self.TEST_PROFILE_NAME):
