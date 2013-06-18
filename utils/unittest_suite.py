@@ -71,7 +71,6 @@ REQUIRES_PROTOBUFS = set((
 
 REQUIRES_SELENIUM = set((
         'ap_configurator_factory_unittest.py',
-        'chaos_base_test_unittest.py',
         'ap_batch_locker_unittest.py'
     ))
 
