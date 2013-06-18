@@ -46,7 +46,7 @@ def _webdriver_is_running():
     """
     # address and port are pulled from establish_driver_connection() in
     # ../chaos_ap_configurators/ap_configurator.py
-    servers = ['127.0.0.1', 'atlantis4.mtv.corp.google.com']
+    servers = ['127.0.0.1', 'cl12-16-410.mtv.corp.google.com']
     port = 9515
     # Create a TCP socket
     for address in servers:
