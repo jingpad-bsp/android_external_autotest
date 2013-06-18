@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 import dbus
+import logging
+
 import dbus_std_ifaces
 import mm1
 
@@ -21,6 +23,11 @@ class SIM(dbus_std_ifaces.DBusProperties):
     cards.
 
     """
+
+    DEFAULT_MSIN = '1234567890'
+    DEFAULT_IMSI = '888999111'
+    DEFAULT_PIN = '1111'
+    DEFAULT_PUK = '12345678'
 
     class Carrier:
         """
@@ -51,9 +58,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
             'kpn': ('nl', '08', 'KPN')
         }
 
-        def __init__(self, carrier='banana'):
-           carrier = self.CARRIER_LIST.get(carrier,
-                self.CARRIER_LIST['banana'])
+        def __init__(self, carrier='test'):
+           carrier = self.CARRIER_LIST.get(carrier, self.CARRIER_LIST['test'])
 
            self.mcc = self.MCC_LIST[carrier[0]]
            self.mnc = carrier[1]
@@ -62,56 +68,142 @@ class SIM(dbus_std_ifaces.DBusProperties):
               self.operator_name = self.operator_name + ' - Fake'
            self.operator_id = self.mcc + self.mnc
 
-
-    DEFAULT_MSIN = '1234567890'
-    DEFAULT_IMSI = '888999111'
-
     def __init__(self,
                  carrier,
                  access_technology,
-                 puk=None,
+                 index=0,
+                 pin=DEFAULT_PIN,
+                 puk=DEFAULT_PUK,
+                 locked=False,
                  msin=DEFAULT_MSIN,
                  imsi=DEFAULT_IMSI,
                  config=None):
         if not carrier:
             raise TypeError('A carrier is required.')
-        path = mm1.MM1 + '/SIM/0'
+        path = mm1.MM1 + '/SIM/' + str(index)
         self.msin = msin
         self.carrier = carrier
         self.imsi = carrier.operator_id + imsi
-        dbus_std_ifaces.DBusProperties.__init__(self, path, None, config)
-        self.puk = puk
-        self.pin = None
-        self.pin_enabled = False
-        self.locked = False
-        self.blocked = False
+        self._lock_data = {
+            mm1.MM_MODEM_LOCK_SIM_PIN : [ pin, 3 ],
+            mm1.MM_MODEM_LOCK_SIM_PUK : [ puk, 3 ]
+        }
+        self._lock_enabled = locked
+        if locked:
+            self._lock_type = mm1.MM_MODEM_LOCK_SIM_PIN
+        else:
+            self._lock_type = mm1.MM_MODEM_LOCK_NONE
+        self._modem = None
         self.access_technology = access_technology
+        dbus_std_ifaces.DBusProperties.__init__(self, path, None, config)
 
+    def IncrementPath(self):
+        """
+        Increments the current index at which this modem is exposed on DBus.
+        E.g. if the current path is org/freedesktop/ModemManager/Modem/0, the
+        path will change to org/freedesktop/ModemManager/Modem/1.
+
+        Calling this method does not remove the object from its current path,
+        which means that it will be available via both the old and the new
+        paths. This is currently only used by Reset, in conjunction with
+        dbus_std_ifaces.DBusObjectManager.[Add|Remove].
+
+        """
+        self.index += 1
+        path = mm1.MM1 + '/SIM/' + str(self.index)
+        logging.info('SIM coming back as: ' + path)
+        self.SetPath(path)
+
+    @property
+    def lock_type(self):
+        """
+        Returns the current lock type of the SIM. Can be used to determine
+        whether or not the SIM is locked.
+
+        @return The lock type, as a MMModemLock value.
+
+        """
+        return self._lock_type
+
+    @property
+    def unlock_retries(self):
+        """
+        Returns the number of unlock retries left.
+
+        @return The number of unlock retries for each lock type the SIM
+                supports as a dictionary.
+
+        """
+        retries = dbus.Dictionary(signature='uu')
+        if not self._lock_enabled:
+            return retries
+        for k, v in self._lock_data.iteritems():
+            retries[dbus.types.UInt32(k)] = dbus.types.UInt32(v[1])
+        return retries
+
+    @property
+    def enabled_locks(self):
+        """
+        Returns the currently enabled facility locks.
+
+        @return The currently enabled facility locks, as a MMModem3gppFacility
+                value.
+
+        """
+        if self._lock_enabled:
+            return mm1.MM_MODEM_3GPP_FACILITY_SIM
+        return mm1.MM_MODEM_3GPP_FACILITY_NONE
+
+    @property
+    def locked(self):
+        """
+        @return True, if the SIM is locked. False, otherwise.
+
+        """
+        return not (self._lock_type == mm1.MM_MODEM_LOCK_NONE or
+            self._lock_type == mm1.MM_MODEM_LOCK_UNKNOWN)
+
+    @property
+    def modem(self):
+        """
+        Returns the modem object that this SIM is currently plugged into.
+
+        """
+        return self._modem
+
+    @modem.setter
+    def modem(self, modem):
+        """
+        Assigns a modem object to this SIM, so that the modem knows about it.
+        This should only be called directly by a modem object.
+
+        @param modem: The modem to be associated with this SIM.
+
+        """
+        self._modem = modem
+
+    def _DBusPropertiesDict(self):
+        imsi = self.imsi
+        if self.locked:
+            msin = ''
+            op_id = ''
+            op_name = ''
+        else:
+            msin = self.msin
+            op_id = self.carrier.operator_id
+            op_name = self.carrier.operator_name
+        return {
+            'SimIdentifier' : msin,
+            'Imsi' : imsi,
+            'OperatorIdentifier' : op_id,
+            'OperatorName' : op_name
+        }
 
     def _InitializeProperties(self):
-        # TODO(armansito): some of these properties shouldn't be exposed
-        # if the sim is locked
-        props = {
-            'SimIdentifier' : self.msin,
-            'Imsi' : self.imsi,
-            'OperatorIdentifier' : self.carrier.operator_id,
-            'OperatorName' : self.carrier.operator_name
-        }
-        return { mm1.I_SIM : props }
+        return { mm1.I_SIM : self._DBusPropertiesDict() }
 
-    def IsLocked(self):
-        """
-        @return True if the SIM is locked.
-
-        """
-        return self.locked
-
-    def IsBlocked(self):
-        """
-        @return True if the SIM is blocked.
-
-        """
-        return self.blocked
+    def _ResetProperties(self):
+        self.SetAll(mm1.I_SIM, self._DBusPropertiesDict())
 
     @dbus.service.method(mm1.I_SIM, in_signature='s')
     def SendPin(self, pin):

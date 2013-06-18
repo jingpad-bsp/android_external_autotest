@@ -22,6 +22,8 @@ class Modem3gpp(modem.Modem):
 
     """
 
+    IMEI = '00112342342123'
+
     class GsmNetwork(object):
         """
         GsmNetwork stores the properties of a 3GPP network that can be
@@ -42,17 +44,10 @@ class Modem3gpp(modem.Modem):
 
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
-        ip[mm1.I_MODEM_3GPP] = {
-            'Imei' : '00112342342123',
-            'RegistrationState' : (
-                dbus.types.UInt32(mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)),
-            'OperatorCode' : '',
-            'OperatorName' : '',
-            'EnabledFacilityLocks' : (
-                dbus.types.UInt32(mm1.MM_MODEM_3GPP_FACILITY_NONE))
-        }
-
         props = ip[mm1.I_MODEM]
+        props3gpp = self._GetDefault3GPPProperties()
+        if props3gpp:
+            ip[mm1.I_MODEM_3GPP] = props3gpp
         props['SupportedCapabilities'] = [
                 dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_GSM_UMTS),
                 dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_LTE)
@@ -61,7 +56,7 @@ class Modem3gpp(modem.Modem):
                 mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)
         props['MaxBearers'] = dbus.types.UInt32(3)
         props['MaxActiveBearers'] = dbus.types.UInt32(2)
-        props['EquipmentIdentifier'] = ip[mm1.I_MODEM_3GPP]['Imei']
+        props['EquipmentIdentifier'] = self.IMEI
         props['AccessTechnologies'] = dbus.types.UInt32((
                 mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM |
                 mm1.MM_MODEM_ACCESS_TECHNOLOGY_UMTS))
@@ -70,7 +65,7 @@ class Modem3gpp(modem.Modem):
                                                      mm1.MM_MODEM_MODE_4G),
                                    dbus.types.UInt32(mm1.MM_MODEM_MODE_4G)],
                                   signature='uu')
-                ]
+        ]
         props['CurrentModes'] = props['SupportedModes'][0]
         props['SupportedBands'] = [
             dbus.types.UInt32(mm1.MM_MODEM_BAND_EGSM),
@@ -93,6 +88,44 @@ class Modem3gpp(modem.Modem):
             dbus.types.UInt32(mm1.MM_MODEM_BAND_U850)
         ]
         return ip
+
+    def _GetDefault3GPPProperties(self):
+        if not self.sim or self.sim.locked:
+            return None
+        return {
+            'Imei' : self.IMEI,
+            'RegistrationState' : (
+                    dbus.types.UInt32(
+                        mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)),
+            'OperatorCode' : '',
+            'OperatorName' : '',
+            'EnabledFacilityLocks' : (
+                    dbus.types.UInt32(self.sim.enabled_locks))
+        }
+
+    def SetSIM(self, sim):
+        """
+        Overrides modem.Modem.SetSIM. Once the SIM has been assigned, attempts
+        to expose 3GPP properties if SIM readable.
+
+        @param sim: An instance of sim.SIM
+
+        Emits:
+            PropertiesChanged
+
+        """
+        modem.Modem.SetSIM(self, sim)
+        self.Expose3GPPProperties()
+
+    def Expose3GPPProperties(self):
+        """
+        A call to this method will attempt to expose 3GPP properties if there
+        is a current SIM and is unlocked.
+
+        """
+        props = self._GetDefault3GPPProperties()
+        if props:
+            self.SetAll(mm1.I_MODEM_3GPP, props)
 
     def SetRegistrationState(self, state):
         """

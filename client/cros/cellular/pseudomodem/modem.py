@@ -56,6 +56,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
         self.device = device
         self.index = index
+        self.sim = None
 
         # The superclass construct will call _InitializeProperties
         dbus_std_ifaces.DBusProperties.__init__(self,
@@ -65,7 +66,6 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
         self.bearers = {}
         self.active_bearers = {}
-        self.sim = None
         self.enable_step = None
         self.disable_step = None
         self.connect_step = None
@@ -89,10 +89,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             'Drivers' : ['FakeDriver'],
             'Plugin' : 'Banana Plugin',
             'UnlockRequired' : dbus.types.UInt32(mm1.MM_MODEM_LOCK_NONE),
-            'UnlockRetries' : {
-                dbus.types.UInt32(mm1.MM_MODEM_LOCK_SIM_PIN) : (
-                    dbus.types.UInt32(3))
-            },
+            'UnlockRetries' : dbus.Dictionary(signature='uu'),
             'State' : dbus.types.Int32(mm1.MM_MODEM_STATE_DISABLED),
             'SignalQuality' : dbus.types.Struct(
                                       [dbus.types.UInt32(100), True],
@@ -273,7 +270,31 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         else:
             val = sim.path
             self.sim.SetBus(self.bus)
+            self.sim.modem = self
+            self.UpdateLockStatus()
         self.Set(mm1.I_MODEM, 'Sim', dbus.types.ObjectPath(val))
+
+    def UpdateLockStatus(self):
+        """
+        Tells the modem to update the current lock status. This method will
+        update the modem state and the relevant modem properties.
+
+        """
+        if not self.sim:
+            logging.info('SIM lock is the only kind of lock that is currently '
+                         'supported. No SIM present, nothing to do.')
+            return
+        self.SetUInt32(mm1.I_MODEM, 'UnlockRequired', self.sim.lock_type)
+        self.Set(mm1.I_MODEM, 'UnlockRetries', self.sim.unlock_retries)
+        if self.sim.locked:
+            logging.info('There is a SIM lock in place. Setting state to '
+                         'LOCKED')
+            self.SetInt32(
+                    mm1.I_MODEM, 'State', mm1.MM_MODEM_STATE_LOCKED)
+        elif self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_LOCKED:
+            logging.info('SIM became unlocked! Enabling modem.')
+            self.SetInt32(mm1.I_MODEM, 'State', mm1.MM_MODEM_STATE_DISABLED)
+            self.Enable(True)
 
     @dbus.service.method(mm1.I_MODEM,
                          in_signature='b',

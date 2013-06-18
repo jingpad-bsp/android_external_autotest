@@ -430,7 +430,7 @@ class PseudoModemManager(object):
         raise NotImplementedError()
 
 
-def Start(use_cdma=False, activated=True):
+def Start(use_cdma=False, activated=True, sim_locked=False):
     """
     Runs the pseudomodem in script mode. This function is called only by the
     main function.
@@ -441,6 +441,8 @@ def Start(use_cdma=False, activated=True):
                      modem_3gpp.Modem3gpp.
     @param activated: If True, the pseudo modem will be initialized as
                       unactivated and will require service activation.
+    @param sim_locked: If True, the SIM will be initialized with a PIN lock.
+                       This option does nothing if 'use_cdma' is also True.
 
     """
     # TODO(armansito): Support "not activated" initialization option for 3GPP
@@ -453,7 +455,9 @@ def Start(use_cdma=False, activated=True):
         s = None
     else:
         m = modem_3gpp.Modem3gpp()
-        s = sim.SIM(sim.SIM.Carrier(), mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+        s = sim.SIM(sim.SIM.Carrier(),
+                    mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
+                    locked=sim_locked)
     with PseudoModemManager(modem=m, sim=s, detach=False, logfile=None):
         pass
 
@@ -478,9 +482,12 @@ def main():
     parser.add_option('-f', '--family', dest='family',
                       metavar='<family>',
                       help='<family> := 3GPP|CDMA')
-    parser.add_option('-n', '--not-activated', dest="not_activated",
-                      action="store_true", default=False,
+    parser.add_option('-n', '--not-activated', dest='not_activated',
+                      action='store_true', default=False,
                       help='Initialize the service as not-activated.')
+    parser.add_option('-l', '--locked', dest='sim_locked',
+                      action='store_true', default=False,
+                      help='Initialize the SIM as locked.')
 
     (opts, args) = parser.parse_args()
     if not opts.family:
@@ -493,7 +500,7 @@ def main():
         print 'Unsupported family: ' + family
         return
 
-    Start(family == 'CDMA', not opts.not_activated)
+    Start(family == 'CDMA', not opts.not_activated, opts.sim_locked)
 
 
 if __name__ == '__main__':

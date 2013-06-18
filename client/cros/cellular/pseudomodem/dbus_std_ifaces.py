@@ -255,6 +255,25 @@ class DBusProperties(dbus.service.Object):
             ' %s InvalidatedProperties: %s.', interface_name,
             str(changed_properties), str(invalidated_properties)))
 
+    def SetAll(self, interface, properties):
+        """
+        Sets the entire property dictionary for the given interface.
+
+        @param interface: String specifying the DBus interface.
+        @param properties: Dictionary containing the properties to set.
+
+        Emits:
+            PropertiesChanged
+
+        """
+        old_props = self._properties.get(interface, None)
+        if old_props:
+            invalidated = old_props.keys()
+        else:
+            invalidated = []
+        self._properties[interface] = properties
+        self.PropertiesChanged(interface, properties, invalidated)
+
     def GetInterfacesAndProperties(self):
         """
         Returns all DBus properties of this object.
