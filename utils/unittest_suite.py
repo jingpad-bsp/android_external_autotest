@@ -69,6 +69,12 @@ REQUIRES_PROTOBUFS = set((
         'job_serializer_unittest.py',
         ))
 
+REQUIRES_SELENIUM = set((
+        'ap_configurator_factory_unittest.py',
+        'chaos_base_test_unittest.py',
+        'ap_batch_locker_unittest.py'
+    ))
+
 LONG_RUNTIME = set((
     'auth_server_unittest.py',
     'base_barrier_unittest.py',
@@ -92,6 +98,7 @@ LONG_TESTS = (REQUIRES_MYSQLDB |
               REQUIRES_HTTPLIB2 |
               REQUIRES_AUTH |
               REQUIRES_PROTOBUFS |
+              REQUIRES_SELENIUM |
               LONG_RUNTIME)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
