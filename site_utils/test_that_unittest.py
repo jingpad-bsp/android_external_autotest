@@ -7,6 +7,7 @@
 import os, unittest
 import mox
 import common
+import subprocess
 from autotest_lib.site_utils import test_that
 
 class StartsWithList(mox.Comparator):
@@ -61,12 +62,19 @@ class TestThatUnittests(unittest.TestCase):
         setattr(job2, 'control_type', 'Server')
         setattr(job2, 'control_file', 'c2')
 
-        # Stub out subprocess.call, make it expect correct arguments.
-        self.mox.StubOutWithMock(test_that.subprocess, 'call')
-        test_that.subprocess.call(StartsWithList([autoserv_command, '-p', '-m',
-                                                  remote, '-c']))
-        test_that.subprocess.call(StartsWithList([autoserv_command, '-p', '-m',
-                                                  remote, '-s']))
+        # Stub out subprocess.Popen and wait calls.
+        # Make them expect correct arguments.
+        mock_process_1 = self.mox.CreateMock(subprocess.Popen)
+        mock_process_2 = self.mox.CreateMock(subprocess.Popen)
+        self.mox.StubOutWithMock(subprocess, 'Popen')
+        subprocess.Popen(StartsWithList([autoserv_command, '-p', '-m',
+                                                  remote, '-c'])
+                        ).AndReturn(mock_process_1)
+        mock_process_1.wait()
+        subprocess.Popen(StartsWithList([autoserv_command, '-p', '-m',
+                                                  remote, '-s'])
+                         ).AndReturn(mock_process_2)
+        mock_process_2.wait()
 
         # Test run_job.
         self.mox.ReplayAll()
