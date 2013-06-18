@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.wlan import hostap_config
 from autotest_lib.server.cros.wlan import wifi_cell_test_base
@@ -53,13 +55,6 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         # which is the control distribution and which is the potentially dirty
         # distribution.
         if max0 > 200 + avg1 or max1 > 200 + avg0:
-            for name, stats in zip([key1, key2], [stats0, stats1]):
-                logging.error('Ping %s min/avg/max/dev = %s/%s/%s/%s',
-                              name,
-                              stats['min'],
-                              stats['avg'],
-                              stats['max'],
-                              stats['dev'])
             raise error.TestFail('Significant difference in rtt due to bgscan')
 
 
@@ -85,6 +80,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                                                {'interval': period_seconds},
                                                count=count)
         stats_with_bgscan = wifi_test_utils.parse_ping_output(ping_output)
+        logging.info('Ping statistics with bgscan: %r', stats_with_bgscan)
         self.context.client.shill.disconnect(assoc_params.ssid)
         # No bgscan, but take 10 seconds to get some reasonable statistics.
         self.context.client.disable_bgscan()
@@ -94,6 +90,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                                                count=count)
         self.context.client.enable_bgscan()
         stats_without_bgscan = wifi_test_utils.parse_ping_output(ping_output)
+        logging.info('Ping statistics without bgscan: %r', stats_without_bgscan)
         self._compare_stats(stats_with_bgscan, stats_without_bgscan)
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()
