@@ -161,10 +161,16 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
                                     % (self._video_duration / 2))
         self.wait_for_player_state(PLAYER_PLAYING_STATE)
         # So the playback doesn't stay at the mid.
-        time.sleep(1)
-        seek_position = self.video_current_time()
-        if not (seek_position > self._video_duration / 2
-            and seek_position < self._video_duration):
+        seek_test = False
+        for count in range(WAIT_TIMEOUT_S):
+            logging.info('Waiting for seek position to change.')
+            time.sleep(1)
+            seek_position = self.video_current_time()
+            if (seek_position > self._video_duration / 2
+               and seek_position < self._video_duration):
+               seek_test = True
+               break
+        if not seek_test:
             raise error.TestError(
                 'Seek location is wrong. Video length: %d, seek position: %d' %
                 (self._video_duration, seek_position))
