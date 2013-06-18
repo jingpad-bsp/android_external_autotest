@@ -934,6 +934,7 @@ class FAFTSequence(ServoTest):
         """Setup the CPU/EC UART capture."""
         self.cpu_uart_file = os.path.join(self.resultsdir, 'cpu_uart.txt')
         self.servo.set('cpu_uart_capture', 'on')
+        self.ec_uart_file = None
         if self.client_attr.chrome_ec:
             try:
                 self.servo.set('ec_uart_capture', 'on')
@@ -942,6 +943,8 @@ class FAFTSequence(ServoTest):
                 if 'No control named' in str(e):
                     logging.warn('The servod is too old that ec_uart_capture '
                                  'not supported.')
+        else:
+            logging.info('Not a Google EC, cannot capture ec console output.')
 
 
     def record_uart_capture(self):

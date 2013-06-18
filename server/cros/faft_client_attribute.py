@@ -72,7 +72,7 @@ class FAFTClientAttribute(object):
             self.broken_rec_mode = True
 
         # Set 'chrome_ec'
-        if platform in ['Link', 'Snow', 'Spring']:
+        if platform in ['Link', 'Snow', 'Spring', 'Falco', 'Peppy']:
             self.chrome_ec = True
 
         # Set 'dark_resume_capable'
