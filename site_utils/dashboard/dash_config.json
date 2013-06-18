@@ -101,8 +101,6 @@
              {"categories": "pyauto_perf",
               "cc": ["dennisjeffrey@google.com",
                      "puneetster@google.com"]},
-             {"categories": "sync",
-              "cc": ["rsimha@google.com"]},
              {"categories": "video",
               "cc": ["rohitbm@google.com"]},
              {"categories": "faft*",
