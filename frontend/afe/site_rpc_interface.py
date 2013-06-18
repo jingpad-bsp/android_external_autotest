@@ -137,7 +137,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'check_hosts': check_hosts,
                    'pool': pool,
                    'num': num,
-                   'file_bugs': file_bugs}
+                   'file_bugs': file_bugs,
+                   'devserver_url': ds.url()}
     control_file = tools.inject_vars(inject_dict, control_file_in)
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),
