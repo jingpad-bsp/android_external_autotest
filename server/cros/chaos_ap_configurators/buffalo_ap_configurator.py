@@ -209,6 +209,10 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="ath0_wpa_psk"]'
         self.select_item_from_popup_by_xpath('WPA2 Personal', popup)
+        if self.driver.title.find('DD-WRT') == -1:
+            page_url = urlparse.urljoin(self.admin_interface_url,
+                                        'WL_WPATable.asp')
+            self.get_url(page_url, page_title='DD-WRT')
         try:
             self.wait_for_object_by_xpath(key_field, wait_time=5)
         except:
