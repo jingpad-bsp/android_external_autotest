@@ -10,9 +10,8 @@ import string
 import sys
 import tempfile
 
-from autotest_lib.client.common_lib.cros import xmlrpc_datatypes
-
 TYPE_KEY = 'security_class_type_key'
+
 
 def deserialize(serialized):
     """Deserialize a SecurityConfig.
@@ -32,7 +31,7 @@ def deserialize(serialized):
                    serialized[TYPE_KEY])(serialized=serialized)
 
 
-class SecurityConfig(xmlrpc_datatypes.XmlRpcStruct):
+class SecurityConfig(object):
     """Abstracts the security configuration for a WiFi network.
 
     This bundle of credentials can be passed to both HostapConfig and

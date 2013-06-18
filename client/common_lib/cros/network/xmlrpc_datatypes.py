@@ -2,11 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib.cros import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 
 
-class AssociationParameters(xmlrpc_datatypes.XmlRpcStruct):
+class AssociationParameters(object):
     """Describes parameters used in WiFi connection attempts."""
 
     DEFAULT_DISCOVERY_TIMEOUT = 15
@@ -70,7 +69,7 @@ class AssociationParameters(xmlrpc_datatypes.XmlRpcStruct):
         self.station_type = serialized.get('station_type', None)
 
 
-class AssociationResult(xmlrpc_datatypes.XmlRpcStruct):
+class AssociationResult(object):
     """Describes the result of an association attempt."""
 
     def __init__(self, serialized=None):
@@ -121,7 +120,7 @@ class AssociationResult(xmlrpc_datatypes.XmlRpcStruct):
         return result
 
 
-class BgscanConfiguration(xmlrpc_datatypes.XmlRpcStruct):
+class BgscanConfiguration(object):
     """Describes how to configure wpa_supplicant on a DUT."""
 
     RESET_VALUE = 'default'

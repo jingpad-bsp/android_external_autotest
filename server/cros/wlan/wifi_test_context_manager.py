@@ -214,8 +214,7 @@ class WiFiTestContextManager(object):
 
         """
         logging.info('Connecting to %s.', wifi_params.ssid)
-        serialized_assoc_result = self.client.shill.connect_wifi(
-                wifi_params.serialize())
+        serialized_assoc_result = self.client.shill.connect_wifi(wifi_params)
         assoc_result = xmlrpc_datatypes.AssociationResult(
                 serialized=serialized_assoc_result)
         logging.info('Finished connection attempt to %s with times: '

@@ -108,20 +108,19 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         logging.debug('connect_wifi()')
-        params = xmlrpc_datatypes.AssociationParameters(raw_params)
+        params = xmlrpc_datatypes.AssociationParameters(serialized=raw_params)
         raw = self._shill_proxy.connect_to_wifi_network(
                 params.ssid,
                 params.security,
                 params.security_parameters,
                 params.save_credentials,
-                # FIXME(wiley): comment out b/c this breaks RvR tests
-                #station_type=params.station_type,
+                station_type=params.station_type,
                 hidden_network=params.is_hidden,
                 discovery_timeout_seconds=params.discovery_timeout,
                 association_timeout_seconds=params.association_timeout,
                 configuration_timeout_seconds=params.configuration_timeout)
         result = xmlrpc_datatypes.AssociationResult.from_dbus_proxy_output(raw)
-        return result.serialize()
+        return result
 
 
     def disconnect(self, ssid):
@@ -150,10 +149,10 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def configure_bgscan(self, raw_params):
         """Configure background scan parameters via shill.
 
-        @param raw_params dict from BgscanConfiguration.serialize().
+        @param raw_params serialized BgscanConfiguration.
 
         """
-        params = xmlrpc_datatypes.BgscanConfiguration(raw_params)
+        params = xmlrpc_datatypes.BgscanConfiguration(serialized=raw_params)
         if params.interface is None:
             logging.error('No interface specified to set bgscan parameters on.')
             return False
