@@ -508,6 +508,8 @@ class factory_CameraPerformanceAls(test.test):
                     self.log('No serial number detected: %s\n' % error_message)
             else:
                 self.serial_number = event.data.get('sn', '')
+        else:
+            self.serial_number = 'MISSING_SN'
 
         if self.type == _TEST_TYPE_FULL:
             with leds.Blinker(self._LED_RUNNING_TEST):
