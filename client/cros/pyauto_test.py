@@ -176,7 +176,9 @@ class PyAutoTest(test.test):
         pyauto._OPTIONS.no_http_server = True
         pyauto._OPTIONS.remote_host = None
 
-        self.pyauto_suite = pyauto.PyUITestSuite([])
+        self.pyauto_suite = pyauto.PyUITestSuite(
+            ['--ui-test-action-timeout=60000',
+             '--ui-test-action-max-timeout=60000'])
         self.pyauto = PyUITestInAutotest()
 
         # Enable chrome testing interface and log in to default account
