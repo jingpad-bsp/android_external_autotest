@@ -22,25 +22,16 @@ class LinuxSystem(object):
     CAPABILITY_5GHZ = '5ghz'
     CAPABILITY_MULTI_AP = 'multi_ap'
     CAPABILITY_MULTI_AP_SAME_BAND = 'multi_ap_same_band'
+    CAPABILITY_IBSS = 'ibss_supported'
 
 
     @property
     def capabilities(self):
-        """@return list of AP capabilities for this system."""
-        if self._capabilities is not None:
-            return self._capabilities
-
-        self._capabilities = []
-        phymap = self.phys_for_frequency
-        if [freq for freq in phymap.iterkeys() if freq > 5000]:
-            self._capabilities.append(self.CAPABILITY_5GHZ)
-        if [freq for freq in phymap.iterkeys() if len(phymap[freq]) > 1]:
-            self._capabilities.append(self.CAPABILITY_MULTI_AP_SAME_BAND)
-            self._capabilities.append(self.CAPABILITY_MULTI_AP)
-        elif len(self.phy_bus_type) > 1:
-            self._capabilities.append(self.CAPABILITY_MULTI_AP)
-        logging.info('%s system capabilities: %r',
-                     self.role, self._capabilities)
+        """@return iterable object of AP capabilities for this system."""
+        if self._capabilities is None:
+            self._capabilities = self.get_capabilities()
+            logging.info('%s system capabilities: %r',
+                         self.role, self._capabilities)
         return self._capabilities
 
 
@@ -157,6 +148,21 @@ class LinuxSystem(object):
             m = test.match(line)
             if m:
                 self._remove_interface(m.group(1), False)
+
+
+    def get_capabilities(self):
+        caps = []
+        phymap = self.phys_for_frequency
+        if [freq for freq in phymap.iterkeys() if freq > 5000]:
+            # The frequencies are expressed in megaherz
+            caps.append(self.CAPABILITY_5GHZ)
+        if [freq for freq in phymap.iterkeys() if len(phymap[freq]) > 1]:
+            caps.append(self.CAPABILITY_MULTI_AP_SAME_BAND)
+            caps.append(self.CAPABILITY_MULTI_AP)
+        elif len(self.phy_bus_type) > 1:
+            caps.append(self.CAPABILITY_MULTI_AP)
+        return set(caps)
+
 
     def start_capture_params(self, params):
         """Start a packet capture.

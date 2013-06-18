@@ -23,6 +23,12 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
     running a ChromiumOS image.
     """
 
+    def get_capabilities(self):
+        """@return iterable object of AP capabilities for this system."""
+        return super(LinuxCrosRouter, self).get_capabilities().union(
+                [self.CAPABILITY_IBSS])
+
+
     def __init__(self, host, params, defssid):
         cros_params = params.copy()
         cros_params.update({
@@ -35,7 +41,7 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
                 'monitor': 'usb',
                 'managed': 'pci'
             }})
-        site_linux_router.LinuxRouter.__init__(self, host, cros_params, defssid)
+        super(LinuxCrosRouter, self).__init__(host, cros_params, defssid)
         self.cmd_iptables = params.get('cmd_iptables', '/sbin/iptables')
 
 

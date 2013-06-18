@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.wlan import hostap_config
 from autotest_lib.server.cros.wlan import wifi_cell_test_base
 
@@ -14,6 +15,8 @@ class network_WiFi_IBSS(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Body of the test."""
+        self.context.router.require_capabilities(
+                [site_linux_system.LinuxSystem.CAPABILITY_IBSS])
         self.context.router.create_wifi_device(device_type='ibss')
         configuration = hostap_config.HostapConfig(
                 frequency=2412, mode=hostap_config.HostapConfig.MODE_11B)
