@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "pstew@chromium.org"
-NAME = "network_VPNL2TPIPSecPSK"
+NAME = "network_VPNL2TPIPSecPSK.l2tpipsec_psk"
 PURPOSE = "Verify shill correctly authenticates to an L2TP/IPSec PSK VPN"
 CRITERIA = """
 This test fails if the DUT cannot authenticate to a locally running

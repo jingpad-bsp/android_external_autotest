@@ -2,11 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import tempfile
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.cros import virtual_ethernet_pair
 from autotest_lib.client.cros import vpn_server
+
 
 # This hacks the path so that we can import shill_proxy.
 # pylint: disable=W0611
@@ -96,8 +100,27 @@ class network_VPNConnect(test.test):
                                                  self.SERVER_INTERFACE_NAME,
                                                  self.SERVER_ADDRESS,
                                                  self.NETWORK_PREFIX)
+        if self._vpn_type == 'openvpn':
+            return vpn_server.OpenVPNServer(self.SERVER_INTERFACE_NAME,
+                                            self.SERVER_ADDRESS,
+                                            self.NETWORK_PREFIX)
         else:
             raise error.TestFail('Unknown vpn server type %s' % self._vpn_type)
+
+
+    def make_temp_file(self, contents):
+        """Creates a temporary file with |contents| that will delete on exit.
+
+        @param contents string contents the data the temporary file should have.
+        @return file name that was created.
+
+        """
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.file.write(contents)
+        temp_file.file.flush()
+        # Save a reference so the file deletion happens when |this| destructs.
+        self._temp_files.append(temp_file)
+        return temp_file.name
 
 
     def get_vpn_client_properties(self):
@@ -112,6 +135,20 @@ class network_VPNConnect(test.test):
                 'Provider.Type': 'l2tpipsec',
                 'Type': 'vpn',
                 'VPN.Domain': 'test-vpn-psk-domain'
+            }
+        if self._vpn_type == 'openvpn':
+            return {
+                'Name': 'test-vpn-openvpn',
+                'Provider.Host': self.SERVER_ADDRESS,
+                'Provider.Type': 'openvpn',
+                'Type': 'vpn',
+                'VPN.Domain': 'test-openvpn-domain',
+                'OpenVPN.CACertPEM': [ site_eap_certs.ca_cert_1 ],
+                'OpenVPN.Cert': self.make_temp_file(
+                        site_eap_certs.client_cert_1),
+                'OpenVPN.Key': self.make_temp_file(
+                        site_eap_certs.client_private_key_1),
+                'OpenVPN.Verb': '5'
             }
         else:
             raise error.TestFail('Unknown vpn client type %s' % self._vpn_type)
@@ -140,6 +177,7 @@ class network_VPNConnect(test.test):
         client_address_and_prefix = '%s/%d' % (self.CLIENT_ADDRESS,
                                                self.NETWORK_PREFIX)
         self._vpn_type = vpn_type
+        self._temp_files = []
 
         with shill_temporary_profile.ShillTemporaryProfile(
                 manager, profile_name=self.TEST_PROFILE_NAME):

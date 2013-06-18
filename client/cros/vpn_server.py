@@ -34,7 +34,7 @@ class L2TPIPSecVPNServer(VPNServer):
     IPSEC_PASSWORD = 'password'
     XL2TPD_COMMAND = '/usr/sbin/xl2tpd'
     XL2TPD_CONFIG_FILE = 'etc/xl2tpd/xl2tpd.conf'
-    XL2TPD_PIDFILE = 'var/run/xl2tpd.pid'
+    XL2TPD_PID_FILE = 'var/run/xl2tpd.pid'
     IPSEC_COMMON_CONFIGS = {
         'etc/strongswan.conf' :
             'charon {\n'
@@ -170,7 +170,7 @@ class L2TPIPSecVPNServer(VPNServer):
         """Start VPN server instance"""
         chroot = self._chroot
         chroot.run([self.IPSEC_COMMAND, 'stop'])
-        chroot.kill_pid_file(self.XL2TPD_PIDFILE)
+        chroot.kill_pid_file(self.XL2TPD_PID_FILE)
         chroot.shutdown()
 
 
@@ -183,3 +183,85 @@ class L2TPIPSecVPNServer(VPNServer):
         """Pre-load ipsec modules since they can't be loaded from chroot."""
         for module in self.PRELOAD_MODULES:
             utils.system('modprobe %s' % module)
+
+
+class OpenVPNServer(VPNServer):
+    """Implementation of an OpenVPN service."""
+    PRELOAD_MODULES = ('tun',)
+    ROOT_DIRECTORIES = ('etc/openvpn', 'etc/ssl')
+    CA_CERTIFICATE_FILE = 'etc/openvpn/ca.crt'
+    SERVER_CERTIFICATE_FILE = 'etc/openvpn/server.crt'
+    SERVER_KEY_FILE = 'etc/openvpn/server.key'
+    DIFFIE_HELLMAN_FILE = 'etc/openvpn/diffie-hellman.pem'
+    OPENVPN_COMMAND = '/usr/sbin/openvpn'
+    OPENVPN_CONFIG_FILE = 'etc/openvpn/openvpn.conf'
+    OPENVPN_PID_FILE = 'var/run/openvpn.pid'
+    OPENVPN_STATUS_FILE = 'tmp/openvpn.status'
+    CONFIGURATION = {
+        'etc/ssl/blacklist' : '',
+        CA_CERTIFICATE_FILE : site_eap_certs.ca_cert_1,
+        SERVER_CERTIFICATE_FILE : site_eap_certs.server_cert_1,
+        SERVER_KEY_FILE : site_eap_certs.server_private_key_1,
+        DIFFIE_HELLMAN_FILE : site_eap_certs.dh1024_pem_key_1,
+        OPENVPN_CONFIG_FILE :
+            'ca /%(ca-cert)s\n'
+            'cert /%(server-cert)s\n'
+            'dev tun\n'
+            'dh /%(diffie-hellman-params-file)s\n'
+            'keepalive 10 120\n'
+            'local %(local-ip)s\n'
+            'log /var/log/openvpn.log\n'
+            'ifconfig-pool-persist /tmp/ipp.txt\n'
+            'key /%(server-key)s\n'
+            'persist-key\n'
+            'persist-tun\n'
+            'port 1194\n'
+            'proto udp\n'
+            'server 10.11.12.0 255.255.255.0\n'
+            'status /%(status-file)s\n'
+            'verb 5\n'
+            'writepid /%(pid-file)s\n'
+    }
+
+    def __init__(self, interface_name, address, network_prefix):
+        self._chroot = network_chroot.NetworkChroot(interface_name,
+                                                    address, network_prefix)
+
+
+    def start_server(self):
+        """Start VPN server instance"""
+        chroot = self._chroot
+        chroot.add_root_directories(self.ROOT_DIRECTORIES)
+        # Create a configuration template from the key-value pairs.
+        chroot.add_config_templates(self.CONFIGURATION)
+        chroot.add_config_values({
+            'ca-cert': self.CA_CERTIFICATE_FILE,
+            'diffie-hellman-params-file': self.DIFFIE_HELLMAN_FILE,
+            'pid-file': self.OPENVPN_PID_FILE,
+            'server-cert': self.SERVER_CERTIFICATE_FILE,
+            'server-key': self.SERVER_KEY_FILE,
+            'status-file': self.OPENVPN_STATUS_FILE,
+        })
+        chroot.add_startup_command('%s --config /%s &' %
+                                   (self.OPENVPN_COMMAND,
+                                    self.OPENVPN_CONFIG_FILE))
+        self.preload_modules()
+        chroot.startup()
+
+
+    def preload_modules(self):
+        """Pre-load modules since they can't be loaded from chroot."""
+        for module in self.PRELOAD_MODULES:
+            utils.system('modprobe %s' % module)
+
+
+    def get_log_contents(self):
+        """Return all logs related to the chroot."""
+        return self._chroot.get_log_contents()
+
+
+    def stop_server(self):
+        """Start VPN server instance"""
+        chroot = self._chroot
+        chroot.kill_pid_file(self.OPENVPN_PID_FILE)
+        chroot.shutdown()

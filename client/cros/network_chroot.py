@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os
+import shutil
 import time
 
 from autotest_lib.client.bin import utils
@@ -35,9 +36,12 @@ class NetworkChroot(object):
     ROOT_DIRECTORIES = ('etc',  'tmp', 'var', 'var/log', 'var/run')
     STARTUP = 'etc/chroot_startup.sh'
     STARTUP_DELAY_SECONDS = 5
-    STARTUP_PIDFILE = 'var/run/vpn_startup.pid'
-    STARTUP_SLEEPER_PIDFILE = 'var/run/vpn_sleeper.pid'
+    STARTUP_PID_FILE = 'var/run/vpn_startup.pid'
+    STARTUP_SLEEPER_PID_FILE = 'var/run/vpn_sleeper.pid'
 
+    COPIED_CONFIG_FILES = [
+        'etc/ld.so.cache'
+    ]
     CONFIG_FILE_TEMPLATES = {
         STARTUP:
             '#!/bin/sh\n'
@@ -52,9 +56,9 @@ class NetworkChroot(object):
             'ip link set %(local-interface-name)s up\n'
     }
     CONFIG_FILE_VALUES = {
-        'sleeper-pidfile': STARTUP_SLEEPER_PIDFILE,
+        'sleeper-pidfile': STARTUP_SLEEPER_PID_FILE,
         'startup-delay-seconds': STARTUP_DELAY_SECONDS,
-        'startup-pidfile': STARTUP_PIDFILE
+        'startup-pidfile': STARTUP_PID_FILE
     }
 
     def __init__(self, interface, address, prefix):
@@ -63,6 +67,7 @@ class NetworkChroot(object):
         # Copy these values from the class-static since specific instances
         # of this class are allowed to modify their contents.
         self._root_directories = list(self.ROOT_DIRECTORIES)
+        self._copied_config_files = list(self.COPIED_CONFIG_FILES)
         self._config_file_templates = self.CONFIG_FILE_TEMPLATES.copy()
         self._config_file_values = self.CONFIG_FILE_VALUES.copy()
 
@@ -79,7 +84,7 @@ class NetworkChroot(object):
         self.write_configs()
         self.run(['/bin/bash', os.path.join('/', self.STARTUP), '&'])
         self.move_interface_to_chroot_namespace()
-        self.kill_pid_file(self.STARTUP_SLEEPER_PIDFILE)
+        self.kill_pid_file(self.STARTUP_SLEEPER_PID_FILE)
 
 
     def shutdown(self):
@@ -135,7 +140,17 @@ class NetworkChroot(object):
     def get_log_contents(self):
         """Return the logfiles from the chroot."""
         return utils.system_output("head -10000 %s" %
-                                   os.path.join(self._temp_dir, "var/log/*"))
+                                   self.chroot_path("var/log/*"))
+
+
+    def chroot_path(self, path):
+        """Returns the the path within the chroot for |path|.
+
+        @param path string filename within the choot.  This should not
+            contain a leading '/'.
+
+        """
+        return os.path.join(self._temp_dir, path.lstrip('/'))
 
 
     def get_pid_file(self, pid_file):
@@ -146,7 +161,7 @@ class NetworkChroot(object):
             leading '/'.
 
         """
-        with open(os.path.join(self._temp_dir, pid_file)) as f:
+        with open(self.chroot_path(pid_file)) as f:
             return int(f.read())
 
 
@@ -165,12 +180,12 @@ class NetworkChroot(object):
         """Make a chroot filesystem."""
         self._temp_dir = utils.system_output('mktemp -d /tmp/chroot.XXXXXXXXX')
         for rootdir in self._root_directories:
-            os.mkdir(os.path.join(self._temp_dir, rootdir))
+            os.mkdir(self.chroot_path(rootdir))
 
         self._jail_args = []
         for rootdir in self.BIND_ROOT_DIRECTORIES:
             src_path = os.path.join('/', rootdir)
-            dst_path = os.path.join(self._temp_dir, rootdir)
+            dst_path = self.chroot_path(rootdir)
             if not os.path.exists(src_path):
                 continue
             elif os.path.islink(src_path):
@@ -180,11 +195,18 @@ class NetworkChroot(object):
                 os.mkdir(dst_path)
                 self._jail_args += [ '-b', '%s,%s' % (src_path, src_path) ]
 
+        for config_file in self._copied_config_files:
+            src_path = os.path.join('/', config_file)
+            dst_path = self.chroot_path(config_file)
+            if os.path.exists(src_path):
+                shutil.copyfile(src_path, dst_path)
+
 
     def move_interface_to_chroot_namespace(self):
         """Move network interface to the network namespace of the server."""
         utils.system('ip link set %s netns %d' %
-                     (self._interface, self.get_pid_file(self.STARTUP_PIDFILE)))
+                     (self._interface,
+                      self.get_pid_file(self.STARTUP_PID_FILE)))
 
 
     def run(self, args):
@@ -200,5 +222,5 @@ class NetworkChroot(object):
     def write_configs(self):
         """Write out config files"""
         for config_file, template in self._config_file_templates.iteritems():
-            with open(os.path.join(self._temp_dir, config_file), 'w') as f:
+            with open(self.chroot_path(config_file), 'w') as f:
                 f.write(template % self._config_file_values)
