@@ -90,6 +90,8 @@ SKIP = set((
     'monitor_db_functional_test.py',
     # crbug.com/249377
     'reporting_unittest.py',
+    # crbug.com/251395
+    'dev_server_test.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |
