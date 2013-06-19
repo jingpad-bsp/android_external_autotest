@@ -196,7 +196,7 @@ class ATTransceiver(object):
         state_machine_name = state_machine.get_well_known_name()
         self._state_machines[state_machine_name] = state_machine
 
-    def process_wardmodem_response(self, response):
+    def process_wardmodem_response(self, response, *args):
         """
         TODO(pprabhu)
 
