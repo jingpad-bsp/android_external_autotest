@@ -6,9 +6,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
-import dbus
 import logging
-import os
 import re
 
 '''A test verifying that the default bluetooth settings are correct.
@@ -75,7 +73,7 @@ class security_HciconfigDefaultSettings(test.test):
         if num_lines != 9 and num_lines != 16:
             logging.debug(output)
             raise error.TestError('Unexpected quantity of Bluetooth interface'
-                    'information.  Expected 9 or 16 lines, saw %d:' % lines)
+                    ' information.  Expected 9 or 16 lines, saw %d:' % num_lines)
 
         adapter = output[0][:output[0].index(':')]
         was_down = self.compare(output[2], 'DOWN')
