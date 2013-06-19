@@ -138,7 +138,12 @@ class DevServer(object):
             free_disk = result_dict['free_disk']
             stats.Gauge(server_name).send('free_disk', free_disk)
 
-            if free_disk < DevServer._MIN_FREE_DISK_SPACE_GB:
+            skip_devserver_health_check = CONFIG.get_config_value('CROS',
+                                              'skip_devserver_health_check',
+                                              type=bool)
+            if skip_devserver_health_check:
+                logging.debug('devserver health check is skipped.')
+            elif (free_disk < DevServer._MIN_FREE_DISK_SPACE_GB):
                 logging.error('Devserver check_health failed. Free disk space '
                               'is low. Only %dGB is available.', free_disk)
                 stats.Counter(server_name +'.devserver_not_healthy').increment()
