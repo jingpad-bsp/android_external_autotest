@@ -23,10 +23,18 @@ class WardModemSetupException(Exception):
     pass
 
 
-# Exceptions thrown by the ATTransceiver class.
+# Exceptions thrown in the at_transceiver module.
 class ATTransceiverException(WardModemRunTimeException):
     """
     Something went wrong in ATTranseiver while processing AT commands.
+
+    """
+    pass
+
+# Exceptions raised in the state_machine module.
+class StateMachineException(WardModemRunTimeException):
+    """
+    Something went wrong in StateMachine while processing commands.
 
     """
     pass
