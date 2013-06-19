@@ -177,7 +177,6 @@ class VirtualEthernetInterface(object):
         self.dnsmasq = subprocess.Popen(
                 ['sudo',
                  '/usr/local/sbin/dnsmasq',
-                 '--pid-file',
                  '-k',
                  '--dhcp-leasefile=' + lease_file,
                  '--dhcp-range=%s.2,%s.254' % (
@@ -213,8 +212,9 @@ class VirtualEthernetInterface(object):
         self.BringIfaceDown()
         if not self.vif.is_healthy:
             raise Exception('Could not initialize virtual ethernet pair')
+
         utils.run('sudo route add -host 255.255.255.255 dev ' +
-                   PEER_IFACE_NAME)
+                  PEER_IFACE_NAME)
 
         # Make sure 'dnsmasq' can receive DHCP requests.
         utils.run('sudo iptables -I INPUT -p udp --dport 67 -j ACCEPT')
@@ -324,8 +324,6 @@ class PseudoModemManager(object):
         self.started = True
 
         # TODO(armansito): See crosbug.com/36235
-        global virtual_ethernet_interface
-        virtual_ethernet_interface.Setup()
         if self.detach:
             self.child = os.fork()
             if self.child == 0:
@@ -351,7 +349,6 @@ class PseudoModemManager(object):
                 os.kill(self.child, signal.SIGINT)
                 os.waitpid(self.child, 0)
                 self.child = 0
-                self._Cleanup()
         else:
             self._Cleanup()
         self.started = False
@@ -394,6 +391,8 @@ class PseudoModemManager(object):
     def _Run(self):
         if not self.modem:
             raise Exception('No modem object has been provided.')
+        global virtual_ethernet_interface
+        virtual_ethernet_interface.Setup()
         dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
         bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
         name = dbus.service.BusName(mm1.I_MODEM_MANAGER, bus)
@@ -411,6 +410,7 @@ class PseudoModemManager(object):
             self.manager.Remove(self.modem)
             self.mainloop.quit()
             if self.detach:
+                self._Cleanup()
                 os._exit(0)
 
         signal.signal(signal.SIGINT, _SignalHandler)
