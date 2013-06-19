@@ -146,7 +146,10 @@ class CgptState:
     def set_step(self, step):
         """Set the step number of cgpt test in a file"""
         self.step_file = self.chros_if.state_dir_file(STEP_FILE)
-        open(self.step_file, 'w').write('%d' % step)
+        with open(self.step_file, 'w') as f:
+            f.write('%d' % step)
+            f.flush()
+            os.fdatasync(f)
 
     def _is_matched_kern_prop_dict(self, part_prop_dict,
                                    expected_kern_prop_dict):
