@@ -121,7 +121,7 @@ class platform_BootPerf(test.test):
         last_shutdown_re = re.compile(
             datetime_re + r'.*(klog|tty2) main process.*killed by TERM')
         startup_re = re.compile(datetime_re + r'.*000\] Linux version \d')
-        mhz_re = re.compile(r'Detected (\d+\.\d+) MHz processor.')
+        mhz_re = re.compile(r'Detected (\d+\.\d+) MHz processor')
         mhz = 0
         for line in file_handle.readlines():
             match = startup_re.match(line)
