@@ -31,5 +31,5 @@ job.run_test('network_3GModemPresent',
 # CDMA
 job.run_test('network_3GModemPresent',
              pseudo_modem=True,
-             pseudmodem_family='CDMA',
+             pseudomodem_family='CDMA',
              tag='pseudomodem.CDMA')
