@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wiley@chromium.com'
-NAME = 'network_WiFi_SimpleConnect.wifi_WPA'
+NAME = 'network_WiFi_SimpleConnect.wifi_checkWPA_TKIP'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
@@ -13,10 +13,8 @@ DOC = """
 This tests verifies that we can connect to an AP broadcasting a WPA network
 using TKIP.  TKIP is deprecated for having some security holes, and WPA is
 deprecated in favor of WPA2, but routers of a certain age only support
-kkjthis mode.
+this mode.
 """
-
-import copy
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
