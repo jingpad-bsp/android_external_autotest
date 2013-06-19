@@ -126,9 +126,8 @@ class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_security_disabled(self):
-        self.wait_for_object_by_id('suppress')
-        self.select_item_from_popup_by_id('Disable', 'suppress')
-
+        self.wait_for_object_by_id('security_type')
+        self.select_item_from_popup_by_id('Disable', 'security_type')
 
     def get_supported_modes(self):
         return [{'band': self.band_2ghz,
