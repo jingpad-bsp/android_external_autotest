@@ -80,8 +80,9 @@ class ModemCdma(modem.Modem):
             'ActivationState' : dbus.types.UInt32(activation_state)
         }
         props = ip[mm1.I_MODEM]
-        props['ModemCapabilities'] = (
-            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_CDMA_EVDO))
+        props['SupportedCapabilities'] = [
+            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_CDMA_EVDO)
+        ]
         props['CurrentCapabilities'] = (
             dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_CDMA_EVDO))
         props['MaxBearers'] = dbus.types.UInt32(1)
@@ -89,9 +90,12 @@ class ModemCdma(modem.Modem):
         props['EquipmentIdentifier'] = ip[mm1.I_MODEM_CDMA]['Meid']
         props['AccessTechnologies'] = (
             dbus.types.UInt32(mm1.MM_MODEM_ACCESS_TECHNOLOGY_EVDO0))
-        props['SupportedModes'] = dbus.types.UInt32(mm1.MM_MODEM_MODE_ANY)
-        props['AllowedModes'] = props['SupportedModes']
-        props['PreferredMode'] = dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE)
+        props['SupportedModes'] = [
+            dbus.types.Struct([dbus.types.UInt32(mm1.MM_MODEM_MODE_3G),
+                               dbus.types.UInt32(mm1.MM_MODEM_MODE_4G)],
+                              signature='uu')
+        ]
+        props['CurrentModes'] = props['SupportedModes'][0]
         props['SupportedBands'] = [
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC0_CELLULAR_800),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC1_PCS_1900),
@@ -106,7 +110,7 @@ class ModemCdma(modem.Modem):
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC10_SECONDARY_800),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC11_PAMR_400)
         ]
-        props['Bands'] = [
+        props['CurrentBands'] = [
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC0_CELLULAR_800),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC1_PCS_1900),
         ]
@@ -330,7 +334,7 @@ class ModemCdma(modem.Modem):
         retval['state'] = modem_props['State']
         if retval['state'] == mm1.MM_MODEM_STATE_REGISTERED:
             retval['signal-quality'] = modem_props['SignalQuality'][0]
-            retval['bands'] = modem_props['Bands']
+            retval['bands'] = modem_props['CurrentBands']
             retval['cdma-cdma1x-registration-state'] = \
                 cdma_props['Cdma1xRegistrationState']
             retval['cdma-evdo-registration-state'] = \

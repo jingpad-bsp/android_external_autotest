@@ -53,19 +53,25 @@ class Modem3gpp(modem.Modem):
         }
 
         props = ip[mm1.I_MODEM]
-        props['ModemCapabilities'] = dbus.types.UInt32(
-            mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)
+        props['SupportedCapabilities'] = [
+                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_GSM_UMTS),
+                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_LTE)
+        ]
         props['CurrentCapabilities'] = dbus.types.UInt32(
-            mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)
+                mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)
         props['MaxBearers'] = dbus.types.UInt32(3)
         props['MaxActiveBearers'] = dbus.types.UInt32(2)
         props['EquipmentIdentifier'] = ip[mm1.I_MODEM_3GPP]['Imei']
         props['AccessTechnologies'] = dbus.types.UInt32((
                 mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM |
                 mm1.MM_MODEM_ACCESS_TECHNOLOGY_UMTS))
-        props['SupportedModes'] = dbus.types.UInt32(mm1.MM_MODEM_MODE_ANY)
-        props['AllowedModes'] = props['SupportedModes']
-        props['PreferredMode'] = dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE)
+        props['SupportedModes'] = [
+                dbus.types.Struct([dbus.types.UInt32(mm1.MM_MODEM_MODE_3G |
+                                                     mm1.MM_MODEM_MODE_4G),
+                                   dbus.types.UInt32(mm1.MM_MODEM_MODE_4G)],
+                                  signature='uu')
+                ]
+        props['CurrentModes'] = props['SupportedModes'][0]
         props['SupportedBands'] = [
             dbus.types.UInt32(mm1.MM_MODEM_BAND_EGSM),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_DCS),
@@ -77,7 +83,7 @@ class Modem3gpp(modem.Modem):
             dbus.types.UInt32(mm1.MM_MODEM_BAND_U800),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_U850)
         ]
-        props['Bands'] = [
+        props['CurrentBands'] = [
             dbus.types.UInt32(mm1.MM_MODEM_BAND_EGSM),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_DCS),
             dbus.types.UInt32(mm1.MM_MODEM_BAND_PCS),
@@ -222,7 +228,7 @@ class Modem3gpp(modem.Modem):
         retval['state'] = modem_props['State']
         if retval['state'] == mm1.MM_MODEM_STATE_REGISTERED:
             retval['signal-quality'] = modem_props['SignalQuality'][0]
-            retval['bands'] = modem_props['Bands']
+            retval['bands'] = modem_props['CurrentBands']
             retval['access-technology'] = self.sim.access_technology
             retval['m3gpp-registration-state'] = \
                 m3gpp_props['RegistrationState']

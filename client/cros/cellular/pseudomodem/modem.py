@@ -99,10 +99,12 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                                       signature='ub'),
             'OwnNumbers' : ['5555555555'],
             'PowerState' : dbus.types.UInt32(mm1.MM_MODEM_POWER_STATE_ON),
+            'SupportedIpFamilies' :
+                dbus.types.UInt32(mm1.MM_BEARER_IP_FAMILY_ANY),
 
             # specified by subclass:
-            'ModemCapabilities' :
-                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_NONE),
+            'SupportedCapabilities' :
+                [dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_NONE)],
             'CurrentCapabilities' :
                 dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_NONE),
             'MaxBearers' : dbus.types.UInt32(0),
@@ -110,11 +112,19 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             'EquipmentIdentifier' : '',
             'AccessTechnologies' :
                     dbus.types.UInt32(mm1.MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
-            'SupportedModes' : dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
-            'AllowedModes' : dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
-            'PreferredMode' : dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
+            'SupportedModes' : [
+                    dbus.types.Struct(
+                            [dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
+                             dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE)],
+                            signature='uu')
+            ],
+            'CurrentModes' :
+                    dbus.types.Struct(
+                            [dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
+                             dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE)],
+                            signature='uu'),
             'SupportedBands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
-            'Bands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
+            'CurrentBands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
             'Sim' : dbus.types.ObjectPath(mm1.ROOT_PATH)
         }
         return {
@@ -542,8 +552,8 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='uu')
-    def SetAllowedModes(self, modes, preferred):
+    @dbus.service.method(mm1.I_MODEM, in_signature='(uu)')
+    def SetCurrentModes(self, modes):
         """
         Sets the access technologies (eg 2G/3G/4G preference) the device is
         currently allowed to use when connecting to a network.
@@ -554,11 +564,14 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                           if any.
 
         """
-        self.SetUInt32(mm1.I_MODEM, 'AllowedModes', modes)
-        self.SetUInt32(mm1.I_MODEM, 'PreferredMode', preferred)
+        allowed = self.Get(mm1.I_MODEM, 'SupportedModes')
+        if not modes in allowed:
+            raise mm1.MMCoreError(mm1.MMCoreError.FAILED,
+                                  'Mode not supported: ' + repr(modes))
+        self.Set(mm1.I_MODEM, 'CurrentModes', modes)
 
     @dbus.service.method(mm1.I_MODEM, in_signature='au')
-    def SetBands(self, bands):
+    def SetCurrentBands(self, bands):
         """
         Sets the radio frequency and technology bands the device is currently
         allowed to use when connecting to a network.
@@ -568,7 +581,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
         """
         band_list = [dbus.types.UInt32(band) for band in bands]
-        self.Set(mm1.I_MODEM, 'Bands', band_list)
+        self.Set(mm1.I_MODEM, 'CurrentBands', band_list)
 
     @dbus.service.method(mm1.I_MODEM,
                          in_signature='su',
@@ -609,6 +622,23 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                                   'Cannot set the power state if modem is not'
                                   ' DISABLED.')
         self.SetUInt32(mm1.I_MODEM, 'PowerState', power_state);
+
+    @dbus.service.method(mm1.I_MODEM, in_signature='u')
+    def SetCurrentCapabilities(self, capabilities):
+        """
+        Set the capabilities of the device. A restart of the modem may be
+        required.
+
+        @param capabilities: Bitmask of MMModemCapability values, to specify the
+                             capabilities to use.
+
+        """
+        supported = self.Get(mm1.I_MODEM, 'SupportedCapabilities')
+        if not capabilities in supported:
+            raise mm1.MMCoreError(
+                    mm1.MMCoreError.FAILED,
+                    'Given capabilities not supported: ' + capabilities)
+        self.SetUInt32(mm1.I_MODEM, 'CurrentCapabilities', capabilities)
 
     @dbus.service.signal(mm1.I_MODEM, signature='iiu')
     def StateChanged(self, old, new, reason):
