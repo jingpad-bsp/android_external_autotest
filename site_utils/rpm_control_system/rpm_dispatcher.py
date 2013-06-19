@@ -23,7 +23,9 @@ from rpm_infrastructure_exception import RPMInfrastructureException
 LOG_FILENAME_FORMAT = rpm_config.get('GENERAL','dispatcher_logname_format')
 
 # Servo-interface mapping file
-MAPPING_FILE = rpm_config.get('CiscoPOE', 'servo_interface_mapping_file')
+MAPPING_FILE = os.path.join(
+        os.path.dirname(__file__),
+        rpm_config.get('CiscoPOE', 'servo_interface_mapping_file'))
 
 
 class RPMDispatcher(object):

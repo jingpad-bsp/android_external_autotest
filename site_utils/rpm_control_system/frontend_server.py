@@ -36,7 +36,9 @@ VALID_STATE_VALUES = ['ON', 'OFF', 'CYCLE']
 RPM_REGEX = re.compile('host[^.]*')
 
 # Servo-interface mapping file
-MAPPING_FILE = rpm_config.get('CiscoPOE', 'servo_interface_mapping_file')
+MAPPING_FILE = os.path.join(
+        os.path.dirname(__file__),
+        rpm_config.get('CiscoPOE', 'servo_interface_mapping_file'))
 
 
 class RPMFrontendServer(object):

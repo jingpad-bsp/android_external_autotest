@@ -14,7 +14,9 @@ import rpm_infrastructure_exception
 from config import rpm_config
 
 
-MAPPING_FILE = rpm_config.get('CiscoPOE', 'servo_interface_mapping_file')
+MAPPING_FILE = os.path.join(
+        os.path.dirname(__file__),
+        rpm_config.get('CiscoPOE', 'servo_interface_mapping_file'))
 
 
 def load_servo_interface_mapping(mapping_file=MAPPING_FILE):
