@@ -151,17 +151,17 @@ class LinuxSystem(object):
 
 
     def get_capabilities(self):
-        caps = []
+        caps = set()
         phymap = self.phys_for_frequency
         if [freq for freq in phymap.iterkeys() if freq > 5000]:
             # The frequencies are expressed in megaherz
-            caps.append(self.CAPABILITY_5GHZ)
+            caps.add(self.CAPABILITY_5GHZ)
         if [freq for freq in phymap.iterkeys() if len(phymap[freq]) > 1]:
-            caps.append(self.CAPABILITY_MULTI_AP_SAME_BAND)
-            caps.append(self.CAPABILITY_MULTI_AP)
+            caps.add(self.CAPABILITY_MULTI_AP_SAME_BAND)
+            caps.add(self.CAPABILITY_MULTI_AP)
         elif len(self.phy_bus_type) > 1:
-            caps.append(self.CAPABILITY_MULTI_AP)
-        return set(caps)
+            caps.add(self.CAPABILITY_MULTI_AP)
+        return caps
 
 
     def start_capture_params(self, params):
