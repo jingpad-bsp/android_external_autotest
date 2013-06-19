@@ -156,7 +156,8 @@ class WPAConfig(SecurityConfig):
     CIPHER_TKIP = 'TKIP'
 
     def __init__(self, serialized=None, psk=None,
-                 wpa_mode=None, wpa_ciphers=None, wpa2_ciphers=None):
+                 wpa_mode=None, wpa_ciphers=None, wpa2_ciphers=None,
+                 wpa_ptk_rekey_period=None):
         """Construct a WPAConfig.
 
         @param serialized dict a serialized WPAConfig.
@@ -176,6 +177,8 @@ class WPAConfig(SecurityConfig):
         self.wpa_mode = serialized.get('wpa_mode', wpa_mode or None)
         self.wpa_ciphers = serialized.get('wpa_ciphers', wpa_ciphers or [])
         self.wpa2_ciphers = serialized.get('wpa2_ciphers', wpa2_ciphers or [])
+        self.wpa_ptk_rekey_period = serialized.get('wpa_ptk_rekey_period',
+                                                   wpa_ptk_rekey_period)
 
 
     def get_hostapd_config(self):
@@ -199,6 +202,8 @@ class WPAConfig(SecurityConfig):
             ret['wpa_pairwise'] = ' '.join(self.wpa_ciphers)
         if self.wpa2_ciphers:
             ret['rsn_pairwise'] = ' '.join(self.wpa2_ciphers)
+        if self.wpa_ptk_rekey_period:
+            ret['wpa_ptk_rekey'] = self.wpa_ptk_rekey_period
         return ret
 
 

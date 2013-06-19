@@ -224,8 +224,7 @@ class WiFiClient(object):
 
         """
         logging.info('Pinging from the client.')
-        if not count:
-            count = self.DEFAULT_PING_COUNT
+        count = count or int(ping_args.get('count', self.DEFAULT_PING_COUNT))
         # Timeout is 3s / ping packet.
         timeout = 3 * count
         ping_args = ping_args.copy()
