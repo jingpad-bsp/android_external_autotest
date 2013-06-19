@@ -50,7 +50,10 @@ class Modem3gpp(modem.Modem):
             ip[mm1.I_MODEM_3GPP] = props3gpp
         props['SupportedCapabilities'] = [
                 dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_GSM_UMTS),
-                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_LTE)
+                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_LTE),
+                dbus.types.UInt32(
+                        mm1.MM_MODEM_CAPABILITY_GSM_UMTS |
+                        mm1.MM_MODEM_CAPABILITY_LTE)
         ]
         props['CurrentCapabilities'] = dbus.types.UInt32(
                 mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)

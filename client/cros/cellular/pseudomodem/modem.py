@@ -292,9 +292,11 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             self.SetInt32(
                     mm1.I_MODEM, 'State', mm1.MM_MODEM_STATE_LOCKED)
         elif self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_LOCKED:
-            logging.info('SIM became unlocked! Enabling modem.')
-            self.SetInt32(mm1.I_MODEM, 'State', mm1.MM_MODEM_STATE_DISABLED)
-            self.Enable(True)
+            # Change the state to DISABLED. Shill will see the property change
+            # and automatically attempt to enable the modem.
+            logging.info('SIM became unlocked! Setting state to DISABLED.')
+            self.ChangeState(mm1.MM_MODEM_STATE_DISABLED,
+                             mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
 
     @dbus.service.method(mm1.I_MODEM,
                          in_signature='b',
