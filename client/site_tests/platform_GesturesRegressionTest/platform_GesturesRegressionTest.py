@@ -46,6 +46,9 @@ class platform_GesturesRegressionTest(test.test):
 
         # run all tests for this platform and extract results
         results = runner.RunAll('%s*/*' % platform)
+        # TODO(dennisjeffrey): Remove all uses of self.test_results below,
+        # including the call to self.write_perf_keyval(), once we're ready to
+        # switch over completely from perf keyvals to output_perf_value().
         self.test_results = {}
         for key, value in results.items():
             score = value['score']
@@ -53,6 +56,7 @@ class platform_GesturesRegressionTest(test.test):
             if not_integer and not isinstance(score, float):
                 score = 0.0
             self.test_results[key.replace('/', '-')] = score
+            self.output_perf_value(key.replace('/', '-'), score, 'points')
 
         # write converted test results out
         if self.test_results:

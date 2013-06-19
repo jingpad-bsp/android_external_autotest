@@ -18,7 +18,7 @@
 
 #pylint: disable-msg=C0111
 
-import fcntl, os, re, sys, shutil, tempfile, time, traceback
+import fcntl, json, os, re, sys, shutil, tempfile, time, traceback
 import logging
 
 from autotest_lib.client.common_lib import error
@@ -84,6 +84,54 @@ class base_test(object):
             new_key = "%s{%s}" % (key, typename)
             new_dict[new_key] = value
         return new_dict
+
+
+    def output_perf_value(self, description, value, units,
+                          higher_is_better=True):
+        """
+        Records a measured performance value in an output file.
+
+        The output file will subsequently be parsed by the TKO parser to have
+        the information inserted into the results database.
+
+        @param description: A string describing the measured perf value. Must
+                be maximum length 256, and may only contain letters, numbers,
+                periods, dashes, and underscores.  For example:
+                "page_load_time", "scrolling-frame-rate".
+        @param value: A number representing the measured perf value, or a list
+                of measured values if a test takes multiple measurements.
+                Measured perf values can be either ints or floats.
+        @param units: A string describing the units associated with the
+                measured perf value. Must be maximum length 32, and may only
+                contain letters, numbers, periods, dashes, and underscores.
+                For example: "msec", "fps", "score", "runs_per_second".
+        @param higher_is_better: A boolean indicating whether or not a "higher"
+                measured perf value is considered to be better. If False, it is
+                assumed that a "lower" measured value is considered to be
+                better.
+
+        """
+        if len(description) > 256:
+            raise ValueError('The description must be at most 256 characters.')
+        if len(units) > 32:
+            raise ValueError('The units must be at most 32 characters.')
+        string_regex = re.compile(r'^[-\.\w]+$')
+        if (not string_regex.search(description) or
+            not string_regex.search(units)):
+            raise ValueError('Invalid description or units string. May only '
+                             'contain letters, numbers, periods, dashes, and '
+                             'underscores.')
+
+        entry = {
+            'description': description,
+            'value': value,
+            'units': units,
+            'higher_is_better': higher_is_better,
+        }
+
+        output_path = os.path.join(self.resultsdir, 'perf_measurements')
+        with open(output_path, 'a') as fp:
+            fp.write(json.dumps(entry, sort_keys=True) + '\n')
 
 
     def write_perf_keyval(self, perf_dict):
