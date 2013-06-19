@@ -35,7 +35,7 @@ class platform_RebootAfterUpdate(test.test):
     # Timeouts specific to this test. These should be as low as possible.
 
     # Total amount of time to wait for a reboot to return.
-    _REBOOT_TIMEOUT = 60
+    _REBOOT_TIMEOUT = 120
 
 
     @classmethod
