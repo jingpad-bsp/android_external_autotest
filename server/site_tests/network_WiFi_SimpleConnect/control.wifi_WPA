@@ -37,6 +37,7 @@ def run(machine):
     configurations = [(ap_config, assoc_params)]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_SimpleConnect',
+                 tag=NAME.split('.')[1],
                  host=host,
                  raw_cmdline_args=args,
                  additional_params=configurations)

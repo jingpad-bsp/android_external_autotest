@@ -37,6 +37,7 @@ def run(machine):
             throughput_min=MINIMAL_N_THROUGHPUT)
     additional_params = [(ap_config, netperf_config, netperf_assertions)]
     job.run_test('network_WiFi_Netperf',
+                 tag=NAME.split('.')[1],
                  host=host,
                  raw_cmdline_args=args,
                  additional_params=additional_params)
