@@ -35,7 +35,7 @@ class platform_RebootAfterUpdate(test.test):
     # Timeouts specific to this test. These should be as low as possible.
 
     # Total amount of time to wait for a reboot to return.
-    _REBOOT_TIMEOUT = 80
+    _REBOOT_TIMEOUT = 60
 
 
     @classmethod
@@ -51,7 +51,6 @@ class platform_RebootAfterUpdate(test.test):
         start_time = time.time()
         host.reboot()
         reboot_duration = time.time() - start_time
-        logging.info('Reboot duration %d seconds.', reboot_duration)
         if reboot_duration > cls._REBOOT_TIMEOUT:
             raise error.TestFail(
                 cls._REBOOT_ERROR_MESSAGE % dict(
