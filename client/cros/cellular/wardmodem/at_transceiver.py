@@ -10,10 +10,11 @@ import sys
 
 import at_channel
 import task_loop
-import wardmodem_exceptions
+import wardmodem_exceptions as wme
 
 MODEM_RESPONSE_TIMEOUT_MILLISECONDS = 30000
-DEFAULT_AT_TO_WARDMODEM_CONF = 'base_at_to_wardmodem.conf'
+DEFAULT_TRANSCEIVER_CONF = 'transceiver_configuration.conf'
+ARG_PLACEHOLDER =  '*'
 
 class ATTransceiverMode(object):
     """
@@ -60,14 +61,15 @@ class ATTransceiver(object):
 
     """
 
-    def __init__(self, mm_at_port, plugin_at_to_wardmodem_conf=None,
+    def __init__(self, mm_at_port, plugin_transceiver_conf=None,
                  modem_at_port=None):
         """
         @param mm_at_port: File descriptor for AT port used by modem manager.
                 Can not be None.
 
-        @param plugin_at_to_wardmodem_conf: Path to file that overrides
-                the default map from AT commands to wardmodem actions.
+        @param plugin_transceiver_conf: Path to file that overrides
+                the default mapping between AT commands and internal wardmodem
+                actions and responses.
 
         @param modem_at_port: File descriptor for AT port used by the modem. May
                 be None, but that forces ATTransceiverMode.WARDMODEM. Default:
@@ -98,16 +100,26 @@ class ATTransceiver(object):
         # alternative implementations of any state machine to wardmodem.
         self._state_machines = {}
 
+        # Maps an incoming AT command from modemmanager to an internal wardmodem
+        # action.
+        self._at_to_wm_action_map = {}
+        # Maps an internal response from wardmodem to an AT command to be sent
+        # to modemmanager.
+        self._wm_response_to_at_map = {}
+
         # Load configuration files
-        self._at_to_wardmodem = {}
         conf = {}
-        conf = self._load_conf_file(DEFAULT_AT_TO_WARDMODEM_CONF)
-        self._update_at_to_wardmodem(conf['at_to_wardmodem'])
-        if plugin_at_to_wardmodem_conf is not None:
-            conf = self._load_conf_file(plugin_at_to_wardmodem_conf)
-            self._update_at_to_wardmodem(conf['at_to_wardmodem'])
+        conf = self._load_conf_file(DEFAULT_TRANSCEIVER_CONF)
+        self._update_at_to_wm_action_map(conf['at_to_wm_action_map'])
+        self._update_wm_response_to_at_map(conf['wm_response_to_at_map'])
+        if plugin_transceiver_conf is not None:
+            conf = self._load_conf_file(plugin_transceiver_conf)
+            self._update_at_to_wm_action_map(conf['at_to_wm_action_map'])
+            self._update_wm_response_to_at_map( conf['wm_response_to_at_map'])
         self._logger.debug('Finished loading AT --> wardmodem configuration.')
-        self._logger.debug(self._at_to_wardmodem)
+        self._logger.debug(self._at_to_wm_action_map)
+        self._logger.debug('Finished loading wardmodem --> AT configuration.')
+        self._logger.debug(self._wm_response_to_at_map)
 
         # Initialize channels -- let the session begin.
         if modem_at_port is not None:
@@ -198,13 +210,23 @@ class ATTransceiver(object):
 
     def process_wardmodem_response(self, response, *args):
         """
-        TODO(pprabhu)
+        Convert responses from the wardmodem into AT commands and send them to
+        modemmanager.
 
         @param response: wardmodem response to be translated to AT response to
                 the modem manager.
 
+        @param *args: arguments to the wardmodem response.
+
+        @raises: ATTransceiverError if the response can not be translated into
+                an AT command.
+
         """
-        raise NotImplementedError()
+        if response not in self._wm_response_to_at_map:
+            self._runtime_error('Unknown wardmodem response |%s|' % response)
+        at_response = self._construct_at_response(
+                self._wm_response_to_at_map[response], *args)
+        self._process_wardmodem_at_command(at_response)
 
     # ##########################################################################
     # Callbacks -- These are the functions that process events from the
@@ -352,7 +374,7 @@ class ATTransceiver(object):
         return conf
 
 
-    def _update_at_to_wardmodem(self, raw_map):
+    def _update_at_to_wm_action_map(self, raw_map):
         """
         Update the dictionary that maps AT commands and their arguments to the
         action to be taken by wardmodem.
@@ -386,22 +408,48 @@ class ATTransceiver(object):
         for atcom in raw_map:
             try:
                 at, args = self._parse_at_command(atcom)
-            except wardmodem_exceptions.ATTransceiverException as e:
+            except wme.ATTransceiverException as e:
                 self._setup_error(e.args)
             action = self._sanitize_wardmodem_action(raw_map[atcom])
 
-            if at not in self._at_to_wardmodem:
-                self._at_to_wardmodem[at] = {}
-            if args in self._at_to_wardmodem[at]:
-                self._logger.debug('Updated at_to_wardmodem: '
+            if at not in self._at_to_wm_action_map:
+                self._at_to_wm_action_map[at] = {}
+            if args in self._at_to_wm_action_map[at]:
+                self._logger.debug('Updated at_to_wm_action_map: '
                                    '|%s(%s): [%s --> %s]|',
                                    at, args,
-                                   str(self._at_to_wardmodem[at][args]),
+                                   str(self._at_to_wm_action_map[at][args]),
                                    str(action))
             else:
-                self._logger.debug('Added to at_to_wardmodem: |%s(%s): %s|',
+                self._logger.debug('Added to at_to_wm_action_map: |%s(%s): %s|',
                                    at, args, str(action))
-            self._at_to_wardmodem[at][args] = action
+            self._at_to_wm_action_map[at][args] = action
+
+
+    def _update_wm_response_to_at_map(self, raw_map):
+        """
+        Update the dictionary that maps wardmodem responses to AT commands.
+
+        The internal map updated is of the same form as raw_map:
+          {response_function: at_response}
+        where both response_function and at_response are of type string.
+        at_resposne may contain special placeholder charachters '*'.
+
+        @param raw_map: The map read in from the configuration file.
+
+        """
+        for response_function, at_response in raw_map.iteritems():
+            if response_function in self._wm_response_to_at_map:
+                self._logger.debug(
+                        'Updated wm_response_to_at_map: |%s: [%s --> %s]|',
+                        response_function,
+                        self._wm_response_to_at_map[response_function],
+                        at_response)
+            else:
+                self._logger.debug(
+                        'Added to wm_response_to_at_map: |%s: %s|',
+                        response_function, at_response)
+            self._wm_response_to_at_map[response_function] = at_response
 
 
     def _sanitize_wardmodem_action(self, action):
@@ -505,14 +553,14 @@ class ATTransceiver(object):
         """
         try:
             at, args = self._parse_at_command(atcom)
-        except wardmodem_exceptions.ATTransceiverException as e:
+        except wme.ATTransceiverException as e:
             self._runtime_error(
                     'Ill formed AT command received. %s' % str(e.args))
-        if at not in self._at_to_wardmodem:
+        if at not in self._at_to_wm_action_map:
             self._runtime_error('Unknown AT command: |%s|' % atcom)
 
-        for candidate_args in self._at_to_wardmodem[at]:
-            candidate_action = self._at_to_wardmodem[at][candidate_args]
+        for candidate_args in self._at_to_wm_action_map[at]:
+            candidate_action = self._at_to_wm_action_map[at][candidate_args]
             if self._args_match(args, candidate_args):
                 # Found corresponding entry, now replace the indices of the
                 # arguments in the action with actual arguments.
@@ -541,11 +589,39 @@ class ATTransceiver(object):
         for i in range(len(args)):
             arg = args[i]
             match = matches[i]
-            if match == '*':
+            if match == ARG_PLACEHOLDER:
                 return True
             if arg != match:
                 return False
         return True
+
+    def _construct_at_response(self, raw_at, *args):
+        """
+        Replace palceholders in an AT command template with actual arguments.
+
+        @param raw_at: An AT command with '*' placeholders where arguments
+                should be provided.
+
+        @param *args: Arguments to fill in the placeholders in |raw_at|.
+
+        @return: AT command with placeholders replaced by arguments.
+
+        @raises: ATTransceiverException if the number of arguments does not
+                match the number of placeholders.
+
+        """
+        parts = raw_at.split(ARG_PLACEHOLDER)
+        if len(args) != (len(parts) - 1):
+            self._runtime_error(
+                    'Failed to construct AT response from |%s|. Expected %d '
+                    'arguments, found %d.' %
+                    (raw_at, len(parts) - 1, len(args)))
+        ret = []
+        for i in range(len(args)):
+            ret += parts[i]
+            ret += str(args[i])
+        ret += parts[len(parts) - 1]
+        return ''.join(ret)
 
 
     def _verify_and_send_mm_commands(self):
@@ -651,7 +727,7 @@ class ATTransceiver(object):
 
         """
         self._logger.error(error_message)
-        raise wardmodem_exceptions.ATTransceiverException(error_message)
+        raise wme.ATTransceiverException(error_message)
 
 
     def _setup_error(self, error_message):
@@ -664,4 +740,4 @@ class ATTransceiver(object):
 
         """
         self._logger.error(error_message)
-        raise wardmodem_exceptions.WardModemSetupException(error_message)
+        raise wme.WardModemSetupException(error_message)

@@ -13,7 +13,7 @@ import unittest
 
 import at_channel
 import task_loop
-from wardmodem_exceptions import *
+import wardmodem_exceptions as wme
 
 class ATTransceiverTestCase(unittest.TestCase):
     """
@@ -29,7 +29,7 @@ class ATTransceiverTestCase(unittest.TestCase):
 
         self._at_transceiver = at_transceiver.ATTransceiver(
                 mm_at_port=slave,
-                plugin_at_to_wardmodem_conf=None,
+                plugin_transceiver_conf=None,
                 modem_at_port=slave)
 
         # Now replace internal objects in _at_transceiver with mocks
@@ -85,15 +85,15 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
                          at_transceiver.ATTransceiverMode.WARDMODEM)
 
 
-    def test_update_at_to_wardmodem(self):
+    def test_update_at_to_wm_action_map(self):
         """
-        Test that _at_to_wardmodem is updated correctly under different
+        Test that _at_to_wm_action_map is updated correctly under different
         scenarios.
 
         """
         # The diffs if this test fails can be rather long.
         self.maxDiff = None
-        self._at_transceiver._at_to_wardmodem = {}
+        self._at_transceiver._at_to_wm_action_map = {}
 
         # Test initialization
         raw_map = {'AT1=': ('STATE_MACHINE1', 'function1'),
@@ -110,8 +110,8 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
                       'AT5=': {(): ('STATE_MACHINE5', 'function5', ()),
                                ('*',): ('STATE_MACHINE6', 'function6', ())}}
 
-        self._at_transceiver._update_at_to_wardmodem(raw_map)
-        self.assertEqual(parsed_map, self._at_transceiver._at_to_wardmodem)
+        self._at_transceiver._update_at_to_wm_action_map(raw_map)
+        self.assertEqual(parsed_map, self._at_transceiver._at_to_wm_action_map)
 
         # Test update
         raw_good_update = {'AT1=': ('STATE_MACHINE7', 'function7'),
@@ -126,13 +126,13 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
                                ('*',): ('STATE_MACHINE6', 'function6', ()),
                                ('2',): ('STATE_MACHINE8', 'function8', (0,))},
                       'AT6?': {(): ('STATE_MACHINE9', 'function9', ())}}
-        self._at_transceiver._update_at_to_wardmodem(raw_good_update)
-        self.assertEqual(parsed_map, self._at_transceiver._at_to_wardmodem)
+        self._at_transceiver._update_at_to_wm_action_map(raw_good_update)
+        self.assertEqual(parsed_map, self._at_transceiver._at_to_wm_action_map)
 
 
     def test_find_wardmodem_action_for_at(self):
         """
-        Setup _at_to_wardmodem in the test and then test whether we can find
+        Setup _at_to_wm_action_map in the test and then test whether we can find
         actions for AT commands off of that map.
 
         """
@@ -142,7 +142,7 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
                    'AT4?': ('STATE_MACHINE4', 'function4'),
                    'AT5=': ('STATE_MACHINE5', 'function5', ()),
                    'AT5=*': ('STATE_MACHINE6', 'function6')}
-        self._at_transceiver._update_at_to_wardmodem(raw_map)
+        self._at_transceiver._update_at_to_wm_action_map(raw_map)
 
         self.assertEqual(
                 ('STATE_MACHINE1', 'function1', ()),
@@ -162,12 +162,11 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
         self.assertEqual(
                 ('STATE_MACHINE6', 'function6', ()),
                 self._at_transceiver._find_wardmodem_action_for_at('AT5=s'))
-        failed_as_expected = False
-        try:
-            self._at_transceiver._find_wardmodem_action_for_at('DOESNOTEXIST')
-        except ATTransceiverException:
-            failed_as_expected = True
-        self.assertTrue(failed_as_expected)
+        # Unsuccessful cases
+        self.assertRaises(
+                wme.ATTransceiverException,
+                self._at_transceiver._find_wardmodem_action_for_at,
+                'DOESNOTEXIST')
 
 
     def test_post_wardmodem_request(self):
@@ -187,7 +186,7 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
                 pass
 
         mock_test_machine = self._mox.CreateMock(TestMachine)
-        self._at_transceiver._update_at_to_wardmodem(raw_map)
+        self._at_transceiver._update_at_to_wm_action_map(raw_map)
         mock_test_machine.get_well_known_name().AndReturn('TestMachine')
         self._mock_task_loop.post_task(
                 self._at_transceiver._execute_state_machine_function,
@@ -197,6 +196,76 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
         self._mox.ReplayAll()
         self._at_transceiver.register_state_machine(mock_test_machine)
         self._at_transceiver._post_wardmodem_request(command)
+        self._mox.VerifyAll()
+
+
+    def test_update_wm_response_to_at_map(self):
+        """
+        Test that the wm_response_to_at_map is correctly updated.
+
+        """
+        raw_map = {'some_function': 'AT=some_function',
+                   'some_other_function': 'AT=some_other_function'}
+        self._at_transceiver._update_wm_response_to_at_map(raw_map)
+        self.assertEqual(raw_map,
+                         self._at_transceiver._wm_response_to_at_map)
+
+        raw_map = {'some_other_function': 'AT=overwritten_function',
+                   'some_new_function': 'AT=this_is_new_too'}
+        updated_map = {'some_function': 'AT=some_function',
+                       'some_other_function': 'AT=overwritten_function',
+                       'some_new_function': 'AT=this_is_new_too'}
+        self._at_transceiver._update_wm_response_to_at_map(raw_map)
+        self.assertEqual(updated_map,
+                         self._at_transceiver._wm_response_to_at_map)
+
+
+    def test_construct_at_response(self):
+        """
+        Test that construct_at_response correctly replaces by actual arguments.
+
+        """
+        self.assertEqual(
+                'AT=arg1,some,arg2',
+                self._at_transceiver._construct_at_response(
+                    'AT=*,some,*', 'arg1','arg2'))
+        self.assertEqual(
+                'AT=1,some,thing',
+                self._at_transceiver._construct_at_response(
+                    'AT=*,some,thing', 1))
+        self.assertEqual(
+                'AT=some,other,thing',
+                self._at_transceiver._construct_at_response(
+                    'AT=some,other,thing'))
+        # Unsuccessful cases
+        self.assertRaises(
+                wme.ATTransceiverException,
+                self._at_transceiver._construct_at_response,
+                'AT=*,needstwo,*', 'onlyonegiven')
+        self.assertRaises(
+                wme.ATTransceiverException,
+                self._at_transceiver._construct_at_response,
+                'AT=needsnone', 'butonegiven')
+
+
+    def test_process_wardmodem_response(self):
+        """
+        A basic test for process_wardmodem_response.
+
+        """
+        self._mox.StubOutWithMock(self._at_transceiver,
+                             '_process_wardmodem_at_command')
+        raw_map = {'func1': 'AT=*,given,*',
+                   'func2': 'AT=nothing,needed'}
+        self._at_transceiver._update_wm_response_to_at_map(raw_map)
+
+        self._at_transceiver._process_wardmodem_at_command('AT=a,given,2')
+        self._at_transceiver._process_wardmodem_at_command('AT=nothing,needed')
+
+        self._mox.ReplayAll()
+        self._at_transceiver.process_wardmodem_response('func1','a',2)
+        self._at_transceiver.process_wardmodem_response('func2')
+        self._mox.UnsetStubs()
         self._mox.VerifyAll()
 
 
