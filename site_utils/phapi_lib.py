@@ -312,7 +312,7 @@ class ProjectHostingApiClient():
         """
         issues = self._codesite_service.issues()
         request = issues.comments().insert(projectId=self._project_name,
-                                           issueId=issue_id, sendEmail=True,
+                                           issueId=issue_id, sendEmail=False,
                                            body=request_body)
         return self._execute_request(request)
 
