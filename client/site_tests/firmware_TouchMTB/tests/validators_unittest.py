@@ -665,7 +665,8 @@ class ReportRateValidatorTest(BaseValidatorTest):
     """Unit tests for ReportRateValidator class."""
     def setUp(self):
         super(ReportRateValidatorTest, self).setUp()
-        self.criteria = conf.report_rate_criteria
+        self.device = self.mocked_device[LUMPY]
+        self.criteria = '>= 60'
 
     def _get_score(self, filename, device):
         validator = ReportRateValidator(self.criteria, device=device)
@@ -674,8 +675,8 @@ class ReportRateValidatorTest(BaseValidatorTest):
         score = vlog.score
         return score
 
-    def test_level_jumps(self):
-        """Test files with level jumps."""
+    def test_report_rate_scores(self):
+        """Test the score of the report rate."""
         lumpy = self.mocked_device[LUMPY]
 
         filename = '2f_scroll_diagonal.dat'
@@ -686,6 +687,47 @@ class ReportRateValidatorTest(BaseValidatorTest):
 
         filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
         self.assertTrue(self._get_score(filename, device=lumpy) <= 0.5)
+
+    def _test_report_rate_metrics(self, filename, expected_values):
+        filepath = os.path.join(unittest_path_lumpy, filename)
+        packets = parse_tests_data(filepath)
+        validator = ReportRateValidator(self.criteria, device=self.device)
+        vlog = validator.check(packets)
+
+        # Verify the values of the 3 metrics.
+        number_metrics = len(vlog.metrics)
+        self.assertEqual(number_metrics, 3)
+        for i in range(number_metrics):
+            self.assertAlmostEqual(vlog.metrics[i].value, expected_values[i])
+
+    def test_metrics_of_report_rate(self):
+        """Test the metrics of the report rates."""
+        # files is a dictionary of
+        #       {filename: (long_intervals_pct, ave_interval, max_interval)}
+        files = {
+            '20130506_032458-fw_11.23-robot_sim/'
+            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-'
+                'robot_sim-20130506_032500.dat':
+                (0.0, 9.69826775956, 11.2429999999),
+
+            '20130506_032659-fw_11.23-robot_sim/'
+            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-'
+                'robot_sim-20130506_032701.dat':
+                (0.751879699248, 9.70027067669, 19.1009999999),
+
+            '20130506_030025-fw_11.27-robot_sim/'
+            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.27-'
+                'robot_sim-20130506_030026.dat':
+                (0.0, 8.79848, 9.21300000027),
+
+            '20130506_031746-fw_11.27-robot_sim/'
+            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.27-'
+                'robot_sim-20130506_031747.dat':
+                (0.970873786408, 8.88525242718, 17.2409999996),
+        }
+
+        for filename, values in files.items():
+            self._test_report_rate_metrics(filename, values)
 
 
 if __name__ == '__main__':

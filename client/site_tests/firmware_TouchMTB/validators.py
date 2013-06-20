@@ -857,8 +857,51 @@ class ReportRateValidator(BaseValidator):
 
     def __init__(self, criteria_str, mf=None, device=None):
         name = self.__class__.__name__
+        self.criteria_str = criteria_str
         super(ReportRateValidator, self).__init__(criteria_str, mf, device,
                                                   name)
+
+    def _add_report_rate_metrics(self):
+        """Calculate and add the metrics about report rate.
+
+        Three metrics are required.
+        - % of time intervals that are > (1/60) second
+        - average time interval
+        - max time interval
+
+        The sync event time instants in packets are used as the report
+        time instants.
+        """
+        # Each packet consists of a list of events of which The last one is
+        # the sync event.
+        sync_times = [p[-1].get(MTB.EV_TIME) for p in self.packets.packets]
+        sync_intervals = [sync_times[i+1] - sync_times[i]
+                          for i in range(len(sync_times) - 1)]
+
+        # Calculate the report interval threshold from the criteria string:
+        #   report_rate_criteria = '>= 60'
+        result = re.search('\D(\d+)', self.criteria_str)
+        if result:
+            report_rate_threshold = float(result.group(1))
+            report_interval_threshold = 1 / report_rate_threshold
+        else:
+            print_and_exit('Error: fail to get report rate from %s.' %
+                           self.criteria_str)
+
+        # Calculate the metrics and add them to vlog.
+        long_intervals = [s for s in sync_intervals
+                          if s > report_interval_threshold]
+        long_intervals_pct = 100.0 * len(long_intervals) / len(sync_intervals)
+        name_long_intervals_pct = '% of intervals > 1/{} sec'.format(
+                report_rate_threshold)
+        ave_interval = 1000.0 * sum(sync_intervals) / len(sync_intervals)
+        max_interval = 1000.0 * max(sync_intervals)
+
+        self.vlog.metrics = [
+            firmware_log.Metric(name_long_intervals_pct, long_intervals_pct),
+            firmware_log.Metric('average_time_interval (ms)', ave_interval),
+            firmware_log.Metric('max_time_interval (ms)', max_interval),
+        ]
 
     def check(self, packets, variation=None):
         """The Report rate should be within the specified range."""
@@ -867,5 +910,6 @@ class ReportRateValidator(BaseValidator):
         report_rate = self.packets.get_report_rate()
         msg = 'Report rate: %.2f Hz'
         self.log_details(msg % report_rate)
+        self._add_report_rate_metrics()
         self.vlog.score = self.fc.mf.grade(report_rate)
         return self.vlog
