@@ -222,7 +222,8 @@ class factory_CameraPerformanceAls(test.test):
 
     _TEST_CHART_FILE = 'test_chart.png'
     _TEST_SAMPLE_FILE = 'sample.png'
-    _DUMMY_SERIAL_NUMBER = 'dummy_sn'
+    _BAD_SERIAL_NUMBER = 'BAD_SN'
+    _NO_SERIAL_NUMBER = 'NO_SN'
 
     _PACKET_SIZE = 65000
 
@@ -495,21 +496,20 @@ class factory_CameraPerformanceAls(test.test):
             return
         self.update_pbar(pid='start_test')
 
-        if self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
-            if self.auto_serial_number:
-                # If fails to get serial number, it will display failed in
-                # test_camera_functionality() later
-                ret, auto_sn, error_message = self.auto_get_serial_number()
-                if ret:
-                    self.serial_number = auto_sn
-                    self.log('Read serial number %s\n' % auto_sn)
-                else:
-                    self.serial_number = self._DUMMY_SERIAL_NUMBER
-                    self.log('No serial number detected: %s\n' % error_message)
+        if self.auto_serial_number:
+            # If fails to get serial number, it will display failed in
+            # test_camera_functionality() later
+            ret, auto_sn, error_message = self.auto_get_serial_number()
+            if ret:
+                self.serial_number = auto_sn
+                self.log('Read serial number %s\n' % auto_sn)
             else:
-                self.serial_number = event.data.get('sn', '')
+                self.serial_number = self._BAD_SERIAL_NUMBER
+                self.log('No serial number detected: %s\n' % error_message)
+        elif self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
+            self.serial_number = event.data.get('sn', '')
         else:
-            self.serial_number = 'MISSING_SN'
+            self.serial_number = self._NO_SERIAL_NUMBER
 
         if self.type == _TEST_TYPE_FULL:
             with leds.Blinker(self._LED_RUNNING_TEST):
@@ -620,7 +620,7 @@ class factory_CameraPerformanceAls(test.test):
 
     def test_camera_functionality(self):
         # Check serial number
-        if self.serial_number == self._DUMMY_SERIAL_NUMBER:
+        if self.serial_number == self._BAD_SERIAL_NUMBER:
             self.update_result('cam_stat', False)
             self.update_fail_cause("NoCamera")
             return False
@@ -712,6 +712,7 @@ class factory_CameraPerformanceAls(test.test):
 
         # Export log to both cros.factory.event_log and text log
         visual_data = {}
+        visual_data['camera_sn'] = self.serial_number
 
         def log_visual_data(value, event_key, log_text_fmt):
             self.log((log_text_fmt % value) + '\n')
@@ -942,6 +943,7 @@ class factory_CameraPerformanceAls(test.test):
                                immediately after barcode is scanned)
             auto_serial_number: None or (module keyword, regexp pattern with one
                                 matching group in MULTILINE mode)
+                                It support all Module, AB, and Full test types.
                                 Ex: ('VendorName', r'^\s*iSerial\s+\S+\s+(\S+)')
         '''
         factory.log('%s run_once' % self.__class__)
