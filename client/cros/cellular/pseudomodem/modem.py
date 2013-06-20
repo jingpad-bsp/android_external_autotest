@@ -287,10 +287,19 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         self.SetUInt32(mm1.I_MODEM, 'UnlockRequired', self.sim.lock_type)
         self.Set(mm1.I_MODEM, 'UnlockRetries', self.sim.unlock_retries)
         if self.sim.locked:
-            logging.info('There is a SIM lock in place. Setting state to '
-                         'LOCKED')
-            self.ChangeState(mm1.MM_MODEM_STATE_LOCKED,
-                             mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+            def _SetLocked():
+                logging.info('There is a SIM lock in place. Setting state to '
+                             'LOCKED')
+                self.ChangeState(mm1.MM_MODEM_STATE_LOCKED,
+                                 mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+
+            # If the modem is currently in an enabled state, disable it before
+            # setting the modem state to LOCKED.
+            if self.Get(mm1.I_MODEM, 'State') >= mm1.MM_MODEM_STATE_ENABLED:
+                logging.info('SIM got locked. Disabling modem.')
+                self.Enable(False, return_cb=_SetLocked)
+            else:
+                _SetLocked()
         elif self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_LOCKED:
             # Change the state to DISABLED. Shill will see the property change
             # and automatically attempt to enable the modem.
