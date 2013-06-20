@@ -318,24 +318,17 @@ class SiteHost(remote.RemoteHost):
                                      hostname=self.hostname)
 
 
-    def add_cros_version_labels_and_job_repo_url(self, image_name, update_url):
+    def add_cros_version_labels_and_job_repo_url(self, image_name):
         """Add cros_version labels and host attribute job_repo_url.
 
         @param image_name: The name of the image e.g.
                 lumpy-release/R27-3837.0.0
-        @param update_url: The url to use for the update
-                pattern: http://$devserver:###/update/$build
-                It is used as the value of job_repo_url host attribute. If
-                update_url is None, a new url will be retrieved from devserver.
         """
         if not self._host_in_AFE():
             return
 
         cros_label = '%s%s' % (ds_constants.VERSION_PREFIX, image_name)
-        if update_url:
-            devserver_url = update_url.split('/update/')[0]
-        else:
-            devserver_url = dev_server.ImageServer.resolve(image_name).url()
+        devserver_url = dev_server.ImageServer.resolve(image_name).url()
 
         labels = self._AFE.get_labels(name=cros_label)
         if labels:
@@ -585,8 +578,7 @@ class SiteHost(remote.RemoteHost):
         if updated:
             self._post_update_processing(updater, inactive_kernel)
             image_name = autoupdater.url_to_image_name(update_url)
-            self.add_cros_version_labels_and_job_repo_url(image_name,
-                                                          update_url)
+            self.add_cros_version_labels_and_job_repo_url(image_name)
 
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(
