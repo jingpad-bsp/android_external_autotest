@@ -106,6 +106,18 @@ class Modem3gpp(modem.Modem):
                     dbus.types.UInt32(self.sim.enabled_locks))
         }
 
+    def UpdateLockStatus(self):
+        """
+        Overloads superclass implementation. Also updates
+        'EnabledFacilityLocks' if 3GPP properties are exposed.
+
+        """
+        modem.Modem.UpdateLockStatus(self)
+        if mm1.I_MODEM_3GPP in self._properties:
+            self.SetUInt32(mm1.I_MODEM_3GPP,
+                     'EnabledFacilityLocks',
+                     self.sim.enabled_locks)
+
     def SetSIM(self, sim):
         """
         Overrides modem.Modem.SetSIM. Once the SIM has been assigned, attempts

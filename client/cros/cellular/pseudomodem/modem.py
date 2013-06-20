@@ -289,11 +289,14 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         if self.sim.locked:
             logging.info('There is a SIM lock in place. Setting state to '
                          'LOCKED')
-            self.SetInt32(
-                    mm1.I_MODEM, 'State', mm1.MM_MODEM_STATE_LOCKED)
+            self.ChangeState(mm1.MM_MODEM_STATE_LOCKED,
+                             mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
         elif self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_LOCKED:
             # Change the state to DISABLED. Shill will see the property change
             # and automatically attempt to enable the modem.
+            logging.info('SIM became unlocked! Setting state to INITIALIZING.')
+            self.ChangeState(mm1.MM_MODEM_STATE_INITIALIZING,
+                             mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
             logging.info('SIM became unlocked! Setting state to DISABLED.')
             self.ChangeState(mm1.MM_MODEM_STATE_DISABLED,
                              mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
@@ -521,6 +524,8 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             manager = self.manager
             if manager:
                 manager.Remove(self)
+                if self.sim:
+                    manager.Remove(self.sim)
 
             self.ClearBearers()
 
@@ -529,11 +534,14 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                 self.IncrementPath()
 
                 # Reset to defaults.
+                if self.sim:
+                    self.sim.Reset()
                 self._properties = self._InitializeProperties()
                 if self.sim:
                     self.Set(mm1.I_MODEM,
                              'Sim',
                              dbus.types.ObjectPath(self.sim.path))
+                    self.UpdateLockStatus()
 
                 if manager:
                     manager.Add(self)
@@ -541,9 +549,9 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
                 self.resetting = False
 
                 def _DelayedEnable():
+                    state = self.Get(mm1.I_MODEM, 'State')
                     if not self.IsPendingEnable() and \
-                        self.Get(mm1.I_MODEM, 'State') < \
-                            mm1.MM_MODEM_STATE_ENABLING:
+                            state == mm1.MM_MODEM_STATE_DISABLED:
                         self.Enable(True)
                     return False
 
