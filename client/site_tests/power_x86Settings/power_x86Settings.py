@@ -305,6 +305,30 @@ class power_x86Settings(test.test):
                                       errors, param_path, value,
                                       checks[param_name])
         errors += self._verify_lvds_downclock_mode_added()
+
+        # On systems which support RC6 (non atom), check that we get into rc6;
+        # idle before doing so, and retry every second for 20 seconds.
+        if self._cpu_type == 'Non-Atom':
+            tries = 0
+            found = False
+            while found == False and tries < 20:
+                time.sleep(1)
+                param_path = "/sys/kernel/debug/dri/0/i915_drpc_info"
+                if not os.path.exists(param_path):
+                    logging.error('Error(%d), %s not found', errors, param_path)
+                    break
+                drpc_info_file = open (param_path, "r");
+                for line in drpc_info_file:
+                    match = re.search(r'Current RC state: .*', line);
+                    found = match and match.group(1) != 'on'
+
+                tries += 1
+                drpc_info_file.close();
+
+        if not found:
+            errors += 1
+            logging.error('Error(%d), did not see the GPU in RC6', errors)
+
         return errors
 
 
