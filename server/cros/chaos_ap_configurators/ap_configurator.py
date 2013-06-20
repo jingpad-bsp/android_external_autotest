@@ -308,7 +308,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     logging.info('Cannot connect to AP, forcing cycle')
                     self.rpm_client.queue_request(self.host_name, 'CYCLE')
         raise RuntimeError('Unable to load admin page after powering on the '
-                           'router: %s' % self.get_router_name)
+                           'router: %s' % self.get_router_name())
 
 
     def save_page(self, page_number):
