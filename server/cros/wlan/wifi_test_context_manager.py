@@ -123,6 +123,27 @@ class WiFiTestContextManager(object):
         return self.server.wifi_ip
 
 
+    def get_wifi_if(self, ap_num=0):
+        """Returns the interface name for the IP address of self.get_wifi_addr.
+
+        @param ap_num int number of AP.  Only used in stumpy cells.
+        @return string interface name "e.g. wlan0".
+
+        """
+        if self.router.has_local_server():
+            return self.router.local_servers[ap_num]['interface']
+
+        return self.server.wifi_if
+
+
+    def get_wifi_host(self):
+        """@return host object representing a pingable machine."""
+        if self.router.has_local_server():
+            return self.router.host
+
+        return self.server.host
+
+
     def configure(self, configuration_parameters, multi_interface=None,
                   is_ibss=None):
         """Configure a router with the given parameters.

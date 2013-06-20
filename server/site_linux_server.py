@@ -51,6 +51,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
         self._ping_bg_job = None
         self._wifi_ip = None
+        self._wifi_if = None
 
 
     @property
@@ -85,47 +86,67 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
     @property
     def wifi_ip(self):
-        """
-        Returns an IP address pingable from the client DUT.
+        """Returns an IP address pingable from the client DUT.
 
         Throws an error if no interface is configured with a potentially
         pingable IP.
 
         @return String IP address on the WiFi subnet.
+
         """
         if not self._wifi_ip:
-            addrs = self._get_system_ipv4_addrs(self.server)
-            # Discard loopback IPs and the control network IP.
-            valid_addrs = filter(
-                    lambda addr: not addr.startswith('127.0.0') and
-                                 not addr.startswith(self.server.ip),
-                    addrs)
-            if not valid_addrs:
-                raise error.TestFail('No configured interfaces.')
-            if len(valid_addrs) > 1:
-                logging.warning('Multiple interfaces configured on server; '
-                                'taking first.')
-            self._wifi_ip = valid_addrs[0]
+            self.__setup_wifi_interface_info()
         return self._wifi_ip
 
+    @property
+    def wifi_if(self):
+        """Returns an interface corresponding to self.wifi_ip.
 
-    def _get_system_ipv4_addrs(self, host):
+        Throws an error if no interface is configured with a potentially
+        pingable IP.
+
+        @return String interface name (e.g. 'mlan0')
+
         """
-        Returns a list of IPs configured on host.
+        if not self._wifi_if:
+            self.__setup_wifi_interface_info()
+        return self._wifi_if
 
-        @param host Host object representing a remote machine.
-        @return list of IPv4 addresses as strings.
+
+    def __setup_wifi_interface_info(self):
+        """Parse the output of 'ip -4 addr show' and extract wifi interface/ip.
+
+        This looks something like:
+
+localhost ~ # ip -4 addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN
+    inet 127.0.0.1/8 scope host lo
+3: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    inet 172.22.50.174/24 brd 172.22.50.255 scope global eth0
+4: mlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP qlen 1000
+    inet 192.168.0.124/24 brd 192.168.0.255 scope global mlan0
 
         """
-        ip_output = host.run('%s -4 addr show' % self._cmd_ip).stdout
-        regex = re.compile('^inet ([0-9]{1,3}(\\.[0-9]{1,3}){3})')
-        ips = []
+        ip_output = self.host.run('%s -4 addr show' % self._cmd_ip).stdout
+        regex = re.compile('^inet ([0-9]{1,3}(\\.[0-9]{1,3}){3}).+ '
+                           'scope [a-zA-Z]+ ([a-zA-Z0-9]+)$')
         for line in ip_output.splitlines():
-            ip = re.search(regex, line.strip())
-            if ip:
-                # Group 1 will be the IP address following 'inet addr:'.
-                ips.append(ip.group(1))
-        return ips
+            match = re.search(regex, line.strip())
+            if not match:
+                continue
+
+            # Group 1 will be the IP address following 'inet addr:'.
+            ip = match.group(1)
+            wifi_if = match.group(3)
+            if ip.startswith('127.0.0') or ip.startswith(self.host.ip):
+                continue
+
+            logging.debug('Choosing wifi ip/if: %s/%s', ip, wifi_if)
+            self._wifi_ip = ip
+            self._wifi_if = wifi_if
+            return
+
+        raise error.TestFail('No configured interfaces.')
 
 
     def vpn_server_config(self, params):
@@ -153,6 +174,9 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
           The values stored in the 'config' param must all be
           supported by the specified VPN kind.
+
+        @param params dict of site_wifitest style parameters.
+
         """
         self.vpn_server_kill({}) # Must be first.  Relies on self.vpn_kind.
         self.vpn_kind = params.get('kind', None)
@@ -274,7 +298,11 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
 
     def vpn_server_kill(self, params):
-        """ Kill the VPN server. """
+        """Kill the VPN server.
+
+        @param params ignored.
+
+        """
         if self.vpn_kind is not None:
             if self.vpn_kind == 'openvpn':
                 self.server.run("pkill /usr/sbin/openvpn")
@@ -287,6 +315,11 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
 
     def ipv6_server_config(self, params):
+        """Start an IPv6 router advertisement daemon.
+
+        @param params dict of site_wifitest style parameters.
+
+        """
         self.ipv6_server_kill({})
         radvd_opts = { 'interface': self.config.get('server_dev', 'eth0'),
                        'adv_send_advert': 'on',
@@ -326,6 +359,11 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
 
     def ipv6_server_kill(self, params):
+        """Kill the IPv6 route advertisement daemon.
+
+        @param params ignored.
+
+        """
         self.server.run('pkill %s >/dev/null 2>&1' %
                         self.radvd_config['server'], ignore_status=True)
 

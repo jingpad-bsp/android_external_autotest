@@ -135,7 +135,9 @@ class WPAConfig(SecurityConfig):
     CIPHER_TKIP = 'TKIP'
 
     def __init__(self, psk='', wpa_mode=MODE_DEFAULT, wpa_ciphers=[],
-                 wpa2_ciphers=[], wpa_ptk_rekey_period=None):
+                 wpa2_ciphers=[], wpa_ptk_rekey_period=None,
+                 wpa_gtk_rekey_period=None, wpa_gmk_rekey_period=None,
+                 use_strict_rekey=None):
         """Construct a WPAConfig.
 
         @param psk string a passphrase (64 hex characters or an ASCII phrase up
@@ -146,6 +148,12 @@ class WPAConfig(SecurityConfig):
                 hostapd will fall back on WPA ciphers for WPA2 if this is
                 left unpopulated.
         @param wpa_ptk_rekey_period int number of seconds between PTK rekeys.
+        @param wpa_gtk_rekey_period int number of second between GTK rekeys.
+        @param wpa_gmk_rekey_period int number of seconds between GMK rekeys.
+                The GMK is a key internal to hostapd used to generate GTK.
+                It is the 'master' key.
+        @param use_strict_rekey bool True iff hostapd should refresh the GTK
+                whenever any client leaves the group.
 
         """
         super(WPAConfig, self).__init__(security='psk')
@@ -154,6 +162,9 @@ class WPAConfig(SecurityConfig):
         self.wpa_ciphers = wpa_ciphers
         self.wpa2_ciphers = wpa2_ciphers
         self.wpa_ptk_rekey_period = wpa_ptk_rekey_period
+        self.wpa_gtk_rekey_period = wpa_gtk_rekey_period
+        self.wpa_gmk_rekey_period = wpa_gmk_rekey_period
+        self.use_strict_rekey = use_strict_rekey
 
 
     def get_hostapd_config(self):
@@ -179,6 +190,12 @@ class WPAConfig(SecurityConfig):
             ret['rsn_pairwise'] = ' '.join(self.wpa2_ciphers)
         if self.wpa_ptk_rekey_period:
             ret['wpa_ptk_rekey'] = self.wpa_ptk_rekey_period
+        if self.wpa_gtk_rekey_period:
+            ret['wpa_group_rekey'] = self.wpa_gtk_rekey_period
+        if self.wpa_gmk_rekey_period:
+            ret['wpa_gmk_rekey'] = self.wpa_gmk_rekey_period
+        if self.use_strict_rekey:
+            ret['wpa_strict_rekey'] = 1
         return ret
 
 
