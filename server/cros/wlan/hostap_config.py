@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import copy
 import logging
 
 from autotest_lib.client.common_lib import error
@@ -223,7 +224,7 @@ class HostapConfig(object):
         self.bssid = bssid
         if force_wmm is not None:
             self.wmm_enabled = force_wmm
-        self.security_config = (security_config or
+        self.security_config = (copy.copy(security_config) or
                                 xmlrpc_security_types.SecurityConfig())
 
 

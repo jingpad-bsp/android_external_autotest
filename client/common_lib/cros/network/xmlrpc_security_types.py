@@ -10,28 +10,20 @@ import string
 import sys
 import tempfile
 
-TYPE_KEY = 'security_class_type_key'
+from autotest_lib.client.common_lib.cros import xmlrpc_types
 
 
 def deserialize(serialized):
     """Deserialize a SecurityConfig.
 
-    Because Python XMLRPC doesn't understand anything more than basic
-    types, we're forced to reinvent type marshalling.  This is one way
-    to do it.
-
     @param serialized dict representing a serialized SecurityConfig.
     @return a SecurityConfig object built from |serialized|.
 
     """
-    if TYPE_KEY not in serialized:
-        return None
-
-    return getattr(sys.modules[__name__],
-                   serialized[TYPE_KEY])(serialized=serialized)
+    return xmlrpc_types.deserialize(serialized, module=sys.modules[__name__])
 
 
-class SecurityConfig(object):
+class SecurityConfig(xmlrpc_types.XmlRpcStruct):
     """Abstracts the security configuration for a WiFi network.
 
     This bundle of credentials can be passed to both HostapConfig and
@@ -42,13 +34,9 @@ class SecurityConfig(object):
     """
     SERVICE_PROPERTY_PASSPHRASE = 'Passphrase'
 
-    def __init__(self, serialized=None, security=None):
+    def __init__(self, security='none'):
         super(SecurityConfig, self).__init__()
-        setattr(self, TYPE_KEY, self.__class__.__name__)
-        if serialized is None:
-            serialized = {}
-        # Default to no security.
-        self.security = serialized.get('security', security or 'none')
+        self.security = security
 
 
     def get_hostapd_config(self):
@@ -87,26 +75,20 @@ class WEPConfig(SecurityConfig):
     AUTH_ALGORITHM_SHARED = 2
     AUTH_ALGORITHM_DEFAULT = AUTH_ALGORITHM_OPEN
 
-    def __init__(self, serialized=None, wep_keys=None, wep_default_key=None,
-                 auth_algorithm=None):
+    def __init__(self, wep_keys, wep_default_key=0,
+                 auth_algorithm=AUTH_ALGORITHM_DEFAULT):
         """Construct a WEPConfig object.
 
-        @param serialized dict resulting from serializing a WEPConfig.
         @param wep_keys list of string WEP keys.
         @param wep_default_key int 0 based index into |wep_keys| for the default
                 key.
         @param auth_algorithm int bitfield of AUTH_ALGORITHM_* defined above.
 
         """
-        super(WEPConfig, self).__init__(serialized=serialized, security='wep')
-        if serialized is None:
-            serialized = {}
-        self.wep_keys = serialized.get('wep_keys', wep_keys or [])
-        self.wep_default_key = serialized.get('wep_default_key',
-                                              wep_default_key or 0)
-        self.auth_algorithm = serialized.get('auth_algorithm',
-                                             auth_algorithm or
-                                             self.AUTH_ALGORITHM_DEFAULT)
+        super(WEPConfig, self).__init__(security='wep')
+        self.wep_keys = wep_keys
+        self.wep_default_key = wep_default_key
+        self.auth_algorithm = auth_algorithm
         if self.auth_algorithm & ~(self.AUTH_ALGORITHM_OPEN |
                                    self.AUTH_ALGORITHM_SHARED):
             raise error.TestFail('Invalid authentication mode specified (%d).' %
@@ -147,6 +129,7 @@ class WPAConfig(SecurityConfig):
     MODE_PURE_WPA = 1
     MODE_PURE_WPA2 = 2
     MODE_MIXED_WPA = MODE_PURE_WPA | MODE_PURE_WPA2
+    MODE_DEFAULT = MODE_MIXED_WPA
 
     # WPA2 mandates the use of AES in CCMP mode.
     # WPA allows the use of 'ordinary' AES, but mandates support for TKIP.
@@ -155,12 +138,10 @@ class WPAConfig(SecurityConfig):
     CIPHER_CCMP = 'CCMP'
     CIPHER_TKIP = 'TKIP'
 
-    def __init__(self, serialized=None, psk=None,
-                 wpa_mode=None, wpa_ciphers=None, wpa2_ciphers=None,
-                 wpa_ptk_rekey_period=None):
+    def __init__(self, psk='', wpa_mode=MODE_DEFAULT, wpa_ciphers=[],
+                 wpa2_ciphers=[], wpa_ptk_rekey_period=None):
         """Construct a WPAConfig.
 
-        @param serialized dict a serialized WPAConfig.
         @param psk string a passphrase (64 hex characters or an ASCII phrase up
                 to 63 characters long).
         @param wpa_mode int one of MODE_* above.
@@ -168,17 +149,15 @@ class WPAConfig(SecurityConfig):
         @param wpa2_ciphers list of ciphers to advertise in the WPA2 IE.
                 hostapd will fall back on WPA ciphers for WPA2 if this is
                 left unpopulated.
+        @param wpa_ptk_rekey_period int number of seconds between PTK rekeys.
 
         """
-        super(WPAConfig, self).__init__(serialized=serialized, security='psk')
-        if serialized is None:
-            serialized = {}
-        self.psk = serialized.get('psk', psk or '')
-        self.wpa_mode = serialized.get('wpa_mode', wpa_mode or None)
-        self.wpa_ciphers = serialized.get('wpa_ciphers', wpa_ciphers or [])
-        self.wpa2_ciphers = serialized.get('wpa2_ciphers', wpa2_ciphers or [])
-        self.wpa_ptk_rekey_period = serialized.get('wpa_ptk_rekey_period',
-                                                   wpa_ptk_rekey_period)
+        super(WPAConfig, self).__init__(security='psk')
+        self.psk = psk
+        self.wpa_mode = wpa_mode
+        self.wpa_ciphers = wpa_ciphers
+        self.wpa2_ciphers = wpa2_ciphers
+        self.wpa_ptk_rekey_period = wpa_ptk_rekey_period
 
 
     def get_hostapd_config(self):
@@ -235,13 +214,14 @@ class DynamicWEPConfig(SecurityConfig):
     SERVICE_PROPERTY_EAP_KEY_MGMT = 'EAP.KeyMgmt'
     SERVICE_PROPERTY_PRIVATE_KEY = 'EAP.PrivateKey'
 
-    def __init__(self, serialized=None,
-                 use_short_keys=None, wep_rekey_period=None,
+
+    def __init__(self, use_short_keys=False,
+                 wep_rekey_period=DEFAULT_REKEY_PERIOD,
                  server_ca_cert=None, server_cert=None, server_key=None,
-                 client_ca_cert=None, client_cert=None, client_key=None):
+                 client_ca_cert=None, client_cert=None, client_key=None,
+                 file_suffix=None):
         """Construct a DynamicWEPConfig.
 
-        @param serialized dict containing a serialized DynamicWEPConfig.
         @param use_short_keys bool force hostapd to use 40 bit WEP keys.
         @param wep_rekey_period int number of second between rekeys.
         @param server_ca_cert string PEM encoded CA certificate for the server.
@@ -252,46 +232,29 @@ class DynamicWEPConfig(SecurityConfig):
         @param client_key string PEM encoded private key for client.
 
         """
-        super(DynamicWEPConfig, self).__init__(serialized=serialized,
-                                               security='wep')
-        if serialized is None:
-            serialized = {}
-        self.use_short_keys = serialized.get('use_short_keys',
-                                             use_short_keys or False)
-        self.wep_rekey_period = serialized.get('wep_rekey_period',
-                                               wep_rekey_period or
-                                               self.DEFAULT_REKEY_PERIOD)
-        self.server_ca_cert = serialized.get('server_ca_cert', server_ca_cert)
-        self.server_cert = serialized.get('server_cert', server_cert)
-        self.server_key = serialized.get('server_key', server_key)
-        self.client_ca_cert = serialized.get('client_ca_cert', client_ca_cert)
-        self.client_cert = serialized.get('client_cert', client_cert)
-        self.client_key = serialized.get('client_key', client_key)
-
-        suffix_letters = string.ascii_lowercase + string.digits
-        suffix = ''.join(random.choice(suffix_letters) for x in range(10))
-        logging.debug('Choosing unique suffix %s.', suffix)
-        self.server_ca_cert_file = serialized.get(
-                'server_ca_cert_file',
-                '/tmp/hostapd_ca_cert_file.' + suffix)
-        self.server_cert_file = serialized.get(
-                'server_cert_file',
-                '/tmp/hostapd_cert_file.' + suffix)
-        self.server_key_file = serialized.get(
-                'server_key_file',
-                '/tmp/hostapd_key_file.' + suffix)
-        self.server_eap_user_file = serialized.get(
-                'server_eap_user_file',
-                '/tmp/hostapd_eap_user_file.' + suffix)
-        self.client_ca_cert_file = serialized.get(
-                'client_ca_cert_file',
-                '/tmp/pkg_ca_cert.' + suffix)
-        self.client_cert_file = serialized.get(
-                'client_cert_file',
-                '/tmp/pkg_cert.' + suffix)
-        self.client_key_file = serialized.get(
-                'client_key_file',
-                '/tmp/pkg_key.' + suffix)
+        super(DynamicWEPConfig, self).__init__(security='wep')
+        self.use_short_keys = use_short_keys
+        self.wep_rekey_period = wep_rekey_period
+        self.server_ca_cert = server_ca_cert
+        self.server_cert = server_cert
+        self.server_key = server_key
+        self.client_ca_cert = client_ca_cert
+        self.client_cert = client_cert
+        self.client_key = client_key
+        if file_suffix is None:
+            suffix_letters = string.ascii_lowercase + string.digits
+            file_suffix = ''.join(random.choice(suffix_letters)
+                                  for x in range(10))
+            logging.debug('Choosing unique file_suffix %s.', file_suffix)
+        self.server_ca_cert_file = '/tmp/hostapd_ca_cert_file.' + file_suffix
+        self.server_cert_file = '/tmp/hostapd_cert_file.' + file_suffix
+        self.server_key_file = '/tmp/hostapd_key_file.' + file_suffix
+        self.server_eap_user_file = '/tmp/hostapd_eap_user_file.' + file_suffix
+        self.client_ca_cert_file = '/tmp/pkg_ca_cert.' + file_suffix
+        self.client_cert_file = '/tmp/pkg_cert.' + file_suffix
+        self.client_key_file = '/tmp/pkg_key.' + file_suffix
+        # While these paths won't make it across the network, the suffix will.
+        self.file_suffix = file_suffix
 
 
     def get_hostapd_config(self):

@@ -423,10 +423,9 @@ class WiFiClient(object):
 
     def disable_bgscan(self):
         """Disable wpa_supplicant bgscan."""
-        # Refers to the 'none method defined in wpa_supplicant.
         params = xmlrpc_datatypes.BgscanConfiguration()
         params.interface = self.wifi_if
-        params.method = 'none'
+        params.method = xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_NONE
         self.configure_bgscan(params)
 
 
@@ -434,5 +433,5 @@ class WiFiClient(object):
         """Enable wpa_supplicant bgscan."""
         params = xmlrpc_datatypes.BgscanConfiguration()
         params.interface = self.wifi_if
-        params.method = xmlrpc_datatypes.BgscanConfiguration.RESET_VALUE
+        params.method = xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_DEFAULT
         self.configure_bgscan(params)

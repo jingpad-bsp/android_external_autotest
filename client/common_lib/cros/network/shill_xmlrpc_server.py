@@ -108,7 +108,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         logging.debug('connect_wifi()')
-        params = xmlrpc_datatypes.AssociationParameters(serialized=raw_params)
+        params = xmlrpc_datatypes.deserialize(raw_params)
         raw = self._shill_proxy.connect_to_wifi_network(
                 params.ssid,
                 params.security,
@@ -152,7 +152,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @param raw_params serialized BgscanConfiguration.
 
         """
-        params = xmlrpc_datatypes.BgscanConfiguration(serialized=raw_params)
+        params = xmlrpc_datatypes.deserialize(raw_params)
         if params.interface is None:
             logging.error('No interface specified to set bgscan parameters on.')
             return False
