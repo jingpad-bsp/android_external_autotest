@@ -30,8 +30,9 @@ class EnableMachine(state_machine.StateMachine):
             logging.info('EnableMachine: Setting state to DISABLED.')
             self._modem.ChangeState(mm1.MM_MODEM_STATE_DISABLED, reason)
         self._modem.enable_step = None
-        if self.return_cb:
-            self.return_cb()
+        if self.raise_cb:
+            self.raise_cb(mm1.MMCoreError(
+                    mm1.MMCoreError.CANCELLED, 'Operation cancelled'))
 
     def _HandleDisabledState(self):
         assert self._modem.disable_step is None

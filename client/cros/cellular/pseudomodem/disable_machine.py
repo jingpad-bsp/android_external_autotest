@@ -130,6 +130,12 @@ class DisableMachine(state_machine.StateMachine):
                         mm1.MMCoreError.WRONG_STATE,
                         ('Modem disable cannot be initiated while in state'
                          ' %u.') % state)
+            if self._modem.connect_step:
+                logging.info('There is an ongoing Connect, canceling it.')
+                self._modem.connect_step.Cancel()
+            if self._modem.register_step:
+                logging.info('There is an ongoing Register, canceling it.')
+                self._modem.register_step.Cancel()
             if self._modem.enable_step:
                 # This needs to be done here, because the case where an enable
                 # cycle has been initiated but it hasn't triggered any state
@@ -140,11 +146,11 @@ class DisableMachine(state_machine.StateMachine):
                 self._modem.enable_step.Cancel()
                 assert self._modem.Get(mm1.I_MODEM, 'State') == \
                     mm1.MM_MODEM_STATE_DISABLED
+            if self._modem.Get(mm1.I_MODEM, 'State') == \
+                    mm1.MM_MODEM_STATE_DISABLED:
                 if self.return_cb:
                     self.return_cb()
-            if self._modem.connect_step:
-                logging.info('There is an ongoing Connect, canceling it.')
-                self._modem.connect_step.Cancel()
+                return False
 
             logging.info('Starting Disable.')
             self._modem.disable_step = self

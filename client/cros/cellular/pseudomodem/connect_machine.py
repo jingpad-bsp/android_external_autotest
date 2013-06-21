@@ -35,6 +35,8 @@ class ConnectMachine(state_machine.StateMachine):
         if state == mm1.MM_MODEM_STATE_CONNECTING:
             logging.info('ConnectMachine: Setting state to REGISTERED.')
             self._modem.ChangeState(mm1.MM_MODEM_STATE_REGISTERED, reason)
+        elif self.enable_initiated and self._modem.enable_step:
+            self._modem.enable_step.Cancel()
         self._modem.connect_step = None
 
     def _HandleDisabledState(self):
