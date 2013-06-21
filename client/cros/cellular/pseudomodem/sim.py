@@ -8,8 +8,6 @@ import logging
 import dbus_std_ifaces
 import mm1
 
-# TODO(armansito): Implement SIM locking mechanisms.
-
 class IncorrectPasswordError(mm1.MMMobileEquipmentError):
     """
     Wrapper around MM_MOBILE_EQUIPMENT_ERROR_INCORRECT_PASSWORD.
@@ -424,4 +422,13 @@ class SIM(dbus_std_ifaces.DBusProperties):
         @param new_pin: A string containing the new PIN code.
 
         """
-        raise NotImplementedError()
+        if not self._lock_enabled or self.locked:
+            raise SimFailureError()
+
+        lock_data = self._lock_data[mm1.MM_MODEM_LOCK_SIM_PIN]
+        self._CheckCode(
+                old_pin, lock_data, mm1.MM_MODEM_LOCK_SIM_PUK, SimPukError())
+        self._ResetRetries(mm1.MM_MODEM_LOCK_SIM_PIN)
+        self._lock_data[mm1.MM_MODEM_LOCK_SIM_PIN]['code'] = new_pin
+        self._UpdateProperties()
+        self.modem.UpdateLockStatus()
