@@ -5,6 +5,8 @@
 import collections
 import inspect
 import logging
+import os
+import sys
 
 import at_channel
 import task_loop
@@ -99,11 +101,10 @@ class ATTransceiver(object):
         # Load configuration files
         self._at_to_wardmodem = {}
         conf = {}
-        execfile(DEFAULT_AT_TO_WARDMODEM_CONF, conf)
+        conf = self._load_conf_file(DEFAULT_AT_TO_WARDMODEM_CONF)
         self._update_at_to_wardmodem(conf['at_to_wardmodem'])
         if plugin_at_to_wardmodem_conf is not None:
-            conf = {}
-            execfile(plugin_at_to_wardmodem_conf, conf)
+            conf = self._load_conf_file(plugin_at_to_wardmodem_conf)
             self._update_at_to_wardmodem(conf['at_to_wardmodem'])
         self._logger.debug('Finished loading AT --> wardmodem configuration.')
         self._logger.debug(self._at_to_wardmodem)
@@ -329,6 +330,26 @@ class ATTransceiver(object):
                     'arguments. AT command: |%s|. Action: |%s|. Expected '
                     'function signature: %s' % (at_command, action,
                                                 inspect.getargspec(function)))
+
+
+    def _load_conf_file(self, file_name):
+        """
+        Load the configuration file from the module directory.
+
+        The configuration file is an executable python file. Since the file name
+        is known only at run-time, we must find the module directory and
+        manually point execfile to the directory for loading the configuration
+        file.
+
+        @param file_name: The configuration file name.
+
+        """
+        current_module = sys.modules[__name__]
+        dir_name = os.path.dirname(current_module.__file__)
+        full_path = os.path.join(dir_name, file_name)
+        conf = {}
+        execfile(full_path, conf)
+        return conf
 
 
     def _update_at_to_wardmodem(self, raw_map):
