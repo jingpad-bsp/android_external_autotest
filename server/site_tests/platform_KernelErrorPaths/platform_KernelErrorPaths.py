@@ -7,35 +7,40 @@ import logging, os, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.crash_test import CrashTest as CrashTestDefs
 from autotest_lib.server import test
-from autotest_lib.client.bin import utils
 
 class platform_KernelErrorPaths(test.test):
+    """Performs various kernel crash tests and makes sure that the expected
+       results are found in the crash report."""
     version = 1
 
-    def breakme(self, text, cpu):
-        # This test is ensuring that the machine will reboot on any
-        # tyoe of kernel panic.  If the sysctls below are not set
-        # correctly, the machine will not reboot.  After verifying
-        # that the machine has the proper sysctl state, we make it
-        # reboot by writing to a /proc/breakme.
-        #
-        # 2011.03.09: ARM machines will currently fail due to
-        #             'preserved RAM' not being enabled.
+    def provoke_crash(self, interface, trigger, cpu):
+        """
+        This test is ensuring that the machine will reboot on any
+        type of kernel panic.  If the sysctls below are not set
+        correctly, the machine will not reboot.  After verifying
+        that the machine has the proper sysctl state, we make it
+        reboot by writing to lkdtm.
+
+        @param interface: which filesystem interface to write into
+        @param trigger: the text string to write for triggering a crash
+        @param cpu: None or a specific cpu number to pin before crashing
+        """
         self.client.run('sysctl kernel.panic|grep "kernel.panic = -1"');
         self.client.run('sysctl kernel.panic_on_oops|'
                         'grep "kernel.panic_on_oops = 1"');
 
         if cpu != None:
             # Run on a specific CPU using taskset
-            command = "echo %s | taskset -c %d tee /proc/breakme" % (text, cpu)
+            command = "echo %s | taskset -c %d tee %s" % (trigger, cpu,
+                                                          interface)
         else:
             # Run normally
-            command = "echo %s > /proc/breakme" % text
+            command = "echo %s > %s" % (trigger, interface)
 
-        logging.info("KernelErrorPaths: executing '%s' on %s" %
-                     (command, self.client.hostname))
+        logging.info("KernelErrorPaths: executing '%s' on %s",
+                     command, self.client.hostname)
         try:
-            # Simple sending text into /proc/breakme resets the target
+            # Simply sending the trigger into lkdtm resets the target
             # immediately, leaving files unsaved to disk and the master ssh
             # connection wedged for a long time. The sequence below borrowed
             # from logging_KernelCrashServer.py makes sure that the test
@@ -85,27 +90,41 @@ class platform_KernelErrorPaths(test.test):
 
         crash_log_dir = CrashTestDefs._SYSTEM_CRASH_DIR
 
-        # Each tuple consists of two strings: the 'breakme' string to send
-        # into /proc/breakme on the target, and the crash report string to
-        # look for in the crash dump after target restarts.
-        # The third component is the timeout and the forth is whether we run
+        # Each tuple consists of several components: the lkdtm string to write
+        # to /sys/kernel/debug/provoke-crash/DIRECT on the target, or the if
+        # lkdtm is not available, the string to write to /proc/breakme.
+        # The third component is the timeout and the fourth is whether we run
         # the tests on all CPUs or not. Some tests take less to run than other
         # (null pointer and panic) so it would be best if we would run them on
         # all the CPUS as it wouldn't add that much time to the total.
-        # TODO(vbendeb): add the following breakme strings after fixing kernel
-        # bugs:
-        # 'deadlock' (has to be sent twice), 'softlockup', 'irqlockup'
+        # The final component is the crash report string to look for in the
+        # crash dump after target restarts.
         test_tuples = (
-            ('softlockup', 'BUG: soft lockup', 25, False),
-            ('bug', 'kernel BUG at', 10, False),
-            ('hungtask', 'hung_task: blocked tasks', 300, False),
-            ('nmiwatchdog', 'Watchdog detected hard LOCKUP', 50, False),
-            ('nullptr',
+            ('LOOP',          'softlockup',  25, False, 'BUG: soft lockup'),
+            ('BUG',           'bug',         10, False, 'kernel BUG at'),
+            ('HUNG_TASK',     'hungtask',   300, False,
+             'hung_task: blocked tasks'),
+            ('SOFTLOCKUP',    None,          25, False, 'BUG: soft lockup'),
+            ('HARDLOCKUP',    'nmiwatchdog', 50, False,
+             'Watchdog detected hard LOCKUP',),
+            ('SPINLOCKUP',    None,          25, False,
+             'softlockup: hung tasks'),
+            ('EXCEPTION',     'nullptr',     10, True,
              # x86 gives "BUG: unable to" while ARM gives "Unable to".
-             'nable to handle kernel NULL pointer dereference at', 10,
-             True),
-            ('panic', 'Kernel panic - not syncing:', 10, True),
+             'nable to handle kernel NULL pointer dereference at'),
+            ('PANIC',         'panic',       10, True,
+             'Kernel panic - not syncing:'),
+            ('CORRUPT_STACK', None,          10, True,
+             'stack-protector: Kernel stack is corrupted in:'),
             )
+
+        # Figure out which kernel crash interface is available.
+        interface = "/sys/kernel/debug/provoke-crash/DIRECT"
+        trigger_index = 0
+        if not self._exists_on_client(interface):
+            interface = "/proc/breakme"
+            trigger_index = 1
+            logging.info("Falling back to %s", interface)
 
         # Find out how many cpus we have
         client_no_cpus = int(
@@ -113,18 +132,25 @@ class platform_KernelErrorPaths(test.test):
                             .stdout.strip())
         no_cpus = 1
 
-        for action, text, timeout, all_cpu in test_tuples:
-            if action == "nmiwatchdog":
+        for item in test_tuples:
+            lkdtm, breakme, timeout, all_cpu, text = item
+            trigger = item[trigger_index]
+            # Skip any triggers that are undefined for the given interface.
+            if trigger == None:
+                logging.info("Skipping unavailable trigger %s", trigger)
+                return
+            if lkdtm == "HARDLOCKUP":
                 # ARM systems do not (presently) have NMI, so skip them for now.
                 arch = self.client.get_arch()
                 if arch.startswith('arm'):
-                    logging.info("Skipping %s on architecture %s." %
-                                 (action, arch))
-                    continue;
-                # 3.2 kernels use "nmilockup" rather than "nmiwatchdog".
-                ver = self.client.get_kernel_ver();
-                if utils.compare_versions(ver, "3.2") == 0:
-                    action="nmilockup"
+                    logging.info("Skipping %s on architecture %s.",
+                                 trigger, arch)
+                    continue
+                # Make sure a soft lockup detection doesn't get in the way.
+                self.client.run("sysctl -w kernel.softlockup_panic=0")
+            if trigger == "SPINLOCKUP":
+                # This needs to be pre-triggered so the second one locks.
+                self.provoke_crash(interface, trigger, None)
 
             if not all_cpu:
                 no_cpus = 1
@@ -139,9 +165,9 @@ class platform_KernelErrorPaths(test.test):
                 # Run on a specific cpu if we're running on all of them,
                 # otherwise run normally
                 if all_cpu :
-                    self.breakme(action, cpu)
+                    self.provoke_crash(interface, trigger, cpu)
                 else:
-                    self.breakme(action, None)
+                    self.provoke_crash(interface, trigger, None)
                 try:
                     self.client.wait_for_restart(
                         down_timeout=timeout,
@@ -161,4 +187,4 @@ class platform_KernelErrorPaths(test.test):
                 if text not in result.stdout:
                     raise error.TestFail(
                         "No '%s' in the log after sending '%s' on cpu %d"
-                        % (text, action, cpu))
+                        % (text, trigger, cpu))
