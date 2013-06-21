@@ -21,7 +21,11 @@ class statsd_mock_base(object):
         pass
 
 
-    def __getattribute__(self, name):
+    def decorate(self, f):
+        return f
+
+
+    def __getattr__(self, name):
         def any_call(*args, **kwargs):
             pass
 
