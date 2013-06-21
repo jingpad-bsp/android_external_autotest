@@ -229,11 +229,19 @@ class MtbStateMachine:
     """
     def __init__(self):
         # Set the default slot to 0 as it may not be displayed in the MTB events
+        #
+        # Some abnormal event files may not display the tracking ID in the
+        # beginning. To handle this situation, we need to initialize
+        # the following variables:  live_tids, slot_to_tid, points
+        #
+        # As an example, refer to the following event file which is one of
+        # the golden samples with this problem.
+        #   tests/data/stationary_finger_shift_with_2nd_finger_tap.dat
         self.tid = None
-        self.live_tids = []
+        self.live_tids = [self.tid]
         self.slot = 0
-        self.slot_to_tid = {}
-        self.points = {}
+        self.slot_to_tid = {self.slot: self.tid}
+        self.points = {self.tid: Point()}
         self.syn_time = None
         self.new_tid = False
 
