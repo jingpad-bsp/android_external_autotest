@@ -32,7 +32,13 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
 
 
     class rpc_utils(object):
+        """Mockable class to fake autotest rpc_utils module."""
         def create_job_common(self, name, **kwargs):
+            """Mock method rpc_utils.create_job_common().
+
+            @param name: Name of job.
+            @param kwargs: Other arguments.
+            """
             pass
 
 
@@ -163,6 +169,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD,
                                          synchronous=False).AndReturn(True)
+        self.dev_server.url().AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
         self._mockRpcUtils(-1)
@@ -179,6 +186,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD,
                                          synchronous=False).AndReturn(True)
+        self.dev_server.url().AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
         job_id = 5
@@ -196,6 +204,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD,
                                          synchronous=False).AndReturn(True)
+        self.dev_server.url().AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
         job_id = 5
@@ -212,6 +221,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD,
                                          synchronous=False).AndReturn(True)
+        self.dev_server.url().AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
         job_id = 5
