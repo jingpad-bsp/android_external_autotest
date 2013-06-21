@@ -102,17 +102,5 @@ class stack_trace_test(unittest.TestCase):
         self.assertEqual(version, '1166.0.0')
 
 
-    def test_get_cache_dir(self):
-        # Test without existing cache dir.
-        self.assertFalse(os.path.exists(self._cache_dir))
-        self.assertEquals(self._stack_trace._get_cache_dir(), self._cache_dir)
-        self.assertTrue(os.path.exists(self._cache_dir))
-
-        # Test with existing cache dir.
-        self.assertEquals(self._stack_trace._get_cache_dir(), self._cache_dir)
-
-
-
-
 if __name__ == "__main__":
     unittest.main()
