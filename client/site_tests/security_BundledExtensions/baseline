@@ -150,6 +150,16 @@
                             "storage",
                             "unlimitedStorage",
                             "videoCapture"]
+      },
+      { "id": "hmjkmjkepdijhoojdojkdfohbdgmmhki",
+        "name": "Google Keep",
+        "effective_host_permissions": ["https://*.googleusercontent.com/*",
+                                       "https://drive.google.com/*",
+                                       "https://www.googleapis.com/*"],
+        "api_permissions": ["app.currentWindowInternal",
+                            "app.runtime",
+                            "app.window",
+                            "experimental"]
       }
   ],
   "component_extension_baseline": [
