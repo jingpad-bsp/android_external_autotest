@@ -151,6 +151,16 @@ OPTIONS.SKIP_HTML = 'skip_html'
 OPTIONS.TOUCHSCREEN = 'touchscreen'
 
 
+class _Platform(_Constant):
+    """Constants about chromebook platforms."""
+    pass
+PLATFORM = _Platform()
+PLATFORM.ALEX = 'alex'
+PLATFORM.LUMPY = 'lumpy'
+PLATFORM.LINK = 'link'
+PLATFORM.LIST = [PLATFORM.ALEX, PLATFORM.LUMPY, PLATFORM.LINK]
+
+
 class _RobotControl(_Constant):
     """Constants about robot control."""
     pass
@@ -182,6 +192,14 @@ TFK.DOWN = KEY_DOWN
 TFK.LEFT = KEY_LEFT
 TFK.RIGHT = KEY_RIGHT
 TFK.ARROW_KEY_LIST = [TFK.UP, TFK.DOWN, TFK.LEFT, TFK.RIGHT]
+
+
+class _UNIT(_Constant):
+    """Constants about units."""
+    pass
+UNIT = _UNIT()
+UNIT.PIXEL = 'px'
+UNIT.MM = 'mm'
 
 
 class _Validator(_Constant):

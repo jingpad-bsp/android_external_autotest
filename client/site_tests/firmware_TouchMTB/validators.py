@@ -63,9 +63,10 @@ import fuzzy
 import mtb
 
 from collections import namedtuple
+from inspect import isfunction
 
 from common_util import print_and_exit
-from firmware_constants import AXIS, GV, MTB, VAL
+from firmware_constants import AXIS, GV, MTB, UNIT, VAL
 
 
 # Define the ratio of points taken at both ends of a line for edge tests.
@@ -171,14 +172,14 @@ class BaseValidator(object):
     aggregator = 'fuzzy.average'
     _device = None
 
-    def __init__(self, criteria_str, mf=None, device=None, name=None):
-        self.criteria_str = criteria_str
-        self.fc = fuzzy.FuzzyCriteria(criteria_str, mf=mf)
+    def __init__(self, criteria, mf=None, device=None, name=None):
+        self.criteria_str = criteria() if isfunction(criteria) else criteria
+        self.fc = fuzzy.FuzzyCriteria(self.criteria_str, mf=mf)
         self.device = device if device else BaseValidator._device
         self.packets = None
         self.vlog = firmware_log.ValidatorLog()
         self.vlog.name = name
-        self.vlog.criteria = criteria_str
+        self.vlog.criteria = self.criteria_str
 
     def init_check(self, packets=None):
         """Initialization before check() is called."""
@@ -588,20 +589,24 @@ class StationaryFingerValidator(BaseValidator):
           StationaryFingerValidator('<= 15 ~ +10')
     """
 
-    def __init__(self, criteria_str, mf=None, device=None, slot=0):
+    def __init__(self, criteria, mf=None, device=None, slot=0):
         name = self.__class__.__name__
-        super(StationaryFingerValidator, self).__init__(criteria_str, mf,
+        super(StationaryFingerValidator, self).__init__(criteria, mf,
                                                         device, name)
         self.slot = slot
 
     def check(self, packets, variation=None):
         """Check the moving distance of the specified finger."""
         self.init_check(packets)
-        # Get the count of tracking id
-        distance = self.packets.get_largest_distance(self.slot)
-        self.log_details('Largest distance slot%d: %d px' %
-                         (self.slot, distance))
-        self.vlog.score = self.fc.mf.grade(distance)
+        unit = UNIT.MM if show_spec_v2 else UNIT.PIXEL
+        max_distance = self.packets.get_max_distance(self.slot, unit)
+        msg = ('Max distance slot%d: %d mm' if show_spec_v2 else
+               'Largest distance slot%d: %d px')
+        self.log_details(msg % (self.slot, max_distance))
+        self.vlog.metrics = [
+            firmware_log.Metric('max_distance_mm', max_distance)
+        ]
+        self.vlog.score = self.fc.mf.grade(max_distance)
         return self.vlog
 
 

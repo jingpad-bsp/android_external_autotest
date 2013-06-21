@@ -45,4 +45,26 @@ def parse_tests_data(filename, gesture_dir=''):
         return mtb.MtbParser().parse(test_file)
 
 
+def create_mocked_devices():
+    """Create mocked devices of specified platforms."""
+    from firmware_constants import PLATFORM
+    from touch_device import TouchDevice
+
+    description_path = get_device_description_path()
+    mocked_device = {}
+    for platform in PLATFORM.LIST:
+        description_filename = '%s.device' % platform
+        description_filepath = os.path.join(description_path,
+                                            description_filename)
+        if not os.path.isfile(description_filepath):
+            mocked_device[platform] = None
+            warn_msg = 'Warning: device description file %s does not exist'
+            print msg % description_filepath
+            continue
+        device_description = open(description_filepath).read()
+        mocked_device[platform] = TouchDevice(
+                device_description=device_description)
+    return mocked_device
+
+
 set_paths_for_tests()

@@ -13,11 +13,10 @@ import sys
 
 from collections import defaultdict, namedtuple
 
-from firmware_constants import AXIS, GV, MTB, VAL
+from firmware_constants import AXIS, GV, MTB, UNIT, VAL
 from geometry.elements import Point
 from geometry.two_farthest_clusters import (
-        get_radii_of_two_minimal_enclosing_circles)
-
+        get_radii_of_two_minimal_enclosing_circles, get_two_farthest_points)
 sys.path.append('../../bin/input')
 from linux_input import *
 
@@ -610,15 +609,6 @@ class Mtb:
             distances.append(distance)
         return distances
 
-    def get_distances_with_first_point(self, target_slot):
-        """Get distances of the points in the target_slot with first point."""
-        points = self.get_points(target_slot)
-        if not points:
-            return [0,]
-        point0 = points[0]
-        distances = [self._calc_distance(point, point0) for point in points]
-        return distances
-
     def get_range(self):
         """Get the min and max values of (x, y) positions."""
         min_x = min_y = float('infinity')
@@ -656,10 +646,25 @@ class Mtb:
                     prev_y = y
         return (accu_x, accu_y)
 
-    def get_largest_distance(self, target_slot):
-        """Get the largest distance of point to the first point."""
-        distances = self.get_distances_with_first_point(target_slot)
-        return max(distances)
+    def get_max_distance(self, slot, unit):
+        """Get the max distance between any two points of the specified slot."""
+        points, _ = self.get_points_and_time_for_slot(slot)
+        return self.get_max_distance_from_points(points, unit)
+
+    def get_max_distance_from_points(self, points, unit):
+        """Get the max distance between any two points."""
+        two_farthest_points = get_two_farthest_points(points)
+        if len(two_farthest_points) < 2:
+            return 0
+
+        # Convert the point coordinates from pixel to mm if necessary.
+        if unit == UNIT.MM:
+            p1, p2 = [Point(*self.device.pixel_to_mm(p.value()))
+                      for p in two_farthest_points]
+        else:
+            p1, p2 = two_farthest_points
+
+        return p1.distance(p2)
 
     def get_largest_gap_ratio(self, target_slot):
         """Get the largest gap ratio in the target slot.

@@ -6,6 +6,8 @@
 
 """This configuration file defines the gestures to perform."""
 
+import validators
+
 from firmware_constants import DEV, GV, RC, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
@@ -29,6 +31,11 @@ score_aggregator = 'fuzzy.average'
 
 
 # Define some common criteria
+#
+# Notes about show_spec_v2 below:
+# Some of the following criteria may need to be determined at run time.
+# Use lambda to do lazy evaluation because the show_spec_v2 may not be
+# assigned its value yet when this module is imported.
 count_packets_criteria = '>= 3, ~ -3'
 drumroll_criteria = '<= 2.0'
 # linearity_criteria is used for strictly straight line drawn with a ruler.
@@ -42,7 +49,8 @@ no_reversed_motion_criteria = '<= 5, ~ +30'
 pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.05, ~ +0.05'
 report_rate_criteria = '>= 60'
-stationary_finger_criteria = '<= 20, ~ +20'
+stationary_finger_criteria = (lambda: '<= 1.25, ~ +1.25'
+                              if validators.show_spec_v2 else '<= 20, ~ +20')
 relaxed_stationary_finger_criteria = '<= 100, ~ +100'
 
 

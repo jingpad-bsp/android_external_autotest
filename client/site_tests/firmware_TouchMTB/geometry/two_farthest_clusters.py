@@ -15,6 +15,26 @@
 from .minicircle import minicircle
 
 
+def get_two_farthest_points(points):
+    """Calculate two farthest points from the list of given points.
+
+    Use a dumb brute force search for now since there are only a few points
+    in our use cases.
+    """
+    if len(points) <= 1:
+        return points
+
+    max_dist = float('-infinity')
+    for p1 in points:
+        for p2 in points:
+            dist = p1.distance(p2)
+            if dist > max_dist:
+                two_farthest_points = (p1, p2)
+                max_dist = dist
+
+    return two_farthest_points
+
+
 def get_two_farthest_clusters(points):
     """Classify the points into two farthest clusters.
 
@@ -29,16 +49,7 @@ def get_two_farthest_clusters(points):
     if len(points) <= 1:
         return (points, [])
 
-    # Calculate two farthest points.
-    # Use a dumb brute force search since there are only a few points.
-    max_dist = float('-infinity')
-    for p1 in points:
-        for p2 in points:
-            dist = p1.distance(p2)
-            if dist > max_dist:
-                two_farthest_points = (p1, p2)
-                max_dist = dist
-    fp1, fp2 = two_farthest_points
+    fp1, fp2 = get_two_farthest_points(points)
 
     # Classify every point to the two clusters represented by the two
     # farthest points above.

@@ -14,8 +14,12 @@ import fuzzy
 import mtb
 import test_conf as conf
 
-from firmware_constants import AXIS, GV, MTB, VAL
+from common_unittest_utils import create_mocked_devices
+from firmware_constants import AXIS, GV, MTB, PLATFORM, UNIT, VAL
 from geometry.elements import Point, about_eq
+
+
+mocked_device = create_mocked_devices()
 
 
 def get_mtb_packets(gesture_filename):
@@ -349,6 +353,29 @@ class MtbTest(unittest.TestCase):
 
         filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
         self._test_get_report_rate(filename, 53.12)
+
+    def test_get_max_distance_from_points(self):
+        """Test get_max_distance_from_points"""
+        # Two farthest points: (15, 16) and (46, 70)
+        list_coordinates_pairs = [
+            (20, 25), (21, 35), (15, 16), (25, 22), (30, 32), (46, 70),
+            (35, 68), (42, 53), (50, 30), (43, 69), (16, 17), (14, 30),
+        ]
+        points = [Point(*pairs) for pairs in list_coordinates_pairs]
+        mtb_packets = mtb.Mtb(device=mocked_device[PLATFORM.LUMPY])
+
+        # Verify the max distance in pixels
+        max_distance_px = mtb_packets.get_max_distance_from_points(points,
+                                                                   UNIT.PIXEL)
+        expected_max_distance_px = ((46 - 15) ** 2 + (70 - 16) ** 2) ** 0.5
+        self.assertAlmostEqual(max_distance_px, expected_max_distance_px)
+
+        # Verify the max distance in mms
+        max_distance_mm = mtb_packets.get_max_distance_from_points(points,
+                                                                   UNIT.MM)
+        expected_max_distance_mm = (((46 - 15) / 12.0) ** 2 +
+                                    ((70 - 16) / 10.0) ** 2) ** 0.5
+        self.assertAlmostEqual(max_distance_mm, expected_max_distance_mm)
 
 
 if __name__ == '__main__':

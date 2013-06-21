@@ -153,6 +153,20 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         }
         self._test_by_gesture(validator, expected_scores)
 
+    def test_by_gesture_StationaryFingerValidator(self):
+        validator = 'StationaryFingerValidator'
+        expected_scores = {
+            'fw_11.23': {
+                'one_finger_physical_click': 0.748714663186,
+                'two_fingers_physical_click': 1.0,
+            },
+            'fw_11.27': {
+                'one_finger_physical_click': 0.891563952369,
+                'two_fingers_physical_click': 1.0,
+            }
+        }
+        self._test_by_gesture(validator, expected_scores)
+
     def test_by_validator(self):
         expected_scores = {
             'fw_11.23': {
@@ -160,12 +174,14 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
                 'Linearity(Middle)Validator': 0.263151255177,
                 'NoGapValidator': 0.108368895463,
                 'PhysicalClickValidator': 0.75,
+                'StationaryFingerValidator': 0.832476442124,
             },
             'fw_11.27': {
                 'Linearity(BothEnds)Validator': 0.0670739767259,
                 'Linearity(Middle)Validator': 0.307634834683,
                 'NoGapValidator': 0.682575899255,
                 'PhysicalClickValidator': 1.0,
+                'StationaryFingerValidator': 0.92770930158,
             }
         }
         for fw, fw_expected_scores in expected_scores.items():
@@ -176,8 +192,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
 
     def test_final_weighted_average(self):
         expected_weighted_averages = {
-            'fw_11.23': 0.7694777087242145,
-            'fw_11.27': 0.866594667250894,
+            'fw_11.23': 0.7521358153842078,
+            'fw_11.27': 0.8604537406655459,
         }
         final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():
