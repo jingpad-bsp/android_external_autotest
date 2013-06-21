@@ -1,6 +1,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# pylint: disable-msg=C0111
 
 """Django chart models for a report listing all known automated tests.
 
@@ -17,8 +18,11 @@ import autotest_lib.frontend.croschart.chartmodels as chartmodels
 from autotest_lib.frontend.croschart.charterrors import ChartDBError
 from autotest_lib.frontend.croschart.charterrors import ChartInputError
 
-import gviz_api
-
+try:
+    import gviz_api
+except ImportError:
+    # Do nothing, in case this is part of a unit test.
+    pass
 
 ###############################################################################
 # Queries: These are designed as stateless functions with static relationships.

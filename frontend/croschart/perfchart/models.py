@@ -1,6 +1,7 @@
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# pylint: disable-msg=C0111
 
 """Django chart models for performance key-build charts.
 
@@ -18,8 +19,11 @@ import autotest_lib.frontend.croschart.chartutils as chartutils
 from autotest_lib.frontend.croschart.charterrors import ChartDBError
 from autotest_lib.frontend.croschart.charterrors import ChartInputError
 
-import gviz_api
-
+try:
+    import gviz_api
+except ImportError:
+    # Do nothing, in case this is part of a unit test.
+    pass
 
 # Can only get date order from the db.
 DEFAULT_ORDER = 'ORDER BY test_started_time'

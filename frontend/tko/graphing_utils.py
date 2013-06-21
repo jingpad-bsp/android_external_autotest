@@ -1,4 +1,6 @@
-import base64, os, tempfile, operator, pickle, datetime, django.db
+# pylint: disable-msg=C0111
+
+import base64, os, tempfile, pickle, datetime, django.db
 import os.path, getpass
 from math import sqrt
 
@@ -15,11 +17,16 @@ if not os.path.exists(temp_dir):
     os.mkdir(temp_dir)
 os.environ['MPLCONFIGDIR'] = temp_dir
 
-import matplotlib
-matplotlib.use('Agg')
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.figure, matplotlib.backends.backend_agg
+    import StringIO, colorsys, PIL.Image, PIL.ImageChops
+except ImportError:
+    # Do nothing, in case this is part of a unit test, so the unit test
+    # can proceed.
+    pass
 
-import matplotlib.figure, matplotlib.backends.backend_agg
-import StringIO, colorsys, PIL.Image, PIL.ImageChops
 from autotest_lib.frontend.afe import readonly_connection
 from autotest_lib.frontend.afe.model_logic import ValidationError
 from json import encoder
