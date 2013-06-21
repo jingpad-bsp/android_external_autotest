@@ -1,5 +1,11 @@
 #!/usr/bin/python
-import time,re,pycurl,BeautifulSoup,optparse
+#pylint: disable-msg=C0111
+import BeautifulSoup,optparse
+
+try:
+    import pycurl
+except ImportError:
+    print "Failed to import pycurl. Ignoring."
 
 ###############################################################
 # Digital Loggers Web Power Switch management
