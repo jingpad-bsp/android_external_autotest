@@ -305,10 +305,9 @@ class WiFiChaosConnectionTest(object):
                else:
                    continue
         if len(scan_list):
-             logging.error('These APs were not listed in scan:')
+            logging.error('These APs were not listed in scan:')
             for ap in scan_list:
-                logging.error('%s %s ssid = %s', ap_info['brand'],
-                               ap_info['model'], ap_info['ssid'])
+                logging.error(ap)
                 ap.reset_command_list()
         return configured_aps
 
