@@ -13,6 +13,7 @@ sys.path.append(os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
 from utils import common
 
+import ap_batch_locker
 import ap_configurator_factory
 
 
@@ -24,7 +25,7 @@ class ConfiguratorTest(unittest.TestCase):
     functionality is implemented.
 
     This test does not verify that everything works for ALL APs. It only
-    tests against one Netgear dual-band AP ('chromeos3-row1-rack2-host11').
+    tests against the AP specified below in AP_SPEC.
 
     This class provides a fast way to test without having to run_remote_test
     because chances are you don't need a ChromeOS device.  You will need to
@@ -42,6 +43,10 @@ class ConfiguratorTest(unittest.TestCase):
       $ python -m unittest ap_configurator_test.ConfiguratorTest.test_ssid
     """
 
+    # Specify the Chaos AP to run the tests against.
+    AP_SPEC = dict(hostnames=['chromeos3-row1-rack2-host11'])
+
+
     def setUp(self):
         # Disable check for prebuilt binaries b/c of the discrepancy below:
         #  - this check expects binary path from inside the chroot
@@ -53,16 +58,23 @@ class ConfiguratorTest(unittest.TestCase):
         #        'Then from outside chroot run: <path to chroot tmp directory>/'
         #        '%s' % download_chromium_prebuilt.DOWNLOAD_PATH)
 
-        factory = ap_configurator_factory.APConfiguratorFactory()
-        # Set self.ap to the one you want to test against.
-        self.ap = factory._get_aps_with_hostnames(
-                   ['chromeos3-row1-rack2-host11'], factory.ap_list)[0]
-        self.ap.power_up_router()
+        self.batch_locker = ap_batch_locker.ApBatchLocker(self.AP_SPEC)
+        ap_batch = self.batch_locker.get_ap_batch(batch_size=1)
+        if not ap_batch:
+            raise RuntimeError('Unable to lock AP %r' % self.AP_SPEC)
+
+        self.ap = ap_batch[0]
         self.run_initialization = False
         # All tests have to have a band pre-set.
         bands = self.ap.get_supported_bands()
         self.ap.set_band(bands[0]['band'])
         self.ap.apply_settings()
+
+
+    def tearDown(self):
+        """Unlocks the AP locked by setUp(), if any."""
+        if self.batch_locker:
+            self.batch_locker.unlock_aps()
 
 
     def disabled_security_on_all_bands(self):
