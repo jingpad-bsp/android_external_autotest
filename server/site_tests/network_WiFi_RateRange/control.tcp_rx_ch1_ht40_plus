@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'tgao@chromium.com'
-NAME = 'network_WiFi_RateRange'
+NAME = 'network_WiFi_RateRange.tcp_rx_ch1_ht40_plus'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 
@@ -35,6 +35,7 @@ def run(machine):
 
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_RateRange',
+                 tag=NAME.split('.')[1],
                  host=host,
                  raw_cmdline_args=args,
                  additional_params=additional_params)
