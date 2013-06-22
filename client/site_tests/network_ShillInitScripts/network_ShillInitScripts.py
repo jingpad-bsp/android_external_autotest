@@ -45,11 +45,12 @@ class network_ShillInitScripts(test.test):
                 break
             time.sleep(1)
         else:
-            error.TestFail('Shill process does not appear to be dying')
+            raise error.TestFail('Shill process does not appear to be dying')
 
     def login(self, user=None):
         # Note: "start" blocks until the "script" block completes.
-        utils.system('start login CHROMEOS_USER=%s' % (user or self.fake_user))
+        utils.system('start shill-start-user-session CHROMEOS_USER=%s' %
+                     (user or self.fake_user))
 
     def login_guest(self):
         # For guest login, session-manager passes an empty CHROMEOS_USER arg.
@@ -57,7 +58,7 @@ class network_ShillInitScripts(test.test):
 
     def logout(self):
         # Note: "start" blocks until the "script" block completes.
-        utils.system('start logout')
+        utils.system('start shill-stop-user-session')
 
     def start_test(self):
         self.stop_shill()
@@ -191,10 +192,10 @@ class network_ShillInitScripts(test.test):
 
     def find_pid(self, process_name):
         return utils.system_output('pgrep %s' % process_name,
-                                   ignore_status=True).split('\n')
+                                   ignore_status=True).split('\n')[0]
 
     def get_commandline(self):
-        pid = self.find_pid('shill')[0]
+        pid = self.find_pid('shill')
         return file('/proc/%s/cmdline' % pid).read().split('\0')
 
     def run_once(self):
@@ -255,7 +256,6 @@ class network_ShillInitScripts(test.test):
                    '/var/run/shill/user_profiles/chronos')
         self.touch('/var/run/state/logged-in')
         self.start_shill()
-        command_line = self.get_commandline()
         self.assure('--push=~chronos/shill' not in self.get_commandline(),
                     'Shill command line does not contain push argument')
         os.unlink('/var/run/state/logged-in')
@@ -533,8 +533,6 @@ class network_ShillInitScripts(test.test):
         os.makedirs(self.guest_shill_user_log_dir)
         self.touch('/var/run/state/logged-in')
         self.logout()
-        self.assure(not os.path.exists('/var/run/state/logged-in'),
-                    'Logged-in file was removed')
         self.assure(not os.path.exists('/var/run/shill/user_profiles'),
                     'User profile directory was removed')
         self.assure(not os.path.exists(self.guest_shill_user_profile_dir),
