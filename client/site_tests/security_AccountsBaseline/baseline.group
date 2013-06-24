@@ -64,7 +64,7 @@ avahi:x:238:
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
-daemon-store:x:400:
+daemon-store:x:400:chaps
 logs-access:x:401:debugd-logs
 serial:x:402:chronos,uucp
 devbroker-access:x:403:chronos
