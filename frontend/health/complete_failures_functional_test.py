@@ -78,21 +78,21 @@ class CompleteFailuresFunctionalTests(mox.MoxTestBase, test.TestCase):
 
     def test(self):
         """Does a basic test of as much of the system as possible."""
-        job = models.Job(job_idx = 1)
-        kernel = models.Kernel(kernel_idx = 1)
-        machine = models.Machine(machine_idx = 1)
-        success_status = models.Status(status_idx = GOOD_STATUS_IDX)
-        fail_status = models.Status(status_idx = FAIL_STATUS_IDX)
+        job = models.Job(job_idx=1)
+        kernel = models.Kernel(kernel_idx=1)
+        machine = models.Machine(machine_idx=1)
+        success_status = models.Status(status_idx=GOOD_STATUS_IDX)
+        fail_status = models.Status(status_idx=FAIL_STATUS_IDX)
 
-        passing_test = models.Test(job = job, status = success_status,
-                                   kernel = kernel, machine = machine,
-                                   test = 'test1',
-                                   started_time = self.datetime(2012, 1, 1))
+        passing_test = models.Test(job=job, status=success_status,
+                                   kernel=kernel, machine=machine,
+                                   test='test1',
+                                   started_time=self.datetime(2012, 1, 1))
         passing_test.save()
-        failing_test = models.Test(job = job, status = fail_status,
-                                   kernel = kernel, machine = machine,
-                                   test = 'test2',
-                                   started_time = self.datetime.min)
+        failing_test = models.Test(job=job, status=fail_status,
+                                   kernel=kernel, machine=machine,
+                                   test='test2',
+                                   started_time=self.datetime.min)
         failing_test.save()
 
         complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 10

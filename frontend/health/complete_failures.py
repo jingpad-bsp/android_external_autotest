@@ -47,6 +47,25 @@ def save_storage(storage):
     storage.close()
 
 
+def is_valid_test_name(name):
+    """
+    Returns if a test name is valid or not.
+
+    There is a bunch of entries in the tko_test table that are not actually
+    test names. They are there as a side effect of how Autotest uses this
+    table.
+
+    Two examples of bad tests names are as follows:
+    link-release/R29-4228.0.0/faft_ec/firmware_ECPowerG3_SERVER_JOB
+    try_new_image-chormeos1-rack2-host2
+
+    @param name: The candidate test names to check.
+    @return True if name is a valid test name and false otherwise.
+
+    """
+    return not '/' in name and not name.startswith('try_new_image')
+
+
 def get_last_pass_times():
     """
     Get all the tests that have passed and the time they last passed.
@@ -58,10 +77,13 @@ def get_last_pass_times():
     results = tko_models.Test.objects.values('test').filter(
         status=_TEST_PASS_STATUS_INDEX).annotate(
         last_pass=django_models.Max('started_time'))
-    # The shelve module does not accept Unicode objects as keys but utf-8
-    # strings are.
-    return {result['test'].encode('utf8'): result['last_pass']
-            for result in results}
+    results_dict = {result['test']: result['last_pass']
+                    for result in results}
+    valid_test_names = filter(is_valid_test_name, results_dict)
+    # The shelve module does not accept Unicode objects as keys but does
+    # accept utf-8 strings.
+    return {name.encode('utf8'): results_dict[name]
+            for name in valid_test_names}
 
 
 def get_all_test_names():
@@ -71,8 +93,10 @@ def get_all_test_names():
     @return a list of all the test names.
 
     """
-    test_names = tko_models.Test.objects.values('test').distinct()
-    return [test['test'].encode('utf8') for test in test_names]
+    results = tko_models.Test.objects.values('test').distinct()
+    test_names = [test['test'] for test in results]
+    valid_test_names = filter(is_valid_test_name, test_names)
+    return [test.encode('utf8') for test in valid_test_names]
 
 
 def get_tests_to_analyze():
