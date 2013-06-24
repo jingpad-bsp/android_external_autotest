@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import gzip, os, utils
+import gzip, logging, os, utils
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import crash_test
@@ -43,6 +43,17 @@ class logging_UdevCrash(crash_test.CrashTest):
 
     def _test_udev_report_atmel(self):
         """Test that atmel trackpad failure can trigger udev crash report."""
+        DRIVER_DIR = '/sys/bus/i2c/drivers/atmel_mxt_ts'
+        has_atmel_device = False
+        if os.path.exists(DRIVER_DIR):
+            for filename in os.listdir(DRIVER_DIR):
+                if os.path.isdir(os.path.join(DRIVER_DIR, filename)):
+                    has_atmel_device = True
+
+        if not has_atmel_device:
+            logging.info('No atmel device, skip the test')
+            return None
+
         self._set_consent(True)
 
         # Use udevadm to trigger a fake udev event representing atmel driver
