@@ -1558,10 +1558,18 @@ class FAFTSequence(ServoTest):
             self._call_action(test['state_checker'], check_status=True)
 
         boot_id = None
-        try:
-          boot_id = self._client.get_boot_id()
-        except error.AutoservRunError:
-          logging.warning('Failed to get boot id.')
+        retry = 3
+        while retry:
+            try:
+                boot_id = self._client.get_boot_id()
+                break
+            except error.AutoservRunError:
+                retry -= 1
+                if retry:
+                    logging.info('Retry to get boot_id...')
+                else:
+                    logging.warning('Failed to get boot_id.')
+        logging.info('boot_id: %s', boot_id)
 
         self._call_action(test['userspace_action'])
 
