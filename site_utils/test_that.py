@@ -33,22 +33,25 @@ _sigint_handler_lock = threading.Lock()
 
 _AUTOSERV_SIGINT_TIMEOUT_SECONDS = 5
 _NO_BOARD = 'ad_hoc_board'
+_NO_BUILD = 'ad_hoc_build'
 
 _QUICKMERGE_SCRIPTNAME = '/mnt/host/source/chromite/bin/autotest_quickmerge'
 
 
-def schedule_local_suite(autotest_path, suite_name, afe, build=''):
+def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
+                         board=_NO_BOARD):
     """
     Schedule a suite against a mock afe object, for a local suite run.
     @param autotest_path: Absolute path to autotest (in sysroot).
     @param suite_name: Name of suite to schedule.
     @param afe: afe object to schedule against (typically a directAFE)
     @param build: Build to schedule suite for.
+    @param board: Board to schedule suite for.
     @returns: The number of tests scheduled.
     """
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
     devserver = dev_server.ImageServer('')
-    my_suite = suite.Suite.create_from_name(suite_name, build, _NO_BOARD,
+    my_suite = suite.Suite.create_from_name(suite_name, build, board,
             devserver, fs_getter, afe=afe, ignore_deps=True)
     if len(my_suite.tests) == 0:
         raise ValueError('Suite named %s does not exist, or contains no '
@@ -57,7 +60,8 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=''):
     return len(my_suite.tests)
 
 
-def schedule_local_test(autotest_path, test_name, afe, build=''):
+def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
+                        board=_NO_BOARD):
     #temporarily disabling pylint
     #pylint: disable-msg=C0111
     """
@@ -66,6 +70,7 @@ def schedule_local_test(autotest_path, test_name, afe, build=''):
     @param test_name: Name of test to schedule.
     @param afe: afe object to schedule against (typically a directAFE)
     @param build: Build to schedule suite for.
+    @param board: Board to schedule suite for.
     @returns: The number of tests scheduled (may be >1 if there are
               multiple tests with the same name).
     """
@@ -73,7 +78,7 @@ def schedule_local_test(autotest_path, test_name, afe, build=''):
     devserver = dev_server.ImageServer('')
     predicates = [suite.Suite.test_name_equals_predicate(test_name)]
     suite_name = 'suite_' + test_name
-    my_suite = suite.Suite.create_from_predicates(predicates, build, _NO_BOARD,
+    my_suite = suite.Suite.create_from_predicates(predicates, build, board,
             devserver, fs_getter, afe=afe, name=suite_name, ignore_deps=True)
     if len(my_suite.tests) == 0:
         raise ValueError('No tests named %s.' % test_name)
@@ -118,7 +123,8 @@ def setup_local_afe():
     return direct_afe.directAFE()
 
 
-def perform_local_run(afe, autotest_path, tests, remote, build=''):
+def perform_local_run(afe, autotest_path, tests, remote, build=_NO_BUILD,
+                      board=_NO_BOARD):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
@@ -126,8 +132,10 @@ def perform_local_run(afe, autotest_path, tests, remote, build=''):
                   should be formed like "suite:smoke".
     @param remote: Remote hostname.
     @param build: String specifying build for local run.
+    @param board: String specifyinb board for local run.
     """
     afe.create_label(constants.VERSION_PREFIX + build)
+    afe.create_label(board)
     afe.create_host(remote)
 
     # Schedule tests / suites in local afe
@@ -136,10 +144,12 @@ def perform_local_run(afe, autotest_path, tests, remote, build=''):
         if suitematch:
             suitename = suitematch.group(1)
             logging.info('Scheduling suite %s...', suitename)
-            ntests = schedule_local_suite(autotest_path, suitename, afe)
+            ntests = schedule_local_suite(autotest_path, suitename, afe,
+                                          build=build, board=board)
         else:
             logging.info('Scheduling test %s...', test)
-            ntests = schedule_local_test(autotest_path, test, afe)
+            ntests = schedule_local_test(autotest_path, test, afe,
+                                         build=build, board=board)
         logging.info('... scheduled %s tests.', ntests)
 
     for job in afe.get_jobs():

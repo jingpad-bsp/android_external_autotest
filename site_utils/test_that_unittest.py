@@ -90,9 +90,11 @@ class TestThatUnittests(unittest.TestCase):
         autotest_path = 'ottotest_path'
         suite_name = 'sweet_name'
         remote = 'remoat'
+        build = 'bild'
+        board = 'bored'
         suite_control_files=['c1', 'c2', 'c3', 'c4']
 
-        def fake_suite_callback(*args):
+        def fake_suite_callback(*args, **dargs):
             for control_file in suite_control_files:
                 afe.create_job(control_file, hosts=[remote])
 
@@ -100,7 +102,8 @@ class TestThatUnittests(unittest.TestCase):
         self.mox = mox.Mox()
         self.mox.StubOutWithMock(test_that, 'schedule_local_suite')
         test_that.schedule_local_suite(autotest_path, suite_name,
-                                     afe).WithSideEffects(fake_suite_callback)
+                afe, build=build,
+                board=board).WithSideEffects(fake_suite_callback)
         self.mox.StubOutWithMock(test_that, 'run_job')
 
         # Test perform_local_run. Enforce that run_job is called correctly.
@@ -110,7 +113,7 @@ class TestThatUnittests(unittest.TestCase):
                              remote, autotest_path)
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
-                                  remote)
+                                  remote, build=build, board=board)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
 
