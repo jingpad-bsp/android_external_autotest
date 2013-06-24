@@ -1256,6 +1256,21 @@ def get_arch(run_function=run):
     """
     return re.sub(r'i\d86$', 'i386', os.uname()[4])
 
+def get_arch_userspace(run_function=run):
+    """
+    Get the architecture by userspace (possibly different from kernel).
+    """
+    archs = {
+        'arm': 'ELF 32-bit.*, ARM,',
+        'i386': 'ELF 32-bit.*, Intel 80386,',
+        'x86_64': 'ELF 64-bit.*, x86-64,',
+    }
+    filestr = run_function('file -b /bin/true').stdout.rstrip()
+    for a, regex in archs.iteritems():
+        if re.match(regex, filestr):
+            return a
+
+    return get_arch()
 
 def get_board():
     """
