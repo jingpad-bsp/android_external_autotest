@@ -38,12 +38,11 @@ class platform_GesturesRegressionTest(test.test):
         root = os.path.join(self.autodir, 'deps', 'touchpad-tests')
         framework_dir = os.path.join(root, 'framework')
         tests_dir = os.path.join(root, 'tests')
-        xorg_dir = os.path.join(root, 'xorg-conf-files')
 
         # create test runner
         sys.path.append(framework_dir)
         from test_runner import ParallelTestRunner
-        runner = ParallelTestRunner(tests_dir, xorg_dir)
+        runner = ParallelTestRunner(tests_dir)
 
         # run all tests for this platform and extract results
         results = runner.RunAll('%s*/*' % platform)
