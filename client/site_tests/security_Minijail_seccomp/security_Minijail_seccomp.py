@@ -22,14 +22,6 @@ class security_Minijail_seccomp(test.test):
         utils.make()
 
 
-    def get_arch(self):
-        full_arch = utils.get_arch()
-        if "arm" in full_arch:
-            return "arm"
-        else:
-            return full_arch
-
-
     def run_test(self, exe, args, jail, expected_ret, pretty_msg):
         cmdline = '/sbin/minijail0'
 
@@ -54,7 +46,7 @@ class security_Minijail_seccomp(test.test):
 
 
     def run_once(self):
-        privdrop_policy = "policy-privdrop_" + self.get_arch()
+        privdrop_policy = "policy-privdrop_" + utils.get_arch_userspace()
 
         case_ok = ("ok", [],
                    Jail(None, "policy", nnp=False),
