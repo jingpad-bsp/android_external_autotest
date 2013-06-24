@@ -72,11 +72,12 @@ class FAFTClientAttribute(object):
             self.broken_rec_mode = True
 
         # Set 'chrome_ec'
-        if platform in ['Link', 'Snow', 'Spring', 'Falco', 'Peppy']:
+        if platform in ['Falco', 'Link', 'Peppy', 'Slippy', 'Snow', 'Spring']:
             self.chrome_ec = True
 
         # Set 'dark_resume_capable'
-        if platform in ['Butterfly', 'Link', 'Parrot']:
+        if platform in ['Butterfly', 'Falco', 'Link', 'Parrot', 'Peppy',
+                        'Slippy']:
             self.dark_resume_capable = True
 
         # Set 'has_lid'
@@ -93,11 +94,12 @@ class FAFTClientAttribute(object):
             self.keyboard_dev = False
 
         # Set 'long_rec_combo'
+        # TODO(shawnn): Check if this is needed for slippy / falco / peppy.
         if platform in ['Link']:
             self.long_rec_combo = True
 
         # Set 'ec_capability'
-        if platform in ['Link']:
+        if platform in ['Falco', 'Link', 'Peppy', 'Slippy']:
             self.ec_capability = ['adc_ectemp', 'battery', 'charging',
                                         'keyboard', 'lid', 'x86', 'thermal',
                                         'usb', 'peci']
@@ -109,7 +111,7 @@ class FAFTClientAttribute(object):
             self.gbb_version = 1.0
 
         # Set 'wp_voltage'
-        if platform in ['Link']:
+        if platform in ['Falco', 'Link', 'Peppy', 'Slippy']:
             self.wp_voltage = 'pp3300'
 
         # Set 'key_matrix_layout'
