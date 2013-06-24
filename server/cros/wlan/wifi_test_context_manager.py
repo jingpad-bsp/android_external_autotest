@@ -259,7 +259,8 @@ class WiFiTestContextManager(object):
         stats = wifi_test_utils.parse_ping_output(result)
         # These are percentages.
         if float(stats['loss']) > 20:
-            raise error.TestFail('Client lost ping packets: %r.', stats)
+            raise error.TestFail('Client lost ping packets: %r.' % stats)
+
         logging.info('Ping successful.')
 
 
@@ -280,5 +281,6 @@ class WiFiTestContextManager(object):
                                  additional_ping_params)
         # These are percentages.
         if float(stats['loss']) > 20:
-            raise error.TestFail('Server lost ping packets: %r.', stats)
+            raise error.TestFail('Server lost ping packets: %r.' % stats)
+
         logging.info('Ping successful.')
