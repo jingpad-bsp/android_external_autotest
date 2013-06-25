@@ -3,13 +3,14 @@
 # found in the LICENSE file.
 
 import logging
-import os
-import shutil
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test, autotest
 
 
 class platform_TrackpadStressServer(test.test):
+    """
+    Make sure the trackpad continues to operate after a kernel panic.
+    """
     version = 1
 
     def _run_client_test(self, client_at, verify_only=False):
@@ -34,11 +35,12 @@ class platform_TrackpadStressServer(test.test):
         boot_id = self.client.get_boot_id()
 
         # Make it rain
-        command = 'echo bug > /proc/breakme'
-        logging.info('TrackpadStressServer: executing "%s" on %s' %
-                     (command, self.client.hostname))
+        command  = 'echo BUG > /sys/kernel/debug/provoke-crash/DIRECT'
+        command += '|| echo bug > /proc/breakme'
+        logging.info('TrackpadStressServer: executing "%s" on %s',
+                     command, self.client.hostname)
         try:
-            # Simple sending text into /proc/breakme resets the target
+            # Simply writing to the crash interface resets the target
             # immediately, leaving files unsaved to disk and the master ssh
             # connection wedged for a long time. The sequence below borrowed
             # from logging_KernelCrashServer.py makes sure that the test
