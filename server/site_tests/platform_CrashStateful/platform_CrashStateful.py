@@ -68,12 +68,14 @@ class platform_CrashStateful(test.test):
     def _crash(self):
         """crash the client without giving anything a chance to clean up
 
-        We use "echo panic >/proc/breakme" to immediately reboot the
+        We use the kernel crash testing interface to immediately reboot the
         system. No chance for any flushing of I/O or cleaning up.
         """
         logging.info('CrashStateful: force panic %s', self.client.hostname)
         try:
-            self.client.reboot(reboot_cmd='( echo panic >/proc/breakme ) &')
+            lkdtm = "echo PANIC > /sys/kernel/debug/provoke-crash/DIRECT"
+            breakme = "echo panic > /proc/breakme"
+            self.client.reboot(reboot_cmd='(%s || %s) &' % (lkdtm, breakme))
         except error.AutoservRebootError as e:
             raise error.TestFail('%s.\nTest failed with error %s' % (
                     traceback.format_exc(), str(e)))
