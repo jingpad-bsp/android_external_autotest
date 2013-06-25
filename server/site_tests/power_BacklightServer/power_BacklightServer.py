@@ -82,7 +82,9 @@ class power_BacklightServer(test.test):
 
 
     def _do_panic(self):
-        self._client_cmd_and_wait_for_restart('echo panic > /proc/breakme')
+        cmd  = 'echo PANIC > /sys/kernel/debug/provoke-crash/DIRECT'
+        cmd += '|| echo panic > /proc/breakme'
+        self._client_cmd_and_wait_for_restart(cmd)
 
 
     def _do_logout(self):
