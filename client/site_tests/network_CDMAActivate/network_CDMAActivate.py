@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error
 
 import dbus
@@ -20,6 +20,7 @@ import flimflam
 
 I_ACTIVATION_TEST = 'Interface.CDMAActivationTest'
 ACTIVATION_STATE_TIMEOUT = 10
+MODEM_STATE_TIMEOUT = 10
 
 class ActivationTest(object):
     """
@@ -78,8 +79,7 @@ class ActivationStateTest(ActivationTest):
         network.ResetAllModems(self.test.flim)
 
         # The modem state should be REGISTERED.
-        if not self.test.modem_state() == mm1.MM_MODEM_STATE_REGISTERED:
-            raise error.TestFail('Modem should be in the REGISTERED state.')
+        self.test.check_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
 
         # Service should appear as 'activated'.
         self.test.check_service_activation_state('activated')
@@ -118,8 +118,7 @@ class ActivationSuccessTest(ActivationTest):
         network.ResetAllModems(self.test.flim)
 
         # The modem state should be REGISTERED.
-        if not self.test.modem_state() == mm1.MM_MODEM_STATE_REGISTERED:
-            raise error.TestFail('Modem should be in the REGISTERED state.')
+        self.test.check_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
 
         # Service should appear as 'not-activated'.
         self.test.check_service_activation_state('not-activated')
@@ -192,8 +191,7 @@ class ActivationFailureRetryTest(ActivationTest):
         network.ResetAllModems(self.test.flim)
 
         # The modem state should be REGISTERED.
-        if not self.test.modem_state() == mm1.MM_MODEM_STATE_REGISTERED:
-            raise error.TestFail('Modem should be in the REGISTERED state.')
+        self.test.check_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
 
         # Service should appear as 'not-activated'.
         self.test.check_service_activation_state('not-activated')
@@ -245,6 +243,23 @@ class network_CDMAActivate(test.test):
         modem = self.modem()
         props = modem.GetAll(mm1.I_MODEM)
         return props['State']
+
+    def check_modem_state(self, expected_state, timeout=MODEM_STATE_TIMEOUT):
+        """
+        Polls until the modem has the expected state within |timeout| seconds.
+
+        @param expected_state: The modem state the modem is expected to be in.
+        @param timeout: The timeout interval for polling.
+
+        @raises error.TestFail, if the modem doesn't transition to
+                |expected_state| within |timeout|.
+
+        """
+        site_utils.poll_for_condition(
+            lambda: self.modem_state() == expected_state,
+            exception=error.TestFail('Timed out waiting for modem state ' +
+                                     str(expected_state)),
+            timeout=timeout);
 
     def find_cellular_service(self):
         """
