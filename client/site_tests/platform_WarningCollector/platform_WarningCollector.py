@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
 from autotest_lib.client.bin import test, utils
 
 class platform_WarningCollector(test.test):
@@ -17,6 +18,10 @@ class platform_WarningCollector(test.test):
         utils.system("rm -rf /var/run/kwarn")
         utils.system("start warn-collector")
         utils.system("sleep 0.1")
-        utils.system("echo warning > /proc/breakme")
+        lkdtm = "/sys/kernel/debug/provoke-crash/DIRECT"
+        if os.path.exists(lkdtm):
+            utils.system("echo WARNING > %s" % (lkdtm))
+        else:
+            utils.system("echo warning > /proc/breakme")
         utils.system("sleep 0.1")
         utils.system("test -f /var/run/kwarn/warning")
