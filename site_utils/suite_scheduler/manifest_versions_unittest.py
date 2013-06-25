@@ -9,9 +9,17 @@
 # Turn off "access to protected member of class"
 # pylint: disable=W0212
 
-import mox, os, unittest, re
+import os
+import re
+import time
+import unittest
 
-import manifest_versions
+import mox
+
+import common
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
+from autotest_lib.site_utils.suite_scheduler import manifest_versions
 
 
 class ManifestVersionsTest(mox.MoxTestBase):
@@ -56,6 +64,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
 
 
     def setUp(self):
+        """Initialization for unit tests."""
         super(ManifestVersionsTest, self).setUp()
         self.mv = manifest_versions.ManifestVersions()
 
@@ -63,9 +72,41 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
     def testInitialize(self):
         """Ensure we can initialize a ManifestVersions."""
         self.mox.StubOutWithMock(self.mv, '_Clone')
+        self.mox.StubOutWithMock(time, 'sleep')
         self.mv._Clone()
         self.mox.ReplayAll()
         self.mv.Initialize()
+
+
+    def testInitializeRetry(self):
+        """Ensure we retry _Clone() the correct number of times."""
+        self.mox.StubOutWithMock(self.mv, '_Clone')
+        self.mox.StubOutWithMock(time, 'sleep')
+        for i in range(0, self.mv._CLONE_MAX_RETRIES):
+            self.mv._Clone().AndRaise(
+                error.CmdError('retried git clone failure',
+                               utils.CmdResult()))
+            time.sleep(self.mv._CLONE_RETRY_SECONDS)
+        self.mv._Clone()
+        self.mox.ReplayAll()
+        self.mv.Initialize()
+
+
+    def testInitializeFail(self):
+        """Ensure we fail after too many _Clone() retries."""
+        self.mox.StubOutWithMock(self.mv, '_Clone')
+        self.mox.StubOutWithMock(time, 'sleep')
+        for i in range(0, self.mv._CLONE_MAX_RETRIES):
+            self.mv._Clone().AndRaise(
+                error.CmdError('retried git clone failure',
+                               utils.CmdResult()))
+            time.sleep(self.mv._CLONE_RETRY_SECONDS)
+        self.mv._Clone().AndRaise(
+            error.CmdError('final git clone failure',
+                           utils.CmdResult()))
+        self.mox.ReplayAll()
+        self.assertRaises(manifest_versions.CloneException,
+                          self.mv.Initialize)
 
 
     def testGlobs(self):

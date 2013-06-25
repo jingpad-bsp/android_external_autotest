@@ -2,9 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, re, os
-from autotest_lib.client.common_lib import autotemp, utils
+import glob
+import logging
+import os
+import re
+import time
 from distutils import version
+
+import common
+from autotest_lib.client.common_lib import autotemp
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 
 
 class ManifestVersionsException(Exception):
@@ -14,6 +22,11 @@ class ManifestVersionsException(Exception):
 
 class QueryException(ManifestVersionsException):
     """Raised to indicate a failure while searching for manifests."""
+    pass
+
+
+class CloneException(ManifestVersionsException):
+    """Raised when `git clone` fails to create the repository."""
     pass
 
 
@@ -54,6 +67,10 @@ def _System(command, timeout=None):
 class ManifestVersions(object):
     """Class to allow discovery of manifests for new successful CrOS builds.
 
+    @var _CLONE_RETRY_SECONDS: Number of seconds to wait before retrying
+                                a failed `git clone` operation.
+    @var _CLONE_MAX_RETRIES: Maximum number of times to retry a failed
+                             a failed `git clone` operation.
     @var _MANIFEST_VERSIONS_URL: URL of the internal manifest-versions git repo.
     @var _BOARD_MANIFEST_GLOB_PATTERN: pattern for shell glob for passed-build
                                        manifests for a given board.
@@ -64,6 +81,8 @@ class ManifestVersions(object):
     @var _tempdir: a scoped tempdir.  Will be destroyed on instance deletion.
     """
 
+    _CLONE_RETRY_SECONDS = 5 * 60
+    _CLONE_MAX_RETRIES = 60 * 60 / _CLONE_RETRY_SECONDS
     _MANIFEST_VERSIONS_URL = ('ssh://gerrit-int.chromium.org:29419/'
                               'chromeos/manifest-versions.git')
     _ANY_MANIFEST_GLOB_PATTERN = 'build-name/*/pass/'
@@ -100,11 +119,39 @@ class ManifestVersions(object):
     def Initialize(self):
         """Set up internal state.  Must be called before other methods.
 
-        Clone manifest-versions.git into tempdir managed by this instace.
+        Clone manifest-versions.git into tempdir managed by this instance.
         """
-        logging.debug('Cloning manifest-versions.git.')
-        self._Clone()
-        logging.debug('manifest-versions.git cloned.')
+        # If gerrit goes down during suite_scheduler operation,
+        # we'll enter a loop like the following:
+        #  1. suite_scheduler fails executing some `git` command.
+        #  2. The failure is logged at ERROR level, causing an
+        #     e-mail notification of the failure.
+        #  3. suite_scheduler terminates.
+        #  4. Upstart respawns suite_scheduler.
+        #  5. suite_scheduler comes here to restart with a new
+        #     manifest-versions repo.
+        #  6. `git clone` fails, and we go back to step 2.
+        #
+        # We want to rate limit the e-mail notifications, so we
+        # retry failed `git clone` operations for a time before we
+        # finally give up.
+        retry_count = 0
+        msg = None
+        while retry_count <= self._CLONE_MAX_RETRIES:
+            if retry_count:
+                time.sleep(self._CLONE_RETRY_SECONDS)
+            retry_count += 1
+            try:
+                logging.debug('Cloning manifest-versions.git,'
+                              ' attempt %d.', retry_count)
+                self._Clone()
+                logging.debug('manifest-versions.git cloned.')
+                return
+            except error.CmdError as e:
+                msg = str(e)
+                logging.debug('Clone failed: %s', msg)
+        raise CloneException('Failed to clone %s after %d attempts: %s' %
+                             (self._MANIFEST_VERSIONS_URL, retry_count, msg))
 
 
     def ManifestsSinceDays(self, days_ago, board):
