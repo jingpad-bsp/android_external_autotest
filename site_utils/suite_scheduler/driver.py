@@ -135,8 +135,8 @@ class Driver(object):
                 try:
                     site_utils.check_lab_status()
                 except error.LabIsDownException as ex:
-                    logging.warn('Skipping event %s, because lab is down '
-                                 'with message: %s', e.keyword, ex.message)
+                    logging.debug('Skipping event %s, because lab is down '
+                                  'with message: %s', e.keyword, ex.message)
                     continue
 
                 logging.info('Handling %s event', e.keyword)
