@@ -66,10 +66,11 @@ class RPMFrontendServer(object):
     @var _mapping_last_modified: Last-modified time of the servo-interface
                                  mapping file.
     @var _servo_interface: Maps servo hostname to (switch_hostname, interface).
+    @var _email_handler: Email handler to use to control email notifications.
     """
 
 
-    def __init__(self):
+    def __init__(self, email_handler=None):
         """
         RPMFrontendServer constructor.
 
@@ -81,6 +82,7 @@ class RPMFrontendServer(object):
         self._rpm_dict = {}
         self._mapping_last_modified = os.path.getmtime(MAPPING_FILE)
         self._servo_interface = utils.load_servo_interface_mapping()
+        self._email_handler = email_handler
 
 
     def queue_request(self, dut_hostname, new_state):
@@ -284,6 +286,21 @@ class RPMFrontendServer(object):
             pass
 
 
+    def suspend_emails(self, hours):
+        """Suspend email notifications.
+
+        @param hours: How many hours to suspend email notifications.
+        """
+        if self._email_handler:
+            self._email_handler.suspend_emails(hours)
+
+
+    def resume_emails(self):
+        """Resume email notifications."""
+        if self._email_handler:
+            self._email_handler.resume_emails()
+
+
 if __name__ == '__main__':
     """
     Main function used to launch the frontend server. Creates an instance of
@@ -292,8 +309,8 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
       print 'Usage: ./%s, no arguments available.' % sys.argv[0]
       sys.exit(1)
-    rpm_logging_config.set_up_logging(LOG_FILENAME_FORMAT)
-    frontend_server = RPMFrontendServer()
+    email_handler = rpm_logging_config.set_up_logging(LOG_FILENAME_FORMAT)
+    frontend_server = RPMFrontendServer(email_handler=email_handler)
     address = rpm_config.get('RPM_INFRASTRUCTURE', 'frontend_addr')
     port = rpm_config.getint('RPM_INFRASTRUCTURE', 'frontend_port')
     server = MultiThreadedXMLRPCServer((address, port), allow_none=True)

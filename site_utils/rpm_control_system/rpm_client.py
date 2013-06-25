@@ -1,8 +1,11 @@
+#!/usr/bin/python
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import argparse
 import logging
+import sys
 import xmlrpclib
 
 import common
@@ -41,3 +44,38 @@ def set_power(hostname, new_state):
                      'state: %s.' % (hostname, new_state))
         logging.error(error_msg)
         raise RemotePowerException(error_msg)
+
+
+def parse_options():
+    """Parse the user supplied options."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-m', '--machine', dest='machine',
+                        help='Machine hostname to change outlet state.')
+    parser.add_argument('-s', '--state', dest='state',
+                        help='Power state to set outlet: ON, OFF, CYCLE')
+    parser.add_argument('-d', '--disable_emails', dest='disable_emails',
+                        help='Hours to suspend RPM email notifications.')
+    parser.add_argument('-e', '--enable_emails', dest='enable_emails',
+                        action='store_true',
+                        help='Resume RPM email notifications.')
+    return parser.parse_args()
+
+
+def main():
+    """Entry point for rpm_client script."""
+    options = parse_options()
+    if options.machine is not None and options.state is None:
+        print 'Need --state to change outlet state.'
+    elif options.machine is not None and options.state is not None:
+        set_power(options.machine, options.state)
+
+    if options.disable_emails is not None:
+        client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI, verbose=False)
+        client.suspend_emails(options.disable_emails)
+    if options.enable_emails:
+        client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI, verbose=False)
+        client.resume_emails()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
