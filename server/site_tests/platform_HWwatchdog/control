@@ -11,10 +11,8 @@ TEST_CLASS = "platform"
 TEST_TYPE = "server"
 
 DOC = """
-This test uses /proc/breakme to cause the machine to have various
-serious failures (kernel panic, kernel bug, deadlock, etc.), and then
-check to make sure that these failures were properly logged and had
-appropritate consequences (reboot, logging, etc.).
+This test uses the hardware watchdog interface to make sure a machine
+will reboot when expected.
 """
 
 def run_kernel_hw_watchdog(machine):
