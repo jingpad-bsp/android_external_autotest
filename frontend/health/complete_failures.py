@@ -18,7 +18,10 @@ from django.db import models as django_models
 
 
 _STORAGE_FILE = 'failure_storage'
+# Mark a test as failing too long if it has not passed in this many days
 _DAYS_TO_BE_FAILING_TOO_LONG = 60
+# Ignore any tests that have not ran in this many days
+_DAYS_NOT_RUNNING_CUTOFF = 60
 _TEST_PASS_STATUS_INDEX = 6
 _MAIL_RESULTS_FROM = 'chromeos-test-health@google.com'
 _MAIL_RESULTS_TO = 'chromeos-lab-infrastructure@google.com'
@@ -86,22 +89,25 @@ def get_last_pass_times():
             for name in valid_test_names}
 
 
-def get_all_test_names():
+def get_recently_ran_test_names():
     """
-    Get all the test names from the database.
+    Get all the test names from the database that have been recently ran.
 
-    @return a list of all the test names.
+    @return a set of the recently ran tests.
 
     """
-    results = tko_models.Test.objects.values('test').distinct()
+    cutoff_delta = datetime.timedelta(_DAYS_NOT_RUNNING_CUTOFF)
+    cutoff_date = datetime.datetime.today() - cutoff_delta
+    results = tko_models.Test.objects.filter(
+        started_time__gte=cutoff_date).values('test').distinct()
     test_names = [test['test'] for test in results]
     valid_test_names = filter(is_valid_test_name, test_names)
-    return [test.encode('utf8') for test in valid_test_names]
+    return {test.encode('utf8') for test in valid_test_names}
 
 
 def get_tests_to_analyze():
     """
-    Get all the tests as well as the last time they have passed.
+    Get all the recently ran tests as well as the last time they have passed.
 
     The minimum datetime is given as last pass time for tests that have never
     passed.
@@ -109,11 +115,17 @@ def get_tests_to_analyze():
     @return the dict of test_name:last_finish_time pairs.
 
     """
+    recent_test_names = get_recently_ran_test_names()
     last_passes = get_last_pass_times()
-    all_test_names = get_all_test_names()
-    failures_names = (set(all_test_names) - set(last_passes.keys()))
+
+    running_passes = {}
+    for test, pass_time in last_passes.items():
+        if test in recent_test_names:
+            running_passes[test] = pass_time
+
+    failures_names = recent_test_names.difference(running_passes)
     always_failed = {test: datetime.datetime.min for test in failures_names}
-    return dict(always_failed.items() + last_passes.items())
+    return dict(always_failed.items() + running_passes.items())
 
 
 def email_about_test_failure(tests, storage):

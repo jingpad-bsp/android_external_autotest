@@ -28,13 +28,13 @@ from django import test
 GOOD_STATUS_IDX = 6
 FAIL_STATUS_IDX = 4
 
-# During the tests there is a point where a type check is done on
-# datetime.datetime. Unfortunately this means when datetime is mocked it
-# horrible failures happen when Django tries to do this check. It is necesarry
+# During the tests there is a point where Django does a type check on
+# datetime.datetime. Unfortunately this means when datetime is mocked out,
+# horrible failures happen when Django tries to do this check. The solution
+# chosen is to create a pure Python class that inheirits from datetime.datetime
+# so that the today class method can be directly mocked out. It is necesarry
 # to mock out datetime.datetime completely as it a C class and so cannot have
-# parts of itself mocked out. The solution chosen is to create a pure Python
-# class that inheirits from datetime.datetime so that the today class method
-# can be directly mocked out.
+# parts of itself mocked out.
 class MockDatetime(datetime.datetime):
     """Used to mock out parts of datetime.datetime."""
     pass
@@ -92,12 +92,13 @@ class CompleteFailuresFunctionalTests(mox.MoxTestBase, test.TestCase):
         failing_test = models.Test(job=job, status=fail_status,
                                    kernel=kernel, machine=machine,
                                    test='test2',
-                                   started_time=self.datetime.min)
+                                   started_time=self.datetime(2012,1,1))
         failing_test.save()
 
         complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 10
         storage = {}
         complete_failures.load_storage().AndReturn(storage)
+        MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         mail.send('chromeos-test-health@google.com',
                   ['chromeos-lab-infrastructure@google.com'],

@@ -22,6 +22,12 @@ from django import test
 GOOD_STATUS_IDX = 6
 FAIL_STATUS_IDX = 4
 
+# See complte_failurs_functional_tests.py for why we need this.
+class MockDatetime(datetime.datetime):
+    """Used to mock out parts of datetime.datetime."""
+    pass
+
+
 class EmailAboutTestFailureTests(mox.MoxTestBase):
     """
     Test the core logic of the comlete_failures.py script.
@@ -38,11 +44,11 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
         # emails will be sent out during tests.
         self.mox.StubOutWithMock(mail, 'send')
 
-        self._orignal_too_late = complete_failures._DAYS_TO_BE_FAILING_TOO_LONG
+        self._orig_too_long = complete_failures._DAYS_TO_BE_FAILING_TOO_LONG
 
 
     def tearDown(self):
-        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = self._orignal_too_late
+        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = self._orig_too_long
         super(EmailAboutTestFailureTests, self).tearDown()
 
 
@@ -272,40 +278,50 @@ class GetLastPassTimesTests(mox.MoxTestBase, test.TestCase):
         self.assertTrue(not results)
 
 
-class GetAllTestNamesTests(mox.MoxTestBase, test.TestCase):
-    """Tests the get_all_test_names function."""
+class GetRecentlyRanTestNamesTests(mox.MoxTestBase, test.TestCase):
+    """Tests the get_recently_ran_test_names function."""
 
     def setUp(self):
-        super(GetAllTestNamesTests, self).setUp()
+        super(GetRecentlyRanTestNamesTests, self).setUp()
+        self.mox.StubOutWithMock(MockDatetime, 'today')
+        self.datetime = datetime.datetime
+        datetime.datetime = MockDatetime
         setup_test_environment.set_up()
+        self._orig_cutoff = complete_failures._DAYS_NOT_RUNNING_CUTOFF
 
 
     def tearDown(self):
+        datetime.datetime = self.datetime
+        complete_failures._DAYS_NOT_RUNNING_CUTOFF = self._orig_cutoff
         setup_test_environment.tear_down()
-        super(GetAllTestNamesTests, self).tearDown()
+        super(GetRecentlyRanTestNamesTests, self).tearDown()
 
 
-    def test_return_all_tests(self):
+    def test_return_all_recently_ran_tests(self):
         """Test that the function does as it says it does."""
         job = models.Job(job_idx=1)
         kernel = models.Kernel(kernel_idx=1)
         machine = models.Machine(machine_idx=1)
         success_status = models.Status(status_idx=GOOD_STATUS_IDX)
 
-        test1 = models.Test(job=job, status=success_status,
-                            kernel=kernel, machine=machine,
-                            test='test1',
-                            started_time=datetime.datetime(2012, 1, 1))
-        test1.save()
-        test2 = models.Test(job=job, status=success_status,
-                            kernel=kernel, machine=machine,
-                            test='test2',
-                            started_time=datetime.datetime(2012, 1, 2))
-        test2.save()
+        recent = models.Test(job=job, status=success_status,
+                             kernel=kernel, machine=machine,
+                             test='recent',
+                             started_time=self.datetime(2012, 1, 1))
+        recent.save()
+        old = models.Test(job=job, status=success_status,
+                          kernel=kernel, machine=machine,
+                          test='old',
+                          started_time=self.datetime(2011, 1, 2))
+        old.save()
 
-        results = complete_failures.get_all_test_names()
+        datetime.datetime.today().AndReturn(self.datetime(2012, 1, 4))
+        complete_failures._DAYS_NOT_RUNNING_CUTOFF = 60
 
-        self.assertEqual(set(results), set(['test1', 'test2']))
+        self.mox.ReplayAll()
+        results = complete_failures.get_recently_ran_test_names()
+
+        self.assertEqual(set(results), set(['recent']))
 
 
     def test_returns_no_duplicate_names(self):
@@ -318,15 +334,19 @@ class GetAllTestNamesTests(mox.MoxTestBase, test.TestCase):
         test = models.Test(job=job, status=success_status,
                            kernel=kernel, machine=machine,
                            test='test',
-                           started_time=datetime.datetime(2012, 1, 1))
+                           started_time=self.datetime(2012, 1, 1))
         test.save()
         duplicate = models.Test(job=job, status=success_status,
                                 kernel=kernel, machine=machine,
                                 test='test',
-                                started_time=datetime.datetime(2012, 1, 2))
+                                started_time=self.datetime(2012, 1, 2))
         duplicate.save()
 
-        results = complete_failures.get_all_test_names()
+        datetime.datetime.today().AndReturn(self.datetime(2012, 1, 3))
+        complete_failures._DAYS_NOT_RUNNING_CUTOFF = 60
+
+        self.mox.ReplayAll()
+        results = complete_failures.get_recently_ran_test_names()
 
         self.assertEqual(len(results), 1)
 
@@ -341,10 +361,14 @@ class GetAllTestNamesTests(mox.MoxTestBase, test.TestCase):
         invalid_test = models.Test(job=job, status=success_status,
                                    kernel=kernel, machine=machine,
                                    test='invalid_test/name',
-                                   started_time=datetime.datetime(2012, 1, 1))
+                                   started_time=self.datetime(2012, 1, 1))
         invalid_test.save()
 
-        results = complete_failures.get_all_test_names()
+        datetime.datetime.today().AndReturn(self.datetime(2012, 1, 2))
+        complete_failures._DAYS_NOT_RUNNING_CUTOFF = 60
+
+        self.mox.ReplayAll()
+        results = complete_failures.get_recently_ran_test_names()
 
         self.assertTrue(not results)
 
@@ -352,29 +376,34 @@ class GetAllTestNamesTests(mox.MoxTestBase, test.TestCase):
 class GetTestsToAnalyzeTests(mox.MoxTestBase):
     """Tests the get_tests_to_analyze function."""
 
-    def test_returns_all_test_names(self):
+    def test_returns_recent_test_names(self):
         """Test should return all the test names in the database."""
         self.mox.StubOutWithMock(complete_failures, 'get_last_pass_times')
-        self.mox.StubOutWithMock(complete_failures, 'get_all_test_names')
+        self.mox.StubOutWithMock(complete_failures,
+            'get_recently_ran_test_names')
 
         complete_failures.get_last_pass_times().AndReturn({'passing_test':
-            datetime.datetime(2012, 1 ,1)})
-        complete_failures.get_all_test_names().AndReturn(['passing_test',
-                                                          'failing_test'])
+            datetime.datetime(2012, 1 ,1),
+            'old_passing_test': datetime.datetime(2011, 1, 1)})
+        complete_failures.get_recently_ran_test_names().AndReturn(
+            {'passing_test',
+             'failing_test'})
         self.mox.ReplayAll()
         results = complete_failures.get_tests_to_analyze()
 
-        self.assertEqual(set(results.keys()),
-                         set(['passing_test', 'failing_test']))
+        self.assertEqual(results,
+                         {'passing_test': datetime.datetime(2012, 1, 1),
+                          'failing_test': datetime.datetime.min})
 
 
     def test_returns_failing_tests_with_min_datetime(self):
         """Test that never-passed tests are paired with datetime.min."""
         self.mox.StubOutWithMock(complete_failures, 'get_last_pass_times')
-        self.mox.StubOutWithMock(complete_failures, 'get_all_test_names')
+        self.mox.StubOutWithMock(complete_failures,
+                                 'get_recently_ran_test_names')
 
         complete_failures.get_last_pass_times().AndReturn({})
-        complete_failures.get_all_test_names().AndReturn(['test'])
+        complete_failures.get_recently_ran_test_names().AndReturn({'test'})
 
         self.mox.ReplayAll()
         results = complete_failures.get_tests_to_analyze()
