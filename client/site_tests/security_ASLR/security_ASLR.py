@@ -14,7 +14,7 @@ import re
 """A test verifying Address Space Layout Randomization
 
 Uses system calls to get important pids and then gets information about
-the pids in /proc/<pid/maps.  Restarts the tested processes and reads
+the pids in /proc/<pid>/maps.  Restarts the tested processes and reads
 information about them again.  If ASLR is enabled, memory mappings should
 change.
 """
@@ -103,24 +103,38 @@ class security_ASLR(test.test):
 
         Used for retrieving pids of processes such as init or processes
         that may have multiple instances that need to be distinguished by
-        a parent pid.
+        a parent pid. This routine expects the process to be findable. If
+        not, it will wait for it before ultimately failing the test.
 
         Args:
             process: process object that we want a pid for.
         """
         name = process.get_name()
         parent = process.get_parent()
-        if parent is None:
-            command = 'ps -C %s -o pid --no-header' % name
-            ps_results = utils.system_output(command).strip()
-            return ps_results
 
-        parent_process = self.process(parent)
-        ppid = self.get_pid_of(parent_process).strip()
-        get_pid_command = ('ps -C %s -o pid,ppid | grep " %s$"'
-            ' | awk \'{print $1}\'') % (name, ppid)
-        ps_results = utils.system_output(get_pid_command).strip()
-        return ps_results
+        retries = 0
+        ps_results = ""
+        while retries < self._INITCTL_RESTART_TIMEOUT:
+            if parent is None:
+                command = 'ps -C %s -o pid --no-header' % name
+                ps_results = utils.system_output(command).strip()
+            else:
+                parent_process = self.process(parent)
+                ppid = self.get_pid_of(parent_process).strip()
+                get_pid_command = ('ps -C %s -o pid,ppid | grep " %s$"'
+                    ' | awk \'{print $1}\'') % (name, ppid)
+                ps_results = utils.system_output(get_pid_command).strip()
+
+            if ps_results != "":
+                return ps_results
+
+            # The process could not be found. We then sleep, hoping the
+            # process is just slow to initially start.
+            os.sleep(self._INITCTL_POLL_INTERVAL)
+            retires += 1
+
+        # We never saw the process, so abort with details on who was missing.
+        raise error.TestFail('Never saw a pid for "%s"' % (name))
 
     def test_randomization(self, process):
         """Tests ASLR of a single process.
@@ -130,8 +144,7 @@ class security_ASLR(test.test):
         after restarting the process and then compares address starting
         locations of all executable, stack, and heap memory from each iteration.
 
-        Args:
-            process: a process object representing the process to be tested.
+        @param process: a process object representing the process to be tested.
 
         Returns:
             A dict containing a Boolean for whether or not the test passed
@@ -145,12 +158,12 @@ class security_ASLR(test.test):
             pid = self.get_pid_of(process)
             mappings.append(self.map(pid))
             self.restart(process)
-        logging.debug('Complete mappings dump for process %s:\n%s' %
-                      (name, pprint.pformat(mappings,4)))
+        logging.debug('Complete mappings dump for process %s:\n%s',
+                      name, pprint.pformat(mappings,4))
 
         initial_map = mappings[0]
         for i, mapping in enumerate(mappings[1:]):
-            logging.debug('Iteration %d' % i)
+            logging.debug('Iteration %d', i)
             for key, value in mapping.iteritems():
                 # Set default case result to fail, pass when an address change
                 # occurs.
@@ -162,9 +175,9 @@ class security_ASLR(test.test):
                         initial_map[key].get_start() ==
                         mapping[key].get_start())
                 if was_same:
-                    logging.debug('Bad: %s address didn\'t change' % key)
+                    logging.debug("Bad: %s address didn't change", key)
                 else:
-                    logging.debug('Good: %s address changed' % key)
+                    logging.debug('Good: %s address changed', key)
                     test_result['cases'][key]['number'] += 1;
                     test_result['cases'][key]['pass'] = True
         for case, result in test_result['cases'].iteritems():
@@ -185,9 +198,8 @@ class security_ASLR(test.test):
         that it restarted by pollinig its pid until it changes (signifying
         successful restart).
 
-        Args:
-            process: process object containing information about process
-            to restart. See above for process class definition.
+        @param process: process object containing information about process
+                        to restart. See above for process class definition.
 
         Raises:
             error.TestFail if the process isn't restarted with
@@ -213,14 +225,13 @@ class security_ASLR(test.test):
         that it is running and has a status different from initial_status
         (meaning it has a new pid).
 
-        Args:
-            process: Process object to be restarted.  See above for process
-            class definition.
-            status_command: String containing the syscall that
-            queries the current status.
-            initial_status: String containing original output from initctl
-            status called.  This is what we compare to for detection of
-            change.
+        @param process: Process object to be restarted.  See above for process
+                        class definition.
+        @param status_command: String containing the syscall that
+                               queries the current status.
+        @param initial_status: String containing original output from initctl
+                               status called.  This is what we compare to for
+                               detection of change.
 
         Returns:
             A boolean which is true if the process is running and has a
@@ -229,8 +240,8 @@ class security_ASLR(test.test):
         name = process.get_name()
         initctl_name = process.get_initctl_name()
         current_status = utils.system_output(status_command)
-        logging.debug('Initial status: %s' % initial_status)
-        logging.debug('Current status: %s' % current_status)
+        logging.debug('Initial status: %s', initial_status)
+        logging.debug('Current status: %s', current_status)
         regex = r'%s start/running' % initctl_name
         is_running = re.match(regex, current_status)
         is_new_pid = initial_status != current_status
@@ -239,7 +250,7 @@ class security_ASLR(test.test):
         except:
             logging.debug('Restart done: False')
             return False
-        logging.debug('Restart done: %r' % (is_running and is_new_pid))
+        logging.debug('Restart done: %r', (is_running and is_new_pid))
         return (is_running and is_new_pid)
 
     def map(self, pid):
@@ -249,8 +260,7 @@ class security_ASLR(test.test):
         entries corresponding to executable, stack, or heap memory into
         a dictionary.
 
-        Args:
-            pid: a string containing the pid to be tested.
+        @param pid: a string containing the pid to be tested.
 
         Returns:
             A dict mapping names to mapping objects (see above for mapping
@@ -281,8 +291,7 @@ class security_ASLR(test.test):
         Uses regular expressions to determine column separations.  Puts
         column data into a dict mapping column names to their string values.
 
-        Args:
-            result: one line of /proc/<pid>/maps as a string, for any <pid>.
+        @param result: one line of /proc/<pid>/maps as a string, for any <pid>.
 
         Returns:
             None if the regular expression wasn't matched.  Otherwise:
@@ -329,7 +338,7 @@ class security_ASLR(test.test):
                 aslr_enabled = False
         logging.debug('SUMMARY:')
         for process_name, results in full_results.iteritems():
-            logging.debug('Results for %s:' % process_name)
+            logging.debug('Results for %s:', process_name)
             for result in results:
                 logging.debug(result)
         if not aslr_enabled:
