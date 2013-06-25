@@ -22,6 +22,52 @@ def handler(signum, frame):
     raise TimeoutException('Call is timed out.')
 
 
+def install_sigalarm_handler(new_handler):
+    """
+    Try installing a sigalarm handler.
+
+    In order to protect apache, wsgi intercepts any attempt to install a
+    sigalarm handler, so our function will feel the full force of a sigalarm
+    even if we try to install a pacifying signal handler. To avoid this we
+    need to confirm that the handler we tried to install really was installed.
+
+    @param new_handler: The new handler to install. This must be a callable
+                        object, or signal.SIG_IGN/SIG_DFL which correspond to
+                        the numbers 1,0 respectively.
+    @return: True if the installation of new_handler succeeded, False otherwise.
+    """
+    if (new_handler is None or
+        (not callable(new_handler) and
+         new_handler != signal.SIG_IGN and
+         new_handler != signal.SIG_DFL)):
+        logging.warning('Trying to install an invalid sigalarm handler.')
+        return False
+
+    signal.signal(signal.SIGALRM, new_handler)
+    installed_handler = signal.getsignal(signal.SIGALRM)
+    return installed_handler == new_handler
+
+
+def set_sigalarm_timeout(timeout_secs, default_timeout=60):
+    """
+    Set the sigalarm timeout.
+
+    This methods treats any timeout <= 0 as a possible error and falls back to
+    using it's default timeout, since negative timeouts can have 'alarming'
+    effects. Though 0 is a valid timeout, it is often used to cancel signals; in
+    order to set a sigalarm of 0 please call signal.alarm directly as there are
+    many situations where a 0 timeout is considered invalid.
+
+    @param timeout_secs: The new timeout, in seconds.
+    @param default_timeout: The default timeout to use, if timeout <= 0.
+    @return: The old sigalarm timeout
+    """
+    timeout_sec_n = int(timeout_secs)
+    if timeout_sec_n <= 0:
+        timeout_sec_n = int(default_timeout)
+    return signal.alarm(timeout_sec_n)
+
+
 def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
     """
     This function run the given function using the args, kwargs and
@@ -37,32 +83,35 @@ def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
             is_timeout is True, the call is timed out. If the
             value is False, the call is finished on time.
     """
-    old_handler = signal.signal(signal.SIGALRM, handler)
+    old_alarm_sec = 0
+    old_handler = signal.getsignal(signal.SIGALRM)
+    installed_handler = install_sigalarm_handler(handler)
+    if installed_handler:
+        old_alarm_sec = set_sigalarm_timeout(timeout_sec, default_timeout=60)
 
-    timeout_sec_n = int(timeout_sec)
-    # In case the timeout is rounded to 0, force to set it to default value.
-    if timeout_sec_n == 0:
-        timeout_sec_n = 60
+    # If old_timeout_time = 0 we either didn't install a handler, or sigalrm
+    # had a signal.SIG_DFL handler with 0 timeout. In the latter case we still
+    # need to restore the handler/timeout.
+    old_timeout_time = (time.time() + old_alarm_sec) if old_alarm_sec > 0 else 0
+
     try:
-        old_alarm_sec = signal.alarm(timeout_sec_n)
-        if old_alarm_sec > 0:
-            old_timeout_time = time.time() + old_alarm_sec
         default_result = func(*args, **kwargs)
         return False, default_result
     except TimeoutException:
         return True, default_result
     finally:
-        # Cancel the timer if the function returned before timeout or
-        # exception being thrown.
-        signal.alarm(0)
-        # Restore previous Signal handler and alarm
-        if old_handler:
-            signal.signal(signal.SIGALRM, old_handler)
-        if old_alarm_sec > 0:
-            old_alarm_sec = int(old_timeout_time - time.time())
-            if old_alarm_sec <= 0:
-                old_alarm_sec = 1;
-            signal.alarm(old_alarm_sec)
+        # If we installed a sigalarm handler, cancel it since our function
+        # returned on time. If we can successfully restore the old handler,
+        # reset the old timeout, or, if the old timeout's deadline has passed,
+        # set the sigalarm to fire in one second. If the old_timeout_time is 0
+        # we don't need to set the sigalarm timeout since we have already set it
+        # as a byproduct of cancelling the current signal.
+        if installed_handler:
+            signal.alarm(0)
+            if install_sigalarm_handler(old_handler) and old_timeout_time:
+                set_sigalarm_timeout(int(old_timeout_time - time.time()),
+                                     default_timeout=1)
+
 
 
 def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
@@ -97,12 +146,14 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
 
 
         def func_retry(*args, **kwargs):
-            deadline = time.time() + timeout_min * 60  # convert to seconds.
             # Used to cache exception to be raised later.
             exc_info = None
             delayed_enabled = False
             exception_tuple = () if blacklist is None else tuple(blacklist)
-            while time.time() < deadline:
+            start_time = time.time()
+            remaining_time = timeout_min * 60
+
+            while remaining_time > 0:
                 if delayed_enabled:
                     delay()
                 else:
@@ -111,7 +162,7 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
                     # Clear the cache
                     exc_info = None
                     is_timeout, result = timeout(func, args, kwargs,
-                                                 timeout_min*60)
+                                                 remaining_time)
                     if not is_timeout:
                         return result
                 except exception_tuple:
@@ -123,6 +174,10 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
                     logging.warning('%s(%s)', e.__class__, e)
                     # Cache the exception to be raised later.
                     exc_info = sys.exc_info()
+
+                remaining_time = int(timeout_min*60 -
+                                     (time.time() - start_time))
+
             # The call must have timed out or raised ExceptionToCheck.
             if not exc_info:
                 raise TimeoutException('Call is timed out.')
