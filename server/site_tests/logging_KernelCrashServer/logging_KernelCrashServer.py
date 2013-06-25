@@ -13,8 +13,12 @@ _STOWED_CONSENT_FILE = '/var/lib/kernel-crash-server.consent'
 
 
 class logging_KernelCrashServer(test.test):
+    """
+    Prepares a system for generating a kernel crash report, then crashes
+    the system and call logging_KernelCrash client autotest to validate
+    the resulting report.
+    """
     version = 1
-
 
     def _exact_copy(self, source, dest):
         """Copy remote source to dest, where dest removed if src not present."""
@@ -72,8 +76,8 @@ class logging_KernelCrashServer(test.test):
                                       ignore_status=True).exit_status == 0
         is_devimg = self._host.run('[ -r /root/.leave_core ]',
                                    ignore_status=True).exit_status == 0
-        logging.info('always_regen: %d' % (always_regen))
-        logging.info('is_devimg: %d' % (is_devimg))
+        logging.info('always_regen: %d', always_regen)
+        logging.info('is_devimg: %d', (is_devimg)
         return not (always_regen or is_devimg)
 
 
@@ -83,10 +87,15 @@ class logging_KernelCrashServer(test.test):
             self._enable_consent()
         else:
             self._restore_consent_files()
-        logging.info('KernelCrashServer: crashing %s' % self._host.hostname)
+        logging.info('KernelCrashServer: crashing %s', self._host.hostname)
+        lkdtm = "/sys/kernel/debug/provoke-crash/DIRECT"
+        if self._exists_on_client(lkdtm):
+            cmd = "echo BUG > %s" % (lkdtm)
+        else:
+            cmd = "echo bug > /proc/breakme"
+            logging.info("Falling back to using /proc/breakme")
         boot_id = self._host.get_boot_id()
-        self._host.run(
-            'sh -c "sync; sleep 1; echo bug > /proc/breakme" >/dev/null 2>&1 &')
+        self._host.run('sh -c "sync; sleep 1; %s" >/dev/null 2>&1 &' % (cmd))
         self._host.wait_for_restart(old_boot_id=boot_id)
 
 

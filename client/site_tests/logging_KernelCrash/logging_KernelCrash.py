@@ -9,8 +9,10 @@ from autotest_lib.client.cros import crash_test
 
 
 class logging_KernelCrash(crash_test.CrashTest):
+    """
+    Validates the contents of a kernel crash report.
+    """
     version = 1
-
 
     def _test_reporter_startup(self):
         """Test that the crash_reporter is handling kernel crashes."""
@@ -34,6 +36,7 @@ class logging_KernelCrash(crash_test.CrashTest):
         matches = r'write_breakme'    # for 2.6.38 kernels and 3.0.13 x86
         matches += r'|breakme_do_bug' # for 3.2 kernels
         matches += r'|__bug'          # for 3.0.13 ARM
+        matches += r'|lkdtm_do_action'# for 3.8.11 with lkdtm
         regex = r'kernel-(' + matches + r')-[0-9A-F]{8}$'
         return (re.match(regex, signature) is not None)
 
@@ -50,8 +53,8 @@ class logging_KernelCrash(crash_test.CrashTest):
         if not announce_match:
             raise error.TestFail('Could not find kernel crash announcement')
 
-        logging.info('Signature: [%s]' % (announce_match.group(1)))
-        logging.info('Reason: [%s]' % (announce_match.group(2)))
+        logging.info('Signature: [%s]', announce_match.group(1))
+        logging.info('Reason: [%s]', announce_match.group(2))
 
         if not self._is_signature_match(announce_match.group(1)):
             raise error.TestFail(
@@ -78,8 +81,8 @@ class logging_KernelCrash(crash_test.CrashTest):
         if not os.path.exists(kcrash_report):
             raise error.TestFail('Crash report %s gone' % kcrash_report)
         report_contents = utils.read_file(kcrash_report)
-        if re.search(r'kernel BUG at .*fs/proc/breakme.c',
-                     report_contents) == None:
+        src_re = r'kernel BUG at .*(fs/proc/breakme.c|drivers/misc/lkdtm.c)'
+        if re.search(src_re, report_contents) == None:
             raise error.TestFail('Crash report has unexpected contents')
 
 
@@ -90,8 +93,6 @@ class logging_KernelCrash(crash_test.CrashTest):
         kcrash_report = self._get_kcrash_name()
         if not os.path.exists(kcrash_report):
             raise error.TestFail('Crash report %s gone' % kcrash_report)
-        # TODO(keescook): Remove once mosys crash is fixed (crosbug.com/26876).
-        utils.system('rm /var/spool/crash/mosys.*', ignore_status=True)
         result = self._call_sender_one_crash(
             report=os.path.basename(kcrash_report))
         if (not result['send_attempt'] or not result['send_success'] or
