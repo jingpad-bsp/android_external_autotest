@@ -345,6 +345,7 @@ OPTION_BOOTFILE_NAME = RawOption("bootfile_name", 67)
 OPTION_DNS_DOMAIN_SEARCH_LIST = DomainListOption("domain_search_list", 119)
 OPTION_CLASSLESS_STATIC_ROUTES = ClasslessStaticRoutesOption(
         "classless_static_routes", 121)
+OPTION_WEB_PROXY_AUTO_DISCOVERY = RawOption("wpad", 252)
 
 # Unlike every other option, which are tuples like:
 # <number, length in bytes, data>, the pad and end options are just
@@ -460,6 +461,7 @@ DHCP_PACKET_OPTIONS = [
         OPTION_BOOTFILE_NAME,
         OPTION_DNS_DOMAIN_SEARCH_LIST,
         OPTION_CLASSLESS_STATIC_ROUTES,
+        OPTION_WEB_PROXY_AUTO_DISCOVERY,
         ]
 
 def get_dhcp_option_by_number(number):
