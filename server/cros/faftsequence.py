@@ -526,7 +526,7 @@ class FAFTSequence(ServoTest):
                         '--port=%s' % self._DEVSERVER_PORT],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE)
-            image_url = '%s%s:%s/static/archive/%s' % (
+            image_url = '%s%s:%s/static/%s' % (
                         self._HTTP_PREFIX,
                         self.get_server_address(),
                         self._DEVSERVER_PORT,
