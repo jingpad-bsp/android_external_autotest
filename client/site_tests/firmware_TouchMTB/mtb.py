@@ -16,13 +16,36 @@ from collections import defaultdict, namedtuple
 from firmware_constants import AXIS, GV, MTB, UNIT, VAL
 from geometry.elements import Point
 from geometry.two_farthest_clusters import (
-        get_radii_of_two_minimal_enclosing_circles, get_two_farthest_points)
+        get_radii_of_two_minimal_enclosing_circles as get_two_min_radii,
+        get_two_farthest_points
+)
 sys.path.append('../../bin/input')
 from linux_input import *
 
 
-# Define TidData class to keep track of the slot, and points in a tracking ID.
-TidData = namedtuple('TidData', ['slot', 'points', 'syn_time'])
+# Define TidPacket to keep the point, pressure, and SYN_REPOT time of a packet.
+TidPacket = namedtuple('TidPacket', ['syn_time', 'point', 'pressure'])
+
+
+# Define FingerPath class to keep track of the slot, and a list of tid packets
+# of a finger (i.e., a tracking ID).
+class FingerPath(namedtuple('FingerPath', ['slot', 'tid_packets'])):
+    """This keeps the slot number and the list of tid packets of a finger."""
+    __slots__ = ()
+
+    def get(self, attr):
+        """Get the list of the specified attribute, attr (i.e., point,
+        pressure, or syn_time), of TidPacket for the finger.
+        """
+        return [getattr(tid_packet, attr) for tid_packet in self.tid_packets]
+
+
+def get_mtb_packets_from_file(event_file):
+    """ A helper function to get mtb packets by parsing the event file.
+
+    @param event_file: an mtb_event file
+    """
+    return Mtb(packets=MtbParser().parse_file(event_file))
 
 
 def make_pretty_packet(packet):
@@ -138,6 +161,13 @@ class MtbEvent:
                 event[MTB.EV_CODE] == ABS_MT_POSITION_Y)
 
     @classmethod
+    def is_ABS_MT_PRESSURE(self, event):
+        """Is this packet ABS_MT_PRESSURE?"""
+        return (not event.get(MTB.SYN_REPORT) and
+                event[MTB.EV_TYPE] == EV_ABS and
+                event[MTB.EV_CODE] == ABS_MT_PRESSURE)
+
+    @classmethod
     def is_EV_KEY(cls, event):
         """Is this an EV_KEY event?"""
         return (not event.get(MTB.SYN_REPORT) and event[MTB.EV_TYPE] == EV_KEY)
@@ -224,23 +254,23 @@ class MtbStateMachine:
 
     Note that the kernel driver only reports what is changed. Due to its
     internal state machine, it is possible that either x or y in
-    self.points[tid] is None initially even the instance has been created.
+    self.point[tid] is None initially even the instance has been created.
     """
     def __init__(self):
         # Set the default slot to 0 as it may not be displayed in the MTB events
         #
         # Some abnormal event files may not display the tracking ID in the
         # beginning. To handle this situation, we need to initialize
-        # the following variables:  live_tids, slot_to_tid, points
+        # the following variables:  slot_to_tid, point
         #
         # As an example, refer to the following event file which is one of
         # the golden samples with this problem.
         #   tests/data/stationary_finger_shift_with_2nd_finger_tap.dat
         self.tid = None
-        self.live_tids = [self.tid]
         self.slot = 0
         self.slot_to_tid = {self.slot: self.tid}
-        self.points = {self.tid: Point()}
+        self.point = {self.tid: Point()}
+        self.pressure = {self.tid: None}
         self.syn_time = None
         self.new_tid = False
 
@@ -258,26 +288,48 @@ class MtbStateMachine:
         # Get a new tracking ID.
         elif MtbEvent.is_new_contact(event):
             self.tid = event[MTB.EV_VALUE]
-            self.live_tids.append(self.tid)
             self.slot_to_tid[self.slot] = self.tid
             self.new_tid = True
-            self.points[self.tid] = Point()
+            self.point[self.tid] = Point()
 
         # A slot is leaving. Remove the slot and its tracking ID.
         elif MtbEvent.is_finger_leaving(event):
-            self.live_tids.remove(self.slot_to_tid[self.slot])
             del self.slot_to_tid[self.slot]
 
         # Update x value.
         elif MtbEvent.is_ABS_MT_POSITION_X(event):
-            self.points[self.slot_to_tid[self.slot]].x = event[MTB.EV_VALUE]
+            self.point[self.slot_to_tid[self.slot]].x = event[MTB.EV_VALUE]
 
         # Update y value.
         elif MtbEvent.is_ABS_MT_POSITION_Y(event):
-            self.points[self.slot_to_tid[self.slot]].y = event[MTB.EV_VALUE]
+            self.point[self.slot_to_tid[self.slot]].y = event[MTB.EV_VALUE]
 
+        # Update z value (pressure)
+        elif MtbEvent.is_ABS_MT_PRESSURE(event):
+            self.pressure[self.slot_to_tid[self.slot]] = event[MTB.EV_VALUE]
+
+        # Use the SYN_REPORT time as the packet time
         elif MtbEvent.is_SYN_REPORT(event):
             self.syn_time = event[MTB.EV_TIME]
+
+    def get_current_tid_data_for_all_tids(self, request_data_ready=True):
+        """Get current packet's tid data including the point, the pressure, and
+        the syn_time for all tids.
+
+        @param request_data_ready: if set to true, it will not output
+                current_tid_data until all data including x, y, pressure,
+                syn_time, etc. in the packet have been assigned.
+        """
+        current_tid_data = []
+        for slot, tid in self.slot_to_tid.items():
+            point = copy.deepcopy(self.point.get(tid))
+            pressure = self.pressure.get(tid)
+            # check if all attributes are assigned proper values.
+            data_ready = all([all(point.value()), pressure, self.syn_time])
+            if (not request_data_ready) or data_ready:
+                tid_packet = TidPacket(self.syn_time, point, pressure)
+                current_tid_data.append((tid, slot, tid_packet))
+        return current_tid_data
 
 
 class Mtb:
@@ -407,98 +459,71 @@ class Mtb:
                 list_y.append(prev_y)
         return (list_x, list_y)
 
-    def old_get_points_for_every_tracking_id(self):
-        """Extract points in every tracking id.
+    def get_finger_paths(self, request_data_ready=True):
+        """Construct the finger paths.
+
+        @param request_data_ready: if set to true, it will not output the
+                tid_data in a packet until all data including x, y, pressure,
+                syn_time, etc. in the packet have been assigned.
+
+        The finger_paths mapping the tid to its finger_path looks like
+            {tid1: finger_path1,
+             tid2: finger_path2,
+             ...
+            }
+        where every tid represents a finger.
+
+        A finger_path effectively consists of a list of tid_packets of the same
+        tid in the event file. An example of its structure looks like
+        finger_path:
+            slot=0
+            tid_packets = [tid_packet0, tid_packet1, tid_packet2, ...]
+
+        A tid_packet looks like
+            [100021.342104,         # syn_time
+             (66, 100),             # point
+             56,                    # pressure
+             ...                    # maybe more attributes added later.
+            ]
 
         This method is applicable when fingers are contacting and leaving
         the touch device continuously. The same slot number, e.g., slot 0 or
         slot 1, may be used for multiple times.
         """
-        # The default slot is slot 0 if no slot number is assigned.
-        slot = 0
-
-        # points is a dictionary of lists, where each list holds all of
-        # the points in a tracking id.
-        points = {}
-        tracking_ids_all = []
-        tracking_ids_live = []
-        slot_to_tracking_id = {}
-        x = {}
-        y = {}
-        for packet in self.packets:
-            for event in packet:
-                if MtbEvent.is_ABS_MT_SLOT(event):
-                    slot = event[MTB.EV_VALUE]
-
-                # Find a new tracking ID
-                if MtbEvent.is_new_contact(event):
-                    tracking_id = event[MTB.EV_VALUE]
-                    tracking_ids_all.append(tracking_id)
-                    tracking_ids_live.append(tracking_id)
-                    points[tracking_id] = {}
-                    points[tracking_id][MTB.POINTS] = []
-                    points[tracking_id][MTB.SLOT] = slot
-                    slot_to_tracking_id[slot] = tracking_id
-                    x[tracking_id] = None
-                    y[tracking_id] = None
-
-                # A tracking ID is leaving.
-                elif MtbEvent.is_finger_leaving(event):
-                    leaving_tracking_id = slot_to_tracking_id[slot]
-                    tracking_ids_live.remove(leaving_tracking_id)
-                    del slot_to_tracking_id[slot]
-
-                # Update x value if available.
-                elif MtbEvent.is_ABS_MT_POSITION_X(event):
-                    x[slot_to_tracking_id[slot]] = event[MTB.EV_VALUE]
-
-                # Update y value if available.
-                elif MtbEvent.is_ABS_MT_POSITION_Y(event):
-                    y[slot_to_tracking_id[slot]] = event[MTB.EV_VALUE]
-
-            for tracking_id in tracking_ids_live:
-                if x[tracking_id] and y[tracking_id]:
-                    curr_point = (x[tracking_id], y[tracking_id])
-                    points[tracking_id][MTB.POINTS].append(curr_point)
-
-        return points
-
-    def get_points_for_every_tracking_id(self):
-        """Extract points in every tracking id.
-
-        This method is applicable when fingers are contacting and leaving
-        the touch device continuously. The same slot number, e.g., slot 0 or
-        slot 1, may be used for multiple times.
-        """
-        # tid_data_dict is a dictionary of TidData
-        tid_data_dict = {}
+        # finger_paths is a dictionary of {tid: FingerPath}
+        finger_paths = {}
         sm = MtbStateMachine()
         for packet in self.packets:
+            # Inject events into the state machine to update its state.
             for event in packet:
-                # Inject events into the state machine to update its state.
                 sm.add_event(event)
-            # Add the points in this packet into tid_data_dict.
-            for tid in sm.live_tids:
-                if sm.points[tid]:
-                    point = copy.deepcopy(sm.points[tid])
-                    tid_data_dict.setdefault(tid,
-                            TidData(sm.slot, [], [])).points.append(point)
-                    tid_data_dict[tid].syn_time.append(sm.syn_time)
-        return tid_data_dict
 
-    def get_points_and_time_for_slot(self, slot):
-        """Extract the points and the syn report time for the specified slot."""
-        tid_data_dict = self.get_points_for_every_tracking_id()
-        for tid_data in tid_data_dict.values():
-            if tid_data.slot == slot:
-                return (tid_data.points, tid_data.syn_time)
-        return ([], [])
+            # If there are N fingers (tids) in a packet, we will have
+            # N tid_packet's in the current packet. The loop below is to
+            # append every tid_packet into its corresponding finger_path for
+            # every tracking id in the current packet.
+            for tid, slot, tid_packet in sm.get_current_tid_data_for_all_tids(
+                    request_data_ready):
+                finger_path = finger_paths.setdefault(tid, FingerPath(slot, []))
+                finger_path.tid_packets.append(tid_packet)
+
+        return finger_paths
+
+    def get_slot_data(self, slot, attr):
+        """Extract the attribute data of the specified slot.
+
+        @param attr: an attribute in a tid packet which could be either
+                'point', 'pressure', or 'syn_time'
+        """
+        for finger_path in self.get_finger_paths().values():
+            if finger_path.slot == slot:
+                return finger_path.get(attr)
+        return []
 
     def get_max_distance_of_all_tracking_ids(self):
         """Get the max moving distance of all tracking IDs."""
-        tid_data_dict = self.get_points_for_every_tracking_id()
-        return max(max(get_radii_of_two_minimal_enclosing_circles(
-                       tid_data.points) for tid_data in tid_data_dict.values()))
+        return max(max(get_two_min_radii(finger_path.get('point'))
+                       for finger_path in self.get_finger_paths().values()))
 
     def get_list_of_rocs_of_all_tracking_ids(self):
         """For each tracking ID, compute the minimal enclosing circles.
@@ -508,12 +533,11 @@ class Mtb:
         Note: rocs denotes the radii of circles
         """
         list_rocs = []
-        for tid_data in self.get_points_for_every_tracking_id().values():
+        for finger_path in self.get_finger_paths().values():
             # Convert the point coordinates in pixels to in mms.
             points_in_mm = [Point(*self.device.pixel_to_mm(p.value()))
-                            for p in tid_data.points]
-            list_rocs += get_radii_of_two_minimal_enclosing_circles(
-                    points_in_mm)
+                            for p in finger_path.get('point')]
+            list_rocs += get_two_min_radii(points_in_mm)
         return list_rocs
 
     def get_x_y_multiple_slots(self, target_slots):
@@ -648,7 +672,7 @@ class Mtb:
 
     def get_max_distance(self, slot, unit):
         """Get the max distance between any two points of the specified slot."""
-        points, _ = self.get_points_and_time_for_slot(slot)
+        points = self.get_slot_data(slot, 'point')
         return self.get_max_distance_from_points(points, unit)
 
     def get_max_distance_from_points(self, points, unit):
@@ -773,19 +797,18 @@ class Mtb:
 
     def get_displacements_for_slots(self, min_slot):
         """Get the displacements for slots >= min_slot."""
-        tid_data_dict = self.get_points_for_every_tracking_id()
+        finger_paths = self.get_finger_paths()
 
         # Remove those tracking IDs with slots < min_slot
-        for tid, tid_data in tid_data_dict.items():
-            if tid_data.slot < min_slot:
-                del tid_data_dict[tid]
+        for tid, finger_path in finger_paths.items():
+            if finger_path.slot < min_slot:
+                del finger_paths[tid]
 
         # Calculate the displacements of the coordinates in the tracking IDs.
         displacements = defaultdict(dict)
-        for tid, tid_data in tid_data_dict.items():
-            list_x, list_y = zip(*[(p.x, p.y) for p in tid_data.points])
-            # list_x, list_y = zip(*tid_data.points)
-            displacements[tid][MTB.SLOT] = tid_data.slot
+        for tid, finger_path in finger_paths.items():
+            list_x, list_y = zip(*[p.value() for p in finger_path.get('point')])
+            displacements[tid][MTB.SLOT] = finger_path.slot
             displacements[tid][AXIS.X] = self.calc_displacement(list_x)
             displacements[tid][AXIS.Y] = self.calc_displacement(list_y)
 
