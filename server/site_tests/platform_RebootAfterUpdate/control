@@ -29,7 +29,7 @@ To run locally:
      http://localhost:8080/download?archive_url=\
      gs://chromeos-image-archive/x86-alex/R29-4165.0.0
   3) Run with run_remote_test etc passing
-     args="job_repo_url=http://localhost:8080/static/archive/\
+     args="job_repo_url=http://localhost:8080/static/\
      x86-alex/R29-4165.0.0/autotest/packages"
 """
 

@@ -382,7 +382,7 @@ class SiteHost(remote.RemoteHost):
         """
         Make sure job_repo_url of this host is valid.
 
-        Eg: The job_repo_url "http://lmn.cd.ab.xyx:8080/static/archive/\
+        Eg: The job_repo_url "http://lmn.cd.ab.xyx:8080/static/\
         lumpy-release/R29-4279.0.0/autotest/packages" claims to have the
         autotest package for lumpy-release/R29-4279.0.0. If this isn't the case,
         download and extract it. If the devserver embedded in the url is

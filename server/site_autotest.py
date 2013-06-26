@@ -69,7 +69,7 @@ class SiteAutotest(installable_object.InstallableObject):
             if image_opt.startswith('http://'):
                 # A devserver HTTP url was specified, set that as the repo_url.
                 repos.append(image_opt.replace(
-                    'update', 'static/archive').rstrip('/') + '/autotest')
+                    'update', 'static').rstrip('/') + '/autotest')
             else:
                 # An image_name like stumpy-release/R27-3437.0.0 was specified,
                 # set this as the repo_url for the host. If an AFE is not being
