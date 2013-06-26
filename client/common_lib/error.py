@@ -159,6 +159,14 @@ def _context_message(e):
         return ""
 
 
+
+class TimeoutException(Exception):
+    """
+    Generic exception raised on retry timeouts.
+    """
+    pass
+
+
 class JobContinue(SystemExit):
     """Allow us to bail out requesting continuance."""
     pass

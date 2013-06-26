@@ -100,7 +100,7 @@ class RetryTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
         #self.assertEquals(None, fail())
-        self.assertRaises(retry.TimeoutException, fail)
+        self.assertRaises(error.TimeoutException, fail)
 
     def testRetryDecoratorSucceedsBeforeTimeout(self):
         """Tests that a wrapped function succeeds before the timeout."""

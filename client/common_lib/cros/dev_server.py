@@ -12,6 +12,7 @@ import cStringIO
 import re
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.site_utils.graphite import stats
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
@@ -131,7 +132,8 @@ class DevServer(object):
         @remote_devserver_call(timeout_min=timeout_min)
         def make_call():
             """Inner method that makes the call."""
-            return urllib2.urlopen(call).read()
+            return utils.urlopen_socket_timeout(call,
+                timeout=timeout_min*60).read()
 
         try:
             result_dict = json.load(cStringIO.StringIO(make_call()))

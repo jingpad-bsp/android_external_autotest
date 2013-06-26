@@ -8,7 +8,7 @@ import re
 import signal
 import socket
 import time
-import urllib
+import urllib2
 
 from autotest_lib.client.common_lib import base_utils, error, global_config
 from autotest_lib.client.cros import constants
@@ -245,7 +245,7 @@ def get_lab_status():
       retry_waittime = 1
       for _ in range(max_attempts):
           try:
-              response = urllib.urlopen(status_url)
+              response = urllib2.urlopen(status_url)
           except IOError as e:
               logging.debug('Error occured when grabbing the lab status: %s.',
                             e)
@@ -299,6 +299,35 @@ def check_lab_status(board=None):
                     'currently not allowing suites to be scheduled on board '
                     '%s: %s' % (board, lab_status['message']))
     return
+
+
+def urlopen_socket_timeout(url, data=None, timeout=5):
+    """
+    Wrapper to urllib2.urlopen with a socket timeout.
+
+    This method will convert all socket timeouts to
+    TimeoutExceptions, so we can use it in conjunction
+    with the rpc retry decorator and continue to handle
+    other URLErrors as we see fit.
+
+    @param url: The url to open.
+    @param data: The data to send to the url (eg: the urlencoded dictionary
+                 used with a POST call).
+    @param timeout: The timeout for this urlopen call.
+
+    @return: The response of the urlopen call.
+
+    @raises: error.TimeoutException when a socket timeout occurs.
+    """
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(timeout)
+    try:
+        return urllib2.urlopen(url, data=data)
+    except urllib2.URLError as e:
+        if type(e.reason) is socket.timeout:
+            raise error.TimeoutException(str(e))
+    finally:
+        socket.setdefaulttimeout(old_timeout)
 
 
 def get_sheriffs():

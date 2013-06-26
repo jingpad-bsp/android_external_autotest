@@ -8,18 +8,11 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.frontend.afe.json_rpc import proxy
 
 
-class TimeoutException(Exception):
-    """
-    Exception to be raised for when alarm is triggered.
-    """
-    pass
-
-
 def handler(signum, frame):
     """
     Register a handler for the timeout.
     """
-    raise TimeoutException('Call is timed out.')
+    raise error.TimeoutException('Call is timed out.')
 
 
 def install_sigalarm_handler(new_handler):
@@ -97,7 +90,7 @@ def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
     try:
         default_result = func(*args, **kwargs)
         return False, default_result
-    except TimeoutException:
+    except error.TimeoutException:
         return True, default_result
     finally:
         # If we installed a sigalarm handler, cancel it since our function
@@ -180,7 +173,7 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
 
             # The call must have timed out or raised ExceptionToCheck.
             if not exc_info:
-                raise TimeoutException('Call is timed out.')
+                raise error.TimeoutException('Call is timed out.')
             # Raise the cached exception with original backtrace.
             raise exc_info[0], exc_info[1], exc_info[2]
 

@@ -61,11 +61,11 @@ class DevServerTest(mox.MoxTestBase):
         dev_server._get_dev_server_list().AndReturn([bad_host, good_host])
 
         # Mock out bad ping failure to bad_host by raising devserver exception.
-        urllib2.urlopen(mox.StrContains(bad_host)).AndRaise(
+        urllib2.urlopen(mox.StrContains(bad_host), data=None).AndRaise(
                 dev_server.DevServerException())
         # Good host is good.
         to_return = StringIO.StringIO('{"free_disk": 1024}')
-        urllib2.urlopen(mox.StrContains(good_host)).AndReturn(to_return)
+        urllib2.urlopen(mox.StrContains(good_host), data=None).AndReturn(to_return)
 
         self.mox.ReplayAll()
         host = dev_server.ImageServer.resolve(0) # Using 0 as it'll hash to 0.
@@ -82,12 +82,14 @@ class DevServerTest(mox.MoxTestBase):
         dev_server._get_dev_server_list().AndReturn([bad_host, good_host])
 
         # Mock out bad ping failure to bad_host by raising devserver exception.
-        urllib2.urlopen(mox.StrContains(bad_host)).MultipleTimes().AndRaise(
-                urllib2.URLError('urlopen connection timeout'))
+        urllib2.urlopen(mox.StrContains(bad_host),
+                data=None).MultipleTimes().AndRaise(
+                        urllib2.URLError('urlopen connection timeout'))
 
         # Good host is good.
         to_return = StringIO.StringIO('{"free_disk": 1024}')
-        urllib2.urlopen(mox.StrContains(good_host)).AndReturn(to_return)
+        urllib2.urlopen(mox.StrContains(good_host),
+                data=None).AndReturn(to_return)
 
         self.mox.ReplayAll()
         host = dev_server.ImageServer.resolve(0) # Using 0 as it'll hash to 0.
