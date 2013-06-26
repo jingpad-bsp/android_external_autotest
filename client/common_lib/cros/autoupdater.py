@@ -405,13 +405,15 @@ class ChromiumOSUpdater():
             autoupdater is trying to update to.
 
         """
+        # In the local_devserver case, we can't know the expected
+        # build, so just pass.
+        if not self.update_version:
+            return True
+
         # Always try the default check_version method first, this prevents
         # any backward compatibility issue.
         if self.check_version():
             return True
-
-        if not self.update_version:
-            return False
 
         # Remove R#- and -b# at the end of build version
         stripped_version = re.sub(r'(R\d+-|-b\d+)', '', self.update_version)
