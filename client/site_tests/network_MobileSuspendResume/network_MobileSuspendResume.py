@@ -16,6 +16,7 @@ from autotest_lib.client.cros import rtc, sys_power
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
+SHILL_LOG_SCOPES = 'cellular+dbus+device+dhcp+manager+modem+portal+service'
 
 class network_MobileSuspendResume(cros_ui_test.UITest):
     version = 1
@@ -326,6 +327,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
     def init_flimflam(self, device_type):
         # Initialize flimflam and device type specific functions.
         self.flim = flimflam.FlimFlam(dbus.SystemBus())
+        self.flim.SetDebugTags(SHILL_LOG_SCOPES)
 
         logging.debug('Using device type: %s' % device_type)
         if device_type == flimflam.FlimFlam.DEVICE_WIMAX:
