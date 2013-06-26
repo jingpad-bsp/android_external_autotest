@@ -221,6 +221,7 @@ class FAFTSequence(ServoTest):
             self._restore_routine_from_timeout()
         self.restore_ec_write_protect()
         self.record_servo_log()
+        self.record_faft_client_log()
         self.cleanup_uart_capture()
         self._faft_sequence = ()
         self._faft_template = {}
@@ -994,6 +995,14 @@ class FAFTSequence(ServoTest):
             servo_log_file = os.path.join(self.resultsdir, 'servod.log')
             with open(servo_log_file, 'a') as f:
                 f.write(servo_log[self.servo_log_original_len:])
+
+
+    def record_faft_client_log(self):
+        """Record the faft client log to the results directory."""
+        client_log = self.faft_client.system.dump_log(True)
+        client_log_file = os.path.join(self.resultsdir, 'faft_client.log')
+        with open(client_log_file, 'w') as f:
+            f.write(client_log)
 
 
     def setup_gbb_flags(self):

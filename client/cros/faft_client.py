@@ -69,6 +69,7 @@ class FAFTClient(object):
         _ec_handler: An object to automate EC flashrom testing.
         _ec_image: An object to automate EC image for autest.
         _kernel_handler: An object to provide kernel related actions.
+        _log_file: Path of the log file.
         _tpm_handler: An object to control TPM device.
         _updater: An object to update firmware.
         _temp_path: Path of a temp directory.
@@ -84,8 +85,10 @@ class FAFTClient(object):
         self._chromeos_interface = chromeos_interface.ChromeOSInterface(False)
         # We keep the state of FAFT test in a permanent directory over reboots.
         state_dir = '/var/tmp/faft'
-        self._chromeos_interface.init(state_dir, log_file='/tmp/faft_log.txt')
         os.chdir(state_dir)
+
+        self._log_file = os.path.join(state_dir, 'faft_client.log')
+        self._chromeos_interface.init(state_dir, log_file=self._log_file)
 
         self._bios_handler = LazyFlashromHandlerProxy(
                                 saft_flashrom_util,
@@ -169,6 +172,21 @@ class FAFTClient(object):
             Always True.
         """
         return True
+
+
+    def _system_dump_log(self, remove_log=False):
+        """Dump the log file.
+
+        Args:
+            remove_log: Remove the log file after dump.
+
+        Returns:
+            String of the log file content.
+        """
+        log = open(self._log_file).read()
+        if remove_log:
+            os.remove(self._log_file)
+        return log
 
 
     def _system_run_shell_command(self, command):

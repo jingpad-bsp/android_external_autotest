@@ -298,9 +298,11 @@ class ChromeOSInterface(object):
         timestamp = datetime.datetime.strftime(
             datetime.datetime.now(), '%I:%M:%S %p:')
 
-        log_f = open(self.log_file, 'a')
-        log_f.write('%s %s\n' % (timestamp, text))
-        log_f.close()
+        with open(self.log_file, 'a') as log_f:
+            log_f.write('%s %s\n' % (timestamp, text))
+            log_f.flush()
+            os.fdatasync(log_f)
+
 
     def exec_exists(self, program):
         """Check if the passed in string is a valid executable found in PATH."""
