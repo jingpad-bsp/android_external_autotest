@@ -37,7 +37,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.site_utils.graphite import stats
-from autotest_lib.client.common_lib import control_data
 
 def get_parameterized_autoupdate_image_url(job):
     """Get the parameterized autoupdate image url from a parameterized job."""
@@ -591,8 +590,7 @@ def abort_host_queue_entries(**filter_data):
     host_queue_entries = list(query.select_related())
     rpc_utils.check_abort_synchronous_jobs(host_queue_entries)
 
-    for queue_entry in host_queue_entries:
-        queue_entry.abort()
+    models.HostQueueEntry.abort_host_queue_entries(host_queue_entries)
 
 
 def _call_special_tasks_on_hosts(task, hosts):
