@@ -6,13 +6,15 @@
 
 """Unit tests for site_utils/deduping_scheduler.py."""
 
-import logging
 import mox
 import unittest
 
+import common
 import deduping_scheduler
 
-from autotest_lib.server import frontend
+from autotest_lib.client.common_lib import error
+from autotest_lib.server import frontend, site_utils
+from autotest_lib.server.cros.dynamic_suite import reporting
 
 
 class DedupingSchedulerTest(mox.MoxTestBase):
@@ -151,6 +153,49 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._BUILD,
                           None,
                           None)
+
+
+    def testScheduleReportsBug(self):
+        """Test that the scheduler file a bug for ControlFileNotFound."""
+        self.mox.StubOutWithMock(reporting.Reporter, '__init__')
+        self.mox.StubOutWithMock(reporting.Reporter, 'create_bug_report')
+        self.mox.StubOutWithMock(site_utils, 'get_sheriffs')
+        self.scheduler._file_bug = True
+        # A similar suite has not already been scheduled.
+        self.afe.get_jobs(name__startswith=self._BUILD,
+                          name__endswith='control.'+self._SUITE).AndReturn([])
+        message = 'Control file not found.'
+        exception = error.ControlFileNotFound(message)
+        self.afe.run('create_suite_job',
+                     suite_name=self._SUITE,
+                     board=self._BOARD,
+                     build=self._BUILD,
+                     check_hosts=False,
+                     pool=self._POOL,
+                     num=self._NUM).AndRaise(exception)
+        reporting.Reporter.__init__()
+        title = ('Exception "%s" occurs when scheduling %s on '
+                 '%s against %s (pool: %s)' %
+                 (exception.__class__.__name__,
+                  self._SUITE, self._BUILD, self._BOARD, self._POOL))
+        site_utils.get_sheriffs(
+                lab_only=True).AndReturn(['dummy@chromium.org'])
+        reporting.Reporter.create_bug_report(
+                description=mox.IgnoreArg(),
+                title=title,
+                name='',
+                owner='dummy@chromium.org',
+                milestone='',
+                bug_template = {'labels': ['Suite-Scheduler-Bug'],
+                                'status': 'Available'},
+                sheriffs=[]).AndReturn(1158)
+        self.mox.ReplayAll()
+        self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
+                                                     self._BOARD,
+                                                     self._BUILD,
+                                                     self._POOL,
+                                                     self._NUM))
+        self.mox.VerifyAll()
 
 
 if __name__ == '__main__':

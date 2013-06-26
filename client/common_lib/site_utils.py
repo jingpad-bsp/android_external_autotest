@@ -22,6 +22,26 @@ _LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
 LAB_GOOD_STATES = ('open', 'throttled')
 
 
+class ParseBuildNameException(Exception):
+    """Raised when ParseBuildName() cannot parse a build name."""
+    pass
+
+
+def ParseBuildName(name):
+    """Format a build name, given board, type, milestone, and manifest num.
+
+    @param name: a build name, e.g. 'x86-alex-release/R20-2015.0.0'
+    @return board: board the manifest is for, e.g. x86-alex.
+    @return type: one of 'release', 'factory', or 'firmware'
+    @return milestone: (numeric) milestone the manifest was associated with.
+    @return manifest: manifest number, e.g. '2015.0.0'
+    """
+    match = re.match(r'([\w-]+)-(\w+)/R(\d+)-([\d.ab-]+)', name)
+    if match and len(match.groups()) == 4:
+        return match.groups()
+    raise ParseBuildNameException('%s is a malformed build name.' % name)
+
+
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
 

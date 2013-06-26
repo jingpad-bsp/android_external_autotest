@@ -169,6 +169,10 @@ def parse_options():
     parser.add_option('-t', '--sanity', dest='sanity', action='store_true',
                       default=False,
                       help="Check the config file for any issues.")
+    parser.add_option('-b', '--file_bug', dest='file_bug', action='store_true',
+                      default=False,
+                      help="File bugs for known suite scheduling exceptions.")
+
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -217,7 +221,7 @@ def main():
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=1, delay_sec=5, debug=False)
     enumerator = board_enumerator.BoardEnumerator(afe)
-    scheduler = deduping_scheduler.DedupingScheduler(afe)
+    scheduler = deduping_scheduler.DedupingScheduler(afe, options.file_bug)
     mv = manifest_versions.ManifestVersions()
     d = driver.Driver(scheduler, enumerator)
     d.SetUpEventsAndTasks(config, mv)

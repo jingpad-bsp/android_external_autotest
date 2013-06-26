@@ -12,6 +12,8 @@ from autotest_lib.server.cros.dynamic_suite import constants
 
 _SHERIFF_JS = global_config.global_config.get_config_value(
     'NOTIFICATIONS', 'sheriffs', default='')
+_LAB_SHERIFF_JS = global_config.global_config.get_config_value(
+    'NOTIFICATIONS', 'lab_sheriffs', default='')
 _CHROMIUM_BUILD_URL = global_config.global_config.get_config_value(
     'NOTIFICATIONS', 'chromium_build_url', default='')
 
@@ -64,18 +66,23 @@ def get_build_from_afe(hostname, afe):
     return get_label_from_afe(hostname, constants.VERSION_PREFIX, afe)
 
 
-def get_sheriffs():
+def get_sheriffs(lab_only=False):
     """
     Polls the javascript file that holds the identity of the sheriff and
     parses it's output to return a list of chromium sheriff email addresses.
     The javascript file can contain the ldap of more than one sheriff, eg:
     document.write('sheriff_one, sheriff_two').
 
-    @return: A list of chroium.org sheriff email addresses to cc on the bug
-        if the suite that failed was the bvt suite. An empty list otherwise.
+    @param lab_only: if True, only pulls lab sheriff.
+    @return: A list of chroium.org sheriff email addresses to cc on the bug.
+             An empty list if failed to parse the javascript.
     """
     sheriff_ids = []
-    for sheriff_js in _SHERIFF_JS.split(','):
+    sheriff_js_list = _LAB_SHERIFF_JS.split(',')
+    if not lab_only:
+        sheriff_js_list.extend(_SHERIFF_JS.split(','))
+
+    for sheriff_js in sheriff_js_list:
         try:
             url_content = base_utils.urlopen('%s%s'% (
                 _CHROMIUM_BUILD_URL, sheriff_js)).read()

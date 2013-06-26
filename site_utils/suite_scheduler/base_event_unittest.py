@@ -125,3 +125,7 @@ class BaseEventTest(mox.MoxTestBase):
             task.Arm()
         self.mox.ReplayAll()
         event.Handle(self.sched, {}, "board1")
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -3,8 +3,12 @@
 # found in the LICENSE file.
 
 import logging
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
+import common
+from autotest_lib.client.common_lib import error
+from autotest_lib.server import site_utils
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import reporting
 
 class DedupingSchedulerException(Exception):
     """Base class for exceptions from this module."""
@@ -31,7 +35,7 @@ class DedupingScheduler(object):
     """
 
 
-    def __init__(self, afe=None):
+    def __init__(self, afe=None, file_bug=False):
         """Constructor
 
         @param afe: an instance of AFE as defined in server/frontend.py.
@@ -40,6 +44,7 @@ class DedupingScheduler(object):
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
+        self._file_bug = file_bug
 
 
     def _ShouldScheduleSuite(self, suite, board, build):
@@ -60,6 +65,33 @@ class DedupingScheduler(object):
                                           name__endswith='control.'+suite)
         except Exception as e:
             raise DedupException(e)
+
+
+    # TODO(fdeng): After crbug.com/254256 is fixed, we
+    # should modify this method accordingly.
+    def _ReportBug(self, title, description):
+        """File a bug using bug reporter.
+
+        @param title: A string, representing the bug title.
+        @param description: A string, representing the bug description.
+        @return: The id of the issue that was created,
+                 or None if bug is not filed.
+        """
+        if not self._file_bug:
+            return None
+        bug_reporter = reporting.Reporter()
+        template = {'labels': ['Suite-Scheduler-Bug'],
+                    'status': 'Available'}
+        sheriffs = site_utils.get_sheriffs(lab_only=True)
+        owner = sheriffs[0] if sheriffs else ''
+        logging.info('Filing a bug: %s', title)
+        return bug_reporter.create_bug_report(description=description,
+                                              title=title,
+                                              name='',
+                                              owner=owner,
+                                              milestone='',
+                                              bug_template=template,
+                                              sheriffs=[])
 
 
     def _Schedule(self, suite, board, build, pool, num):
@@ -91,6 +123,16 @@ class DedupingScheduler(object):
             else:
                 raise ScheduleException(
                     "Can't schedule %s for %s." % (suite, build))
+        except (error.ControlFileNotFound, error.ControlFileEmpty,
+                error.ControlFileMalformed, error.NoControlFileList) as e:
+            title = ('Exception "%s" occurs when scheduling %s on '
+                     '%s against %s (pool: %s)' %
+                     (e.__class__.__name__, suite, build, board, pool))
+            if self._ReportBug(title, str(e)) is None:
+                # Raise the exception if not filing or failed to file a bug.
+                raise ScheduleException(e)
+            else:
+                return False
         except Exception as e:
             raise ScheduleException(e)
 

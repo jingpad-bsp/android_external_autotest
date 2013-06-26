@@ -16,7 +16,6 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import job_status
-from autotest_lib.site_utils.suite_scheduler import base_event
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
 # are useless unless they can import gdata too.
@@ -142,8 +141,8 @@ class TestFailure(object):
     def get_milestone(self):
         """Parses the build string and returns a milestone."""
         try:
-            return 'M-%s'% base_event.ParseBuildName(self.build)[2]
-        except base_event.ParseBuildNameException as e:
+            return 'M-%s'% site_utils.ParseBuildName(self.build)[2]
+        except site_utils.ParseBuildNameException as e:
             logging.error(e)
             return ''
 
@@ -363,8 +362,8 @@ class Reporter(object):
             kwargs['owner'] = {'name': kwargs['owner']}
         return kwargs
 
-
-    def _create_bug_report(self, description, title, name, owner, milestone='',
+    # TODO(beeps):crbug.com/254256
+    def create_bug_report(self, description, title, name, owner, milestone='',
                            bug_template={}, sheriffs=[]):
         """
         Creates a new bug report.
@@ -377,6 +376,10 @@ class Reporter(object):
                  Note that if either the description or title fields are missing
                  we won't be able to create a bug.
         """
+        if not self._check_tracker():
+            logging.error("Can't file: %s", title)
+            return None
+
         issue = self._format_issue_options(bug_template, title=title,
             description=description, labels=self._get_labels(name.lower()),
             status='Untriaged', milestone=[milestone], owner=owner,
@@ -544,7 +547,7 @@ class Reporter(object):
         elif failure.suite == 'bvt':
             sheriffs = site_utils.get_sheriffs()
 
-        return self._create_bug_report(summary, failure.bug_title(),
-                                       failure.test, self._get_owner(failure),
-                                       failure.get_milestone(), bug_template,
-                                       sheriffs)
+        return self.create_bug_report(summary, failure.bug_title(),
+                                      failure.test, self._get_owner(failure),
+                                      failure.get_milestone(), bug_template,
+                                      sheriffs)

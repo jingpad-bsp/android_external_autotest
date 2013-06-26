@@ -20,6 +20,7 @@ from datetime import datetime
 import common
 
 from autotest_lib.client.common_lib import global_config, error, utils, enum
+from autotest_lib.client.common_lib import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -434,8 +435,8 @@ class Timings(object):
         @return: The key used to log timing information in statsd.
         """
         try:
-            _board, build_type, branch = base_event.ParseBuildName(build)[:3]
-        except base_event.ParseBuildNameException as e:
+            _board, build_type, branch = site_utils.ParseBuildName(build)[:3]
+        except site_utils.ParseBuildNameException as e:
             logging.error(str(e))
             branch = 'Unknown'
             build_type = 'Unknown'

@@ -8,7 +8,7 @@ import base_event, board_enumerator, build_event
 import task, timed_event
 
 import common
-from autotest_lib.client.common_lib import site_utils, error
+from autotest_lib.client.common_lib import error, site_utils
 
 class Driver(object):
     """Implements the main loop of the suite_scheduler.
@@ -152,7 +152,7 @@ class Driver(object):
         @param keywords: iterable of event keywords to force
         @param build_name: instead of looking up builds to test, test this one.
         """
-        board, type, milestone, manifest = base_event.ParseBuildName(build_name)
+        board, type, milestone, manifest = site_utils.ParseBuildName(build_name)
         branch_builds = {task.PickBranchName(type, milestone): [build_name]}
         logging.info('Testing build R%s-%s on %s', milestone, manifest, board)
 
