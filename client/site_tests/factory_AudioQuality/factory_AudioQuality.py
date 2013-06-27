@@ -10,6 +10,7 @@
 # command through ethernet to configure the audio loop path. Note that it's
 # External equipment's responsibility to capture and analyze the audio signal.
 
+import logging
 import os
 import re
 import select
@@ -92,7 +93,7 @@ class factory_AudioQuality(test.test):
         '''
         line = conn.recv(1024)
         if line:
-            factory.console.info("Received command %s" % line)
+            logging.info("Received command %s", line)
         else:
             return False
 
@@ -103,10 +104,10 @@ class factory_AudioQuality(test.test):
 
         # Respond by the received command with '_OK' postfix.
         conn.send(line + '_OK')
-        factory.console.info('Respond OK')
+        logging.info('Respond OK')
 
         if self._test_complete:
-            factory.console.info('Test completed')
+            logging.info('Test completed')
             time.sleep(3)
             if self._test_passed:
                 self.ui.Pass()
@@ -149,7 +150,7 @@ class factory_AudioQuality(test.test):
         if self._loop_process:
             self._loop_process.kill()
             self._loop_process = None
-            factory.log("Stopped audio loop process")
+            logging.info("Stopped audio loop process")
         self._ah.set_mixer_controls(self._init_mixer_settings)
 
     def handle_send_file(self, *args):
@@ -167,13 +168,12 @@ class factory_AudioQuality(test.test):
         while left > 0:
             buf = conn.recv(1024)
             left -= len(buf)
-            received_data += buf
+            received_data += buf.replace('\x00', ' ')
 
-        factory.console.info("Received file %s with size %d" % (
-                file_name, size))
+        logging.info("Received file %s with size %d" , file_name, size)
 
-        # Keep another copy of logs
-        self._detail_log += received_data.replace('\r', '')
+        # Dump another copy of logs
+        logging.info(repr(received_data))
 
         # The result logs are stored in filename ending in _[0-9]+.txt.
         #
@@ -185,7 +185,9 @@ class factory_AudioQuality(test.test):
         # ...
         #
         # The column count is variable. There may be up to ten columns in the
-        # results.
+        # results. Each column contains 12 characters. Because the spaces on
+        # the right side of last colume are stripped. So the number of column
+        # is the length of line divides by 12 and plus one.
         #
         # Unfortunately, we cannot read the column names in the header row
         # by splitting with spaces.
@@ -204,8 +206,15 @@ class factory_AudioQuality(test.test):
             if tail_row != ending_mark:
                 raise error.TestError('Protocol error: missing DONE mark.')
 
-            spaces = re.compile(r'\s+')
-            table = [spaces.split(line) for line in lines[1:-1]]
+            table = []
+            # record the maximum column_number, to add sufficient 'nan' to
+            # the end of list if the spaces in the end of line are stripped.
+            column_number = max([len(line)/12 + 1 for line in lines[1:]])
+            for line in lines[1:-1]:
+                x = []
+                for i in range(column_number):
+                    x.append(float(line[i*12:i*12 + 12].strip() or 'nan'))
+                table.append(x)
 
             test_result = {}
             # Remarks:
@@ -213,8 +222,7 @@ class factory_AudioQuality(test.test):
             # 2. because the harmonic of some frequencies are not valid, we may
             #    have empty values in certain fields
             # 3. The missing fields are always in the last columns
-            frequencies = dict((row[0], [float(f) for f in row[1:] if len(f)])
-                               for row in table)
+            frequencies = dict((row[0], row[1:]) for row in table)
             test_result['frequencies'] = frequencies
             test_result['header_row'] = header_row
             test_result['serial_number'] = serial_number
@@ -231,7 +239,7 @@ class factory_AudioQuality(test.test):
 
             Log('audio_quality_final_result', **final_result)
         else:
-            factory.console.info("Unrecognizable filename %s" % file_name)
+            logging.info("Unrecognizable filename %s", file_name)
 
     def handle_result_pass(self, *args):
         self._test_passed = True
@@ -242,14 +250,12 @@ class factory_AudioQuality(test.test):
     def handle_test_complete(self, *args):
         '''Handles test completion.
 
-        Dumps log and runs post test script before ends this test
+        Runs post test script before ends this test
 
         '''
-        factory.console.info(self._detail_log)
-
         self.on_test_complete()
         self._test_complete = True
-        factory.console.info('%s run_once finished' % self.__class__)
+        logging.info('%s run_once finished', self.__class__)
 
     def handle_loop_none(self, *args):
         self.restore_configuration()
@@ -326,7 +332,7 @@ class factory_AudioQuality(test.test):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((_HOST, _PORT))
         sock.listen(1)
-        factory.console.info("Listening at port %d" % _PORT)
+        logging.info("Listening at port %d", _PORT)
 
         self._listen_thread = threading.Thread(target=self.listen_forever,
                 args=(sock,))
@@ -361,7 +367,7 @@ class factory_AudioQuality(test.test):
                 return False
 
     def test_command(self, event):
-        factory.console.info('Get event %s' % event)
+        logging.info('Get event %s', event)
         cmd = event.data.get('cmd', '')
         for key in self._handlers.iterkeys():
             if key.match(cmd):
@@ -371,7 +377,7 @@ class factory_AudioQuality(test.test):
     def init_audio_server(self, event):
         self._eth = net_utils.FindUsableEthDevice()
         if self._eth:
-            factory.console.info('Got %s for connection' % self._eth)
+            logging.info('Got %s for connection', self._eth)
 
             # Configure local network environment to accept command
             # from test host.
@@ -394,11 +400,10 @@ class factory_AudioQuality(test.test):
             mute_left_mixer_settings=_MUTE_LEFT_MIXER_SETTINGS,
             use_sox_loop=False, use_multitone=False, loop_buffer_count=10,
             countdown=_INIT_COUNTDOWN):
-        factory.console.info('%s run_once' % self.__class__)
+        logging.info('%s run_once', self.__class__)
 
         self._ah = audio_helper.AudioHelper(self)
         self._ah.setup_deps(['sox', 'audioloop'])
-        self._detail_log = ''
         self._input_dev = input_dev
         self._output_dev = output_dev
         self._eth = None
