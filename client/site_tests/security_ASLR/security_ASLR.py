@@ -7,7 +7,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 import logging
-import os
+import time
 import pprint
 import re
 
@@ -130,7 +130,7 @@ class security_ASLR(test.test):
 
             # The process could not be found. We then sleep, hoping the
             # process is just slow to initially start.
-            os.sleep(self._INITCTL_POLL_INTERVAL)
+            time.sleep(self._INITCTL_POLL_INTERVAL)
             retires += 1
 
         # We never saw the process, so abort with details on who was missing.
