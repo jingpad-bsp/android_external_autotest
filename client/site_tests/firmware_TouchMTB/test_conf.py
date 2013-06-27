@@ -100,6 +100,8 @@ FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS = \
         'first_finger_tracking_and_second_finger_taps'
 DRUMROLL = 'drumroll'
 RAPID_TAPS = 'rapid_taps_20'
+# This following gesture is for pressure calibration.
+PRESSURE_CALIBRATION = 'pressure_calibration'
 
 
 # Define the complete list
@@ -204,6 +206,10 @@ for dev in DEV.DEVICE_TYPE_LIST:
     manual_set = set(complete_gesture_list) - set(gesture_names_robot[dev])
     gesture_names_manual[dev] = [gesture for gesture in complete_gesture_list
                                  if gesture in manual_set]
+
+
+# Define the gesture for pressure calibration
+gesture_names_calibration = [PRESSURE_CALIBRATION,]
 
 
 # Define those gestures that the robot needs to pause so the user
@@ -808,6 +814,27 @@ def get_gesture_dict():
                 CountTrackingIDValidator('== 20'),
             ),
             timeout = 2000,
+        ),
+
+        PRESSURE_CALIBRATION:
+        Gesture(
+            name=PRESSURE_CALIBRATION,
+            variations=(GV.SIZE0, GV.SIZE1, GV.SIZE2, GV.SIZE3, GV.SIZE4,
+                        GV.SIZE5, GV.SIZE6, ),
+            prompt='Draw circles continuously for 5 seconds '
+                   'using the metal finger of size {0}.',
+            subprompt={
+                GV.SIZE0: ('0 (the smallest size)',),
+                GV.SIZE1: ('1',),
+                GV.SIZE2: ('2',),
+                GV.SIZE3: ('3',),
+                GV.SIZE4: ('4',),
+                GV.SIZE5: ('5',),
+                GV.SIZE6: ('6 (the largest size)',),
+            },
+            validators=(
+                CountTrackingIDValidator('== 1'),
+            ),
         ),
     }
     return gesture_dict

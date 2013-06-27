@@ -216,6 +216,7 @@ def _usage_and_exit():
     print '  -m, --%s mode' % OPTIONS.MODE
     print '        specify the gesture playing mode'
     print '        mode could be one of the following options'
+    print '            calibration: conducting pressure calibration'
     print '            complete: all gestures including those in ' \
                                 'both manual mode and robot mode'
     print '            manual: all gestures minus gestures in robot mode'
@@ -244,6 +245,8 @@ def _usage_and_exit():
     print '  $ DISPLAY=:0 OPTIONS="-m manual" python main.py\n'
     print '  # Perform 1 iteration of all manual and robot gestures.'
     print '  $ DISPLAY=:0 OPTIONS="-m complete" python main.py\n'
+    print '  # Perform pressure calibration.'
+    print '  $ DISPLAY=:0 OPTIONS="-m calibration" python main.py\n'
     print '  # Replay the gesture files in the latest log directory.'
     print '  $ DISPLAY=:0 OPTIONS="--replay latest" python main.py\n'
     example_log_dir = '20130226_040802-fw_1.2-manual'

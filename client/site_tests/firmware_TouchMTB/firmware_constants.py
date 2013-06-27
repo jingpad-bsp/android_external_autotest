@@ -104,12 +104,25 @@ GV.SLOW = 'slow'
 GV.NORMAL = 'normal'
 GV.FAST = 'fast'
 GV.GESTURE_SPEED = [GV.SLOW, GV.NORMAL, GV.FAST]
+# constants about metal finger sizes
+GV.SIZE = 'size'
+size_str = lambda i: GV.SIZE + str(i)
+GV.SIZE0 = size_str(0)
+GV.SIZE1 = size_str(1)
+GV.SIZE2 = size_str(2)
+GV.SIZE3 = size_str(3)
+GV.SIZE4 = size_str(4)
+GV.SIZE5 = size_str(5)
+GV.SIZE6 = size_str(6)
+GV.NUMBER_OF_SIZES = 7
+GV.SIZE_LIST = [size_str(i) for i in range(GV.NUMBER_OF_SIZES)]
 
 
 class _Mode(_Constant):
     """Constants about gesture playing mode."""
     pass
 MODE = _Mode()
+MODE.CALIBRATION = 'calibration'
 MODE.COMPLETE = 'complete'
 MODE.MANUAL = 'manual'
 MODE.REPLAY = 'replay'

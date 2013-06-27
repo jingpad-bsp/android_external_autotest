@@ -103,6 +103,8 @@ class TestFlow:
                 return conf.gesture_names_robot[self.device_type]
         elif self.mode == MODE.MANUAL:
             return conf.gesture_names_manual[self.device_type]
+        elif self.mode == MODE.CALIBRATION:
+            return conf.gesture_names_calibration
         else:
             return conf.gesture_names_complete[self.device_type]
 
