@@ -93,6 +93,7 @@ SKIP = set((
     'reporting_unittest.py',
     # crbug.com/251395
     'dev_server_test.py',
+    'full_release_test.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |

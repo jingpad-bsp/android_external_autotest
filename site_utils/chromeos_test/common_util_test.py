@@ -3,6 +3,7 @@
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# pylint: disable-msg=C0111
 
 """Unit tests for common utility class."""
 
@@ -30,7 +31,11 @@ class CommonUtilityTest(unittest.TestCase):
   def testRunCommandEnvironment(self):
     old_env = os.environ.copy()
     # Ensure variables from local environment are present.
-    user = os.environ['USER']
+    try:
+      user = os.environ['USER']
+    except KeyError:
+      raise unittest.SkipTest('USER environment variable is not set.')
+
     self.assertEqual(
         common_util.RunCommand(cmd='echo $test_var-$USER',
                                env={'test_var': 'Test'}, output=True),
