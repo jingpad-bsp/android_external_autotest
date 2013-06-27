@@ -252,7 +252,7 @@ class JobTest(BaseSchedulerModelsTest):
         def _mock_create(**kwargs):
             task = models.SpecialTask(**kwargs)
             task.save()
-            self._task = task
+            self._tasks.append(task)
         self.god.stub_with(models.SpecialTask.objects, 'create', _mock_create)
 
 
@@ -261,10 +261,10 @@ class JobTest(BaseSchedulerModelsTest):
         Calls HQE._do_schedule_pre_job_tasks() and returns the created special
         task
         """
-        self._task = None
+        self._tasks = []
         queue_entry = scheduler_models.HostQueueEntry.fetch('id = 1')[0]
         queue_entry._do_schedule_pre_job_tasks()
-        return self._task
+        return self._tasks
 
 
     def test_job_request_abort(self):
@@ -306,19 +306,21 @@ class JobTest(BaseSchedulerModelsTest):
         self.assertFalse(job._atomic_and_has_started())
 
 
-    def _check_special_task(self, task, task_type, queue_entry_id=None):
-        self.assertEquals(task.task, task_type)
-        self.assertEquals(task.host.id, 1)
-        if queue_entry_id:
-            self.assertEquals(task.queue_entry.id, queue_entry_id)
+    def _check_special_tasks(self, tasks, task_types):
+        self.assertEquals(len(tasks), len(task_types))
+        for task, (task_type, queue_entry_id) in zip(tasks, task_types):
+            self.assertEquals(task.task, task_type)
+            self.assertEquals(task.host.id, 1)
+            if queue_entry_id:
+                self.assertEquals(task.queue_entry.id, queue_entry_id)
 
 
     def test_run_asynchronous(self):
         self._create_job(hosts=[1, 2])
 
-        task = self._test_pre_job_tasks_helper()
+        tasks = self._test_pre_job_tasks_helper()
 
-        self._check_special_task(task, models.SpecialTask.Task.VERIFY, 1)
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.VERIFY, 1)])
 
 
     def test_run_asynchronous_skip_verify(self):
@@ -326,17 +328,17 @@ class JobTest(BaseSchedulerModelsTest):
         job.run_verify = False
         job.save()
 
-        task = self._test_pre_job_tasks_helper()
+        tasks = self._test_pre_job_tasks_helper()
 
-        self.assertEquals(task, None)
+        self.assertEquals(tasks, [])
 
 
     def test_run_synchronous_verify(self):
         self._create_job(hosts=[1, 2], synchronous=True)
 
-        task = self._test_pre_job_tasks_helper()
+        tasks = self._test_pre_job_tasks_helper()
 
-        self._check_special_task(task, models.SpecialTask.Task.VERIFY, 1)
+        self._check_special_tasks(tasks, [(models.SpecialTask.Task.VERIFY, 1)])
 
 
     def test_run_synchronous_skip_verify(self):
@@ -344,9 +346,9 @@ class JobTest(BaseSchedulerModelsTest):
         job.run_verify = False
         job.save()
 
-        task = self._test_pre_job_tasks_helper()
+        tasks = self._test_pre_job_tasks_helper()
 
-        self.assertEquals(task, None)
+        self.assertEquals(tasks, [])
 
 
     def test_run_atomic_group_already_started(self):
@@ -366,9 +368,12 @@ class JobTest(BaseSchedulerModelsTest):
         job.reboot_before = model_attributes.RebootBefore.ALWAYS
         job.save()
 
-        task = self._test_pre_job_tasks_helper()
+        tasks = self._test_pre_job_tasks_helper()
 
-        self._check_special_task(task, models.SpecialTask.Task.CLEANUP)
+        self._check_special_tasks(tasks, [
+                (models.SpecialTask.Task.CLEANUP, None),
+                (models.SpecialTask.Task.VERIFY, None),
+            ])
 
 
     def _test_reboot_before_if_dirty_helper(self, expect_reboot):
@@ -376,12 +381,14 @@ class JobTest(BaseSchedulerModelsTest):
         job.reboot_before = model_attributes.RebootBefore.IF_DIRTY
         job.save()
 
-        task = self._test_pre_job_tasks_helper()
+        tasks = self._test_pre_job_tasks_helper()
+
+        task_types = []
         if expect_reboot:
-            task_type = models.SpecialTask.Task.CLEANUP
-        else:
-            task_type = models.SpecialTask.Task.VERIFY
-        self._check_special_task(task, task_type)
+            task_types.append((models.SpecialTask.Task.CLEANUP, None))
+        task_types.append((models.SpecialTask.Task.VERIFY, None))
+
+        self._check_special_tasks(tasks, task_types)
 
 
     def test_reboot_before_if_dirty(self):
