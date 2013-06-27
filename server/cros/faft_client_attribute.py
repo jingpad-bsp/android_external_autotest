@@ -104,7 +104,8 @@ class FAFTClientAttribute(object):
                                         'keyboard', 'lid', 'x86', 'thermal',
                                         'usb', 'peci']
         elif platform in ['Snow', 'Spring']:
-            self.ec_capability = ['battery', 'keyboard', 'arm']
+            self.ec_capability = (['battery', 'keyboard', 'arm'] +
+                                  (['lid'] if platform == 'Spring' else []))
 
         # Set 'gbb_version'
         if platform in ['Alex', 'Mario', 'ZGB']:
