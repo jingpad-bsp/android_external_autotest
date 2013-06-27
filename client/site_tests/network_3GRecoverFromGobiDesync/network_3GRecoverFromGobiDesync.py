@@ -145,6 +145,7 @@ class GobiDesyncEventLoop(TestEventLoop):
       logging.info('Not starting until: %s' % self.remaining_start_conditions)
     else:
       logging.info('Preconditions satisfied')
+      network.ResetAllModems(flimflam.FlimFlam())
       self.StartTest()
       self.remaining_start_conditions = ['dummy entry so we do not start twice']
 
