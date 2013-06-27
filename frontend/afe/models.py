@@ -1441,7 +1441,7 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
 
         """
         if not self.complete and not self.aborted:
-            afe_utils.abort_host_queue_entries([self])
+            HostQueueEntry.abort_host_queue_entries([self])
 
 
     @classmethod
