@@ -5,6 +5,7 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
+from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 import time
@@ -44,6 +45,7 @@ class network_3GStressEnable(test.test):
 
     def _run_once_internal(self, cycles, min, max):
         self.flim = flimflam.FlimFlam(dbus.SystemBus())
+        network.ResetAllModems(self.flim)
         self.device = self.flim.FindCellularDevice()
         if not self.device:
             raise error.TestFail('Failed to find a cellular device.')
