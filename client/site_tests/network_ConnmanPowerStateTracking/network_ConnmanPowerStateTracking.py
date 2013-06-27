@@ -7,7 +7,7 @@ from autotest_lib.client.common_lib import error
 
 import dbus
 
-from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros import flimflam_test_path, network
 from autotest_lib.client.cros.cellular import mm
 import flimflam
 
@@ -37,6 +37,7 @@ class network_ConnmanPowerStateTracking(test.test):
 
     def run_once(self):
         flim = flimflam.FlimFlam(dbus.SystemBus())
+        network.ResetAllModems(flim)
         self.cm_device = flim.FindCellularDevice()
         manager, modem_path = mm.PickOneModem('')
         self.modem = manager.GetModem(modem_path)
