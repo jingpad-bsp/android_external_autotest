@@ -72,7 +72,8 @@ class FAFTClientAttribute(object):
             self.broken_rec_mode = True
 
         # Set 'chrome_ec'
-        if platform in ['Falco', 'Link', 'Peppy', 'Slippy', 'Snow', 'Spring']:
+        if platform in ['Falco', 'Link', 'Peach Pit', 'Peppy',
+                        'Slippy', 'Snow', 'Spring']:
             self.chrome_ec = True
 
         # Set 'dark_resume_capable'
@@ -103,9 +104,10 @@ class FAFTClientAttribute(object):
             self.ec_capability = ['adc_ectemp', 'battery', 'charging',
                                         'keyboard', 'lid', 'x86', 'thermal',
                                         'usb', 'peci']
-        elif platform in ['Snow', 'Spring']:
+        elif platform in ['Peach Pit', 'Snow', 'Spring']:
             self.ec_capability = (['battery', 'keyboard', 'arm'] +
-                                  (['lid'] if platform == 'Spring' else []))
+                                  (['lid'] if platform in [
+                  'Peach Pit', 'Spring'] else []))
 
         # Set 'gbb_version'
         if platform in ['Alex', 'Mario', 'ZGB']:
