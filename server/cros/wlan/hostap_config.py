@@ -4,6 +4,8 @@
 
 import copy
 import logging
+import random
+import string
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
@@ -184,7 +186,9 @@ class HostapConfig(object):
 
         self.wmm_enabled = False
         self.hw_mode = mode or self.MODE_11B
-        self.ssid_suffix = '_ch%d' % self.channel
+        suffix_letters = string.ascii_lowercase + string.digits
+        unique_suffix = ''.join(random.choice(suffix_letters) for x in range(5))
+        self.ssid_suffix = '_%s_ch%d' % (unique_suffix, self.channel)
         if n_capabilities is None:
             n_capabilities = []
         self.n_capabilities = set()
