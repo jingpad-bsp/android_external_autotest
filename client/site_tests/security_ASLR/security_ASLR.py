@@ -131,7 +131,7 @@ class security_ASLR(test.test):
             # The process could not be found. We then sleep, hoping the
             # process is just slow to initially start.
             time.sleep(self._INITCTL_POLL_INTERVAL)
-            retires += 1
+            retries += 1
 
         # We never saw the process, so abort with details on who was missing.
         raise error.TestFail('Never saw a pid for "%s"' % (name))
