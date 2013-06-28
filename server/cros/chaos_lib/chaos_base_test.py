@@ -297,6 +297,10 @@ class WiFiChaosConnectionTest(object):
            if 'busy' in str(scan_result):
                continue
            for ap in scan_list:
+               # If configuration failed, do not wait for the bss.
+               if not ap.get_configuration_success():
+                   scan_list.remove(ap)
+                   continue
                bss = ap.get_bss()
                if bss in str(scan_result):
                    # Remove ap from list if we found bss in scan
