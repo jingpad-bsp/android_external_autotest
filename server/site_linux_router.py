@@ -289,6 +289,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['dtim_period'] = configuration.dtim_period
         if configuration.frag_threshold:
             conf['fragm_threshold'] = configuration.frag_threshold
+        if configuration.pmf_support:
+            conf['ieee80211w'] = configuration.pmf_support
         conf.update(configuration.get_security_hostapd_conf())
 
         self.start_hostapd(conf, {})

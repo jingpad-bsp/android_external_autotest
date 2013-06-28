@@ -79,6 +79,14 @@ class HostapConfig(object):
     N_CAPABILITY_SGI20 = object()
     N_CAPABILITY_SGI40 = object()
 
+    PMF_SUPPORT_DISABLED = 0
+    PMF_SUPPORT_ENABLED = 1
+    PMF_SUPPORT_REQUIRED = 2
+    PMF_SUPPORT_VALUES = (PMF_SUPPORT_DISABLED,
+                          PMF_SUPPORT_ENABLED,
+                          PMF_SUPPORT_REQUIRED)
+
+
     @property
     def ht_packet_capture_mode(self):
         """Get an appropriate packet capture HT parameter.
@@ -120,7 +128,8 @@ class HostapConfig(object):
     def __init__(self, mode=None, channel=None, frequency=None,
                  n_capabilities=None, hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
-                 force_wmm=None, security_config=None):
+                 force_wmm=None, security_config=None,
+                 pmf_support=PMF_SUPPORT_DISABLED):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -140,6 +149,8 @@ class HostapConfig(object):
         @param force_wmm True if we should force WMM on, False if we should
             force it off, None if we shouldn't force anything.
         @param security_config SecurityConfig object.
+        @param pmf_support one of PMF_SUPPORT_* above.  Controls whether the
+            client supports/must support 802.11w.
 
         """
         super(HostapConfig, self).__init__()
@@ -228,6 +239,11 @@ class HostapConfig(object):
         self.bssid = bssid
         if force_wmm is not None:
             self.wmm_enabled = force_wmm
+        if pmf_support not in self.PMF_SUPPORT_VALUES:
+            raise error.TestFail('Invalid value for pmf_support: %r' %
+                                 pmf_support)
+
+        self.pmf_support = pmf_support
         self.security_config = (copy.copy(security_config) or
                                 xmlrpc_security_types.SecurityConfig())
 
