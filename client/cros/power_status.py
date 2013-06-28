@@ -503,6 +503,10 @@ class CPUFreqStats(AbstractStats):
     def _read_stats(self):
         stats = {}
         for path in self._file_paths:
+            if not os.path.exists(path):
+                logging.debug('%s is not found', path)
+                continue
+
             data = utils.read_file(path)
             for line in data.splitlines():
                 pair = line.split()
