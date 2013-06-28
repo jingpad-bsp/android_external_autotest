@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 
-import datetime, logging, shelve, sys
+import datetime, shelve, sys
 
 import common
 from autotest_lib.client.common_lib import mail
@@ -133,21 +133,18 @@ def email_about_test_failure(tests, storage):
     Send emails based on the last time tests has passed.
 
     This involves updating the storage and sending an email if a test has
-    failed for a long time and we have not already sent an email about that
-    test.
+    failed for a long time.
 
     @param tests: The test_name:time_of_last_pass pairs.
     @param storage: The storage object.
 
     """
     failing_time_cutoff = datetime.timedelta(_DAYS_TO_BE_FAILING_TOO_LONG)
-    update_status = []
 
     today = datetime.datetime.today()
     for test, last_fail in tests.iteritems():
         if today - last_fail >= failing_time_cutoff:
             if test not in storage:
-                update_status.append(test)
                 storage[test] = today
         else:
             try:
@@ -155,17 +152,14 @@ def email_about_test_failure(tests, storage):
             except KeyError:
                 pass
 
-    if update_status:
-        logging.info('Found %i new failing tests out %i, sending email.',
-                     len(update_status),
-                     len(tests))
+    if storage:
         mail.send(_MAIL_RESULTS_FROM,
                   [_MAIL_RESULTS_TO],
                   [],
                   'Long Failing Tests',
                   'The following tests have been failing for '
                   'at least %s days:\n\n' % (_DAYS_TO_BE_FAILING_TOO_LONG) +
-                  '\n'.join(update_status))
+                  '\n'.join(storage.keys()))
 
 
 def main():

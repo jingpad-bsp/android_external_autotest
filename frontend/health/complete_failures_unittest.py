@@ -52,11 +52,11 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
         super(EmailAboutTestFailureTests, self).tearDown()
 
 
-    def test_deal_with_new_failing_test(self):
+    def test_deal_with_failing_test(self):
         """
         Test adding a failing test to the storage.
 
-        We expect the email sending code to be called if it is added.
+        We expect the email sending code to be called.
 
         """
         # We will want to keep all the datetime logic intact and so we need to
@@ -118,12 +118,21 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
         self.assertTrue('test' not in storage)
 
 
-    def test_do_not_send_email_if_test_already_in_storage(self):
+    def test_send_email_if_test_already_in_storage(self):
         """Test only send emails on newly problematic tests."""
         storage = {'test': datetime.datetime(2012, 1, 1)}
         self.datetime = datetime.datetime
         self.mox.StubOutWithMock(datetime, 'datetime')
         datetime.datetime.today().AndReturn(self.datetime(2012, 1, 1))
+
+        mail.send(
+                'chromeos-test-health@google.com',
+                ['chromeos-lab-infrastructure@google.com'],
+                [],
+                'Long Failing Tests',
+                'The following tests have been failing for at '
+                'least %i days:\n\ntest'
+                    % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
 
         self.mox.ReplayAll()
         complete_failures.email_about_test_failure(
@@ -140,6 +149,15 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
         datetime.datetime.today().AndReturn(today)
 
         storage = {'test': datetime.datetime.min}
+
+        mail.send(
+                'chromeos-test-health@google.com',
+                ['chromeos-lab-infrastructure@google.com'],
+                [],
+                'Long Failing Tests',
+                'The following tests have been failing for at '
+                'least %i days:\n\ntest'
+                    % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
 
         # The ReplayAll is required or else a mox object sneaks its way into
         # the storage object somehow.
