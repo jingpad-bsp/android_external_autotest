@@ -21,15 +21,18 @@ class statsd_mock_base(object):
         pass
 
 
-    def decorate(self, f):
-        return f
-
-
-    def __getattr__(self, name):
+    def __getattribute__(self, name):
         def any_call(*args, **kwargs):
             pass
 
+        def decorate(f):
+            return f
+
+        if name == 'decorate':
+            return decorate
+
         return any_call
+
 
 class Average(statsd_mock_base):
     """Mock class for statsd.Average."""
