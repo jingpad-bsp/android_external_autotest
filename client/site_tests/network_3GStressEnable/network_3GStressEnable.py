@@ -14,6 +14,8 @@ import dbus, dbus.mainloop.glib
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
+DEVICE_TIMEOUT=45
+
 class network_3GStressEnable(test.test):
     """
     Stress-tests enabling and disabling a technology at short intervals.
@@ -28,9 +30,9 @@ class network_3GStressEnable(test.test):
     def _enable_device(self, enable):
         try:
             if enable:
-                self.device.Enable()
+                self.device.Enable(timeout=DEVICE_TIMEOUT)
             else:
-                self.device.Disable()
+                self.device.Disable(timeout=DEVICE_TIMEOUT)
         except dbus.exceptions.DBusException, err:
             if err._dbus_error_name in network_3GStressEnable.okerrors:
                 return
