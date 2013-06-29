@@ -1819,10 +1819,9 @@ class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
         execution_tag = self.queue_entries[0].execution_tag()
         params = _autoserv_command_line(
             hostnames,
-            ['-P', execution_tag, '-n',
+            ['-P', execution_tag, '-n', '--verify_job_repo_url',
              _drone_manager.absolute_path(control_path)],
             job=self.job, verbose=False)
-
         if self.job.is_image_update_job():
             params += ['--image', self.job.update_image_path]
 

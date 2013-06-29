@@ -38,6 +38,7 @@ CLEANUP_CONTROL_FILE = _control_segment_path('cleanup')
 VERIFY_CONTROL_FILE = _control_segment_path('verify')
 REPAIR_CONTROL_FILE = _control_segment_path('repair')
 PROVISION_CONTROL_FILE = _control_segment_path('provision')
+VERIFY_JOB_REPO_URL_CONTROL_FILE = _control_segment_path('verify_job_repo_url')
 
 
 # by default provide a stub that generates no site data
@@ -478,7 +479,8 @@ class base_server_job(base_job.base_job):
     _USE_TEMP_DIR = object()
     def run(self, cleanup=False, install_before=False, install_after=False,
             collect_crashdumps=True, namespace={}, control=None,
-            control_file_dir=None, only_collect_crashinfo=False):
+            control_file_dir=None, verify_job_repo_url=False,
+            only_collect_crashinfo=False):
         # for a normal job, make sure the uncollected logs file exists
         # for a crashinfo-only run it should already exist, bail out otherwise
         created_uncollected_logs = False
@@ -530,6 +532,16 @@ class base_server_job(base_job.base_job):
 
                 if only_collect_crashinfo:
                     return
+
+                # If the verify_job_repo_url option is set but we're unable
+                # to actually verify that the job_repo_url contains the autotest
+                # package, this job will fail.
+                if verify_job_repo_url:
+                    self._execute_code(VERIFY_JOB_REPO_URL_CONTROL_FILE,
+                        namespace)
+                else:
+                    logging.warning('Not checking if job_repo_url contains '
+                                    'autotest packages on %s', machines)
 
                 # determine the dir to write the control files to
                 cfd_specified = (control_file_dir

@@ -313,8 +313,26 @@ class SiteHost(remote.RemoteHost):
         for label in labels:
             label.remove_hosts(hosts=host_list)
 
-        self._AFE.set_host_attribute(ds_constants.JOB_REPO_URL, None,
+        self.update_job_repo_url(None, None)
+
+
+    def update_job_repo_url(self, devserver_url, image_name):
+        """
+        Updates the job_repo_url host attribute and asserts it's value.
+
+        @param devserver_url: The devserver to use in the job_repo_url.
+        @param image_name: The name of the image to use in the job_repo_url.
+
+        @raises AutoservError: If we failed to update the job_repo_url.
+        """
+        repo_url = None
+        if devserver_url and image_name:
+            repo_url = tools.get_package_url(devserver_url, image_name)
+        self._AFE.set_host_attribute(ds_constants.JOB_REPO_URL, repo_url,
                                      hostname=self.hostname)
+        if self.lookup_job_repo_url() != repo_url:
+            raise error.AutoservError('Failed to update job_repo_url with %s, '
+                                      'host %s' % (repo_url, self.hostname))
 
 
     def add_cros_version_labels_and_job_repo_url(self, image_name):
@@ -336,9 +354,48 @@ class SiteHost(remote.RemoteHost):
             label = self._AFE.create_label(name=cros_label)
 
         label.add_hosts([self.hostname])
-        repo_url = tools.get_package_url(devserver_url, image_name)
-        self._AFE.set_host_attribute(ds_constants.JOB_REPO_URL, repo_url,
-                                     hostname=self.hostname)
+        self.update_job_repo_url(devserver_url, image_name)
+
+
+    def verify_job_repo_url(self):
+        """
+        Make sure job_repo_url of this host is valid.
+
+        Eg: The job_repo_url "http://lmn.cd.ab.xyx:8080/static/archive/\
+        lumpy-release/R29-4279.0.0/autotest/packages" claims to have the
+        autotest package for lumpy-release/R29-4279.0.0. If this isn't the case,
+        download and extract it. If the devserver embedded in the url is
+        unresponsive, update the job_repo_url of the host after staging it on
+        another devserver.
+
+        @param job_repo_url: A url pointing to the devserver where the autotest
+            package for this build should be staged.
+
+        @raises DevServerException: If we could not resolve a devserver.
+        @raises AutoservError: If we're unable to save the new job_repo_url as
+            a result of choosing a new devserver because the old one failed to
+            respond to a health check.
+        """
+        job_repo_url = self.lookup_job_repo_url()
+        if not job_repo_url:
+            logging.warning('No job repo url set on host %s', self.hostname)
+            return
+
+        logging.info('Verifying job repo url %s', job_repo_url)
+        devserver_url, image_name = tools.get_devserver_build_from_package_url(
+            job_repo_url)
+
+        ds = dev_server.ImageServer.resolve(image_name)
+
+        logging.info('Staging autotest artifacts for %s on devserver %s',
+            image_name, ds.url())
+        ds.stage_artifacts(image_name, ['autotest'])
+
+        if ds.url() != devserver_url:
+            logging.info('Devserver url changed, new devserver is %s'
+                         'old devserver was %s',
+                         ds.url(), devserver_url)
+            self.update_job_repo_url(ds.url(), image_name)
 
 
     def _try_stateful_update(self, update_url, force_update, updater):

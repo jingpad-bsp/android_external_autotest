@@ -168,7 +168,7 @@ def find_packages_of(host, exec_name):
     if len(packages) > 1:
         # Running through all of /usr/bin in the chroot showed this should
         # never happen, but still maybe possible?
-        raise error.NoUniquePackageFound('Bug filing found more than one'
+        raise error.NoUniquePackageFound('Crash detection found more than one'
             'package for %s: %s' % exec_name, packages)
 
     # |len(packages) == 1| at this point, as it should be anyway
@@ -192,7 +192,7 @@ def report_bug_from_crash(host, minidump_path):
                 parts = line.split('=')
                 if parts[0] == 'exec_name':
                     packages = find_packages_of(host, parts[1].strip())
-                    logging.info('Would report bug on %s.', packages)
+                    logging.info('Would report crash on %s.', packages)
                     break
     except Exception as e:
-        logging.warning('Bug filing failed with: %s', e)
+        logging.warning('Crash detection failed with: %s', e)

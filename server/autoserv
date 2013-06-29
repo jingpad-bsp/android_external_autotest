@@ -95,6 +95,7 @@ def run_autoserv(pid_file_manager, results, parser):
     collect_crashinfo = parser.options.collect_crashinfo
     control_filename = parser.options.control_filename
     test_retry = parser.options.test_retry
+    verify_job_repo_url = parser.options.verify_job_repo_url
 
     # can't be both a client and a server side test
     if client and server:
@@ -160,6 +161,7 @@ def run_autoserv(pid_file_manager, results, parser):
                 job.provision(provision)
             else:
                 job.run(cleanup, install_before, install_after,
+                        verify_job_repo_url=verify_job_repo_url,
                         only_collect_crashinfo=collect_crashinfo)
         finally:
             while job.hosts:
