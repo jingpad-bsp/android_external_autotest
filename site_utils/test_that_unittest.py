@@ -8,6 +8,8 @@ import os, unittest
 import mox
 import common
 import subprocess
+import stat
+import tempfile
 from autotest_lib.site_utils import test_that
 
 class StartsWithList(mox.Comparator):
@@ -52,6 +54,9 @@ class TestThatUnittests(unittest.TestCase):
         autotest_path = 'htap_tsetotua'
         autoserv_command = os.path.join(autotest_path, 'server', 'autoserv')
         remote = 'etomer'
+        results_dir = '/tmp/fakeresults'
+        job1_results_dir = '/tmp/fakeresults/results-1'
+        job2_results_dir = '/tmp/fakeresults/results-2'
         self.mox = mox.Mox()
 
         # Create some dummy job objects.
@@ -59,27 +64,31 @@ class TestThatUnittests(unittest.TestCase):
         job2 = Object()
         setattr(job1, 'control_type', 'cLiEnT')
         setattr(job1, 'control_file', 'c1')
+        setattr(job1, 'id', 1)
         setattr(job2, 'control_type', 'Server')
         setattr(job2, 'control_file', 'c2')
+        setattr(job2, 'id', 2)
 
         # Stub out subprocess.Popen and wait calls.
         # Make them expect correct arguments.
         mock_process_1 = self.mox.CreateMock(subprocess.Popen)
         mock_process_2 = self.mox.CreateMock(subprocess.Popen)
         self.mox.StubOutWithMock(subprocess, 'Popen')
-        subprocess.Popen(StartsWithList([autoserv_command, '-p', '-m',
-                                                  remote, '-c'])
-                        ).AndReturn(mock_process_1)
+        arglist_1 = [autoserv_command, '-p', '-r', job1_results_dir, '-m',
+                     remote, '-c']
+        subprocess.Popen(StartsWithList(arglist_1)).AndReturn(mock_process_1)
         mock_process_1.wait()
-        subprocess.Popen(StartsWithList([autoserv_command, '-p', '-m',
-                                                  remote, '-s'])
-                         ).AndReturn(mock_process_2)
+        arglist_2 = [autoserv_command, '-p', '-r', job2_results_dir, '-m',
+                     remote, '-s']
+        subprocess.Popen(StartsWithList(arglist_2)).AndReturn(mock_process_2)
         mock_process_2.wait()
 
         # Test run_job.
         self.mox.ReplayAll()
-        test_that.run_job(job1, remote, autotest_path)
-        test_that.run_job(job2, remote, autotest_path)
+        job_res = test_that.run_job(job1, remote, autotest_path, results_dir)
+        self.assertEqual(job_res, job1_results_dir)
+        job_res = test_that.run_job(job2, remote, autotest_path, results_dir)
+        self.assertEqual(job_res, job2_results_dir)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
         self.mox.ResetAll()
@@ -93,6 +102,7 @@ class TestThatUnittests(unittest.TestCase):
         build = 'bild'
         board = 'bored'
         suite_control_files=['c1', 'c2', 'c3', 'c4']
+        results_dir = '/tmp/test_that_results_fake'
 
         def fake_suite_callback(*args, **dargs):
             for control_file in suite_control_files:
@@ -106,11 +116,17 @@ class TestThatUnittests(unittest.TestCase):
                 board=board).WithSideEffects(fake_suite_callback)
         self.mox.StubOutWithMock(test_that, 'run_job')
 
+        # Mock out temporary results directory creation
+        self.mox.StubOutWithMock(tempfile, 'mkdtemp')
+        self.mox.StubOutWithMock(os, 'chmod')
+        tempfile.mkdtemp(prefix='test_that_results_').AndReturn(results_dir)
+        os.chmod(results_dir, stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+
         # Test perform_local_run. Enforce that run_job is called correctly.
         for control_file in suite_control_files:
             test_that.run_job(mox.ContainsAttributeValue('control_file',
                                                         control_file),
-                             remote, autotest_path)
+                             remote, autotest_path, results_dir)
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
                                   remote, build=build, board=board)

@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -86,7 +87,7 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
     return len(my_suite.tests)
 
 
-def run_job(job, host, sysroot_autotest_path):
+def run_job(job, host, sysroot_autotest_path, results_directory):
     """
     Shell out to autoserv to run an individual test job.
 
@@ -94,19 +95,27 @@ def run_job(job, host, sysroot_autotest_path):
                 relevent metadata for this test.
     @param host: Hostname of DUT to run test against.
     @param sysroot_autotest_path: Absolute path of autotest directory.
+    @param results_directory: Absolute path of directory to store results in.
+                              (results will be stored in subdirectory of this).
+    @returns: Absolute path of directory where results were stored.
     """
     with tempfile.NamedTemporaryFile() as temp_file:
         temp_file.write(job.control_file)
         temp_file.flush()
 
+        results_directory = os.path.join(results_directory,
+                                         'results-%s' % job.id)
+
         command = autoserv_utils.autoserv_run_job_command(
                 os.path.join(sysroot_autotest_path, 'server'),
                 machines=host, job=job, verbose=False,
+                results_directory=results_directory,
                 extra_args=[temp_file.name])
         global _autoserv_proc
         _autoserv_proc = subprocess.Popen(command)
         _autoserv_proc.wait()
         _autoserv_proc = None
+        return results_directory
 
 
 def setup_local_afe():
@@ -152,8 +161,13 @@ def perform_local_run(afe, autotest_path, tests, remote, build=_NO_BUILD,
                                          build=build, board=board)
         logging.info('... scheduled %s tests.', ntests)
 
+    results_directory = tempfile.mkdtemp(prefix='test_that_results_')
+    os.chmod(results_directory, stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+    logging.info('Running jobs. Results will be placed in %s',
+                 results_directory)
+
     for job in afe.get_jobs():
-        run_job(job, remote, autotest_path)
+        run_job(job, remote, autotest_path, results_directory)
 
     return 0
 
