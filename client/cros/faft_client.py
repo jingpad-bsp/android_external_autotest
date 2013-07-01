@@ -85,10 +85,9 @@ class FAFTClient(object):
         self._chromeos_interface = chromeos_interface.ChromeOSInterface(False)
         # We keep the state of FAFT test in a permanent directory over reboots.
         state_dir = '/var/tmp/faft'
-        os.chdir(state_dir)
-
         self._log_file = os.path.join(state_dir, 'faft_client.log')
         self._chromeos_interface.init(state_dir, log_file=self._log_file)
+        os.chdir(state_dir)
 
         self._bios_handler = LazyFlashromHandlerProxy(
                                 saft_flashrom_util,
