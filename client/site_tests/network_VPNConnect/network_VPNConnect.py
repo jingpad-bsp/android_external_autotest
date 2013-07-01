@@ -98,10 +98,11 @@ class network_VPNConnect(test.test):
                                                  self.SERVER_INTERFACE_NAME,
                                                  self.SERVER_ADDRESS,
                                                  self.NETWORK_PREFIX)
-        if self._vpn_type == 'openvpn':
+        if self._vpn_type.startswith('openvpn'):
             return vpn_server.OpenVPNServer(self.SERVER_INTERFACE_NAME,
                                             self.SERVER_ADDRESS,
-                                            self.NETWORK_PREFIX)
+                                            self.NETWORK_PREFIX,
+                                            'user_pass' in self._vpn_type)
         else:
             raise error.TestFail('Unknown vpn server type %s' % self._vpn_type)
 
@@ -140,12 +141,12 @@ class network_VPNConnect(test.test):
                 'Type': 'vpn',
                 'VPN.Domain': 'test-vpn-psk-domain'
             }
-        if self._vpn_type == 'openvpn':
+        if self._vpn_type.startswith('openvpn'):
             tpm.install_certificate(site_eap_certs.client_cert_1,
                                     site_eap_certs.cert_1_tpm_key_id)
             tpm.install_private_key(site_eap_certs.client_private_key_1,
                                     site_eap_certs.cert_1_tpm_key_id)
-            return {
+            params = {
                 'Name': 'test-vpn-openvpn',
                 'Provider.Host': self.SERVER_ADDRESS,
                 'Provider.Type': 'openvpn',
@@ -156,6 +157,10 @@ class network_VPNConnect(test.test):
                 'OpenVPN.Pkcs11.PIN': tpm.PIN,
                 'OpenVPN.Verb': '5'
             }
+            if 'user_pass' in self._vpn_type:
+                params['OpenVPN.User'] = vpn_server.OpenVPNServer.USERNAME
+                params['OpenVPN.Password'] = vpn_server.OpenVPNServer.PASSWORD
+            return params
         else:
             raise error.TestFail('Unknown vpn client type %s' % self._vpn_type)
 

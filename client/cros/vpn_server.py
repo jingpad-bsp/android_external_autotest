@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import network_chroot
@@ -201,12 +202,20 @@ class OpenVPNServer(VPNServer):
     OPENVPN_CONFIG_FILE = 'etc/openvpn/openvpn.conf'
     OPENVPN_PID_FILE = 'var/run/openvpn.pid'
     OPENVPN_STATUS_FILE = 'tmp/openvpn.status'
+    AUTHENTICATION_SCRIPT = 'etc/openvpn_authentication_script.sh'
+    EXPECTED_AUTHENTICATION_FILE = 'etc/openvpn_expected_authentication.txt'
+    PASSWORD = 'password'
+    USERNAME = 'username'
     CONFIGURATION = {
         'etc/ssl/blacklist' : '',
         CA_CERTIFICATE_FILE : site_eap_certs.ca_cert_1,
         SERVER_CERTIFICATE_FILE : site_eap_certs.server_cert_1,
         SERVER_KEY_FILE : site_eap_certs.server_private_key_1,
         DIFFIE_HELLMAN_FILE : site_eap_certs.dh1024_pem_key_1,
+        AUTHENTICATION_SCRIPT :
+            '#!/bin/bash\n'
+            'diff -q $1 %(expected-authentication-file)s\n',
+        EXPECTED_AUTHENTICATION_FILE : '%(username)s\n%(password)s\n',
         OPENVPN_CONFIG_FILE :
             'ca /%(ca-cert)s\n'
             'cert /%(server-cert)s\n'
@@ -225,11 +234,14 @@ class OpenVPNServer(VPNServer):
             'status /%(status-file)s\n'
             'verb 5\n'
             'writepid /%(pid-file)s\n'
+            '%(optional-user-verification)s\n'
     }
 
-    def __init__(self, interface_name, address, network_prefix):
+    def __init__(self, interface_name, address, network_prefix,
+                 perform_username_authentication=False):
         self._chroot = network_chroot.NetworkChroot(interface_name,
                                                     address, network_prefix)
+        self._perform_username_authentication = perform_username_authentication
 
 
     def start_server(self):
@@ -238,19 +250,29 @@ class OpenVPNServer(VPNServer):
         chroot.add_root_directories(self.ROOT_DIRECTORIES)
         # Create a configuration template from the key-value pairs.
         chroot.add_config_templates(self.CONFIGURATION)
-        chroot.add_config_values({
+        config_values = {
             'ca-cert': self.CA_CERTIFICATE_FILE,
             'diffie-hellman-params-file': self.DIFFIE_HELLMAN_FILE,
+            'expected-authentication-file': self.EXPECTED_AUTHENTICATION_FILE,
+            'optional-user-verification': '',
+            'password': self.PASSWORD,
             'pid-file': self.OPENVPN_PID_FILE,
             'server-cert': self.SERVER_CERTIFICATE_FILE,
             'server-key': self.SERVER_KEY_FILE,
             'status-file': self.OPENVPN_STATUS_FILE,
-        })
+            'username': self.USERNAME,
+        }
+        if self._perform_username_authentication:
+            config_values['optional-user-verification'] = (
+                    'auth-user-pass-verify /%s via-file\nscript-security 2' %
+                    self.AUTHENTICATION_SCRIPT)
+        chroot.add_config_values(config_values)
         chroot.add_startup_command('%s --config /%s &' %
                                    (self.OPENVPN_COMMAND,
                                     self.OPENVPN_CONFIG_FILE))
         self.preload_modules()
         chroot.startup()
+        os.chmod(chroot.chroot_path(self.AUTHENTICATION_SCRIPT), 0755)
 
 
     def preload_modules(self):

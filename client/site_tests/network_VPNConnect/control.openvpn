@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "pstew@chromium.org"
-NAME = "network_VPNL2TPIPSecPSK.openvpn"
+NAME = "network_VPNConnect.openvpn"
 PURPOSE = "Verify shill correctly authenticates to an OpenVPN server"
 SUITE = "network_nightly"
 CRITERIA = """
