@@ -5,8 +5,12 @@
 import logging, os, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+import gzip
 
 class kernel_ConfigVerify(test.test):
+    """Examine a kernel build CONFIG list to make sure various things are
+    present, missing, built as modules, etc.
+    """
     version = 1
     IS_BUILTIN = [
         # Sanity checks; should be present in builds as builtins.
@@ -117,14 +121,14 @@ class kernel_ConfigVerify(test.test):
     ]
 
     def _passed(self, msg):
-        logging.info('ok: %s' % (msg))
+        logging.info('ok: %s', msg)
 
     def _failed(self, msg):
-        logging.error('FAIL: %s' % (msg))
+        logging.error('FAIL: %s', msg)
         self._failures.append(msg)
 
     def _fatal(self, msg):
-        logging.error('FATAL: %s' % (msg))
+        logging.error('FATAL: %s', msg)
         raise error.TestError(msg)
 
     def _config_required(self, name, wanted):
@@ -136,23 +140,54 @@ class kernel_ConfigVerify(test.test):
                          (name, value, '|'.join(wanted)))
 
     def has_value(self, name, value):
+        """Determine if the name config item has a specific value.
+
+        @param name: name of config item to test
+        @param value: value expected for the given config name
+        """
         self._config_required('CONFIG_%s' % (name), value)
 
     def has_builtin(self, name):
+        """Check if the specific config item is built-in (present but not
+        built as a module).
+
+        @param name: name of config item to test
+        """
         self.has_value(name, ['y'])
 
     def has_module(self, name):
+        """Check if the specific config item is a module (present but not
+        built-in).
+
+        @param name: name of config item to test
+        """
         self.has_value(name, ['m'])
 
     def is_enabled(self, name):
+        """Check if the specific config item is present (either built-in or
+        a module).
+
+        @param name: name of config item to test
+        """
         self.has_value(name, ['y', 'm'])
 
     def is_missing(self, name):
+        """Check if the specific config item is not present (neither built-in
+        nor a module).
+
+        @param name: name of config item to test
+        """
         self.has_value(name, [None])
 
-    # Checks every config line for the exclusive regex and validate existence
-    # of expected entries.
     def is_exclusive(self, exclusive):
+        """Given a config item regex, make sure only the expected items
+        are present in the kernel configs.
+
+        @param exclusive: hash containing "missing", "builtin", "module",
+                          each to be checked with the corresponding has_*
+                          function based on config items matching the
+                          "regex" value.
+        """
         expected = set()
         for name in exclusive['missing']:
             self.is_missing(name)
@@ -172,14 +207,31 @@ class kernel_ConfigVerify(test.test):
                 self._failed('"%s" found for "%s" when only "%s" allowed' %
                              (name, regex, "|".join(expected)))
 
-    def load_configs(self, filename):
-        # Make sure the given file actually exists.
-        if not os.path.exists(filename):
-            self._fatal('%s is missing' % (filename))
+    def _open_config(self):
+        """Open the kernel's build config file. Attempt to use the built-in
+        symbols from /proc first, then fall back to looking for a text file
+        in /boot.
 
+        @return fileobj for open config file
+        """
+        filename = '/proc/config.gz'
+        if not os.path.exists(filename):
+            utils.system("modprobe configs", ignore_status=True)
+        if os.path.exists(filename):
+            return gzip.open(filename, "r")
+
+        filename = '/boot/config-%s' % utils.system_output('uname -r')
+        if os.path.exists(filename):
+            logging.info('Falling back to reading %s', filename)
+            return file(filename, "r")
+
+        self._fatal("Cannot locate suitable kernel config file")
+
+    def _load_configs(self):
+        fileobj = self._open_config()
         # Import kernel config variables into a dictionary for each searching.
         config = dict()
-        for item in open(filename).readlines():
+        for item in fileobj.readlines():
             item = item.strip()
             if not '=' in item:
                 continue
@@ -188,7 +240,7 @@ class kernel_ConfigVerify(test.test):
 
         # Make sure we actually loaded something sensible.
         if len(config) == 0:
-            self._fatal('%s has no CONFIG variables' % (filename))
+            self._fatal('No CONFIG variables found!')
 
         return config
 
@@ -200,8 +252,7 @@ class kernel_ConfigVerify(test.test):
         self._arch = utils.get_arch()
 
         # Locate and load the list of kernel config variables.
-        self._config = self.load_configs('/boot/config-%s' %
-                                         utils.system_output('uname -r'))
+        self._config = self._load_configs()
 
         # Run the static checks.
         map(self.has_builtin, self.IS_BUILTIN)
