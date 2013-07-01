@@ -91,7 +91,7 @@ class NetworkChroot(object):
         """Remove the chroot filesystem in which the VPN server was running"""
         # TODO(pstew): Some processes take a while to exit, which will cause
         # the cleanup below to fail to complete successfully...
-        time.sleep(5)
+        time.sleep(10)
         utils.system_output('rm -rf --one-file-system %s' % self._temp_dir,
                             ignore_status=True)
 
@@ -153,32 +153,43 @@ class NetworkChroot(object):
         return os.path.join(self._temp_dir, path.lstrip('/'))
 
 
-    def get_pid_file(self, pid_file):
+    def get_pid_file(self, pid_file, missing_ok=False):
         """Returns the integer contents of |pid_file| in the chroot.
 
         @param pid_file string containing the filename within the choot
             to read and convert to an integer.  This should not contain a
             leading '/'.
+        @param missing_ok bool indicating whether to test for
+            the existence of the pid file first and return 0 if it does
+            not exist.  If false, a missing pid file will cause an exception.
 
         """
-        with open(self.chroot_path(pid_file)) as f:
+        chroot_pid_file = self.chroot_path(pid_file)
+        if missing_ok and not os.path.exists(chroot_pid_file):
+            return 0
+        with open(chroot_pid_file) as f:
             return int(f.read())
 
 
-    def kill_pid_file(self, pid_file):
+    def kill_pid_file(self, pid_file, missing_ok=False):
         """Kills the process belonging to |pid_file| in the chroot.
 
-        @param pid_file string filename within th chroot to gain the process ID
+        @param pid_file string filename within the chroot to gain the process ID
             which this method will kill.
+        @param missing_ok bool indicating whether a missing pid file is okay,
+            and should be ignored.
 
         """
-        utils.system('kill %d' % self.get_pid_file(pid_file),
-                     ignore_status=True)
+        pid = self.get_pid_file(pid_file, missing_ok)
+        if missing_ok and pid == 0:
+            return
+        utils.system('kill %d' % pid, ignore_status=True)
 
 
     def make_chroot(self):
         """Make a chroot filesystem."""
         self._temp_dir = utils.system_output('mktemp -d /tmp/chroot.XXXXXXXXX')
+        utils.system('chmod go+rX %s' % self._temp_dir)
         for rootdir in self._root_directories:
             os.mkdir(self.chroot_path(rootdir))
 

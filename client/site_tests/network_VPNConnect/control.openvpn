@@ -5,6 +5,7 @@
 AUTHOR = "pstew@chromium.org"
 NAME = "network_VPNL2TPIPSecPSK.openvpn"
 PURPOSE = "Verify shill correctly authenticates to an OpenVPN server"
+SUITE = "network_nightly"
 CRITERIA = """
 This test fails if the DUT cannot authenticate to a locally running
 OpenVPN server runing at the other end of a virtual Ethernet interface.
@@ -21,7 +22,8 @@ DOC = """
   the connection manager is correctly passing parameters to the underlying
   VPN client to have it properly connect.
 
-
 """
 
-job.run_test('network_VPNConnect', vpn_type='openvpn')
+job.run_test('network_VPNConnect',
+             vpn_type='openvpn',
+             tag=NAME.split('.')[1])

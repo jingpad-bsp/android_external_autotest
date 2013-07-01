@@ -3,13 +3,13 @@
 # found in the LICENSE file.
 
 AUTHOR = "pstew@chromium.org"
-NAME = "network_VPNConnect.l2tpipsec_psk"
-PURPOSE = "Verify shill correctly authenticates to an L2TP/IPSec PSK VPN"
+NAME = "network_VPNConnect.l2tpipsec_cert"
+PURPOSE = "Verify shill correctly authenticates to an L2TP/IPSec Cert VPN"
 SUITE = "network_nightly"
 CRITERIA = """
 This test fails if the DUT cannot authenticate to a locally running
-L2TP/IPSec PSK VPN server runing at the other end of a virtual Ethernet
-interface.
+L2TP/IPSec certificate-based VPN server running at the other end of a
+virtual Ethernet interface.
 """
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -17,7 +17,7 @@ TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 DOC = """
-  Tests that we can complete L2TP/IPSec PSK VPN authentication.
+  Tests that we can complete L2TP/IPSec certificate VPN authentication.
   This is a client-only test which verifies function of the L2TP/IPSec
   client.  Since the server it is testing against is itself, this test
   is best suited for verifying that the connection manager and VPN
@@ -27,5 +27,5 @@ DOC = """
 """
 
 job.run_test('network_VPNConnect',
-             vpn_type='l2tpipsec-psk',
+             vpn_type='l2tpipsec-cert',
              tag=NAME.split('.')[1])

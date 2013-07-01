@@ -32,6 +32,9 @@ class L2TPIPSecVPNServer(VPNServer):
     IPSEC_COMMAND = '/usr/sbin/ipsec'
     IPSEC_LOGFILE = 'var/log/charon.log'
     IPSEC_PASSWORD = 'password'
+    IPSEC_CA_CERTIFICATE = 'etc/ipsec.d/cacerts/ca.cert'
+    IPSEC_SERVER_CERTIFICATE = 'etc/ipsec.d/certs/server.cert'
+    PPPD_PID_FILE = 'var/run/ppp0.pid'
     XL2TPD_COMMAND = '/usr/sbin/xl2tpd'
     XL2TPD_CONFIG_FILE = 'etc/xl2tpd/xl2tpd.conf'
     XL2TPD_PID_FILE = 'var/run/xl2tpd.pid'
@@ -116,20 +119,20 @@ class L2TPIPSecVPNServer(VPNServer):
                 'conn L2TP\n'
                 '  keyexchange=ikev1\n'
                 '  left=%(local-ip)s\n'
-                '  leftcert=server.crt\n'
+                '  leftcert=server.cert\n'
                 '  leftid="C=US, ST=California, L=Mountain View, '
                 'CN=chromelab-wifi-testbed-server.mtv.google.com"\n'
                 '  leftprotoport=17/1701\n'
                 '  right=%%any\n'
-                '  rightca=\'C=US, ST=California, L=Mountain View, '
+                '  rightca="C=US, ST=California, L=Mountain View, '
                 'CN=chromelab-wifi-testbed-root.mtv.google.com"\n'
                 '  rightprotoport=17/%%any\n'
                 '  auto=add\n',
 
             'etc/ipsec.secrets' : ': RSA server.key ""\n',
 
-            'etc/ipsec.d/certs/server.cert' : site_eap_certs.server_cert_1,
-            'etc/ipsec.d/cacerts/ca.cert' : site_eap_certs.ca_cert_1,
+            IPSEC_SERVER_CERTIFICATE : site_eap_certs.server_cert_1,
+            IPSEC_CA_CERTIFICATE : site_eap_certs.ca_cert_1,
             'etc/ipsec.d/private/server.key' :
                 site_eap_certs.server_private_key_1,
         },
@@ -160,8 +163,8 @@ class L2TPIPSecVPNServer(VPNServer):
         })
         chroot.add_startup_command('%s start' % self.IPSEC_COMMAND)
         chroot.add_startup_command('%s -c /%s -C /tmp/l2tpd.control' %
-                                 (self.XL2TPD_COMMAND,
-                                  self.XL2TPD_CONFIG_FILE))
+                                   (self.XL2TPD_COMMAND,
+                                    self.XL2TPD_CONFIG_FILE))
         self.preload_modules()
         chroot.startup()
 
@@ -170,7 +173,8 @@ class L2TPIPSecVPNServer(VPNServer):
         """Start VPN server instance"""
         chroot = self._chroot
         chroot.run([self.IPSEC_COMMAND, 'stop'])
-        chroot.kill_pid_file(self.XL2TPD_PID_FILE)
+        chroot.kill_pid_file(self.XL2TPD_PID_FILE, missing_ok=True)
+        chroot.kill_pid_file(self.PPPD_PID_FILE, missing_ok=True)
         chroot.shutdown()
 
 

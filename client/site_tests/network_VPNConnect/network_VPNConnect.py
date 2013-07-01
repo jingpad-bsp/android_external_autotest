@@ -117,7 +117,24 @@ class network_VPNConnect(test.test):
                 'L2TPIPsec.Password': vpn_server.L2TPIPSecVPNServer.CHAP_SECRET,
                 'L2TPIPsec.PSK': vpn_server.L2TPIPSecVPNServer.IPSEC_PASSWORD,
                 'L2TPIPsec.User':vpn_server.L2TPIPSecVPNServer.CHAP_USER,
-                'Name': 'test-vpn-psk',
+                'Name': 'test-vpn-l2tp-psk',
+                'Provider.Host': self.SERVER_ADDRESS,
+                'Provider.Type': 'l2tpipsec',
+                'Type': 'vpn',
+                'VPN.Domain': 'test-vpn-psk-domain'
+            }
+        if self._vpn_type == 'l2tpipsec-cert':
+            tpm.install_certificate(site_eap_certs.client_cert_1,
+                                    site_eap_certs.cert_1_tpm_key_id)
+            tpm.install_private_key(site_eap_certs.client_private_key_1,
+                                    site_eap_certs.cert_1_tpm_key_id)
+            return {
+                'L2TPIPsec.CACertPEM': [ site_eap_certs.ca_cert_1 ],
+                'L2TPIPsec.ClientCertID': site_eap_certs.cert_1_tpm_key_id,
+                'L2TPIPsec.User':vpn_server.L2TPIPSecVPNServer.CHAP_USER,
+                'L2TPIPsec.Password': vpn_server.L2TPIPSecVPNServer.CHAP_SECRET,
+                'L2TPIPsec.PIN': tpm.PIN,
+                'Name': 'test-vpn-l2tp-cert',
                 'Provider.Host': self.SERVER_ADDRESS,
                 'Provider.Type': 'l2tpipsec',
                 'Type': 'vpn',
@@ -174,7 +191,8 @@ class network_VPNConnect(test.test):
                     interface_name=self.SERVER_INTERFACE_NAME,
                     peer_interface_name=self.CLIENT_INTERFACE_NAME,
                     peer_interface_ip=client_address_and_prefix,
-                    interface_ip=server_address_and_prefix) as ethernet_pair:
+                    interface_ip=server_address_and_prefix,
+                    ignore_shutdown_errors=True) as ethernet_pair:
                 if not ethernet_pair.is_healthy:
                     raise error.TestFail('Virtual ethernet pair failed.')
 

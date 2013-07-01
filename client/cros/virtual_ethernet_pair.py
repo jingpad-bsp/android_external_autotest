@@ -56,7 +56,8 @@ class VirtualEthernetPair(object):
                  interface_name="veth_master",
                  peer_interface_name="veth_slave",
                  interface_ip="10.9.8.1/24",
-                 peer_interface_ip="10.9.8.2/24"):
+                 peer_interface_ip="10.9.8.2/24",
+                 ignore_shutdown_errors=False):
         """
         Construct a object managing a virtual ethernet pair.  One end of the
         interface will be called |interface_name|, and the peer end
@@ -73,6 +74,7 @@ class VirtualEthernetPair(object):
         self._peer_interface_name = peer_interface_name
         self._interface_ip = interface_ip
         self._peer_interface_ip = peer_interface_ip
+        self._ignore_shutdown_errors = ignore_shutdown_errors
 
     def setup(self):
         """
@@ -179,9 +181,19 @@ class VirtualEthernetPair(object):
         Remove the virtual ethernet device installed by
         _create_test_interface().
         """
-        utils.system("ifconfig %s down" % self._interface_name)
-        utils.system("ifconfig %s down" % self._peer_interface_name)
-        utils.system("ip link delete %s &> /dev/null " % self._interface_name)
+        utils.system("ifconfig %s down" % self._interface_name,
+                     ignore_status=self._ignore_shutdown_errors)
+        utils.system("ifconfig %s down" % self._peer_interface_name,
+                     ignore_status=self._ignore_shutdown_errors)
+        utils.system("ip link delete %s &> /dev/null " % self._interface_name,
+                     ignore_status=self._ignore_shutdown_errors)
+
+        # Under most normal circumstances a successful deletion of
+        # |_interface_name| should also remove |_peer_interface_name|,
+        # but if we elected to ignore failures above, that may not be
+        # the case.
+        utils.system("ip link delete %s &> /dev/null " %
+                     self._peer_interface_name, ignore_status=True)
 
     def _create_test_interface(self):
         """
