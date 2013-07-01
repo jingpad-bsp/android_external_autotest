@@ -13,6 +13,8 @@ from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 import mm
 
+TEST_TIMEOUT = 120
+
 # Preconditions for starting
 START_DEVICE_PRESENT = 'start_device_present'
 START_UDEVADM_RUNNING = 'start_udevadm_running'
@@ -335,13 +337,13 @@ class network_3GRecoverFromGobiDesync(test.test):
     self.bus = dbus.SystemBus(mainloop=bus_loop)
     try:
       logging.info('Testing failure during DataConnect')
-      DataConnectTest(self.bus).Wait(60)
+      DataConnectTest(self.bus).Wait(TEST_TIMEOUT)
 
       logging.info('Testing failure while in regular operation')
-      RegularOperationTest(self.bus).Wait(60)
+      RegularOperationTest(self.bus).Wait(TEST_TIMEOUT)
 
       logging.info('Testing failure during device initialization')
-      ApiConnectTest(self.bus).Wait(60)
+      ApiConnectTest(self.bus).Wait(TEST_TIMEOUT)
 
       logging.info('Testing that Enable and Disable technology still work')
       EnableDisableTest().Test()
