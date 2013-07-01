@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.server.cros.wlan import wifi_cell_test_base
 
 
@@ -28,6 +30,10 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
             self.context.configure(router_conf)
             client_conf.ssid = self.context.router.get_ssid()
             self.context.assert_connect_wifi(client_conf)
-            self.context.assert_ping_from_dut()
-            self.context.client.shill.disconnect(client_conf.ssid)
+            if client_conf.expect_failure:
+                logging.info('Skipping ping because we expected this '
+                             'attempt to fail.')
+            else:
+                self.context.assert_ping_from_dut()
+                self.context.client.shill.disconnect(client_conf.ssid)
             self.context.router.deconfig()

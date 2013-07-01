@@ -206,13 +206,12 @@ class WiFiTestContextManager(object):
             self._router.destroy()
 
 
-    def assert_connect_wifi(self, wifi_params, expect_failure=False):
+    def assert_connect_wifi(self, wifi_params):
         """Connect to a WiFi network and check for success.
 
         Connect a DUT to a WiFi network and check that we connect successfully.
 
         @param wifi_params AssociationParameters describing network to connect.
-        @param expect_failure bool True is connecting should fail.
 
         """
         logging.info('Connecting to %s.', wifi_params.ssid)
@@ -225,14 +224,19 @@ class WiFiTestContextManager(object):
                      assoc_result.association_time,
                      assoc_result.configuration_time)
 
-        if assoc_result.success and expect_failure:
+        if assoc_result.success and wifi_params.expect_failure:
             raise error.TestFail(
                     'Expected connect to fail, but it was successful.')
 
-        if not assoc_result.success and not expect_failure:
+        if not assoc_result.success and not wifi_params.expect_failure:
             raise error.TestFail('Expected connect to succeed, but it failed '
                                  'with reason: %s.' %
                                  assoc_result.failure_reason)
+
+        if wifi_params.expect_failure:
+            logging.info('Unable to connect to %s (as intended).',
+                         wifi_params.ssid)
+            return
 
         logging.info('Connected successfully to %s.', wifi_params.ssid)
 

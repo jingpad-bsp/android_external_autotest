@@ -47,7 +47,8 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
                  discovery_timeout=DEFAULT_DISCOVERY_TIMEOUT,
                  association_timeout=DEFAULT_ASSOCIATION_TIMEOUT,
                  configuration_timeout=DEFAULT_CONFIGURATION_TIMEOUT,
-                 is_hidden=False, save_credentials=False, station_type=None):
+                 is_hidden=False, save_credentials=False, station_type=None,
+                 expect_failure=False):
         """Construct an AssociationParameters.
 
         @param ssid string the network to connect to (e.g. 'GoogleGuest').
@@ -61,6 +62,8 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
         @param station_type string station type to connect with.  Usually
                 left unfilled unless we're attempting to connect to a
                 non-managed BSS.  One of STATION_TYPE_* above.
+        @param expect_failure bool True if we expect this connection attempt to
+                fail.
 
         """
         super(AssociationParameters, self).__init__()
@@ -81,6 +84,7 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
         self.is_hidden = is_hidden
         self.save_credentials = save_credentials
         self.station_type = station_type
+        self.expect_failure = expect_failure
 
 
 class AssociationResult(xmlrpc_types.XmlRpcStruct):

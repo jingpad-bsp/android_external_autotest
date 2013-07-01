@@ -195,13 +195,15 @@ class EAPConfig(SecurityConfig):
     SERVICE_PROPERTY_EAP_IDENTITY = 'EAP.Identity'
     SERVICE_PROPERTY_EAP_KEY_MGMT = 'EAP.KeyMgmt'
     SERVICE_PROPERTY_PRIVATE_KEY = 'EAP.PrivateKey'
+    SERVICE_PROPERTY_USE_SYSTEM_CAS = 'EAP.UseSystemCAs'
 
-    def __init__(self, security='802_1x', file_suffix=None,
+    def __init__(self, security='802_1x', file_suffix=None, use_system_cas=None,
                  server_ca_cert=None, server_cert=None, server_key=None,
                  client_ca_cert=None, client_cert=None, client_key=None):
         """Construct an EAPConfig.
 
         @param file_suffix string unique file suffix on DUT.
+        @param use_system_cas False iff we should ignore server certificates.
         @param server_ca_cert string PEM encoded CA certificate for the server.
         @param server_cert string PEM encoded identity certificate for server.
         @param server_key string PEM encoded private key for server.
@@ -211,6 +213,7 @@ class EAPConfig(SecurityConfig):
 
         """
         super(EAPConfig, self).__init__(security=security)
+        self.use_system_cas = use_system_cas
         self.server_ca_cert = server_ca_cert
         self.server_cert = server_cert
         self.server_key = server_key
@@ -248,6 +251,9 @@ class EAPConfig(SecurityConfig):
                  (client_host, self.client_cert, self.client_cert_file),
                  (client_host, self.client_key, self.client_key_file)]
         for host, content, path in files:
+            # If we omit a parameter, just omit copying a file over.
+            if content is None:
+                continue
             # Write the contents to local disk first so we can use the easy
             # built in mechanism to do this.
             with tempfile.NamedTemporaryFile() as f:
@@ -261,12 +267,18 @@ class EAPConfig(SecurityConfig):
 
     def get_shill_service_properties(self):
         """@return dict of shill service properties."""
-        return {self.SERVICE_PROPERTY_EAP_KEY_MGMT: 'IEEE8021X',
-                # We hardcoded this user into those certificates.
-                self.SERVICE_PROPERTY_EAP_IDENTITY: 'chromeos',
-                self.SERVICE_PROPERTY_CA_CERT: self.client_ca_cert_file,
-                self.SERVICE_PROPERTY_CLIENT_CERT: self.client_cert_file,
-                self.SERVICE_PROPERTY_PRIVATE_KEY: self.client_key_file}
+        ret = {}
+        ret = {# We hardcoded this user into those certificates.
+               self.SERVICE_PROPERTY_EAP_IDENTITY: 'chromeos'}
+        if self.client_ca_cert:
+            ret[self.SERVICE_PROPERTY_CA_CERT] = self.client_ca_cert_file
+        if self.client_cert:
+            ret[self.SERVICE_PROPERTY_CLIENT_CERT] = self.client_cert_file
+        if self.client_key:
+            ret[self.SERVICE_PROPERTY_PRIVATE_KEY] = self.client_key_file
+        if self.use_system_cas is not None:
+            ret[self.SERVICE_PROPERTY_USE_SYSTEM_CAS] = self.use_system_cas
+        return ret
 
 
     def get_hostapd_config(self):
@@ -326,4 +338,54 @@ class DynamicWEPConfig(EAPConfig):
         ret.update({'wep_key_len_broadcast': key_len,
                     'wep_key_len_unicast': key_len,
                     'wep_rekey_period': self.wep_rekey_period})
+        return ret
+
+
+    def get_shill_service_properties(self):
+        """@return dict of shill service properties."""
+        ret = super(DynamicWEPConfig, self).get_shill_service_properties()
+        ret.update({self.SERVICE_PROPERTY_EAP_KEY_MGMT: 'IEEE8021X'})
+        return ret
+
+
+class WPAEAPConfig(EAPConfig):
+    """Security type to set up a WPA tunnel via EAP-TLS negotiation."""
+
+    def __init__(self, file_suffix=None, use_system_cas=None,
+                 server_ca_cert=None, server_cert=None, server_key=None,
+                 client_ca_cert=None, client_cert=None, client_key=None):
+        """Construct a DynamicWEPConfig.
+
+        @param file_suffix string unique file suffix on DUT.
+        @param use_system_cas False iff we should ignore server certificates.
+        @param server_ca_cert string PEM encoded CA certificate for the server.
+        @param server_cert string PEM encoded identity certificate for server.
+        @param server_key string PEM encoded private key for server.
+        @param client_ca_cert string PEM encoded CA certificate for client.
+        @param client_cert string PEM encoded identity certificate for client.
+        @param client_key string PEM encoded private key for client.
+
+        """
+        super(WPAEAPConfig, self).__init__(
+                security='802_1x', file_suffix=file_suffix,
+                use_system_cas=use_system_cas,
+                server_ca_cert=server_ca_cert, server_cert=server_cert,
+                server_key=server_key, client_ca_cert=client_ca_cert,
+                client_cert=client_cert, client_key=client_key)
+
+
+    def get_shill_service_properties(self):
+        """@return dict of shill service properties."""
+        return super(WPAEAPConfig, self).get_shill_service_properties()
+
+
+    def get_hostapd_config(self):
+        """@return dict fragment of hostapd configuration for security."""
+        ret = super(WPAEAPConfig, self).get_hostapd_config()
+        # If we wanted to expand test coverage to WPA2/PEAP combinations
+        # or particular ciphers, we'd have to let people set these
+        # settings manually.  But for now, do the simple thing.
+        ret.update({'wpa': WPAConfig.MODE_PURE_WPA,
+                    'wpa_pairwise': WPAConfig.CIPHER_CCMP,
+                    'wpa_key_mgmt':'WPA-EAP'})
         return ret
