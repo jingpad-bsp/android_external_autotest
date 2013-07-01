@@ -128,12 +128,10 @@ def get_tests_to_analyze():
     return dict(always_failed.items() + running_passes.items())
 
 
-def email_about_test_failure(tests, storage):
+def store_results(tests, storage):
     """
-    Send emails based on the last time tests has passed.
+    Store information about tests that have been failing for a long time.
 
-    This involves updating the storage and sending an email if a test has
-    failed for a long time.
 
     @param tests: The test_name:time_of_last_pass pairs.
     @param storage: The storage object.
@@ -152,6 +150,14 @@ def email_about_test_failure(tests, storage):
             except KeyError:
                 pass
 
+
+def email_about_test_failure(storage):
+    """
+    Send an email about all the tests in the storage object if there are any.
+
+    @param storage: The storage object.
+
+    """
     if storage:
         mail.send(_MAIL_RESULTS_FROM,
                   [_MAIL_RESULTS_TO],
@@ -172,7 +178,8 @@ def main():
     """
     storage = load_storage()
     tests = get_tests_to_analyze()
-    email_about_test_failure(tests, storage)
+    store_results(tests, storage)
+    email_about_test_failure(storage)
     save_storage(storage)
 
     return 0
