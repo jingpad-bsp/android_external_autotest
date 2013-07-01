@@ -61,7 +61,9 @@ class SecurityConfig(xmlrpc_types.XmlRpcStruct):
 
 
     def __repr__(self):
-        return '%s(security=%r)' % (self.__class__.__name__, self.security)
+        return '%s(%s)' % (self.__class__.__name__,
+                           ', '.join(['%s=%r' % item
+                                      for item in vars(self).iteritems()]))
 
 
 class WEPConfig(SecurityConfig):
@@ -114,12 +116,6 @@ class WEPConfig(SecurityConfig):
         return {self.SERVICE_PROPERTY_PASSPHRASE: '%d:%s' % (
                         self.wep_default_key,
                         self.wep_keys[self.wep_default_key])}
-
-
-    def __repr__(self):
-        return '%s(wep_keys=%r, wep_default_key=%r)' % (self.__class__.__name__,
-                                                        self.wep_keys,
-                                                        self.wep_default_key)
 
 
 class WPAConfig(SecurityConfig):
@@ -191,39 +187,21 @@ class WPAConfig(SecurityConfig):
         return {self.SERVICE_PROPERTY_PASSPHRASE: self.psk}
 
 
-    def __repr__(self):
-        return '%s(psk=%r, wpa_mode=%r, wpa_ciphers=%r, wpa2_ciphers=%r)' % (
-                self.__class__.__name__,
-                self.psk,
-                self.wpa_mode,
-                self.wpa_ciphers,
-                self.wpa2_ciphers)
+class EAPConfig(SecurityConfig):
+    """Abstract superclass that implements certificate/key installation."""
 
-
-class DynamicWEPConfig(SecurityConfig):
-    """Configuration settings bundle for dynamic WEP.
-
-    This is a WEP encrypted connection where the keys are negotiated after the
-    client authenticates via 802.1x.
-
-    """
-    DEFAULT_REKEY_PERIOD = 20
     SERVICE_PROPERTY_CA_CERT = 'EAP.CACert'
     SERVICE_PROPERTY_CLIENT_CERT = 'EAP.ClientCert'
     SERVICE_PROPERTY_EAP_IDENTITY = 'EAP.Identity'
     SERVICE_PROPERTY_EAP_KEY_MGMT = 'EAP.KeyMgmt'
     SERVICE_PROPERTY_PRIVATE_KEY = 'EAP.PrivateKey'
 
-
-    def __init__(self, use_short_keys=False,
-                 wep_rekey_period=DEFAULT_REKEY_PERIOD,
+    def __init__(self, security='802_1x', file_suffix=None,
                  server_ca_cert=None, server_cert=None, server_key=None,
-                 client_ca_cert=None, client_cert=None, client_key=None,
-                 file_suffix=None):
-        """Construct a DynamicWEPConfig.
+                 client_ca_cert=None, client_cert=None, client_key=None):
+        """Construct an EAPConfig.
 
-        @param use_short_keys bool force hostapd to use 40 bit WEP keys.
-        @param wep_rekey_period int number of second between rekeys.
+        @param file_suffix string unique file suffix on DUT.
         @param server_ca_cert string PEM encoded CA certificate for the server.
         @param server_cert string PEM encoded identity certificate for server.
         @param server_key string PEM encoded private key for server.
@@ -232,9 +210,7 @@ class DynamicWEPConfig(SecurityConfig):
         @param client_key string PEM encoded private key for client.
 
         """
-        super(DynamicWEPConfig, self).__init__(security='wep')
-        self.use_short_keys = use_short_keys
-        self.wep_rekey_period = wep_rekey_period
+        super(EAPConfig, self).__init__(security=security)
         self.server_ca_cert = server_ca_cert
         self.server_cert = server_cert
         self.server_key = server_key
@@ -255,23 +231,6 @@ class DynamicWEPConfig(SecurityConfig):
         self.client_key_file = '/tmp/pkg_key.' + file_suffix
         # While these paths won't make it across the network, the suffix will.
         self.file_suffix = file_suffix
-
-
-    def get_hostapd_config(self):
-        """@return dict fragment of hostapd configuration for security."""
-        key_len = 13 # 128 bit WEP, 104 secret bits.
-        if self.use_short_keys:
-            key_len = 5 # 64 bit WEP, 40 bits of secret.
-        ret = {'ieee8021x': 1, # Enable 802.1x support.
-               'eap_server' : 1, # Do EAP inside hostapd to avoid RADIUS.
-               'wep_key_len_broadcast': key_len,
-               'wep_key_len_unicast': key_len,
-               'wep_rekey_period': self.wep_rekey_period,
-               'ca_cert': self.server_ca_cert_file,
-               'server_cert': self.server_cert_file,
-               'private_key': self.server_key_file,
-               'eap_user_file': self.server_eap_user_file}
-        return ret
 
 
     def install_files(self, router_host, client_host):
@@ -310,16 +269,61 @@ class DynamicWEPConfig(SecurityConfig):
                 self.SERVICE_PROPERTY_PRIVATE_KEY: self.client_key_file}
 
 
-    def __repr__(self):
-        return ('%s(use_short_keys=%r, wep_rekey_period=%r, '
-                'server_ca_cert=%r, server_cert=%r, server_key=%r, '
-                'client_ca_cert=%r, client_cert=%r, client_key=%r)' % (
-                self.__class__.__name__,
-                self.use_short_keys,
-                self.wep_rekey_period,
-                self.server_ca_cert,
-                self.server_cert,
-                self.server_key,
-                self.client_ca_cert,
-                self.client_cert,
-                self.client_key))
+    def get_hostapd_config(self):
+        """@return dict fragment of hostapd configuration for security."""
+        return {'ieee8021x': 1, # Enable 802.1x support.
+                'eap_server' : 1, # Do EAP inside hostapd to avoid RADIUS.
+                'ca_cert': self.server_ca_cert_file,
+                'server_cert': self.server_cert_file,
+                'private_key': self.server_key_file,
+                'eap_user_file': self.server_eap_user_file}
+
+
+class DynamicWEPConfig(EAPConfig):
+    """Configuration settings bundle for dynamic WEP.
+
+    This is a WEP encrypted connection where the keys are negotiated after the
+    client authenticates via 802.1x.
+
+    """
+
+    DEFAULT_REKEY_PERIOD = 20
+
+
+    def __init__(self, use_short_keys=False,
+                 wep_rekey_period=DEFAULT_REKEY_PERIOD,
+                 server_ca_cert=None, server_cert=None, server_key=None,
+                 client_ca_cert=None, client_cert=None, client_key=None,
+                 file_suffix=None):
+        """Construct a DynamicWEPConfig.
+
+        @param use_short_keys bool force hostapd to use 40 bit WEP keys.
+        @param wep_rekey_period int number of second between rekeys.
+        @param server_ca_cert string PEM encoded CA certificate for the server.
+        @param server_cert string PEM encoded identity certificate for server.
+        @param server_key string PEM encoded private key for server.
+        @param client_ca_cert string PEM encoded CA certificate for client.
+        @param client_cert string PEM encoded identity certificate for client.
+        @param client_key string PEM encoded private key for client.
+        @param file_suffix string unique file suffix on DUT.
+
+        """
+        super(DynamicWEPConfig, self).__init__(
+                security='wep', file_suffix=file_suffix,
+                server_ca_cert=server_ca_cert, server_cert=server_cert,
+                server_key=server_key, client_ca_cert=client_ca_cert,
+                client_cert=client_cert, client_key=client_key)
+        self.use_short_keys = use_short_keys
+        self.wep_rekey_period = wep_rekey_period
+
+
+    def get_hostapd_config(self):
+        """@return dict fragment of hostapd configuration for security."""
+        ret = super(DynamicWEPConfig, self).get_hostapd_config()
+        key_len = 13 # 128 bit WEP, 104 secret bits.
+        if self.use_short_keys:
+            key_len = 5 # 64 bit WEP, 40 bits of secret.
+        ret.update({'wep_key_len_broadcast': key_len,
+                    'wep_key_len_unicast': key_len,
+                    'wep_rekey_period': self.wep_rekey_period})
+        return ret
