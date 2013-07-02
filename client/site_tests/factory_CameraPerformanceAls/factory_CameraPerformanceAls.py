@@ -11,6 +11,7 @@ except ImportError:
     pass
 
 import base64
+import logging
 import numpy as np
 import os
 import pprint
@@ -24,6 +25,7 @@ import subprocess
 import sys
 import threading
 import time
+import xmlrpclib
 
 import autotest_lib.client.cros.camera.perf_tester as camperf
 import autotest_lib.client.cros.camera.renderer as renderer
@@ -34,8 +36,11 @@ from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.event_log import Log
 from cros.factory.test import factory
 from cros.factory.test import leds
+from cros.factory.test import shopfloor
 from cros.factory.test import test_ui
+from cros.factory.test import utils
 from cros.factory.test.media_util import MountedMedia
+from cros.factory.utils import net_utils
 from cros.factory.utils.process_utils import SpawnOutput
 from autotest_lib.client.cros.rf.config import PluggableConfig
 from autotest_lib.client.cros import tty
@@ -51,6 +56,137 @@ _TEST_TYPE_FULL = 'Full'
 _CONTENT_IMG = 'image'
 _CONTENT_TXT = 'text'
 
+_INSERT_ETHERNET_DONGLE_TIMEOUT_SECS = 30 # Timeout for inserting dongle.
+_IP_SETUP_TIMEOUT_SECS = 10 # Timeout for setting IP address.
+_SHOPFLOOR_TIMEOUT_SECS = 10 # Timeout for shopfloor connection.
+_SHOPFLOOR_RETRY_INTERVAL_SECS = 10 # Seconds to wait between retries.
+
+class _ShopfloorWrapper(object):
+    '''Wraps shopfloor connectivity.'''
+
+    def __init__(self, ip_addr):
+        self.ip_addr = ip_addr
+
+    def _prepare_network(self, force_new_ip):
+        '''Blocks forever until network is prepared.
+
+        Args:
+            force_new_ip: always set new IP regardless of existing IP.
+        '''
+        def _obtain_IP():
+            if self.ip_addr is None:
+                net_utils.SendDhcpRequest()
+            else:
+                net_utils.SetEthernetIp(self.ip_addr, force=force_new_ip)
+            return True if net_utils.GetEthernetIp() else False
+
+        factory.console.info('Detecting Ethernet device...')
+        try:
+            net_utils.PollForCondition(condition=(
+                lambda: True if net_utils.FindUsableEthDevice() else False),
+                timeout=_INSERT_ETHERNET_DONGLE_TIMEOUT_SECS,
+                condition_name='Detect Ethernet device')
+
+            # Only setup the IP if required so.
+            current_ip = net_utils.GetEthernetIp(
+                net_utils.FindUsableEthDevice())
+            if not current_ip or force_new_ip:
+              factory.console.info('Setting up IP address...')
+              net_utils.PollForCondition(condition=_obtain_IP,
+                  timeout=_IP_SETUP_TIMEOUT_SECS,
+                  condition_name='Setup IP address')
+        except:  # pylint: disable=W0702
+            exception_string = utils.FormatExceptionOnly()
+            factory.console.error('Unable to setup network: %s',
+                                  exception_string)
+
+        factory.console.info('Network prepared. IP: %r',
+                             net_utils.GetEthernetIp())
+
+    def _get_shopfloor_connection(self,
+        timeout_secs=_SHOPFLOOR_TIMEOUT_SECS,
+        retry_interval_secs=_SHOPFLOOR_RETRY_INTERVAL_SECS):
+        """Returns a shopfloor client object.
+
+        Try forever until a connection of shopfloor is established.
+
+        Args:
+            timeout_secs: Timeout for shopfloor connection.
+            retry_interval_secs: Seconds to wait between retries.
+        """
+        factory.console.info('Connecting to shopfloor...')
+        while True:
+            try:
+                shopfloor_client = shopfloor.get_instance(
+                    detect=True, timeout=timeout_secs)
+                break
+            except:  # pylint: disable=W0702
+                exception_string = utils.FormatExceptionOnly()
+                # Log only the exception string, not the entire exception,
+                # since this may happen repeatedly.
+                factory.console.error('Unable to sync with shopfloor: %s',
+                                      exception_string)
+            time.sleep(retry_interval_secs)
+        return shopfloor_client
+
+    def download_param(self, on_param_downloaded, force_new_ip,
+                       directory, param_file,
+                       blocking):
+        '''Read parameters from shopfloor server.
+
+        Args:
+            on_param_downloaded: Callback with downloaded parameters.
+            force_new_ip: Always set new IP regardless of existing IP.
+            directory: Relative path to shopfloor parameters folder.
+            param_file: Filename of camera parameter file on shopfloor.
+            blocking: True if download parameters in the same thread. False if
+                      creating a dedicated thread for this.
+        '''
+        def _impl(on_param_downloaded, force_new_ip,
+                  directory, param_file):
+            self._prepare_network(force_new_ip)
+            sf = self._get_shopfloor_connection()
+            param_path = os.path.join(directory, param_file)
+            binary_obj = sf.GetParameter(param_path)
+            factory.console.info('Read %s from shopfloor', param_path)
+            on_param_downloaded(binary_obj.data)
+
+        wrapper = lambda: _impl(on_param_downloaded=on_param_downloaded,
+                                  force_new_ip=force_new_ip,
+                                  directory=directory,
+                                  param_file=param_file)
+
+        if not blocking:
+            return utils.StartDaemonThread(
+                target=wrapper)
+        else:
+            wrapper()
+
+    def upload_log(self, force_new_ip, aux_log):
+        '''Uploads logs to shopfloor server.
+
+        Args:
+            force_new_ip: Always set new IP regardless of existing IP.
+            aux_log: A tuple of (aux_log_name, aux_log_data).
+        '''
+        self._prepare_network(force_new_ip)
+        sf = self._get_shopfloor_connection()
+
+        if aux_log:
+            try:
+                aux_log_name = aux_log[0]
+                aux_log_data = aux_log[1]
+                factory.console.info('Uploading %s', aux_log_name)
+                start_time = time.time()
+                sf.SaveAuxLog(aux_log_name, xmlrpclib.Binary(aux_log_data))
+                factory.console.info('Successfully synced %s in %.03f s',
+                                     aux_log_name, time.time() - start_time)
+            except:  # pylint: disable=W0702
+                exception_string = utils.FormatExceptionOnly()
+                factory.console.error('Failed to upload %s: %s',
+                                      aux_log_name,
+                                      exception_string)
+                raise
 
 class ALS():
     '''Class to interface the ambient light sensor over iio.'''
@@ -218,11 +354,9 @@ class ConnectionMonitor():
 
 
 class factory_CameraPerformanceAls(test.test):
-    version = 2
+    version = 3
     preserve_srcdir = True
 
-    _TEST_CHART_FILE = 'test_chart.png'
-    _TEST_SAMPLE_FILE = 'sample.png'
     _BAD_SERIAL_NUMBER = 'BAD_SN'
     _NO_SERIAL_NUMBER = 'NO_SN'
 
@@ -282,8 +416,22 @@ class factory_CameraPerformanceAls(test.test):
             assert hasattr(self, event)
             self.ui.AddEventHandler(event, getattr(self, event))
 
+    def get_test_chart_file(self):
+        return 'test_chart_%s.png' % self.test_chart_version
+
+    def get_test_sample_file(self):
+        return 'sample_%s.png' % self.test_chart_version
+
     def prepare_test(self):
-        self.ref_data = camperf.PrepareTest(self._TEST_CHART_FILE)
+        self.ref_data = camperf.PrepareTest(self.get_test_chart_file())
+
+    def on_param_downloaded_from_shopfloor(self, param):
+        self.prepare_test()
+        self.config = eval(param)
+        self.reset_data()
+        self.config_loaded = True
+        factory.console.info("Config loaded from shopfloor.")
+        self.ui.CallJSFunction("OnShopfloorInit", self.config['sn_format'])
 
     def on_usb_insert(self, dev_path):
         if not self.config_loaded:
@@ -358,12 +506,9 @@ class factory_CameraPerformanceAls(test.test):
         self.target = None
         self.target_colorful = None
         self.analyzed = None
-        if self.type == _TEST_TYPE_FULL:
-            self.log = factory.console.info
-        else:
-            self.log_to_file = StringIO.StringIO()
-            self.log = lambda *x: (factory.console.info(*x),
-                                   self.log_to_file.write(*x))
+        self.log_to_file = StringIO.StringIO()
+        self.log = lambda *x: (factory.console.info(*x),
+                               self.log_to_file.write(*x))
 
         for var in self.status_names:
             self.update_result(var, None)
@@ -419,12 +564,14 @@ class factory_CameraPerformanceAls(test.test):
         self.log("Result in summary:\n%s\n" %
                  pprint.pformat(self.result_dict))
         Log('cam_performance_test_result', **self.result_dict)
+        Log('cam_performance_fail_cause', cam_fail_cause=self.fail_cause)
         self.update_pbar(pid='end_test')
 
     def write_to_usb(self, filename, content, content_type=_CONTENT_TXT):
         try:
             with MountedMedia(self.dev_path, 1) as mount_dir:
                 if content_type == _CONTENT_TXT:
+                    # Appends the text log.
                     with open(os.path.join(mount_dir, filename), 'a') as f:
                         f.write(content)
                 elif content_type == _CONTENT_IMG:
@@ -434,12 +581,15 @@ class factory_CameraPerformanceAls(test.test):
             return False
         return True
 
+    def normalize_as_filename(self, token):
+        return re.sub(r'\W+', '_', token)
+
     def save_log_to_usb(self):
-        # Save an image for further analysis in case of the camera
-        # performance fail.
+        # Save an image for further analysis
         self.update_status(mid='save_to_usb')
-        if  (self.target is not None) and (self.log_good_image or
-                                           not self.cam_pass):
+        if ((self.target is not None) and
+            ((self.cam_pass and self.log_good_image) or
+             (not self.cam_pass and self.log_bad_image))):
             if not self.write_to_usb(self.serial_number + ".bmp",
                                      self.target, _CONTENT_IMG):
                 return False
@@ -450,9 +600,32 @@ class factory_CameraPerformanceAls(test.test):
         return self.write_to_usb(
             self.serial_number + ".txt", self.log_to_file.getvalue())
 
+    def save_log_to_shopfloor(self):
+        ''' Updates image and aux log to shopfloor server.'''
+        self.update_status(mid='save_to_shopfloor')
+        aux_log_name = '%s_%s.txt' % (
+            self.normalize_as_filename(
+                os.environ.get('CROS_FACTORY_TEST_PATH')),
+            self.serial_number)
+
+        if ((self.target is not None) and
+            ((self.cam_pass and self.log_good_image) or
+             (not self.cam_pass and self.log_bad_image))):
+            # TODO (jchuang): add image upload.
+            raise NotImplementedError(
+                'Image uploading is not implemented yet')
+
+        self.shopfloor.upload_log(
+            force_new_ip=False, aux_log=(
+                aux_log_name,
+                self.log_to_file.getvalue()))
+
     def finalize_test(self):
         self.generate_final_result()
-        if self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
+        if self.shopfloor:
+            self.save_log_to_shopfloor()
+            self.update_pbar(pid='save_to_shopfloor')
+        elif self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
             # We block the test flow until we successfully dumped the result.
             while not self.save_log_to_usb():
                 time.sleep(0.5)
@@ -696,7 +869,7 @@ class factory_CameraPerformanceAls(test.test):
             self.log("Error reading images from the camera!\n")
             return False
         if self.unit_test:
-            self.target_colorful = cv2.imread(self._TEST_SAMPLE_FILE)
+            self.target_colorful = cv2.imread(self.get_test_sample_file())
 
         self.target = cv2.cvtColor(self.target_colorful, cv.CV_BGR2GRAY)
         self.update_result('cam_stat', True)
@@ -758,6 +931,7 @@ class factory_CameraPerformanceAls(test.test):
                 self.update_fail_cause('WrongImage')
 
             self.log('Visual correctness: %s\n' % tar_data.msg)
+            finish_log_visual_data()
             return
         self.update_pbar(pid='check_vc')
 
@@ -776,6 +950,7 @@ class factory_CameraPerformanceAls(test.test):
         if not success:
             self.log('Lens shading: %s\n' % tar_ls.msg)
             self.update_fail_cause('LenShading')
+            finish_log_visual_data()
             return
         self.update_pbar(pid='check_ls')
 
@@ -913,7 +1088,10 @@ class factory_CameraPerformanceAls(test.test):
         return
 
     def run_once(self, test_type = _TEST_TYPE_FULL, unit_test = False,
-                 use_als = True, log_good_image = False,
+                 use_als = True, test_chart_version = 'A',
+                 log_good_image = False, log_bad_image = True,
+                 data_method = 'usb', ip_addr = None,
+                 shopfloor_directory = None, shopfloor_param_file = None,
                  device_index = -1, ignore_enter_key = False,
                  auto_serial_number = None):
         '''The entry point of the test.
@@ -935,13 +1113,21 @@ class factory_CameraPerformanceAls(test.test):
                        captured image with the sample test image and run the
                        camera performance test on it.
             use_als:    Whether to use the ambient light sensor.
-            log_good_image: Log images that pass that test
-                            (By default, only failed images are logged)
-            device_index: video device index (-1 to auto pick device by OpenCV)
-            ignore_enter_key: disable enter key in serial number input
+            test_chart_version: Version of the test chart.
+            log_good_image: Log images that pass that test.
+            log_bad_image: Log images that fail that test.
+            data_method: How to read parameter and save results.
+                         ('usb' or 'shopfloor')
+            ip_addr: Network setting when data_method is 'shopfloor'.
+                     If ip_addr is None, use DHCP.
+            shopfloor_directory: Relative path to shopfloor parameters folder.
+            shopfloor_param_file: Filename of camera parameter file on shopfloor
+                                  server.
+            device_index: video device index (-1 to auto pick device by OpenCV).
+            ignore_enter_key: disable enter key in serial number input.
                               (Some barcode reader automatically input enter
                                key, but we may prefer not to start the test
-                               immediately after barcode is scanned)
+                               immediately after barcode is scanned.)
             auto_serial_number: None or (module keyword, regexp pattern with one
                                 matching group in MULTILINE mode)
                                 It support all Module, AB, and Full test types.
@@ -955,17 +1141,32 @@ class factory_CameraPerformanceAls(test.test):
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
 
+        # Set logging level. Otherwise, update_preview() will log the whole
+        # image data to factory log under the default log level of autotest.
+        logging.getLogger().setLevel(logging.INFO)
+
         # Initialize variables and environment.
         assert test_type in [_TEST_TYPE_FULL, _TEST_TYPE_AB, _TEST_TYPE_MODULE]
         assert unit_test in [True, False]
         assert use_als in [True, False]
+        assert test_chart_version in ['A', 'B']
         assert log_good_image in [True, False]
+        assert log_bad_image in [True, False]
+        assert data_method in ['usb', 'shopfloor']
+        assert shopfloor_directory is None or type(shopfloor_directory) == str
+        assert shopfloor_param_file is None or type(shopfloor_param_file) == str
         assert ignore_enter_key in [True, False]
         assert auto_serial_number is None or type(auto_serial_number) == tuple
         self.type = test_type
         self.unit_test = unit_test
         self.use_als = use_als
+        self.test_chart_version = test_chart_version
         self.log_good_image = log_good_image
+        self.log_bad_image = log_bad_image
+        if data_method == 'shopfloor':
+            self.shopfloor = _ShopfloorWrapper(ip_addr)
+        else:
+            self.shopfloor = None
         self.device_index = device_index
         self.ignore_enter_key = ignore_enter_key
         self.auto_serial_number = auto_serial_number
@@ -979,11 +1180,20 @@ class factory_CameraPerformanceAls(test.test):
         self.base_config = PluggableConfig({})
         os.chdir(self.srcdir)
 
-        # Setup the usb disk and usb-to-serial adapter monitor.
-        usb_monitor = ConnectionMonitor()
-        usb_monitor.start(subsystem='block', device_type='disk',
-                          on_insert=self.on_usb_insert,
-                          on_remove=self.on_usb_remove)
+        if self.shopfloor:
+            # test_ui.UI.Run() requires blocking UI thread for autotest.
+            self.shopfloor.download_param(
+                on_param_downloaded=self.on_param_downloaded_from_shopfloor,
+                force_new_ip=True,
+                directory=shopfloor_directory,
+                param_file=shopfloor_param_file,
+                blocking=False)
+        else:
+            # Setup the usb disk and usb-to-serial adapter monitor.
+            usb_monitor = ConnectionMonitor()
+            usb_monitor.start(subsystem='block', device_type='disk',
+                              on_insert=self.on_usb_insert,
+                              on_remove=self.on_usb_remove)
 
         if self.talk_to_fixture:
             u2s_monitor = ConnectionMonitor()
@@ -1000,6 +1210,7 @@ class factory_CameraPerformanceAls(test.test):
         self.ui = UI()
         self.register_events(['sync_fixture', 'exit_test', 'run_test'])
         self.ui.CallJSFunction("InitLayout", self.talk_to_fixture,
+                               True if self.shopfloor else False,
                                input_serial_number,
                                self.ignore_enter_key)
         self.ui.Run()

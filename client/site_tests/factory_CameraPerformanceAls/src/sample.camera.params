@@ -105,6 +105,8 @@
                     'end_test_en': 'All tests are complete',
                     'save_to_usb_zh': '寫入記錄檔至U盤',
                     'save_to_usb_en': 'Writing the test result to the USB stick',
+                    'save_to_shopfloor_zh': '寫入記錄檔至shopfloor',
+                    'save_to_shopfloor_en': 'Writing the test result to shopfloor',
                     'fixture_fail_zh': '製具偵測失敗',
                     'fixture_fail_en': 'Failed to detect the fixture'
                 },
@@ -127,6 +129,7 @@
                     'dump_to_vpd': "color_idle",
                     'end_test': "color_idle",
                     'save_to_usb': "color_idle",
+                    'save_to_shopfloor': "color_idle",
                     'fixture_fail': "color_bad"
                 },
     'chk_point':{
@@ -148,6 +151,7 @@
                     'dump_to_vpd': 9.0,
                     'end_test': 0,
                     'save_to_usb': 0.2,
+                    'save_to_shopfloor': 0,
                     'cam_finish': 9.25,
                     'als_finishAB': 22.85,
                     'als_finishFull': 31.85,
