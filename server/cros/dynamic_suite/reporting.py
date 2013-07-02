@@ -97,13 +97,9 @@ class TestFailure(object):
         self.job_id = result.id
 
         # Aborts, server/client job failures or a test failure without a
-        # reason field need lab attention. Errors with a reason are deemed
-        # worse than Errors without one, and since Errors themselves don't
-        # require special attention the candidate status we create needs a
-        # reason.
-        self.lab_error = (job_status.is_for_infrastructure_fail(result) or
-                result.is_worse_than(job_status.Status('ERROR', '', 'reason'))
-                or not result.reason)
+        # reason field need lab attention. Lab bugs for the aborted case
+        # are disabled till crbug.com/188217 is resolved.
+        self.lab_error = job_status.is_for_infrastructure_fail(result)
 
 
     def bug_title(self):
