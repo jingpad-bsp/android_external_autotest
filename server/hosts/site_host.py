@@ -1045,9 +1045,6 @@ class SiteHost(remote.RemoteHost):
                              'to start.', timeout_seconds)
                 ready_test()
                 successful = True
-            except retry.TimeoutException:
-                raise error.TestError('Unable to start XMLRPC server after '
-                                      '%d seconds.' % timeout_seconds)
             finally:
                 if not successful:
                     logging.error('Failed to start XMLRPC server.')
