@@ -50,11 +50,6 @@ def download_and_install_gsutil():
     os.environ['PATH'] = ':'.join([GSUTIL_PATH, PATH])
 
 
-def get_or_install_gsutil(board, boto=PUBLIC_BOTO):
-    """Get gsutil or have it downloaded and installed if not yet."""
-    return CrosGs(board, boto=boto)
-
-
 class CrosGs(object):
     """A class handling google cloud storage access."""
     def __init__(self, board, boto=PUBLIC_BOTO):

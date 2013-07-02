@@ -19,6 +19,7 @@ import test_flow
 import touch_device
 import validators
 
+from common_util import print_and_exit
 from firmware_constants import MODE, OPTIONS
 from report_html import ReportHtml
 from telemetry.core import browser_options, browser_finder
@@ -50,9 +51,6 @@ class firmware_TouchMTB:
         # Get the board name
         self.board = firmware_utils.get_board()
 
-        # Set up gsutil package
-        self.gs = cros_gs.get_or_install_gsutil(self.board)
-
         # Create the touch device
         # If you are going to be testing a touchscreen, set it here
         self.touch_device = touch_device.TouchDevice(
@@ -61,7 +59,7 @@ class firmware_TouchMTB:
         validators.init_base_validator(self.touch_device)
 
         # Set show_spec_v2 in validators module if proper.
-        # This option makes the validators module to use the
+        # This option makes the validators module to use
         # the validators of spec v2 if available.
         if options[OPTIONS.SHOW_SPEC_V2]:
             validators.set_show_spec_v2()
@@ -192,17 +190,53 @@ class firmware_TouchMTB:
 
     def main(self):
         """A helper to enter gtk main loop."""
-        upload_choice = fw.win.main()
-        if upload_choice and not self.options[OPTIONS.REPLAY]:
-            print 'Uploading %s to %s ...' % (self.log_dir, self.gs.bucket)
-            self.gs.upload(self.log_dir)
+        # Enter the window event driven mode.
+        fw.win.main()
+
+        # Resume the power management.
         firmware_utils.start_power_management()
 
         # Release simple x before launching the Chrome browser to display the
         # html test result.
         del self.simple_x
         flag_skip_html = self.options[OPTIONS.SKIP_HTML]
-        _display_test_result(self.report_html_name, flag_skip_html)
+        try:
+            _display_test_result(self.report_html_name, flag_skip_html)
+        except Exception, e:
+            print 'Warning: cannot display the html result file: %s\n' % e
+            print ('You can access the html result file: "%s"\n' %
+                   self.report_html_name)
+        finally:
+            print 'You can upload all data in the latest result directory:'
+            print '  $ DISPLAY=:0 OPTIONS="-u latest" python main.py\n'
+            print ('You can also upload any test result directory, e.g., '
+                   '"20130702_063631-fw_1.23-manual", in "%s"' %
+                   conf.log_root_dir)
+            print ('  $ DISPLAY=:0 OPTIONS="-u 20130702_063631-fw_11.23-manual"'
+                   ' python main.py\n')
+
+
+def upload_to_gs(log_dir):
+    """Upload the gesture event files specified in log_dir to Google cloud
+    storage server.
+
+    @param log_dir: the log directory of which the gesture event files are
+            to be uploaded to Google cloud storage server
+    """
+    # Set up gsutil package.
+    # The board argument is used to locate the proper bucket directory
+    gs = cros_gs.CrosGs(firmware_utils.get_board())
+
+    log_path = os.path.join(conf.log_root_dir, log_dir)
+    if not os.path.isdir(log_path):
+        print_and_exit('Error: the log path "%s" does not exist.' % log_path)
+
+    print 'Uploading "%s" to %s ...\n' % (log_path, gs.bucket)
+    try:
+        gs.upload(log_path)
+    except Exception, e:
+        msg = 'Error in uploading event files in %s: %s.'
+        print_and_exit(msg % (log_path, e))
 
 
 def _usage_and_exit():
@@ -237,6 +271,16 @@ def _usage_and_exit():
     print '        Do not show the html test result.'
     print '  -t, --%s' % OPTIONS.TOUCHSCREEN
     print '        Use the touchscreen instead of a touchpad'
+    print '  -u, --%s log_dir' % OPTIONS.UPLOAD
+    print '        Upload the gesture event files in the specified log_dir '
+    print '        to Google cloud storage server.'
+    print '        It uploads results that you already have from a previous run'
+    print '        without re-running the test.'
+    print '        log_dir could be either '
+    print '        (1) a directory in %s' % conf.log_root_dir
+    print '        (2) a full path, or'
+    print '        (3) the default "latest" directory in %s if omitted' % \
+                   conf.log_root_dir
     print
     print 'Example:'
     print '  # Use the robot to perform 3 iterations of the robot gestures.'
@@ -264,6 +308,14 @@ def _usage_and_exit():
     print '  # Show the results derived with the new validator spec.'
     print '  $ DISPLAY=:0 OPTIONS="--show_spec_v2" python main.py\n'
 
+    print ('  # Upload the gesture event files specified in the log_dir '
+             'to Google cloud storage server.')
+    print ('  $ DISPLAY=:0 OPTIONS="-u 20130701_020120-fw_11.23-complete" '
+           'python main.py\n')
+    print ('  # Upload the gesture event files in the "latest" directory '
+           'to Google cloud storage server.')
+    print '  $ DISPLAY=:0 OPTIONS="-u latest" python main.py\n'
+
     sys.exit(1)
 
 
@@ -287,7 +339,9 @@ def _parse_options():
                OPTIONS.SHOW_SPEC_V2: False,
                OPTIONS.SIMPLIFIED: False,
                OPTIONS.SKIP_HTML: False,
-               OPTIONS.TOUCHSCREEN: False}
+               OPTIONS.TOUCHSCREEN: False,
+               OPTIONS.UPLOAD: None,
+    }
 
     # Get the environment OPTIONS
     options_str = os.environ.get('OPTIONS')
@@ -296,7 +350,7 @@ def _parse_options():
 
     options_list = options_str.split()
     try:
-        short_opt = 'hi:m:st'
+        short_opt = 'hi:m:stu:'
         long_opt = [OPTIONS.HELP,
                     OPTIONS.ITERATIONS + '=',
                     OPTIONS.MODE + '=',
@@ -305,7 +359,9 @@ def _parse_options():
                     OPTIONS.SHOW_SPEC_V2,
                     OPTIONS.SIMPLIFIED,
                     OPTIONS.SKIP_HTML,
-                    OPTIONS.TOUCHSCREEN]
+                    OPTIONS.TOUCHSCREEN,
+                    OPTIONS.UPLOAD + '=',
+        ]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
         _parsing_error(str(err))
@@ -341,6 +397,9 @@ def _parse_options():
             options[OPTIONS.SKIP_HTML] = True
         elif opt in ('-t', '--%s' % OPTIONS.TOUCHSCREEN):
             options[OPTIONS.TOUCHSCREEN] = True
+        elif opt in ('-u', '--%s' % OPTIONS.UPLOAD):
+            upload_to_gs(arg)
+            sys.exit()
         else:
             msg = 'This option "%s" is not supported.' % opt
             _parsing_error(opt)

@@ -72,8 +72,6 @@ class TestFlow:
         self.robot = robot_wrapper.RobotWrapper(self.board, self.mode)
         self.robot_waiting = False
         self._rename_old_log_and_html_files()
-        self._prepare_to_exit = False
-        self._upload_choice = None
         self._set_static_prompt_messages()
 
     def __del__(self):
@@ -143,13 +141,6 @@ class TestFlow:
                 "Perform the gesture now.\n"
                 "See the test result on the right after finger lifted.\n"
                 "Or press 'x' to exit.")
-
-        # Prompt the user to choose whether to upload data or not.
-        self._prompt_for_uploading_data = (
-                "You have not completed all of the gestures yet. "
-                "Do you want to upload the incomplete gesture data "
-                "to google storage server? \n"
-                "Press 'y' to upload them, and any other key otherwise. \n")
 
     def _get_prompt_abnormal_gestures(self, warn_msg):
         """Prompt for next gesture."""
@@ -418,7 +409,7 @@ class TestFlow:
             self._final_scores(self.scores)
             self.output.stop()
             self.output.report_html.stop()
-            self.win.stop(upload_choice=True)
+            self.win.stop()
         self.packets = None
 
     def _handle_user_choice_discard_after_parsing(self):
@@ -430,15 +421,10 @@ class TestFlow:
 
     def _handle_user_choice_exit_after_parsing(self):
         """Handle user choice to exit after the gesture file is parsed."""
-        if self._upload_choice is None:
-            self.win.set_prompt(self._prompt_for_uploading_data, color='red')
-            self._prepare_to_exit = True
-            return
-
         self._stop_record_and_rm_file()
         self.output.stop()
         self.output.report_html.stop()
-        self.win.stop(upload_choice=self._upload_choice)
+        self.win.stop()
 
     def check_for_wrong_number_of_fingers(self, details):
         flag_found = False
@@ -510,9 +496,6 @@ class TestFlow:
         """
         choice = self.keyboard.get_key_press_event(fd)
         if choice:
-            if self._prepare_to_exit:
-                self._upload_choice = (choice == TFK.YES)
-                choice = TFK.EXIT
             self._handle_keyboard_event(choice)
         return True
 

@@ -162,6 +162,7 @@ OPTIONS.SHOW_SPEC_V2 = 'show_spec_v2'
 OPTIONS.SIMPLIFIED = 'simplified'
 OPTIONS.SKIP_HTML = 'skip_html'
 OPTIONS.TOUCHSCREEN = 'touchscreen'
+OPTIONS.UPLOAD = 'upload'
 
 
 class _Platform(_Constant):
