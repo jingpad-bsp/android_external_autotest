@@ -11,6 +11,7 @@ import common
 from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros import tpm_store
 
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
@@ -30,6 +31,17 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     def __init__(self):
         self._shill_proxy = shill_proxy.ShillProxy()
+        self._tpm_store = tpm_store.TPMStore()
+
+
+    def __enter__(self):
+        super(ShillXmlRpcDelegate, self).__enter__()
+        self._tpm_store.__enter__()
+
+
+    def __exit__(self, exception, value, traceback):
+        super(ShillXmlRpcDelegate, self).__exit__(exception, value, traceback)
+        self._tpm_store.__exit__(exception, value, traceback)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -109,6 +121,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         logging.debug('connect_wifi()')
         params = xmlrpc_datatypes.deserialize(raw_params)
+        params.security_config.install_client_credentials(self._tpm_store)
         raw = self._shill_proxy.connect_to_wifi_network(
                 params.ssid,
                 params.security,

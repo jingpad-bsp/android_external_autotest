@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import contextlib
 import dbus
 import errno
 import functools
@@ -39,6 +40,7 @@ class XmlRpcServer(threading.Thread):
         self._server = SimpleXMLRPCServer.SimpleXMLRPCServer((host, port))
         self._server.register_introspection_functions()
         self._keep_running = True
+        self._delegates = []
         # Gracefully shut down on signals.  This is how we expect to be shut
         # down by autotest.
         signal.signal(signal.SIGTERM, self._handle_signal)
@@ -58,19 +60,23 @@ class XmlRpcServer(threading.Thread):
 
         """
         self._server.register_instance(delegate)
+        self._delegates.append(delegate)
 
 
     def run(self):
         """Block and handle many XmlRpc requests."""
         logging.info('XmlRpcServer starting...')
-        while self._keep_running:
-            try:
-                self._server.handle_request()
-            except select.error as v:
-                # In a cruel twist of fate, the python library doesn't handle
-                # this kind of error.
-                if v[0] != errno.EINTR:
-                    raise
+        # TODO(wiley) nested is deprecated, but we can't use the replacement
+        #       until we move to Python 3.0.
+        with contextlib.nested(*self._delegates):
+            while self._keep_running:
+                try:
+                    self._server.handle_request()
+                except select.error as v:
+                    # In a cruel twist of fate, the python library doesn't
+                    # handle this kind of error.
+                    if v[0] != errno.EINTR:
+                        raise
         logging.info('XmlRpcServer exited.')
 
 
@@ -139,6 +145,18 @@ class XmlRpcDelegate(object):
     Subclass this class to add more functionality.
 
     """
+
+
+    def __enter__(self):
+        logging.debug('Bringing up XmlRpcDelegate: %r.', self)
+        pass
+
+
+    def __exit__(self, exception, value, traceback):
+        logging.debug('Tearing down XmlRpcDelegate: %r.', self)
+        pass
+
+
     def ready(self):
         """Confirm that the XMLRPC server is up and ready to serve.
 
