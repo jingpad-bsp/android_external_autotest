@@ -38,9 +38,11 @@ _NO_BUILD = 'ad_hoc_build'
 
 _QUICKMERGE_SCRIPTNAME = '/mnt/host/source/chromite/bin/autotest_quickmerge'
 
+_TEST_REPORT_SCRIPTNAME = '/usr/bin/generate_test_report'
+
 
 def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
-                         board=_NO_BOARD):
+                         board=_NO_BOARD, results_directory=None):
     """
     Schedule a suite against a mock afe object, for a local suite run.
     @param autotest_path: Absolute path to autotest (in sysroot).
@@ -48,12 +50,15 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
     @param afe: afe object to schedule against (typically a directAFE)
     @param build: Build to schedule suite for.
     @param board: Board to schedule suite for.
+    @param results_directory: Absolute path of directory to store results in.
+                              (results will be stored in subdirectory of this).
     @returns: The number of tests scheduled.
     """
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
     devserver = dev_server.ImageServer('')
     my_suite = suite.Suite.create_from_name(suite_name, build, board,
-            devserver, fs_getter, afe=afe, ignore_deps=True)
+            devserver, fs_getter, afe=afe, ignore_deps=True,
+            results_dir=results_directory)
     if len(my_suite.tests) == 0:
         raise ValueError('Suite named %s does not exist, or contains no '
                          'tests.' % suite_name)
@@ -62,7 +67,7 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
 
 
 def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
-                        board=_NO_BOARD):
+                        board=_NO_BOARD, results_directory=None):
     #temporarily disabling pylint
     #pylint: disable-msg=C0111
     """
@@ -72,6 +77,8 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
     @param afe: afe object to schedule against (typically a directAFE)
     @param build: Build to schedule suite for.
     @param board: Board to schedule suite for.
+    @param results_directory: Absolute path of directory to store results in.
+                              (results will be stored in subdirectory of this).
     @returns: The number of tests scheduled (may be >1 if there are
               multiple tests with the same name).
     """
@@ -80,7 +87,8 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
     predicates = [suite.Suite.test_name_equals_predicate(test_name)]
     suite_name = 'suite_' + test_name
     my_suite = suite.Suite.create_from_predicates(predicates, build, board,
-            devserver, fs_getter, afe=afe, name=suite_name, ignore_deps=True)
+            devserver, fs_getter, afe=afe, name=suite_name, ignore_deps=True,
+            results_dir=results_directory)
     if len(my_suite.tests) == 0:
         raise ValueError('No tests named %s.' % test_name)
     my_suite.schedule(lambda x: None) # Schedule tests, discard record calls.
@@ -142,11 +150,17 @@ def perform_local_run(afe, autotest_path, tests, remote, build=_NO_BUILD,
     @param remote: Remote hostname.
     @param build: String specifying build for local run.
     @param board: String specifyinb board for local run.
+
+    @returns: directory in which results are stored.
     """
     afe.create_label(constants.VERSION_PREFIX + build)
     afe.create_label(board)
     afe.create_host(remote)
 
+    results_directory = tempfile.mkdtemp(prefix='test_that_results_')
+    os.chmod(results_directory, stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+    logging.info('Running jobs. Results will be placed in %s',
+                 results_directory)
     # Schedule tests / suites in local afe
     for test in tests:
         suitematch = re.match(r'suite:(.*)', test)
@@ -154,22 +168,19 @@ def perform_local_run(afe, autotest_path, tests, remote, build=_NO_BUILD,
             suitename = suitematch.group(1)
             logging.info('Scheduling suite %s...', suitename)
             ntests = schedule_local_suite(autotest_path, suitename, afe,
-                                          build=build, board=board)
+                                          build=build, board=board,
+                                          results_directory=results_directory)
         else:
             logging.info('Scheduling test %s...', test)
             ntests = schedule_local_test(autotest_path, test, afe,
-                                         build=build, board=board)
+                                         build=build, board=board,
+                                         results_directory=results_directory)
         logging.info('... scheduled %s tests.', ntests)
-
-    results_directory = tempfile.mkdtemp(prefix='test_that_results_')
-    os.chmod(results_directory, stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
-    logging.info('Running jobs. Results will be placed in %s',
-                 results_directory)
 
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory)
 
-    return 0
+    return results_directory
 
 
 def validate_arguments(arguments):
@@ -318,8 +329,10 @@ def main(argv):
 
     if local_run:
         afe = setup_local_afe()
-        return perform_local_run(afe, sysroot_autotest_path, arguments.tests,
-                               arguments.remote)
+        res_dir= perform_local_run(afe, sysroot_autotest_path, arguments.tests,
+                                   arguments.remote)
+        return subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
