@@ -417,3 +417,48 @@ class DhcpHandlingRule_RespondToPostT2Request(
         if self._should_respond:
             ret |= RESPONSE_HAVE_RESPONSE
         return ret
+
+
+class DhcpHandlingRule_AcceptRelease(DhcpHandlingRule):
+    """
+    This handler accepts any RELEASE packet that contains an option for
+    SERVER_ID matches |expected_server_ip|.  There is no response to this
+    packet.
+    """
+    def __init__(self,
+                 expected_server_ip,
+                 additional_options,
+                 custom_fields):
+        """
+        All *_ip arguments are IPv4 address strings like "192.168.1.101".
+
+        |additional_options| is handled as explained by DhcpHandlingRule.
+        """
+        super(DhcpHandlingRule_AcceptRelease, self).__init__(
+                additional_options, custom_fields)
+        self._expected_server_ip = expected_server_ip
+
+    def handle_impl(self, query_packet):
+        if (query_packet.message_type !=
+            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_RELEASE):
+            self.logger.info("Packet type was not RELEASE, ignoring.")
+            return RESPONSE_NO_ACTION
+
+        self.logger.info("Received RELEASE packet, checking fields...")
+        server_ip = query_packet.get_option(dhcp_packet.OPTION_SERVER_ID)
+        if (server_ip is None):
+            self.logger.info("RELEASE packet did not have the expected "
+                             "options, discarding.")
+            return RESPONSE_NO_ACTION
+
+        if server_ip != self._expected_server_ip:
+            self.logger.warning("RELEASE packet's server ip did not match our "
+                                "expectations; expected %s but got %s" %
+                                (self._expected_server_ip, server_ip))
+            return RESPONSE_NO_ACTION
+
+        self.logger.info("Received valid RELEASE packet, processing")
+        ret = RESPONSE_POP_HANDLER
+        if self.is_final_handler:
+            ret |= RESPONSE_TEST_SUCCEEDED
+        return ret

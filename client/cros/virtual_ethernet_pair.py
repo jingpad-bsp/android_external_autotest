@@ -154,6 +154,10 @@ class VirtualEthernetPair(object):
         return interface.Interface(self.interface_name).ipv4_subnet_mask
 
     @property
+    def interface_prefix(self):
+        return interface.Interface(self.interface_name).ipv4_prefix
+
+    @property
     def peer_interface_subnet_mask(self):
         return interface.Interface(self.peer_interface_name).ipv4_subnet_mask
 
