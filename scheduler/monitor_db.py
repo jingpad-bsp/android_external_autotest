@@ -1573,6 +1573,14 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
         else:
             self._archive_results([self.queue_entry])
 
+        # Also fail all other special tasks that have not yet run for this HQE
+        pending_tasks = models.SpecialTask.objects.filter(
+                queue_entry__id=self.queue_entry.id,
+                is_complete=0)
+        if pending_tasks:
+            for task in pending_tasks:
+                task.finish(False)
+
 
     def cleanup(self):
         super(SpecialAgentTask, self).cleanup()
