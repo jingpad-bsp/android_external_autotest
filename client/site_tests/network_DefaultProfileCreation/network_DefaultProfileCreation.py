@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import utils
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 # pylint: enable=W0611
-from shill_proxy import ShillProxy
+import shill_proxy
 
 class network_DefaultProfileCreation(test.test):
     """The Default Profile Creation class.
@@ -41,7 +41,7 @@ class network_DefaultProfileCreation(test.test):
         utils.run('stop shill')
         os.remove(self.DEFAULT_PROFILE_PATH)
         utils.run('start shill')
-        ShillProxy.get_shill_proxy()
+        shill_proxy.ShillProxy.get_proxy()
 
         profile = open(self.DEFAULT_PROFILE_PATH).read()
         for setting in self.EXPECTED_SETTINGS:

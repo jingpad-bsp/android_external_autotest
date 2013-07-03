@@ -16,7 +16,7 @@ from autotest_lib.client.cros import tpm_store
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 # pylint: enable=W0611
-import shill_proxy
+import wifi_proxy
 
 
 class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
@@ -30,7 +30,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """
 
     def __init__(self):
-        self._shill_proxy = shill_proxy.ShillProxy()
+        self._wifi_proxy = wifi_proxy.WifiProxy()
         self._tpm_store = tpm_store.TPMStore()
 
 
@@ -52,7 +52,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        self._shill_proxy.manager.CreateProfile(profile_name)
+        self._wifi_proxy.manager.CreateProfile(profile_name)
         return True
 
 
@@ -64,7 +64,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        self._shill_proxy.manager.PushProfile(profile_name)
+        self._wifi_proxy.manager.PushProfile(profile_name)
         return True
 
 
@@ -77,9 +77,9 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         if profile_name is None:
-            self._shill_proxy.manager.PopAnyProfile()
+            self._wifi_proxy.manager.PopAnyProfile()
         else:
-            self._shill_proxy.manager.PopProfile(profile_name)
+            self._wifi_proxy.manager.PopProfile(profile_name)
         return True
 
 
@@ -91,7 +91,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        self._shill_proxy.manager.RemoveProfile(profile_name)
+        self._wifi_proxy.manager.RemoveProfile(profile_name)
         return True
 
 
@@ -103,13 +103,13 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         while True:
-            active_profile = self._shill_proxy.get_active_profile()
-            profile_name = shill_proxy.dbus2primitive(
+            active_profile = self._wifi_proxy.get_active_profile()
+            profile_name = self._wifi_proxy.dbus2primitive(
                     active_profile.GetProperties(utf8_strings=True)['Name'])
             if profile_name == 'default':
                 return True
-            self._shill_proxy.manager.PopProfile(profile_name)
-            self._shill_proxy.manager.RemoveProfile(profile_name)
+            self._wifi_proxy.manager.PopProfile(profile_name)
+            self._wifi_proxy.manager.RemoveProfile(profile_name)
 
 
     def connect_wifi(self, raw_params):
@@ -122,7 +122,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         logging.debug('connect_wifi()')
         params = xmlrpc_datatypes.deserialize(raw_params)
         params.security_config.install_client_credentials(self._tpm_store)
-        raw = self._shill_proxy.connect_to_wifi_network(
+        raw = self._wifi_proxy.connect_to_wifi_network(
                 params.ssid,
                 params.security,
                 params.security_parameters,
@@ -147,7 +147,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         logging.debug('disconnect()')
-        result = self._shill_proxy.disconnect_from_wifi_network(ssid)
+        result = self._wifi_proxy.disconnect_from_wifi_network(ssid)
         successful, duration, message = result
         if successful:
             level = logging.info
@@ -170,7 +170,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.error('No interface specified to set bgscan parameters on.')
             return False
 
-        return self._shill_proxy.configure_bgscan(
+        return self._wifi_proxy.configure_bgscan(
                 params.interface,
                 method=params.method,
                 short_interval=params.short_interval,

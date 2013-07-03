@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import utils
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 # pylint: enable=W0611
-from shill_proxy import ShillProxy
+import shill_proxy
 
 class network_DefaultProfileServices(test.test):
     """The Default Profile Services class.
@@ -34,7 +34,7 @@ class network_DefaultProfileServices(test.test):
         utils.run('stop shill')
         os.remove(self.DEFAULT_PROFILE_PATH)
         utils.run('start shill')
-        shill = ShillProxy.get_shill_proxy()
+        shill = shill_proxy.ShillProxy.get_proxy()
         if shill is None:
             raise error.TestFail('Could not connect to shill')
 
@@ -49,7 +49,7 @@ class network_DefaultProfileServices(test.test):
 
         utils.run('stop shill')
         utils.run('start shill')
-        shill = ShillProxy.get_shill_proxy()
+        shill = shill_proxy.ShillProxy.get_proxy()
         if shill is None:
             raise error.TestFail('Could not connect to shill')
 

@@ -66,7 +66,7 @@ class network_VPNConnect(test.test):
 
         """
         device = self.get_device(interface_name)
-        device_path = shill_proxy.dbus2primitive(device.object_path)
+        device_path = shill_proxy.ShillProxy.dbus2primitive(device.object_path)
         return self._shill_proxy.find_object('Service', {'Device': device_path})
 
 

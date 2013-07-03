@@ -62,7 +62,7 @@ class network_8021xWiredAuthentication(test.test):
         device = self.get_device(interface_name)
         device_properties = device.GetProperties(utf8_strings=True)
         logging.info('Device properties are %r', device_properties)
-        return shill_proxy.dbus2primitive(
+        return shill_proxy.ShillProxy.dbus2primitive(
                 device_properties[self.AUTHENTICATION_FLAG])
 
 
