@@ -412,7 +412,7 @@ class Suite(object):
         @return: True if we should file bugs for this failure.
         """
         return (self._file_bugs and
-                (constants.EXPERIMENTAL_PREFIX not in result._job_name or
+                (constants.EXPERIMENTAL_PREFIX not in result._test_name or
                  self._file_experimental_bugs) and
                 result.is_worse_than(job_status.Status('WARN', '', 'reason')))
 

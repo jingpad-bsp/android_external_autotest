@@ -536,13 +536,12 @@ class Reporter(object):
             self._modify_bug_report(issue.id, comment)
             return issue.id
 
+        sheriffs = []
         if failure.lab_error:
             if bug_template.get('labels'):
                 self._LAB_ERROR_TEMPLATE['labels'] += bug_template.get('labels')
             bug_template = self._LAB_ERROR_TEMPLATE
-
-        sheriffs = []
-        if failure.suite is 'bvt':
+        elif failure.suite == 'bvt':
             sheriffs = site_utils.get_sheriffs()
 
         return self._create_bug_report(summary, failure.bug_title(),
