@@ -61,7 +61,8 @@ class WiFiTestBase(test.test):
 
 
     def cleanup(self):
-        self._wifi_context.teardown()
+        if hasattr(self, '_wifi_context'):
+            self._wifi_context.teardown()
 
 
     def get_context(self, host, cmdline_args, additional_params):
