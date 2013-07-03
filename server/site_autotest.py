@@ -4,7 +4,9 @@
 
 import logging
 import os
+import tempfile
 import urllib2
+
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import installable_object, autoserv_parser
@@ -106,6 +108,41 @@ class SiteAutotest(installable_object.InstallableObject):
             self.host = host
 
         super(SiteAutotest, self).install(host=host, autodir=autodir)
+
+
+    def _install(self, host=None, autodir=None, use_autoserv=True,
+                 use_packaging=True):
+        """
+        Install autotest.  If get() was not called previously, an
+        attempt will be made to install from the autotest svn
+        repository.
+
+        @param host A Host instance on which autotest will be installed
+        @param autodir Location on the remote host to install to
+        @param use_autoserv Enable install modes that depend on the client
+            running with the autoserv harness
+        @param use_packaging Enable install modes that use the packaging system
+
+        @exception AutoservError if a tarball was not specified and
+            the target host does not have svn installed in its path
+        """
+        # TODO(milleral): http://crbug.com/258161
+        super(SiteAutotest, self)._install(host, autodir, use_autoserv,
+                                           use_packaging)
+        # Send over the most recent global_config.ini after installation if one
+        # is available.
+        # This code is a bit duplicated from
+        # _BaseRun._create_client_config_file, but oh well.
+        if self.installed and self.source_material:
+            logging.info('Installing updated global_config.ini.')
+            destination = os.path.join(self.host.get_autodir(),
+                                       'global_config.ini')
+            with tempfile.NamedTemporaryFile() as client_config:
+                config = global_config.global_config
+                client_section = config.get_section_values('CLIENT')
+                client_section.write(client_config)
+                client_config.flush()
+                self.host.send_file(client_config.name, destination)
 
 
     def run_static_method(self, module, method, results_dir='.', host=None,
