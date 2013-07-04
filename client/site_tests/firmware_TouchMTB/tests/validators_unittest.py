@@ -641,41 +641,30 @@ class ReportRateValidatorTest(BaseValidatorTest):
         self.assertTrue(self._get_score(filename, device=lumpy) <= 0.5)
 
     def _test_report_rate_metrics(self, filename, expected_values):
-        filepath = os.path.join(unittest_path_lumpy, filename)
-        packets = parse_tests_data(filepath)
+        packets = parse_tests_data(filename)
         validator = ReportRateValidator(self.criteria, device=lumpy)
         vlog = validator.check(packets)
 
+        # Verify that there are 3 metrics
+        number_metrics = 3
+        self.assertEqual(len(vlog.metrics), number_metrics)
+
         # Verify the values of the 3 metrics.
-        number_metrics = len(vlog.metrics)
-        self.assertEqual(number_metrics, 3)
         for i in range(number_metrics):
             self.assertAlmostEqual(vlog.metrics[i].value, expected_values[i])
 
-    def test_metrics_of_report_rate(self):
+    def test_report_rate_metrics(self):
         """Test the metrics of the report rates."""
         # files is a dictionary of
-        #       {filename: (long_intervals_pct, ave_interval, max_interval)}
+        #       {filename: ((# long_intervals, # all intervals),
+        #                    ave_interval, max_interval)}
         files = {
-            '20130506_032458-fw_11.23-robot_sim/'
-            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-'
-                'robot_sim-20130506_032500.dat':
-                (0.0, 9.69826775956, 11.2429999999),
-
-            '20130506_032659-fw_11.23-robot_sim/'
-            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.23-'
-                'robot_sim-20130506_032701.dat':
-                (0.751879699248, 9.70027067669, 19.1009999999),
-
-            '20130506_030025-fw_11.27-robot_sim/'
-            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.27-'
-                'robot_sim-20130506_030026.dat':
-                (0.0, 8.79848, 9.21300000027),
-
-            '20130506_031746-fw_11.27-robot_sim/'
-            'one_finger_tracking.left_to_right.slow-lumpy-fw_11.27-'
-                'robot_sim-20130506_031747.dat':
-                (0.970873786408, 8.88525242718, 17.2409999996),
+            '2f_scroll_diagonal.dat':
+                ((33, 33), 24.8057272727954, 26.26600000075996),
+            'one_finger_with_slot_0.dat':
+                ((1, 12), 6.727166666678386, 20.411999998032115),
+            'two_close_fingers_merging_changed_ids_gaps.dat':
+                ((13, 58), 18.82680942272318, 40.936946868896484),
         }
 
         for filename, values in files.items():

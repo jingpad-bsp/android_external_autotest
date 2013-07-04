@@ -47,12 +47,17 @@ import numpy as n
 import pickle
 import os
 
+import test_conf as conf
 import validators as val
 
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from sets import Set
 
 from common_util import Debug, print_and_exit
+from firmware_constants import AXIS
+
+
+MetricProps = namedtuple('MetricProps', ['description', 'stat_func'])
 
 
 def _setup_debug(debug_flag):
@@ -85,6 +90,151 @@ class Metric:
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+
+class MetricNameProps:
+    """A class keeping the information of metric name templates, descriptions,
+    and statistic functions.
+    """
+
+    def __init__(self):
+        self._init_raw_metrics_props()
+        self._derive_metrics_props()
+
+    @staticmethod
+    def get_report_interval(report_rate):
+        """Convert the report rate in Hz to report interval in ms.
+
+        @param report_rate: the report rate in Hz
+        Return: the report interval in ms
+        """
+        return '%.2f' % (1.0 / report_rate * 1000)
+
+    def _init_raw_metrics_props(self):
+        """Initialize raw_metrics_props.
+
+        The raw_metrics_props is a dictionary from metric attribute to the
+        corresponding metric properties. Take MAX_ERR as an example of metric
+        attribute. Its metric properties include
+          . metric name template: 'max error in {} (mm)'
+            The metric name template will be expanded later. For example,
+            with name variations ['x', 'y'], the above template will be
+            expanded to:
+                'max error in x (mm)', and
+                'max error in y (mm)'
+          . name variations: for example, ['x', 'y'] for MAX_ERR
+          . metric name description: 'The max err of all samples'
+          . the stat function used to calculate the statistics for the metric:
+            we use max() to calculate MAX_ERR in x/y for linearity.
+        """
+        # stat_functions may include: max, min, average, and pct
+        average = lambda lst: float(sum(lst)) / len(lst)
+        _pct = lambda lst: float(lst[0]) / lst[1] * 100
+        pct = lambda lst: _pct([sum(count) for count in zip(*lst)])
+
+        max_report_interval_str = self.get_report_interval(conf.min_report_rate)
+
+        # A dictionary from metric attribute to its properties:
+        #    {metric_attr: (template, name_variations, description, stat_func)}
+        self.raw_metrics_props = {
+            # Linearity Validator
+            'MAX_ERR': (
+                'max error in {} (mm)',
+                AXIS.LIST,
+                'The max err of all samples',
+                max),
+            'RMS_ERR': (
+                'rms error in {} (mm)',
+                AXIS.LIST,
+                'The mean of all rms means of all trials',
+                average),
+            # Range Validator
+            'RANGE': (
+                '{} edge not reached (mm)',
+                ['left', 'right', 'top', 'bottom'],
+                'Min unreachable distance',
+                max),
+            # Stationary Finger Validator
+            'MAX_DISTANCE': (
+                'max distance (mm)',
+                None,
+                'max distance of any two points from any run',
+                max),
+            # Physical Click Validator
+            'CLICK': (
+                '{}f-click miss rate (%)',
+                [1, 2, 3, 4, 5],
+                'Should be close to 0 (0 is perfect)',
+                pct),
+            # Drumroll Validator
+            'CIRCLE_RADIUS': (
+                'circle radius (mm)',
+                None,
+                'Anything over 2mm is failure',
+                max),
+            # Report Rate Validator
+            'LONG_INTERVALS': (
+                'intervals > {} ms (%)',
+                [max_report_interval_str,],
+                '0% is required',
+                pct),
+            'AVE_TIME_INTERVAL': (
+                'average time interval (ms)',
+                None,
+                'less than %s ms is required' % max_report_interval_str,
+                average),
+            'MAX_TIME_INTERVAL': (
+                'max time interval (ms)',
+                None,
+                'less than %s ms is required' % max_report_interval_str,
+                max),
+        }
+
+        # Set the metric attribute to its template
+        #   E.g., self.MAX_ERR = 'max error in {} (mm)'
+        for key, (template, _, _, _) in self.raw_metrics_props.items():
+            setattr(self, key, template)
+
+    def _derive_metrics_props(self):
+        """Expand the metric name templates to the metric names, and then
+        derive the expanded metrics_props.
+
+        In _init_raw_metrics_props():
+            The raw_metrics_props is defined as:
+                'MAX_ERR': (
+                    'max error in {} (mm)',             # template
+                    ['x', 'y'],                         # name variations
+                    'The max err of all samples',       # description
+                    max),                               # stat_func
+                ...
+
+            By expanding the template with its corresponding name variations,
+            the names related with MAX_ERR will be:
+                'max error in x (mm)', and
+                'max error in y (mm)'
+
+        Here we are going to derive metrics_props as:
+                metrics_props = {
+                    'max error in x (mm)':
+                        MetricProps('The max err of all samples', max),
+                    ...
+                }
+        """
+        self.metrics_props = {}
+        for raw_props in self.raw_metrics_props.values():
+            template, name_variations, description, stat_func = raw_props
+            metric_props = MetricProps(description, stat_func)
+            if name_variations:
+                # Expand the template with every variations.
+                #   E.g., template = 'max error in {} (mm)' is expanded to
+                #         name = 'max error in x (mm)'
+                for variation in name_variations:
+                    name = template.format(variation)
+                    self.metrics_props[name] = metric_props
+            else:
+                # Otherwise, the template is already the name.
+                #   E.g., the template 'max distance (mm)' is same as the name.
+                self.metrics_props[template] = metric_props
 
 
 class ValidatorLog:
@@ -164,21 +314,35 @@ class StatisticsScores:
 
 
 class StatisticsMetrics:
-    """A statistics class to compute the average, min, and max of
-    aggregate metrics.
+    """A statistics class to compute the statistics including the min, max, or
+    average of aggregate metrics.
     """
-    def __init__(self, metrics):
-        self.all_data = {}
-        if metrics:
-            all_values = defaultdict(list)
-            for metric in metrics:
-                all_values[metric.name].append(metric.value)
 
-            for name, values in all_values.items():
-                ave = n.average(n.array(values))
-                min_ = min(values)
-                max_ = max(values)
-                self.all_data[name] = (ave, min_, max_)
+    def __init__(self, metrics):
+        """Collect all values for every metric.
+
+        @param metrics: a list of Metric objects.
+        """
+        # metrics_values: the raw metrics values
+        self.metrics_values = defaultdict(list)
+        for metric in metrics:
+            self.metrics_values[metric.name].append(metric.value)
+
+        # Calculate the statistics of metrics using corresponding stat functions
+        self._calc_statistics(MetricNameProps().metrics_props)
+
+    def _calc_statistics(self, metrics_props):
+        """Calculate the desired statistics for every metric.
+
+        @param metrics_props: a dictionary mapping a metric name to a
+                metric props including the description and stat_func
+        """
+        self.metrics_props = metrics_props
+        self.stats_values = {}
+        for metric_name, values in self.metrics_values.items():
+            assert metric_name in metrics_props
+            stat_func = metrics_props[metric_name].stat_func
+            self.stats_values[metric_name] = stat_func(values)
 
 
 class TestResult:

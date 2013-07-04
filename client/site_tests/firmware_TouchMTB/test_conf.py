@@ -48,7 +48,8 @@ no_level_jump_criteria = '<= 10, ~ +30'
 no_reversed_motion_criteria = '<= 5, ~ +30'
 pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.05, ~ +0.05'
-report_rate_criteria = '>= 60'
+min_report_rate = 60
+report_rate_criteria = '>= %d' % min_report_rate
 stationary_finger_criteria = (lambda: '<= 1.25, ~ +1.25'
                               if validators.show_spec_v2 else '<= 20, ~ +20')
 relaxed_stationary_finger_criteria = '<= 100, ~ +100'
@@ -493,8 +494,6 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
-                PhysicalClickValidator('== 0', fingers=1),
-                PhysicalClickValidator('== 0', fingers=2),
                 ReportRateValidator(report_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
@@ -513,8 +512,6 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                PhysicalClickValidator('== 0', fingers=1),
-                PhysicalClickValidator('== 0', fingers=2),
                 ReportRateValidator(report_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
                 StationaryFingerValidator(stationary_finger_criteria, slot=1),

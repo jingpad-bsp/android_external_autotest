@@ -53,6 +53,8 @@ import sys
 
 import firmware_log
 
+from collections import defaultdict
+
 from common_util import print_and_exit
 from firmware_constants import OPTIONS
 from test_conf import (log_root_dir, segment_weights, validator_weights)
@@ -152,13 +154,11 @@ class FirmwareSummary:
         """Print the result statistics of validators."""
         for validator in self.slog.validators:
             stat_scores_data = [validator,]
-            stat_metrics_data = []
             for fw in self.slog.fws:
                 result = self.slog.get_result(fw=fw, gesture=gesture,
                                               validator=validator)
                 if result:
                     stat_scores_data += result.stat_scores.all_data
-                    stat_metrics_data.append(result.stat_metrics.all_data)
 
             # Print the score statistics of all firmwares on the same row.
             self._print_statistics_score(stat_scores_data)
@@ -177,24 +177,64 @@ class FirmwareSummary:
         self._print_summary_title('Test Summary (by validator)')
         self._print_result_stats()
 
+    def _print_statistics_of_metrics(self, gesture=None):
+        """Print the statistics of metrics by gesture or by validator.
+
+        @param gesture: print the statistics grouped by gesture
+                if this argument is specified; otherwise, by validator.
+        """
+        # Print the complete title which looks like:
+        #   <title_str>  <fw1>  <fw2>  ...  <description>
+        num_fws = len(self.slog.fws)
+        title_str = ('Metrics statistics by gesture: ' + gesture if gesture else
+                     'Metrics statistics by validator')
+        complete_title = ('{:<33}:'.format(title_str) +
+                          ('{:>12}  ' * num_fws).format(*self.slog.fws) +
+                          '{:<40}'.format('description'))
+        print '\n' * 2 + complete_title
+        print '-' * (38 + 1 + 12 * num_fws + 17)
+
+        # Print the metric name and the metric stats values of every firmwares
+        name_format = ' ' * 6 + '{:<27}:'
+        values_format = '{:>12.2f}  ' * num_fws
+        description_format = '{:<40}'
+        for validator in self.slog.validators:
+            fw_stats_values = defaultdict(dict)
+            for fw in self.slog.fws:
+                result = self.slog.get_result(fw=fw, gesture=gesture,
+                                              validator=validator)
+                stat_metrics = result.stat_metrics
+
+                for metric_name in stat_metrics.metrics_values:
+                    fw_stats_values[metric_name][fw] = \
+                            stat_metrics.stats_values[metric_name]
+
+            if fw_stats_values:
+                print ' ' * 2, validator
+
+            for metric_name, fw_values_dict in sorted(fw_stats_values.items()):
+                print name_format.format(metric_name),
+                print values_format.format(
+                        *[fw_values_dict[fw] for fw in self.slog.fws]),
+                print description_format.format(
+                        stat_metrics.metrics_props[metric_name].description)
+
     def _print_metrics_by_file(self):
         """Print the metrics per file."""
-        if not self.display_metrics:
-            return
-
         print '\n\nMetrics (by file)'
         print '-' * 80
         for key, vlog_list in sorted(self.slog.log_table.items()):
             flag_print_key = False
             for vlog in vlog_list:
                 stat_metrics = firmware_log.StatisticsMetrics(vlog.metrics)
-                if stat_metrics.all_data:
+                if stat_metrics.stats_values:
                     if not flag_print_key:
                         fw, round_name, gesture, variation, validator = key
                         print '%s.%s' % (gesture, variation)
                         print '  %s' % validator
                         flag_print_key = True
-                    print '      %s: %s' % (fw, stat_metrics.all_data)
+                    print '      %s: %s' % (fw,
+                                            stat_metrics.stats_values.items())
 
     def _print_final_weighted_averages(self):
         """Print the final weighted averages of all validators."""
@@ -209,7 +249,8 @@ class FirmwareSummary:
         """Print the summary of the test results."""
         self._print_result_stats_by_gesture()
         self._print_result_stats_by_validator()
-        self._print_metrics_by_file()
+        if self.display_metrics:
+            self._print_statistics_of_metrics()
         self._print_final_weighted_averages()
 
 

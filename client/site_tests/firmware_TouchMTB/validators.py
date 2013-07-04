@@ -180,6 +180,7 @@ class BaseValidator(object):
         self.vlog = firmware_log.ValidatorLog()
         self.vlog.name = name
         self.vlog.criteria = self.criteria_str
+        self.mnprops = firmware_log.MetricNameProps()
 
     def init_check(self, packets=None):
         """Initialization before check() is called."""
@@ -489,11 +490,13 @@ class LinearityValidator2(BaseValidator):
         self.log_details('rms_err: (%.2f, %.2f) mm' %
                          (self.rms_err_x_mm, self.rms_err_y_mm))
 
+        X, Y = AXIS.LIST
+        mnprops = self.mnprops
         self.vlog.metrics = [
-                firmware_log.Metric('max_err_x_mm', self.max_err_x_mm),
-                firmware_log.Metric('max_err_y_mm', self.max_err_y_mm),
-                firmware_log.Metric('rms_err_x_mm', self.rms_err_x_mm),
-                firmware_log.Metric('rms_err_y_mm', self.rms_err_y_mm),
+            firmware_log.Metric(mnprops.MAX_ERR.format(X), self.max_err_x_mm),
+            firmware_log.Metric(mnprops.MAX_ERR.format(Y), self.max_err_y_mm),
+            firmware_log.Metric(mnprops.RMS_ERR.format(X), self.rms_err_x_mm),
+            firmware_log.Metric(mnprops.RMS_ERR.format(Y), self.rms_err_y_mm),
         ]
 
         # Calculate the score based on the max error
@@ -549,11 +552,16 @@ class RangeValidator(BaseValidator):
         self.log_details('actual: %s' % str(actual_edge))
         self.log_details('spec: %s' % str(spec_edge))
         self.log_details('deviation_ratio: %f' % deviation_ratio)
-        metric_name = 'short_of_range_{}_mm'.format(direction.split('_')[-1])
+        # Convert the direction to edge name.
+        #   E.g., direction: center_to_left
+        #         edge name: left
+        edge_name = direction.split('_')[-1]
+        metric_name = self.mnprops.RANGE.format(edge_name)
         short_of_range_mm = self.device.pixel_to_mm_single_axis(
                 short_of_range_px, axis_spec)
-        self.vlog.metrics = [firmware_log.Metric(metric_name,
-                                                 short_of_range_mm)]
+        self.vlog.metrics = [
+            firmware_log.Metric(metric_name, short_of_range_mm)
+        ]
         self.vlog.score = self.fc.mf.grade(deviation_ratio)
         return self.vlog
 
@@ -605,7 +613,7 @@ class StationaryFingerValidator(BaseValidator):
                'Largest distance slot%d: %d px')
         self.log_details(msg % (self.slot, max_distance))
         self.vlog.metrics = [
-            firmware_log.Metric('max_distance_mm', max_distance)
+            firmware_log.Metric(self.mnprops.MAX_DISTANCE, max_distance)
         ]
         self.vlog.score = self.fc.mf.grade(max_distance)
         return self.vlog
@@ -759,9 +767,10 @@ class PhysicalClickValidator(BaseValidator):
         msg = 'Count of %d-finger physical clicks: %s'
         self.log_details(msg % (self.fingers, click_count))
         expected_click_count = self._get_expected_number()
-        click_hit_rate = float(click_count) / expected_click_count
-        metric_name = '{}f_click_hit_rate_%'.format(self.fingers)
-        self.vlog.metrics = [firmware_log.Metric(metric_name, click_hit_rate)]
+        miss_count = expected_click_count - click_count
+        metric_click = (miss_count, expected_click_count)
+        metric_name = self.mnprops.CLICK.format(self.fingers)
+        self.vlog.metrics = [firmware_log.Metric(metric_name, metric_click)]
         self.vlog.score = self.fc.mf.grade(click_count)
         return self.vlog
 
@@ -793,7 +802,8 @@ class DrumrollValidator(BaseValidator):
         rocs = self.packets.get_list_of_rocs_of_all_tracking_ids()
         max_radius = max(rocs)
         self.log_details('Max radius: %.2f mm' % max_radius)
-        self.vlog.metrics = [firmware_log.Metric('circle_radius_mm', roc)
+        metric_name = self.mnprops.CIRCLE_RADIUS
+        self.vlog.metrics = [firmware_log.Metric(metric_name, roc)
                              for roc in rocs]
         self.vlog.score = self.fc.mf.grade(max_radius)
         return self.vlog
@@ -878,35 +888,32 @@ class ReportRateValidator(BaseValidator):
         The sync event time instants in packets are used as the report
         time instants.
         """
+        import test_conf as conf
+
         # Each packet consists of a list of events of which The last one is
         # the sync event.
         sync_times = [p[-1].get(MTB.EV_TIME) for p in self.packets.packets]
         sync_intervals = [sync_times[i+1] - sync_times[i]
                           for i in range(len(sync_times) - 1)]
 
-        # Calculate the report interval threshold from the criteria string:
-        #   report_rate_criteria = '>= 60'
-        result = re.search('\D(\d+)', self.criteria_str)
-        if result:
-            report_rate_threshold = float(result.group(1))
-            report_interval_threshold = 1 / report_rate_threshold
-        else:
-            print_and_exit('Error: fail to get report rate from %s.' %
-                           self.criteria_str)
+        min_report_rate = conf.min_report_rate
+        max_report_interval = 1.0 / min_report_rate
 
         # Calculate the metrics and add them to vlog.
-        long_intervals = [s for s in sync_intervals
-                          if s > report_interval_threshold]
-        long_intervals_pct = 100.0 * len(long_intervals) / len(sync_intervals)
-        name_long_intervals_pct = '% of intervals > 1/{} sec'.format(
-                report_rate_threshold)
+        long_intervals = [s for s in sync_intervals if s > max_report_interval]
+        metric_long_intervals = (len(long_intervals), len(sync_intervals))
         ave_interval = 1000.0 * sum(sync_intervals) / len(sync_intervals)
         max_interval = 1000.0 * max(sync_intervals)
 
+        name_long_intervals_pct = self.mnprops.LONG_INTERVALS.format(
+            firmware_log.MetricNameProps.get_report_interval(min_report_rate))
+        name_ave_time_interval = self.mnprops.AVE_TIME_INTERVAL
+        name_max_time_interval = self.mnprops.MAX_TIME_INTERVAL
+
         self.vlog.metrics = [
-            firmware_log.Metric(name_long_intervals_pct, long_intervals_pct),
-            firmware_log.Metric('average_time_interval (ms)', ave_interval),
-            firmware_log.Metric('max_time_interval (ms)', max_interval),
+            firmware_log.Metric(name_long_intervals_pct, metric_long_intervals),
+            firmware_log.Metric(self.mnprops.AVE_TIME_INTERVAL, ave_interval),
+            firmware_log.Metric(self.mnprops.MAX_TIME_INTERVAL, max_interval),
         ]
 
     def check(self, packets, variation=None):

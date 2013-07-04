@@ -33,8 +33,8 @@ class _Axis(_Constant):
     """Constants about two axes."""
     pass
 AXIS = _Axis()
-AXIS.X = 'X'
-AXIS.Y = 'Y'
+AXIS.X = 'x'
+AXIS.Y = 'y'
 AXIS.LIST = [AXIS.X, AXIS.Y]
 
 
