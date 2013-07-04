@@ -476,9 +476,10 @@ class LinearityValidator2(BaseValidator):
     def check(self, packets, variation=None):
         """Check if the packets conforms to specified criteria."""
         self.init_check(packets)
-        points, list_t= self.packets.get_points_and_time_for_slot(self.slot)
+        points = self.packets.get_slot_data(self.slot, 'point')
         list_x = [p.x for p in points]
         list_y = [p.y for p in points]
+        list_t = self.packets.get_slot_data(self.slot, 'syn_time')
 
         # Calculate various errors
         self._calc_errors_all_axes(list_t, list_x, list_y)
