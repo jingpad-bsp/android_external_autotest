@@ -8,26 +8,42 @@ import gtk
 import logging
 import os
 import pprint
+import re
+import shutil
+import time
 import StringIO
+
+
+from urllib import urlopen
+from xmlrpclib import Binary
+
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+#pylint: disable=W0611
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.event_log import EventLog
+from cros.factory.rf.e5071c_scpi import ENASCPI
 from cros.factory.test import factory
+from cros.factory.test import shopfloor
 from cros.factory.test import task
 from cros.factory.test import ui as ful
 from cros.factory.test.media_util import MediaMonitor
 from cros.factory.test.media_util import MountedMedia
-from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import rf_utils
 from autotest_lib.client.cros.rf.config import PluggableConfig
+
+from cros.factory.test.utils import TimeString, TryMakeDirs
+
 
 COLOR_MAGENTA = gtk.gdk.color_parse('magenta1')
 
 _MESSAGE_USB = (
     'Please insert the usb stick to load parameters.\n'
     '请插入usb以读取测试参数\n')
+_MESSAGE_CONNECTING_ENA = (
+    'Connecting with the ENA...\n'
+    '与ENA(E5071C)连线中\n')
 _MESSAGE_PREPARE_PANEL = (
     'Please place the LCD panel into the fixture.\n'
     'Then press ENTER to scan the barcode.\n'
@@ -65,13 +81,20 @@ _MESSAGE_RESULT_TAB = (
 
 _TEST_SN_NUMBER = 'TEST-SN-NUMBER'
 _LABEL_SIZE = (300, 30)
-
+TEMP_CACHES = '/tmp/VSWR.usb.data'
 
 def make_status_row(row_name,
                     display_dict,
                     init_prompt=None,
                     init_status=None):
-    """Returns a HBox shows the status."""
+    """
+    Returns a GTK HBox shows an status of a item.
+
+    @param row_name: symbolic name of the item.
+    @param display_dict: dict consists of the status.
+    @param init_prompt: initial string for the row.
+    @param init_status: initial status for the row.
+    """
     display_dict.setdefault(row_name, {})
     if init_prompt is None:
         init_prompt = display_dict[row_name]['prompt']
@@ -83,10 +106,22 @@ def make_status_row(row_name,
         display_dict[row_name]['status'] = init_status
 
     def prompt_label_expose(widget, event):
+        """
+        Callback to update prompt when parent object is displayed.
+
+        @param widget: parent widget.
+        @param event: wrapped GTK event, simply ignored in this callback.
+        """
         prompt = display_dict[row_name]['prompt']
         widget.set_text(prompt)
 
     def status_label_expose(widget, event):
+        """
+        Callback to update status when parent object is displayed.
+
+        @param widget: parent widget.
+        @param event: wrapped GTK event, simply ignored in this callback.
+        """
         status = display_dict[row_name]['status']
         widget.set_text(status)
         widget.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
@@ -113,13 +148,29 @@ def make_prepare_widget(message,
                         on_key_continue, keys_to_continue,
                         on_key_skip=None, keys_to_skip=None,
                         fg_color=ful.LIGHT_GREEN):
-    """Returns a widget that display the message and bind proper functions."""
+    """
+    Returns a widget that displays the message and binds proper functions.
+
+    @param message: Prompt string to display on the widget.
+    @param on_key_continue: function that will be called when one of
+        keys_to_continue is pressed.
+    @param keys_to_continue: a list of keycodes that will trigger continuation.
+    @param on_key_skip: function that will be called when one of keys_to_skip
+        is pressed.
+    @param keys_to_skip: a list of keycodes that will trigger skip.
+    @param fg_color: the color of prompt.
+    """
     if keys_to_skip is None:
         keys_to_skip = []
 
     widget = gtk.VBox()
     widget.add(ful.make_label(message, fg=fg_color))
     def key_release_callback(widget, event):
+        """Callback for key pressed event.
+
+        @param widget: parent widget.
+        @param event: wrapped GTK event, including pressed key info.
+        """
         if on_key_continue and event.keyval in keys_to_continue:
             on_key_continue()
             return True
@@ -130,22 +181,70 @@ def make_prepare_widget(message,
     widget.key_callback = key_release_callback
     return widget
 
+def get_formatted_time():
+    """Returns the current time in formatted string."""
+    # Windows doesn't allowed : as a separtor. In addition,
+    # we don't need information down to milliseconds actually.
+    return TimeString(time_separator='-', milliseconds=False)
+
+def get_formatted_date():
+    return time.strftime("%Y%m%d", time.localtime())
+
+def upload_to_shopfloor(file_path, log_name,
+                        ignore_on_fail=False, timeout=10):
+    """
+    Attempts to upload arbitrary file to the shopfloor server.
+
+    @param file_path: local file to upload.
+    @param log_name: file_name that will be saved under shopfloor.
+    @param ignore_on_fail: if exception will be raised when upload fails.
+    @param timeout: maximal time allowed for getting shopfloor instance.
+    """
+    try:
+        with open(file_path, 'r') as f:
+            chunk = f.read()
+        description = 'aux_logs (%s, %d bytes)' % (log_name, len(chunk))
+        start_time = time.time()
+        shopfloor_client = shopfloor.get_instance(
+            detect=True, timeout=timeout)
+        shopfloor_client.SaveAuxLog(log_name, Binary(chunk))
+        logging.info(
+            'Successfully synced %s in %.03f s',
+            description, time.time() - start_time)
+    except Exception as e:
+        if ignore_on_fail:
+            factory.console.info(
+                'Failed to sync with shopfloor for [%s], ignored', log_name)
+        else:
+            raise e
+    return True
 
 class factory_Antenna(test.test):
-    version = 5
+    """
+    This is a test for antenna module in a passive approach. Antenna under test
+    will be located in another fixture and profiled by Agilent E5071C (ENA).
+
+    An autotest usually running on a DUT and run only once. However, this test
+    is designed to test antenna module repeatedly. Once the connection to ENA
+    created, the state will loop infinitely to avoid additional setup wtih ENA
+    for every single antenna (i.e. doesn't need to restart the autotest for
+    each module)
+    """
+    version = 6
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
     _STATE_INITIAL = -1
     _STATE_WAIT_USB = 0
-    _STATE_PREPARE_PANEL = 1
-    _STATE_ENTERING_SN = 2
-    _STATE_PREPARE_MAIN_ANTENNA = 3
-    _STATE_TEST_IN_PROGRESS_MAIN = 4
-    _STATE_PREPARE_AUX_ANTENNA = 5
-    _STATE_TEST_IN_PROGRESS_AUX = 6
-    _STATE_WRITING_IN_PROGRESS = 7
-    _STATE_RESULT_TAB = 8
+    _STATE_CONNECTING_ENA = 1
+    _STATE_PREPARE_PANEL = 2
+    _STATE_ENTERING_SN = 3
+    _STATE_PREPARE_MAIN_ANTENNA = 4
+    _STATE_TEST_IN_PROGRESS_MAIN = 5
+    _STATE_PREPARE_AUX_ANTENNA = 6
+    _STATE_TEST_IN_PROGRESS_AUX = 7
+    _STATE_WRITING_IN_PROGRESS = 8
+    _STATE_RESULT_TAB = 9
 
     # Status in the final result tab.
     _STATUS_NAMES = ['sn', 'cell_main', 'cell_aux',
@@ -160,6 +259,7 @@ class factory_Antenna(test.test):
                          'wifi_main', 'wifi_aux']
 
     def advance_state(self):
+        """Adavnces the state(widget) to next assigned."""
         if self._state == self._STATE_RESULT_TAB:
             self._state = self._STATE_PREPARE_PANEL
         else:
@@ -172,20 +272,87 @@ class factory_Antenna(test.test):
             task.schedule(callback)
 
     def on_usb_insert(self, dev_path):
+        """
+        Callback to load USB parameters when USB inserted.
+
+        @param dev_path: the path where inserted USB presented in /dev
+        """
+        # TODO(itspeter): expose an option to download parameters directly
+        # from shopfloor in future.
         if self._state == self._STATE_WAIT_USB:
             self.dev_path = dev_path
             with MountedMedia(dev_path, 1) as config_dir:
-                config_path = os.path.join(config_dir, 'antenna.params')
-                self.config = self.base_config.Read(config_path)
-                factory.log("Config loaded.")
-                self.advance_state()
+                config_path = os.path.join(config_dir, self.config_path)
+                self.config = self.base_config.Read(
+                        config_path, event_log=self._event_log)
+
+            # Load the shopfloor related setting.
+            self.path_name = self.config.get('path_name', 'UnknownPath')
+            self.shopfloor_config = self.config.get('shopfloor', {})
+            self.shopfloor_enabled = self.shopfloor_config.get('enabled', False)
+            self.shopfloor_timeout = self.shopfloor_config.get('timeout')
+            self.shopfloor_ignore_on_fail = (
+                    self.shopfloor_config.get('ignore_on_fail'))
+
+            factory.console.info("Config loaded.")
+            self.advance_state()
 
     def on_usb_remove(self, dev_path):
+        """
+        Callback to prevent unexpected USB removal.
+
+        @param dev_path: dummy argument from GTK event.
+        """
         if self._state != self._STATE_WAIT_USB:
             raise error.TestNAError("USB removal is not allowed during test")
 
+    def match_config(self, serial_number):
+        """
+        Based on the serial number, dynamically load coressponding settings.
+
+        With this feature, we can utilize a single equipment as multiple
+        stations. If serial_number doesn't match with any known config, the
+        last config in configuration will be applied.
+
+        @param serial_number: serial_number of incoming antenna module.
+        """
+        # Search if there is a config that matches
+        config_matched = False
+        for configs in self.config['serial_specific_configuration']:
+            self.sn_regex = configs.get('sn_regex', None)
+            assert self.sn_regex, "Regexp of SN must exist"
+            self.current_config_name = configs.get('config_name', 'undefined')
+            self.auto_screenshot = configs.get('auto_screenshot', False)
+            self.reference_info = configs.get('reference_info', False)
+            self.marker_info = configs.get('set_marker', None)
+            self.vswr_threshold = configs.get('vswr_threshold', None)
+            self.sweep_restore = configs.get('sweep_restore', None)
+            factory.console.info('Matching SN[%s] with regex[%s]',
+                                 serial_number, self.sn_regex)
+            if re.search(self.sn_regex, serial_number):
+                config_matched = True
+                factory.console.info('Matching configuration - %s',
+                            self.current_config_name)
+                break
+        if not config_matched:
+            factory.console.info(
+                    'No valid configuration matched with serial[%s],'
+                    'use config[%s], sn_regexp[%s]',
+                    serial_number, self.current_config_name, self.sn_regex)
+
     def register_callbacks(self, window):
+        """
+        Utility function to register event with GTK window.
+
+        @param window: GTK window object.
+        """
         def key_press_callback(widget, event):
+            """
+            Callback for invoking widget specific key handler.
+
+            @param widget: parent widget.
+            @param event: GTK event from parent object.
+            """
             if hasattr(self, 'last_widget'):
                 if hasattr(self.last_widget, 'key_callback'):
                     return self.last_widget.key_callback(widget, event)
@@ -194,6 +361,11 @@ class factory_Antenna(test.test):
         window.add_events(gtk.gdk.KEY_PRESS_MASK)
 
     def switch_widget(self, widget_to_display):
+        """
+        Switches the current widget to widget_to_display.
+
+        @param widget_to_display: next widget to show.
+        """
         if hasattr(self, 'last_widget'):
             if widget_to_display is not self.last_widget:
                 self.last_widget.hide()
@@ -206,53 +378,181 @@ class factory_Antenna(test.test):
         self.test_widget.show_all()
 
     def on_sn_keypress(self, entry, key):
+        """
+        Callback for sn_input_widget for faking a serial_number.
+
+        @param entry: the textbox in sn_input_widget.
+        @param key: pressed key.
+        """
         if key.keyval == gtk.keysyms.Tab:
             entry.set_text(_TEST_SN_NUMBER)
             return True
         return False
 
     def on_sn_complete(self, serial_number):
+        """
+        Callback for sn_input_widget when enter pressed.
+
+        @param serial_number: serial_number of the antenna module.
+        """
         self.serial_number = serial_number
         self.log_to_file.write('Serial_number : %s\n' % serial_number)
         self.log_to_file.write('Started at : %s\n' % datetime.datetime.now())
         # TODO(itspeter): display the SN info in the result tab.
         self._update_status('sn', self.check_sn_format(serial_number))
-        self._event_log.Log('vswr_sn', serial_number=serial_number)
+        self._event_log.Log('ab_panel_start',
+                            path=self.path_name,
+                            ab_serial_number=self.serial_number)
         self.advance_state()
 
-    @staticmethod
-    def check_sn_format(sn):
-        # TODO(itspeter): Check SN according to the spec in factory.
-        return sn == _TEST_SN_NUMBER
+    def check_sn_format(self, sn):
+        """
+        Checks if the serial_number matches pattern.
 
-    def write_to_usb(self, filename, content):
+        It will first call match_config to determine configuration and then
+        test if pattern matched with that configuration.
+
+        @param sn: serial_number from sn_input_widget.
+        """
+        self.match_config(sn)
+        regex_ret = re.search(self.sn_regex, sn)
+        return True if regex_ret else False
+
+    def write_to_usb_and_shopfloor(self, filename, content):
+        """
+        Saves detailed log into USB stick and shopfloor.
+
+        @param filename: filename in USB stick.
+        @param content: content to save.
+        """
         with MountedMedia(self.dev_path, 1) as mount_dir:
-            with open(os.path.join(mount_dir, filename), 'w') as f:
+            formatted_date = get_formatted_date()
+            target_dir = os.path.join(
+                    mount_dir, formatted_date, 'usb')
+            TryMakeDirs(target_dir)
+            full_path = os.path.join(target_dir, filename)
+            with open(full_path, 'a') as f:
                 f.write(content)
-        factory.log("Log wrote with SN: %s." % self.serial_number)
+            factory.console.info("Log wrote with SN: %s.", self.serial_number)
+            # Copy the file to a temporary position
+            shutil.copyfile(full_path, TEMP_CACHES)
+            factory.console.info("USB file[%s] copied to [%s]",
+                                 full_path, TEMP_CACHES)
+
+        # Upload to the shopfloor
+        log_name = os.path.join(self.path_name, 'usb', filename)
+        if self.shopfloor_enabled:
+            factory.console.info("Sending logs to shopfloor")
+            # Upload to shopfloor
+            upload_to_shopfloor(
+                    TEMP_CACHES,
+                    log_name,
+                    ignore_on_fail=self.shopfloor_ignore_on_fail,
+                    timeout=self.shopfloor_timeout)
+            factory.console.info("Log %s uploaded.", filename)
+
+    def capture_screenshot(self, filename):
+        """Captures the screenshot based on the setting.
+
+        Timestamp will be automatically added as postfix.
+
+        @param filename: primary filename.
+        """
+        if self.auto_screenshot:
+            # Save a screenshot copy in ENA
+            filename_with_timestamp = '%s[%s]' % (
+                    filename, get_formatted_time())
+            self.ena.SaveScreen(filename_with_timestamp)
+            # Get another screenshot from the ENA's http server.
+            # We use SaveScreen to store a local backup on the E5071C (windows).
+            # Because the SCPI protocol doesn't provide a way to transmit binary
+            # file. The trick here is to invoke the screenshot function via its
+            # http service (image.asp) and get the saved file (it is always
+            # disp.png)
+            factory.console.info("Requesting ENA to generate screenshot")
+            urlopen("http://%s/image.asp" % self.ena_host).read()
+            png_content = urlopen("http://%s/disp.png" % self.ena_host).read()
+            self._event_log.Log('vswr_screenshot',
+                                ab_serial_number=self.serial_number,
+                                path=self.path_name,
+                                filename=filename_with_timestamp)
+
+            formatted_date = get_formatted_date()
+            factory.console.info("Saving screenshot to USB under dates %s",
+                                 formatted_date)
+            with MountedMedia(self.dev_path, 1) as mount_dir:
+                target_dir = os.path.join(
+                        mount_dir, formatted_date, 'screenshot')
+                TryMakeDirs(target_dir)
+                filename_in_abspath = os.path.join(
+                        target_dir,  filename_with_timestamp)
+                with open(filename_in_abspath, 'a') as f:
+                    f.write(png_content)
+                factory.console.info("Screenshot %s saved in USB.",
+                                     filename_with_timestamp)
+                # Copy the file to a temporary position
+                shutil.copyfile(filename_in_abspath, TEMP_CACHES)
+                factory.console.info("USB file[%s] copied to [%s]",
+                                     filename_in_abspath, TEMP_CACHES)
+
+            if self.shopfloor_enabled:
+                factory.console.info("Sending screenshot to shopfloor")
+                log_name = os.path.join(
+                        self.path_name, 'screenshot', filename_with_timestamp)
+                # Upload to shopfloor
+                upload_to_shopfloor(
+                        TEMP_CACHES,
+                        log_name,
+                        ignore_on_fail=self.shopfloor_ignore_on_fail,
+                        timeout=self.shopfloor_timeout)
+                factory.console.info("Screenshot %s uploaded.",
+                                     filename_with_timestamp)
+
+    def restore_sweep(self):
+        """Restores to a specific linear sweeping."""
+        if self.sweep_restore:
+            self.ena.SetLinearSweep(
+                self.sweep_restore[0], self.sweep_restore[1])
+
+    def set_marker(self):
+        for channel, marker_num, freq in self.marker_info:
+            self.ena.SetMarker(channel, marker_num, freq)
 
     def test_main_antennas(self):
+        """Tests the main antenna of cellular and wifi."""
         freqs = set()
         self._add_required_freqs('cell', freqs)
         self._add_required_freqs('wifi', freqs)
         ret = self._get_traces(freqs, ['S11', 'S22'],
                                purpose='test_main_antennas')
+        self.restore_sweep()
+        self.set_marker()
+        self.capture_screenshot('[%s]%s' % ('MAIN', self.serial_number))
         self._test_main_cell_antennas(ret)
         self._test_main_wifi_antennas(ret)
         self.advance_state()
 
     def test_aux_antennas(self):
+        """Tests the aux antenna of cellular and wifi."""
         freqs = set()
         self._add_required_freqs('cell', freqs)
         self._add_required_freqs('wifi', freqs)
         ret = self._get_traces(freqs, ['S11', 'S22'],
                                purpose='test_aux_antennas')
+        self.restore_sweep()
+        self.set_marker()
+        self.capture_screenshot('[%s]%s' % ('AUX', self.serial_number))
         self._test_aux_cell_antennas(ret)
         self._test_aux_wifi_antennas(ret)
         self.generate_final_result()
 
     def _update_status(self, row_name, result):
-        """Updates status in display_dict."""
+        """
+        Updates status of different items.
+
+        @param row_name: the symbolic name of item.
+        @param result: the result of item.
+        """
         result_map = {
             True: ful.PASSED,
             False: ful.FAILED,
@@ -262,47 +562,77 @@ class factory_Antenna(test.test):
         self.display_dict[row_name]['status'] = result_map[result]
 
     def _test_main_cell_antennas(self, traces):
+        """
+        Verifies the trace obtained meets the threshold for main cell antenna.
+
+        @param traces: traces from the equipment.
+        """
         self._update_status(
             'cell_main',
             self._compare_traces(traces, 'cell', 1, 'cell_main', 'S11'))
 
     def _test_main_wifi_antennas(self, traces):
+        """
+        Verifies the trace obtained meets the threshold for wifi main antenna.
+
+        @param traces: traces from the equipment.
+        """
         self._update_status(
             'wifi_main',
             self._compare_traces(traces, 'wifi', 1, 'wifi_main', 'S22'))
 
     def _test_aux_cell_antennas(self, traces):
+        """
+        Verifies the trace obtained meets the threshold for aux cell antenna.
+
+        @param traces: traces from the equipment.
+        """
         self._update_status(
             'cell_aux',
             self._compare_traces(traces, 'cell', 3, 'cell_aux', 'S11'))
 
     def _test_aux_wifi_antennas(self, traces):
+        """
+        Verifies the trace obtained meets the threshold for aux wifi antenna.
+
+        @param traces: traces from the equipment.
+        """
         self._update_status(
             'wifi_aux',
             self._compare_traces(traces, 'wifi', 3, 'wifi_aux', 'S22'))
 
     def generate_final_result(self):
+        """Generates the final result and saves logs."""
         self._result = all(
            ful.PASSED == self.display_dict[var]['status']
            for var in self._RESULTS_TO_CHECK)
         self._update_status('result', self._result)
         self.log_to_file.write("Result in summary:\n%s\n" %
                                pprint.pformat(self.display_dict))
-        self._event_log.Log('vswr_results',
-                            serial_number=self.serial_number,
+        self._event_log.Log('vswr_result',
+                            ab_serial_number=self.serial_number,
+                            path=self.path_name,
                             results=self.display_dict)
         # Save logs and hint user it is writing in progress.
         self.advance_state()
 
     def save_log(self):
+        """Saves the logs and writes eventlog."""
         # TODO(itspeter): Dump more details upon RF teams' request.
         self.log_to_file.write("\n\nRaw traces:\n%s\n" %
                                pprint.pformat(self._raw_traces))
         self._event_log.Log('vswr_detail',
+                            ab_serial_number=self.serial_number,
+                            path=self.path_name,
                             raw_trace=self._raw_traces)
+        self._event_log.Log('ab_panel_end',
+                            ab_serial_number=self.serial_number,
+                            path=self.path_name,
+                            results=self.display_dict)
         try:
-            self.write_to_usb(self.serial_number + ".txt",
-                              self.log_to_file.getvalue())
+            self.write_to_usb_and_shopfloor(
+                    self.serial_number + ".txt",
+                    self.log_to_file.getvalue())
         except Exception as e:
             raise error.TestNAError(
                 "Unable to save current log to USB stick - %s" % e)
@@ -310,28 +640,41 @@ class factory_Antenna(test.test):
         # Switch to the result widget
         self.advance_state()
 
-    def _check_measurement(self, standard_value, extracted_value):
-        """Compares whether the measurement meets the spec."""
-        if (standard_value is None) or (extracted_value <  standard_value):
-            return True
-        else:
-            return False
-
     def _add_required_freqs(self, antenna_type, freqs_set):
-        """Reads the required frequencies and add it to freqs_set.
+        """
+        Reads the required frequencies and add them to freqs_set.
 
         Format of antenna.params:
-        {'vswr_max': {antenna_type: [(freq, main, coupling, aux), ...
-        For example: {'vswr_max': {'cell': [(746, -6, -10, -6),
+            {'vswr_threshold': {
+              antenna_type: [
+                (freq,
+                  (main_min, main_max),
+                  (coupling_min, coupling_max),
+                  (aux_min, aux_max)), ...
+        For example:
+            {'vswr_threshold': {
+              'cell': [
+                (746,
+                  (None, -6), (-50, None), (-15, -6)), ...
 
         Usage example:
             self._add_required_freqs('cell', freqs)
+
+        @param antenna_type: antenna_type.
+        @param freqs_set: the freqs_set that will be modified.
         """
-        for config_tuple in self.config['vswr_max'][antenna_type]:
+        for config_tuple in self.vswr_threshold[antenna_type]:
             freqs_set.add(config_tuple[0])
 
     def _get_traces(self, freqs_set, parameters, purpose="unspecified"):
-        """This function is a wrapper for GetTraces in order to log details."""
+        """
+        This function is a wrapper for GetTraces in order to log details.
+
+        @param freqs_set: the set of frequency to acquire.
+        @param parameters: the type of trace to acquire, for example, 'S11'
+          'S22' ..etc. Detailed in GetTraces()
+        @param purpose: additional tag for detailed logging.
+        """
         # Generate the sweep tuples.
         freqs = sorted(freqs_set)
         segments = [(freq_min * 1e6, freq_max * 1e6, 2) for
@@ -343,26 +686,83 @@ class factory_Antenna(test.test):
         self._raw_traces[purpose] = ret
         return ret
 
+    def check_measurement(self, standard_tuple, extracted_value,
+                          print_on_failure=False, freq=None, title=None):
+        """
+        Compares whether the measurement meets the spec at single frequency.
+
+        Failure details are also recorded in the eventlog. Console display is
+        controlled by print_on_failure.
+
+        @param standard_tuple: the pre-defined threshold.
+        @param extracted_value: the value acquired from the trace.
+        @param print_on_failure: If print_on_failure is enabled, details
+          of failure band will be displayed under console.
+        @param freq: frequency to display when print_on_failure is enabled.
+        @param title: title to display when print_on_failure is enabled,
+          usually is one of the 'cell_main', 'cell_aux', 'wifi_main',
+          'wifi_aux'.
+        """
+        min_value = standard_tuple[0]
+        max_value = standard_tuple[1]
+        # Compare the minimum
+        difference = (min_value - extracted_value) if min_value else 0
+        difference = max(difference,
+                         (extracted_value - max_value) if max_value else 0)
+        result = True
+
+        if difference > 0:
+            # Hightlight the failed freqs in console.
+            if print_on_failure:
+                factory.console.info(
+                        "%10s failed at %5s MHz[%9.3f dB], %9.3f dB "
+                        "away from threshold[%s, %s]",
+                        title, freq / 1000000.0, float(extracted_value),
+                        float(difference), min_value, max_value)
+            result = False
+        # Record the detail for event_log
+        self.vswr_detail_results.append(
+            (title, freq / 1000000.0, float(extracted_value), result,
+             float(difference), min_value, max_value))
+        return result
+
     def _compare_traces(self, traces, antenna_type, column,
                         log_title, ena_parameter):
-        """Compares whether returned traces and the spec are aligned.
+        """
+        Compares whether returned traces and spec are aligned.
+
+        It calls the check_measurement for each frequency and records
+        coressponding result in eventlog and raw logs.
 
         Usage example:
             self._test_sweep_segment(traces, 'cell', 1, 'cell_main', 'S11')
+
+        @param traces: Trace information from ENA.
+        @param antenna_type: antenna_type, 'cell' or 'main'
+        @param column: the coressponding column index to use as a threshold.
+          As defined in _add_required_freqs 0 refers to (main_min, main_max),
+          1 refers to (coupling_min, coupling_max), 2 refers to
+          (aux_min, aux_max).
+        @param log_title: title for the trace, usually is one of the
+          'cell_main', 'cell_aux', 'wifi_main', 'wifi_aux'.
+        @param ena_parameter: the type of trace to acquire, for example, 'S11'
+          'S22' ..etc. Detailed in ena.GetTraces()
         """
         self.log_to_file.write(
             "Start measurement [%s], with profile[%s,col %s], from ENA-%s\n" %
             (log_title, antenna_type, column, ena_parameter))
         # Generate the sweep tuples.
         freqs = [atuple[0] * 1e6 for atuple in
-                 self.config['vswr_max'][antenna_type]]
+                 self.vswr_threshold[antenna_type]]
         standards = [atuple[column] for atuple in
-                     self.config['vswr_max'][antenna_type]]
+                     self.vswr_threshold[antenna_type]]
         freqs_responses = [traces.GetFreqResponse(freq, ena_parameter) for
                            freq in freqs]
-        results = [self._check_measurement(std_val, ext_val) for
-                   std_val, ext_val in
-                   zip(standards, freqs_responses)]
+        results = [self.check_measurement(
+                std_range, ext_val, print_on_failure=True,
+                freq=freq, title=log_title) for
+                   freq, std_range, ext_val in
+                   zip(freqs, standards, freqs_responses)]
         logs = zip(freqs, standards, freqs_responses, results)
         logs.insert(0, ("Frequency",
                         "Column-%s" % column,
@@ -372,13 +772,25 @@ class factory_Antenna(test.test):
                                (log_title, pprint.pformat(logs)))
         self._event_log.Log(
             'vswr_measurement',
+            ab_serial_number=self.serial_number,
             config=(log_title, antenna_type, column, ena_parameter),
+            vswr_detail_results=self.vswr_detail_results,
             logs=logs)
 
         return all(results)
 
+    def connect_ena(self):
+        """Connnects to E5071C(ENA) , initialize the SCPI object."""
+        # TODO(itspeter): Prepare IP address specifically for ENA
+        # Setup the ENA host.
+        factory.console.info('Connecting to the ENA...')
+        self.ena = ENASCPI(self.ena_host)
+        factory.console.info('Connected.')
+        self.advance_state()
+
     def reset_data_for_next_test(self):
-        """Resets internal data for the next testing cycle.
+        """
+        Resets internal data for the next testing cycle.
 
         prepare_panel_widget is the first widget of a new testing cycle. This
         function resets all the testing data. Caller should call switch_widget
@@ -386,47 +798,77 @@ class factory_Antenna(test.test):
         """
         self.log_to_file = StringIO.StringIO()
         self._raw_traces = {}
+        self.vswr_detail_results = []
         self.sn_input_widget.get_entry().set_text('')
         for var in self._STATUS_NAMES:
             self._update_status(var, None)
-        factory.log("Reset internal data.")
+        factory.console.info("Reset internal data.")
 
     def on_result_enter(self):
+        """Callback wrapper for key pressed in result_widget."""
         self.advance_state()
         return True
 
     def switch_to_sn_input_widget(self):
+        """Callback wrapper for key pressed in prepare_panel_widget."""
         self.advance_state()
         return True
 
     def make_result_widget(self, on_key_enter):
+        """Returns a widget that displays test result.
+
+        @param on_key_enter: callback function when enter pressed.
+        """
         widget = gtk.VBox()
         widget.add(ful.make_label(_MESSAGE_RESULT_TAB))
         for name, label in zip(self._STATUS_NAMES, self._STATUS_LABELS):
             widget.add(make_status_row(name, self.display_dict,
                                        label, ful.UNTESTED))
         def key_press_callback(widget, event):
+            """Callback wrapper for handle key pressed event.
+
+            @param widget: parent widget.
+            @param event: wrapped GTK event, including pressed key info.
+            """
             if event.keyval == gtk.keysyms.Return:
                 on_key_enter()
 
         widget.key_callback = key_press_callback
         return widget
 
-    def run_once(self, ena_host, local_ip=None):
-        factory.log('%s run_once' % self.__class__)
-        factory.log('parameters: (ena_host: %s, local_ip: %s)' %
-                    (ena_host, local_ip))
-        # Setup the local ip address
-        if local_ip:
-            factory.log('Setup the local ip address to %s' % local_ip)
-            rf_utils.SetEthernetIp(local_ip)
+    def run_once(self, ena_host, config_path, timezone, local_ip=None):
+        """
+        Main entrance for the test.
 
+        @param ena_host: the IP address of E5071C.
+        @param config_path: configuration path from the root of USB disk
+        @param timezone: the timezone might be different from shopfloor.
+            use this argument to set proper timezone in fixture host if
+            necessary.
+        @param local_ip: When test is running without a shopfloor, it is
+            usually in a closed LAN. In this case, we will need to set
+            static IP to fixture host (e.g. 192.168.6.3)
+        """
+        factory.console.info('%s run_once', self.__class__)
+        factory.console.info(
+            '(ena_host: %s, config_path: %s, local_ip: %s)',
+            ena_host, config_path, local_ip)
+        self.config_path = config_path
+        self.ena_host = ena_host
+        self.ena = None       # It will later be assigned when connected
+        self.dev_path = None  # It will later be assigned when USB plug-in
+
+        # Setup the local ip address to connect with shopfloor.
+        if local_ip:
+            factory.console.info('Setup the local ip address to %s', local_ip)
+            rf_utils.SetEthernetIp(local_ip)
+            # TODO(itspeter): Tweak for more complicated network setting.
+
+        # Setup the timezone
+        os.environ['TZ'] = timezone
         # Initial EventLog
         self._event_log = EventLog.ForAutoTest()
 
-        # Setup the ENA host.
-        factory.log('Connecting to the ENA...')
-        self.ena = agilent_scpi.ENASCPI(ena_host)
         # Initialize variables.
         self.display_dict = {}
         self.base_config = PluggableConfig({})
@@ -434,6 +876,10 @@ class factory_Antenna(test.test):
         # Set up the UI widgets.
         self.usb_prompt_widget = gtk.VBox()
         self.usb_prompt_widget.add(ful.make_label(_MESSAGE_USB))
+
+        self.connecting_ena_widget = gtk.VBox()
+        self.connecting_ena_widget.add(ful.make_label(_MESSAGE_CONNECTING_ENA))
+
         self.prepare_panel_widget = make_prepare_widget(
             message=_MESSAGE_PREPARE_PANEL,
             on_key_continue=self.switch_to_sn_input_widget,
@@ -485,6 +931,8 @@ class factory_Antenna(test.test):
                 (None, None),
             self._STATE_WAIT_USB:
                 (self.usb_prompt_widget, None),
+            self._STATE_CONNECTING_ENA:
+                (self.connecting_ena_widget, self.connect_ena),
             self._STATE_PREPARE_PANEL:
                 (self.prepare_panel_widget, self.reset_data_for_next_test),
             self._STATE_ENTERING_SN:
