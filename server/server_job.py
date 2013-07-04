@@ -480,7 +480,7 @@ class base_server_job(base_job.base_job):
     def run(self, cleanup=False, install_before=False, install_after=False,
             collect_crashdumps=True, namespace={}, control=None,
             control_file_dir=None, verify_job_repo_url=False,
-            only_collect_crashinfo=False):
+            only_collect_crashinfo=False, skip_crash_collection=False):
         # for a normal job, make sure the uncollected logs file exists
         # for a crashinfo-only run it should already exist, bail out otherwise
         created_uncollected_logs = False
@@ -589,7 +589,10 @@ class base_server_job(base_job.base_job):
 
             if machines and (collect_crashdumps or collect_crashinfo):
                 namespace['test_start_time'] = test_start_time
-                if collect_crashinfo:
+                if skip_crash_collection:
+                    logging.info('Skipping crash dump/info collection '
+                                 'as requested.')
+                elif collect_crashinfo:
                     # includes crashdumps
                     self._execute_code(CRASHINFO_CONTROL_FILE, namespace)
                 else:

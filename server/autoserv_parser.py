@@ -142,6 +142,10 @@ class base_autoserv_parser(object):
                                dest="verify_job_repo_url", default=False,
                                help=("Verify that the job_repo_url of the host "
                                      "has staged packages for the job."))
+        self.parser.add_option("--no_collect_crashinfo", action="store_true",
+                               dest="skip_crash_collection", default=False,
+                               help=("Turns off crash collection to shave time "
+                                     "off test runs."))
 
 
     def parse_args(self):
