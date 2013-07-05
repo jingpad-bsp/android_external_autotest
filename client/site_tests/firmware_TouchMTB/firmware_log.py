@@ -243,7 +243,7 @@ class SummaryLog:
 
         if not log_filenames:
             err_msg = 'Error: no log files in the test result directory: %s'
-            print_and_exit(err_msg % log_dir)
+            print_and_exit(err_msg % self.log_dir)
 
         self.log_table = SimpleTable()
         self.fws = Set()

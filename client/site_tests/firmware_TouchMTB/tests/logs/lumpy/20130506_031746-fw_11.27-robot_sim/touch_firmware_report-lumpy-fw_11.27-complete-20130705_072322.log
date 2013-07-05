@@ -526,7 +526,7 @@ p177
 g13
 g26
 sg27
-F2.8611543120350689
+F2.8404431157590202
 sba(ifirmware_log
 Metric
 p179
@@ -534,7 +534,7 @@ p179
 g13
 g30
 sg27
-F0.49168603641301162
+F0.4953637106482347
 sba(ifirmware_log
 Metric
 p181
@@ -542,7 +542,7 @@ p181
 g13
 g33
 sg27
-F1.535647272657686
+F1.457893058076263
 sba(ifirmware_log
 Metric
 p183
@@ -550,9 +550,9 @@ p183
 g13
 g36
 sg27
-F0.19656004517540099
+F0.20076268911280307
 sbasg12
-F0.048382623941160163
+F0.054365147173618789
 sg13
 S'Linearity(Middle)Validator'
 p185
@@ -561,9 +561,9 @@ Nsg16
 g38
 sg18
 (lp186
-S'    max_err: (2.86, 0.49) mm'
+S'    max_err: (2.84, 0.50) mm'
 p187
-aS'    rms_err: (1.54, 0.20) mm'
+aS'    rms_err: (1.46, 0.20) mm'
 p188
 asba(ifirmware_log
 ValidatorLog
@@ -578,7 +578,7 @@ p192
 g13
 g26
 sg27
-F6.3866492977055414
+F6.5031108420031769
 sba(ifirmware_log
 Metric
 p194
@@ -586,7 +586,7 @@ p194
 g13
 g30
 sg27
-F0.69454913206427593
+F0.73873257618906796
 sba(ifirmware_log
 Metric
 p196
@@ -594,7 +594,7 @@ p196
 g13
 g33
 sg27
-F3.3810389678820942
+F3.452014964796605
 sba(ifirmware_log
 Metric
 p198
@@ -602,7 +602,7 @@ p198
 g13
 g36
 sg27
-F0.35017079023711611
+F0.31205394142282383
 sbasg12
 I0
 sg13
@@ -613,9 +613,9 @@ Nsg16
 g38
 sg18
 (lp201
-S'    max_err: (6.39, 0.69) mm'
+S'    max_err: (6.50, 0.74) mm'
 p202
-aS'    rms_err: (3.38, 0.35) mm'
+aS'    rms_err: (3.45, 0.31) mm'
 p203
 asba(ifirmware_log
 ValidatorLog
@@ -682,7 +682,7 @@ S'    actual: 0'
 p224
 aS'    spec: 0'
 p225
-aS'    deviation_pct: 0.000000'
+aS'    deviation_ratio: 0.000000'
 p226
 asba(ifirmware_log
 ValidatorLog
@@ -2043,7 +2043,7 @@ p632
 g13
 g482
 sg27
-I0
+F1.7159383568311679
 sbasg12
 I1
 sg13
@@ -2054,7 +2054,7 @@ S'<= 100, ~ +100'
 p634
 sg18
 (lp635
-S'    Max distance slot0: 0 mm'
+S'    Max distance slot0: 1 mm'
 p636
 asba(ifirmware_log
 ValidatorLog
@@ -2069,7 +2069,7 @@ p640
 g13
 g482
 sg27
-F1.7159383568311679
+F1.2806248474865725
 sbasg12
 I1
 sg13

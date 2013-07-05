@@ -279,6 +279,49 @@ class MtbTest(unittest.TestCase):
         ]
         self._test_finger_path(filename, tid, expected_slot, expected_data)
 
+    def test_get_finger_paths2b(self):
+        """Test get_finger_paths
+
+        Tracking ID 103: slot 1 (explicit slot 1 assigned).
+                         This tracking ID overlaps with two distinct
+                         tracking IDs of which the slot is the same slot 0.
+                         This is a good test as a multiple-finger case.
+
+                         tid 102, slot 0 arrived
+                         tid 103, slot 1 arrived
+                         tid 102, slot 0 left
+                         tid 104, slot 0 arrived
+                         tid 103, slot 1 left
+                         tid 104, slot 0 left
+        """
+        filename = 'drumroll_link_2.dat'
+        tid = 103
+        expected_slot = 1
+        expected_data = [# (syn_time,    (x,   y),   z)
+                         (238157.906405, (527, 901), 71),
+                         (238157.911749, (527, 901), 74),
+                         (238157.917247, (527, 901), 73),
+                         (238157.923152, (527, 902), 71),
+                         (238157.928317, (527, 902), 72),
+                         (238157.934492, (527, 902), 71),
+                         (238157.939984, (527, 902), 69),
+                         (238157.945485, (527, 902), 65),
+                         (238157.950984, (527, 902), 66),
+                         (238157.956482, (527, 902), 70),
+                         (238157.961976, (527, 902), 65),
+                         (238157.973768, (527, 902), 64),
+                         (238157.980491, (528, 901), 61),
+                         (238157.987140, (529, 899), 60),
+                         (238157.994296, (531, 896), 52),
+                         (238158.001110, (534, 892), 34),
+                         (238158.007128, (534, 892), 34),
+                         (238158.012617, (534, 892), 34),
+                         (238158.018112, (534, 892), 34),
+                         (238158.023600, (534, 892), 34),
+
+        ]
+        self._test_finger_path(filename, tid, expected_slot, expected_data)
+
     def test_get_finger_paths3(self):
         """Test get_finger_paths
 
@@ -310,6 +353,40 @@ class MtbTest(unittest.TestCase):
         ]
         self._test_finger_path(filename, tid, expected_slot, expected_data,
                                request_data_ready=False)
+
+    def test_get_slot_data(self):
+        """Test if it can get the data from the correct slot.
+
+        slot 0 and slot 1 start at the same packet. This test verifies if the
+        method uses the correct corresponding slot numbers.
+        """
+        filename = 'two_finger_tracking.diagonal.slow.dat'
+        gesture_filename = self._get_filepath(filename)
+        mtb_packets = get_mtb_packets(gesture_filename)
+
+        # There are more packets. Use just a few of them to verify.
+        xy_pairs = {
+            # Slot 0
+            0: [(1142, 191), (1144, 201), (1144, 200)],
+            # Slot 1
+            1: [(957, 105), (966, 106), (960, 104)],
+        }
+
+        number_packets = {
+            # Slot 0
+            0: 189,
+            # Slot 1
+            1: 188,
+        }
+
+        slots = [0, 1]
+        for slot in slots:
+            points = mtb_packets.get_slot_data(slot, 'point')
+            # Verify the number of packets in each slot
+            self.assertEqual(len(points), number_packets[slot])
+            # Verify a few packets in each slot
+            for i, xy_pair in enumerate(xy_pairs[slot]):
+                self.assertTrue(Point(*xy_pair) == points[i])
 
     def test_convert_to_evemu_format(self):
         evemu_filename = self._get_filepath('one_finger_swipe.evemu.dat')
