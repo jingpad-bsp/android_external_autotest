@@ -4,6 +4,7 @@
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.cros import tpm_store
@@ -203,3 +204,4 @@ class network_VPNConnect(test.test):
 
                 with self.get_vpn_server() as server:
                     self.connect_vpn()
+                    site_utils.ping(server.SERVER_IP_ADDRESS, tries=3)

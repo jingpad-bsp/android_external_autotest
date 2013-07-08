@@ -39,6 +39,7 @@ class L2TPIPSecVPNServer(VPNServer):
     XL2TPD_COMMAND = '/usr/sbin/xl2tpd'
     XL2TPD_CONFIG_FILE = 'etc/xl2tpd/xl2tpd.conf'
     XL2TPD_PID_FILE = 'var/run/xl2tpd.pid'
+    SERVER_IP_ADDRESS = '192.168.1.99'
     IPSEC_COMMON_CONFIGS = {
         'etc/strongswan.conf' :
             'charon {\n'
@@ -206,6 +207,7 @@ class OpenVPNServer(VPNServer):
     EXPECTED_AUTHENTICATION_FILE = 'etc/openvpn_expected_authentication.txt'
     PASSWORD = 'password'
     USERNAME = 'username'
+    SERVER_IP_ADDRESS = '10.11.12.1'
     CONFIGURATION = {
         'etc/ssl/blacklist' : '',
         CA_CERTIFICATE_FILE : site_eap_certs.ca_cert_1,
