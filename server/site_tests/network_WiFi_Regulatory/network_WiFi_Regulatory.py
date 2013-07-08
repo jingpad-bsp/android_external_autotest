@@ -36,14 +36,15 @@ class network_WiFi_Regulatory(wifi_cell_test_base.WiFiCellTestBase):
             assoc_params.ssid = self.context.router.get_ssid()
             self.context.assert_connect_wifi(assoc_params)
             ping_ip = self.context.get_wifi_addr(ap_num=0)
-            result = self.context.client.ping(ping_ip, {}, ignore_status=True)
+            result = self.context.client.ping(ping_ip, {})
             for attempt in range(10):
                 self.context.router.send_management_frame(
                         'channel_switch:%d' % alternate_channel)
                 # This should fail at some point.  Since the client
                 # might be in power-save, we are not guaranteed it will hear
                 # this message the first time around.
-                result = self.context.client.ping(ping_ip, {'count':3})
+                result = self.context.client.ping(ping_ip, {'count':3},
+                                                  ignore_status=True)
                 stats = wifi_test_utils.parse_ping_output(result)
                 if float(stats['loss']) > 60:
                     break

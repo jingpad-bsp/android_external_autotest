@@ -227,8 +227,12 @@ class WiFiClient(object):
         """
         logging.info('Pinging from the client.')
         count = count or int(ping_args.get('count', self.DEFAULT_PING_COUNT))
-        # Timeout is 3s / ping packet.
-        timeout = 3 * count
+        # Ping waits 10 seconds to timeout the last reply.  This means we
+        # expect ping to exit (success or failure) in no more than count + 9
+        # seconds -- the time from the first transmitted ping to the last,
+        # plus the 10 second interval waiting for a reply to the last packet.
+        # Let's add an extra second of slop.
+        timeout = 10 + count
         ping_args = ping_args.copy()
         ping_args['count'] = count
         result = self.host.run(
