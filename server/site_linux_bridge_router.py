@@ -24,6 +24,7 @@ class LinuxBridgeRouter(site_linux_router.LinuxRouter):
         self.cmd_brctl = "/usr/sbin/brctl"
 
         self.hostapd['conf']['bridge'] = self.bridgeif
+        self.default_config['bridge'] = self.bridgeif
 
         # Remove all bridges.
         output = self.router.run("%s show" % self.cmd_brctl).stdout
