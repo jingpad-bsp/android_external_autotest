@@ -37,6 +37,9 @@ def _print_log(log_dir):
             for vlog in vlogs:
                 print prefix_spaces * 4 + '%s: ' % vlog.name
                 print prefix_spaces * 5 + 'score: %s' % str(vlog.score)
+                for metric in vlog.metrics:
+                    print (prefix_spaces * 5 + 'metric %s: %s' %
+                           (metric.name, metric.value))
         print
 
 
