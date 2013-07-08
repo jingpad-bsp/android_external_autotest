@@ -2,9 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 
+import logging
+import re
+
+from autotest_lib.client.common_lib import base_utils, global_config
 from autotest_lib.server.cros.dynamic_suite import constants
+
+
+_SHERIFF_JS = global_config.global_config.get_config_value(
+    'NOTIFICATIONS', 'sheriffs', default='')
+_CHROMIUM_BUILD_URL = global_config.global_config.get_config_value(
+    'NOTIFICATIONS', 'chromium_build_url', default='')
 
 
 def get_label_from_afe(hostname, label_prefix, afe):
@@ -55,3 +64,30 @@ def get_build_from_afe(hostname, afe):
     return get_label_from_afe(hostname, constants.VERSION_PREFIX, afe)
 
 
+def get_sheriffs():
+    """
+    Polls the javascript file that holds the identity of the sheriff and
+    parses it's output to return a list of chromium sheriff email addresses.
+    The javascript file can contain the ldap of more than one sheriff, eg:
+    document.write('sheriff_one, sheriff_two').
+
+    @return: A list of chroium.org sheriff email addresses to cc on the bug
+        if the suite that failed was the bvt suite. An empty list otherwise.
+    """
+    sheriff_ids = []
+    for sheriff_js in _SHERIFF_JS.split(','):
+        try:
+            url_content = base_utils.urlopen('%s%s'% (
+                _CHROMIUM_BUILD_URL, sheriff_js)).read()
+        except (ValueError, IOError) as e:
+            logging.error('could not parse sheriff from url %s%s: %s',
+                           _CHROMIUM_BUILD_URL, sheriff_js, str(e))
+        else:
+            ldaps = re.search(r"document.write\('(.*)'\)", url_content)
+            if not ldaps:
+                logging.error('Could not retrieve sheriff ldaps for: %s',
+                               url_content)
+                continue
+            sheriff_ids += ['%s@chromium.org' % alias.replace(' ', '')
+                            for alias in ldaps.group(1).split(',')]
+    return sheriff_ids

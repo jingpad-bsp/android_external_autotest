@@ -13,7 +13,8 @@ from xml.parsers import expat
 
 import common
 
-from autotest_lib.client.common_lib import global_config, site_utils
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.site_utils.suite_scheduler import base_event
 
