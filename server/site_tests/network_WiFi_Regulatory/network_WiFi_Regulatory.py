@@ -6,7 +6,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.wlan import wifi_cell_test_base
+from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
 class network_WiFi_Regulatory(wifi_cell_test_base.WiFiCellTestBase):

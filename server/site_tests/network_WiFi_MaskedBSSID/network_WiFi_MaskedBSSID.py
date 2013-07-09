@@ -4,7 +4,7 @@
 
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.wlan import hostap_config
-from autotest_lib.server.cros.wlan import wifi_cell_test_base
+from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
 class network_WiFi_MaskedBSSID(wifi_cell_test_base.WiFiCellTestBase):

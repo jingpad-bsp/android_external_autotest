@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.server.cros.wlan import wifi_cell_test_base
+from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
 class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
