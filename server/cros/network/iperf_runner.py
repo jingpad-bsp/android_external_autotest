@@ -9,7 +9,7 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_server
 from autotest_lib.server.cros import remote_command
-from autotest_lib.server.cros.wlan import wifi_client
+from autotest_lib.server.cros.network import wifi_client
 
 
 class IperfRunner(object):

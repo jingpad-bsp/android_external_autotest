@@ -12,7 +12,7 @@ from autotest_lib.server import site_linux_bridge_router
 from autotest_lib.server import site_linux_cros_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.wlan import wifi_client
+from autotest_lib.server.cros.network import wifi_client
 
 
 class WiFiTestContextManager(object):

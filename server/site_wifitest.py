@@ -33,7 +33,7 @@ from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import netperf_runner
-from autotest_lib.server.cros.wlan import wifi_client
+from autotest_lib.server.cros.network import wifi_client
 
 class ScriptNotFound(Exception):
     """Raised when site_wlan scripts cannot be found."""
