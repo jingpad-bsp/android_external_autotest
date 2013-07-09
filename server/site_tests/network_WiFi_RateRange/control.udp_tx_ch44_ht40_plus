@@ -14,7 +14,7 @@ This test takes rate vs. range measurement on for UDP upstream test
 
 
 from autotest_lib.server.cros.wlan import hostap_config
-from autotest_lib.server.cros.wlan import iperf_config
+from autotest_lib.server.cros.network import iperf_config
 
 
 def run(machine):
