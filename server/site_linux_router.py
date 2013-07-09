@@ -8,7 +8,7 @@ import re
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.wlan import hostap_config
+from autotest_lib.server.cros.network import hostap_config
 
 def isLinuxRouter(host):
     """Check if host is a linux router.

@@ -16,7 +16,7 @@ on channels 1, 6, and 11 (2.4 Ghz band) and correctly send IP traffic.
 
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server.cros.wlan import hostap_config
+from autotest_lib.server.cros.network import hostap_config
 
 
 def run(machine):

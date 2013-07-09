@@ -16,7 +16,7 @@ on 5 GHz channel with short guard intervals enabled (both 20/40 Mhz).
 
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server.cros.wlan import hostap_config
+from autotest_lib.server.cros.network import hostap_config
 
 
 def run(machine):

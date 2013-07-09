@@ -17,7 +17,7 @@ channel if radar is detected.
 """
 
 
-from autotest_lib.server.cros.wlan import hostap_config
+from autotest_lib.server.cros.network import hostap_config
 
 
 def run(machine):

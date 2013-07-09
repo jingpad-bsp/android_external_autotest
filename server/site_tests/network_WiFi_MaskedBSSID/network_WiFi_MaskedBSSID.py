@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.server import site_linux_system
-from autotest_lib.server.cros.wlan import hostap_config
+from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
