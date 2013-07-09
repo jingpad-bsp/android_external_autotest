@@ -178,6 +178,18 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 signal=params.signal)
 
 
+    def wait_for_service_states(self, ssid, states, timeout_seconds):
+        """Wait for service to achieve one state out of a list of states.
+
+        @param ssid string the network to connect to (e.g. 'GoogleGuest').
+        @param states tuple the states for which to wait
+        @param timeout_seconds int seconds to wait for a state
+
+        """
+        return self._wifi_proxy.wait_for_service_states(
+                ssid, states, timeout_seconds)
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')

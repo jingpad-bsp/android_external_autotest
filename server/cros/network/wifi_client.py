@@ -439,3 +439,19 @@ class WiFiClient(object):
         params.interface = self.wifi_if
         params.method = xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_DEFAULT
         self.configure_bgscan(params)
+
+
+    def wait_for_service_states(self, ssid, states, timeout_seconds):
+        """Waits for a WiFi service to achieve one of |states|.
+
+        @param ssid string name of network being queried
+        @param states tuple list of states for which the caller is waiting
+        @param timeout_seconds int seconds to wait for a state in |states|
+
+        """
+        logging.info('Waiting for %s to reach one of %r...', ssid, states)
+        success, state, time  = self._shill_proxy.wait_for_service_states(
+                ssid, states, timeout_seconds)
+        logging.info('...ended up in state \'%s\' (%s) after %f seconds.',
+                     state, 'success' if success else 'failure', time)
+        return success, state, time
