@@ -152,6 +152,10 @@ class base_autoserv_parser(object):
                                dest="skip_crash_collection", default=False,
                                help=("Turns off crash collection to shave time "
                                      "off test runs."))
+        self.parser.add_option("--disable_sysinfo", action="store_true",
+                               dest="disable_sysinfo", default=False,
+                               help="Turns off sysinfo collection to shave "
+                                    "time off test runs.")
 
 
     def parse_args(self):

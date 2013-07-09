@@ -144,7 +144,7 @@ class base_server_job(base_job.base_job):
     def __init__(self, control, args, resultdir, label, user, machines,
                  client=False, parse_job='',
                  ssh_user='root', ssh_port=22, ssh_pass='', test_retry=0,
-                 group_name='', tag='',
+                 group_name='', tag='', disable_sysinfo=False,
                  control_filename=SERVER_CONTROL_FILENAME):
         """
         Create a server side job object.
@@ -165,6 +165,8 @@ class base_server_job(base_job.base_job):
         @param group_name: If supplied, this will be written out as
                 host_group_name in the keyvals file for the parser.
         @param tag: The job execution tag from the scheduler.  [optional]
+        @param disable_sysinfo: Whether we should disable the sysinfo step of
+                tests for a modest shortening of test time.  [optional]
         @param control_filename: The filename where the server control file
                 should be written in the results directory.
         """
@@ -199,6 +201,7 @@ class base_server_job(base_job.base_job):
         self.drop_caches = False
         self.drop_caches_between_iterations = False
         self._control_filename = control_filename
+        self._disable_sysinfo = disable_sysinfo
 
         self.logging = logging_manager.get_logging_manager(
                 manage_stdout_and_stderr=True, redirect_fds=True)
@@ -639,6 +642,9 @@ class base_server_job(base_job.base_job):
         url
                 url of the test to run
         """
+        if self._disable_sysinfo:
+            dargs['disable_sysinfo'] = True
+
         group, testname = self.pkgmgr.get_package_name(url, 'test')
         testname, subdir, tag = self._build_tagged_test_name(testname, dargs)
         outputdir = self._make_test_outputdir(subdir)

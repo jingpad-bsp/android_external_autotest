@@ -145,7 +145,8 @@ def run_autoserv(pid_file_manager, results, parser):
         parser.parser.error("-G %r may only be supplied with more than one machine."
                % group_name)
 
-    kwargs = {'group_name': group_name, 'tag': execution_tag}
+    kwargs = {'group_name': group_name, 'tag': execution_tag,
+              'disable_sysinfo': parser.options.disable_sysinfo}
     if control_filename:
         kwargs['control_filename'] = control_filename
     job = server_job.server_job(control, parser.args[1:], results, label,
