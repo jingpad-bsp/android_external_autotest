@@ -14,7 +14,7 @@ from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.wlan import packet_capturer
+from autotest_lib.server.cros.network import packet_capturer
 
 
 class WiFiClient(object):

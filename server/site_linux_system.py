@@ -6,7 +6,7 @@ import logging
 import re
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.wlan import packet_capturer
+from autotest_lib.server.cros.network import packet_capturer
 
 class LinuxSystem(object):
     """Superclass for test machines running Linux.
