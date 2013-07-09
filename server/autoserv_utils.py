@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import control_data
 def autoserv_run_job_command(autoserv_directory, machines,
                              results_directory=None, extra_args=[], job=None,
                              queue_entry=None, verbose=True,
-                             write_pidfile=True):
+                             write_pidfile=True, fast_mode=False):
     """
     Construct an autoserv command from a job or host queue entry.
 
@@ -32,6 +32,7 @@ def autoserv_run_job_command(autoserv_directory, machines,
     @param verbose: Boolean (default: True) for autoserv verbosity.
     @param write_pidfile: Boolean (default: True) for whether autoserv should
                           write a pidfile.
+    @param fast_mode: bool to use fast mode (disables slow autotest features).
     @returns The autoserv command line as a list of executable + parameters.
     """
     command = [os.path.join(autoserv_directory, 'autoserv')]
@@ -71,5 +72,9 @@ def autoserv_run_job_command(autoserv_directory, machines,
 
     if verbose:
         command.append('--verbose')
+
+    if fast_mode:
+        command.append('--disable_sysinfo')
+        command.append('--no_collect_crashinfo')
 
     return command + extra_args

@@ -55,6 +55,7 @@ class TestThatUnittests(unittest.TestCase):
         autoserv_command = os.path.join(autotest_path, 'server', 'autoserv')
         remote = 'etomer'
         results_dir = '/tmp/fakeresults'
+        fast_mode = False
         job1_results_dir = '/tmp/fakeresults/results-1'
         job2_results_dir = '/tmp/fakeresults/results-2'
         self.mox = mox.Mox()
@@ -85,9 +86,11 @@ class TestThatUnittests(unittest.TestCase):
 
         # Test run_job.
         self.mox.ReplayAll()
-        job_res = test_that.run_job(job1, remote, autotest_path, results_dir)
+        job_res = test_that.run_job(job1, remote, autotest_path, results_dir,
+                                    fast_mode)
         self.assertEqual(job_res, job1_results_dir)
-        job_res = test_that.run_job(job2, remote, autotest_path, results_dir)
+        job_res = test_that.run_job(job2, remote, autotest_path, results_dir,
+                                    fast_mode)
         self.assertEqual(job_res, job2_results_dir)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
@@ -101,6 +104,7 @@ class TestThatUnittests(unittest.TestCase):
         remote = 'remoat'
         build = 'bild'
         board = 'bored'
+        fast_mode = False
         suite_control_files=['c1', 'c2', 'c3', 'c4']
         results_dir = '/tmp/test_that_results_fake'
 
@@ -126,11 +130,11 @@ class TestThatUnittests(unittest.TestCase):
         # Test perform_local_run. Enforce that run_job is called correctly.
         for control_file in suite_control_files:
             test_that.run_job(mox.ContainsAttributeValue('control_file',
-                                                        control_file),
-                             remote, autotest_path, results_dir)
+                                                         control_file),
+                             remote, autotest_path, results_dir, fast_mode)
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
-                                  remote, build=build, board=board)
+                                    remote, fast_mode, build=build, board=board)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
 

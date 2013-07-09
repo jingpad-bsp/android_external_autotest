@@ -95,7 +95,7 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
     return len(my_suite.tests)
 
 
-def run_job(job, host, sysroot_autotest_path, results_directory):
+def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode):
     """
     Shell out to autoserv to run an individual test job.
 
@@ -105,6 +105,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory):
     @param sysroot_autotest_path: Absolute path of autotest directory.
     @param results_directory: Absolute path of directory to store results in.
                               (results will be stored in subdirectory of this).
+    @param fast_mode: bool to use fast mode (disables slow autotest features).
     @returns: Absolute path of directory where results were stored.
     """
     with tempfile.NamedTemporaryFile() as temp_file:
@@ -118,6 +119,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory):
                 os.path.join(sysroot_autotest_path, 'server'),
                 machines=host, job=job, verbose=False,
                 results_directory=results_directory,
+                fast_mode=fast_mode,
                 extra_args=[temp_file.name])
         global _autoserv_proc
         _autoserv_proc = subprocess.Popen(command)
@@ -140,14 +142,15 @@ def setup_local_afe():
     return direct_afe.directAFE()
 
 
-def perform_local_run(afe, autotest_path, tests, remote, build=_NO_BUILD,
-                      board=_NO_BOARD):
+def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
+                      build=_NO_BUILD, board=_NO_BOARD):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
     @param tests: List of strings naming tests and suites to run. Suite strings
                   should be formed like "suite:smoke".
     @param remote: Remote hostname.
+    @param fast_mode: bool to use fast mode (disables slow autotest features).
     @param build: String specifying build for local run.
     @param board: String specifyinb board for local run.
 
@@ -178,7 +181,7 @@ def perform_local_run(afe, autotest_path, tests, remote, build=_NO_BUILD,
         logging.info('... scheduled %s tests.', ntests)
 
     for job in afe.get_jobs():
-        run_job(job, remote, autotest_path, results_directory)
+        run_job(job, remote, autotest_path, results_directory, fast_mode)
 
     return results_directory
 
@@ -224,6 +227,11 @@ def parse_arguments(argv):
                         help='Build to test. Device will be reimaged if '
                         'necessary. Omit flag to skip reimage and test '
                         'against already installed DUT image.')
+    parser.add_argument('--fast', action='store_true', dest='fast_mode',
+                        default=False,
+                        help='Enable fast mode.  This will cause test_that to '
+                             'skip time consuming steps like sysinfo and '
+                             'collecting crash information.')
     parser.add_argument('--args', metavar='ARGS',
                         help='Argument string to pass through to test.')
 
@@ -330,7 +338,7 @@ def main(argv):
     if local_run:
         afe = setup_local_afe()
         res_dir= perform_local_run(afe, sysroot_autotest_path, arguments.tests,
-                                   arguments.remote)
+                                   arguments.remote, arguments.fast_mode)
         return subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
 
 
