@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros.wlan import wifi_test_base
+from autotest_lib.server.cros.network import wifi_test_base
 from autotest_lib.server.cros.wlan import wifi_test_context_manager
 
 class WiFiCellTestBase(wifi_test_base.WiFiTestBase):

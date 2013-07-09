@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.server.cros.wlan import rvr_test_context_manager
-from autotest_lib.server.cros.wlan import wifi_test_base
+from autotest_lib.server.cros.network import wifi_test_base
 
 
 class RvRTestBase(wifi_test_base.WiFiTestBase):
