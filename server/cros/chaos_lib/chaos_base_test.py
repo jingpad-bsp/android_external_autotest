@@ -16,7 +16,7 @@ from autotest_lib.server.cros.chaos_ap_configurators import \
     download_chromium_prebuilt
 from autotest_lib.server.cros.chaos_config import ChaosAP
 from autotest_lib.server.cros.wlan import connector, disconnector
-from autotest_lib.server.cros.wlan import profile_manager
+from autotest_lib.server.cros.network import profile_manager
 
 
 class WiFiChaosConnectionTest(object):
