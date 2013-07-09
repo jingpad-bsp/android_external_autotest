@@ -262,7 +262,12 @@ def main():
         # run time measurement enabled, start a timer to begin measurement.
         if (len(parser.args) > 0 and parser.args[0] != '' and
             parser.options.machines):
-            test_name = control_data.parse_control(parser.args[0]).name
+            try:
+                test_name = control_data.parse_control(parser.args[0],
+                                                       raise_warnings=True).name
+            except control_data.ControlVariableException:
+                logging.debug('Failed to retrieve test name from control file.')
+                test_name = None
             if test_name in measure_run_time_tests:
                 machines = parser.options.machines.replace(',', ' '
                                                            ).strip().split()
