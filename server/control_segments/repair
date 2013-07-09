@@ -1,5 +1,5 @@
 from autotest_lib.client.common_lib import host_protections
-
+from autotest_lib.server.cros import repair_utils
 
 def _call_repair(machine):
     protection = host_protections.Protection
@@ -19,6 +19,7 @@ def repair(machine):
         _call_repair(machine)
         job.record('GOOD', None, 'repair', '%s repaired successfully' % machine)
     except Exception, e:
+        repair_utils.flag_problem_test(machine)
         msg = 'repair failed on %s: %s\n' % (machine, str(e))
         job.record('FAIL', None, 'repair', msg)
         raise
