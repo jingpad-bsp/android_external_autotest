@@ -19,7 +19,7 @@ that we must be using some frame aggregation techniques.
 
 
 from autotest_lib.server.cros.wlan import hostap_config
-from autotest_lib.server.cros.wlan import netperf_runner
+from autotest_lib.server.cros.network import netperf_runner
 
 
 def run(machine):

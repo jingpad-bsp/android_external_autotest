@@ -32,7 +32,7 @@ from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.wlan import netperf_runner
+from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.wlan import wifi_client
 
 class ScriptNotFound(Exception):

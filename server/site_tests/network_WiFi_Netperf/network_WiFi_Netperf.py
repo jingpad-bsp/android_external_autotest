@@ -6,7 +6,7 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server.cros.wlan import netperf_runner
+from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.wlan import wifi_cell_test_base
 
 
