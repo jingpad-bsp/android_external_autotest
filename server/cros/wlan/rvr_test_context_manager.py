@@ -7,7 +7,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.server import hosts
 from autotest_lib.server import site_attenuator
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.wlan import wifi_test_context_manager
+from autotest_lib.server.cros.network import wifi_test_context_manager
 
 
 class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.server.cros.network import wifi_test_base
-from autotest_lib.server.cros.wlan import wifi_test_context_manager
+from autotest_lib.server.cros.network import wifi_test_context_manager
 
 class WiFiCellTestBase(wifi_test_base.WiFiTestBase):
     """An abstract base class for autotests in WiFi cells.
