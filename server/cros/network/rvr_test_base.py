@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros.wlan import rvr_test_context_manager
+from autotest_lib.server.cros.network import rvr_test_context_manager
 from autotest_lib.server.cros.network import wifi_test_base
 
 
