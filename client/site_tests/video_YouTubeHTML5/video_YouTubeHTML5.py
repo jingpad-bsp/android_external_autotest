@@ -4,70 +4,89 @@
 
 import logging, time
 
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd
+from telemetry.core.chrome import cros_interface
 
-WAIT_TIMEOUT_S = 5
-PLAYBACK_TEST_TIME_S = 10
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import httpd
+
+
+FLASH_PROCESS_NAME = 'chrome/chrome --type=ppapi'
+PLAYER_ENDED_STATE = 'Ended'
 PLAYER_PLAYING_STATE = 'Playing'
 PLAYER_PAUSE_STATE = 'Paused'
-PLAYER_ENDED_STATE = 'Ended'
+PLAYBACK_TEST_TIME_S = 10
+WAIT_TIMEOUT_S = 10
 
-class video_YouTubeHTML5(cros_ui_test.UITest):
+
+class video_YouTubeHTML5(test.test):
     """This test verify the YouTube HTML5 video.
 
     - verify the video playback.
     - verify the available video resolutions.
     - verify the player functionalities.
+
     """
-    version = 1
+    version = 2
+
 
     def initialize(self):
-        super(video_YouTubeHTML5, self).initialize()
-        self._driver = self.pyauto.NewWebDriver()
         self._video_duration = 0
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 
+
     def cleanup(self):
         if self._testServer:
             self._testServer.stop()
-        super(video_YouTubeHTML5, self).cleanup()
+
 
     def video_current_time(self):
         """Returns video's current playback time.
 
         Returns:
             returns the current playback location in seconds (int).
+
         """
-        return int(self._driver.execute_script(
-                   'return player.getCurrentTime()'))
+        return int(self.tab.EvaluateJavaScript('player.getCurrentTime()'))
+
 
     def get_player_status(self):
         """Returns the player status."""
-        js = 'return playerStatus.innerHTML'
-        return self._driver.execute_script(js)
+        return self.tab.EvaluateJavaScript('playerStatus.innerHTML')
+
 
     def get_video_duration(self):
         """Returns the video duration."""
-        return int(self._driver.execute_script(
-                   'return player.getDuration()'))
+        return int(self.tab.EvaluateJavaScript('player.getDuration()'))
+
 
     def set_playback_quality(self, quality):
-        """Set the video quality to the quality passed in the arg."""
-        self._driver.execute_script(
+        """Set the video quality to the quality passed in the arg.
+
+        @param quality: video quality to set.
+
+
+        """
+        self.tab.ExecuteJavaScript(
             'player.setPlaybackQuality("%s")' % quality)
+
 
     def get_playback_quality(self):
         """Returns the playback quality."""
-        return self._driver.execute_script(
-               'return player.getPlaybackQuality()')
+        return self.tab.EvaluateJavaScript('player.getPlaybackQuality()')
+
 
     def wait_for_player_state(self, expected_status):
         """Wait till the player status changes to expected_status.
 
         If the status doesn't change for long, the test will time out after
         WAIT_TIMEOUT_S and fails.
+
+        @param expected_status: status which is expected for the test
+                                to continue.
+
         """
         wait_time = 0 # seconds
         while self.get_player_status() != expected_status:
@@ -76,9 +95,10 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
                 player_status = self.get_player_status()
                 raise error.TestError(
                     'Video failed to load. Player expected status: %s'
-                    'and current status: %s.'
+                    ' and current status: %s.'
                     % (expected_status, player_status))
             wait_time += 1
+
 
     def verify_video_playback(self):
         """Verify the video playback."""
@@ -92,9 +112,8 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
             if self.video_current_time() <= prev_playback:
                 if (count < 2):
                     logging.info('Retrying to video playback test.')
-                    current_seek_time = self.video_current_time
-                    self._driver.execute_script('player.seekTo(%d, true)' %
-                        (self.video_current_time() + 2))
+                    self.tab.ExecuteJavaScript('player.seekTo(%d, true)'
+                            % (self.video_current_time() + 2))
                     time.sleep(1)
                     count = count + 1
                 else:
@@ -105,9 +124,14 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
             prev_playback = self.video_current_time()
             playback = playback + 1
 
+
     def wait_for_expected_resolution(self, expected_quality):
-        """Wait for some time for getting expected resolution."""
-        for count in range(5):
+        """Wait for some time for getting expected resolution.
+
+        @param expected_quality: quality to be set.
+
+        """
+        for count in range(WAIT_TIMEOUT_S):
             dummy_quality = self.get_playback_quality()
             if dummy_quality == expected_quality:
                 logging.info('Expected resolution is set.')
@@ -116,13 +140,14 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
                 logging.info('Waiting for expected resolution.')
                 time.sleep(0.1)
 
+
     def verify_video_resolutions(self):
         """Verify available video resolutions like 360p, 480p, 720p and
            1080p.
         """
         logging.info('Verifying the video resolutions.')
-        video_qualities = self._driver.execute_script(
-                          'return player.getAvailableQualityLevels()')
+        video_qualities = self.tab.EvaluateJavaScript(
+                'player.getAvailableQualityLevels()')
         if not video_qualities:
             raise error.TestError(
                 'Player failed to return available video qualities.')
@@ -136,13 +161,17 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
                  raise error.TestError(
                      'Expected video quality: %s. Current video quality: %s'
                      % (quality, current_quality))
+            time.sleep(1)
+        # setting the video resolution to 480p for rest of the tests.
+        self.set_playback_quality('large')
+
 
     def verify_player_states(self):
         """Verify the player states like play, pause, ended and seek."""
         logging.info('Verifying the player states.')
-        self._driver.execute_script('player.pauseVideo()')
+        self.tab.ExecuteJavaScript('player.pauseVideo()')
         self.wait_for_player_state(PLAYER_PAUSE_STATE)
-        self._driver.execute_script('player.playVideo()')
+        self.tab.ExecuteJavaScript('player.playVideo()')
         self.wait_for_player_state(PLAYER_PLAYING_STATE)
         # We are seeking the player position to (video length - 2 seconds).
         # Since the player waits for WAIT_TIMEOUT_S for the status change,
@@ -150,15 +179,15 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
         video_end_test_duration = (self._video_duration -
                                    self.video_current_time() - 2)
         if video_end_test_duration >= WAIT_TIMEOUT_S:
-            self._driver.execute_script(
-                'player.seekTo(%d, true)' % (self._video_duration - 2))
+            self.tab.ExecuteJavaScript(
+                'player.seekTo(%d, true)' % (self._video_duration - 5))
             self.wait_for_player_state(PLAYER_ENDED_STATE)
         else:
             raise error.TestError(
                 'Test video is not long enough for the video end test.')
         # Verifying seek back from the end position.
-        self._driver.execute_script('player.seekTo(%d, true)'
-                                    % (self._video_duration / 2))
+        self.tab.ExecuteJavaScript('player.seekTo(%d, true)'
+                                   % (self._video_duration / 2))
         self.wait_for_player_state(PLAYER_PLAYING_STATE)
         # So the playback doesn't stay at the mid.
         seek_test = False
@@ -175,20 +204,31 @@ class video_YouTubeHTML5(cros_ui_test.UITest):
                 'Seek location is wrong. Video length: %d, seek position: %d' %
                 (self._video_duration, seek_position))
 
-    def run_once(self):
-        self._driver.get('http://localhost:8000/youtube5.html')
+
+    def run_youtube_tests(self, browser):
+        """Run the video sanity test.
+
+        @param browser: The Browser object to run the test with.
+
+        """
+        self.tab = browser.tabs.New()
+        self.tab.Navigate('http://localhost:8000/youtube5.html')
+        self.wait_for_player_state(PLAYER_PLAYING_STATE)
 
         # Verify that we are not in the Flash YouTube mode.
-        child_processes = self.pyauto.GetBrowserInfo()['child_processes']
-        flash_processes = [x for x in child_processes if
-                           x['name'] == 'Shockwave Flash']
-        if flash_processes:
+        prc = [proc for proc in cros_interface.CrOSInterface().ListProcesses()
+                if FLASH_PROCESS_NAME in proc[1]]
+        if prc:
             raise error.TestFail('Running YouTube in Flash mode.')
 
         # Waiting for test video to load.
-        self.wait_for_player_state(PLAYER_PLAYING_STATE)
-        self._driver.execute_script('player.setVolume(0)')
+        self.tab.ExecuteJavaScript('player.mute()')
         self._video_duration = self.get_video_duration()
         self.verify_video_playback()
         self.verify_video_resolutions()
         self.verify_player_states()
+
+
+    def run_once(self):
+        with chrome.Chrome() as cr:
+            self.run_youtube_tests(cr.browser)
