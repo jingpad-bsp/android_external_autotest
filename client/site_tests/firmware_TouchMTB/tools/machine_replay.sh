@@ -43,8 +43,20 @@ fi
 TMP_LOG_ROOT="/tmp/touch_firmware_test"
 make_empty_dir "$TMP_LOG_ROOT"
 
+# If this is a relative path, convert it to the correct absolute path
+# as this script might not be executed under $PROJ_PATH. This might occur
+# when executing the script through ssh.
+# Note: do not use "[[ "$FLAGS_board_path" = /* ]]" below for better protability
+if [ `echo "$FLAGS_board_path" | head -c1` != "/" ]; then
+  FLAGS_board_path="${PROJ_PATH}/$FLAGS_board_path"
+fi
+
 # Copy the unit test logs to the directory just created.
-cp -r ${PROJ_PATH}/${FLAGS_board_path}/* "$TMP_LOG_ROOT"
+if [ -d ${FLAGS_board_path} ]; then
+  cp -r ${FLAGS_board_path}/* "$TMP_LOG_ROOT"
+else
+  die "Error: the board path $FLAGS_board_path does not exist!"
+fi
 
 [ ${FLAGS_show_spec_v2} -eq ${FLAGS_TRUE} ] && show_spec="--show_spec_v2" \
                                             || show_spec=""
