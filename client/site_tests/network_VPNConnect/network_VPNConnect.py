@@ -24,13 +24,7 @@ class network_VPNConnect(test.test):
     ethernet pair and attempts a VPN association using shill.
 
     """
-    # TODO(pstew): We are intentionally choosing a client interface name that
-    # shill will ignore so we don't have to either configure Static IP in
-    # shill or perform DHCP on this interface.  It means that the
-    # configuration process (specifically pinning the VPN connection to
-    # the underlying connection) doesn't go wonderfully, but that's not what
-    # we are testing here.
-    CLIENT_INTERFACE_NAME = 'clientethernet0'
+    CLIENT_INTERFACE_NAME = 'pseudoethernet0'
     SERVER_INTERFACE_NAME = 'serverethernet0'
     TEST_PROFILE_NAME = 'testVPN'
     CONNECT_TIMEOUT_SECONDS = 15
@@ -201,6 +195,13 @@ class network_VPNConnect(test.test):
                     ignore_shutdown_errors=True) as ethernet_pair:
                 if not ethernet_pair.is_healthy:
                     raise error.TestFail('Virtual ethernet pair failed.')
+
+                # When shill finds this ethernet interface, it will reset
+                # its IP address and start a DHCP client.  We must configure
+                # the static IP address through shill.
+                self.configure_static_ip(self.CLIENT_INTERFACE_NAME,
+                                         self.CLIENT_ADDRESS,
+                                         self.NETWORK_PREFIX)
 
                 with self.get_vpn_server() as server:
                     self.connect_vpn()
