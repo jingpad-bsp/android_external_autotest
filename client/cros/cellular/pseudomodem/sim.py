@@ -122,7 +122,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
             raise TypeError('A carrier is required.')
         path = mm1.MM1 + '/SIM/' + str(index)
         self.msin = msin
-        self.carrier = carrier
+        self._carrier = carrier
         self.imsi = carrier.operator_id + imsi
         self._index = 0
         self._total_pin_retries = pin_retries
@@ -241,6 +241,15 @@ class SIM(dbus_std_ifaces.DBusProperties):
         """
         self._modem = modem
 
+    @property
+    def carrier(self):
+        """
+        @return An instance of SIM.Carrier that contains the carrier
+                information assigned to this SIM.
+
+        """
+        return self._carrier
+
     def _DBusPropertiesDict(self):
         imsi = self.imsi
         if self.locked:
@@ -249,8 +258,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
             op_name = ''
         else:
             msin = self.msin
-            op_id = self.carrier.operator_id
-            op_name = self.carrier.operator_name
+            op_id = self._carrier.operator_id
+            op_name = self._carrier.operator_name
         return {
             'SimIdentifier' : msin,
             'Imsi' : imsi,
