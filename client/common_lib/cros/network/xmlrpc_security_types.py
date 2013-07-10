@@ -238,11 +238,16 @@ class WPAConfig(SecurityConfig):
 class EAPConfig(SecurityConfig):
     """Abstract superclass that implements certificate/key installation."""
 
+    DEFAULT_EAP_USERS = '* TLS'
+    DEFAULT_EAP_IDENTITY = 'chromeos'
+
     SERVICE_PROPERTY_CA_CERT_PEM = 'EAP.CACertPEM'
     SERVICE_PROPERTY_CLIENT_CERT_ID = 'EAP.CertID'
     SERVICE_PROPERTY_EAP_IDENTITY = 'EAP.Identity'
     SERVICE_PROPERTY_EAP_KEY_MGMT = 'EAP.KeyMgmt'
+    SERVICE_PROPERTY_EAP_PASSWORD = 'EAP.Password'
     SERVICE_PROPERTY_EAP_PIN = 'EAP.PIN'
+    SERVICE_PROPERTY_INNER_EAP= 'EAP.InnerEAP'
     SERVICE_PROPERTY_PRIVATE_KEY_ID = 'EAP.KeyID'
     SERVICE_PROPERTY_USE_SYSTEM_CAS = 'EAP.UseSystemCAs'
 
@@ -259,8 +264,10 @@ class EAPConfig(SecurityConfig):
 
     def __init__(self, security='802_1x', file_suffix=None, use_system_cas=None,
                  server_ca_cert=None, server_cert=None, server_key=None,
+                 server_eap_users=None,
                  client_ca_cert=None, client_cert=None, client_key=None,
-                 client_cert_id=None, client_key_id=None):
+                 client_cert_id=None, client_key_id=None,
+                 eap_identity=None):
         """Construct an EAPConfig.
 
         @param file_suffix string unique file suffix on DUT.
@@ -268,11 +275,13 @@ class EAPConfig(SecurityConfig):
         @param server_ca_cert string PEM encoded CA certificate for the server.
         @param server_cert string PEM encoded identity certificate for server.
         @param server_key string PEM encoded private key for server.
+        @param server_eap_users string contents of EAP user file.
         @param client_ca_cert string PEM encoded CA certificate for client.
         @param client_cert string PEM encoded identity certificate for client.
         @param client_key string PEM encoded private key for client.
         @param client_cert_id string identifier for client certificate in TPM.
         @param client_key_id string identifier for client private key in TPM.
+        @param eap_identity string user to authenticate as during EAP.
 
         """
         super(EAPConfig, self).__init__(security=security)
@@ -280,6 +289,7 @@ class EAPConfig(SecurityConfig):
         self.server_ca_cert = server_ca_cert
         self.server_cert = server_cert
         self.server_key = server_key
+        self.server_eap_users = server_eap_users or self.DEFAULT_EAP_USERS
         self.client_ca_cert = client_ca_cert
         self.client_cert = client_cert
         self.client_key = client_key
@@ -298,6 +308,7 @@ class EAPConfig(SecurityConfig):
         self.client_key_id = client_key_id or self.reserve_TPM_id()
         # This gets filled in at install time.
         self.pin = None
+        self.eap_identity = eap_identity or self.DEFAULT_EAP_IDENTITY
 
 
     def install_router_credentials(self, host):
@@ -309,7 +320,7 @@ class EAPConfig(SecurityConfig):
         files = [(self.server_ca_cert, self.server_ca_cert_file),
                  (self.server_cert, self.server_cert_file),
                  (self.server_key, self.server_key_file),
-                 ('* TLS', self.server_eap_user_file)]
+                 (self.server_eap_users, self.server_eap_user_file)]
         for content, path in files:
             # If we omit a parameter, just omit copying a file over.
             if content is None:
@@ -334,17 +345,19 @@ class EAPConfig(SecurityConfig):
         @param tpm_store TPMStore object representing the TPM on our DUT.
 
         """
-        tpm_store.install_certificate(self.client_cert, self.client_cert_id)
-        tpm_store.install_private_key(self.client_key, self.client_key_id)
-        self.pin = tpm_store.PIN
+        if self.client_cert:
+            tpm_store.install_certificate(self.client_cert, self.client_cert_id)
+            self.pin = tpm_store.PIN
+        if self.client_key:
+            tpm_store.install_private_key(self.client_key, self.client_key_id)
+            self.pin = tpm_store.PIN
 
 
     def get_shill_service_properties(self):
         """@return dict of shill service properties."""
-        ret = {}
-        ret = {# We hardcoded this user into those certificates.
-               self.SERVICE_PROPERTY_EAP_IDENTITY: 'chromeos',
-               self.SERVICE_PROPERTY_EAP_PIN: self.pin}
+        ret = {self.SERVICE_PROPERTY_EAP_IDENTITY: self.eap_identity}
+        if self.pin:
+               ret[self.SERVICE_PROPERTY_EAP_PIN] = self.pin
         if self.client_ca_cert:
             # Technically, we could accept a list of certificates here, but we
             # have no such tests.
@@ -434,7 +447,8 @@ class WPAEAPConfig(EAPConfig):
     def __init__(self, file_suffix=None, use_system_cas=None,
                  server_ca_cert=None, server_cert=None, server_key=None,
                  client_ca_cert=None, client_cert=None, client_key=None,
-                 client_cert_id=None, client_key_id=None):
+                 client_cert_id=None, client_key_id=None,
+                 eap_identity=None, server_eap_users=None):
         """Construct a DynamicWEPConfig.
 
         @param file_suffix string unique file suffix on DUT.
@@ -447,15 +461,17 @@ class WPAEAPConfig(EAPConfig):
         @param client_key string PEM encoded private key for client.
         @param client_cert_id string identifier for client certificate in TPM.
         @param client_key_id string identifier for client private key in TPM.
+        @param eap_identity string user to authenticate as during EAP.
+        @param server_eap_users string contents of server EAP users file.
 
         """
         super(WPAEAPConfig, self).__init__(
-                security='802_1x', file_suffix=file_suffix,
-                use_system_cas=use_system_cas,
+                file_suffix=file_suffix, use_system_cas=use_system_cas,
                 server_ca_cert=server_ca_cert, server_cert=server_cert,
                 server_key=server_key, client_ca_cert=client_ca_cert,
                 client_cert=client_cert, client_key=client_key,
-                client_cert_id=client_cert_id, client_key_id=client_key_id)
+                client_cert_id=client_cert_id, client_key_id=client_key_id,
+                eap_identity=eap_identity, server_eap_users=server_eap_users)
 
 
     def get_shill_service_properties(self):
@@ -472,4 +488,63 @@ class WPAEAPConfig(EAPConfig):
         ret.update({'wpa': WPAConfig.MODE_PURE_WPA,
                     'wpa_pairwise': WPAConfig.CIPHER_CCMP,
                     'wpa_key_mgmt':'WPA-EAP'})
+        return ret
+
+
+class Tunneled1xConfig(WPAEAPConfig):
+    """Security type to set up a TTLS/PEAP connection.
+
+    Both PEAP and TTLS are tunneled protocols which use EAP inside of a TLS
+    secured tunnel.  The secured tunnel is a symmetric key encryption scheme
+    negotiated under the protection of a public key in the server certificate.
+    Thus, we'll see server credentials in the form of certificates, but client
+    credentials in the form of passwords and a CA Cert to root the trust chain.
+
+    """
+
+    TTLS_PREFIX = 'TTLS-'
+
+    LAYER1_TYPE_PEAP = 'PEAP'
+    LAYER1_TYPE_TTLS = 'TTLS'
+
+    LAYER2_TYPE_MSCHAPV2 = 'MSCHAPV2'
+    LAYER2_TYPE_MD5 = 'MD5'
+    LAYER2_TYPE_TTLS_MSCHAPV2 = TTLS_PREFIX + 'MSCHAPV2'
+    LAYER2_TYPE_TTLS_MSCHAP = TTLS_PREFIX + 'MSCHAP'
+    LAYER2_TYPE_TTLS_PAP = TTLS_PREFIX + 'PAP'
+
+    def __init__(self, server_ca_cert, server_cert, server_key,
+                 client_ca_cert, eap_identity, password,
+                 outer_protocol=LAYER1_TYPE_PEAP,
+                 inner_protocol=LAYER2_TYPE_MD5,
+                 client_password=None, file_suffix=None):
+        self.password = password
+        if client_password is not None:
+            # Override the password used on the client.  This lets us set
+            # bad passwords for testing.  However, we use the real password
+            # below for the server config.
+            self.password = client_password
+        self.inner_protocol = inner_protocol
+        # hostapd wants these surrounded in double quotes.
+        quote = lambda x: '"' + x + '"'
+        eap_users = map(' '.join, [('*',  outer_protocol),
+                                   (quote(eap_identity), inner_protocol,
+                                    quote(password), '[2]')])
+        super(Tunneled1xConfig, self).__init__(
+                server_ca_cert=server_ca_cert,
+                server_cert=server_cert,
+                server_key=server_key,
+                server_eap_users='\n'.join(eap_users),
+                client_ca_cert=client_ca_cert,
+                eap_identity=eap_identity,
+                file_suffix=file_suffix)
+
+
+    def get_shill_service_properties(self):
+        """@return dict of shill service properties."""
+        ret = super(WPAEAPConfig, self).get_shill_service_properties()
+        ret.update({self.SERVICE_PROPERTY_EAP_PASSWORD: self.password})
+        if self.inner_protocol.startswith(self.TTLS_PREFIX):
+            auth_str = 'auth=' + self.inner_protocol[len(self.TTLS_PREFIX):]
+            ret.update({self.SERVICE_PROPERTY_INNER_EAP: auth_str})
         return ret
