@@ -94,10 +94,9 @@ class power_DarkResumeShutdownServer(test.test):
         # The IO redirection is to make the command return right away. For now,
         # don't go through sys_power for suspending since those code paths use
         # the RTC.
-        # TODO(dbasehore): rework sys_power to use the -d argument to
-        # powerd_suspend and make the RTC alarm optional
-        host.run('( sleep 1 ; /usr/bin/powerd_dbus_suspend ) > /dev/null 2>&1 <'
-                 ' /dev/null &')
+        # TODO(dbasehore): rework sys_power to make the RTC alarm optional
+        host.run('/usr/bin/powerd_dbus_suspend --delay 1 '
+                 '> /dev/null 2>&1 < /dev/null &')
         time.sleep(SUSPEND_WAIT_SECONDS)
         host.power_off()
 

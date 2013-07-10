@@ -12,16 +12,12 @@ from autotest_lib.client.cros import power_suspend, sys_power
 class power_SuspendStress(test.test):
     version = 1
 
-    # TODO(scottz): automate default/dbus distinction after crosbug.com/38140
     def initialize(self, duration, method='default', init_delay=0,
                    tolerated_aborts=0, breathing_time=5, min_suspend=0):
         """
         duration: total run time of the test
         method: suspend method to use... available options:
-            'default': call powerd_suspend directly, no powerd involvement
-            'dbus': use RequestSuspend DBus message... use only in parallel to
-                a UITest-based test, or there will be no logged-in user and
-                powerd will shut down instead of suspend!
+            'default': make a RequestSuspend D-Bus call to powerd
             'idle': wait for idle suspend... use with dummy_IdleSuspend
         init_delay: wait this many seconds before starting the test to give
                 parallel tests time to get started
@@ -39,7 +35,6 @@ class power_SuspendStress(test.test):
         self._breathing_time = breathing_time
         self._method = {
             'default': sys_power.do_suspend,
-            'dbus': sys_power.dbus_suspend,
             'idle': sys_power.idle_suspend,
         }[method]
 

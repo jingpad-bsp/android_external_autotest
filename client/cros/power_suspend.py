@@ -75,13 +75,6 @@ class Suspender(object):
         'parrot': 8,
         'kiev': 9,
     }
-    _LOCKVT = {
-        # lockvt will be true by default, add exceptions here
-        'daisy': False,
-    }
-
-    _SUID_HELPER = '/usr/bin/powerd_setuid_helper'
-
     # alarm/not_before value guaranteed to raise EarlyWakeup in _hwclock_ts
     _EARLY_WAKEUP = 2147483647
 
@@ -305,17 +298,11 @@ class Suspender(object):
                 self._reset_logs()
                 utils.system('sync')
                 board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 3)
-                lockvt = self._LOCKVT.get(utils.get_board(), True)
                 try:
-                    if lockvt:
-                        utils.system('%s -action lock_vt' % self._SUID_HELPER)
                     alarm = self._suspend(duration + board_delay)
                 except sys_power.EarlyWakeupError:
                     # might be a SuspendAbort... we check for it ourselves below
                     alarm = self._EARLY_WAKEUP
-                finally:
-                    if lockvt:
-                        utils.system('%s -action unlock_vt' % self._SUID_HELPER)
 
                 # look for errors
                 if os.path.exists('/sys/firmware/log'):

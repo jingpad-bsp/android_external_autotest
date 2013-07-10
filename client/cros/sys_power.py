@@ -78,38 +78,22 @@ def check_wakeup(alarm):
         raise EarlyWakeupError('Woke from suspend early')
 
 
-def dbus_suspend(seconds):
-    """Do a suspend using dbus.
-
-    Suspend the system to RAM (S3), waking up again after |seconds|, using
-    the powerd_dbus_suspend script. System must be logged in as a non-guest
-    user for this to work. Function will block until suspend/resume has
-    completed or failed. Returns the wake alarm time from the RTC as epoch.
-
-    @param seconds: The number of seconds to suspend the device.
-    """
-    if not os.path.exists('/var/run/state/logged-in'):
-        raise SuspendNotAllowed(
-            'Cannot suspend using dbus when there is no user currently logged '
-            'in; otherwise, device would shut down instead of suspending.')
-    alarm = prepare_wakeup(seconds)[0]
-    upstart.ensure_running(['powerd'])
-    os.system('/usr/bin/powerd_dbus_suspend --timeout 30')
-    check_wakeup(alarm)
-    return alarm
-
-
 def do_suspend(seconds):
-    """Do a suspend.
+    """Do a suspend using the power manager.
 
     Suspend the system to RAM (S3), waking up again after |seconds|, using
-    the powerd_suspend script. Function will block until suspend/resume has
-    completed or failed. Returns the wake alarm time from the RTC as epoch.
+    the powerd_dbus_suspend program. Function will block until
+    suspend/resume has completed or failed. Returns the wake alarm time
+    from the RTC as epoch.
 
     @param seconds: The number of seconds to suspend the device.
     """
     alarm, wakeup_count = prepare_wakeup(seconds)
-    os.system('/usr/bin/powerd_suspend -w %d' % wakeup_count)
+    upstart.ensure_running(['powerd'])
+    command = ('/usr/bin/powerd_dbus_suspend --delay 0 --timeout 30 '
+               '--wakeup_count %d') % wakeup_count
+    logging.info("Running '%s'", command)
+    os.system(command)
     check_wakeup(alarm)
     return alarm
 
@@ -161,9 +145,9 @@ def idle_suspend(seconds):
     # TODO: switch to cros.power_utils#call_powerd_dbus_method once this
     # horrible mess with the WiFi tests and this file's imports is solved
     logging.debug('Simulating user activity after idle suspend...')
-    os.system('dbus-send --type=method_call --system --dest='
-              'org.chromium.PowerManager /org/chromium/PowerManager '
-              'org.chromium.PowerManager.HandleUserActivity int64:%d' % alarm)
+    os.system('dbus-send --type=method_call --system '
+              '--dest=org.chromium.PowerManager /org/chromium/PowerManager '
+              'org.chromium.PowerManager.HandleUserActivity')
 
     return alarm
 

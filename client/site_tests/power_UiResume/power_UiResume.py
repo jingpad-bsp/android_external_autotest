@@ -15,7 +15,7 @@ class power_UiResume(cros_ui_test.UITest):
         # guest, powerd will shut down instead of suspending.
         super(power_UiResume, self).initialize(creds=creds)
         self._suspender = power_suspend.Suspender(self.resultsdir,
-                method=sys_power.dbus_suspend, throw=True)
+                method=sys_power.do_suspend, throw=True)
 
 
     def run_once(self):
