@@ -28,6 +28,7 @@ from autotest_lib.server.cros.dynamic_suite.suite import Suite
 
 
 def parse_options():
+    """Parse command line arguments."""
     parser = optparse.OptionParser()
     parser.add_option('-a', '--autotest_dir', dest='autotest_dir',
                       default=os.path.abspath(
@@ -42,6 +43,17 @@ def parse_options():
     return options
 
 
+def get_all_suite_control_files(autotest_dir):
+    """Find all control files in autotest_dir that have 'SUITE='
+
+    @param autotest_dir: The directory to search for control files.
+    @return: All control files in autotest_dir that have a suite attribute.
+    """
+    fs_getter = Suite.create_fs_getter(autotest_dir)
+    predicate = lambda t: hasattr(t, 'suite')
+    return Suite.find_and_parse_tests(fs_getter, predicate, True)
+
+
 def calculate_dependencies(autotest_dir):
     """
     Traverse through the autotest directory and gather together the information
@@ -51,10 +63,8 @@ def calculate_dependencies(autotest_dir):
     @param autotest_dir The path to the autotest directory to examine for tests
     @return A dictionary of the form {suite: {test: [dep, dep]}}.
     """
-    fs_getter = Suite.create_fs_getter(autotest_dir)
-    predicate = lambda t: hasattr(t, 'suite')
     test_deps = {}  #  Format will be {suite: {test: [dep, dep]}}.
-    for test in Suite.find_and_parse_tests(fs_getter, predicate, True):
+    for test in get_all_suite_control_files(autotest_dir):
         for suite in Suite.parse_tag(test.suite):
             suite_deps = test_deps.setdefault(suite, {})
             # Force this to a list so that we can parse it later with
@@ -67,13 +77,14 @@ def calculate_dependencies(autotest_dir):
 
 
 def main():
+    """Main function."""
     options = parse_options()
 
     test_deps = calculate_dependencies(options.autotest_dir)
 
     if options.output_file:
-        with open(options.output_file, 'w+') as fd:
-            fd.write('%r' % test_deps)
+        with open(options.output_file, 'w') as file_obj:
+            file_obj.write('%r' % test_deps)
     else:
         print '%r' % test_deps
 
