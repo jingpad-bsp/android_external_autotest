@@ -8,7 +8,6 @@ PURPOSE = "To verify the device successfully can navigate to a URL."
 CRITERIA = """
 This test will fail if it does not successfully navigate to the indicated url.
 """
-SUITE = "None"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

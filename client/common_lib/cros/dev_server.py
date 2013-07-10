@@ -478,16 +478,19 @@ class ImageServer(DevServer):
 
 
     @remote_devserver_call()
-    def list_control_files(self, build):
+    def list_control_files(self, build, suite_name=''):
         """Ask the devserver to list all control files for |build|.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
                       whose control files the caller wants listed.
+        @param suite_name: The name of the suite for which we require control
+                           files.
         @return None on failure, or a list of control file paths
                 (e.g. server/site_tests/autoupdate/control)
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        call = self.build_call('controlfiles', build=build)
+        call = self.build_call('controlfiles', build=build,
+                               suite_name=suite_name)
         response = urllib2.urlopen(call)
         return [line.rstrip() for line in response]
 

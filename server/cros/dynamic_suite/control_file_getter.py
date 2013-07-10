@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import common
-import os, re
+import logging, os, re
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 
@@ -20,10 +20,11 @@ class ControlFileGetter(object):
         pass
 
 
-    def get_control_file_list(self):
+    def get_control_file_list(self, suite_name=''):
         """
         Gather a list of paths to control files.
 
+        @param suite_name: The name of a suite we would like control files for.
         @return A list of file paths.
         @throws NoControlFileList if there is an error while listing.
         """
@@ -63,17 +64,18 @@ class CacheingAndFilteringControlFileGetter(ControlFileGetter):
         self._files = []
 
 
-    def get_control_file_list(self):
+    def get_control_file_list(self, suite_name=''):
         """
         Gather a list of paths to control files.
 
         Gets a list of control files; populates |self._files| with that list
         and then returns the paths to all useful and wanted files in the list.
 
+        @param suite_name: The name of a suite we would like control files for.
         @return A list of file paths.
         @throws NoControlFileList if there is an error while listing.
         """
-        files = self._get_control_file_list()
+        files = self._get_control_file_list(suite_name=suite_name)
         for cf_filter in self.CONTROL_FILE_FILTERS:
           files = filter(lambda path: not path.endswith(cf_filter), files)
         self._files = files
@@ -128,7 +130,7 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
         return '__init__.py' not in name and '.svn' not in name
 
 
-    def _get_control_file_list(self):
+    def _get_control_file_list(self, suite_name=''):
         """
         Gather a list of paths to control files under |self._paths|.
 
@@ -136,9 +138,16 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
         |self._CONTROL_PATTERN|.  Populates |self._files| with that list
         and then returns the paths to all useful files in the list.
 
+        @param suite_name: The name of a suite we would like control files for.
         @return A list of files that match |self._CONTROL_PATTERN|.
         @throws NoControlFileList if we find no files.
         """
+        if suite_name:
+            logging.warning('Getting control files for a specific suite has '
+                            'not been implemented for FileSystemGetter. '
+                            'Getting all control files instead.')
+
+
         regexp = re.compile(self._CONTROL_PATTERN)
         directories = self._paths
         while len(directories) > 0:
@@ -201,19 +210,23 @@ class DevServerGetter(CacheingAndFilteringControlFileGetter):
         return DevServerGetter(build, ds)
 
 
-    def _get_control_file_list(self):
+    def _get_control_file_list(self, suite_name=''):
         """
         Gather a list of paths to control files from |self._dev_server|.
 
         Get a listing of all the control files for |self._build| on
         |self._dev_server|.  Populates |self._files| with that list
-        and then returns paths (under the autotest dir) to them.
+        and then returns paths (under the autotest dir) to them. If suite_name
+        is specified, this method populates |self._files| with the control
+        files from just the specified suite.
 
+        @param suite_name: The name of a suite we would like control files for.
         @return A list of control file paths.
         @throws NoControlFileList if there is an error while listing.
         """
         try:
-            return self._dev_server.list_control_files(self._build)
+            return self._dev_server.list_control_files(self._build,
+                                                       suite_name=suite_name)
         except dev_server.DevServerException as e:
             raise error.NoControlFileList(e)
 

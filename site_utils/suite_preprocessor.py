@@ -51,7 +51,8 @@ def get_all_suite_control_files(autotest_dir):
     """
     fs_getter = Suite.create_fs_getter(autotest_dir)
     predicate = lambda t: hasattr(t, 'suite')
-    return Suite.find_and_parse_tests(fs_getter, predicate, True)
+    return Suite.find_and_parse_tests(fs_getter, predicate,
+                                      add_experimental=True)
 
 
 def calculate_dependencies(autotest_dir):
