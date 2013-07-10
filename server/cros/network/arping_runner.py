@@ -61,12 +61,16 @@ class ArpingResult(object):
 
         A successful run looks something like this:
 
-        ARPING 172.22.75.254 from 172.22.73.124 eth0
-        Unicast reply from 172.22.75.254 [00:00:0C:9F:F0:21]  1.447ms
-        Unicast reply from 172.22.75.254 [00:00:0C:9F:F0:21]  1.275ms
-        Unicast reply from 172.22.75.254 [00:00:0C:9F:F0:21]  1.388ms
-        Sent 3 probes (3 broadcast(s))
-        Received 3 response(s)
+        ARPING 192.168.2.193 from 192.168.2.254 eth0
+        Unicast reply from 192.168.2.193 [14:7D:C5:E1:53:83] 2.842ms
+        Unicast reply from 192.168.2.193 [14:7D:C5:E1:53:83] 5.851ms
+        Unicast reply from 192.168.2.193 [14:7D:C5:E1:53:83] 2.565ms
+        Unicast reply from 192.168.2.193 [14:7D:C5:E1:53:83] 2.595ms
+        Unicast reply from 192.168.2.193 [14:7D:C5:E1:53:83] 2.534ms
+        Unicast reply from 192.168.2.193 [14:7D:C5:E1:53:83] 3.217ms
+        Unicast request from 192.168.2.193 [14:7D:C5:E1:53:83] 748.657ms
+        Sent 6 probes (6 broadcast(s))
+        Received 7 response(s) (1 request(s))
 
         @param stdout string raw stdout of arping command.
 
@@ -77,6 +81,7 @@ class ArpingResult(object):
         regex = re.compile(r'(([0-9]{1,3}\.){3}[0-9]{1,3}) '
                            r'\[(([0-9A-F]{2}:){5}[0-9A-F]{2})\] +'
                            r'([0-9\.]+)ms$')
+        requests = 0
         for line in stdout.splitlines():
             if line.find('Unicast reply from') == 0:
                 match = re.search(regex, line.strip())
@@ -85,11 +90,15 @@ class ArpingResult(object):
                 latency = float(match.group(5))
                 latencies.append(latency)
                 responders.add(responder_mac)
+            if line.find('Unicast request from') == 0:
+                # We don't care about these really, but they mess up our
+                # primitive line counting.
+                requests += 1
             elif line.find('Sent ') == 0:
                 num_sent = int(line.split()[1])
             elif line.find('Received ') == 0:
                 count = int(line.split()[1])
-                if count != len(latencies):
+                if count != len(latencies) + requests:
                     raise error.TestFail('Failed to parse accurate latencies '
                                          'from stdout: %r.  Got %d, '
                                          'wanted %d.' % (stdout, len(latencies),
