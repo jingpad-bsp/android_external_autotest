@@ -277,6 +277,7 @@ class Suite(object):
         self._jobs = []
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
                                                  self._predicate,
+                                                 self._tag,
                                                  add_experimental=True)
         self._max_runtime_mins = max_runtime_mins
         self._version_prefix = version_prefix
@@ -524,18 +525,28 @@ class Suite(object):
 
 
     @staticmethod
-    def find_and_parse_tests(cf_getter, predicate, add_experimental=False):
+    def find_and_parse_tests(cf_getter, predicate, suite_name='',
+                             add_experimental=False):
         """
         Function to scan through all tests and find eligible tests.
 
         Looks at control files returned by _cf_getter.get_control_file_list()
-        for tests that pass self._predicate().
+        for tests that pass self._predicate(). When this method is called
+        with a file system ControlFileGetter, it performs a full parse of the
+        root directory associated with the getter. This is the case when it's
+        invoked from suite_preprocessor. When it's invoked with a devserver
+        getter it looks up the suite_name in a suite to control file map
+        generated at build time, and parses the relevant control files alone.
+        This lookup happens on the devserver, so as far as this method is
+        concerned, both cases are equivalent.
 
         @param cf_getter: a control_file_getter.ControlFileGetter used to list
                and fetch the content of control files
         @param predicate: a function that should return True when run over a
                ControlData representation of a control file that should be in
                this Suite.
+        @param suite_name: If specified, this method will attempt to restrain
+                           the search space to just this suite's control files.
         @param add_experimental: add tests with experimental attribute set.
 
         @return list of ControlData objects that should be run, with control
@@ -543,7 +554,8 @@ class Suite(object):
                 on the TIME setting in control file, slowest test comes first.
         """
         tests = {}
-        files = cf_getter.get_control_file_list()
+        files = cf_getter.get_control_file_list(suite_name=suite_name)
+
         matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
         parsed_count = 0
         for file in filter(lambda f: not matcher.match(f), files):
