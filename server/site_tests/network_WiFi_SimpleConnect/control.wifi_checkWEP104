@@ -20,9 +20,15 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.network import hostap_config
 
 
+
 def run(machine):
-    wep_keys = ['0123456789abcdef0123456789', '89abcdef0123456789abcdef01',
-                'fedcba9876543210fedcba9876', '109fedcba987654321fedcba98']
+    # FYI: D-Bus requires string parameters must be valid UTF-8.
+    wep_keys = ['0123456789abcdef0123456789',
+                'mlk:ihgfedcba',
+                # Mix ASCII characters with a 3-byte UTF-8 characters.
+                'd\xe4\xb8\x80\xe4\xba\x8c\xe4\xb8\x89\xe5\x9b\x9b',
+                # Mix different byte length UTF-8 characters.
+                '\xe4\xb8\x80\xe4\xba\x8c\xe4\xb8\x89\xc2\xa2\xc2\xa3']
     auth_algs = (xmlrpc_security_types.WEPConfig.AUTH_ALGORITHM_OPEN,
                  xmlrpc_security_types.WEPConfig.AUTH_ALGORITHM_SHARED)
     configurations = []

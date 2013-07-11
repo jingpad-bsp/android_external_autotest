@@ -87,6 +87,27 @@ class WEPConfig(SecurityConfig):
     AUTH_ALGORITHM_SHARED = 2
     AUTH_ALGORITHM_DEFAULT = AUTH_ALGORITHM_OPEN
 
+    @staticmethod
+    def hostapd_format(key):
+        """Format WEP keys so that hostapd accepts them.
+
+        hostapd wants WEP keys that aren't hex format to be surrounded by double
+        quotes.  We infer the format of a key by its length.
+
+        @param key string a 40/104 bit WEP key.
+        @return string hostapd friendly formatted WEP key
+
+        """
+        quote = lambda x: '"' + x + '"'
+        if len(key) in (5, 13):
+            return quote(key)
+
+        if len(key) in (10, 26):
+            return key
+
+        raise error.TestFail('Invalid WEP key: %r' % key)
+
+
     def __init__(self, wep_keys, wep_default_key=0,
                  auth_algorithm=AUTH_ALGORITHM_DEFAULT):
         """Construct a WEPConfig object.
@@ -115,7 +136,7 @@ class WEPConfig(SecurityConfig):
         """@return dict fragment of hostapd configuration for security."""
         ret = {}
         for idx,key in enumerate(self.wep_keys):
-            ret['wep_key%d' % idx] = key
+            ret['wep_key%d' % idx] = self.hostapd_format(key)
         ret['wep_default_key'] = self.wep_default_key
         ret['auth_algs'] = self.auth_algorithm
         return ret
