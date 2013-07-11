@@ -1854,7 +1854,7 @@ class ResetTask(PreJobTask):
             self.host.update_field('dirty', 0)
             self.host.set_status(models.Host.Status.READY)
 
-            if self.queue_entry:
+            if self._should_pending():
                 self.queue_entry.on_pending()
 
 
