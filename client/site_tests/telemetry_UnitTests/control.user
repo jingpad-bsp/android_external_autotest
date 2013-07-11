@@ -5,7 +5,7 @@
 AUTHOR = "Chrome OS Lab Infrastructure Team"
 NAME = "telemetry_UnitTests"
 PURPOSE = "Run the Telemetry unit tests as a logged-in user."
-SUITE = ""
+SUITE = "telemetry_unit"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
