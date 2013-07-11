@@ -157,6 +157,8 @@ class firmware_ECLidSwitch(FAFTSequence):
           True if keyboard backlight is turned off when lid close and on when
            lid open.
         """
+        if not self.check_ec_capability(['kblight'], suppress_warning=True):
+            return True
         ok = True
         original_value = self._get_keyboard_backlight()
         self._set_keyboard_backlight(100)

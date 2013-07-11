@@ -102,8 +102,10 @@ class FAFTClientAttribute(object):
         # Set 'ec_capability'
         if platform in ['Falco', 'Link', 'Peppy', 'Slippy']:
             self.ec_capability = ['adc_ectemp', 'battery', 'charging',
-                                        'keyboard', 'lid', 'x86', 'thermal',
-                                        'usb', 'peci']
+                                  'keyboard', 'lid', 'x86', 'thermal',
+                                  'usb', 'peci']
+            if platform == 'Link':
+                self.ec_capability.append('kblight')
         elif platform in ['Peach Pit', 'Snow', 'Spring']:
             self.ec_capability = (['battery', 'keyboard', 'arm'] +
                                   (['lid'] if platform in [
