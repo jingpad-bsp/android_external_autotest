@@ -239,6 +239,7 @@ def parse_ping_output(ping_output):
         stats['avg'] = m.group(3)
         stats['max'] = m.group(4)
         stats['dev'] = m.group(5)
+    logging.debug('Parsed ping stats %r.', stats)
     return stats
 
 
