@@ -23,7 +23,13 @@ from autotest_lib.client.common_lib import error
 #pylint: disable=W0611
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.event_log import EventLog
+try:
+    # Workaround to avoid not finding jsonrpclib in buildbot.
+    from cros.factory.goofy.goofy import CACHES_DIR
+except:
+    pass
 from cros.factory.rf.e5071c_scpi import ENASCPI
+from cros.factory.rf.utils import DownloadParameters
 from cros.factory.test import factory
 from cros.factory.test import shopfloor
 from cros.factory.test import task
@@ -38,9 +44,15 @@ from cros.factory.test.utils import TimeString, TryMakeDirs
 
 COLOR_MAGENTA = gtk.gdk.color_parse('magenta1')
 
-_MESSAGE_USB = (
-    'Please insert the usb stick to load parameters.\n'
-    '请插入usb以读取测试参数\n')
+_MESSAGE_SHOPFLOOR_DOWNLOAD = (
+    'Downloading parameters from shopfloor...\n'
+    '从Shopfloor下载测试参数中...\n')
+_MESSAGE_USB_LOAD_PARAMETERS = (
+    'Please insert the usb stick to load parameters and save log.\n'
+    '请插入usb以读取测试参数及储存测试纪录\n')
+_MESSAGE_USB_LOG_STORAGE = (
+    'Please insert the usb stick to save log.\n'
+    '请插入usb以储存测试纪录\n')
 _MESSAGE_CONNECTING_ENA = (
     'Connecting with the ENA...\n'
     '与ENA(E5071C)连线中\n')
@@ -230,21 +242,22 @@ class factory_Antenna(test.test):
     for every single antenna (i.e. doesn't need to restart the autotest for
     each module)
     """
-    version = 6
+    version = 7
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
     _STATE_INITIAL = -1
-    _STATE_WAIT_USB = 0
-    _STATE_CONNECTING_ENA = 1
-    _STATE_PREPARE_PANEL = 2
-    _STATE_ENTERING_SN = 3
-    _STATE_PREPARE_MAIN_ANTENNA = 4
-    _STATE_TEST_IN_PROGRESS_MAIN = 5
-    _STATE_PREPARE_AUX_ANTENNA = 6
-    _STATE_TEST_IN_PROGRESS_AUX = 7
-    _STATE_WRITING_IN_PROGRESS = 8
-    _STATE_RESULT_TAB = 9
+    _STATE_SHOPFLOOR_DOWNLOAD = 0
+    _STATE_WAIT_USB = 1
+    _STATE_CONNECTING_ENA = 2
+    _STATE_PREPARE_PANEL = 3
+    _STATE_ENTERING_SN = 4
+    _STATE_PREPARE_MAIN_ANTENNA = 5
+    _STATE_TEST_IN_PROGRESS_MAIN = 6
+    _STATE_PREPARE_AUX_ANTENNA = 7
+    _STATE_TEST_IN_PROGRESS_AUX = 8
+    _STATE_WRITING_IN_PROGRESS = 9
+    _STATE_RESULT_TAB = 10
 
     # Status in the final result tab.
     _STATUS_NAMES = ['sn', 'cell_main', 'cell_aux',
@@ -271,30 +284,45 @@ class factory_Antenna(test.test):
         if callback:
             task.schedule(callback)
 
+    def load_config(self, config_path):
+        """
+        Reads the configuration from a file.
+
+        @param config_path: The location of config file.
+        """
+        self.config = self.base_config.Read(
+                config_path, event_log=self._event_log)
+        # Load the shopfloor related setting.
+        self.path_name = self.config.get('path_name', 'UnknownPath')
+        self.shopfloor_config = self.config.get('shopfloor', {})
+        self.shopfloor_enabled = self.shopfloor_config.get('enabled', False)
+        self.shopfloor_timeout = self.shopfloor_config.get('timeout')
+        self.shopfloor_ignore_on_fail = (
+                self.shopfloor_config.get('ignore_on_fail'))
+        factory.console.info("Config loaded.")
+
+    def download_from_shopfloor(self):
+        """Downloads parameters from shopfloor."""
+        if self.load_from_shopfloor:
+          caches_dir = os.path.join(CACHES_DIR, 'parameters')
+          DownloadParameters([self.config_path], caches_dir)
+          # Parse and load the parameters.
+          self.load_config(os.path.join(caches_dir, self.config_path))
+        self.advance_state()
+
     def on_usb_insert(self, dev_path):
         """
         Callback to load USB parameters when USB inserted.
 
         @param dev_path: the path where inserted USB presented in /dev
         """
-        # TODO(itspeter): expose an option to download parameters directly
-        # from shopfloor in future.
         if self._state == self._STATE_WAIT_USB:
             self.dev_path = dev_path
-            with MountedMedia(dev_path, 1) as config_dir:
-                config_path = os.path.join(config_dir, self.config_path)
-                self.config = self.base_config.Read(
-                        config_path, event_log=self._event_log)
-
-            # Load the shopfloor related setting.
-            self.path_name = self.config.get('path_name', 'UnknownPath')
-            self.shopfloor_config = self.config.get('shopfloor', {})
-            self.shopfloor_enabled = self.shopfloor_config.get('enabled', False)
-            self.shopfloor_timeout = self.shopfloor_config.get('timeout')
-            self.shopfloor_ignore_on_fail = (
-                    self.shopfloor_config.get('ignore_on_fail'))
-
-            factory.console.info("Config loaded.")
+            if not self.load_from_shopfloor:
+              with MountedMedia(self.dev_path, 1) as config_dir:
+                  config_path = os.path.join(config_dir, self.config_path)
+                  self.load_config(config_path)
+            factory.console.info("USB path located as %s", self.dev_path)
             self.advance_state()
 
     def on_usb_remove(self, dev_path):
@@ -836,27 +864,32 @@ class factory_Antenna(test.test):
         widget.key_callback = key_press_callback
         return widget
 
-    def run_once(self, ena_host, config_path, timezone, local_ip=None):
+    def run_once(self, ena_host, config_path, timezone,
+                 load_from_shopfloor=True, local_ip=None):
         """
         Main entrance for the test.
 
         @param ena_host: the IP address of E5071C.
-        @param config_path: configuration path from the root of USB disk
+        @param config_path: configuration path from the root of USB disk or
+            shopfloor parameters.
         @param timezone: the timezone might be different from shopfloor.
             use this argument to set proper timezone in fixture host if
             necessary.
+        @param load_from_shopfloor: Whether to load parameters from shopfloor.
         @param local_ip: When test is running without a shopfloor, it is
             usually in a closed LAN. In this case, we will need to set
             static IP to fixture host (e.g. 192.168.6.3)
         """
         factory.console.info('%s run_once', self.__class__)
         factory.console.info(
-            '(ena_host: %s, config_path: %s, local_ip: %s)',
-            ena_host, config_path, local_ip)
+            '(ena_host: %s, config_path: %s, timezone: %s, '
+            'load_from_shopfloor: %s, local_ip: %s)',
+            ena_host, config_path, timezone, load_from_shopfloor, local_ip)
         self.config_path = config_path
         self.ena_host = ena_host
         self.ena = None       # It will later be assigned when connected
         self.dev_path = None  # It will later be assigned when USB plug-in
+        self.load_from_shopfloor = load_from_shopfloor
 
         # Setup the local ip address to connect with shopfloor.
         if local_ip:
@@ -875,7 +908,16 @@ class factory_Antenna(test.test):
         self.last_handler = None
         # Set up the UI widgets.
         self.usb_prompt_widget = gtk.VBox()
-        self.usb_prompt_widget.add(ful.make_label(_MESSAGE_USB))
+        if self.load_from_shopfloor:
+            self.usb_prompt_widget.add(
+                    ful.make_label(_MESSAGE_USB_LOG_STORAGE))
+        else:
+            self.usb_prompt_widget.add(
+                    ful.make_label(_MESSAGE_USB_LOAD_PARAMETERS))
+
+        self.shopfloor_download_widget = gtk.VBox()
+        self.shopfloor_download_widget.add(
+                ful.make_label(_MESSAGE_SHOPFLOOR_DOWNLOAD))
 
         self.connecting_ena_widget = gtk.VBox()
         self.connecting_ena_widget.add(ful.make_label(_MESSAGE_CONNECTING_ENA))
@@ -929,6 +971,8 @@ class factory_Antenna(test.test):
         self._state_widget = {
             self._STATE_INITIAL:
                 (None, None),
+            self._STATE_SHOPFLOOR_DOWNLOAD:
+                (self.shopfloor_download_widget, self.download_from_shopfloor),
             self._STATE_WAIT_USB:
                 (self.usb_prompt_widget, None),
             self._STATE_CONNECTING_ENA:
