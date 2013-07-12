@@ -448,7 +448,10 @@ class Status(object):
     _begin_timestamp = None
     _end_timestamp = None
 
-    STATUS_MAP = {'Failed': 'FAIL', 'Aborted': 'ABORT', 'Completed': 'GOOD'}
+    # Queued status can occur if the try job just aborted due to not completing
+    # reimaging for all machines. The Queued corresponds to an 'ABORT'.
+    STATUS_MAP = {'Failed': 'FAIL', 'Aborted': 'ABORT', 'Completed': 'GOOD',
+                  'Queued' : 'ABORT'}
 
     class sle(base_job.status_log_entry):
         """
