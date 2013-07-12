@@ -10,6 +10,7 @@ import os
 import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import utils
 from autotest_lib.server.cros.servo import power_state_controller
 from autotest_lib.server.cros.servo import programmer
@@ -60,6 +61,9 @@ class Servo(object):
     USB_DETECTION_DELAY = 10
     # Time to keep USB power off before and after USB mux direction is changed
     USB_POWEROFF_DELAY = 2
+
+    # Time to wait before timing out on a dut-control call.
+    CALL_TIMEOUT_SECS = 60
 
     KEY_MATRIX_ALT_0 = {
         'ctrl_refresh':  ['0', '0', '0', '1'],
@@ -576,10 +580,20 @@ class Servo(object):
         remote = 'http://%s:%s' % (servo_host, servo_port)
         self._server = xmlrpclib.ServerProxy(remote)
         try:
-            self._server.echo("ping-test")
-        except:
-            logging.error('Connection to servod failed')
-            raise
+            # We have noticed incidents where we are able to connect but the
+            # actual servo calls go on for 20-30 mins. Thus _connect_servod now
+            # grabs the pwr_button state and if it times out raises an error.
+            timeout, result = retry.timeout(
+                    self._server.get, args=('pwr_button', ),
+                    timeout_sec=Servo.CALL_TIMEOUT_SECS)
+            if timeout:
+                raise error.AutotestError('Timed out getting value for '
+                                          'pwr_button.')
+        except Exception as e:
+            # Make sure to catch any errors that can occur connecting to servod.
+            error_msg = 'Connection to servod failed. Failure: %s' % e
+            logging.error(error_msg)
+            raise error.AutotestError(error_msg)
 
 
     def _scp_image(self, image_path):
