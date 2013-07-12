@@ -10,6 +10,7 @@ import string
 import sys
 import tempfile
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import xmlrpc_types
 
 
