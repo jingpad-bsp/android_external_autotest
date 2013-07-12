@@ -67,8 +67,7 @@ class firmware_ECWakeSource(FAFTSequence):
             function must delay itself so that we don't wake DUT before
             suspend_as_reboot returns.
         """
-        cmd = ('(sleep %d; powerd_suspend)&' %
-                self.EC_SUSPEND_DELAY)
+        cmd = '(sleep %d; powerd_dbus_suspend) &' % self.EC_SUSPEND_DELAY
         self.faft_client.system.run_shell_command(cmd)
         self.kill_remote()
         time.sleep(self.EC_SUSPEND_DELAY)
