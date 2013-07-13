@@ -25,6 +25,7 @@ from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.event_log import EventLog
 try:
     # Workaround to avoid not finding jsonrpclib in buildbot.
+    from cros.factory.goofy.connection_manager import PingHost
     from cros.factory.goofy.goofy import CACHES_DIR
 except:
     pass
@@ -36,6 +37,8 @@ from cros.factory.test import task
 from cros.factory.test import ui as ful
 from cros.factory.test.media_util import MediaMonitor
 from cros.factory.test.media_util import MountedMedia
+from cros.factory.utils.net_utils import FindUsableEthDevice
+from cros.factory.utils.process_utils import Spawn
 from autotest_lib.client.cros.rf import rf_utils
 from autotest_lib.client.cros.rf.config import PluggableConfig
 
@@ -242,7 +245,7 @@ class factory_Antenna(test.test):
     for every single antenna (i.e. doesn't need to restart the autotest for
     each module)
     """
-    version = 7
+    version = 8
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
@@ -284,6 +287,67 @@ class factory_Antenna(test.test):
         if callback:
             task.schedule(callback)
 
+    def setup_network(self):
+        """
+        Setups the network of local host.
+
+        The network setting in config should look like example below:
+        local_ip = ("192.168.132.66", "255.255.0.0")
+        ena_mapping = {
+            "192.168.132.114": {"MY46107777": "Taipei E5071C-1",
+                                "MY99999999": "Taipei E5071C-mock"},
+            "192.168.132.115": {"MY46107723": "Factory E5071C Line1",
+                                "MY46107725": "Factory E5071C Line2"},
+            "192.168.132.116": {"MY46107724": "Factory E5071C Line3",
+                                "MY46107726": "Factory E5071C Line4"},
+        """
+        def _flush_route_cache():
+            """Clears the local route cache."""
+            Spawn(['ip', 'route', 'flush', 'cache'],
+                  call=True, check_call=True)
+
+        factory.console.info('Setup network...')
+        _flush_route_cache()
+        network_config = self.config['network']
+        interface = FindUsableEthDevice(raise_exception=True)
+        factory.console.info('Found Ethernet on %s' % interface)
+        # If a local IP is required create an IP alias of wired interface
+        local_ip = network_config['local_ip']
+        if local_ip is not None:
+            ip_address = local_ip[0]
+            netmask = local_ip[1]
+            alias_interface = interface + ":1"
+            factory.console.info('Creating IP alias with %s/%s',
+                                 ip_address, netmask)
+            Spawn(['ifconfig', alias_interface, ip_address,
+                   'netmask', netmask],
+                  call=True, check_call=True)
+            # Make sure the underlying interface is up
+            Spawn(['ifconfig', interface, 'up'], call=True, check_call=True)
+        else:
+            alias_interface = interface
+
+        # Add the route information to each of the possible ENA in
+        # the mapping list. In addition, check if there are only one
+        # ENA in the visible scope.
+        ena_mapping = network_config['ena_mapping']
+        valid_ping_count = 0
+        for ena_ip in ena_mapping.iterkeys():
+            # Manually add route information for all the possible ENA.
+            Spawn(['route', 'add', ena_ip, alias_interface],
+                  call=True, check_call=True)
+            # Clear the route cache just in case.
+            _flush_route_cache()
+            # Ping the host
+            factory.console.info('Searching for IP: %s', ena_ip)
+            if PingHost(ena_ip, 2) == 0:
+                factory.console.info('Found IP %s in the network', ena_ip)
+                valid_ping_count += 1
+                self.ena_ip = ena_ip
+        assert valid_ping_count == 1, (
+                "Found %d ENA which should be only one" % valid_ping_count)
+        factory.console.info('IP of ENA automatic detected as %s', self.ena_ip)
+
     def load_config(self, config_path):
         """
         Reads the configuration from a file.
@@ -300,6 +364,8 @@ class factory_Antenna(test.test):
         self.shopfloor_ignore_on_fail = (
                 self.shopfloor_config.get('ignore_on_fail'))
         factory.console.info("Config loaded.")
+        # Setup Network
+        self.setup_network()
 
     def download_from_shopfloor(self):
         """Downloads parameters from shopfloor."""
@@ -498,8 +564,8 @@ class factory_Antenna(test.test):
             # http service (image.asp) and get the saved file (it is always
             # disp.png)
             factory.console.info("Requesting ENA to generate screenshot")
-            urlopen("http://%s/image.asp" % self.ena_host).read()
-            png_content = urlopen("http://%s/disp.png" % self.ena_host).read()
+            urlopen("http://%s/image.asp" % self.ena_ip).read()
+            png_content = urlopen("http://%s/disp.png" % self.ena_ip).read()
             self._event_log.Log('vswr_screenshot',
                                 ab_serial_number=self.serial_number,
                                 path=self.path_name,
@@ -812,8 +878,18 @@ class factory_Antenna(test.test):
         # TODO(itspeter): Prepare IP address specifically for ENA
         # Setup the ENA host.
         factory.console.info('Connecting to the ENA...')
-        self.ena = ENASCPI(self.ena_host)
-        factory.console.info('Connected.')
+        self.ena = ENASCPI(self.ena_ip)
+        # Check and report if this is an expected ENA.
+        ena_sn = self.ena.GetSerialNumber()
+        factory.console.info('Connected with ENA SN = %s.', ena_sn)
+        # Check if this serial number is in the white list.
+        ena_whitelist = self.config['network']['ena_mapping'][self.ena_ip]
+        if ena_sn not in ena_whitelist:
+            self.ena.Close()
+            raise ValueError(
+                    'ENA with SN:%s is not in the while list' % ena_sn)
+        self.ena_name = ena_whitelist[ena_sn]
+        factory.console.info('This ENA is now identified as %r', self.ena_name)
         self.advance_state()
 
     def reset_data_for_next_test(self):
@@ -864,38 +940,28 @@ class factory_Antenna(test.test):
         widget.key_callback = key_press_callback
         return widget
 
-    def run_once(self, ena_host, config_path, timezone,
-                 load_from_shopfloor=True, local_ip=None):
+    def run_once(self, config_path, timezone,
+                 load_from_shopfloor=True):
         """
         Main entrance for the test.
 
-        @param ena_host: the IP address of E5071C.
         @param config_path: configuration path from the root of USB disk or
             shopfloor parameters.
         @param timezone: the timezone might be different from shopfloor.
             use this argument to set proper timezone in fixture host if
             necessary.
         @param load_from_shopfloor: Whether to load parameters from shopfloor.
-        @param local_ip: When test is running without a shopfloor, it is
-            usually in a closed LAN. In this case, we will need to set
-            static IP to fixture host (e.g. 192.168.6.3)
         """
         factory.console.info('%s run_once', self.__class__)
         factory.console.info(
-            '(ena_host: %s, config_path: %s, timezone: %s, '
-            'load_from_shopfloor: %s, local_ip: %s)',
-            ena_host, config_path, timezone, load_from_shopfloor, local_ip)
+            '(config_path: %s, timezone: %s, load_from_shopfloor: %s)',
+            config_path, timezone, load_from_shopfloor)
         self.config_path = config_path
-        self.ena_host = ena_host
         self.ena = None       # It will later be assigned when connected
+        self.ena_ip = None    # It will later be assigned when config loaded
+        self.ena_name = None  # It will later be assigned when connected
         self.dev_path = None  # It will later be assigned when USB plug-in
         self.load_from_shopfloor = load_from_shopfloor
-
-        # Setup the local ip address to connect with shopfloor.
-        if local_ip:
-            factory.console.info('Setup the local ip address to %s', local_ip)
-            rf_utils.SetEthernetIp(local_ip)
-            # TODO(itspeter): Tweak for more complicated network setting.
 
         # Setup the timezone
         os.environ['TZ'] = timezone
