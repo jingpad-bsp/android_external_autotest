@@ -72,7 +72,7 @@ class FAFTClientAttribute(object):
             self.broken_rec_mode = True
 
         # Set 'chrome_ec'
-        if platform in ['Falco', 'Link', 'Peach Pit', 'Peppy',
+        if platform in ['Falco', 'Link', 'Pit', 'Peppy',
                         'Slippy', 'Snow', 'Spring']:
             self.chrome_ec = True
 
@@ -106,10 +106,10 @@ class FAFTClientAttribute(object):
                                   'usb', 'peci']
             if platform == 'Link':
                 self.ec_capability.append('kblight')
-        elif platform in ['Peach Pit', 'Snow', 'Spring']:
+        elif platform in ['Pit', 'Snow', 'Spring']:
             self.ec_capability = (['battery', 'keyboard', 'arm'] +
                                   (['lid'] if platform in [
-                  'Peach Pit', 'Spring'] else []))
+                        'Pit', 'Spring'] else []))
 
         # Set 'gbb_version'
         if platform in ['Alex', 'Mario', 'ZGB']:
