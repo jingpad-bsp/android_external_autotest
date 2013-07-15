@@ -30,7 +30,7 @@ try:
 except:
     pass
 from cros.factory.rf.e5071c_scpi import ENASCPI
-from cros.factory.rf.utils import DownloadParameters
+from cros.factory.rf.utils import DownloadParameters, CheckPower
 from cros.factory.test import factory
 from cros.factory.test import shopfloor
 from cros.factory.test import task
@@ -38,7 +38,7 @@ from cros.factory.test import ui as ful
 from cros.factory.test.media_util import MediaMonitor
 from cros.factory.test.media_util import MountedMedia
 from cros.factory.utils.net_utils import FindUsableEthDevice
-from cros.factory.utils.process_utils import Spawn
+from cros.factory.utils.process_utils import Spawn, SpawnOutput
 from autotest_lib.client.cros.rf import rf_utils
 from autotest_lib.client.cros.rf.config import PluggableConfig
 
@@ -59,6 +59,9 @@ _MESSAGE_USB_LOG_STORAGE = (
 _MESSAGE_CONNECTING_ENA = (
     'Connecting with the ENA...\n'
     '与ENA(E5071C)连线中\n')
+_MESSAGE_CALIBRATION_CHECK = (
+    'Checking its calibration status...\n'
+    '验证仪器矫正状态\n')
 _MESSAGE_PREPARE_PANEL = (
     'Please place the LCD panel into the fixture.\n'
     'Then press ENTER to scan the barcode.\n'
@@ -245,7 +248,7 @@ class factory_Antenna(test.test):
     for every single antenna (i.e. doesn't need to restart the autotest for
     each module)
     """
-    version = 8
+    version = 9
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
@@ -253,14 +256,15 @@ class factory_Antenna(test.test):
     _STATE_SHOPFLOOR_DOWNLOAD = 0
     _STATE_WAIT_USB = 1
     _STATE_CONNECTING_ENA = 2
-    _STATE_PREPARE_PANEL = 3
-    _STATE_ENTERING_SN = 4
-    _STATE_PREPARE_MAIN_ANTENNA = 5
-    _STATE_TEST_IN_PROGRESS_MAIN = 6
-    _STATE_PREPARE_AUX_ANTENNA = 7
-    _STATE_TEST_IN_PROGRESS_AUX = 8
-    _STATE_WRITING_IN_PROGRESS = 9
-    _STATE_RESULT_TAB = 10
+    _STATE_CALIBRATION_CHECK = 3
+    _STATE_PREPARE_PANEL = 4
+    _STATE_ENTERING_SN = 5
+    _STATE_PREPARE_MAIN_ANTENNA = 6
+    _STATE_TEST_IN_PROGRESS_MAIN = 7
+    _STATE_PREPARE_AUX_ANTENNA = 8
+    _STATE_TEST_IN_PROGRESS_AUX = 9
+    _STATE_WRITING_IN_PROGRESS = 10
+    _STATE_RESULT_TAB = 11
 
     # Status in the final result tab.
     _STATUS_NAMES = ['sn', 'cell_main', 'cell_aux',
@@ -334,8 +338,8 @@ class factory_Antenna(test.test):
         valid_ping_count = 0
         for ena_ip in ena_mapping.iterkeys():
             # Manually add route information for all the possible ENA.
-            Spawn(['route', 'add', ena_ip, alias_interface],
-                  call=True, check_call=True)
+            # It might be duplicated, so ignore the exit code.
+            Spawn(['route', 'add', ena_ip, alias_interface], call=True)
             # Clear the route cache just in case.
             _flush_route_cache()
             # Ping the host
@@ -344,6 +348,8 @@ class factory_Antenna(test.test):
                 factory.console.info('Found IP %s in the network', ena_ip)
                 valid_ping_count += 1
                 self.ena_ip = ena_ip
+        factory.console.info('Routing table information\n%r\n',
+                             SpawnOutput(['route', '-n']))
         assert valid_ping_count == 1, (
                 "Found %d ENA which should be only one" % valid_ping_count)
         factory.console.info('IP of ENA automatic detected as %s', self.ena_ip)
@@ -363,6 +369,7 @@ class factory_Antenna(test.test):
         self.shopfloor_timeout = self.shopfloor_config.get('timeout')
         self.shopfloor_ignore_on_fail = (
                 self.shopfloor_config.get('ignore_on_fail'))
+        self.allowed_iteration = self.config.get('allowed_iteration', None)
         factory.console.info("Config loaded.")
         # Setup Network
         self.setup_network()
@@ -892,6 +899,42 @@ class factory_Antenna(test.test):
         factory.console.info('This ENA is now identified as %r', self.ena_name)
         self.advance_state()
 
+    def check_calibration(self):
+        """Checks if the Trace are flat as expected.
+
+        A calibration_check config consist of a span and threshold.
+        For example, the following tuple represents a check
+            ((800*1E6, 6000*1E6, 100), (-0.3, 0.3))
+        from 800 MHz to 6GHz, sampling 100 points and require the value to
+        stay with in (-0.3, 0.3).
+        """
+        calibration_check = self.config.get('calibration_check', None)
+        if calibration_check is not None:
+            start_freq, stop_freq, sample_points = calibration_check[0]
+            calibration_threshold = calibration_check[1]
+            factory.console.info(
+                    'Checking calibration status from %.2f to %.2f, '
+                    'with threshold (%f, %f)', start_freq, stop_freq,
+                    calibration_threshold[0], calibration_threshold[1])
+            self.ena.SetSweepSegments([(start_freq, stop_freq, sample_points)])
+            traces_to_check = ['S11', 'S22']
+            ret = self.ena.GetTraces(traces_to_check)
+            overall_result = True
+            for trace in traces_to_check:
+                for idx, freq in enumerate(ret.x_axis):
+                    single_result = CheckPower(
+                        '%s-%15.2f' % (trace,freq),
+                        ret.traces[trace][idx],
+                        calibration_threshold, list())
+                    if not single_result:
+                        # Still continue to prompt user where are failing.
+                        overall_result = False
+            if overall_result:
+                factory.console.info('Basic calibration check passed.')
+            else:
+                raise error.TestNAError("Calibration check failed.")
+        self.advance_state()
+
     def reset_data_for_next_test(self):
         """
         Resets internal data for the next testing cycle.
@@ -910,6 +953,16 @@ class factory_Antenna(test.test):
 
     def on_result_enter(self):
         """Callback wrapper for key pressed in result_widget."""
+        self.current_iteration += 1
+        factory.console.info('The %5d-th panel test is finished.',
+                             self.current_iteration)
+        # Check the allowed_iteration
+        if self.allowed_iteration is not None:
+            if self.current_iteration >= self.allowed_iteration:
+                factory.console.info(
+                    'This test have to restart after %d iterations, '
+                    'which is reached.', self.allowed_iteration)
+                gtk.main_quit()
         self.advance_state()
         return True
 
@@ -961,6 +1014,8 @@ class factory_Antenna(test.test):
         self.ena_ip = None    # It will later be assigned when config loaded
         self.ena_name = None  # It will later be assigned when connected
         self.dev_path = None  # It will later be assigned when USB plug-in
+        self.allowed_iteration = None  # It will later be assigned
+        self.current_iteration = 0     # The number of panel tested.
         self.load_from_shopfloor = load_from_shopfloor
 
         # Setup the timezone
@@ -987,6 +1042,10 @@ class factory_Antenna(test.test):
 
         self.connecting_ena_widget = gtk.VBox()
         self.connecting_ena_widget.add(ful.make_label(_MESSAGE_CONNECTING_ENA))
+
+        self.calibration_check_widget = gtk.VBox()
+        self.calibration_check_widget.add(
+            ful.make_label(_MESSAGE_CALIBRATION_CHECK))
 
         self.prepare_panel_widget = make_prepare_widget(
             message=_MESSAGE_PREPARE_PANEL,
@@ -1043,6 +1102,8 @@ class factory_Antenna(test.test):
                 (self.usb_prompt_widget, None),
             self._STATE_CONNECTING_ENA:
                 (self.connecting_ena_widget, self.connect_ena),
+            self._STATE_CALIBRATION_CHECK:
+                (self.calibration_check_widget, self.check_calibration),
             self._STATE_PREPARE_PANEL:
                 (self.prepare_panel_widget, self.reset_data_for_next_test),
             self._STATE_ENTERING_SN:
