@@ -47,6 +47,20 @@ class RecordSampleThread(threading.Thread):
         self._audio.record_sample(self._recordfile)
 
 
+class RecordMixThread(threading.Thread):
+    '''
+    Wraps the execution of recording the mixed loopback stream in
+    cras_test_client in a thread.
+    '''
+    def __init__(self, audio, recordfile):
+        threading.Thread.__init__(self)
+        self._audio = audio
+        self._recordfile = recordfile
+
+    def run(self):
+        self._audio.record_mix(self._recordfile)
+
+
 class AudioHelper(object):
     '''
     A helper class contains audio related utility functions.
@@ -55,12 +69,14 @@ class AudioHelper(object):
                  sox_format = _DEFAULT_SOX_FORMAT,
                  sox_threshold = _DEFAULT_SOX_RMS_THRESHOLD,
                  record_command = _DEFAULT_REC_COMMAND,
-                 num_channels = _DEFAULT_NUM_CHANNELS):
+                 num_channels = _DEFAULT_NUM_CHANNELS,
+                 mix_command = None):
         self._test = test
         self._sox_threshold = sox_threshold
         self._sox_format = sox_format
         self._rec_cmd = record_command
         self._num_channels = num_channels
+        self._mix_cmd = mix_command
 
     def setup_deps(self, deps):
         '''
@@ -324,6 +340,15 @@ class AudioHelper(object):
         logging.info('Command %s recording now', cmd_rec)
         utils.system(cmd_rec)
 
+    def record_mix(self, tmpfile):
+        '''Records a sample from the mixed loopback stream in cras_test_client.
+
+        @param tmpfile: The file to record to.
+        '''
+        cmd_mix = self._mix_cmd + ' %s' % tmpfile
+        logging.info('Command %s recording now', cmd_mix)
+        utils.system(cmd_mix)
+
     def loopback_test_channels(self, noise_file_name,
                                loopback_callback=None,
                                check_recorded_callback=None,
@@ -339,26 +364,44 @@ class AudioHelper(object):
         for channel in xrange(self._num_channels):
             reduced_file_name = self.create_wav_file("reduced-%d" % channel)
             record_file_name = self.create_wav_file("record-%d" % channel)
-
             record_thread = RecordSampleThread(self, record_file_name)
             record_thread.start()
+
+            if self._mix_cmd != None:
+                mix_file_name = self.create_wav_file("mix-%d" % channel)
+                mix_thread = RecordMixThread(self, mix_file_name)
+                mix_thread.start()
+
             if loopback_callback:
                 loopback_callback(channel)
+
+            if self._mix_cmd != None:
+                mix_thread.join()
+                sox_output_mix = self.sox_stat_output(mix_file_name, channel)
+                rms_val_mix = self.get_audio_rms(sox_output_mix)
+                logging.info('Got mixed audio RMS value of %f.', rms_val_mix)
+
             record_thread.join()
+            sox_output_record = self.sox_stat_output(record_file_name, channel)
+            rms_val_record = self.get_audio_rms(sox_output_record)
+            logging.info('Got recorded audio RMS value of %f.', rms_val_record)
 
             self.noise_reduce_file(record_file_name, noise_file_name,
-                    reduced_file_name)
+                                   reduced_file_name)
 
-            sox_output = self.sox_stat_output(reduced_file_name, channel)
+            sox_output_reduced = self.sox_stat_output(reduced_file_name,
+                                                      channel)
 
             if not preserve_test_file:
                 os.unlink(reduced_file_name)
                 os.unlink(record_file_name)
+                if self._mix_cmd != None:
+                    os.unlink(mix_file_name)
             # Use injected check recorded callback if any.
             if check_recorded_callback:
-                check_recorded_callback(sox_output)
+                check_recorded_callback(sox_output_reduced)
             else:
-                self.check_recorded(sox_output)
+                self.check_recorded(sox_output_reduced)
 
     def check_recorded(self, sox_output):
         """Checks if the calculated RMS value is expected.

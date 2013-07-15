@@ -36,9 +36,13 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         self._capture_gain = capture_gain
 
         cmd_rec = 'arecord -d %f -f dat' % record_duration
+        cmd_mix = '/usr/bin/cras_test_client --show_total_rms ' \
+                  '--duration_seconds %f --num_channels 2 ' \
+                  '--rate 48000 --loopback_file' % record_duration
         self._ah = audio_helper.AudioHelper(self,
-                record_command=cmd_rec,
-                num_channels=num_channels)
+                                            record_command=cmd_rec,
+                                            num_channels=num_channels,
+                                            mix_command=cmd_mix)
         self._ah.setup_deps(['audioloop', 'sox'])
 
         super(desktopui_AudioFeedback, self).initialize()
