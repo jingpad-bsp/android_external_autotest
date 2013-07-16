@@ -91,6 +91,11 @@ class Metric:
         self.name = name
         self.value = value
 
+    def insert_key(self, key):
+        """Insert the key to this metric."""
+        self.key = key
+        return self
+
 
 class MetricNameProps:
     """A class keeping the information of metric name templates, descriptions,
@@ -163,7 +168,7 @@ class MetricNameProps:
             # Physical Click Validator
             'CLICK': (
                 '{}f-click miss rate (%)',
-                [1, 2, 3, 4, 5],
+                conf.fingers_physical_click,
                 'Should be close to 0 (0 is perfect)',
                 pct),
             # Drumroll Validator
@@ -325,8 +330,10 @@ class StatisticsMetrics:
         """
         # metrics_values: the raw metrics values
         self.metrics_values = defaultdict(list)
+        self.metrics_dict = defaultdict(list)
         for metric in metrics:
             self.metrics_values[metric.name].append(metric.value)
+            self.metrics_dict[metric.name].append(metric)
 
         # Calculate the statistics of metrics using corresponding stat functions
         self._calc_statistics(MetricNameProps().metrics_props)
@@ -355,12 +362,11 @@ class TestResult:
 class SimpleTable:
     """A very simple data table."""
     def __init__(self):
-        self._table = {}
+        """This initializes a simple table."""
+        self._table = defaultdict(list)
 
     def insert(self, key, value):
         """Insert a row. If the key exists already, the value is appended."""
-        if self._table.get(key) is None:
-            self._table[key] = []
         self._table[key].append(value)
         debug_print('    key: %s' % str(key))
 
@@ -517,9 +523,9 @@ class SummaryLog:
         key = (fw, round, gesture, variation, validator)
         rows = self.log_table.search(key)
         scores = [vlog.score for _key, vlogs in rows for vlog in vlogs]
-        metrics = [metric for _key, vlogs in rows
-                              for vlog in vlogs
-                                  for metric in vlog.metrics]
+        metrics = [metric.insert_key(_key) for _key, vlogs in rows
+                                               for vlog in vlogs
+                                                   for metric in vlog.metrics]
         return TestResult(scores, metrics)
 
     def get_final_weighted_average(self):

@@ -104,6 +104,10 @@ RAPID_TAPS = 'rapid_taps_20'
 # This following gesture is for pressure calibration.
 PRESSURE_CALIBRATION = 'pressure_calibration'
 
+# This denotes the list of the numbers of fingers for physical click tests.
+# It corresponds to ONE/TWO/THREE/FOUR/FIVE_FINGER_PHYSICAL_CLICK defined above.
+fingers_physical_click = [1, 2, 3, 4, 5]
+
 
 # Define the complete list
 gesture_names_complete = {

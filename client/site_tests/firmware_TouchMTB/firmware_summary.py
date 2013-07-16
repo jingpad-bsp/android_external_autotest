@@ -51,6 +51,7 @@ import getopt
 import os
 import sys
 
+import test_conf as conf
 import firmware_log
 
 from collections import defaultdict
@@ -74,7 +75,7 @@ class FirmwareSummary:
         else:
             error_msg = 'Error: The test result directory does not exist: %s'
             print error_msg % log_dir
-            sys.exit(-1)
+            sys.exit(1)
 
         self.display_metrics = display_metrics
         self.slog = firmware_log.SummaryLog(log_dir, segment_weights,
@@ -219,22 +220,68 @@ class FirmwareSummary:
                 print description_format.format(
                         stat_metrics.metrics_props[metric_name].description)
 
-    def _print_metrics_by_file(self):
-        """Print the metrics per file."""
-        print '\n\nMetrics (by file)'
+    def _print_raw_metrics_values(self):
+        """Print the raw metrics values."""
+        # The subkey() below extracts (gesture, variation, round) from
+        # metric.key which is (fw, round, gesture, variation, validator)
+        subkey = lambda key: (key[2], key[3], key[1])
+
+        # The sum_len() below is used to calculate the sum of the length
+        # of the elements in the subkey.
+        sum_len = lambda lst: sum([len(str(l)) if l else 0 for l in lst])
+
+        # We show tuples instead of percentages if the metrics values are
+        # percentages. This is because such a tuple unveils more information
+        # (i.e., the values of the nominator and the denominator) than a mere
+        # percentage value. For examples,
+        #
+        # 1f-click miss rate (%):
+        #     one_finger_physical_click.center (20130710_063117) : (0, 1)
+        #       the tuple means (the number of missed clicks, total clicks)
+        #
+        # intervals > xxx ms (%)
+        #     one_finger_tap.top_left (20130710_063117) : (1, 6)
+        #       the tuple means (the number of long intervals, total packets)
+        #
+        # We would like to add metric notes to explain such special cases.
+        mnprops = firmware_log.MetricNameProps()
+        note_physical_click = '(the number of missed clicks, total clicks)'
+        metric_notes = dict([(mnprops.CLICK.format(finger), note_physical_click)
+                             for finger in conf.fingers_physical_click])
+
+        report_interval_str = mnprops.get_report_interval(conf.min_report_rate)
+        name_long_intervals = mnprops.LONG_INTERVALS.format(report_interval_str)
+        note_long_intervals = '(the number of long intervals, total packets)'
+        metric_notes[name_long_intervals] = note_long_intervals
+
+        print '\n\nRaw metrics values'
         print '-' * 80
-        for key, vlog_list in sorted(self.slog.log_table.items()):
-            flag_print_key = False
-            for vlog in vlog_list:
-                stat_metrics = firmware_log.StatisticsMetrics(vlog.metrics)
-                if stat_metrics.stats_values:
-                    if not flag_print_key:
-                        fw, round_name, gesture, variation, validator = key
-                        print '%s.%s' % (gesture, variation)
-                        print '  %s' % validator
-                        flag_print_key = True
-                    print '      %s: %s' % (fw,
-                                            stat_metrics.stats_values.items())
+        for fw in self.slog.fws:
+            print fw
+            for validator in self.slog.validators:
+                result = self.slog.get_result(fw=fw, validator=validator)
+                metrics_dict = result.stat_metrics.metrics_dict
+                if metrics_dict:
+                    print '\n' + ' ' * 3 + validator
+                for metric_name, metrics in sorted(metrics_dict.items()):
+                    print ' ' * 6 + metric_name
+                    metric_note = metric_notes.get(metric_name, '')
+                    if metric_note:
+                        msg = '** Note: value below represents '
+                        print ' ' * 9 + msg + metric_note
+
+                    # Make a metric value list sorted by
+                    #   (gesture, variation, round)
+                    value_list = sorted([(subkey(metric.key), metric.value)
+                                         for metric in metrics])
+
+                    max_len = max([sum_len(value[0]) for value in value_list])
+                    template_prefix = ' ' * 9 + '{:<%d}: ' % (max_len + 5)
+                    for (gesture, variation, round), value in value_list:
+                        template = template_prefix + (
+                                '{}' if isinstance(value, tuple) else '{:.2f}')
+                        gvr_str = '%s.%s (%s)' % (gesture, variation, round)
+                        print template.format(gvr_str, value)
 
     def _print_final_weighted_averages(self):
         """Print the final weighted averages of all validators."""
@@ -251,6 +298,8 @@ class FirmwareSummary:
         self._print_result_stats_by_validator()
         if self.display_metrics:
             self._print_statistics_of_metrics()
+            if self.display_metrics == OPTIONS.FULL:
+                self._print_raw_metrics_values()
         self._print_final_weighted_averages()
 
 
@@ -261,19 +310,24 @@ def _usage_and_exit():
     print 'options:'
     print '  -D, --%s' % OPTIONS.DEBUG
     print '        enable debug flag'
-    print '  -d, --%s' % OPTIONS.DIR
+    print '  -d, --%s <directory>' % OPTIONS.DIR
     print '        specify which log directory to derive the summary'
     print '  -h, --%s' % OPTIONS.HELP
     print '        show this help'
-    print '  -m, --%s' % OPTIONS.METRICS
-    print '        display the detailed summary metrics of various validators'
+    print '  -m, --%s <verbose_level>' % OPTIONS.METRICS
+    print '        display the summary metrics of various validators'
+    print '        verbose_level:'
+    print '          default: show metrics grouped by validator'
+    print '          full: show metrics above plus details on file basis'
     print
     print 'Examples:'
     print '    # Specify the log root directory.'
     print '    $ python %s -d /tmp' % prog
-    print '    # Turn on the metrics flag.'
-    print '    $ python %s -m' % prog
-    sys.exit(-1)
+    print '    # Show the metrics at the default verbose level.'
+    print '    $ python %s -m default' % prog
+    print '    # Show the metrics at the full verbose level.'
+    print '    $ python %s -m full' % prog
+    sys.exit(1)
 
 
 def _parsing_error(msg):
@@ -291,11 +345,11 @@ def _parse_options():
     }
 
     try:
-        short_opt = 'Dd:hm'
+        short_opt = 'Dd:hm:'
         long_opt = [OPTIONS.DEBUG,
                     OPTIONS.DIR + '=',
                     OPTIONS.HELP,
-                    OPTIONS.METRICS,
+                    OPTIONS.METRICS + '=',
         ]
         opts, args = getopt.getopt(sys.argv[1:], short_opt, long_opt)
     except getopt.GetoptError, err:
@@ -312,7 +366,8 @@ def _parse_options():
                 print 'Error: the log directory %s does not exist.' % arg
                 _usage_and_exit()
         elif opt in ('-m', '--%s' % OPTIONS.METRICS):
-            options[OPTIONS.METRICS] = True
+            arg = arg if arg == OPTIONS.FULL else OPTIONS.DEFAULT
+            options[OPTIONS.METRICS] = arg
         else:
             msg = 'This option "%s" is not supported.' % opt
             _parsing_error(opt)
