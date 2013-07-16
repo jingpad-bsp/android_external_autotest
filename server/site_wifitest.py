@@ -505,28 +505,6 @@ class WiFiTest(object):
                 self.perf_keyvals['%s_%s' % (self.prefix, key)] = value
 
 
-    def __get_interface_addresses(self, host, ifname, ip_version):
-        addresses = []
-        result = host.run("%s -%d addr show dev %s" %
-                          (self.client_proxy.command_ip, ip_version, ifname))
-        for line in result.stdout.splitlines():
-            addr_match = re.search("inet\S* (\S*)", line)
-            if addr_match is not None:
-                addresses.append(addr_match.group(1))
-        return addresses
-
-
-    def __get_ipaddr(self, host, ifnet):
-        addrs = self.__get_interface_addresses(host, ifnet, 4)
-        if not addrs:
-             raise error.TestFail("No inet address found")
-        return addrs[0].split('/')[0]
-
-
-    def __get_ip6addrs(self, host, ifnet):
-        return self.__get_interface_addresses(host, ifnet, 6)
-
-
     def __get_local_file(self, pattern):
         """
         Pass a string pattern with a "%...d" in it, and get back a unique
@@ -1876,55 +1854,6 @@ class WiFiTest(object):
                          der_file_path,
                          resource_type))
 
-    def client_check_ipv6(self, params):
-        addrs = self.__get_ip6addrs(self.client, self.client_wlanif)
-        errors = []
-        if 'address_count' in params:
-            expected = int(params['address_count'])
-            if expected != len(addrs):
-                errors.append('IPv6 address count %d is different from '
-                              'expected %d' % (len(addrs), expected))
-
-        if 'local_count' in params:
-            local_count = 0
-            expected = int(params['local_count'])
-            for addr in addrs:
-                if addr.startswith('fe80'):
-                    local_count += 1
-            if local_count != expected:
-                errors.append('IPv6 address local count %d is different from '
-                              'expected %d' % (local_count, expected))
-
-        if 'mac_count' in params:
-            mac_count = 0
-            expected = int(params['mac_count'])
-            mac_parts = self.client_proxy.wifi_mac.split(':')
-            # Convert last 3 octets of MAC into suffix of IPv6 address
-            shorts = [int(mac_parts[-3], 16), int(''.join(mac_parts[-2:]), 16)]
-            mac_suffix_re = re.compile('%x:%x/' % tuple(shorts))
-            for addr in addrs:
-                if mac_suffix_re.search(addr):
-                    mac_count += 1
-            if mac_count != expected:
-                errors.append('IPv6 address mac count %d is different from '
-                              'expected %d' % (mac_count, expected))
-
-        if 'default_route' in params:
-            result = self.client.run('%s -6 route show dev %s default' %
-                                     (self.client_proxy.command_ip,
-                                      self.client_wlanif))
-
-            found = bool('default' in result.stdout)
-            expected = bool(params['default_route'])
-            if found != expected:
-                errors.append('IPv6 default route found == %s '
-                              'from expected %s' % (found, expected))
-
-
-        if errors:
-            errors.append('Addresses are: %s' % ', '.join(addrs))
-            raise error.TestFail('\n'.join(errors))
-
     def client_start_statistics(self, params):
         """ Start capturing network statistics on the client """
         self.client_stop_statistics({})
@@ -1948,10 +1877,6 @@ class WiFiTest(object):
             file(self.__get_local_file(
                     'client_interface_statistics_%02d.txt'), 'w').write(stats)
             self.client_stats_thread = None
-
-    def client_test_ipaddr(self, params):
-        interface = params.get('interface', self.client_wlanif)
-        self.__get_ipaddr(self.client, interface)
 
     def client_configure_service(self, params):
         guid = params.pop('GUID', '')
