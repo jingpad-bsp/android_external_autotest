@@ -13,6 +13,7 @@ class network_WiFi_ChannelHop(wifi_cell_test_base.WiFiCellTestBase):
 
     version = 1
     ORIGINAL_FREQUENCY = 2412
+    ORIGINAL_BSSID = "00:01:02:03:04:05"
     TEST_SSID="HowHeGotInMyPajamasIllNeverKnow"
 
     def run_once(self):
@@ -21,7 +22,8 @@ class network_WiFi_ChannelHop(wifi_cell_test_base.WiFiCellTestBase):
         ap_config = hostap_config.HostapConfig(
                 ssid=network_WiFi_ChannelHop.TEST_SSID,
                 frequency=freq,
-                mode=hostap_config.HostapConfig.MODE_11B)
+                mode=hostap_config.HostapConfig.MODE_11B,
+                bssid=network_WiFi_ChannelHop.ORIGINAL_BSSID)
         self.context.configure(ap_config)
         assoc_params = xmlrpc_datatypes.AssociationParameters(
                 ssid=self.context.router.get_ssid())
@@ -33,7 +35,12 @@ class network_WiFi_ChannelHop(wifi_cell_test_base.WiFiCellTestBase):
                 freq)
         self.context.router.deconfig()
 
-        for freq in (2437, 2462):
+        # This checks both channel jumping on the same BSSID and channel
+        # jumping between BSSIDs, all inside the same SSID.
+        for freq, bssid in ((2437, network_WiFi_ChannelHop.ORIGINAL_BSSID),
+                            (2462, network_WiFi_ChannelHop.ORIGINAL_BSSID),
+                            (2422, "06:07:08:09:0a:0b"),
+                            (2447, "0c:0d:0e:0f:10:11")):
             # Wait for the disconnect to happen.
             success, state, elapsed_seconds = \
                     self.context.client.wait_for_service_states(
@@ -45,7 +52,8 @@ class network_WiFi_ChannelHop(wifi_cell_test_base.WiFiCellTestBase):
             ap_config = hostap_config.HostapConfig(
                     ssid=network_WiFi_ChannelHop.TEST_SSID,
                     frequency=freq,
-                    mode=hostap_config.HostapConfig.MODE_11B)
+                    mode=hostap_config.HostapConfig.MODE_11B,
+                    bssid=bssid)
             self.context.configure(ap_config)
 
             # Wait for the DUT to scan and acquire the AP at the new
