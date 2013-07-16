@@ -197,6 +197,14 @@ class WPAConfig(SecurityConfig):
         self.wpa_gtk_rekey_period = wpa_gtk_rekey_period
         self.wpa_gmk_rekey_period = wpa_gmk_rekey_period
         self.use_strict_rekey = use_strict_rekey
+        if len(psk) > 64:
+            raise error.TestFail('WPA passphrases can be no longer than 63 '
+                                 'characters (or 64 hex digits).')
+
+        if len(psk) == 64:
+            for c in psk:
+                if c not in '0123456789abcdefABCDEF':
+                    raise error.TestFail('Invalid PMK: %r' % psk)
 
 
     def get_hostapd_config(self):
@@ -214,8 +222,12 @@ class WPAConfig(SecurityConfig):
                                  'ciphers.')
 
         ret = {'wpa': self.wpa_mode,
-               'wpa_key_mgmt': 'WPA-PSK',
-               'wpa_passphrase': self.psk}
+               'wpa_key_mgmt': 'WPA-PSK'}
+        if len(self.psk) == 64:
+           ret['wpa_psk'] = self.psk
+        else:
+           ret['wpa_passphrase'] = self.psk
+
         if self.wpa_ciphers:
             ret['wpa_pairwise'] = ' '.join(self.wpa_ciphers)
         if self.wpa2_ciphers:
