@@ -14,7 +14,6 @@ sys.path.append(os.path.join(
 from utils import common
 
 import ap_batch_locker
-import ap_configurator_factory
 
 
 class ConfiguratorTest(unittest.TestCase):
@@ -27,12 +26,7 @@ class ConfiguratorTest(unittest.TestCase):
     This test does not verify that everything works for ALL APs. It only
     tests against the AP specified below in AP_SPEC.
 
-    This class provides a fast way to test without having to run_remote_test
-    because chances are you don't need a ChromeOS device.  You will need to
-     - (inside chroot) download and install Chromium prebuilt binaries
-     - (outside chroot) launch chromedriver binary
-
-    Then launch this unit test from outside chroot:
+    Launch this unit test from outside chroot:
       $ cd ~/chromeos/src/third_party/autotest/files
       $ python utils/unittest_suite.py \
         server.cros.chaos_ap_configurators.ap_configurator_test --debug
@@ -47,34 +41,29 @@ class ConfiguratorTest(unittest.TestCase):
     AP_SPEC = dict(hostnames=['chromeos3-row1-rack2-host11'])
 
 
-    def setUp(self):
-        # Disable check for prebuilt binaries b/c of the discrepancy below:
-        #  - this check expects binary path from inside the chroot
-        #  - this unit test only works from outside the chroot
-
-        #if download_chromium_prebuilt.download_chromium_prebuilt_binaries():
-        #    self.fail(
-        #        'Please download and install Chromium binaries inside chroot. '
-        #        'Then from outside chroot run: <path to chroot tmp directory>/'
-        #        '%s' % download_chromium_prebuilt.DOWNLOAD_PATH)
-
+    @classmethod
+    def setUpClass(self):
         self.batch_locker = ap_batch_locker.ApBatchLocker(self.AP_SPEC)
         ap_batch = self.batch_locker.get_ap_batch(batch_size=1)
         if not ap_batch:
             raise RuntimeError('Unable to lock AP %r' % self.AP_SPEC)
-
         self.ap = ap_batch[0]
-        self.run_initialization = False
+        print('Powering up the AP (this may take a minute...)')
+        self.ap._power_up_router()
+
+
+    @classmethod
+    def tearDownClass(self):
+        if self.batch_locker:
+            self.batch_locker.unlock_aps()
+        self.ap._power_down_router()
+
+
+    def setUp(self):
         # All tests have to have a band pre-set.
         bands = self.ap.get_supported_bands()
         self.ap.set_band(bands[0]['band'])
         self.ap.apply_settings()
-
-
-    def tearDown(self):
-        """Unlocks the AP locked by setUp(), if any."""
-        if self.batch_locker:
-            self.batch_locker.unlock_aps()
 
 
     def disabled_security_on_all_bands(self):
@@ -185,7 +174,6 @@ class ConfiguratorTest(unittest.TestCase):
                 return
         if not self.ap.is_security_mode_supported(self.ap.security_type_wep):
             return
-        # FIXME(krisr): which part of this config is invalid?
         self.ap.set_mode(self.ap.mode_n)
         self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
         try:
@@ -196,7 +184,6 @@ class ConfiguratorTest(unittest.TestCase):
             if message.find('no handler was specified') != -1:
                 self.fail('Subclass did not handle an alert.')
             return
-        # FIXME(krisr): is this test still valid?
         self.fail('An exception should have been thrown but was not.')
 
 
