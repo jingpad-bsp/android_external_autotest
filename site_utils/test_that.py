@@ -95,7 +95,8 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
     return len(my_suite.tests)
 
 
-def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode):
+def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
+            id_digits=1):
     """
     Shell out to autoserv to run an individual test job.
 
@@ -106,14 +107,16 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode):
     @param results_directory: Absolute path of directory to store results in.
                               (results will be stored in subdirectory of this).
     @param fast_mode: bool to use fast mode (disables slow autotest features).
+    @param id_digits: The minimum number of digits that job ids should be
+                      0-padded to when formatting as a string for results
+                      directory.
     @returns: Absolute path of directory where results were stored.
     """
     with tempfile.NamedTemporaryFile() as temp_file:
         temp_file.write(job.control_file)
         temp_file.flush()
-
         results_directory = os.path.join(results_directory,
-                                         'results-%s' % job.id)
+                                         'results-%0*d' % (id_digits, job.id))
 
         command = autoserv_utils.autoserv_run_job_command(
                 os.path.join(sysroot_autotest_path, 'server'),
@@ -180,8 +183,15 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                                          results_directory=results_directory)
         logging.info('... scheduled %s tests.', ntests)
 
+    if not afe.get_jobs():
+        logging.info('No jobs scheduled. End of local run.')
+        return results_directory
+
+    last_job_id = afe.get_jobs()[-1].id
+    job_id_digits=len(str(last_job_id))
     for job in afe.get_jobs():
-        run_job(job, remote, autotest_path, results_directory, fast_mode)
+        run_job(job, remote, autotest_path, results_directory, fast_mode,
+                job_id_digits)
 
     return results_directory
 
