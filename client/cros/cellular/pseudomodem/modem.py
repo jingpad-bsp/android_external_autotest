@@ -42,7 +42,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
     def __init__(self, bus=None,
                  device='pseudomodem0',
                  index=0,
-                 roaming_networks=[],
+                 roaming_networks=None,
                  config=None):
         """
         Initializes the fake modem object. kwargs can contain the optional
@@ -62,6 +62,8 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         dbus_std_ifaces.DBusProperties.__init__(self,
             mm1.MM1 + '/Modem/' + str(index), bus, config)
 
+        if roaming_networks is None:
+            roaming_networks = []
         self.roaming_networks = roaming_networks
 
         self.bearers = {}
@@ -337,25 +339,45 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             logging.info('Modem disable')
             disable_machine.DisableMachine(self, return_cb, raise_cb).Step()
 
-    def RegisterWithNetwork(self):
+    def RegisterWithNetwork(
+            self, operator_id="", return_cb=None, raise_cb=None):
         """
-        Register with the current home network, as specified
-        in the constructor. Must set the state to SEARCHING first,
-        and see if there is a home network available. Technology
-        specific error cases need to be handled here (such as activation,
-        the presence of a valid SIM card, etc)
+        Register with the network specified by the given |operator_id|.
+        |operator_id| should be an MCCMNC value (for 3GPP) or an empty string.
+        An implementation of this method must set the state to SEARCHING first,
+        and eventually to REGISTERED, also setting technology specific
+        registration state properties. Technology specific error cases need to
+        be handled here (such as activation, the presence of a valid SIM card,
+        etc).
 
         Must be implemented by a subclass.
+
+        @param operator_id: String containing the operator code. This method
+                will typically initiate a network scan, yielding a list of
+                networks. If |operator_id| is non-empty, the modem will register
+                with the network in the scanned list that matches |operator_id|.
+                An empty |operator_id| means that registration should be
+                "automatic". In this case the implementation would typically
+                register with the home network. If a home network is not
+                available than any network that is returned by a network scan
+                can be registered with.
+
+                Note: CDMA doesn't support a network scan. In this case, the
+                only possible option is to register with the home network and
+                ignore the value of |operator_id|.
+
+        @param return_cb: Async success callback.
+        @param raise_cb: Async failure callback.
 
         """
         raise NotImplementedError()
 
     def UnregisterWithNetwork(self):
         """
-        Unregisters with the home network. This should transition
-        the modem into the ENABLED state
+        Unregisters with the currently registered network. This should
+        transition the modem to the ENABLED state.
 
-        Must be implemented by a subclass
+        Must be implemented by a subclass.
 
         """
         raise NotImplementedError()
@@ -399,8 +421,8 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         if too many bearers are already defined, or if properties are invalid.
 
         @param properties: A dictionary containing the properties to assign to
-                           the bearer after creating it. The allowed property
-                           values are contained in modem.ALLOWED_PROPERTIES.
+                the bearer after creating it. The allowed property values are
+                contained in modem.ALLOWED_PROPERTIES.
 
         @return On success, the object path of the newly created bearer.
 
@@ -599,9 +621,9 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         currently allowed to use when connecting to a network.
 
         @param modes: Specifies all the modes allowed in the modem as a bitmask
-                      of MMModemModem values.
+                of MMModemModem values.
         @param preferred: Specific MMModemMode preferred among the ones allowed,
-                          if any.
+                if any.
 
         """
         allowed = self.Get(mm1.I_MODEM, 'SupportedModes')
@@ -617,7 +639,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         allowed to use when connecting to a network.
 
         @param bands: Specifies the bands to be used as a list of MMModemBand
-                      values.
+                values.
 
         """
         band_list = [dbus.types.UInt32(band) for band in bands]
@@ -652,7 +674,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         modem is in the MM_MODEM_STATE_DISABLED state.
 
         @param power_state: Specifies the desired power state as a
-                            MMModemPowerState value.
+                MMModemPowerState value.
 
         @raises MMCoreError if state is not DISABLED.
 
@@ -670,7 +692,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         required.
 
         @param capabilities: Bitmask of MMModemCapability values, to specify the
-                             capabilities to use.
+                capabilities to use.
 
         """
         supported = self.Get(mm1.I_MODEM, 'SupportedCapabilities')
@@ -688,7 +710,7 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         @param old: Specifies the old state, as a MMModemState value.
         @param new: Specifies the new state, as a MMModemState value.
         @param reason: Specifies the reason for this state change as a
-                       MMModemStateChangeReason value.
+                MMModemStateChangeReason value.
 
         """
         logging.info('Modem state changed from %u to %u for reason %u',

@@ -430,7 +430,8 @@ class PseudoModemManager(object):
         raise NotImplementedError()
 
 
-def Start(use_cdma=False, activated=True, sim_locked=False):
+def Start(use_cdma=False, activated=True, sim_locked=False,
+          roaming_networks=0):
     """
     Runs the pseudomodem in script mode. This function is called only by the
     main function.
@@ -443,10 +444,13 @@ def Start(use_cdma=False, activated=True, sim_locked=False):
                       unactivated and will require service activation.
     @param sim_locked: If True, the SIM will be initialized with a PIN lock.
                        This option does nothing if 'use_cdma' is also True.
+    @param roaming_networks: The number networks that will be returned from a
+                             network scan in addition to the home network.
 
     """
     # TODO(armansito): Support "not activated" initialization option for 3GPP
     #                  carriers.
+    networks = []
     if use_cdma:
         # Import modem_cdma here to avoid circular imports.
         import modem_cdma
@@ -454,10 +458,21 @@ def Start(use_cdma=False, activated=True, sim_locked=False):
             modem_cdma.ModemCdma.CdmaNetwork(activated=activated))
         s = None
     else:
-        m = modem_3gpp.Modem3gpp()
+        networks = [
+                modem_3gpp.Modem3gpp.GsmNetwork(
+                    'Roaming Network Long ' + str(i),
+                    'Roaming Network Short ' + str(i),
+                    '00100' + str(i + 1),
+                    dbus.types.UInt32(
+                            mm1.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
+                    dbus.types.UInt32(
+                            mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM))
+                for i in xrange(roaming_networks)]
+        m = modem_3gpp.Modem3gpp(roaming_networks=networks)
         s = sim.SIM(sim.SIM.Carrier(),
                     mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
                     locked=sim_locked)
+
     with PseudoModemManager(modem=m, sim=s, detach=False, logfile=None):
         pass
 
@@ -480,7 +495,7 @@ def main():
 
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-f', '--family', dest='family',
-                      metavar='<family>',
+                      metavar='<family>', type="string",
                       help='<family> := 3GPP|CDMA')
     parser.add_option('-n', '--not-activated', dest='not_activated',
                       action='store_true', default=False,
@@ -488,6 +503,10 @@ def main():
     parser.add_option('-l', '--locked', dest='sim_locked',
                       action='store_true', default=False,
                       help='Initialize the SIM as locked.')
+    parser.add_option('-r', '--roaming-networks', dest='roaming_networks',
+                      default=0, type="int", metavar="<# networks>",
+                      help='Number of roaming networks available for scan '
+                           '(3GPP only).')
 
     (opts, args) = parser.parse_args()
     if not opts.family:
@@ -500,7 +519,17 @@ def main():
         print 'Unsupported family: ' + family
         return
 
-    Start(family == 'CDMA', not opts.not_activated, opts.sim_locked)
+    if opts.roaming_networks < 0:
+        print ('Invalid number of roaming_networks: ' +
+               str(opts.roaming_networks))
+        return
+
+    if opts.roaming_networks > 0 and family == 'CDMA':
+        print 'Cannot initialize roaming networks for family: CDMA'
+        return
+
+    Start(family == 'CDMA', not opts.not_activated, opts.sim_locked,
+          opts.roaming_networks)
 
 
 if __name__ == '__main__':

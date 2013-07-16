@@ -13,9 +13,12 @@ class RegisterMachine(state_machine.StateMachine):
     modem to the REGISTERED state.
 
     """
-    def __init__(self, modem):
+    def __init__(self, modem, operator_code="", return_cb=None, raise_cb=None):
         super(RegisterMachine, self).__init__(modem)
         self._networks = None
+        self._operator_code = operator_code
+        self._return_cb = return_cb
+        self._raise_cb = raise_cb
 
     def Cancel(self):
         """
@@ -32,6 +35,9 @@ class RegisterMachine(state_machine.StateMachine):
             self._modem.SetRegistrationState(
                 mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
         self._modem.register_step = None
+        if self._raise_cb:
+            self._raise_cb(
+                    mm1.MMCoreError(mm1.MMCoreError.CANCELLED, 'Cancelled'))
 
     def _HandleEnabledState(self):
         logging.info('RegisterMachine: Modem is ENABLED.')
@@ -52,7 +58,9 @@ class RegisterMachine(state_machine.StateMachine):
                 mm1.MODEM_STATE_CHANGE_REASON_UNKNOWN)
             self._modem.SetRegistrationState(
                 mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
-            raise
+            if self._raise_cb:
+                self._raise_cb(e)
+            return False
         logging.info('RegisterMachine: Found networks: ' + str(self._networks))
         return True
 
@@ -71,25 +79,37 @@ class RegisterMachine(state_machine.StateMachine):
             self._modem.SetRegistrationState(
                 mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
             self._modem.register_step = None
-            raise mm1.MMMobileEquipmentError(
-                mm1.MMMobileEquipmentError.NO_NETWORK,
-                'No networks were found to register.')
-        else:
-            # For now pick the first network in the list.
-            # Roaming networks will come before the home
-            # network, so if the test provided any roaming
-            # networks, we will register with the first one.
-            # TODO(armansito): Could the operator-code not be
-            # present or unknown?
-            network = self._networks[0]
-            logging.info(
-                'RegisterMachine: Registering to network: ' + str(network))
-            self._modem.Register(
-                network['operator-code'], network['operator-long'])
+            if self._raise_cb:
+                self_raise_cb(mm1.MMMobileEquipmentError(
+                        mm1.MMMobileEquipmentError.NO_NETWORK,
+                        'No networks were found to register.'))
+            return False
 
-            # Modem3gpp.Register() should have set the state to
-            # REGISTERED.
-            self._modem.register_step = None
+        # Pick the last network in the list. Roaming networks will come before
+        # the home network which makes the last item in the list the home
+        # network.
+        if self._operator_code:
+            if not self._operator_code in self._modem.scanned_networks:
+                if self._raise_cb:
+                    self._raise_cb(mm1.MMCoreError(
+                            mm1.MMCoreError.FAILED,
+                            "Unknown network: " + self._operator_code))
+                return False
+            network = self._modem.scanned_networks[self._operator_code]
+        else:
+            network = self._networks[-1]
+        logging.info(
+            'RegisterMachine: Registering to network: ' + str(network))
+        self._modem.SetRegistered(
+                network['operator-code'],
+                network['operator-long'])
+
+        # The previous call should have set the state to REGISTERED.
+        self._modem.register_step = None
+
+        if self._return_cb:
+            self._return_cb()
+        return False
 
     def _GetModemStateFunctionMap(self):
         return {
@@ -102,14 +122,22 @@ class RegisterMachine(state_machine.StateMachine):
             # There is already an ongoing register operation.
             message = 'Register operation already in progress.'
             logging.info(message)
-            raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS, message)
+            error = mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS, message)
+            if self._raise_cb:
+                self._raise_cb(error)
+            else:
+                raise error
         elif self._modem.register_step is None:
             # There is no register operation going on, canceled or otherwise.
             state = self._modem.Get(mm1.I_MODEM, 'State')
             if state != mm1.MM_MODEM_STATE_ENABLED:
                 message = 'Cannot initiate register while in state %d, ' \
                           'state needs to be ENABLED.' % state
-                raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message)
+                error = mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message)
+                if self._raise_cb:
+                    self._raise_cb(error)
+                else:
+                    raise error
 
             logging.info('Starting Register.')
             self._modem.register_step = self

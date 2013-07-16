@@ -42,6 +42,33 @@ class Modem3gpp(modem.Modem):
             self.operator_code = operator_code
             self.access_technology = access_technology
 
+        def ToScanDictionary(self):
+            """
+            @return Dictionary containing operator data as defined by
+                    org.freedesktop.ModemManager1.Modem.Modem3gpp.Scan.
+
+            """
+            return {
+              'status': dbus.types.UInt32(self.status),
+              'operator-long': self.operator_long,
+              'operator-short': self.operator_short,
+              'operator-code': self.operator_code,
+              'access-technology': dbus.types.UInt32(self.access_technology),
+            }
+
+    def __init__(self, bus=None,
+                 device='pseudomodem0',
+                 index=0,
+                 roaming_networks=None,
+                 config=None):
+        modem.Modem.__init__(self,
+                             bus=bus,
+                             device=device,
+                             roaming_networks=roaming_networks,
+                             config=config)
+
+        self._scanned_networks = {}
+
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
         props = ip[mm1.I_MODEM]
@@ -154,21 +181,65 @@ class Modem3gpp(modem.Modem):
         """
         self.SetUInt32(mm1.I_MODEM_3GPP, 'RegistrationState', state)
 
-    @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s')
-    def Register(self, operator_id, *args):
+    @property
+    def scanned_networks(self):
+        """
+        @return Dictionary containing the result of the most recent network
+                scan, where the keys are the operator code.
+
+        """
+        return self._scanned_networks
+
+    @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s',
+                         async_callbacks=('return_cb', 'raise_cb'))
+    def Register(self, operator_id, return_cb, raise_cb):
         """
         Request registration with a given modem network.
 
         @param operator_id: The operator ID to register. An empty string can be
                             used to register to the home network.
-        @param args: Args can optionally contain an operator name.
+        @param return_cb: Async success callback.
+        @param raise_cb: Async error callback.
 
         """
         logging.info('Modem3gpp.Register: %s', operator_id)
-        if operator_id:
+
+        # Check if we're already registered with the given network.
+        if (self.Get(mm1.I_MODEM_3GPP, 'OperatorCode') == operator_id or
+            ((not operator_id and self.Get(mm1.I_MODEM, 'State') >=
+                    mm1.MM_MODEM_STATE_REGISTERED))):
+            logging.info('Already registered.')
+            if raise_cb:
+                raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED,
+                                         'Already registered'))
+            return
+
+        self.CancelAllStateMachines()
+
+        def _Reregister():
+            self.UnregisterWithNetwork()
+            self.RegisterWithNetwork(operator_id, return_cb, raise_cb)
+
+        if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_CONNECTED:
+            self.Disconnect(mm1.ROOT_PATH, _Reregister, raise_cb)
+        else:
+            _Reregister()
+
+    def SetRegistered(self, operator_code, operator_name):
+        """
+        Sets the modem to be registered with the give network. Sets the Modem
+        and Modem3gpp registration states.
+
+        @param operator_code: The operator code that should be displayed by
+                              the modem.
+        @param operator_name: The operator name that should be displayed by
+                              the modem.
+
+        """
+        if operator_code:
             assert self.sim
             assert self.Get(mm1.I_MODEM, 'Sim') != mm1.ROOT_PATH
-            if operator_id == self.sim.Get(mm1.I_SIM, 'OperatorIdentifier'):
+            if operator_code == self.sim.Get(mm1.I_SIM, 'OperatorIdentifier'):
                 state = mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME
             else:
                 state = mm1.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING
@@ -181,9 +252,8 @@ class Modem3gpp(modem.Modem):
         logging.info('Modem3gpp.Register: Setting state to REGISTERED.')
         self.ChangeState(mm1.MM_MODEM_STATE_REGISTERED,
             mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
-        self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', operator_id)
-        if args:
-            self.Set(mm1.I_MODEM_3GPP, 'OperatorName', args[0])
+        self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', operator_code)
+        self.Set(mm1.I_MODEM_3GPP, 'OperatorName', operator_name)
 
     @dbus.service.method(mm1.I_MODEM_3GPP, out_signature='aa{sv}')
     def Scan(self):
@@ -212,23 +282,38 @@ class Modem3gpp(modem.Modem):
 
         # TODO(armansito): check here for SIM lock?
 
-        scanned = [network.__dict__ for network in self.roaming_networks]
+        scanned = [network.ToScanDictionary()
+                   for network in self.roaming_networks]
 
         # get home network
         sim_props = self.sim.GetAll(mm1.I_SIM)
         scanned.append({
-            'status': mm1.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE,
+            'status': dbus.types.UInt32(
+                    mm1.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
             'operator-long': sim_props['OperatorName'],
             'operator-short': sim_props['OperatorName'],
             'operator-code': sim_props['OperatorIdentifier'],
-            'access-technology': self.sim.access_technology
+            'access-technology': dbus.types.UInt32(self.sim.access_technology)
         })
+
+        self._scanned_networks = (
+                {network['operator-code']: network for network in scanned})
         return scanned
 
-    def RegisterWithNetwork(self):
-        register_machine.RegisterMachine(self).Step()
+    def RegisterWithNetwork(
+            self, operator_id="", return_cb=None, raise_cb=None):
+        """
+        Overridden from superclass.
+
+        """
+        register_machine.RegisterMachine(
+                self, operator_id, return_cb, raise_cb).Step()
 
     def UnregisterWithNetwork(self):
+        """
+        Overridden from superclass.
+
+        """
         logging.info('Modem3gpp.UnregisterWithHomeNetwork')
         logging.info('Setting registration state to IDLE.')
         self.SetRegistrationState(mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)

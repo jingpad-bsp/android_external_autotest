@@ -79,11 +79,8 @@ class ConnectMachine(state_machine.StateMachine):
         else:
             logging.info('ConnectMachine: Waiting for Register.')
             if not self._modem.IsPendingRegister():
-                try:
-                    self.RegisterWithNetwork()
-                except Exception as e:
-                    self.raise_cb(e)
-                    return False
+                self._modem.RegisterWithNetwork(
+                        "", self._return_cb, self._raise_cb)
             self.register_initiated = True
             return True
 

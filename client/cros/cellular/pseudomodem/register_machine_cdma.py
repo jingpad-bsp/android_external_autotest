@@ -24,6 +24,9 @@ class RegisterMachineCdma(register_machine.RegisterMachine):
             self._modem.SetRegistrationState(
                 mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)
         self._modem.register_step = None
+        if self._raise_cb:
+            self._raise_cb(
+                    mm1.MMCoreError(mm1.MMCoreError.CANCELLED, 'Cancelled'))
 
     def _GetModemStateFunctionMap(self):
         return {
@@ -48,6 +51,10 @@ class RegisterMachineCdma(register_machine.RegisterMachine):
             logging.info('RegisterMachineCdma: Setting state to ENABLED.')
             self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
                 mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+            if self._raise_cb:
+                self._raise_cb(mm1.MMMobileEquipmentError(
+                        mm1.MMMobileEquipmentError.NO_NETWORK,
+                        'No networks were found to register.'))
         else:
             logging.info(
                 'RegisterMachineCdma: Registering to network: ' + str(network))
@@ -57,4 +64,6 @@ class RegisterMachineCdma(register_machine.RegisterMachine):
                 mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         self._modem.SetRegistered(network)
         self._modem.register_step = None
+        if self._return_cb:
+            self._return_cb()
         return False

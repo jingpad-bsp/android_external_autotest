@@ -52,7 +52,7 @@ class ModemCdma(modem.Modem):
                  home_network=CdmaNetwork(),
                  bus=None,
                  device='pseudomodem0',
-                 roaming_networks=[],
+                 roaming_networks=None,
                  config=None):
         self.home_network = home_network
         self.cdma_activate_step = None
@@ -267,13 +267,15 @@ class ModemCdma(modem.Modem):
         self.SetUInt32(mm1.I_MODEM_CDMA, 'EvdoRegistrationState', state)
 
     # Inherited from modem.Modem.
-    def RegisterWithNetwork(self):
+    def RegisterWithNetwork(
+            self, operator_id="", return_cb=None, raise_cb=None):
         """
         Overridden from superclass.
 
         """
         logging.info('ModemCdma.RegisterWithNetwork')
-        register_machine_cdma.RegisterMachineCdma(self).Step()
+        register_machine_cdma.RegisterMachineCdma(
+                self, operator_id, return_cb, raise_cb).Step()
 
     def UnregisterWithNetwork(self):
         """
