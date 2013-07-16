@@ -20,7 +20,7 @@ class login_CryptohomeMountedTelemetry(test.test):
     def run_once(self):
         """Verifies cryptohome is mounted after login (uses Telemetry login)."""
         try:
-            with chrome.login() as _:
+            with chrome.logged_in_browser():
                 login.wait_for_cryptohome(chrome.LOGIN_USER)
             cryptohome.remove_vault(chrome.LOGIN_USER)
 
@@ -29,7 +29,7 @@ class login_CryptohomeMountedTelemetry(test.test):
             open(test_file, 'w').close()
             cryptohome.unmount_vault(TEST_USER)
 
-            with chrome.login() as _:
+            with chrome.logged_in_browser():
                 login.wait_for_cryptohome(chrome.LOGIN_USER)
                 self.assert_(not os.path.exists(test_file))
         # TODO(dennisjeffrey): Make this more fine-grained.

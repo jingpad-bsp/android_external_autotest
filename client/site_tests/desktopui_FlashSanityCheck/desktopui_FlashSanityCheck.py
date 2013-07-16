@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
-
 from telemetry.core.chrome import cros_interface
 
 from autotest_lib.client.bin import test
@@ -17,6 +15,9 @@ FLASH_PROCESS_NAME = 'chrome/chrome --type=ppapi'
 
 
 class desktopui_FlashSanityCheck(test.test):
+    """Sanity test that ensures flash instance is launched when a swf is played.
+
+    """
     version = 4
 
 
@@ -58,5 +59,5 @@ class desktopui_FlashSanityCheck(test.test):
 
 
     def run_once(self, time_to_wait_secs=25):
-        with chrome.login() as browser:
+        with chrome.logged_in_browser() as browser:
             self.run_flash_sanity_test(browser, time_to_wait_secs)
