@@ -10,7 +10,6 @@ import os
 import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import utils
 from autotest_lib.server.cros.servo import power_state_controller
 from autotest_lib.server.cros.servo import programmer
@@ -61,9 +60,6 @@ class Servo(object):
     USB_DETECTION_DELAY = 10
     # Time to keep USB power off before and after USB mux direction is changed
     USB_POWEROFF_DELAY = 2
-
-    # Time to wait before timing out on a dut-control call.
-    CALL_TIMEOUT_SECS = 60
 
     KEY_MATRIX_ALT_0 = {
         'ctrl_refresh':  ['0', '0', '0', '1'],
@@ -395,13 +391,7 @@ class Servo(object):
         """Get the value of a gpio from Servod."""
         assert gpio_name
         try:
-            timeout, result = retry.timeout(
-                self._server.get, args=(gpio_name, ),
-                timeout_sec=Servo.CALL_TIMEOUT_SECS)
-            if timeout:
-                raise error.AutotestError('Timed out retrieving gpio: %s.' %
-                                          gpio_name)
-            return result
+            return self._server.get(gpio_name)
         except  xmlrpclib.Fault as e:
             err_msg = "Getting '%s' :: %s" % \
                 (gpio_name, self._get_xmlrpclib_exception(e))
@@ -427,12 +417,7 @@ class Servo(object):
         assert gpio_name and gpio_value
         logging.info('Setting %s to %s', gpio_name, gpio_value)
         try:
-            timeout, result = retry.timeout(
-                self._server.set, args=(gpio_name, gpio_value),
-                timeout_sec=Servo.CALL_TIMEOUT_SECS)
-            if timeout:
-                raise error.AutotestError('Timed out setting gpio: %s to %s.' %
-                                          gpio_name, gpio_name)
+            self._server.set(gpio_name, gpio_value)
         except  xmlrpclib.Fault as e:
             err_msg = "Setting '%s' to '%s' :: %s" % \
                 (gpio_name, gpio_value, self._get_xmlrpclib_exception(e))
@@ -591,14 +576,10 @@ class Servo(object):
         remote = 'http://%s:%s' % (servo_host, servo_port)
         self._server = xmlrpclib.ServerProxy(remote)
         try:
-            # We have noticed incidents where we are able to connect but the
-            # actual servo calls go on for 20-30 mins. Thus _connect_servod now
-            # grabs the pwr_button state and if it times out raises an error.
-            self.get('pwr_button')
-        except Exception as e:
-            error_msg = 'Connection to servod failed. Failure: %s' % e
-            logging.error(error_msg)
-            raise error.AutotestError(error_msg)
+            self._server.echo("ping-test")
+        except:
+            logging.error('Connection to servod failed')
+            raise
 
 
     def _scp_image(self, image_path):
