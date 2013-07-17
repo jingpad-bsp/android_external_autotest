@@ -1,4 +1,4 @@
-import os, re, time
+import json, math, os, re, time
 
 from autotest_lib.tko import models, status_lib, utils as tko_utils
 from autotest_lib.tko.parsers import base, version_0
@@ -53,6 +53,12 @@ class test(models.test):
         return iteration.load_from_keyval(keyval_path)
 
 
+    @staticmethod
+    def load_perf_values(perf_values_file):
+        return perf_value_iteration.load_from_perf_values_file(
+                perf_values_file)
+
+
 class iteration(models.iteration):
     @staticmethod
     def parse_line_into_dicts(line, attr_dict, perf_dict):
@@ -82,6 +88,64 @@ class iteration(models.iteration):
                    "iteration keyval could not be parsed")
             msg %= line
             tko_utils.dprint(msg)
+
+
+class perf_value_iteration(models.perf_value_iteration):
+    @staticmethod
+    def parse_line_into_dict(line):
+        """
+        Parse a perf measurement text line into a dictionary.
+
+        The line is assumed to be a JSON-formatted string containing key/value
+        pairs, where each pair represents a piece of information associated
+        with a measured perf metric:
+
+            'description': a string description for the perf metric.
+            'value': a numeric value, or list of numeric values.
+            'units': the string units associated with the perf metric.
+            'higher_is_better': a boolean whether a higher value is considered
+                better.  If False, a lower value is considered better.
+
+        The resulting dictionary will also have a standard deviation key/value
+        pair, 'stddev'.  If the perf measurement value is a list of values
+        instead of a single value, then the average and standard deviation of
+        the list of values is computed and stored.  If a single value, the
+        value itself is used, and is associated with a standard deviation of 0.
+
+        @param line: A string line of JSON text from a perf measurements output
+            file.
+
+        @return A dictionary containing the parsed perf measurement information
+            along with a computed standard deviation value (key 'stddev'), or
+            an empty dictionary if the inputted line cannot be parsed.
+        """
+        # TODO(dennisjeffrey): Remove all pylint complaints about this file.
+        try:
+            perf_dict = json.loads(line)
+        except ValueError:
+            msg = 'Could not parse perf measurements line as json: "%s"' % line
+            tko_utils.dprint(msg)
+            return {}
+
+        def mean_and_standard_deviation(data):
+            n = len(data)
+            if n == 0:
+                return 0.0, 0.0
+            if n == 1:
+                return data[0], 0.0
+            mean = float(sum(data)) / n
+            # Divide by n-1 to compute "sample standard deviation".
+            variance = sum([(elem - mean) ** 2 for elem in data]) / (n - 1)
+            return mean, math.sqrt(variance)
+
+        value = perf_dict['value']
+        perf_dict['stddev'] = 0.0
+        if isinstance(value, list):
+            value, stddev = mean_and_standard_deviation(map(float, value))
+            perf_dict['value'] = value
+            perf_dict['stddev'] = stddev
+
+        return perf_dict
 
 
 class status_line(version_0.status_line):

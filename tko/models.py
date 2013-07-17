@@ -85,18 +85,40 @@ class test(object):
 
     @staticmethod
     def load_iterations(keyval_path):
-        """Abstract method to load a list of iterations from a keyval
-        file."""
+        """Abstract method to load a list of iterations from a keyval file."""
+        raise NotImplementedError
+
+
+    @staticmethod
+    def load_perf_values(perf_values_file):
+        """Loads perf values from a perf measurements file."""
         raise NotImplementedError
 
 
     @classmethod
     def parse_test(cls, job, subdir, testname, status, reason, test_kernel,
                    started_time, finished_time, existing_instance=None):
-        """Given a job and the basic metadata about the test that
-        can be extracted from the status logs, parse the test
-        keyval files and use it to construct a complete test
-        instance."""
+        """
+        Parse test result files to construct a complete test instance.
+
+        Given a job and the basic metadata about the test that can be
+        extracted from the status logs, parse the test result files (keyval
+        files and perf measurement files) and use them to construct a complete
+        test instance.
+
+        @param job: A job object.
+        @param subdir: The string subdirectory name for the given test.
+        @param testname: The name of the test.
+        @param status: The status of the test.
+        @param reason: The reason string for the test.
+        @param test_kernel: The kernel of the test.
+        @param started_time: The start time of the test.
+        @param finished_time: The finish time of the test.
+        @param existing_instance: An existing test instance.
+
+        @return A test instance that has the complete information.
+
+        """
         tko_utils.dprint("parsing test %s %s" % (subdir, testname))
 
         if subdir:
@@ -105,11 +127,17 @@ class test(object):
                                             "results", "keyval")
             iterations = cls.load_iterations(iteration_keyval)
 
+            # Grab perf values from the perf measurements file.
+            perf_values_file = os.path.join(job.dir, subdir,
+                                            'results', 'perf_measurements')
+            perf_values = cls.load_perf_values(perf_values_file)
+
             # grab test attributes from the subdir keyval
             test_keyval = os.path.join(job.dir, subdir, "keyval")
             attributes = test.load_attributes(test_keyval)
         else:
             iterations = []
+            perf_values = []
             attributes = {}
 
         # grab test+host attributes from the host keyval
@@ -123,6 +151,8 @@ class test(object):
                 return existing_instance
         else:
             constructor = cls
+        # TODO(dennisjeffrey): pass the |perf_values| list to the call below
+        # so that the results can be written into the results database.
         return constructor(subdir, testname, status, reason, test_kernel,
                            job.machine, started_time, finished_time,
                            iterations, attributes, [])
@@ -179,7 +209,6 @@ class iteration(object):
         self.perf_keyval = perf_keyval
 
 
-
     @staticmethod
     def parse_line_into_dicts(line, attr_dict, perf_dict):
         """Abstract method to parse a keyval line and insert it into
@@ -213,3 +242,90 @@ class iteration(object):
         if attr or perf:
             iterations.append(cls(index, attr, perf))
         return iterations
+
+
+class perf_value_iteration(object):
+    def __init__(self, index, perf_measurements):
+        """
+        Initializes the perf values for a particular test iteration.
+
+        @param index: The integer iteration number.
+        @param perf_measurements: A list of dictionaries, where each dictionary
+            contains the information for a measured perf metric from the
+            current iteration.
+
+        """
+        self.index = index
+        self.perf_measurements = perf_measurements
+
+
+    def add_measurement(self, measurement):
+        """
+        Appends to the list of perf measurements for this iteration.
+
+        @param measurement: A dictionary containing information for a measured
+            perf metric.
+
+        """
+        self.perf_measurements.append(measurement)
+
+
+    @staticmethod
+    def parse_line_into_dict(line):
+        """
+        Abstract method to parse an individual perf measurement line.
+
+        @param line: A string line from the perf measurement output file.
+
+        @return A dicionary representing the information for a measured perf
+            metric from one line of the perf measurement output file, or an
+            empty dictionary if the line cannot be parsed successfully.
+
+        """
+        raise NotImplementedError
+
+
+    @classmethod
+    def load_from_perf_values_file(cls, perf_values_file):
+        """
+        Load perf values from each iteration in a perf measurements file.
+
+        Multiple measurements for the same perf metric description are assumed
+        to come from different iterations.  Makes use of the
+        parse_line_into_dict function to actually parse the individual lines.
+
+        @param perf_values_file: The string name of the output file containing
+            perf measurements.
+
+        @return A list of |perf_value_iteration| objects, where position 0 of
+            the list contains the object representing the first iteration,
+            position 1 contains the object representing the second iteration,
+            and so forth.
+
+        """
+        if not os.path.exists(perf_values_file):
+            return []
+
+        perf_value_iterations = []
+        # For each description string representing a unique perf metric, keep
+        # track of the next iteration that it belongs to (multiple occurrences
+        # of the same description are assumed to come from different
+        # iterations).
+        desc_to_next_iter = {}
+        with open(perf_values_file) as fp:
+            for line in [ln for ln in fp if ln.strip()]:
+                perf_value_dict = cls.parse_line_into_dict(line)
+                if not perf_value_dict:
+                    continue
+                desc = perf_value_dict['description']
+                iter_to_set = desc_to_next_iter.setdefault(desc, 1)
+                desc_to_next_iter[desc] = iter_to_set + 1
+                if iter_to_set > len(perf_value_iterations):
+                    # We have information that needs to go into a new
+                    # |perf_value_iteration| object.
+                    perf_value_iterations.append(cls(iter_to_set, []))
+                # Add the perf measurement to the appropriate
+                # |perf_value_iteration| object.
+                perf_value_iterations[iter_to_set - 1].add_measurement(
+                        perf_value_dict)
+        return perf_value_iterations

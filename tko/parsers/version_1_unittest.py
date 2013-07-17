@@ -242,6 +242,31 @@ class iteration_parse_line_into_dicts(unittest.TestCase):
         self.assertEqual(({}, {}), result)
 
 
+class perf_value_iteration_parse_line_into_dict(unittest.TestCase):
+    def parse_line(self, line):
+        return version_1.perf_value_iteration.parse_line_into_dict(line)
+
+    def test_invalid_json(self):
+        result = self.parse_line('{"invalid_json" "string"}')
+        self.assertEqual(result, {})
+
+    def test_single_value_int(self):
+        result = self.parse_line('{"value": 7}')
+        self.assertEqual(result, {"value": 7, "stddev": 0})
+
+    def test_single_value_float(self):
+        result = self.parse_line('{"value": 1.298}')
+        self.assertEqual(result, {"value": 1.298, "stddev": 0})
+
+    def test_value_list_int(self):
+        result = self.parse_line('{"value": [10, 20, 30]}')
+        self.assertEqual(result, {"value": 20.0, "stddev": 10.0})
+
+    def test_value_list_float(self):
+        result = self.parse_line('{"value": [2.0, 3.0, 4.0]}')
+        self.assertEqual(result, {"value": 3.0, "stddev": 1.0})
+
+
 class DummyAbortTestCase(unittest.TestCase):
     def setUp(self):
         self.indent = 3
