@@ -219,6 +219,32 @@ def parse_ping_output(ping_output):
     Extract a dictionary of statistics from the output of the ping command.
     On error, some statistics may be missing entirely from the output.
 
+    An example of output with some errors is:
+
+    PING 192.168.0.254 (192.168.0.254) 56(84) bytes of data.
+    From 192.168.0.124 icmp_seq=1 Destination Host Unreachable
+    From 192.168.0.124 icmp_seq=2 Destination Host Unreachable
+    From 192.168.0.124 icmp_seq=3 Destination Host Unreachable
+    64 bytes from 192.168.0.254: icmp_req=4 ttl=64 time=1171 ms
+    [...]
+    64 bytes from 192.168.0.254: icmp_req=10 ttl=64 time=1.95 ms
+
+    --- 192.168.0.254 ping statistics ---
+    10 packets transmitted, 7 received, +3 errors, 30% packet loss, time 9007ms
+    rtt min/avg/max/mdev = 1.806/193.625/1171.174/403.380 ms, pipe 3
+
+    A more normal run looks like:
+
+    PING google.com (74.125.239.137) 56(84) bytes of data.
+    64 bytes from 74.125.239.137: icmp_req=1 ttl=57 time=1.77 ms
+    64 bytes from 74.125.239.137: icmp_req=2 ttl=57 time=1.78 ms
+    [...]
+    64 bytes from 74.125.239.137: icmp_req=5 ttl=57 time=1.79 ms
+
+    --- google.com ping statistics ---
+    5 packets transmitted, 5 received, 0% packet loss, time 4007ms
+    rtt min/avg/max/mdev = 1.740/1.771/1.799/0.042 ms
+
     @param ping_output String output of ping.
     @return dict of relevant statistics on success.
 
@@ -226,12 +252,15 @@ def parse_ping_output(ping_output):
     stats = {}
     for k in ('xmit', 'recv', 'loss', 'min', 'avg', 'max', 'dev'):
         stats[k] = '???'
-    m = re.search('([0-9]*) packets transmitted,[ ]*([0-9]*)[ ]'
-        '(packets |)received, ([0-9]*)', ping_output)
+    m = re.search('([0-9]*) packets transmitted, '
+                  '([0-9]*) received, '
+                  '(\\+([0-9]*) errors, )?'
+                  '([0-9]*)% packet loss',
+                  ping_output)
     if m is not None:
         stats['xmit'] = m.group(1)
         stats['recv'] = m.group(2)
-        stats['loss'] = m.group(4)
+        stats['loss'] = m.group(5)
     m = re.search('(round-trip|rtt) min[^=]*= '
                   '([0-9.]*)/([0-9.]*)/([0-9.]*)/([0-9.]*)', ping_output)
     if m is not None:
