@@ -201,6 +201,14 @@ class WiFiClient(object):
         # does that work.
         system = site_linux_system.LinuxSystem(self.host, {}, 'client')
         self._capabilities = system.capabilities
+        self._raise_logging_level()
+
+
+    def _raise_logging_level(self):
+        """Raises logging levels for WiFi on DUT."""
+        self.host.run('wpa_debug excessive')
+        self.host.run('ff_debug --level -5')
+        self.host.run('ff_debug +wifi')
 
 
     def close(self):
