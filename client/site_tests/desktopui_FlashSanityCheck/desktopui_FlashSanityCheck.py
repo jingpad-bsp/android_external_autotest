@@ -59,5 +59,5 @@ class desktopui_FlashSanityCheck(test.test):
 
 
     def run_once(self, time_to_wait_secs=25):
-        with chrome.logged_in_browser() as browser:
-            self.run_flash_sanity_test(browser, time_to_wait_secs)
+        with chrome.Chrome() as cr:
+            self.run_flash_sanity_test(cr.browser, time_to_wait_secs)

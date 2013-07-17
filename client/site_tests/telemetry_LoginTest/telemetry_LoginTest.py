@@ -19,8 +19,37 @@ class telemetry_LoginTest(test.test):
         the login flow and checks to ensure that the login process is
         completed.
         """
-        with chrome.logged_in_browser():
+        extension_path = os.path.join(os.path.dirname(__file__),
+                                      'login_status_ext')
+        with chrome.Chrome(logged_in=True,
+                           extension_paths=[extension_path]) as cr:
             # By creating a browser and using 'with' any code in this section
             # is wrapped by a login/logout.
             if not os.path.exists('/var/run/state/logged-in'):
                 raise error.TestFail('Failed to log into the system.')
+
+            extension = cr.get_extension(extension_path)
+            if not extension:
+                raise error.TestFail('Failed to find loaded extension %s'
+                                     % extension_path)
+
+            # Ensure private api loginStatus can be called.
+            extension.ExecuteJavaScript('''
+                chrome.autotestPrivate.loginStatus(function(s) {
+                  window.__login_status = s;
+                });
+            ''')
+            login_status = extension.EvaluateJavaScript(
+                    'window.__login_status')
+            if type(login_status) != dict:
+                raise error.TestFail('LoginStatus type mismatch %r'
+                                     % type(login_status))
+
+            if not login_status['isRegularUser']:
+                raise error.TestFail('isRegularUser should be True')
+            if login_status['isGuest']:
+                raise error.TestFail('isGuest should be False')
+            if login_status['email'] != chrome.LOGIN_USER:
+                raise error.TestFail('user email mismatch %s'
+                                     % login_status['email'])
+
