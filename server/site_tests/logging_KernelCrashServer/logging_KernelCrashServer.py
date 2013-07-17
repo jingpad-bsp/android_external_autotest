@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, shutil, time
+import logging, os
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging
 from autotest_lib.client.cros.crash_test import CrashTest as CrashTestDefs
@@ -77,7 +77,7 @@ class logging_KernelCrashServer(test.test):
         is_devimg = self._host.run('[ -r /root/.leave_core ]',
                                    ignore_status=True).exit_status == 0
         logging.info('always_regen: %d', always_regen)
-        logging.info('is_devimg: %d', (is_devimg)
+        logging.info('is_devimg: %d', is_devimg)
         return not (always_regen or is_devimg)
 
 
