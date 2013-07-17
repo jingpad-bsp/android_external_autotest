@@ -190,6 +190,25 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 ssid, states, timeout_seconds)
 
 
+    @xmlrpc_server.dbus_safe(None)
+    def get_service_properties(self, ssid):
+        """Get a dict of properties for a service.
+
+        @param ssid string service to get properties for.
+        @return dict of Python friendly native types or None on failures.
+
+        """
+        discovery_params = {self._wifi_proxy.SERVICE_PROPERTY_TYPE: 'wifi',
+                            self._wifi_proxy.SERVICE_PROPERTY_NAME: ssid}
+        service_path = self._wifi_proxy.manager.FindMatchingService(
+                discovery_params)
+        service_object = self._wifi_proxy.get_dbus_object(
+                self._wifi_proxy.DBUS_TYPE_SERVICE, service_path)
+        service_properties = service_object.GetProperties(
+                utf8_strings=True)
+        return self._wifi_proxy.dbus2primitive(service_properties)
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
