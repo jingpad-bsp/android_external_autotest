@@ -36,14 +36,8 @@ class telemetry_UnitTests(test.test):
         run_tests.Main(['--browser=' + browser_type], UNIT_TEST_SUBDIR,
                        TELEMETRY_BASE_DIR, runner)
 
-        # TODO(dennisjeffrey): The logging module no longer works after
-        # invoking run_tests.Main() above.  Using print statements below still
-        # allows the messages to be logged in the test debug log file.  See
-        # http://crbug.com/259041 for more details.  Once this is understood,
-        # we should change the print statements below to use logging if
-        # possible.
         sys.stdout = sys.__stdout__  # Restore sys.stdout.
-        print capturer.getvalue()  # Print Telemetry output.
+        logging.info(capturer.getvalue())  # Log the Telemetry output.
         capturer.close()
 
         if runner.result:
@@ -53,6 +47,7 @@ class telemetry_UnitTests(test.test):
                 raise error.TestFail(
                         '%d unit tests failed.' % runner.result.num_errors)
             else:
-                print 'All %d unit tests passed.' % runner.result.num_successes
+                logging.info('All %d unit tests passed.',
+                             runner.result.num_successes)
         else:
             raise error.TestFail('No results found.')
