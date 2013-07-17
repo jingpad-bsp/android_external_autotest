@@ -79,6 +79,22 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
                                                validator=validator)
                 self.assertAlmostEqual(actual_score, expected_score)
 
+    def test_by_gesture_CountTrackingIDValidator(self):
+        validator = 'CountTrackingIDValidator'
+        expected_scores = {
+            'fw_11.23': {
+                'drag_edge_thumb': 0.0,
+                'one_finger_tracking': 1.0,
+                'two_finger_tracking': 1.0,
+            },
+            'fw_11.27': {
+                'drag_edge_thumb': 0.5,
+                'one_finger_tracking': 1.0,
+                'two_finger_tracking': 1.0,
+            }
+        }
+        self._test_by_gesture(validator, expected_scores)
+
     def test_by_gesture_DrumrollValidator(self):
         validator = 'DrumrollValidator'
         expected_scores = {
@@ -170,16 +186,20 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
     def test_by_validator(self):
         expected_scores = {
             'fw_11.23': {
-                'Linearity(BothEnds)Validator': 0.0518130690637,
-                'Linearity(Middle)Validator': 0.254361284515,
-                'NoGapValidator': 0.108368895463,
+                'CountTrackingIDValidator': 0.95652173913,
+                'DrumrollValidator': 0.75,
+                'Linearity(BothEnds)Validator': 0.0483588644595,
+                'Linearity(Middle)Validator': 0.239845374323,
+                'NoGapValidator': 0.101144302433,
                 'PhysicalClickValidator': 0.75,
                 'StationaryFingerValidator': 0.832476442124,
             },
             'fw_11.27': {
-                'Linearity(BothEnds)Validator': 0.0194549291068,
-                'Linearity(Middle)Validator': 0.303301944266,
-                'NoGapValidator': 0.682575899255,
+                'CountTrackingIDValidator': 0.971428571429,
+                'DrumrollValidator': 0.666666666667,
+                'Linearity(BothEnds)Validator': 0.017763196141,
+                'Linearity(Middle)Validator': 0.313444723824,
+                'NoGapValidator': 0.623221473233,
                 'PhysicalClickValidator': 1.0,
                 'StationaryFingerValidator': 0.92770930158,
             }
@@ -192,8 +212,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
 
     def test_final_weighted_average(self):
         expected_weighted_averages = {
-            'fw_11.23': 0.7503603137865426,
-            'fw_11.27': 0.8586307156573775,
+            'fw_11.23': 0.7084620649934005,
+            'fw_11.27': 0.8343479552482307,
         }
         final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():

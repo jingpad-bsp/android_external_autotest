@@ -69,6 +69,12 @@ score_colors = ((0.9, 'blue'), (0.8, 'orange'), (0.0, 'red'))
 num_chars_per_row = 28
 
 
+# Define the validators that are shown only when there are failures.
+validators_hidden_when_no_failures = ['PinchValidator',
+                                      'CountTrackingIDValidator',
+                                      'CountPacketsValidator']
+
+
 # Define the path to find the robot gestures library path
 robot_lib_path = '/usr/local/lib*'
 python_package = 'python*'

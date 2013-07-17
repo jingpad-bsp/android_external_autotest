@@ -61,6 +61,35 @@ from firmware_constants import OPTIONS
 from test_conf import (log_root_dir, segment_weights, validator_weights)
 
 
+
+
+class OptionsDisplayMetrics:
+    """The options of displaying metrics."""
+    # Defining the options of displaying metrics
+    DISPLAY_METRICS_PRIMARY_STATS = 'p'
+    DISPLAY_METRICS_ALL_STATS = 'a'
+    DISPLAY_METRICS_RAW_VALUES = 'f'
+    DISPLAY_METRICS_OPTIONS = [DISPLAY_METRICS_PRIMARY_STATS,
+                               DISPLAY_METRICS_ALL_STATS,
+                               DISPLAY_METRICS_RAW_VALUES]
+    DISPLAY_METRICS_DEFAULT = DISPLAY_METRICS_PRIMARY_STATS
+
+    def __init__(self, option):
+        """Initialize with the level value.
+
+        @param option: the option of display metrics
+        """
+        if option not in self.DISPLAY_METRICS_OPTIONS:
+            option = self.DISPLAY_METRICS_DEFAULT
+
+        # To display all metrics statistics grouped by validators?
+        self.display_all_stats = (option == self.DISPLAY_METRICS_ALL_STATS or
+                                  option == self.DISPLAY_METRICS_RAW_VALUES)
+
+        # To display the raw metrics values in details on file basis?
+        self.display_raw_values = (option == self.DISPLAY_METRICS_RAW_VALUES)
+
+
 class FirmwareSummary:
     """Summary for touch device firmware tests."""
 
@@ -186,22 +215,24 @@ class FirmwareSummary:
         """
         # Print the complete title which looks like:
         #   <title_str>  <fw1>  <fw2>  ...  <description>
-        num_fws = len(self.slog.fws)
+        fws = self.slog.fws
+        num_fws = len(fws)
         title_str = ('Metrics statistics by gesture: ' + gesture if gesture else
                      'Metrics statistics by validator')
-        complete_title = ('{:<33}:'.format(title_str) +
-                          ('{:>12}  ' * num_fws).format(*self.slog.fws) +
-                          '{:<40}'.format('description'))
+        complete_title = ('{:<37}: '.format(title_str) +
+                          ('{:>10}' * num_fws).format(*fws) +
+                          '  {:<40}'.format('description'))
         print '\n' * 2 + complete_title
-        print '-' * (38 + 1 + 12 * num_fws + 17)
+        print '-' * (38 + 1 + 10 * num_fws + 17)
 
         # Print the metric name and the metric stats values of every firmwares
-        name_format = ' ' * 6 + '{:<27}:'
-        values_format = '{:>12.2f}  ' * num_fws
-        description_format = '{:<40}'
+        name_format = ' ' * 6 + '{:<31}:'
+        value_format = '{:>10.2f}'
+        values_format = value_format * num_fws
+        description_format = ' {:<40}'
         for validator in self.slog.validators:
             fw_stats_values = defaultdict(dict)
-            for fw in self.slog.fws:
+            for fw in fws:
                 result = self.slog.get_result(fw=fw, gesture=gesture,
                                               validator=validator)
                 stat_metrics = result.stat_metrics
@@ -210,15 +241,58 @@ class FirmwareSummary:
                     fw_stats_values[metric_name][fw] = \
                             stat_metrics.stats_values[metric_name]
 
-            if fw_stats_values:
-                print ' ' * 2, validator
-
+            fw_stats_values_printed = False
             for metric_name, fw_values_dict in sorted(fw_stats_values.items()):
-                print name_format.format(metric_name),
-                print values_format.format(
-                        *[fw_values_dict[fw] for fw in self.slog.fws]),
-                print description_format.format(
-                        stat_metrics.metrics_props[metric_name].description)
+                values = [fw_values_dict[fw] for fw in fws]
+                # The metrics of some special validators will not be shown
+                # unless the display_all_stats flag is True or any stats values
+                # are non-zero.
+                if (validator not in conf.validators_hidden_when_no_failures or
+                        self.display_metrics.display_all_stats or any(values)):
+                    if not fw_stats_values_printed:
+                        fw_stats_values_printed = True
+                        print ' ' * 2, validator
+                    print name_format.format(metric_name),
+                    print values_format.format(*values),
+                    print description_format.format(
+                            stat_metrics.metrics_props[metric_name].description)
+
+    def _get_metric_notes(self):
+        """Get the metric notes.
+
+        We show tuples instead of percentages if the metrics values are
+        percentages. This is because such a tuple unveils more information
+        (i.e., the values of the nominator and the denominator) than a mere
+        percentage value. For examples,
+
+        1f-click miss rate (%):
+            one_finger_physical_click.center (20130710_063117) : (0, 1)
+              the tuple means (the number of missed clicks, total clicks)
+
+        intervals > xxx ms (%)
+            one_finger_tap.top_left (20130710_063117) : (1, 6)
+              the tuple means (the number of long intervals, total packets)
+
+        We would like to add metric notes to explain such special cases.
+        """
+        # For physical clicks
+        mnprops = firmware_log.MetricNameProps()
+        note_physical_click = '(the number of missed clicks, total clicks)'
+        metric_notes = dict([(mnprops.CLICK.format(finger), note_physical_click)
+                             for finger in conf.fingers_physical_click])
+
+        # For the long interval metric of report rates
+        report_interval_str = mnprops.get_report_interval(conf.min_report_rate)
+        name_long_intervals = mnprops.LONG_INTERVALS.format(report_interval_str)
+        note_long_intervals = '(the number of long intervals, total packets)'
+        metric_notes[name_long_intervals] = note_long_intervals
+
+        # For count of tracking IDs
+        name_tid = mnprops.TID
+        note_tid = '(actual tracking IDs, expected tracking IDs)'
+        metric_notes[name_tid] = note_tid
+
+        return metric_notes
 
     def _print_raw_metrics_values(self):
         """Print the raw metrics values."""
@@ -230,30 +304,7 @@ class FirmwareSummary:
         # of the elements in the subkey.
         sum_len = lambda lst: sum([len(str(l)) if l else 0 for l in lst])
 
-        # We show tuples instead of percentages if the metrics values are
-        # percentages. This is because such a tuple unveils more information
-        # (i.e., the values of the nominator and the denominator) than a mere
-        # percentage value. For examples,
-        #
-        # 1f-click miss rate (%):
-        #     one_finger_physical_click.center (20130710_063117) : (0, 1)
-        #       the tuple means (the number of missed clicks, total clicks)
-        #
-        # intervals > xxx ms (%)
-        #     one_finger_tap.top_left (20130710_063117) : (1, 6)
-        #       the tuple means (the number of long intervals, total packets)
-        #
-        # We would like to add metric notes to explain such special cases.
-        mnprops = firmware_log.MetricNameProps()
-        note_physical_click = '(the number of missed clicks, total clicks)'
-        metric_notes = dict([(mnprops.CLICK.format(finger), note_physical_click)
-                             for finger in conf.fingers_physical_click])
-
-        report_interval_str = mnprops.get_report_interval(conf.min_report_rate)
-        name_long_intervals = mnprops.LONG_INTERVALS.format(report_interval_str)
-        note_long_intervals = '(the number of long intervals, total packets)'
-        metric_notes[name_long_intervals] = note_long_intervals
-
+        metric_notes = self._get_metric_notes()
         print '\n\nRaw metrics values'
         print '-' * 80
         for fw in self.slog.fws:
@@ -298,7 +349,7 @@ class FirmwareSummary:
         self._print_result_stats_by_validator()
         if self.display_metrics:
             self._print_statistics_of_metrics()
-            if self.display_metrics == OPTIONS.FULL:
+            if self.display_metrics.display_raw_values:
                 self._print_raw_metrics_values()
         self._print_final_weighted_averages()
 
@@ -315,18 +366,22 @@ def _usage_and_exit():
     print '  -h, --%s' % OPTIONS.HELP
     print '        show this help'
     print '  -m, --%s <verbose_level>' % OPTIONS.METRICS
-    print '        display the summary metrics of various validators'
+    print '        display the summary metrics.'
     print '        verbose_level:'
-    print '          default: show metrics grouped by validator'
-    print '          full: show metrics above plus details on file basis'
+    print '          p: display the primary metrics statistics (default)'
+    print '          s: display all metrics statistics'
+    print '          f: display all metrics statistics and ' \
+                        'the detailed raw metrics values'
     print
     print 'Examples:'
-    print '    # Specify the log root directory.'
+    print '    Specify the log root directory.'
     print '    $ python %s -d /tmp' % prog
-    print '    # Show the metrics at the default verbose level.'
-    print '    $ python %s -m default' % prog
-    print '    # Show the metrics at the full verbose level.'
-    print '    $ python %s -m full' % prog
+    print '    Display the primary metrics statistics.'
+    print '    $ python %s -m p' % prog
+    print '    Display all metrics statistics.'
+    print '    $ python %s -m s' % prog
+    print '    Display all metrics statistics and detailed raw metrics values.'
+    print '    $ python %s -m f' % prog
     sys.exit(1)
 
 
@@ -341,7 +396,7 @@ def _parse_options():
     # Set the default values of options.
     options = {OPTIONS.DEBUG: False,
                OPTIONS.DIR: log_root_dir,
-               OPTIONS.METRICS: False,
+               OPTIONS.METRICS: None,
     }
 
     try:
@@ -366,8 +421,7 @@ def _parse_options():
                 print 'Error: the log directory %s does not exist.' % arg
                 _usage_and_exit()
         elif opt in ('-m', '--%s' % OPTIONS.METRICS):
-            arg = arg if arg == OPTIONS.FULL else OPTIONS.DEFAULT
-            options[OPTIONS.METRICS] = arg
+            options[OPTIONS.METRICS] = OptionsDisplayMetrics(arg)
         else:
             msg = 'This option "%s" is not supported.' % opt
             _parsing_error(opt)

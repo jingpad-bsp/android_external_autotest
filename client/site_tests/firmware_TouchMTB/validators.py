@@ -582,10 +582,25 @@ class CountTrackingIDValidator(BaseValidator):
     def check(self, packets, variation=None):
         """Check the number of tracking IDs observed."""
         self.init_check(packets)
-        # Get the count of tracking id
-        count_tid = self.packets.get_number_contacts()
-        self.log_details('count of trackid IDs: %d' % count_tid)
-        self.vlog.score = self.fc.mf.grade(count_tid)
+
+        # Get the actual count of tracking id and log the details.
+        actual_count_tid = self.packets.get_number_contacts()
+        self.log_details('count of trackid IDs: %d' % actual_count_tid)
+
+        # Only keep metrics with the criteria '== N'.
+        # Ignore those with '>= N' which are used to assert that users have
+        # performed correct gestures. As an example, we require that users
+        # tap more than a certain number of times in the drumroll test.
+        if '==' in self.criteria_str:
+            expected_count_tid = int(self.criteria_str.split('==')[-1].strip())
+            # E.g., expected_count_tid = 2
+            #       actual_count_tid could be either smaller (e.g., 1) or
+            #       larger (e.g., 3).
+            metric_value = (actual_count_tid, expected_count_tid)
+            metric_name = self.mnprops.TID
+            self.vlog.metrics = [firmware_log.Metric(metric_name, metric_value)]
+
+        self.vlog.score = self.fc.mf.grade(actual_count_tid)
         return self.vlog
 
 

@@ -132,16 +132,39 @@ class MetricNameProps:
           . the stat function used to calculate the statistics for the metric:
             we use max() to calculate MAX_ERR in x/y for linearity.
         """
-        # stat_functions may include: max, min, average, and pct
+        # stat_functions include: max, average, pct_by_numbers, and pct_by_cases
         average = lambda lst: float(sum(lst)) / len(lst)
         _pct = lambda lst: float(lst[0]) / lst[1] * 100
-        pct = lambda lst: _pct([sum(count) for count in zip(*lst)])
+
+        # pct by numbers: lst means [(incorrect number, total number), ...]
+        #  E.g., lst = [(2, 10), (0, 10), (0, 10), (0, 10)]
+        #  pct_by_numbers would be (2 + 0 + 0 + 0) / (10 + 10 + 10 + 10) * 100%
+        pct_by_numbers = lambda lst: _pct([sum(count) for count in zip(*lst)])
+
+        # pct of incorrect cases in [(acutal_value, expected_value), ...]
+        #   E.g., lst = [(1, 1), (0, 1), (1, 1), (1, 1)]
+        #   pct_by_cases would be 1 / 4 * 100%
+        pct_by_cases = lambda lst: _pct(
+                [len([pair for pair in lst if pair[0] != pair[1]]), len(lst)])
 
         max_report_interval_str = self.get_report_interval(conf.min_report_rate)
 
         # A dictionary from metric attribute to its properties:
         #    {metric_attr: (template, name_variations, description, stat_func)}
+        # The keys below are ordered alphabetically.
         self.raw_metrics_props = {
+            # Count TrackingID Validator
+            'TID': (
+                'pct of incorrect cases (%)',
+                None,
+                'pct of incorrect cases over total cases',
+                pct_by_cases),
+            # Drumroll Validator
+            'CIRCLE_RADIUS': (
+                'circle radius (mm)',
+                None,
+                'Anything over 2mm is failure',
+                max),
             # Linearity Validator
             'MAX_ERR': (
                 'max error in {} (mm)',
@@ -153,36 +176,24 @@ class MetricNameProps:
                 AXIS.LIST,
                 'The mean of all rms means of all trials',
                 average),
+            # Physical Click Validator
+            'CLICK': (
+                '{}f-click miss rate (%)',
+                conf.fingers_physical_click,
+                'Should be close to 0 (0 is perfect)',
+                pct_by_numbers),
             # Range Validator
             'RANGE': (
                 '{} edge not reached (mm)',
                 ['left', 'right', 'top', 'bottom'],
                 'Min unreachable distance',
                 max),
-            # Stationary Finger Validator
-            'MAX_DISTANCE': (
-                'max distance (mm)',
-                None,
-                'max distance of any two points from any run',
-                max),
-            # Physical Click Validator
-            'CLICK': (
-                '{}f-click miss rate (%)',
-                conf.fingers_physical_click,
-                'Should be close to 0 (0 is perfect)',
-                pct),
-            # Drumroll Validator
-            'CIRCLE_RADIUS': (
-                'circle radius (mm)',
-                None,
-                'Anything over 2mm is failure',
-                max),
             # Report Rate Validator
             'LONG_INTERVALS': (
-                'intervals > {} ms (%)',
+                'pct of intervals > {} ms (%)',
                 [max_report_interval_str,],
                 '0% is required',
-                pct),
+                pct_by_numbers),
             'AVE_TIME_INTERVAL': (
                 'average time interval (ms)',
                 None,
@@ -192,6 +203,12 @@ class MetricNameProps:
                 'max time interval (ms)',
                 None,
                 'less than %s ms is required' % max_report_interval_str,
+                max),
+            # Stationary Finger Validator
+            'MAX_DISTANCE': (
+                'max distance (mm)',
+                None,
+                'max distance of any two points from any run',
                 max),
         }
 
@@ -347,7 +364,8 @@ class StatisticsMetrics:
         self.metrics_props = metrics_props
         self.stats_values = {}
         for metric_name, values in self.metrics_values.items():
-            assert metric_name in metrics_props
+            assert metric_name in metrics_props, (
+                    'The metric name "%s" cannot be found.' % metric_name)
             stat_func = metrics_props[metric_name].stat_func
             self.stats_values[metric_name] = stat_func(values)
 
