@@ -18,6 +18,32 @@ class Interface:
     ADDRESS_TYPE_IPV6 = 'inet6'
     ADDRESS_TYPES = [ ADDRESS_TYPE_MAC, ADDRESS_TYPE_IPV4, ADDRESS_TYPE_IPV6 ]
 
+    INTERFACE_NAME_ETHERNET = 'eth0'  # Assume this is `the` ethernet interface.
+
+
+    @staticmethod
+    def get_ethernet_interface(ignore_failures=False):
+        """Get an interface object representing an ethernet device.
+
+        Raises an exception if no such interface exists.
+
+        @param ignore_failures bool function will return None instead of raising
+                an exception on failures.
+        @return an Interface object except under the conditions described above.
+
+        """
+        # We'll assume that eth0 is always there until this assumption burns us.
+        # When it does, we can improve this method accordingly.
+        ethernet_if = Interface('eth0')
+        if ethernet_if.exists:
+            return ethernet_if
+
+        if ignore_failures:
+            return None
+
+        raise error.TestFail('Failed to find ethernet interface.')
+
+
     def __init__(self, name, host=None):
         self._name = name
         self._run = utils.run
