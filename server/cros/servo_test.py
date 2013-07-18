@@ -51,9 +51,8 @@ class ServoTest(test.test):
     def _ping_test(self, hostname, timeout=5):
         """Verify whether a host responds to a ping.
 
-        Args:
-          hostname: Hostname to ping.
-          timeout: Time in seconds to wait for a response.
+        @param hostname: Hostname to ping.
+        @param timeout: Time in seconds to wait for a response.
         """
         with open(os.devnull, 'w') as fnull:
             return subprocess.call(
@@ -63,9 +62,8 @@ class ServoTest(test.test):
     def _sshd_test(self, hostname, timeout=5):
         """Verify whether sshd is running in host.
 
-        Args:
-          hostname: Hostname to verify.
-          timeout: Time in seconds to wait for a response.
+        @param hostname: Hostname to verify.
+        @param timeout: Time in seconds to wait for a response.
         """
         try:
             sock = socket.create_connection((hostname, 22), timeout=timeout)

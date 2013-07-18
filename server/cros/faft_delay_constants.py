@@ -57,7 +57,6 @@ class FAFTDelayConstants(object):
         if platform:
             self._update_platform_delay(platform)
 
-
     def _update_platform_delay(self, platform):
         """Set platform dependent delay."""
 
