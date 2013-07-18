@@ -96,7 +96,7 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
 
 
 def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
-            id_digits=1):
+            id_digits=1, args=None):
     """
     Shell out to autoserv to run an individual test job.
 
@@ -110,6 +110,8 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
     @param id_digits: The minimum number of digits that job ids should be
                       0-padded to when formatting as a string for results
                       directory.
+    @param args: String that should be passed as args parameter to autoserv,
+                 and then ultimitely to test itself.
     @returns: Absolute path of directory where results were stored.
     """
     with tempfile.NamedTemporaryFile() as temp_file:
@@ -117,13 +119,16 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
         temp_file.flush()
         results_directory = os.path.join(results_directory,
                                          'results-%0*d' % (id_digits, job.id))
+        extra_args = [temp_file.name]
+        if args:
+            extra_args.extend(['--args', args])
 
         command = autoserv_utils.autoserv_run_job_command(
                 os.path.join(sysroot_autotest_path, 'server'),
                 machines=host, job=job, verbose=False,
                 results_directory=results_directory,
                 fast_mode=fast_mode,
-                extra_args=[temp_file.name])
+                extra_args=extra_args)
         global _autoserv_proc
         _autoserv_proc = subprocess.Popen(command)
         _autoserv_proc.wait()
@@ -146,7 +151,7 @@ def setup_local_afe():
 
 
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
-                      build=_NO_BUILD, board=_NO_BOARD):
+                      build=_NO_BUILD, board=_NO_BOARD, args=None):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
@@ -156,6 +161,8 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param fast_mode: bool to use fast mode (disables slow autotest features).
     @param build: String specifying build for local run.
     @param board: String specifyinb board for local run.
+    @param args: String that should be passed as args parameter to autoserv,
+                 and then ultimitely to test itself.
 
     @returns: directory in which results are stored.
     """
@@ -191,7 +198,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     job_id_digits=len(str(last_job_id))
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory, fast_mode,
-                job_id_digits)
+                job_id_digits, args)
 
     return results_directory
 
@@ -203,8 +210,8 @@ def validate_arguments(arguments):
     @param arguments: arguments object, as parsed by ParseArguments
     @raises: ValueError if arguments were invalid.
     """
-    if arguments.args:
-        raise ValueError('--args flag not yet supported.')
+    if arguments.build:
+        raise ValueError('-i/--build flag not yet supported.')
 
     if not arguments.board:
         raise ValueError('Board autodetection not yet supported. '
@@ -212,6 +219,9 @@ def validate_arguments(arguments):
 
     if arguments.remote == ':lab:':
         raise ValueError('Running tests in test lab not yet supported.')
+        if arguments.args:
+            raise ValueError('--args flag not supported when running against '
+                             ':lab:')
 
 
 def parse_arguments(argv):
@@ -243,7 +253,8 @@ def parse_arguments(argv):
                              'skip time consuming steps like sysinfo and '
                              'collecting crash information.')
     parser.add_argument('--args', metavar='ARGS',
-                        help='Argument string to pass through to test.')
+                        help='Argument string to pass through to test. Only '
+                        'supported for runs against a local DUT.')
 
     return parser.parse_args(argv)
 
@@ -348,7 +359,8 @@ def main(argv):
     if local_run:
         afe = setup_local_afe()
         res_dir= perform_local_run(afe, sysroot_autotest_path, arguments.tests,
-                                   arguments.remote, arguments.fast_mode)
+                                   arguments.remote, arguments.fast_mode,
+                                   args=arguments.args)
         final_result = subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
         logging.info('Finished running tests. Results can be found in %s',
                      res_dir)

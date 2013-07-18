@@ -12,8 +12,13 @@ import stat
 import tempfile
 from autotest_lib.site_utils import test_that
 
+
 class StartsWithList(mox.Comparator):
     def __init__(self, start_of_list):
+        """Mox comparator which returns True if the argument
+        to the mocked function is a list that begins with the elements
+        in start_of_list.
+        """
         self._lhs = start_of_list
 
     def equals(self, rhs):
@@ -23,6 +28,23 @@ class StartsWithList(mox.Comparator):
             if x != y:
                 return False
         return True
+
+
+class ContainsSublist(mox.Comparator):
+    def __init__(self, sublist):
+        """Mox comparator which returns True if the argument
+        to the mocked function is a list that contains sublist
+        as a sub-list.
+        """
+        self._sublist = sublist
+
+    def equals(self, rhs):
+        n = len(self._sublist)
+        if len(rhs)<n:
+            return False
+        return any((self._sublist == rhs[i:i+n])
+                   for i in xrange(len(rhs) - n + 1))
+
 
 class TestThatUnittests(unittest.TestCase):
     def test_validate_arguments(self):
@@ -58,6 +80,8 @@ class TestThatUnittests(unittest.TestCase):
         fast_mode = False
         job1_results_dir = '/tmp/fakeresults/results-1'
         job2_results_dir = '/tmp/fakeresults/results-2'
+        args = 'matey'
+        expected_args_sublist = ['--args', args]
         self.mox = mox.Mox()
 
         # Create some dummy job objects.
@@ -77,22 +101,29 @@ class TestThatUnittests(unittest.TestCase):
         mock_process_1 = self.mox.CreateMock(subprocess.Popen)
         mock_process_2 = self.mox.CreateMock(subprocess.Popen)
         self.mox.StubOutWithMock(subprocess, 'Popen')
+
         arglist_1 = [autoserv_command, '-p', '-r', job1_results_dir, '-m',
                      remote, '-c']
-        subprocess.Popen(StartsWithList(arglist_1)).AndReturn(mock_process_1)
+        subprocess.Popen(mox.And(StartsWithList(arglist_1),
+                                 ContainsSublist(expected_args_sublist))
+                        ).AndReturn(mock_process_1)
         mock_process_1.wait()
+
         arglist_2 = [autoserv_command, '-p', '-r', job2_results_dir, '-m',
                      remote, '-s']
-        subprocess.Popen(StartsWithList(arglist_2)).AndReturn(mock_process_2)
+        subprocess.Popen(mox.And(StartsWithList(arglist_2),
+                                 ContainsSublist(expected_args_sublist))
+                        ).AndReturn(mock_process_2)
         mock_process_2.wait()
 
         # Test run_job.
         self.mox.ReplayAll()
         job_res = test_that.run_job(job1, remote, autotest_path, results_dir,
-                                    fast_mode, id_digits)
+                                    fast_mode, id_digits, args)
         self.assertEqual(job_res, job1_results_dir)
         job_res = test_that.run_job(job2, remote, autotest_path, results_dir,
-                                    fast_mode, id_digits)
+                                    fast_mode, id_digits, args)
+
         self.assertEqual(job_res, job2_results_dir)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
@@ -110,6 +141,7 @@ class TestThatUnittests(unittest.TestCase):
         suite_control_files=['c1', 'c2', 'c3', 'c4']
         results_dir = '/tmp/test_that_results_fake'
         id_digits = 1
+        args = 'matey'
 
         def fake_suite_callback(*args, **dargs):
             for control_file in suite_control_files:
@@ -135,10 +167,11 @@ class TestThatUnittests(unittest.TestCase):
             test_that.run_job(mox.ContainsAttributeValue('control_file',
                                                          control_file),
                              remote, autotest_path, results_dir, fast_mode,
-                             id_digits)
+                             id_digits, args)
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
-                                    remote, fast_mode, build=build, board=board)
+                                    remote, fast_mode, build=build, board=board,
+                                    args=args)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
 
