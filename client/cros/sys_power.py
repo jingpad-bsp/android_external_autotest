@@ -78,20 +78,22 @@ def check_wakeup(alarm):
         raise EarlyWakeupError('Woke from suspend early')
 
 
-def do_suspend(seconds):
+def do_suspend(suspend_seconds, delay_seconds=0):
     """Do a suspend using the power manager.
 
-    Suspend the system to RAM (S3), waking up again after |seconds|, using
-    the powerd_dbus_suspend program. Function will block until
-    suspend/resume has completed or failed. Returns the wake alarm time
-    from the RTC as epoch.
+    Wait for |delay_seconds|, suspend the system to RAM (S3), waking up again
+    after having been suspended for |suspend_seconds|, using the
+    powerd_dbus_suspend program. Function will block until suspend/resume
+    has completed or failed. Returns the wake alarm time from the RTC as epoch.
 
-    @param seconds: The number of seconds to suspend the device.
+    @param suspend_seconds: Number of seconds to suspend the DUT.
+    @param delay_seconds: Number of seconds wait before suspending the DUT.
+
     """
-    alarm, wakeup_count = prepare_wakeup(seconds)
+    alarm, wakeup_count = prepare_wakeup(suspend_seconds)
     upstart.ensure_running(['powerd'])
-    command = ('/usr/bin/powerd_dbus_suspend --delay 0 --timeout 30 '
-               '--wakeup_count %d') % wakeup_count
+    command = ('/usr/bin/powerd_dbus_suspend --delay %d --timeout 30 '
+               '--wakeup_count %d') % (delay_seconds, wakeup_count)
     logging.info("Running '%s'", command)
     os.system(command)
     check_wakeup(alarm)
@@ -136,6 +138,8 @@ def idle_suspend(seconds):
     |seconds| after this function was called. Caller must ensure that the system
     will idle-suspend in time for this to happen. Returns the wake alarm time
     from the RTC as epoch.
+
+    @param seconds: The number of seconds before wakeup.
     """
     alarm, _ = prepare_wakeup(seconds)
     while rtc.get_seconds() < alarm:

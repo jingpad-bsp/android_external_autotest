@@ -500,3 +500,25 @@ class WiFiClient(object):
         logging.info('...ended up in state \'%s\' (%s) after %f seconds.',
                      state, 'success' if success else 'failure', time)
         return success, state, time
+
+
+    def do_suspend(self, seconds):
+        """Puts the DUT in suspend power state for |seconds| seconds.
+
+        @param seconds: The number of seconds to suspend the device.
+
+        """
+        logging.info('Suspending DUT for %d seconds...', seconds)
+        self._shill_proxy.do_suspend(seconds)
+        logging.info('...done suspending')
+
+
+    def do_suspend_bg(self, seconds):
+        """Suspend DUT using the power manager - non-blocking.
+
+        @param seconds: The number of seconds to suspend the device.
+
+        """
+        logging.info('Suspending DUT (in background) for %d seconds...',
+                     seconds)
+        self._shill_proxy.do_suspend_bg(seconds)

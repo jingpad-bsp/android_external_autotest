@@ -6,12 +6,14 @@
 
 import logging
 import logging.handlers
+import multiprocessing
 
 import common
 from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros import sys_power
 from autotest_lib.client.cros import tpm_store
 
 # pylint: disable=W0611
@@ -216,6 +218,29 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def enable_ui(self):
         """@return True iff the UI was successfully started."""
         return cros_ui.start(allow_fail=True) == 0
+
+
+    @staticmethod
+    def do_suspend(seconds):
+        """Suspend DUT using the power manager.
+
+        @param seconds: The number of seconds to suspend the device.
+
+        """
+        return sys_power.do_suspend(seconds)
+
+
+    @staticmethod
+    def do_suspend_bg(seconds):
+        """Suspend DUT using the power manager - non-blocking.
+
+        @param seconds int The number of seconds to suspend the device.
+
+        """
+        process = multiprocessing.Process(target=sys_power.do_suspend,
+                                          args=(seconds, 1))
+        process.start()
+        return True
 
 
 if __name__ == '__main__':
