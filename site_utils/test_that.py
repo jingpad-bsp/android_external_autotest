@@ -40,6 +40,8 @@ _QUICKMERGE_SCRIPTNAME = '/mnt/host/source/chromite/bin/autotest_quickmerge'
 
 _TEST_REPORT_SCRIPTNAME = '/usr/bin/generate_test_report'
 
+_LATEST_RESULTS_DIRECTORY = '/tmp/test_that_latest'
+
 
 def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
                          board=_NO_BOARD, results_directory=None):
@@ -364,6 +366,11 @@ def main(argv):
         final_result = subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
         logging.info('Finished running tests. Results can be found in %s',
                      res_dir)
+        try:
+            os.unlink(_LATEST_RESULTS_DIRECTORY)
+        except OSError:
+            pass
+        os.symlink(res_dir, _LATEST_RESULTS_DIRECTORY)
         return final_result
 
 
