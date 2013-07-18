@@ -42,7 +42,7 @@ _MTF_DEFAULT_CHECK_PASS_VALUE = 0.45
 _MTF_DEFAULT_CHECK_PASS_VALUE_LOWEST = 0.10
 _MTF_DEFAULT_THREAD_COUNT = 4
 
-_SHADING_DOWNSAMPLE_SIZE = 250.0
+_SHADING_DOWNSAMPLE_RATIO = 0.20
 _SHADING_BILATERAL_SPATIAL_SIGMA = 20
 _SHADING_BILATERAL_RANGE_SIGMA = 0.15
 _SHADING_DEFAULT_MAX_RESPONSE = 0.01
@@ -294,7 +294,7 @@ def CheckLensShading(sample, check_low_freq=True,
     ret = ReturnValue(msg=None)
 
     # Downsample for speed.
-    ratio = _SHADING_DOWNSAMPLE_SIZE / max(sample.shape)
+    ratio = _SHADING_DOWNSAMPLE_RATIO
     img = cv2.resize(sample, None, fx=ratio, fy=ratio,
                      interpolation=cv2.INTER_AREA)
     img = img.astype(np.float32)
@@ -326,7 +326,8 @@ def CheckLensShading(sample, check_low_freq=True,
     # Method 2 - Boundary scan:
     # Get the mean of top 5 percent pixels.
     ihsorted = np.sort(img, axis=None)
-    mtop = np.mean(ihsorted[int(0.95 * ihsorted.shape[0]):ihsorted.shape[0]])
+    mtop = np.mean(ihsorted[int(0.90 * ihsorted.shape[0]):
+                            int(0.95 * ihsorted.shape[0])])
     pass_value = mtop * (1.0 - max_shading_ratio)
 
     # Check if any pixel on the boundary is lower than the threshold.
