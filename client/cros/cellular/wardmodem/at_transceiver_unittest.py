@@ -12,6 +12,7 @@ import os
 import unittest
 
 import at_channel
+import modem_configuration
 import task_loop
 import wardmodem_exceptions as wme
 
@@ -27,10 +28,10 @@ class ATTransceiverTestCase(unittest.TestCase):
         # Create a temporary pty pair for the ATTransceiver constructor
         master, slave = os.openpty()
 
-        self._at_transceiver = at_transceiver.ATTransceiver(
-                mm_at_port=slave,
-                plugin_transceiver_conf=None,
-                modem_at_port=slave)
+        self._modem_conf = modem_configuration.ModemConfiguration()
+        self._at_transceiver = at_transceiver.ATTransceiver(slave,
+                                                            self._modem_conf,
+                                                            slave)
 
         # Now replace internal objects in _at_transceiver with mocks
         self._at_transceiver._modem_response_timeout_milliseconds = 0

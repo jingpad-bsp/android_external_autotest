@@ -5,15 +5,12 @@
 import collections
 import inspect
 import logging
-import os
-import sys
 
 import at_channel
 import task_loop
 import wardmodem_exceptions as wme
 
 MODEM_RESPONSE_TIMEOUT_MILLISECONDS = 30000
-DEFAULT_TRANSCEIVER_CONF = 'transceiver_configuration.conf'
 ARG_PLACEHOLDER =  '*'
 
 class ATTransceiverMode(object):
@@ -61,15 +58,14 @@ class ATTransceiver(object):
 
     """
 
-    def __init__(self, mm_at_port, plugin_transceiver_conf=None,
+    def __init__(self, mm_at_port, modem_conf,
                  modem_at_port=None):
         """
         @param mm_at_port: File descriptor for AT port used by modem manager.
                 Can not be None.
 
-        @param plugin_transceiver_conf: Path to file that overrides
-                the default mapping between AT commands and internal wardmodem
-                actions and responses.
+        @param modem_conf: A ModemConfiguration object containing the
+                configuration data for the current modem.
 
         @param modem_at_port: File descriptor for AT port used by the modem. May
                 be None, but that forces ATTransceiverMode.WARDMODEM. Default:
@@ -107,15 +103,13 @@ class ATTransceiver(object):
         # to modemmanager.
         self._wm_response_to_at_map = {}
 
-        # Load configuration files
-        conf = {}
-        conf = self._load_conf_file(DEFAULT_TRANSCEIVER_CONF)
-        self._update_at_to_wm_action_map(conf['at_to_wm_action_map'])
-        self._update_wm_response_to_at_map(conf['wm_response_to_at_map'])
-        if plugin_transceiver_conf is not None:
-            conf = self._load_conf_file(plugin_transceiver_conf)
-            self._update_at_to_wm_action_map(conf['at_to_wm_action_map'])
-            self._update_wm_response_to_at_map( conf['wm_response_to_at_map'])
+        # Load mapping between AT commands and wardmodem actions.
+        self._update_at_to_wm_action_map(modem_conf.base_at_to_wm_action_map)
+        self._update_at_to_wm_action_map(modem_conf.plugin_at_to_wm_action_map)
+        self._update_wm_response_to_at_map(
+                modem_conf.base_wm_response_to_at_map)
+        self._update_wm_response_to_at_map(
+                modem_conf.plugin_wm_response_to_at_map)
         self._logger.debug('Finished loading AT --> wardmodem configuration.')
         self._logger.debug(self._at_to_wm_action_map)
         self._logger.debug('Finished loading wardmodem --> AT configuration.')
@@ -127,12 +121,16 @@ class ATTransceiver(object):
                     self._process_modem_at_command,
                     modem_at_port,
                     'modem_primary_channel')
+            self._modem_channel.at_prefix = modem_conf.mm_to_modem_at_prefix
+            self._modem_channel.at_suffix = modem_conf.mm_to_modem_at_suffix
         else:
             self._modem_channel = None
 
         self._mm_channel = at_channel.ATChannel(self._process_mm_at_command,
                                                 mm_at_port,
                                                 'mm_primary_channel')
+        self._mm_channel.at_prefix = modem_conf.modem_to_mm_at_prefix
+        self._mm_channel.at_suffix = modem_conf.modem_to_mm_at_suffix
 
 
     # Verification failure reasons
@@ -167,31 +165,6 @@ class ATTransceiver(object):
         self._logger.info('Set mode to %s',
                           ATTransceiverMode.to_string(value))
         self._mode = value
-
-
-    @property
-    def at_terminator(self):
-        """
-        The string used to terminate AT commands sent / received on the channel.
-
-        Default value: '\r\n'
-        """
-        return self._mm_channel.at_terminator
-
-    @at_terminator.setter
-    def at_terminator(self, value):
-        """
-        Set the string to use to terminate AT commands.
-
-        This can vary by the modem being used.
-
-        @param value: The string terminator.
-
-        """
-        assert self._mm_channel
-        self._mm_channel.at_terminator = value
-        if self._modem_channel:
-            self._modem_channel.at_terminator = value
 
 
     def register_state_machine(self, state_machine):
@@ -352,26 +325,6 @@ class ATTransceiver(object):
                     'arguments. AT command: |%s|. Action: |%s|. Expected '
                     'function signature: %s' % (at_command, action,
                                                 inspect.getargspec(function)))
-
-
-    def _load_conf_file(self, file_name):
-        """
-        Load the configuration file from the module directory.
-
-        The configuration file is an executable python file. Since the file name
-        is known only at run-time, we must find the module directory and
-        manually point execfile to the directory for loading the configuration
-        file.
-
-        @param file_name: The configuration file name.
-
-        """
-        current_module = sys.modules[__name__]
-        dir_name = os.path.dirname(current_module.__file__)
-        full_path = os.path.join(dir_name, file_name)
-        conf = {}
-        execfile(full_path, conf)
-        return conf
 
 
     def _update_at_to_wm_action_map(self, raw_map):
