@@ -316,7 +316,7 @@ class WiFiChaosConnectionTest(object):
                                   '\tBSS:%s'.expandtabs(16),
                                    ap_info['brand'], ap_info['model'],
                                    ap_info['ssid'], ap_info['bss'])
-                    ap.reset_command_list()
+                    ap_info['configurator'].reset_command_list()
         return configured_aps
 
 
