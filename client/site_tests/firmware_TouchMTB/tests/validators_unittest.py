@@ -39,6 +39,8 @@ mocked_device = create_mocked_devices()
 alex = mocked_device[PLATFORM.ALEX]
 lumpy = mocked_device[PLATFORM.LUMPY]
 link = mocked_device[PLATFORM.LINK]
+# Some tests do not care what device is used.
+dontcare = 'dontcare'
 
 
 class BaseValidatorTest(unittest.TestCase):
@@ -639,6 +641,35 @@ class ReportRateValidatorTest(BaseValidatorTest):
 
         filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
         self.assertTrue(self._get_score(filename, device=lumpy) <= 0.5)
+
+    def test_report_rate_without_slot(self):
+        """Test report rate without specifying any slot."""
+        filename_report_rate_pair = [
+            ('2f_scroll_diagonal.dat', 40.31),
+            ('one_finger_with_slot_0.dat', 148.65),
+            ('two_close_fingers_merging_changed_ids_gaps.dat', 53.12),
+        ]
+        for filename, expected_report_rate in filename_report_rate_pair:
+            validator = ReportRateValidator(self.criteria, device=dontcare)
+            validator.check(parse_tests_data(filename))
+            actual_report_rate = round(validator.report_rate, 2)
+            self.assertAlmostEqual(actual_report_rate, expected_report_rate)
+
+    def test_report_rate_with_slot(self):
+        """Test report rate with slot=1"""
+        # Compute actual_report_rate
+        filename = ('stationary_finger_strongly_affected_by_2nd_moving_finger_'
+                    'with_gaps.dat')
+        validator = ReportRateValidator(self.criteria, device=dontcare,
+                                        finger=1)
+        validator.check(parse_tests_data(filename))
+        actual_report_rate = validator.report_rate
+        # Compute expected_report_rate
+        first_syn_time = 2597.682925
+        last_syn_time = 2604.534425
+        num_packets = 591 - 1
+        expected_report_rate = num_packets / (last_syn_time - first_syn_time)
+        self.assertAlmostEqual(actual_report_rate, expected_report_rate)
 
     def _test_report_rate_metrics(self, filename, expected_values):
         packets = parse_tests_data(filename)

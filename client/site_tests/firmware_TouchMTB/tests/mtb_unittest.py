@@ -96,7 +96,7 @@ class MtbTest(unittest.TestCase):
         filename = 'one_finger_with_slot_0.dat'
         gesture_filename = self._get_filepath(filename)
         mtb_packets = get_mtb_packets(gesture_filename)
-        finger_paths = mtb_packets.get_finger_paths()
+        finger_paths = mtb_packets.get_ordered_finger_paths()
 
         # There is only one tracking ID in the file.
         self.assertEqual(len(finger_paths), 1)
@@ -150,11 +150,11 @@ class MtbTest(unittest.TestCase):
     def _test_get_all_finger_paths_about_numbers_of_packets(
             self, filename, expected_numbers):
         mtb_packets = get_mtb_packets(self._get_filepath(filename))
-        finger_paths = mtb_packets.get_finger_paths()
+        finger_paths = mtb_packets.get_ordered_finger_paths()
         for tid, expected_len in expected_numbers.items():
             self.assertEqual(len(finger_paths[tid].tid_packets), expected_len)
 
-    def test_get_finger_paths_about_number_of_packets(self):
+    def test_get_ordered_finger_paths_about_number_of_packets(self):
         self._test_get_all_finger_paths_about_numbers_of_packets(
                 'two_finger_with_slot_0.dat', {2101: 121, 2102: 59})
         self._test_get_all_finger_paths_about_numbers_of_packets(
@@ -197,7 +197,7 @@ class MtbTest(unittest.TestCase):
 
         # Derive the actual finger_path for the specified tid
         mtb_packets = get_mtb_packets(self._get_filepath(filename))
-        finger_paths = mtb_packets.get_finger_paths(request_data_ready)
+        finger_paths = mtb_packets.get_ordered_finger_paths(request_data_ready)
         actual_finger_path = finger_paths[tid]
 
         # Assert that the packet lengths are the same.
@@ -213,8 +213,8 @@ class MtbTest(unittest.TestCase):
             self.assertTrue(expected_packet.point == actual_packet.point)
             self.assertEqual(expected_packet.pressure, actual_packet.pressure)
 
-    def test_get_finger_paths(self):
-        """Test get_finger_paths
+    def test_get_ordered_finger_paths(self):
+        """Test get_ordered_finger_paths
 
         Tracking ID 95: slot 0 (no explicit slot 0 assigned).
                         This is the only slot in the packet.
@@ -257,8 +257,8 @@ class MtbTest(unittest.TestCase):
 
         self._test_finger_path(filename, tid, expected_slot, expected_data)
 
-    def test_get_finger_paths2(self):
-        """Test get_finger_paths
+    def test_get_ordered_finger_paths2(self):
+        """Test get_ordered_finger_paths
 
         Tracking ID 104: slot 0 (explicit slot 0 assigned).
                          This is the 2nd slot in the packet.
@@ -279,8 +279,8 @@ class MtbTest(unittest.TestCase):
         ]
         self._test_finger_path(filename, tid, expected_slot, expected_data)
 
-    def test_get_finger_paths2b(self):
-        """Test get_finger_paths
+    def test_get_ordered_finger_paths2b(self):
+        """Test get_ordered_finger_paths
 
         Tracking ID 103: slot 1 (explicit slot 1 assigned).
                          This tracking ID overlaps with two distinct
@@ -322,8 +322,8 @@ class MtbTest(unittest.TestCase):
         ]
         self._test_finger_path(filename, tid, expected_slot, expected_data)
 
-    def test_get_finger_paths3(self):
-        """Test get_finger_paths
+    def test_get_ordered_finger_paths3(self):
+        """Test get_ordered_finger_paths
 
         This is a good test sample.
         - An unusual slot 9
@@ -516,24 +516,6 @@ class MtbTest(unittest.TestCase):
                 expected_jump = (0 if not file_with_level_jump
                                    else largest_level_jumps[filename][axis])
                 self.assertTrue(jump == expected_jump)
-
-    def _test_get_report_rate(self, filename, value):
-        """Test get_report_rate."""
-        gesture_filename = self._get_filepath(filename)
-        mtb_packets = get_mtb_packets(gesture_filename)
-        report_rate = round(mtb_packets.get_report_rate(), 2)
-        self.assertAlmostEqual(report_rate, value)
-
-    def test_get_report_rate(self):
-        """Test get_report_rate."""
-        filename = '2f_scroll_diagonal.dat'
-        self._test_get_report_rate('2f_scroll_diagonal.dat', 40.31)
-
-        filename = 'one_finger_with_slot_0.dat'
-        self._test_get_report_rate(filename, 148.65)
-
-        filename = 'two_close_fingers_merging_changed_ids_gaps.dat'
-        self._test_get_report_rate(filename, 53.12)
 
     def test_get_max_distance_from_points(self):
         """Test get_max_distance_from_points"""

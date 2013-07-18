@@ -11,7 +11,7 @@ import os
 import re
 import sys
 
-from collections import defaultdict, namedtuple
+from collections import defaultdict, namedtuple, OrderedDict
 
 from firmware_constants import AXIS, GV, MTB, UNIT, VAL
 from geometry.elements import Point
@@ -328,8 +328,13 @@ class MtbStateMachine:
             data_ready = all([all(point.value()), pressure, self.syn_time])
             if (not request_data_ready) or data_ready:
                 tid_packet = TidPacket(self.syn_time, point, pressure)
-                current_tid_data.append((tid, slot, tid_packet))
-        return current_tid_data
+            else:
+                tid_packet = None
+            # Even tid_packet is None, we would like to report this tid so that
+            # its client function get_ordered_finger_paths() could construct
+            # an ordered dictionary correctly based on the tracking ID.
+            current_tid_data.append((tid, slot, tid_packet))
+        return sorted(current_tid_data)
 
 
 class Mtb:
@@ -459,8 +464,9 @@ class Mtb:
                 list_y.append(prev_y)
         return (list_x, list_y)
 
-    def get_finger_paths(self, request_data_ready=True):
-        """Construct the finger paths.
+    def get_ordered_finger_paths(self, request_data_ready=True):
+        """Construct the finger paths ordered by the occurrences of the
+        finger contacts.
 
         @param request_data_ready: if set to true, it will not output the
                 tid_data in a packet until all data including x, y, pressure,
@@ -489,9 +495,19 @@ class Mtb:
         This method is applicable when fingers are contacting and leaving
         the touch device continuously. The same slot number, e.g., slot 0 or
         slot 1, may be used for multiple times.
+
+        Note that the finger contact starts at 0. The finger contacts look to
+        be equal to the slot numbers in practice. However, this assumption
+        seems not enforced in any document. For safety, we use the ordered
+        finger paths dict here to guarantee that we could access the ith finger
+        contact path data correctly.
+
+        Also note that we do not sort finger paths by tracking IDs to derive
+        the ordered dict because tracking IDs may wrap around.
         """
-        # finger_paths is a dictionary of {tid: FingerPath}
-        finger_paths = {}
+        # ordered_finger_paths_dict is an ordered dictionary of
+        #     {tid: FingerPath}
+        ordered_finger_paths_dict = OrderedDict()
         sm = MtbStateMachine()
         for packet in self.packets:
             # Inject events into the state machine to update its state.
@@ -504,10 +520,27 @@ class Mtb:
             # every tracking id in the current packet.
             for tid, slot, tid_packet in sm.get_current_tid_data_for_all_tids(
                     request_data_ready):
-                finger_path = finger_paths.setdefault(tid, FingerPath(slot, []))
-                finger_path.tid_packets.append(tid_packet)
+                finger_path = ordered_finger_paths_dict.setdefault(
+                        tid, FingerPath(slot, []))
+                if tid_packet:
+                    finger_path.tid_packets.append(tid_packet)
 
-        return finger_paths
+        return ordered_finger_paths_dict
+
+    def get_ordered_finger_path(self, finger, attr):
+        """Extract the specified attribute from the packets of the ith finger
+        contact.
+
+        @param finger: the ith finger contact
+        @param attr: an attribute in a tid packet which could be either
+                'point', 'pressure', or 'syn_time'
+        """
+        # finger_paths is a list ordered by the occurrences of finger contacts
+        finger_paths = self.get_ordered_finger_paths().values()
+        if finger < len(finger_paths) and finger >= 0:
+            finger_path = finger_paths[finger]
+            return finger_path.get(attr)
+        return []
 
     def get_slot_data(self, slot, attr):
         """Extract the attribute data of the specified slot.
@@ -515,7 +548,7 @@ class Mtb:
         @param attr: an attribute in a tid packet which could be either
                 'point', 'pressure', or 'syn_time'
         """
-        for finger_path in self.get_finger_paths().values():
+        for finger_path in self.get_ordered_finger_paths().values():
             if finger_path.slot == slot:
                 return finger_path.get(attr)
         return []
@@ -523,7 +556,7 @@ class Mtb:
     def get_max_distance_of_all_tracking_ids(self):
         """Get the max moving distance of all tracking IDs."""
         return max(max(get_two_min_radii(finger_path.get('point'))
-                       for finger_path in self.get_finger_paths().values()))
+            for finger_path in self.get_ordered_finger_paths().values()))
 
     def get_list_of_rocs_of_all_tracking_ids(self):
         """For each tracking ID, compute the minimal enclosing circles.
@@ -533,7 +566,7 @@ class Mtb:
         Note: rocs denotes the radii of circles
         """
         list_rocs = []
-        for finger_path in self.get_finger_paths().values():
+        for finger_path in self.get_ordered_finger_paths().values():
             # Convert the point coordinates in pixels to in mms.
             points_in_mm = [Point(*self.device.pixel_to_mm(p.value()))
                             for p in finger_path.get('point')]
@@ -797,7 +830,7 @@ class Mtb:
 
     def get_displacements_for_slots(self, min_slot):
         """Get the displacements for slots >= min_slot."""
-        finger_paths = self.get_finger_paths()
+        finger_paths = self.get_ordered_finger_paths()
 
         # Remove those tracking IDs with slots < min_slot
         for tid, finger_path in finger_paths.items():
@@ -807,7 +840,11 @@ class Mtb:
         # Calculate the displacements of the coordinates in the tracking IDs.
         displacements = defaultdict(dict)
         for tid, finger_path in finger_paths.items():
-            list_x, list_y = zip(*[p.value() for p in finger_path.get('point')])
+            finger_path_values = [p.value() for p in finger_path.get('point')]
+            if finger_path_values:
+                list_x, list_y = zip(*finger_path_values)
+            else:
+                list_x, list_y = [], []
             displacements[tid][MTB.SLOT] = finger_path.slot
             displacements[tid][AXIS.X] = self.calc_displacement(list_x)
             displacements[tid][AXIS.Y] = self.calc_displacement(list_y)
@@ -906,16 +943,21 @@ class Mtb:
         list_x, list_y = self.get_x_y(target_slot)
         return len(list_x)
 
-    def get_report_rate(self):
-        """Get the report rate of the packets in Hz."""
-        first_sync_event = self.packets[0][-1]
-        first_sync_time = first_sync_event.get(MTB.EV_TIME)
-        last_sync_event = self.packets[-1][-1]
-        last_sync_time = last_sync_event.get(MTB.EV_TIME)
-        duration = last_sync_time - first_sync_time
-        num_packets = len(self.packets) - 1
-        report_rate = float(num_packets) / duration
-        return report_rate
+    def get_list_syn_time(self, finger):
+        """Get the list of syn_time instants from the packets of the ith finger
+        contact if finger is not None. Otherwise, use all packets.
+
+        @param finger : the specified ith finger contact.
+                If a finger contact is specified, extract only the list of
+                syn_time from this finger contact.
+                Otherwise, when the finger contact is set to None,
+                take all packets into account.
+
+                Note: the last event in a packet is 'SYN_REPORT' of which
+                      the event time is the 'syn_time'.
+        """
+        return (self.get_ordered_finger_path(finger, 'syn_time') if finger else
+                [packet[-1].get(MTB.EV_TIME) for packet in self.packets])
 
     def _call_check_event_func(self, event, expected_value, check_event_result,
                                check_event_func):

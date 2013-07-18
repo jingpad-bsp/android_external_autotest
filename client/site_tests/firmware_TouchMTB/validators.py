@@ -871,13 +871,24 @@ class ReportRateValidator(BaseValidator):
           ReportRateValidator('== 80 ~ -20')
     """
 
-    def __init__(self, criteria_str, mf=None, device=None):
+    def __init__(self, criteria_str, finger=None, mf=None, device=None):
+        """Initialize ReportRateValidator
+
+        @param criteria_str: the criteria string
+        @param finger: the ith contact if not None. When set to None, it means
+                to examine all packets.
+        @param mf: the fuzzy member function to use
+        @param device: the touch device
+        """
         name = self.__class__.__name__
         self.criteria_str = criteria_str
+        if finger is not None:
+            assert finger >= 0, '%s: it is required that finger >= 0' % name
+        self.finger = finger
         super(ReportRateValidator, self).__init__(criteria_str, mf, device,
                                                   name)
 
-    def _add_report_rate_metrics(self):
+    def _add_report_rate_metrics(self, list_syn_time):
         """Calculate and add the metrics about report rate.
 
         Three metrics are required.
@@ -885,16 +896,14 @@ class ReportRateValidator(BaseValidator):
         - average time interval
         - max time interval
 
-        The sync event time instants in packets are used as the report
-        time instants.
+        @param list_syn_time: a list of SYN_REPORT event time instants
         """
         import test_conf as conf
 
         # Each packet consists of a list of events of which The last one is
         # the sync event.
-        sync_times = [p[-1].get(MTB.EV_TIME) for p in self.packets.packets]
-        sync_intervals = [sync_times[i+1] - sync_times[i]
-                          for i in range(len(sync_times) - 1)]
+        sync_intervals = [list_syn_time[i+1] - list_syn_time[i]
+                          for i in range(len(list_syn_time) - 1)]
 
         min_report_rate = conf.min_report_rate
         max_report_interval = 1.0 / min_report_rate
@@ -916,13 +925,27 @@ class ReportRateValidator(BaseValidator):
             firmware_log.Metric(self.mnprops.MAX_TIME_INTERVAL, max_interval),
         ]
 
+    def _get_report_rate(self, list_syn_time):
+        """Get the report rate in Hz from the list of syn_time.
+
+        @param list_syn_time: a list of SYN_REPORT time instants
+        """
+        if len(list_syn_time) <= 1:
+            return 0
+        duration = list_syn_time[-1] - list_syn_time[0]
+        num_packets = len(list_syn_time) - 1
+        report_rate = float(num_packets) / duration
+        return report_rate
+
     def check(self, packets, variation=None):
         """The Report rate should be within the specified range."""
         self.init_check(packets)
+        # Get the list of syn_time based on the specified finger.
+        list_syn_time = self.packets.get_list_syn_time(self.finger)
         # Get the report rate
-        report_rate = self.packets.get_report_rate()
+        self.report_rate = self._get_report_rate(list_syn_time)
         msg = 'Report rate: %.2f Hz'
-        self.log_details(msg % report_rate)
-        self._add_report_rate_metrics()
-        self.vlog.score = self.fc.mf.grade(report_rate)
+        self.log_details(msg % self.report_rate)
+        self._add_report_rate_metrics(list_syn_time)
+        self.vlog.score = self.fc.mf.grade(self.report_rate)
         return self.vlog
