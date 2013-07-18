@@ -67,13 +67,16 @@ class ATChannelTestCase(unittest.TestCase):
         self.assertTrue(received_command.endswith('\r\n'))
         self.assertEqual(payload.strip(), received_command.strip())
 
-        # Change the AT command termination string and check again.
-        self._at_channel.at_terminator = '$$'
+        # Change the AT command guard strings and check again.
+        self._at_channel.at_prefix = '$$'
+        self._at_channel.at_suffix = '##'
         payload = 'A not so huge AT+CEREG command.'
         self._at_channel.send(payload)
         received_command = self._recieve_command_remote()
-        self.assertTrue(received_command.endswith('$$'))
-        self.assertEqual(payload.strip(), received_command.strip('$$'))
+        self.assertTrue(received_command.startswith('$$'))
+        self.assertTrue(received_command.endswith('##'))
+        self.assertEqual(payload.strip(),
+                         received_command.strip('$$').strip('##'))
 
 
     def test_recieve_single_at_command(self):

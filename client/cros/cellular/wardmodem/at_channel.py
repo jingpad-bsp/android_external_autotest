@@ -7,23 +7,10 @@ import glib
 import logging
 import os
 import re
+import termios
 import tty
 
 import task_loop
-
-CHANNEL_READ_CHUNK_SIZE = 128
-
-glib_cb_condition_str = {
-        glib.IO_IN: 'glib.IO_IN',
-        glib.IO_OUT: 'glib.IO_OUT',
-        glib.IO_PRI: 'glib.IO_PRI',
-        glib.IO_ERR: 'glib.IO_ERR',
-        glib.IO_HUP: 'glib.IO_HUP'
-}
-
-# And exception with error code 11 is raised when a write to some file
-# descriptor fails because the channel is full.
-IO_ERROR_CHANNEL_FULL = 11
 
 class ATChannel(object):
     """
@@ -35,7 +22,22 @@ class ATChannel(object):
 
     """
 
-    def __init__(self, receiver_callback, channel, channel_name=''):
+    CHANNEL_READ_CHUNK_SIZE = 128
+
+    GLIB_CB_CONDITION_STR = {
+        glib.IO_IN: 'glib.IO_IN',
+        glib.IO_OUT: 'glib.IO_OUT',
+        glib.IO_PRI: 'glib.IO_PRI',
+        glib.IO_ERR: 'glib.IO_ERR',
+        glib.IO_HUP: 'glib.IO_HUP'
+    }
+
+    # And exception with error code 11 is raised when a write to some file
+    # descriptor fails because the channel is full.
+    IO_ERROR_CHANNEL_FULL = 11
+
+    def __init__(self, receiver_callback, channel, channel_name='',
+                 at_prefix='', at_suffix='\r\n'):
         """
         @param receiver_callback: The callback function to be called when an AT
                 command is received over the channel. The signature of the
@@ -49,6 +51,12 @@ class ATChannel(object):
         @param channel_name: [Optional] Name of the channel to be used for
                 logging.
 
+        @param at_prefix: AT commands sent out on this channel will be prefixed
+                with |at_prefix|. Default ''.
+
+        @param at_suffix: AT commands sent out on this channel will be
+                terminated with |at_suffix|. Default '\r\n'.
+
         @raises IOError if some file operation on |channel| fails.
 
         """
@@ -58,17 +66,18 @@ class ATChannel(object):
         self._receiver_callback = receiver_callback
         self._channel = channel
         self._channel_name = channel_name
+        self._at_prefix = at_prefix
+        self._at_suffix = at_suffix
 
         self._logger = logging.getLogger(__name__)
         self._task_loop = task_loop.get_instance()
         self._received_command = ''  # Used to store partially received command.
-        self._at_terminator = '\r\n' # Terminate AT commands thus.
 
         flags = fcntl.fcntl(self._channel, fcntl.F_GETFL)
         flags = flags | os.O_RDWR | os.O_NONBLOCK
         fcntl.fcntl(self._channel, fcntl.F_SETFL, flags)
         try:
-            tty.setraw(self._channel)
+            tty.setraw(self._channel, tty.TCSANOW)
         except termios.error as ttyerror:
             raise IOError(ttyerror.args)
 
@@ -82,17 +91,33 @@ class ATChannel(object):
 
 
     @property
-    def at_terminator(self):
+    def at_prefix(self):
+        """ The string used to prefix AT commands sent on the channel. """
+        return self._at_prefix
+
+
+    @at_prefix.setter
+    def at_prefix(self, value):
         """
-        The string used to terminate AT commands sent / received on the channel.
+        Set the string to use to prefix AT commands.
 
-        Default value: '\r\n'
+        This can vary by the modem being used.
+
+        @param value: The string prefix.
+
         """
-        return self._at_terminator
+        self._logger.debug('AT command prefix set to: |%s|', value)
+        self._at_prefix = value
 
 
-    @at_terminator.setter
-    def at_terminator(self, value):
+    @property
+    def at_suffix(self):
+        """ The string used to terminate AT commands sent on the channel. """
+        return self._at_suffix
+
+
+    @at_suffix.setter
+    def at_suffix(self, value):
         """
         Set the string to use to terminate AT commands.
 
@@ -101,8 +126,8 @@ class ATChannel(object):
         @param value: The string terminator.
 
         """
-        self._logger.debug('AT command terminator set to: |%s|', value)
-        self._at_terminator = value
+        self._logger.debug('AT command suffix set to: |%s|', value)
+        self._at_suffix = value
 
 
     def __del__(self):
@@ -126,7 +151,7 @@ class ATChannel(object):
         try:
             os.write(self._channel, at_command)
         except OSError as write_error:
-            if write_error.args[0] == IO_ERROR_CHANNEL_FULL:
+            if write_error.args[0] == self.IO_ERROR_CHANNEL_FULL:
                 self._logger.warning('%sSend Failed: |%s|',
                                      self._channel_name, repr(at_command))
                 return False
@@ -169,7 +194,7 @@ class ATChannel(object):
             return True
         self._logger.warning('%sUnexpected cb condition %s received. Ignoring.',
                              self._channel_name,
-                             _glib_cb_condition_str[cb_condition])
+                             self.GLIB_CB_CONDITION_STR[cb_condition])
         return True
 
 
@@ -181,12 +206,12 @@ class ATChannel(object):
         incoming_list = []
         try:
             while True:
-                s = os.read(self._channel, CHANNEL_READ_CHUNK_SIZE)
+                s = os.read(self._channel, self.CHANNEL_READ_CHUNK_SIZE)
                 if not s:
                     break
                 incoming_list.append(s)
         except OSError as read_error:
-            if not read_error.args[0] == IO_ERROR_CHANNEL_FULL:
+            if not read_error.args[0] == self.IO_ERROR_CHANNEL_FULL:
                 raise read_error
         if not incoming_list:
             return
@@ -219,5 +244,5 @@ class ATChannel(object):
         command = command.strip()
         assert command.find('\r') == -1
         assert command.find('\n') == -1
-        command = command + self.at_terminator
+        command = self.at_prefix + command + self.at_suffix
         return command
