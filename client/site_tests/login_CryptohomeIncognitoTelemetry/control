@@ -1,0 +1,29 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "login_CryptohomeIncognitoTelemetry"
+PURPOSE = "Verify the cryptohome is mounted only after login as guest."
+CRITERIA = """
+This test will fail if cryptohome is not mounted after login as guest,
+or if it is mounted when not logged in as guest.
+"""
+SUITE = "bvt"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "login"
+TEST_TYPE = "client"
+RETRIES = 5
+EXPERIMENTAL = "True"
+# TODO(achuith, dennisjeffrey): Remove login_CryptohomeIncognitoMounted and
+# login_CryptohomeIncognitoUnmounted tests when this test is ready to be
+# promoted to smoke/bvt non-experimental.
+
+DOC = """
+This test checks that, after logging in as guest successfully,
+guest cryptohome was mounted. And upon logout, the guest cryptohome
+is no longer mounted.
+"""
+
+job.run_test('login_CryptohomeIncognitoTelemetry')
