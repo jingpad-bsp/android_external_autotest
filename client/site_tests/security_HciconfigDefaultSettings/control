@@ -11,7 +11,7 @@ PURPOSE = """To verify that Bluetooth is off by default and that default
 Bluetooth settings are correct"""
 CRITERIA = """Bluetooth is off and when turned on, hciconfig returns settings
 that match expected settings"""
-SUITE = "bvt, smoke"
+SUITE = "security, smoke"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
