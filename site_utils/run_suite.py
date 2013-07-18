@@ -606,6 +606,13 @@ def main():
             time.sleep(1)
             continue
         views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
+        # The intended behavior is to refrain from recording stats if the suite
+        # was aborted (either by a user or through the golo rpc). Since all the
+        # views associated with the afe_job_id of the suite contain the keyvals
+        # of the suite and not the individual tests themselves, we can achieve
+        # this without digging through the views.
+        is_aborted = any([view['job_keyvals'].get('aborted_by')
+                          for view in views])
         width = max((len(_full_test_name(job_id, view, options.build,
             options.name)) for view in views)) + 3
 
@@ -666,7 +673,10 @@ def main():
                 else:
                     code = RETURN_CODES.ERROR
 
-        timings.SendResultsToStatsd(options.name, options.build, options.board)
+        # Do not record stats for aborted suites.
+        if not is_aborted:
+            timings.SendResultsToStatsd(options.name, options.build,
+                                        options.board)
         logging.info(timings)
         logging.info('\n'
                      'Links to test logs:')
