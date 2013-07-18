@@ -8,7 +8,7 @@ import time
 import xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faftsequence import FAFTSequence
+from autotest_lib.server.cros.faft_classes import FAFTSequence
 
 class firmware_ECThermal(FAFTSequence):
     """

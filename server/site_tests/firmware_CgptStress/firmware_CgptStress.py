@@ -5,7 +5,7 @@
 import logging
 
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros.faftsequence import FAFTSequence
+from autotest_lib.server.cros.faft_classes import FAFTSequence
 
 
 class firmware_CgptStress(FAFTSequence):
