@@ -51,12 +51,11 @@ class firmware_DevModeStress(FAFTSequence):
         time.sleep(self.EC_SUSPEND_DELAY)
         wake_func()
 
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+    def initialize(self, host, cmdline_args):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
-        super(firmware_DevModeStress, self).initialize(host, cmdline_args,
-                                                       use_pyauto, use_faft)
+        super(firmware_DevModeStress, self).initialize(host, cmdline_args)
 
     def setup(self):
         super(firmware_DevModeStress, self).setup()

@@ -24,7 +24,6 @@ servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 def run_devmode(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test("firmware_DevMode", host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True,
-                 dev_mode=False, ec_wp=True, tag="ec_wp")
+                 disable_sysinfo=True, dev_mode=False, ec_wp=True, tag="ec_wp")
 
 parallel_simple(run_devmode, machines)

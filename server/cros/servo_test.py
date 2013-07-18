@@ -25,15 +25,9 @@ class ServoTest(test.test):
     _SSH_CONFIG = ('-o StrictHostKeyChecking=no '
                    '-o UserKnownHostsFile=/dev/null ')
 
-    def initialize(self, host, _, use_pyauto=False, use_faft=False):
+    def initialize(self, host):
         """Create a Servo object and install the dependency.
         """
-        # TODO(jrbarnette): Part of the incomplete refactoring:
-        # assert here that there are no legacy callers passing
-        # parameters for functionality that's been deprecated and
-        # removed.
-        assert use_faft and not use_pyauto
-
         self.servo = host.servo
         self.faft_client = None
         self._client = host

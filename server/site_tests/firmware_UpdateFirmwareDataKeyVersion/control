@@ -42,6 +42,6 @@ def run_updatefirmwaredatakeyversion(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test("firmware_UpdateFirmwareDataKeyVersion",
                  host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True)
+                 disable_sysinfo=True)
 
 parallel_simple(run_updatefirmwaredatakeyversion, machines)

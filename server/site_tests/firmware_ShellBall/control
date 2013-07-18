@@ -39,6 +39,6 @@ def run_shellball(machine):
                  cmdline_args=args,
                  shellball_path=opts['shellball_path'],
                  shellball_name=opts['shellball_name'],
-                 use_faft=True, disable_sysinfo=True)
+                 disable_sysinfo=True)
 
 parallel_simple(run_shellball, machines)

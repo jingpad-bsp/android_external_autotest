@@ -37,7 +37,7 @@ servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
 def run_updatekerneldatakeyversion(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test("firmware_UpdateKernelDataKeyVersion", host=host,
-                 cmdline_args=args,use_faft=True, disable_sysinfo=True,
-                 dev_mode=True, tag="dev")
+                 cmdline_args=args, disable_sysinfo=True, dev_mode=True,
+                 tag="dev")
 
 parallel_simple(run_updatekerneldatakeyversion, machines)

@@ -137,7 +137,7 @@ class FAFTSequence(ServoTest):
         cls._global_setup_done[label] = False
 
 
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
+    def initialize(self, host, cmdline_args):
         # Parse arguments from command line
         args = {}
         self.power_control = host.POWER_CONTROL_RPM
@@ -166,28 +166,27 @@ class FAFTSequence(ServoTest):
                 logging.warning('Firmware update will not not performed '
                                 'since no image is specified.')
 
-        super(FAFTSequence, self).initialize(host, cmdline_args, use_pyauto,
-                use_faft)
-        if use_faft:
-            self.client_attr = FAFTClientAttribute(
-                    self.faft_client.system.get_platform_name())
-            self.delay = FAFTDelayConstants(
-                    self.faft_client.system.get_platform_name())
-            self.checkers = FAFTCheckers(self, self.faft_client)
+        super(FAFTSequence, self).initialize(host)
 
-            if self.client_attr.chrome_ec:
-                self.ec = chrome_ec.ChromeEC(self.servo)
+        self.client_attr = FAFTClientAttribute(
+                self.faft_client.system.get_platform_name())
+        self.delay = FAFTDelayConstants(
+                self.faft_client.system.get_platform_name())
+        self.checkers = FAFTCheckers(self, self.faft_client)
 
-            if not self.client_attr.has_keyboard:
-                # The environment variable USBKM232_UART_DEVICE should point
-                # to the USB-KM232 UART device.
-                if ('USBKM232_UART_DEVICE' not in os.environ or
-                        not os.path.exists(os.environ['USBKM232_UART_DEVICE'])):
-                    raise error.TestError('Must set a valid environment '
-                            'variable USBKM232_UART_DEVICE.')
+        if self.client_attr.chrome_ec:
+            self.ec = chrome_ec.ChromeEC(self.servo)
 
-            # Setting up key matrix mapping
-            self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
+        if not self.client_attr.has_keyboard:
+            # The environment variable USBKM232_UART_DEVICE should point
+            # to the USB-KM232 UART device.
+            if ('USBKM232_UART_DEVICE' not in os.environ or
+                    not os.path.exists(os.environ['USBKM232_UART_DEVICE'])):
+                raise error.TestError('Must set a valid environment '
+                        'variable USBKM232_UART_DEVICE.')
+
+        # Setting up key matrix mapping
+        self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
 
 
     def setup(self, ec_wp=None):

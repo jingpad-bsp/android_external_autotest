@@ -31,7 +31,7 @@ class firmware_FAFTSetup(FAFTSequence):
     KEY_PRESS_DELAY = 2
 
 
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+    def initialize(self, host, cmdline_args):
         dict_args = utils.args_to_dict(cmdline_args)
         spec_check = dict_args.get("spec_check", "False")
         if spec_check.lower() == "true":
@@ -40,8 +40,7 @@ class firmware_FAFTSetup(FAFTSequence):
             self._spec_check = False
         else:
             raise error.TestFail("Invalid argument spec_check=%s." % spec_check)
-        super(firmware_FAFTSetup, self).initialize(host, cmdline_args,
-                                                   use_pyauto, use_faft)
+        super(firmware_FAFTSetup, self).initialize(host, cmdline_args)
 
     def console_checker(self):
         """Verify EC console is available if using Chrome EC."""

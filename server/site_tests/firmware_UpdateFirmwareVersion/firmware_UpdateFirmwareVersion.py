@@ -42,11 +42,11 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
         self.faft_client.updater.run_recovery()
 
 
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+    def initialize(self, host, cmdline_args):
         dict_args = utils.args_to_dict(cmdline_args)
         self.use_shellball = dict_args.get('shellball', None)
         super(firmware_UpdateFirmwareVersion, self).initialize(
-            host, cmdline_args, use_pyauto, use_faft)
+            host, cmdline_args)
 
     def setup(self):
         self.backup_firmware()

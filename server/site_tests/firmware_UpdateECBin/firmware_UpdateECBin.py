@@ -33,7 +33,7 @@ class firmware_UpdateECBin(FAFTSequence):
     version = 1
 
 
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+    def initialize(self, host, cmdline_args):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         if 'new_ec' not in dict_args or not os.path.isfile(dict_args['new_ec']):
@@ -44,8 +44,7 @@ class firmware_UpdateECBin(FAFTSequence):
                     'included in the firmware_from_source.tar.bz2.')
         self.arg_new_ec = dict_args['new_ec']
         logging.info('The EC image to-be-updated is: %s', self.arg_new_ec)
-        super(firmware_UpdateECBin, self).initialize(host, cmdline_args,
-                                                     use_pyauto, use_faft)
+        super(firmware_UpdateECBin, self).initialize(host, cmdline_args)
 
 
     def setup(self, host, dev_mode=False):

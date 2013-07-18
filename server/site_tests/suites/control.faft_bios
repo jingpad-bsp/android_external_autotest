@@ -58,13 +58,11 @@ def run_server_test(machine):
     client = hosts.create_host(machine, servo_args=servo_args)
     for test, argv in TESTS_ON_BOTH_MODES + TESTS_ON_NORMAL_MODE:
         job.run_test(test, host=client, cmdline_args=args,
-                     use_faft=True, disable_sysinfo=True,
-                     dev_mode=False, tag="normal",
+                     disable_sysinfo=True, dev_mode=False, tag="normal",
                      **argv)
     for test, argv in TESTS_ON_BOTH_MODES + TESTS_ON_DEV_MODE:
         job.run_test(test, host=client, cmdline_args=args,
-                     use_faft=True, disable_sysinfo=True,
-                     dev_mode=True, tag="dev",
+                     disable_sysinfo=True, dev_mode=True, tag="dev",
                      **argv)
 
 parallel_simple(run_server_test, machines)

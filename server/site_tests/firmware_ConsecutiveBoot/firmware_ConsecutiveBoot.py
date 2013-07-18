@@ -21,12 +21,11 @@ class firmware_ConsecutiveBoot(FAFTSequence):
     version = 1
 
 
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=True):
+    def initialize(self, host, cmdline_args):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
-        super(firmware_ConsecutiveBoot, self).initialize(host, cmdline_args,
-                                                         use_pyauto, use_faft)
+        super(firmware_ConsecutiveBoot, self).initialize(host, cmdline_args)
 
 
     def setup(self, dev_mode=False):
