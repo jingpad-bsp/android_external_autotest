@@ -349,7 +349,10 @@ def main(argv):
         afe = setup_local_afe()
         res_dir= perform_local_run(afe, sysroot_autotest_path, arguments.tests,
                                    arguments.remote, arguments.fast_mode)
-        return subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
+        final_result = subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
+        logging.info('Finished running tests. Results can be found in %s',
+                     res_dir)
+        return final_result
 
 
 if __name__ == '__main__':
