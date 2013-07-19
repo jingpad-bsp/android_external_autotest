@@ -21,6 +21,7 @@ import serial
 import signal
 import StringIO
 import subprocess
+import sys
 import threading
 import time
 
