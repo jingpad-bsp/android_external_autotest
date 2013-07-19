@@ -9,7 +9,7 @@ import common
 try:
     import statsd
 except ImportError:
-    logging.error('import statsd failed, no stats will be reported.')
+    logging.info('import statsd failed, no stats will be reported.')
     import statsd_mock as statsd
 
 from autotest_lib.client.common_lib import global_config
