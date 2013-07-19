@@ -107,6 +107,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         logging.error('Dumping command list %s', self._command_list)
         self.configuration_success = False
         self._command_list = []
+        self.destroy_driver_connection()
 
 
     def get_router_name(self):
@@ -443,6 +444,17 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.driver_connection_established = True
 
 
+    def destroy_driver_connection(self):
+        """Breaks the connection to the webdriver service."""
+        try:
+            self.driver.close()
+        except Exception, e:
+            logging.debug('Webdriver is crashed, should be respawned')
+        finally:
+            self.driver_connection_established = False
+            self.configuration_success = True
+
+
     def apply_settings(self):
         """Apply all settings to the access point.
 
@@ -451,6 +463,15 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         self.configuration_success = False
         if len(self._command_list) == 0:
+            return
+
+        # If all we are doing is powering down the router, don't mess with
+        # starting up webdriver.
+        if (len(self._command_list) == 1 and
+            self._command_list[0]['method'] == self._power_down_router):
+            self._command_list[0]['method'](*self._command_list[0]['args'])
+            self._command_list.pop()
+            self.destroy_driver_connection()
             return
         self.establish_driver_connection()
         # Pull items by page and then sort
@@ -493,12 +514,4 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
-        # This may cause chrome to core dump, so when running ./chromedriver
-        # run it in a shell script in a loop.
-        try:
-            self.driver.close()
-        except Exception, e:
-            logging.debug('Webdriver is still crashing, tell yell at team.')
-        finally:
-            self.driver_connection_established = False
-            self.configuration_success = True
+        self.destroy_driver_connection()
