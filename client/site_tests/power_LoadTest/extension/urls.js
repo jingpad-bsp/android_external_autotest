@@ -13,7 +13,8 @@ var tasks = [
     type: 'window',
     name: 'background',
     start: 0,
-    duration: minutes(2),
+    duration: minutes(60),
+    focus: false,
     tabs: [
      'http://www.cnn.com',
      'http://news.google.com',
@@ -26,7 +27,7 @@ var tasks = [
     // Page cycle through popular external websites for 36 minutes
     type: 'cycle',
     name: 'web',
-    start: 0,
+    start: seconds(1),
     duration: minutes(36),
     delay: seconds(60), // A minute on each page
     timeout: seconds(10),
