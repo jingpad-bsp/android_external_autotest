@@ -98,7 +98,7 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
 
 
 def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
-            id_digits=1, args=None):
+            id_digits=1, args=None, pretend=False):
     """
     Shell out to autoserv to run an individual test job.
 
@@ -114,6 +114,8 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
                       directory.
     @param args: String that should be passed as args parameter to autoserv,
                  and then ultimitely to test itself.
+    @param pretend: If True, will print out autoserv commands rather than
+                    running them.
     @returns: Absolute path of directory where results were stored.
     """
     with tempfile.NamedTemporaryFile() as temp_file:
@@ -131,11 +133,16 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
                 results_directory=results_directory,
                 fast_mode=fast_mode,
                 extra_args=extra_args)
-        global _autoserv_proc
-        _autoserv_proc = subprocess.Popen(command)
-        _autoserv_proc.wait()
-        _autoserv_proc = None
-        return results_directory
+
+        if not pretend:
+            global _autoserv_proc
+            _autoserv_proc = subprocess.Popen(command)
+            _autoserv_proc.wait()
+            _autoserv_proc = None
+            return results_directory
+        else:
+            logging.info('Pretend mode. Would run autoserv command: %s',
+                         ' '.join(command))
 
 
 def setup_local_afe():
@@ -153,7 +160,8 @@ def setup_local_afe():
 
 
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
-                      build=_NO_BUILD, board=_NO_BOARD, args=None):
+                      build=_NO_BUILD, board=_NO_BOARD, args=None,
+                      pretend=False):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
@@ -165,6 +173,9 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param board: String specifyinb board for local run.
     @param args: String that should be passed as args parameter to autoserv,
                  and then ultimitely to test itself.
+    @param pretend: If True, will print out autoserv commands rather than
+                    running them.
+
 
     @returns: directory in which results are stored.
     """
@@ -200,7 +211,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     job_id_digits=len(str(last_job_id))
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory, fast_mode,
-                job_id_digits, args)
+                job_id_digits, args, pretend)
 
     return results_directory
 
@@ -224,6 +235,9 @@ def validate_arguments(arguments):
         if arguments.args:
             raise ValueError('--args flag not supported when running against '
                              ':lab:')
+        if arguments.pretend:
+            raise ValueError('--pretend flag not supported when running '
+                             'against :lab:')
 
 
 def parse_arguments(argv):
@@ -257,6 +271,9 @@ def parse_arguments(argv):
     parser.add_argument('--args', metavar='ARGS',
                         help='Argument string to pass through to test. Only '
                         'supported for runs against a local DUT.')
+    parser.add_argument('--pretend', action='store_true', default=False,
+                        help='Print autoserv commands that would be run, '
+                             'rather than running them.')
 
     return parser.parse_args(argv)
 
@@ -362,7 +379,12 @@ def main(argv):
         afe = setup_local_afe()
         res_dir= perform_local_run(afe, sysroot_autotest_path, arguments.tests,
                                    arguments.remote, arguments.fast_mode,
-                                   args=arguments.args)
+                                   args=arguments.args,
+                                   pretend=arguments.pretend)
+        if arguments.pretend:
+            logging.info('Finished pretend run. Exiting.')
+            return 0
+
         final_result = subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
         logging.info('Finished running tests. Results can be found in %s',
                      res_dir)

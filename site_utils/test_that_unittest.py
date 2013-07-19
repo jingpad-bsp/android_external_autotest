@@ -167,7 +167,7 @@ class TestThatUnittests(unittest.TestCase):
             test_that.run_job(mox.ContainsAttributeValue('control_file',
                                                          control_file),
                              remote, autotest_path, results_dir, fast_mode,
-                             id_digits, args)
+                             id_digits, args, False)
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
                                     remote, fast_mode, build=build, board=board,
