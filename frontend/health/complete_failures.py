@@ -14,7 +14,7 @@ from autotest_lib.frontend import setup_django_readonly_environment
 # Django and the models are only setup after
 # the setup_django_readonly_environment module is imported.
 from autotest_lib.frontend.tko import models as tko_models
-from django.db import models as django_models
+from autotest_lib.frontend.health import utils
 
 
 _STORAGE_FILE = 'failure_storage'
@@ -22,7 +22,6 @@ _STORAGE_FILE = 'failure_storage'
 _DAYS_TO_BE_FAILING_TOO_LONG = 60
 # Ignore any tests that have not ran in this many days
 _DAYS_NOT_RUNNING_CUTOFF = 60
-_TEST_PASS_STATUS_INDEX = 6
 _MAIL_RESULTS_FROM = 'chromeos-test-health@google.com'
 _MAIL_RESULTS_TO = 'chromeos-lab-infrastructure@google.com'
 
@@ -69,23 +68,21 @@ def is_valid_test_name(name):
     return not '/' in name and not name.startswith('try_new_image')
 
 
-def get_last_pass_times():
+def prepare_last_passes(last_passes):
     """
-    Get all the tests that have passed and the time they last passed.
+    Fix up the last passes so they can be used by the system.
 
-    @return the dict of test_name:last_finish_time pairs for tests that have
-            passed.
+    This filters out invalid test names and converts the test names to utf8
+    encoding.
 
+    @param last_passes: The dictionary of test_name:last_pass pairs.
+
+    @return: Valid entries in encoded as utf8 strings.
     """
-    results = tko_models.Test.objects.values('test').filter(
-        status=_TEST_PASS_STATUS_INDEX).annotate(
-        last_pass=django_models.Max('started_time'))
-    results_dict = {result['test']: result['last_pass']
-                    for result in results}
-    valid_test_names = filter(is_valid_test_name, results_dict)
+    valid_test_names = filter(is_valid_test_name, last_passes)
     # The shelve module does not accept Unicode objects as keys but does
     # accept utf-8 strings.
-    return {name.encode('utf8'): results_dict[name]
+    return {name.encode('utf8'): last_passes[name]
             for name in valid_test_names}
 
 
@@ -116,10 +113,11 @@ def get_tests_to_analyze():
 
     """
     recent_test_names = get_recently_ran_test_names()
-    last_passes = get_last_pass_times()
+    last_passes = utils.get_last_pass_times()
+    prepared_passes = prepare_last_passes(last_passes)
 
     running_passes = {}
-    for test, pass_time in last_passes.items():
+    for test, pass_time in prepared_passes.items():
         if test in recent_test_names:
             running_passes[test] = pass_time
 

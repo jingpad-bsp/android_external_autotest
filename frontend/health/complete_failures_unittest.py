@@ -14,13 +14,13 @@ import common
 from autotest_lib.frontend import setup_django_readonly_environment
 from autotest_lib.frontend import setup_test_environment
 import complete_failures
+from autotest_lib.frontend.health import utils
 from autotest_lib.client.common_lib import mail
 from autotest_lib.frontend.tko import models
 from django import test
 
 
 GOOD_STATUS_IDX = 6
-FAIL_STATUS_IDX = 4
 
 # See complte_failurs_functional_tests.py for why we need this.
 class MockDatetime(datetime.datetime):
@@ -176,111 +176,21 @@ class IsValidTestNameTests(test.TestCase):
         self.assertFalse(complete_failures.is_valid_test_name(name))
 
 
-class GetLastPassTimesTests(mox.MoxTestBase, test.TestCase):
-    """Tests the get_last_pass_times function."""
+class PrepareLastPassesTests(test.TestCase):
+    """Tests the prepare_last_passes function."""
 
     def setUp(self):
-        super(GetLastPassTimesTests, self).setUp()
-        setup_test_environment.set_up()
-
+        super(PrepareLastPassesTests, self).setUp()
 
     def tearDown(self):
-        setup_test_environment.tear_down()
-        super(GetLastPassTimesTests, self).tearDown()
-
-
-    def test_return_most_recent_pass(self):
-        """The last time a test passed should be returned."""
-        # To add a test entry to the database, Django the test object to
-        # be instantiated with various other model instances. We give these
-        # instances dummy id values.
-        job = models.Job(job_idx=1)
-        kernel = models.Kernel(kernel_idx=1)
-        machine = models.Machine(machine_idx=1)
-        success_status = models.Status(status_idx=GOOD_STATUS_IDX)
-
-        early_pass = models.Test(job=job, status=success_status,
-                                 kernel=kernel, machine=machine,
-                                 test='test',
-                                 started_time=datetime.datetime(2012, 1, 1))
-        early_pass.save()
-        late_pass = models.Test(job=job, status=success_status,
-                                kernel=kernel, machine=machine,
-                                test='test',
-                                started_time=datetime.datetime(2012, 1, 2))
-        late_pass.save()
-
-        results = complete_failures.get_last_pass_times()
-
-        self.assertEquals(results, {'test': datetime.datetime(2012, 1, 2)})
-
-
-    def test_only_return_passing_tests(self):
-        """Tests that only tests that have passed at some point are returned."""
-        job = models.Job(job_idx=1)
-        kernel = models.Kernel(kernel_idx=1)
-        machine = models.Machine(machine_idx=1)
-        success_status = models.Status(status_idx=GOOD_STATUS_IDX)
-        fail_status = models.Status(status_idx=FAIL_STATUS_IDX)
-
-        passing_test = models.Test(job=job, status=success_status,
-                                   kernel=kernel, machine=machine,
-                                   test='passing_test',
-                                   started_time=datetime.datetime(2012, 1, 1))
-        passing_test.save()
-        failing_test = models.Test(job=job, status=fail_status,
-                                   kernel=kernel, machine=machine,
-                                   test='failing_test',
-                                   started_time=datetime.datetime(2012, 1, 1))
-        failing_test.save()
-
-        results = complete_failures.get_last_pass_times()
-
-        self.assertEquals(results,
-                          {'passing_test': datetime.datetime(2012, 1, 1)})
-
-
-    def test_return_all_passing_tests(self):
-        """This function returns all tests that passed at least once."""
-        job = models.Job(job_idx=1)
-        kernel = models.Kernel(kernel_idx=1)
-        machine = models.Machine(machine_idx=1)
-        success_status = models.Status(status_idx=GOOD_STATUS_IDX)
-
-        test1 = models.Test(job=job, status=success_status,
-                            kernel=kernel, machine=machine,
-                            test='test1',
-                            started_time=datetime.datetime(2012, 1, 1))
-        test1.save()
-        test2 = models.Test(job=job, status=success_status,
-                            kernel=kernel, machine=machine,
-                            test='test2',
-                            started_time=datetime.datetime(2012, 1, 2))
-        test2.save()
-
-        results = complete_failures.get_last_pass_times()
-
-        self.assertEquals(results, {'test1': datetime.datetime(2012, 1, 1),
-                                    'test2': datetime.datetime(2012, 1, 2)})
-
+        super(PrepareLastPassesTests, self).tearDown()
 
     def test_does_not_return_invalid_test_names(self):
         """Tests that tests with invalid test names are not returned."""
-        job = models.Job(job_idx=1)
-        kernel = models.Kernel(kernel_idx=1)
-        machine = models.Machine(machine_idx=1)
-        success_status = models.Status(status_idx=GOOD_STATUS_IDX)
-        fail_status = models.Status(status_idx=FAIL_STATUS_IDX)
+        results = complete_failures.prepare_last_passes(['invalid_test/name'])
 
-        invalid_test = models.Test(job=job, status=success_status,
-                                  kernel=kernel, machine=machine,
-                                  test='invalid_test/name',
-                                  started_time=datetime.datetime(2012, 1, 1))
-        invalid_test.save()
+        self.assertEqual(results, {})
 
-        results = complete_failures.get_last_pass_times()
-
-        self.assertTrue(not results)
 
 
 class GetRecentlyRanTestNamesTests(mox.MoxTestBase, test.TestCase):
@@ -356,38 +266,16 @@ class GetRecentlyRanTestNamesTests(mox.MoxTestBase, test.TestCase):
         self.assertEqual(len(results), 1)
 
 
-    def test_does_not_return_invalid_test_names(self):
-        """Tests that only tests with invalid test names are not returned."""
-        job = models.Job(job_idx=1)
-        kernel = models.Kernel(kernel_idx=1)
-        machine = models.Machine(machine_idx=1)
-        success_status = models.Status(status_idx=GOOD_STATUS_IDX)
-
-        invalid_test = models.Test(job=job, status=success_status,
-                                   kernel=kernel, machine=machine,
-                                   test='invalid_test/name',
-                                   started_time=self.datetime(2012, 1, 1))
-        invalid_test.save()
-
-        datetime.datetime.today().AndReturn(self.datetime(2012, 1, 2))
-        complete_failures._DAYS_NOT_RUNNING_CUTOFF = 60
-
-        self.mox.ReplayAll()
-        results = complete_failures.get_recently_ran_test_names()
-
-        self.assertTrue(not results)
-
-
 class GetTestsToAnalyzeTests(mox.MoxTestBase):
     """Tests the get_tests_to_analyze function."""
 
     def test_returns_recent_test_names(self):
         """Test should return all the test names in the database."""
-        self.mox.StubOutWithMock(complete_failures, 'get_last_pass_times')
+        self.mox.StubOutWithMock(utils, 'get_last_pass_times')
         self.mox.StubOutWithMock(complete_failures,
             'get_recently_ran_test_names')
 
-        complete_failures.get_last_pass_times().AndReturn({'passing_test':
+        utils.get_last_pass_times().AndReturn({'passing_test':
             datetime.datetime(2012, 1 ,1),
             'old_passing_test': datetime.datetime(2011, 1, 1)})
         complete_failures.get_recently_ran_test_names().AndReturn(
@@ -403,11 +291,11 @@ class GetTestsToAnalyzeTests(mox.MoxTestBase):
 
     def test_returns_failing_tests_with_min_datetime(self):
         """Test that never-passed tests are paired with datetime.min."""
-        self.mox.StubOutWithMock(complete_failures, 'get_last_pass_times')
+        self.mox.StubOutWithMock(utils, 'get_last_pass_times')
         self.mox.StubOutWithMock(complete_failures,
                                  'get_recently_ran_test_names')
 
-        complete_failures.get_last_pass_times().AndReturn({})
+        utils.get_last_pass_times().AndReturn({})
         complete_failures.get_recently_ran_test_names().AndReturn({'test'})
 
         self.mox.ReplayAll()
