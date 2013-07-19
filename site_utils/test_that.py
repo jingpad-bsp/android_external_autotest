@@ -274,6 +274,12 @@ def parse_arguments(argv):
     parser.add_argument('--pretend', action='store_true', default=False,
                         help='Print autoserv commands that would be run, '
                              'rather than running them.')
+    parser.add_argument('--no-quickmerge', action='store_true', default=False,
+                        dest='no_quickmerge',
+                        help='Skip the quickmerge step and use the sysroot '
+                             'as it currently is. May result in un-merged '
+                             'source tree changes not being reflected in run.')
+
 
     return parser.parse_args(argv)
 
@@ -352,7 +358,11 @@ def main(argv):
     # the sysroot version of script with the same arguments.
     realpath = os.path.realpath(__file__)
     if os.path.dirname(realpath) != sysroot_site_utils_path:
-        subprocess.call([_QUICKMERGE_SCRIPTNAME, '--board='+arguments.board])
+        if arguments.no_quickmerge:
+            logging.info('Skipping quickmerge step as requested.')
+        else:
+            subprocess.call([_QUICKMERGE_SCRIPTNAME,
+                             '--board='+arguments.board])
 
         script_command = os.path.join(sysroot_site_utils_path,
                                       os.path.basename(realpath))
