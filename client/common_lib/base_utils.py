@@ -227,6 +227,36 @@ def get_field(data, param, linestart="", sep=" "):
         return None
 
 
+def print_dirinfo(basedir):
+    """
+    Print the contents of basedir if it exists, or it's first ancestor.
+
+    Print the contents of the first directory that exists in the parent
+    hierarchy of basedir, and all it's children. Also include the number
+    of files they contain, so we know which ones are empty. Stop if the
+    ancestor walk reaches '/'. Note the path passed in must be absolute,
+    since otherwise we could hang on a bogus path.
+
+    @param basedir: The base directory to start from.
+    """
+    if not os.path.isabs(basedir):
+        logging.info('%s is not absolute, not attempting to walk.', basedir)
+        return
+
+    def path_visitor(_, dir, files):
+        logging.info('%s: %s files', dir, len(files))
+
+    while not os.path.exists(basedir):
+        logging.info('%s doesnt exist, moving to parent dir.', basedir)
+        basedir = os.path.abspath(os.path.join(basedir, os.pardir))
+        if basedir == '/':
+            logging.info('Could not find any parent dir.')
+            return
+
+    logging.info('printing contents of %s.', basedir)
+    os.path.walk(basedir, path_visitor, None)
+
+
 def write_one_line(filename, line):
     open_write_close(filename, str(line).rstrip('\n') + '\n')
 

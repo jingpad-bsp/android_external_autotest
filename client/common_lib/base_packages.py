@@ -394,6 +394,10 @@ class BasePackageManager(object):
                 raise error.PackageInstallError(
                     'Installation of %s(type:%s) failed : %s'
                     % (name, pkg_type, why))
+            except (error.CmdError, error.AutoservRunError):
+                utils.print_dirinfo(install_dir)
+                raise
+
         finally:
             if self.do_locking:
                 fcntl.flock(lockfile, fcntl.LOCK_UN)
