@@ -152,7 +152,8 @@ class TestThatUnittests(unittest.TestCase):
         self.mox.StubOutWithMock(test_that, 'schedule_local_suite')
         test_that.schedule_local_suite(autotest_path, suite_name,
                 afe, build=build,
-                board=board, results_directory=results_dir
+                board=board, results_directory=results_dir,
+                no_experimental=False
                 ).WithSideEffects(fake_suite_callback)
         self.mox.StubOutWithMock(test_that, 'run_job')
 

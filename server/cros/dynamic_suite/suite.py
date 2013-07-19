@@ -380,22 +380,26 @@ class Suite(object):
         |self._jobs|.
 
         @param add_experimental: schedule experimental tests as well, or not.
+        @returns: The number of tests that were scheduled.
         """
         logging.debug('Discovered %d stable tests.', len(self.stable_tests()))
         logging.debug('Discovered %d unstable tests.',
                       len(self.unstable_tests()))
+        n_scheduled = 0
 
         Status('INFO', 'Start %s' % self._tag).record_result(record)
         try:
             for test in self.stable_tests():
                 logging.debug('Scheduling %s', test.name)
                 self._jobs.append(self._create_job(test))
+                n_scheduled += 1
 
             if add_experimental:
                 for test in self.unstable_tests():
                     logging.debug('Scheduling experimental %s', test.name)
                     test.name = constants.EXPERIMENTAL_PREFIX + test.name
                     self._jobs.append(self._create_job(test))
+                    n_scheduled += 1
 
             if self._results_dir:
                 self._remember_scheduled_job_ids()
@@ -403,6 +407,8 @@ class Suite(object):
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
+
+        return n_scheduled
 
 
     def should_file_bug(self, result):

@@ -44,7 +44,8 @@ _LATEST_RESULTS_DIRECTORY = '/tmp/test_that_latest'
 
 
 def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
-                         board=_NO_BOARD, results_directory=None):
+                         board=_NO_BOARD, results_directory=None,
+                         no_experimental=False):
     """
     Schedule a suite against a mock afe object, for a local suite run.
     @param autotest_path: Absolute path to autotest (in sysroot).
@@ -54,6 +55,7 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
     @param board: Board to schedule suite for.
     @param results_directory: Absolute path of directory to store results in.
                               (results will be stored in subdirectory of this).
+    @param no_experimental: Skip experimental tests when scheduling a suite.
     @returns: The number of tests scheduled.
     """
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
@@ -64,8 +66,9 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
     if len(my_suite.tests) == 0:
         raise ValueError('Suite named %s does not exist, or contains no '
                          'tests.' % suite_name)
-    my_suite.schedule(lambda x: None) # Schedule tests, discard record calls.
-    return len(my_suite.tests)
+    # Schedule tests, discard record calls.
+    return my_suite.schedule(lambda x: None,
+                             add_experimental=not no_experimental)
 
 
 def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
@@ -93,8 +96,8 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
             results_dir=results_directory)
     if len(my_suite.tests) == 0:
         raise ValueError('No tests named %s.' % test_name)
-    my_suite.schedule(lambda x: None) # Schedule tests, discard record calls.
-    return len(my_suite.tests)
+    # Schedule tests, discard record calls.
+    return my_suite.schedule(lambda x: None)
 
 
 def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
@@ -161,7 +164,7 @@ def setup_local_afe():
 
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
-                      pretend=False):
+                      pretend=False, no_experimental=False):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
@@ -175,7 +178,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                  and then ultimitely to test itself.
     @param pretend: If True, will print out autoserv commands rather than
                     running them.
-
+    @param no_experimental: Skip experimental tests when scheduling a suite.
 
     @returns: directory in which results are stored.
     """
@@ -195,7 +198,8 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
             logging.info('Scheduling suite %s...', suitename)
             ntests = schedule_local_suite(autotest_path, suitename, afe,
                                           build=build, board=board,
-                                          results_directory=results_directory)
+                                          results_directory=results_directory,
+                                          no_experimental=no_experimental)
         else:
             logging.info('Scheduling test %s...', test)
             ntests = schedule_local_test(autotest_path, test, afe,
@@ -279,7 +283,11 @@ def parse_arguments(argv):
                         help='Skip the quickmerge step and use the sysroot '
                              'as it currently is. May result in un-merged '
                              'source tree changes not being reflected in run.')
-
+    parser.add_argument('--no-experimental', action='store_true',
+                        default=False, dest='no_experimental',
+                        help='When scheduling a suite, skip any tests marked '
+                             'as experimental. Applies only to tests scheduled'
+                             ' via suite:[SUITE].')
 
     return parser.parse_args(argv)
 
@@ -390,7 +398,8 @@ def main(argv):
         res_dir= perform_local_run(afe, sysroot_autotest_path, arguments.tests,
                                    arguments.remote, arguments.fast_mode,
                                    args=arguments.args,
-                                   pretend=arguments.pretend)
+                                   pretend=arguments.pretend,
+                                   no_experimental=arguments.no_experimental)
         if arguments.pretend:
             logging.info('Finished pretend run. Exiting.')
             return 0
