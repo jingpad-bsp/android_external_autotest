@@ -426,7 +426,7 @@ class ImageServer(DevServer):
         url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
                                               type=str)
         return (url_pattern % (self.url(), image)).replace(
-                  'update', 'static')
+                  'update', 'static/archive')
 
 
     def get_delta_payload_url(self, payload_type, image):

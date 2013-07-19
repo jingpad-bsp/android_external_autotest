@@ -326,7 +326,7 @@ class TestAutoUpdater(mox.MoxTestBase):
                                  'get_stateful_update_script')
         update_url = ('http://172.22.50.205:8082/update/lumpy-chrome-perf/'
                       'R28-4444.0.0-b2996')
-        static_update_url = ('http://172.22.50.205:8082/static/'
+        static_update_url = ('http://172.22.50.205:8082/static/archive/'
                              'lumpy-chrome-perf/R28-4444.0.0-b2996')
 
         # Test with clobber=False.

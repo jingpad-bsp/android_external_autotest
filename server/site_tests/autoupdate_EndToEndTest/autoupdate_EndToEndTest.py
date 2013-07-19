@@ -713,11 +713,11 @@ class autoupdate_EndToEndTest(test.test):
     def _payload_to_update_url(self, payload_url):
         """Given a payload url, returns the Update Engine update url for it."""
          # image_url is of the format that is in the devserver i.e.
-        # <hostname>/static/...LABEL/update.gz.
+        # <hostname>/static/archive/...LABEL/update.gz.
         # We want to transform it to the correct omaha url which is
         # <hostname>/update/...LABEL.
         update_url = payload_url.rpartition('/update.gz')[0]
-        return update_url.replace('/static/', '/update/')
+        return update_url.replace('/static/archive/', '/update/')
 
 
     def _install_source_image(self, image_url):

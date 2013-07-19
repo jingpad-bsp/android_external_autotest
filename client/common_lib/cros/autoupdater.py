@@ -253,8 +253,14 @@ class ChromiumOSUpdater():
         @param clobber: If True, a clean stateful installation.
         """
         logging.info('Updating stateful partition...')
-        statefuldev_url = self.update_url.replace('update',
-                                                  'static')
+        # For production devservers we create a static tree of payloads rooted
+        # at archive.
+        if not self.local_devserver:
+          statefuldev_url = self.update_url.replace('update',
+                                                    'static/archive')
+        else:
+          statefuldev_url = self.update_url.replace('update',
+                                                    'static')
 
         # Attempt stateful partition update; this must succeed so that the newly
         # installed host is testable after update.
