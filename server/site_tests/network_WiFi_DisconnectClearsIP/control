@@ -18,7 +18,6 @@ after disconnecting from the router.
 def run(machine):
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_DisconnectClearsIP',
-                 tag=NAME,
                  host=host,
                  raw_cmdline_args=args)
 
