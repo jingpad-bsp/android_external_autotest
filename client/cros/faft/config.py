@@ -10,6 +10,5 @@ class Config(object):
     rpc_port = 9990
     rpc_command = '/usr/local/autotest/cros/faft/rpc_server.py'
     rpc_command_short = 'rpc_server'
-    rpc_logfile = '/tmp/faft_rpc.log'
-    rpc_ssh_options = ('-o StrictHostKeyChecking=no '
-                       '-o UserKnownHostsFile=/dev/null ')
+    rpc_ready_call = 'system.is_available'
+    rpc_timeout = 20
