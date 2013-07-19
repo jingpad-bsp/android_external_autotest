@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import site_linux_system
-from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
@@ -35,18 +35,20 @@ class network_WiFi_Regulatory(wifi_cell_test_base.WiFiCellTestBase):
             assoc_params = xmlrpc_datatypes.AssociationParameters()
             assoc_params.ssid = self.context.router.get_ssid()
             self.context.assert_connect_wifi(assoc_params)
-            ping_ip = self.context.get_wifi_addr(ap_num=0)
-            result = self.context.client.ping(ping_ip, {})
+            ping_config = ping_runner.PingConfig(
+                    self.context.get_wifi_addr(ap_num=0))
             for attempt in range(10):
                 self.context.router.send_management_frame(
                         'channel_switch:%d' % alternate_channel)
                 # This should fail at some point.  Since the client
                 # might be in power-save, we are not guaranteed it will hear
                 # this message the first time around.
-                result = self.context.client.ping(ping_ip, {'count':3},
-                                                  ignore_status=True)
-                stats = wifi_test_utils.parse_ping_output(result)
-                if float(stats['loss']) > 60:
+                ping_config = ping_runner.PingConfig(
+                        self.context.get_wifi_addr(ap_num=0),
+                        count=3, ignore_status=True,
+                        ignore_result=True)
+                result = self.context.client.ping(ping_config)
+                if result.loss > 60:
                     break
             else:
                 raise error.TestFail('Client never lost connectivity')

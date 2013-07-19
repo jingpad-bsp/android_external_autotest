@@ -8,6 +8,7 @@ import signal
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
@@ -205,6 +206,7 @@ class WiFiClient(object):
         system = site_linux_system.LinuxSystem(self.host, {}, 'client')
         self._capabilities = system.capabilities
         self._raise_logging_level()
+        self._ping_runner = ping_runner.PingRunner(host=self.host)
 
 
     def _raise_logging_level(self):
@@ -224,34 +226,15 @@ class WiFiClient(object):
         self._host.close()
 
 
-    def ping(self, ping_ip, ping_args, count=None, ignore_status=False):
+    def ping(self, ping_config):
         """Ping an address from the client and return the command output.
 
-        @param ping_ip string IPv4 address for the client to ping.
-        @param ping_args dict of parameters understood by
-                wifi_test_utils.ping_args().
-        @param count int number of times to ping the address.
-        @param ignore_status bool whether to consider an error exit status
-                from the ping command to be a fatal error.
-        @return string raw output of the ping command
+        @param ping_config parameters for the ping command.
+        @return a PingResult object.
 
         """
         logging.info('Pinging from the client.')
-        count = count or int(ping_args.get('count', self.DEFAULT_PING_COUNT))
-        # Ping waits 10 seconds to timeout the last reply.  This means we
-        # expect ping to exit (success or failure) in no more than count + 9
-        # seconds -- the time from the first transmitted ping to the last,
-        # plus the 10 second interval waiting for a reply to the last packet.
-        # Let's add an extra second of slop.
-        timeout = 10 + count
-        ping_args = ping_args.copy()
-        ping_args['count'] = count
-        result = self.host.run(
-                '%s %s %s' % (self.COMMAND_PING,
-                              wifi_test_utils.ping_args(ping_args),
-                              ping_ip),
-                timeout=timeout, ignore_status=ignore_status)
-        return result.stdout
+        return self._ping_runner.ping(ping_config)
 
 
     def ping_bg(self, ping_ip, ping_args):

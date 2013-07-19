@@ -6,8 +6,8 @@ import logging
 import re
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server import site_linux_system
-from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
 
 class LinuxServer(site_linux_system.LinuxSystem):
@@ -52,6 +52,8 @@ class LinuxServer(site_linux_system.LinuxSystem):
         self._ping_bg_job = None
         self._wifi_ip = None
         self._wifi_if = None
+        self._ping_runner = ping_runner.PingRunner(command_ping=self.cmd_ping,
+                                                   host=self.host)
 
 
     @property
@@ -368,51 +370,11 @@ localhost ~ # ip -4 addr show
                         self.radvd_config['server'], ignore_status=True)
 
 
-    def ping(self, ping_ip, count, ping_params):
-        """
-        Ping a client from the server.
+    def ping(self, ping_config):
+        """Ping a client from the server.
 
-        Ping |ping_ip| |count| times using options to ping specified in
-        |ping_params|.
-
-        @param ping_ip String containing a client IP address.
-        @param count String number of times to ping the client.
-        @param ping_params dict of settings for ping.
-        @return dict of ping statistics.
+        @param ping_config PingConfig object describing the ping command to run.
+        @return a PingResult object.
 
         """
-        # set timeout for 3s / ping packet
-        ping_params = ping_params.copy()
-        ping_params['count'] = str(count)
-        cmd = "%s %s %s" % (self.cmd_ping,
-                            wifi_test_utils.ping_args(ping_params),
-                            ping_ip)
-        result = self.server.run(cmd, timeout=3*int(count))
-        return wifi_test_utils.parse_ping_output(result.stdout)
-
-
-    def ping_bg(self, ping_ip, ping_params):
-        """
-        Ping a client from the server in a background thread.
-
-        Ping |ping_ip| using options to ping specified in
-        |ping_params| in the background.  This call does not block.
-
-        @param ping_ip String containing a client IP address.
-        @param ping_params dict of settings for ping.
-
-        """
-        cmd = "%s %s %s" % (self.cmd_ping,
-                            wifi_test_utils.ping_args(ping_params),
-                            ping_ip)
-        self._ping_bg_job = remote_command.Command(self.server, cmd)
-
-
-    def ping_bg_stop(self):
-        """
-        Stop pinging the client in the background.
-
-        """
-        if self._ping_bg_job is not None:
-            self._ping_bg_job.join()
-            self._ping_bg_job = None
+        return self._ping_runner.ping(ping_config)

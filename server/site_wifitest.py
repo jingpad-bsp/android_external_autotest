@@ -70,7 +70,6 @@ class WiFiTest(object):
                               should always be preceded by client_monitor_start
       sleep                   pause on the autotest server for a time
       client_ping             ping the server on the client machine
-      server_ping             ping the client on the server machine
       client_iperf            run iperf on the client to the server
       server_iperf            run iperf on the server to the client
       client_netperf          run netperf on the client to the server
@@ -745,9 +744,6 @@ class WiFiTest(object):
 
     def disconnect(self, params):
         """ Disconnect previously connected client """
-
-        self.client_ping_bg_stop({})
-
         script_client_file = self.install_script('site_wlan_disconnect.py',
                                                  'site_wlan_dbus_setup.py',
                                                  'constants.py')
@@ -999,8 +995,7 @@ class WiFiTest(object):
             self.name, method)
 
 
-    def __get_pingstats(self, ping_output):
-        stats = wifi_test_utils.parse_ping_output(ping_output)
+    def __get_pingstats(self, stats):
         stats['frequency'] = self.cur_frequency
         stats['phymode']   = self.cur_phymode
         stats['security']  = self.cur_security
@@ -1064,11 +1059,12 @@ class WiFiTest(object):
         @param params dict of parameters used to form ping arguments.
 
         """
+        params = params.copy()
         if 'ping_ip' in params:
-            ping_ip = params['ping_ip']
+            ping_ip = params.pop('ping_ip')
         else:
             if 'dest' in params:
-                ping_dest = params['dest']
+                ping_dest = params.pop('dest')
             else:
                 if self.wifi.has_local_server():
                     ping_dest = 'router'
@@ -1082,79 +1078,17 @@ class WiFiTest(object):
             else:
                 raise error.TestFail('Unknown ping destination "%s"' %
                                      ping_dest)
-        count = int(params.get('count', self.defpingcount))
-        stdout = self.client_proxy.ping(ping_ip,
-                                        params,
-                                        count=count)
+
+        count = int(params.pop('count', self.defpingcount))
+        if params:
+            raise error.TestFail('Unhandled ping parameters %r.' % params)
+
+        ping_config = ping_runner.PingConfig(ping_ip, count=count,
+                                             ignore_result=True)
+        stats = self.client_proxy.ping(ping_config).old_style_output
         stats = self.__get_pingstats(stdout)
         self.write_perf(stats)
         self.__print_pingstats("client_ping ", stats)
-
-
-    def client_ping_bg(self, params):
-        """
-        Ping the server from the client in the background of the test.
-
-        @param params dict of parameters used to form ping arguments.
-
-        """
-        ping_ip = params.get('ping_ip', self.server_wifi_ip)
-        self.client_proxy.ping_bg(ping_ip, params)
-
-
-    def client_ping_bg_stop(self, params):
-        """
-        Stop a client background ping.
-
-        @param params (ignored).
-
-        """
-        self.client_proxy.ping_bg_stop()
-
-
-    def server_ping(self, params):
-        """ Ping the client from the server """
-        ping_ip = params.get('ping_ip', self.client_proxy.wifi_ip)
-        count = params.get('count', self.defpingcount)
-        stats = self.hosting_server.ping(ping_ip, count, params)
-        self.write_perf(stats)
-        self.__print_pingstats("server_ping ", stats)
-
-
-    def server_ping_bg(self, params):
-        """ Ping the client from the server """
-        ping_ip = params.get('ping_ip', self.client_proxy.wifi_ip)
-        self.hosting_server.ping_bg(ping_ip, params)
-
-
-    def server_ping_bg_stop(self, params):
-        self.hosting_server.ping_bg_stop()
-
-
-    def client_ping6(self, params):
-        """ Ping the server from the client via IPv6 """
-        if 'ping_ip' in params:
-            ping_ip = params['ping_ip']
-        else:
-            result = self.client.run('%s -6 route show dev %s default' %
-                                     (self.client_proxy.command_ip,
-                                      self.client_wlanif))
-            router_match = re.search('via (\S*)', result.stdout)
-            if not router_match:
-                raise error.TestFail('Cannot find default router')
-            ping_ip = router_match.group(1)
-            params.setdefault('interface', self.client_wlanif)
-        count = params.get('count', self.defpingcount)
-        # set timeout for 3s / ping packet
-        result = self.client.run(
-                "%s %s %s" % (self.client_proxy.command_ping6,
-                              wifi_test_utils.ping_args(params),
-                              ping_ip),
-            timeout=3*int(count))
-
-        stats = self.__get_pingstats(result.stdout)
-        self.write_perf(stats)
-        self.__print_pingstats("client_ping6 ", stats)
 
 
     def __run_iperf(self, mode, params):

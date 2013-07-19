@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network  import xmlrpc_security_types
 from autotest_lib.server.cros.network import hostap_config
@@ -12,6 +12,7 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
 class network_WiFi_PTK(wifi_cell_test_base.WiFiCellTestBase):
+    """Test that pairwise temporal key rotations work as expected."""
     version = 1
 
     # These settings combine to give us around 30 seconds of ping time,
@@ -35,17 +36,17 @@ class network_WiFi_PTK(wifi_cell_test_base.WiFiCellTestBase):
                     mode=hostap_config.HostapConfig.MODE_11N_PURE,
                     security_config=wpa_config)
         self.context.configure(ap_config)
-        assoc_params = xmlrpc_datatypes.AssociationParameters()
-        assoc_params.ssid = self.context.router.get_ssid()
-        assoc_params.security_config = wpa_config
+        assoc_params = xmlrpc_datatypes.AssociationParameters(
+                ssid=self.context.router.get_ssid(),
+                security_config=wpa_config)
         self.context.assert_connect_wifi(assoc_params)
-        ping_params = {'count': self.PING_COUNT,
-                       'interval': self.PING_INTERVAL}
+        ping_config = ping_runner.PingConfig(self.context.get_wifi_addr(),
+                                             count=self.PING_COUNT,
+                                             interval=self.PING_INTERVAL)
         logging.info('Pinging DUT for %d seconds and rekeying '
-                     'every %d seconds.' %
-                     (self.PING_COUNT * self.PING_INTERVAL,
-                      self.REKEY_PERIOD))
-        self.context.assert_ping_from_dut(additional_ping_params=ping_params)
-        logging.info('Ping successful.')
+                     'every %d seconds.',
+                     self.PING_COUNT * self.PING_INTERVAL,
+                     self.REKEY_PERIOD)
+        self.context.assert_ping_from_dut(ping_config=ping_config)
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()

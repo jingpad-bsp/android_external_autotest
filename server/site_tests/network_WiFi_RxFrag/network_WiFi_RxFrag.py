@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
@@ -29,13 +30,11 @@ class network_WiFi_RxFrag(wifi_cell_test_base.WiFiCellTestBase):
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
         self.context.assert_connect_wifi(assoc_params)
-        self.context.assert_ping_from_server(
-                additional_ping_params={'size': 256})
-        self.context.assert_ping_from_server(
-                additional_ping_params={'size': 512})
-        self.context.assert_ping_from_server(
-                additional_ping_params={'size': 1024})
-        self.context.assert_ping_from_server(
-                additional_ping_params={'size': 1500})
+        build_config = lambda size: ping_runner.PingConfig(
+                self.context.get_wifi_addr(), size=size)
+        self.context.assert_ping_from_server(ping_config=build_config(256))
+        self.context.assert_ping_from_server(ping_config=build_config(512))
+        self.context.assert_ping_from_server(ping_config=build_config(1024))
+        self.context.assert_ping_from_server(ping_config=build_config(1500))
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()
