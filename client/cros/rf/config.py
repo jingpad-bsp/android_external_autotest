@@ -8,6 +8,7 @@ import logging
 import os
 import pyudev
 import tempfile
+import yaml
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -92,7 +93,8 @@ class PluggableConfig(object):
     def __init__(self, default_config):
         self.default_config = default_config
 
-    def Read(self, config_path=None, timeout=30, event_log=None):
+    def Read(self, config_path=None, timeout=30,
+             event_log=None, yaml_format=False):
         '''
         Reads and returns the configuration.
 
@@ -103,9 +105,10 @@ class PluggableConfig(object):
         the first file called 'foo.params' on a removable device such as a USB
         stick.
 
-        Args:
-            config_path: (optional) Path to configuration file.
-            timeout: Number of seconds to wait for the configuration file.
+        @params config_path: (optional) Path to configuration file.
+        @params timeout: Number of seconds to wait for the configuration file.
+        @params event_log: True to record the loaded config in event_log.
+        @params yaml_format: True if the target configuration is a yaml file.
         '''
         if config_path:
             factory.console.info(
@@ -119,7 +122,10 @@ class PluggableConfig(object):
             digest = hashlib.md5(config_str).hexdigest(),
             logging.info('Configuration file %r: MD5=%s; contents="""%s"""',
                          config_path, digest, config_str)
-            value = eval(config_str)
+            if yaml_format:
+                value = yaml.load(config_str)
+            else:
+                value = eval(config_str)
             if event_log:
                 event_log.Log('config_file',
                               md5=digest,

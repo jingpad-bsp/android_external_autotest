@@ -11,6 +11,8 @@ import pprint
 import re
 import shutil
 import time
+import uuid
+import yaml
 import StringIO
 
 
@@ -248,7 +250,7 @@ class factory_Antenna(test.test):
     for every single antenna (i.e. doesn't need to restart the autotest for
     each module)
     """
-    version = 9
+    version = 10
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
@@ -361,7 +363,7 @@ class factory_Antenna(test.test):
         @param config_path: The location of config file.
         """
         self.config = self.base_config.Read(
-                config_path, event_log=self._event_log)
+                config_path, event_log=self._event_log, yaml_format=True)
         # Load the shopfloor related setting.
         self.path_name = self.config.get('path_name', 'UnknownPath')
         self.shopfloor_config = self.config.get('shopfloor', {})
@@ -417,6 +419,34 @@ class factory_Antenna(test.test):
 
         @param serial_number: serial_number of incoming antenna module.
         """
+        def _ConvertFromYamlToPreviousFormat(configs, antenna_type):
+            """This is a utility function to minimize the changes of parameter
+            definition. Previous format are:
+
+            {'vswr_threshold': {
+              antenna_type: [
+                (freq,
+                  (main_min, main_max),
+                  (coupling_min, coupling_max),
+                  (aux_min, aux_max)), ...
+
+            New format in YAML format are:
+              cell_vswr_threshold:
+              - aux_max: 3
+                aux_min: -3
+                freq: 746
+                main_max: 3
+                main_min: -3
+            """
+            ret = list()
+            for freq_record in configs['%s_vswr_threshold' % antenna_type]:
+                ret.append(
+                        (freq_record['freq'],
+                         (freq_record['main_min'], freq_record['main_max']),
+                         (None, None),
+                         (freq_record['aux_min'], freq_record['aux_max'])))
+            return ret
+
         # Search if there is a config that matches
         config_matched = False
         for configs in self.config['serial_specific_configuration']:
@@ -426,7 +456,11 @@ class factory_Antenna(test.test):
             self.auto_screenshot = configs.get('auto_screenshot', False)
             self.reference_info = configs.get('reference_info', False)
             self.marker_info = configs.get('set_marker', None)
-            self.vswr_threshold = configs.get('vswr_threshold', None)
+            # Convert new yaml format threshold to python format threshold.
+            self.vswr_threshold = {
+                'cell': _ConvertFromYamlToPreviousFormat(configs, 'cell'),
+                'wifi': _ConvertFromYamlToPreviousFormat(configs, 'wifi'),
+            }
             self.sweep_restore = configs.get('sweep_restore', None)
             factory.console.info('Matching SN[%s] with regex[%s]',
                                  serial_number, self.sn_regex)
@@ -822,9 +856,13 @@ class factory_Antenna(test.test):
                         float(difference), min_value, max_value)
             result = False
         # Record the detail for event_log
-        self.vswr_detail_results.append(
-            (title, freq / 1000000.0, float(extracted_value), result,
-             float(difference), min_value, max_value))
+        self.vswr_detail_results['%.0fM' % (freq / 1E6)] = {
+            'type': title,
+            'freq': freq,
+            'observed': extracted_value,
+            'result': result,
+            'threshold': [min_value, max_value],
+            'diff': difference}
         return result
 
     def _compare_traces(self, traces, antenna_type, column,
@@ -872,11 +910,16 @@ class factory_Antenna(test.test):
         self.log_to_file.write("%s results:\n%s\n" %
                                (log_title, pprint.pformat(logs)))
         self._event_log.Log(
-            'vswr_measurement',
+            'vswr_%s' % log_title,
             ab_serial_number=self.serial_number,
+            iterations=self.current_iteration,
+            iteration_hash=self.iteration_hash,
+            current_config_name=self.current_config_name,
+            ena_name=self.ena_name,
+            ena_parameter=ena_parameter,
             config=(log_title, antenna_type, column, ena_parameter),
-            vswr_detail_results=self.vswr_detail_results,
-            logs=logs)
+            detail=self.vswr_detail_results)
+        self.vswr_detail_results = {}
 
         return all(results)
 
@@ -945,7 +988,8 @@ class factory_Antenna(test.test):
         """
         self.log_to_file = StringIO.StringIO()
         self._raw_traces = {}
-        self.vswr_detail_results = []
+        self.vswr_detail_results = {}
+        self.iteration_hash = str(uuid.uuid4())
         self.sn_input_widget.get_entry().set_text('')
         for var in self._STATUS_NAMES:
             self._update_status(var, None)
@@ -1016,6 +1060,7 @@ class factory_Antenna(test.test):
         self.dev_path = None  # It will later be assigned when USB plug-in
         self.allowed_iteration = None  # It will later be assigned
         self.current_iteration = 0     # The number of panel tested.
+        self.iteration_hash = None     # It will be assigned when test starts.
         self.load_from_shopfloor = load_from_shopfloor
 
         # Setup the timezone
