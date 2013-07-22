@@ -4,7 +4,7 @@
 
 AUTHOR = "Sam Leffler <sleffler@google.com>"
 TIME = "LONG"
-NAME = "WiFi Perf"
+NAME = "network_WiFiPerf"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "Server"

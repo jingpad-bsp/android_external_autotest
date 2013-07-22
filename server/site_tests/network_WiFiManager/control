@@ -4,7 +4,7 @@
 
 AUTHOR = "Paul Stewart <pstew@google.com>"
 TIME = "SHORT"
-NAME = "WiFi Manager"
+NAME = "network_WiFiManager"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "Server"
