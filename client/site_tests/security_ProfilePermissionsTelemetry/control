@@ -1,0 +1,26 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+TIME="SHORT"
+AUTHOR = "The Chromium OS Authors"
+DOC = """
+Ensures appropriate permissions on data within the chronos profile.
+"""
+NAME = "security_ProfilePermissions"
+PURPOSE = "Protect the security boundary enforced by filesystem permissions"
+CRITERIA = """
+Fail if there are any files or directories writable by group/other in ~.
+"""
+SUITE = "bvt, kaen_bvt"
+TEST_CLASS = "security"
+TEST_CATEGORY = "Functional"
+TEST_TYPE = "client"
+EXPERIMENTAL = "True"
+# TODO(achuith, dennisjeffrey): Remove security_ProfilePermissions when this
+# test is promoted to smoke/bvt non-experimental.
+
+job.run_test("security_ProfilePermissionsTelemetry",
+        logged_in=True, tag='login')
+job.run_test("security_ProfilePermissionsTelemetry",
+        logged_in=False, tag='guest')
