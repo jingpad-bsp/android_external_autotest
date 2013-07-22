@@ -243,6 +243,17 @@
         "effective_host_permissions": [],
         "api_permissions": []
       },
+      { "id": "kodldpbjkkmmnilagfdheibampofhaom",
+        "name": "Chrome Connectivity Debugger",
+        "effective_host_permissions": ["http://*.google.com/*",
+                                       "http://www.yahoo.com/*"],
+        "api_permissions": ["app.currentWindowInternal",
+                            "app.runtime",
+                            "app.window",
+                            "clipboardWrite",
+                            "experimental",
+                            "socket"]
+      },
       { "id": "plamffmopddapimaopfdbibfkjpbojbf",
         "name": "Registration",
         "boards": ["butterfly"],
