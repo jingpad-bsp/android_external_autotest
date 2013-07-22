@@ -452,7 +452,6 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             logging.debug('Webdriver is crashed, should be respawned')
         finally:
             self.driver_connection_established = False
-            self.configuration_success = True
 
 
     def apply_settings(self):
@@ -514,4 +513,5 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
+        self.configuration_success = True
         self.destroy_driver_connection()
