@@ -204,7 +204,6 @@ class WiFiTest(object):
                 hosts.create_host(client['addr']),
                 self.debug_dir)
         self.client_at = autotest.Autotest(self.client)
-        self.client_wifi_ip = None            # client's IP address on wifi net
         self.client_wifi_device_path = None   # client's flimflam wifi path
         self.client_signal_info = {}
         self.client_installed_scripts = {}
@@ -736,8 +735,8 @@ class WiFiTest(object):
         self.cur_security = result_times.group(7)
 
         # fetch IP address of wireless device
-        self.client_wifi_ip = self.__get_ipaddr(self.client, self.client_wlanif)
-        logging.info("%s: client WiFi-IP is %s", self.name, self.client_wifi_ip)
+        logging.info("%s: client WiFi-IP is %s",
+                     self.name, self.client_proxy.wifi_ip)
         # TODO(sleffler) not right for non-mac80211 devices
         # TODO(sleffler) verify debugfs is mounted @ /sys/kernel/debug
         self.client_debugfs_path = "/sys/kernel/debug/ieee80211/%s/netdev:%s" \
@@ -1115,7 +1114,7 @@ class WiFiTest(object):
 
     def server_ping(self, params):
         """ Ping the client from the server """
-        ping_ip = params.get('ping_ip', self.client_wifi_ip)
+        ping_ip = params.get('ping_ip', self.client_proxy.wifi_ip)
         count = params.get('count', self.defpingcount)
         stats = self.hosting_server.ping(ping_ip, count, params)
         self.write_perf(stats)
@@ -1124,7 +1123,7 @@ class WiFiTest(object):
 
     def server_ping_bg(self, params):
         """ Ping the client from the server """
-        ping_ip = params.get('ping_ip', self.client_wifi_ip)
+        ping_ip = params.get('ping_ip', self.client_proxy.wifi_ip)
         self.hosting_server.ping_bg(ping_ip, params)
 
 
@@ -1208,7 +1207,7 @@ class WiFiTest(object):
                        'cmd': self.client_proxy.command_iperf }
             client = { 'host': self.server,
                        'cmd': self.hosting_server.cmd_iperf,
-                       'target': self.client_wifi_ip }
+                       'target': self.client_proxy.wifi_ip }
 
             # Open up access from the server into our DUT
             self.client_proxy.firewall_open('tcp', self.server_wifi_ip)
