@@ -32,6 +32,7 @@ class WiFiTestContextManager(object):
     CMDLINE_ROUTER_ADDR = 'router_addr'
     CMDLINE_ROUTER_PORT = 'router_port'
     CMDLINE_SERVER_ADDR = 'server_addr'
+    CONNECTED_STATES = 'ready', 'portal', 'online'
 
 
     @property
@@ -292,3 +293,23 @@ class WiFiTestContextManager(object):
             ping_ip = self.client.wifi_ip
             ping_config = ping_runner.PingConfig(ping_ip)
         self.server.ping(ping_config)
+
+
+    def wait_for_connection(self, ssid, freq=None):
+        """Verifies a connection to network ssid on frequency freq.
+
+        @param ssid string ssid of the network to check.
+        @param freq int frequency of network to check.
+
+        """
+        success, state, elapsed_seconds = self.client.wait_for_service_states(
+                ssid, WiFiTestContextManager.CONNECTED_STATES, 30)
+        if not success or state not in WiFiTestContextManager.CONNECTED_STATES:
+            raise error.TestFail(
+                    'Failed to connect to "%s" in %f seconds (state=%s)' %
+                    (ssid, elapsed_seconds, state))
+
+        self.assert_ping_from_dut()
+        if freq:
+            self.client.check_iw_link_value(
+                    wifi_client.WiFiClient.IW_LINK_KEY_FREQUENCY, freq)
