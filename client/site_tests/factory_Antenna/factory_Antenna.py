@@ -12,7 +12,6 @@ import re
 import shutil
 import time
 import uuid
-import yaml
 import StringIO
 
 
@@ -372,7 +371,7 @@ class factory_Antenna(test.test):
         self.shopfloor_ignore_on_fail = (
                 self.shopfloor_config.get('ignore_on_fail'))
         self.allowed_iteration = self.config.get('allowed_iteration', None)
-        factory.console.info("Config loaded.")
+        factory.console.info("Config %s loaded.", self.config.get('annotation'))
         # Setup Network
         self.setup_network()
 
@@ -650,8 +649,11 @@ class factory_Antenna(test.test):
                 self.sweep_restore[0], self.sweep_restore[1])
 
     def set_marker(self):
-        for channel, marker_num, freq in self.marker_info:
-            self.ena.SetMarker(channel, marker_num, freq)
+        for marker in self.marker_info:
+            self.ena.SetMarker(
+                    marker['channel'],
+                    marker['marker_num'],
+                    marker['marker_freq'])
 
     def test_main_antennas(self):
         """Tests the main antenna of cellular and wifi."""
