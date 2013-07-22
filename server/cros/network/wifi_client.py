@@ -20,6 +20,8 @@ from autotest_lib.server.cros.network import packet_capturer
 class WiFiClient(object):
     """WiFiClient is a thin layer of logic over a remote DUT in wifitests."""
 
+    XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
+
     IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
     IW_LITNK_KEY_DTIM_PERIOD = 'dtim period'
     IW_LINK_KEY_FREQUENCY = 'freq'
@@ -157,8 +159,9 @@ class WiFiClient(object):
         self._shill_proxy = self.host.xmlrpc_connect(
                 constants.SHILL_XMLRPC_SERVER_COMMAND,
                 constants.SHILL_XMLRPC_SERVER_PORT,
-                constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
-                constants.SHILL_XMLRPC_SERVER_READY_METHOD)
+                command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
+                ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
+                timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
         # Look up or hardcode command paths.
         self._command_ifconfig = 'ifconfig'
         self._command_ip = wifi_test_utils.must_be_installed(
