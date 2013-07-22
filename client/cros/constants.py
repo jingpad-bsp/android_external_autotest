@@ -135,5 +135,21 @@ SHILL_XMLRPC_SERVER_COMMAND = (
 SHILL_XMLRPC_SERVER_CLEANUP_PATTERN = 'shill_xmlrpc_server'
 SHILL_XMLRPC_SERVER_READY_METHOD = 'ready'
 
+BLUETOOTH_CLIENT_XMLRPC_SERVER_PORT = 9990
+BLUETOOTH_CLIENT_XMLRPC_SERVER_COMMAND = (
+        'cd /usr/local/autotest/common_lib/cros/bluetooth && '
+        './bluetooth_client_xmlrpc_server.py')
+BLUETOOTH_CLIENT_XMLRPC_SERVER_CLEANUP_PATTERN = (
+        'bluetooth_client_xmlrpc_server')
+BLUETOOTH_CLIENT_XMLRPC_SERVER_READY_METHOD = 'ready'
+
+BLUETOOTH_TESTER_XMLRPC_SERVER_PORT = 9990
+BLUETOOTH_TESTER_XMLRPC_SERVER_COMMAND = (
+        'cd /usr/local/autotest/common_lib/cros/bluetooth && '
+        './bluetooth_tester_xmlrpc_server.py')
+BLUETOOTH_TESTER_XMLRPC_SERVER_CLEANUP_PATTERN = (
+        'bluetooth_tester_xmlrpc_server')
+BLUETOOTH_TESTER_XMLRPC_SERVER_READY_METHOD = 'ready'
+
 # Bug filing
 CHROME_VERSION = 'CHROME_VERSION'
