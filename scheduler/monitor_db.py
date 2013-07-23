@@ -1115,6 +1115,8 @@ class Agent(object):
             self.task.abort()
             if self.task.aborted:
                 # tasks can choose to ignore aborts
+                # but task is an afe HQE model, which always aborts when asked
+                # to, so this always happens given the current code.
                 self.finished = True
 
 
