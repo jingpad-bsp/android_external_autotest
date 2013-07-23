@@ -63,7 +63,14 @@ def get_devserver_build_from_package_url(package_url):
     """
     pattern = package_url_pattern()
     re_pattern = pattern.replace('%s', '(\S+)')
-    return re.search(re_pattern, package_url).groups()
+
+    devserver_build_tuple = re.search(re_pattern, package_url).groups()
+
+    # TODO(beeps): This is a temporary hack around the fact that all
+    # job_repo_urls in the database currently contain 'archive'. Remove
+    # when all hosts have been reimaged at least once. Ref: crbug.com/214373.
+    return (devserver_build_tuple[0],
+            devserver_build_tuple[1].replace('archive/', ''))
 
 
 def get_random_best_host(afe, host_list, require_usable_hosts=True):
