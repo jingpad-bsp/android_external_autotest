@@ -320,6 +320,7 @@ class Reimager(object):
                         'Try job was aborted and not enough hosts completed'
                         'reimaging.')
 
+            logging.debug('Gathering per_host_results.')
             results = job_status.gather_per_host_results(self._afe,
                                                          self._tko,
                                                          [self._canary_job],

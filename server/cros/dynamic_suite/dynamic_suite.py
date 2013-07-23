@@ -627,18 +627,21 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
         # This could lead to some weird interaction where we start running some
         # tests because a machine becomes available, but then abort the suite
         # because not enough machines became available.
+        logging.debug('Waiting on reimaging job.')
         reimage_successful = reimager.wait(
             spec.build, spec.pool, spec.job.record_entry,
             spec.check_hosts, tests_to_skip,
             scheduled_tests=suite.tests,
             timeout_mins=spec.try_job_timeout_mins)
+        logging.debug('Finished waiting on reimaging job.')
     else:
         reimage_successful = True
 
     # Sit around and wait for some test results.
     if reimage_successful:
+        logging.debug('Waiting on suite.')
         suite.wait(spec.job.record_entry, spec.bug_template)
-        logging.debug('Finished suite.wait(...). '
+        logging.debug('Finished waiting on suite. '
                       'Returning from _perform_reimage_and_run.')
     else:
         logging.debug('reimage_successful is False. Aborting suite.')
