@@ -5,6 +5,8 @@ from autotest_lib.tko import utils as tko_utils
 
 
 class job(object):
+    """Represents a job."""
+
     def __init__(self, dir, user, label, machine, queued_time, started_time,
                  finished_time, machine_owner, machine_group, aborted_by,
                  aborted_on, keyval_dict):
@@ -25,35 +27,44 @@ class job(object):
 
     @staticmethod
     def read_keyval(dir):
+        """
+        Read job keyval files.
+
+        @param dir: String name of directory containing job keyval files.
+
+        @return A dictionary containing job keyvals.
+
+        """
         dir = os.path.normpath(dir)
         top_dir = tko_utils.find_toplevel_job_dir(dir)
         if not top_dir:
             top_dir = dir
         assert(dir.startswith(top_dir))
 
-        # pull in and merge all the keyval files, with higher-level
-        # overriding values in the lower-level ones
+        # Pull in and merge all the keyval files, with higher-level
+        # overriding values in the lower-level ones.
         keyval = {}
         while True:
             try:
                 upper_keyval = utils.read_keyval(dir)
                 # HACK: exclude hostname from the override - this is a special
-                # case where we want lower to override higher
-                if "hostname" in upper_keyval and "hostname" in keyval:
-                    del upper_keyval["hostname"]
+                # case where we want lower to override higher.
+                if 'hostname' in upper_keyval and 'hostname' in keyval:
+                    del upper_keyval['hostname']
                 keyval.update(upper_keyval)
             except IOError:
-                pass  # if the keyval can't be read just move on to the next
+                pass  # If the keyval can't be read just move on to the next.
             if dir == top_dir:
                 break
             else:
-                assert(dir != "/")
+                assert(dir != '/')
                 dir = os.path.dirname(dir)
         return keyval
 
 
-
 class kernel(object):
+    """Represents a kernel."""
+
     def __init__(self, base, patches, kernel_hash):
         self.base = base
         self.patches = patches
@@ -62,11 +73,22 @@ class kernel(object):
 
     @staticmethod
     def compute_hash(base, hashes):
+        """Compute a hash given the base string and hashes for each patch.
+
+        @param base: A string representing the kernel base.
+        @param hashes: A list of hashes, where each hash is associated with a
+            patch of this kernel.
+
+        @return A string representing the computed hash.
+
+        """
         key_string = ','.join([base] + hashes)
         return utils.hash('md5', key_string).hexdigest()
 
 
 class test(object):
+    """Represents a test."""
+
     def __init__(self, subdir, testname, status, reason, test_kernel,
                  machine, started_time, finished_time, iterations,
                  attributes, labels):
@@ -85,13 +107,25 @@ class test(object):
 
     @staticmethod
     def load_iterations(keyval_path):
-        """Abstract method to load a list of iterations from a keyval file."""
+        """Abstract method to load a list of iterations from a keyval file.
+
+        @param keyval_path: String path to a keyval file.
+
+        @return A list of iteration objects.
+
+        """
         raise NotImplementedError
 
 
     @staticmethod
     def load_perf_values(perf_values_file):
-        """Loads perf values from a perf measurements file."""
+        """Loads perf values from a perf measurements file.
+
+        @param perf_values_file: The string path to a perf measurements file.
+
+        @return A list of perf_value_iteration objects.
+
+        """
         raise NotImplementedError
 
 
@@ -122,9 +156,9 @@ class test(object):
         tko_utils.dprint("parsing test %s %s" % (subdir, testname))
 
         if subdir:
-            # grab iterations from the results keyval
+            # Grab iterations from the results keyval.
             iteration_keyval = os.path.join(job.dir, subdir,
-                                            "results", "keyval")
+                                            'results', 'keyval')
             iterations = cls.load_iterations(iteration_keyval)
 
             # Grab perf values from the perf measurements file.
@@ -132,21 +166,22 @@ class test(object):
                                             'results', 'perf_measurements')
             perf_values = cls.load_perf_values(perf_values_file)
 
-            # grab test attributes from the subdir keyval
-            test_keyval = os.path.join(job.dir, subdir, "keyval")
+            # Grab test attributes from the subdir keyval.
+            test_keyval = os.path.join(job.dir, subdir, 'keyval')
             attributes = test.load_attributes(test_keyval)
         else:
             iterations = []
             perf_values = []
             attributes = {}
 
-        # grab test+host attributes from the host keyval
+        # Grab test+host attributes from the host keyval.
         host_keyval = cls.parse_host_keyval(job.dir, job.machine)
-        attributes.update(dict(("host-%s" % k, v)
+        attributes.update(dict(('host-%s' % k, v)
                                for k, v in host_keyval.iteritems()))
 
         if existing_instance:
             def constructor(*args, **dargs):
+                """Initializes an existing test instance."""
                 existing_instance.__init__(*args, **dargs)
                 return existing_instance
         else:
@@ -161,20 +196,43 @@ class test(object):
     @classmethod
     def parse_partial_test(cls, job, subdir, testname, reason, test_kernel,
                            started_time):
-        """Given a job and the basic metadata available when a test is
+        """
+        Create a test instance representing a partial test result.
+
+        Given a job and the basic metadata available when a test is
         started, create a test instance representing the partial result.
         Assume that since the test is not complete there are no results files
-        actually available for parsing."""
-        tko_utils.dprint("parsing partial test %s %s" % (subdir, testname))
+        actually available for parsing.
 
-        return cls(subdir, testname, "RUNNING", reason, test_kernel,
+        @param job: A job object.
+        @param subdir: The string subdirectory name for the given test.
+        @param testname: The name of the test.
+        @param reason: The reason string for the test.
+        @param test_kernel: The kernel of the test.
+        @param started_time: The start time of the test.
+
+        @return A test instance that has partial test information.
+
+        """
+        tko_utils.dprint('parsing partial test %s %s' % (subdir, testname))
+
+        return cls(subdir, testname, 'RUNNING', reason, test_kernel,
                    job.machine, started_time, None, [], {}, [])
 
 
     @staticmethod
     def load_attributes(keyval_path):
-        """Load the test attributes into a dictionary from a test
-        keyval path. Does not assume that the path actually exists."""
+        """
+        Load test attributes from a test keyval path.
+
+        Load the test attributes into a dictionary from a test
+        keyval path. Does not assume that the path actually exists.
+
+        @param keyval_path: The string path to a keyval file.
+
+        @return A dictionary representing the test keyvals.
+
+        """
         if not os.path.exists(keyval_path):
             return {}
         return utils.read_keyval(keyval_path)
@@ -182,13 +240,22 @@ class test(object):
 
     @staticmethod
     def parse_host_keyval(job_dir, hostname):
-        # the "real" job dir may be higher up in the directory tree
+        """
+        Parse host keyvals.
+
+        @param job_dir: The string directory name of the associated job.
+        @param hostname: The string hostname.
+
+        @return A dictionary representing the host keyvals.
+
+        """
+        # The "real" job dir may be higher up in the directory tree.
         job_dir = tko_utils.find_toplevel_job_dir(job_dir)
         if not job_dir:
-            return {} # we can't find a top-level job dir with host keyvals
+            return {}  # We can't find a top-level job dir with host keyvals.
 
-        # the keyval is <job_dir>/host_keyvals/<hostname> if it exists
-        keyval_path = os.path.join(job_dir, "host_keyvals", hostname)
+        # The keyval is <job_dir>/host_keyvals/<hostname> if it exists.
+        keyval_path = os.path.join(job_dir, 'host_keyvals', hostname)
         if os.path.isfile(keyval_path):
             return utils.read_keyval(keyval_path)
         else:
@@ -196,6 +263,8 @@ class test(object):
 
 
 class patch(object):
+    """Represents a patch."""
+
     def __init__(self, spec, reference, hash):
         self.spec = spec
         self.reference = reference
@@ -203,6 +272,8 @@ class patch(object):
 
 
 class iteration(object):
+    """Represents an iteration."""
+
     def __init__(self, index, attr_keyval, perf_keyval):
         self.index = index
         self.attr_keyval = attr_keyval
@@ -211,20 +282,31 @@ class iteration(object):
 
     @staticmethod
     def parse_line_into_dicts(line, attr_dict, perf_dict):
-        """Abstract method to parse a keyval line and insert it into
-        the appropriate dictionary.
-                attr_dict: generic iteration attributes
-                perf_dict: iteration performance results
+        """
+        Abstract method to parse a keyval line and insert it into a dictionary.
+
+        @param line: The string line to parse.
+        @param attr_dict: Dictionary of generic iteration attributes.
+        @param perf_dict: Dictionary of iteration performance results.
+
         """
         raise NotImplementedError
 
 
     @classmethod
     def load_from_keyval(cls, keyval_path):
-        """Load a list of iterations from an iteration keyval file.
+        """
+        Load a list of iterations from an iteration keyval file.
+
         Keyval data from separate iterations is separated by blank
         lines. Makes use of the parse_line_into_dicts method to
-        actually parse the individual lines."""
+        actually parse the individual lines.
+
+        @param keyval_path: The string path to a keyval file.
+
+        @return A list of iteration objects.
+
+        """
         if not os.path.exists(keyval_path):
             return []
 
@@ -245,6 +327,8 @@ class iteration(object):
 
 
 class perf_value_iteration(object):
+    """Represents a perf value iteration."""
+
     def __init__(self, index, perf_measurements):
         """
         Initializes the perf values for a particular test iteration.
