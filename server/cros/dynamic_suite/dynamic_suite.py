@@ -513,6 +513,8 @@ def reimage_and_run(**dargs):
 
     imager.clear_reimaged_host_state(suite_spec.build)
 
+    logging.debug('Returning from dynamic_suite.reimage_and_run.')
+
 
 def _gatherAndParseDependencies(suite_spec):
     """Gather dependecy info for all suite jobs from image server, and
@@ -636,5 +638,8 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
     # Sit around and wait for some test results.
     if reimage_successful:
         suite.wait(spec.job.record_entry, spec.bug_template)
+        logging.debug('Finished suite.wait(...). '
+                      'Returning from _perform_reimage_and_run.')
     else:
+        logging.debug('reimage_successful is False. Aborting suite.')
         suite.abort()
