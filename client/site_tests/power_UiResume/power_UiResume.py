@@ -28,7 +28,7 @@ class power_UiResume(test.test):
 
     def run_once(self):
         # Some idle time before initiating suspend-to-ram
-        with chrome.logged_in_browser():
+        with chrome.Chrome():
             time.sleep(10)
             results = self._suspender.suspend(0)
             self.write_perf_keyval(results)

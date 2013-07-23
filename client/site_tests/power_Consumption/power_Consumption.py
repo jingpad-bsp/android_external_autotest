@@ -35,7 +35,7 @@ class power_Consumption(test.test):
     def initialize(self):
         self._backlight = None
         self._services = None
-        self._browser = None
+        self._chrome = None
 
         # Time to exclude from calculation after firing a task [seconds]
         self._stabilization_seconds = 5
@@ -65,12 +65,12 @@ class power_Consumption(test.test):
         self._test_server.run()
 
         # Log in.
-        self._browser = chrome.logged_in_browser()
+        self._chrome = chrome.Chrome()
         # Wait for login to finish and any extra windows to appear.
         time.sleep(10)
         self._do_xset()
         # Most of the tests will be running in this tab.
-        self._tab = self._browser.tabs[0]
+        self._tab = self._chrome.browser.tabs[0]
         logging.info('initialize() finished')
 
     def _do_xset(self):
@@ -186,7 +186,7 @@ class power_Consumption(test.test):
         tab_title = bg_tab.EvaluateJavaScript('document.title')
         logging.info('App name: %s Tab title: %s.', name, tab_title)
         # Open a new empty tab to cover the one with test payload.
-        fg_tab = self._browser.tabs.New()
+        fg_tab = self._chrome.browser.tabs.New()
         fg_tab.Activate()
         self._run_sleep(name, duration)
         fg_tab.Close()
@@ -324,7 +324,7 @@ class power_Consumption(test.test):
             logging.info('Playing video in background tab %s', url)
             self._tab.Navigate(full_url(url))
             self._tab.ExecuteJavaScript(js_loop_enable)
-            fg_tab = self._browser.tabs.New()
+            fg_tab = self._chrome.browser.tabs.New()
             self._run_sleep(name, self._duration_secs)
             fg_tab.Close()
             self._tab.Activate()
@@ -509,8 +509,8 @@ class power_Consumption(test.test):
         except AttributeError:
             logging.debug('test_server could not be stopped in cleanup')
 
-        if self._browser:
-            self._browser.Close()
+        if self._chrome:
+            self._chrome.__exit__()
         if self._backlight:
             self._backlight.restore()
         if self._services:
