@@ -175,6 +175,7 @@ class power_LoadTest(cros_ui_test.UITest):
         super(power_LoadTest, self).initialize(creds=creds)
 
     def run_once(self):
+        import pyauto
 
         t0 = time.time()
         ext_path = os.path.join(os.path.dirname(__file__), 'extension.crx')
@@ -232,7 +233,12 @@ class power_LoadTest(cros_ui_test.UITest):
                 break
 
             self.pyauto.OpenNewBrowserWindow(True)
-            self.pyauto.UninstallExtensionById(ext_id)
+
+            try:
+                self.pyauto.UninstallExtensionById(ext_id)
+            except pyauto.AutomationCommandFail, e:
+                # Seems harmles, so treat as non-fatal?
+                logging.warn("Error uninstalling extension: %s", str(e))
 
         t1 = time.time()
         self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60
