@@ -19,7 +19,7 @@ from linux_input import EV_KEY
 
 class KeyboardDevice:
     """A class about keyboard device properties."""
-    TYPE = '(keyboard|chromeos-ec-i2c)'
+    TYPE = '(keyboard|chromeos-ec-i2c|cros-ec-spi)'
 
     def __init__(self, device_node=None):
         self._device_info_file = '/proc/bus/input/devices'
