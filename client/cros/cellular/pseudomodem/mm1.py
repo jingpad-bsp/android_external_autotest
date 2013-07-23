@@ -46,6 +46,9 @@ I_SIM = I_MODEM_MANAGER + '.Sim'
 # SMSs
 I_SMS = I_MODEM_MANAGER + '.Sms'
 
+# Frequently accessed propeties
+MM_MODEM_PROPERTY_NAME_STATE = 'State'
+
 
 # Common Types
 # Flags and Enumerations
