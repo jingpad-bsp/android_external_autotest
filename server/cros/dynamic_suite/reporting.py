@@ -14,6 +14,7 @@ from xml.parsers import expat
 import common
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import site_utils as client_site_utils
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import job_status
 
@@ -141,8 +142,8 @@ class TestFailure(object):
     def get_milestone(self):
         """Parses the build string and returns a milestone."""
         try:
-            return 'M-%s'% site_utils.ParseBuildName(self.build)[2]
-        except site_utils.ParseBuildNameException as e:
+            return 'M-%s'% client_site_utils.ParseBuildName(self.build)[2]
+        except client_site_utils.ParseBuildNameException as e:
             logging.error(e)
             return ''
 
