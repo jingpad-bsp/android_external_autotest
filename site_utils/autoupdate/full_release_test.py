@@ -19,11 +19,12 @@ import subprocess
 import sys
 
 import common
-from autotest_lib.client.common_lib import control_data
 from autotest_lib.server import frontend
 from autotest_lib.site_utils.autoupdate import board as board_util
 from autotest_lib.site_utils.autoupdate import release as release_util
 from autotest_lib.site_utils.autoupdate import test_image
+from autotest_lib.site_utils.autoupdate.lib import test_control
+from autotest_lib.site_utils.autoupdate.lib import test_params
 
 # Autotest pylint is more restrictive than it should with args.
 #pylint: disable=C0111
@@ -38,11 +39,9 @@ _log_normal = 'normal'
 _log_verbose = 'verbose'
 _valid_log_levels = _log_debug, _log_normal, _log_verbose
 _autotest_url_format = r'http://%(host)s/afe/#tab_id=view_job&object_id=%(job)s'
-_autotest_test_name = 'autoupdate_EndToEndTest'
-_autoupdate_suite_name = 'au'
 _default_dump_dir = os.path.realpath(
         os.path.join(os.path.dirname(__file__), '..', '..', 'server',
-                     'site_tests', _autotest_test_name))
+                     'site_tests', test_control.get_test_name()))
 # Matches delta format name and returns groups for branches and release numbers.
 _delta_re = re.compile(
         'chromeos_'
@@ -59,178 +58,8 @@ _build_version = '%(branch)s-%(release)s'
 _version_re = re.compile('(?P<base_version>[0-9.]+)(?:\-[a-z]+[0-9]+])*')
 
 
-
-_name_re = re.compile('\s*NAME\s*=')
-
-
 class FullReleaseTestError(BaseException):
   pass
-
-
-class TestEnv(object):
-    """Contains and formats the environment arguments of a test."""
-
-    def __init__(self, args):
-        """Initial environment arguments object.
-
-        @param args: parsed program arguments, including test environment ones
-
-        """
-        self._env_args_str_local = None
-        self._env_args_str_afe = None
-
-        # Distill environment arguments from all input arguments.
-        self._env_args = {}
-        for key in ('servo_host', 'servo_port', 'omaha_host'):
-            val = vars(args).get(key)
-            if val is not None:
-                self._env_args[key] = val
-
-
-    def is_var_set(self, var):
-        """Returns true if the |var| is set in this environment."""
-        return var in self._env_args
-
-
-    def get_cmdline_args(self):
-        """Return formatted environment arguments for command-line invocation.
-
-        The formatted string is cached for repeated use.
-
-        """
-        if self._env_args_str_local is None:
-            self._env_args_str_local = ''
-            for key, val in self._env_args.iteritems():
-                # Convert Booleans to 'yes' / 'no'.
-                if val is True:
-                    val = 'yes'
-                elif val is False:
-                    val = 'no'
-
-                self._env_args_str_local += ' %s=%s' % (key, val)
-
-        return self._env_args_str_local
-
-
-    def get_code_args(self):
-        """Return formatted environment arguments for inline assignment.
-
-        The formatted string is cached for repeated use.
-
-        """
-        if self._env_args_str_afe is None:
-            self._env_args_str_afe = ''
-            for key, val in self._env_args.iteritems():
-                # Everything becomes a string, except for Booleans.
-                if type(val) is bool:
-                    self._env_args_str_afe += "%s = %s\n" % (key, val)
-                else:
-                    self._env_args_str_afe += "%s = '%s'\n" % (key, val)
-
-        return self._env_args_str_afe
-
-
-class TestConfig(object):
-    """A single test configuration.
-
-    Stores and generates arguments for running autotest_EndToEndTest.
-
-    """
-    def __init__(self, board, name, use_mp_images, is_delta_update,
-                 source_release, target_release, source_image_uri,
-                 target_payload_uri):
-        """Initialize a test configuration.
-
-        @param board: the board being tested (e.g. 'x86-alex')
-        @param name: a descriptive name of the test
-        @param use_mp_images: whether or not we're using test images (Boolean)
-        @param is_delta_update: whether this is a delta update test (Boolean)
-        @param source_release: the source image version (e.g. '2672.0.0')
-        @param target_release: the target image version (e.g. '2673.0.0')
-        @param source_image_uri: source image URI ('gs://...')
-        @param target_payload_uri: target payload URI ('gs://...')
-
-        """
-        self.board = board
-        self.name = name
-        self.use_mp_images = use_mp_images
-        self.is_delta_update = is_delta_update
-        self.source_release = source_release
-        self.target_release = target_release
-        self.source_image_uri = source_image_uri
-        self.target_payload_uri = target_payload_uri
-
-
-    def get_image_type(self):
-        return 'mp' if self.use_mp_images else 'test'
-
-
-    def get_update_type(self):
-        return 'delta' if self.is_delta_update else 'full'
-
-
-    def unique_name_suffix(self):
-        """Unique name suffix for the test config given the target version."""
-        return '%s_%s' % (self.name, self.source_release)
-
-
-    def get_autotest_name(self):
-        """Returns job name to use when creating an autotest job.
-
-        Returns a job name that conforms to the suite naming style assuming
-        'au' is the suite name.
-        """
-        return '%s-release/%s/au/%s.%s' % (
-                self.board, self.target_release,
-                _autotest_test_name, self.unique_name_suffix())
-
-
-    def get_control_file_name(self):
-        """Returns the name of the name of the control file to store this in.
-
-        Returns the control file name that should be generated for this test.
-        A unique name suffix is used to keep from collisions per target
-        release/board.
-        """
-        return 'control.%s' % self.unique_name_suffix()
-
-
-    def __str__(self):
-        """Short textual representation w/o image/payload URIs."""
-        return ('[%s/%s/%s/%s/%s -> %s]' %
-                (self.board, self.name, self.get_image_type(),
-                 self.get_update_type(), self.source_release,
-                 self.target_release))
-
-
-    def __repr__(self):
-        """Full textual representation w/ image/payload URIs."""
-        return '\n'.join([str(self),
-                          'source image   : %s' % self.source_image_uri,
-                          'target payload : %s' % self.target_payload_uri])
-
-
-    def _get_args(self, assign, delim, is_quote_val):
-        template = "%s%s'%s'" if is_quote_val else "%s%s%s"
-        return delim.join(
-                [template % (key, assign, val) for key, val in [
-                        ('name', self.name),
-                        ('image_type', self.get_image_type()),
-                        ('update_type', self.get_update_type()),
-                        ('source_release', self.source_release),
-                        ('target_release', self.target_release),
-                        ('source_image_uri', self.source_image_uri),
-                        ('target_payload_uri', self.target_payload_uri),
-                        ('SUITE', _autoupdate_suite_name)]])
-
-
-    def get_cmdline_args(self):
-        return self._get_args('=', ' ', False)
-
-
-    def get_code_args(self):
-        args = self._get_args(' = ', '\n', True)
-        return args + '\n' if args else ''
 
 
 def get_release_branch(release):
@@ -370,7 +199,7 @@ class TestConfigGenerator(object):
         source_version = _version_re.match(source_release).group('base_version')
         target_version = _version_re.match(self.tested_release).group(
                 'base_version')
-        return TestConfig(
+        return test_params.TestConfig(
                 self.board, name, self.use_mp_images, is_delta_update,
                 source_version, target_version, source_uri, payload_uri)
 
@@ -662,7 +491,7 @@ def run_test_local(test, env, remote):
            '--args=%s%s' % (test.get_cmdline_args(), env.get_cmdline_args()),
            '--remote=%s' % remote,
            '--use_emerged',
-           _autotest_test_name]
+           test_control.get_test_name()]
 
     # Only set servo arguments if servo is in the environment.
     if env.is_var_set('servo_host'):
@@ -674,59 +503,6 @@ def run_test_local(test, env, remote):
     except subprocess.CalledProcessError, e:
         raise FullReleaseTestError(
                 'command execution failed: %s' % e)
-
-
-def generate_full_control_file(test, env, control_code):
-    """Returns the parameterized control file for the test config.
-
-    @param test: the test config.
-    @param env: instance of TestEnv for the test.
-    @param control_code: string containing the template control code.
-
-    @returns parameterized control file based on args.
-    """
-    def add_name_suffix(code):
-        """Replace NAME = in the control file with unique name for build."""
-        new_code = []
-        original_name = control_data.parse_control_string(code).name
-        for line in code.splitlines():
-            if _name_re.match(line):
-                new_code.append('NAME = "%s_%s"' % (original_name,
-                                                    test.unique_name_suffix()))
-            else:
-                new_code.append(line)
-
-        # Splitlines and rejoining strips the trailing line. Trailing line
-        # is needed by autotest.
-        new_code.append('')
-        return '\n'.join(new_code)
-
-    control_code = add_name_suffix(control_code)
-    return test.get_code_args() + env.get_code_args() + control_code
-
-
-def dump_autotest_control_file(test, env, control_code, directory):
-    """Creates control file for test and returns the path to created file.
-
-    @param test: the test config.
-    @param env: instance of TestEnv for the test.
-    @param control_code: string containing the template control code.
-    @param directory: the directory to dump the control file.
-
-    @returns Path to the newly dumped control file.
-    """
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    parametrized_control_code = generate_full_control_file(
-            test, env, control_code)
-
-    control_file = os.path.join(directory,
-                                test.get_control_file_name())
-    with open(control_file, 'w') as fh:
-        fh.write(parametrized_control_code)
-
-    return control_file
 
 
 def run_test_afe(test, env, control_code, afe, dry_run):
@@ -742,7 +518,7 @@ def run_test_afe(test, env, control_code, afe, dry_run):
 
     """
     # Parametrize the control script.
-    parametrized_control_code = generate_full_control_file(
+    parametrized_control_code = test_control.generate_full_control_file(
             test, env, control_code)
 
     # Create the job.
@@ -889,7 +665,7 @@ def main():
                 'no test configurations generated, nothing to do')
 
         # Construct environment argument, used for all tests.
-        env = TestEnv(args)
+        env = test_params.TestEnv(args)
 
         # Local or AFE invocation?
         if args.remote:
@@ -901,10 +677,7 @@ def main():
                     run_test_local(test, env, args.remote)
         else:
             # Obtain the test control file content.
-            control_file = os.path.join(
-                    common.autotest_dir, 'server', 'site_tests',
-                    _autotest_test_name, 'control')
-            with open(control_file) as f:
+            with open(test_control.get_control_file_name()) as f:
                 control_code = f.read()
 
             # Dump control file(s) to be staged later, or schedule upfront?
@@ -914,7 +687,7 @@ def main():
                     # Control files for the same board are all in the same
                     # sub-dir.
                     directory = os.path.join(args.dump_dir, test.board)
-                    test_control_file = dump_autotest_control_file(
+                    test_control_file = test_control.dump_autotest_control_file(
                             test, env, control_code, directory)
                     logging.info('dumped control file for test %s to %s',
                                  test, test_control_file)
