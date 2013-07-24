@@ -131,6 +131,7 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
         for test_idx in old_tests.itervalues():
             where = {'test_idx' : test_idx}
             db.delete('tko_iteration_result', where)
+            db.delete('tko_iteration_perf_value', where)
             db.delete('tko_iteration_attributes', where)
             db.delete('tko_test_attributes', where)
             db.delete('tko_test_labels_tests', {'test_id': test_idx})

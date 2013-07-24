@@ -317,6 +317,7 @@ class db_sql(object):
         for test_idx in self.find_tests(job_idx):
             where = {'test_idx' : test_idx}
             self.delete('tko_iteration_result', where)
+            self.delete('tko_iteration_perf_value', where)
             self.delete('tko_iteration_attributes', where)
             self.delete('tko_test_attributes', where)
             self.delete('tko_test_labels_tests', {'test_id': test_idx})
@@ -380,6 +381,7 @@ class db_sql(object):
                         {'test_idx': test_idx}, commit=commit)
             where = {'test_idx': test_idx}
             self.delete('tko_iteration_result', where)
+            self.delete('tko_iteration_perf_value', where)
             self.delete('tko_iteration_attributes', where)
             where['user_created'] = 0
             self.delete('tko_test_attributes', where)
@@ -400,6 +402,17 @@ class db_sql(object):
                 data['value'] = value
                 self.insert('tko_iteration_result', data,
                             commit=commit)
+
+        data = {'test_idx': test_idx}
+        for i in test.perf_values:
+            data['iteration'] = i.index
+            for perf_dict in i.perf_measurements:
+                data['description'] = perf_dict['description']
+                data['value'] = perf_dict['value']
+                data['stddev'] = perf_dict['stddev']
+                data['units'] = perf_dict['units']
+                data['higher_is_better'] = perf_dict['higher_is_better']
+                self.insert('tko_iteration_perf_value', data, commit=commit)
 
         for key, value in test.attributes.iteritems():
             data = {'test_idx': test_idx, 'attribute': key,

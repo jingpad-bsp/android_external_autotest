@@ -218,6 +218,16 @@ class JobSerializer(object):
 
         fields_dict['labels'] = list(test.labels)
 
+        # The constructor for models.test accepts a "perf_values" list that
+        # represents performance values of the test.  The empty list argument
+        # in the constructor call below represents this value and makes this
+        # code adhere properly to the models.test constructor argument list.
+        # However, the effect of the empty list is that perf values are
+        # ignored in the job_serializer module.  This is ok for now because
+        # autotest does not use the current module.  If job_serializer is used
+        # in the future, we need to modify the "tko.proto" protobuf file to
+        # understand the notion of perf_values, then modify this file
+        # accordingly to use it.
         return models.test(fields_dict['subdir'],
                            fields_dict['testname'],
                            fields_dict['status'],
@@ -228,6 +238,7 @@ class JobSerializer(object):
                            fields_dict['finished_time'],
                            fields_dict['iterations'],
                            fields_dict['attributes'],
+                           [],
                            fields_dict['labels'])
 
 

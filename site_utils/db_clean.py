@@ -76,6 +76,8 @@ def delete_job(conn, afe_job):
     test_ids = tko_test_ids[i*BATCH_SIZE : (i+1)*BATCH_SIZE]
     conn.execute('DELETE FROM tko_iteration_result WHERE test_idx in (%s);' %
                  ','.join(test_ids))
+    conn.execute('DELETE FROM tko_iteration_perf_value WHERE test_idx in '
+                 '(%s);' % ','.join(test_ids))
     conn.execute('DELETE FROM tko_iteration_attributes WHERE test_idx in (%s);'
                  % ','.join(test_ids))
     conn.execute('DELETE FROM tko_test_attributes WHERE test_idx in (%s);' %
@@ -120,6 +122,7 @@ def main():
   conn.execute('OPTIMIZE TABLE afe_parameterized_job_parameters;')
   conn.execute('OPTIMIZE TABLE afe_parameterized_jobs;')
   conn.execute('OPTIMIZE TABLE tko_iteration_result;')
+  conn.execute('OPTIMIZE TABLE tko_iteration_perf_value;')
   conn.execute('OPTIMIZE TABLE tko_iteration_attributes;')
   conn.execute('OPTIMIZE TABLE tko_test_attributes;')
   conn.execute('OPTIMIZE TABLE tko_tests;')

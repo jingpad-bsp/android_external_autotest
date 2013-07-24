@@ -153,6 +153,10 @@ def _delete_all_data_before_date(date):
                                    TEST_IDX, date)
     _delete_table_data_before_date('tko_test_labels_tests', 'tko_tests',
                                    TEST_IDX, date, foreign_key= 'test_id')
+    _delete_table_data_before_date('tko_iteration_result', 'tko_tests',
+                                   TEST_IDX, date)
+    _delete_table_data_before_date('tko_iteration_perf_value', 'tko_tests',
+                                   TEST_IDX, date)
     _delete_table_data_before_date('tko_iteration_attributes', 'tko_tests',
                                    TEST_IDX, date)
     _delete_table_data_before_date('tko_test_attributes', 'tko_tests',

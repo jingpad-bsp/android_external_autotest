@@ -42,11 +42,13 @@ class JobSerializerUnittest(unittest.TestCase):
 
         tko_labels = ['unittest', 'dummy test', 'autotest']
 
+        # See the comment about the models.test constructor in
+        # job_serializer.py, where the models.test constructor is used.
         tko_test = models.test('/tmp/', 'mocktest', 'Completed', 'N/A',
                                tko_kernel, 'My Computer', tko_time,
                                tko_time, [tko_iteration,
                                tko_iteration, tko_iteration],
-                               {'abc':'def'}, tko_labels)
+                               {'abc':'def'}, [], tko_labels)
 
         self.tko_job = tko_job
         self.tko_job.tests = [tko_test, tko_test, tko_test]

@@ -91,7 +91,7 @@ class test(object):
 
     def __init__(self, subdir, testname, status, reason, test_kernel,
                  machine, started_time, finished_time, iterations,
-                 attributes, labels):
+                 attributes, perf_values, labels):
         self.subdir = subdir
         self.testname = testname
         self.status = status
@@ -102,6 +102,7 @@ class test(object):
         self.finished_time = finished_time
         self.iterations = iterations
         self.attributes = attributes
+        self.perf_values = perf_values
         self.labels = labels
 
 
@@ -186,11 +187,10 @@ class test(object):
                 return existing_instance
         else:
             constructor = cls
-        # TODO(dennisjeffrey): pass the |perf_values| list to the call below
-        # so that the results can be written into the results database.
+
         return constructor(subdir, testname, status, reason, test_kernel,
                            job.machine, started_time, finished_time,
-                           iterations, attributes, [])
+                           iterations, attributes, perf_values, [])
 
 
     @classmethod
@@ -217,7 +217,7 @@ class test(object):
         tko_utils.dprint('parsing partial test %s %s' % (subdir, testname))
 
         return cls(subdir, testname, 'RUNNING', reason, test_kernel,
-                   job.machine, started_time, None, [], {}, [])
+                   job.machine, started_time, None, [], {}, [], [])
 
 
     @staticmethod
