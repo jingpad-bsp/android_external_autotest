@@ -1065,7 +1065,9 @@ class PidfileRunMonitor(object):
 
 class Agent(object):
     """
-    An agent for use by the Dispatcher class to perform a task.
+    An agent for use by the Dispatcher class to perform a task.  An agent wraps
+    around an AgentTask mainly to associate the AgentTask with the queue_entry
+    and host ids.
 
     The following methods are required on all task objects:
         poll() - Called periodically to let the task check its status and
@@ -1084,7 +1086,7 @@ class Agent(object):
 
     def __init__(self, task):
         """
-        @param task: A task as described in the class docstring.
+        @param task: An instance of an AgentTask.
         """
         self.task = task
 
@@ -1115,8 +1117,6 @@ class Agent(object):
             self.task.abort()
             if self.task.aborted:
                 # tasks can choose to ignore aborts
-                # but task is an afe HQE model, which always aborts when asked
-                # to, so this always happens given the current code.
                 self.finished = True
 
 
