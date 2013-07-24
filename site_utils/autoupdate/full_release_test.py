@@ -907,28 +907,27 @@ def main():
             with open(control_file) as f:
                 control_code = f.read()
 
+            # Dump control file(s) to be staged later, or schedule upfront?
             if args.dump:
+                # Populate and dump test-specific control files.
                 for test in test_list:
                     # Control files for the same board are all in the same
                     # sub-dir.
                     directory = os.path.join(args.dump_dir, test.board)
-                    control_file = dump_autotest_control_file(
+                    test_control_file = dump_autotest_control_file(
                             test, env, control_code, directory)
                     logging.info('dumped control file for test %s to %s',
-                                 test, control_file)
-
-                return
-
-            # Schedule jobs via AFE.
-            afe = frontend.AFE(debug=(args.log_level == _log_debug))
-            for i, test in enumerate(test_list):
-                logging.info('scheduling test %d/%d:\n%r', i + 1,
-                             len(test_list), test)
-                job_id = run_test_afe(test, env, control_code,
-                                      afe, args.dry_run)
-                if job_id:
-                    # Explicitly print as this is what a caller looks for.
-                    print get_job_url(afe.server, job_id)
+                                 test, test_control_file)
+            else:
+                # Schedule jobs via AFE.
+                afe = frontend.AFE(debug=(args.log_level == _log_debug))
+                for test in test_list:
+                    logging.info('scheduling test %s', test)
+                    job_id = run_test_afe(test, env, control_code,
+                                          afe, args.dry_run)
+                    if job_id:
+                        # Explicitly print as this is what a caller looks for.
+                        print get_job_url(afe.server, job_id)
 
     except FullReleaseTestError, e:
         logging.fatal(str(e))
