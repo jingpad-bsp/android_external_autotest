@@ -33,6 +33,10 @@ class power_Consumption(test.test):
 
 
     def initialize(self):
+        # Objects that need to be taken care of in cleanup() are initialized
+        # here to None. Otherwise we run the risk of AttributeError raised in
+        # cleanup() masking a real error that caused the test to fail during
+        # initialize() before those variables were assigned.
         self._backlight = None
         self._services = None
         self._chrome = None
