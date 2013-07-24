@@ -40,7 +40,55 @@ class BluetoothClient(object):
                   constants.BLUETOOTH_CLIENT_XMLRPC_SERVER_READY_METHOD,
                 timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
 
+    def reset_on(self):
+        """Reset the adapter and settings and power up the adapter.
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.reset_on()
+
+    def reset_off(self):
+        """Reset the adapter and settings, leave the adapter powered off.
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.reset_off()
+
+    def set_powered(self, powered):
+        """Set the adapter power state.
+
+        @param powered adapter power state to set (True or False).
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.set_powered(powered)
+
+    def set_discoverable(self, discoverable):
+        """Set the adapter discoverable state.
+
+        @param powered adapter discoverable state to set (True or False).
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.set_discoverable(discoverable)
+
+    def set_pairable(self, pairable):
+        """Set the adapter pairable state.
+
+        @param powered adapter pairable state to set (True or False).
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.set_pairable(pairable)
+
     def close(self):
         """Tear down state associated with the client."""
+        # Leave the adapter powered off, but don't do a full reset.
+        self._proxy.set_powered(False)
         # This kills the RPC server.
         self._host.close()
