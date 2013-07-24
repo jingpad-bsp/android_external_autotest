@@ -504,7 +504,6 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
-                ReportRateValidator(report_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -522,7 +521,6 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                ReportRateValidator(report_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
                 StationaryFingerValidator(stationary_finger_criteria, slot=1),
             ),
@@ -543,7 +541,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 1'),
                 PhysicalClickValidator('== 1', fingers=1),
-                ReportRateValidator(report_rate_criteria),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -558,7 +555,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 2'),
                 PhysicalClickValidator('== 1', fingers=2),
-                ReportRateValidator(report_rate_criteria),
                 StationaryFingerValidator(relaxed_stationary_finger_criteria,
                                           slot=0),
                 StationaryFingerValidator(relaxed_stationary_finger_criteria,
@@ -576,7 +572,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 3'),
                 PhysicalClickValidator('== 1', fingers=3),
-                ReportRateValidator(report_rate_criteria),
             ),
         ),
 
@@ -590,7 +585,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 4'),
                 PhysicalClickValidator('== 1', fingers=4),
-                ReportRateValidator(report_rate_criteria),
             ),
         ),
 
@@ -604,7 +598,6 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 5'),
                 PhysicalClickValidator('== 1', fingers=5),
-                ReportRateValidator(report_rate_criteria),
             ),
         ),
 
