@@ -9,6 +9,7 @@ CRITERIA = """
 This test will fail if it cannot connect to a wireless network and navigate
 to www.msn.com.
 """
+SUITE = "None"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

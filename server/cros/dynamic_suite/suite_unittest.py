@@ -73,19 +73,15 @@ class SuiteTest(mox.MoxTestBase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
 
-    def expect_control_file_parsing(self, suite_name=_TAG):
-        """Expect an attempt to parse the 'control files' in |self.files|.
-
-        @param suite_name: The suite name to parse control files for.
-        """
+    def expect_control_file_parsing(self):
+        """Expect an attempt to parse the 'control files' in |self.files|."""
         all_files = self.files.keys() + self.files_to_filter.keys()
         self._set_control_file_parsing_expectations(False, all_files,
-                                                    self.files, suite_name)
+                                                    self.files)
 
 
     def _set_control_file_parsing_expectations(self, already_stubbed,
-                                               file_list, files_to_parse,
-                                               suite_name):
+                                               file_list, files_to_parse):
         """Expect an attempt to parse the 'control files' in |files|.
 
         @param already_stubbed: parse_control_string already stubbed out.
@@ -96,8 +92,7 @@ class SuiteTest(mox.MoxTestBase):
         if not already_stubbed:
             self.mox.StubOutWithMock(control_data, 'parse_control_string')
 
-        self.getter.get_control_file_list(
-            suite_name=suite_name).AndReturn(file_list)
+        self.getter.get_control_file_list().AndReturn(file_list)
         for file, data in files_to_parse.iteritems():
             self.getter.get_control_file_contents(
                 file).InAnyOrder().AndReturn(data.string)
@@ -111,7 +106,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         predicate = lambda d: d.text == self.files['two'].string
-        tests = Suite.find_and_parse_tests(self.getter, predicate, self._TAG)
+        tests = Suite.find_and_parse_tests(self.getter, predicate)
         self.assertEquals(len(tests), 1)
         self.assertEquals(tests[0], self.files['two'])
 
@@ -124,7 +119,6 @@ class SuiteTest(mox.MoxTestBase):
         predicate = lambda d: d.suite == self._TAG
         tests = Suite.find_and_parse_tests(self.getter,
                                            predicate,
-                                           self._TAG,
                                            add_experimental=True)
         self.assertEquals(len(tests), 5)
         self.assertTrue(self.files['one'] in tests)
@@ -137,7 +131,7 @@ class SuiteTest(mox.MoxTestBase):
     def testAdHocSuiteCreation(self):
         """Should be able to schedule an ad-hoc suite by specifying
         a single test name."""
-        self.expect_control_file_parsing(suite_name='ad_hoc_suite')
+        self.expect_control_file_parsing()
         self.mox.ReplayAll()
         predicate = Suite.test_name_equals_predicate('name-data_five')
         suite = Suite.create_from_predicates([predicate], self._BUILD,
@@ -197,7 +191,6 @@ class SuiteTest(mox.MoxTestBase):
             test.text = test.string  # mimic parsing.
         self.mox.StubOutWithMock(Suite, 'find_and_parse_tests')
         Suite.find_and_parse_tests(
-            mox.IgnoreArg(),
             mox.IgnoreArg(),
             mox.IgnoreArg(),
             add_experimental=True).AndReturn(self.files.values())
@@ -397,7 +390,6 @@ class SuiteTest(mox.MoxTestBase):
         # Get all tests.
         tests = Suite.find_and_parse_tests(self.getter,
                                            lambda d: True,
-                                           self._TAG,
                                            add_experimental=True)
         self.assertEquals(len(tests), 6)
         times = [control_data.ControlData.get_test_time_index(test.time)
