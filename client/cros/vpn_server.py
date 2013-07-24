@@ -24,7 +24,8 @@ class VPNServer(object):
 
 class L2TPIPSecVPNServer(VPNServer):
     """Implementation of an L2TP/IPSec VPN.  Uses ipsec starter and xl2tpd."""
-    PRELOAD_MODULES = ('af_key', 'ah4', 'esp4', 'ipcomp', 'xfrm4_tunnel')
+    PRELOAD_MODULES = ('af_key', 'ah4', 'esp4', 'ipcomp', 'xfrm_user',
+                       'xfrm4_tunnel')
     ROOT_DIRECTORIES = ('etc/ipsec.d', 'etc/ipsec.d/cacerts',
                         'etc/ipsec.d/certs', 'etc/ipsec.d/crls',
                         'etc/ipsec.d/private', 'etc/ppp', 'etc/xl2tpd')
