@@ -61,7 +61,7 @@ class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
 
         """
         device = self.get_device(interface_name)
-        device_path = shill_proxy.dbus2primitive(device.object_path)
+        device_path = shill_proxy.ShillProxy.dbus2primitive(device.object_path)
         return self._shill_proxy.find_object('Service', {'Device': device_path})
 
 
@@ -98,7 +98,7 @@ class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
 
     def clear_static_ip(self, service, params):
         """Clears configuration of Static IP parameters for the Ethernet
-        interface |interface_name| forces a re-connect.
+        interface and forces a re-connect.
 
         @param service object the Service DBus interface to clear properties.
         @param params list of static parameters to clear from the service.
@@ -111,6 +111,23 @@ class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
             service.ClearProperty('StaticIP.NameServers')
         service.Disconnect()
         service.Connect()
+
+
+    def check_saved_ip(self, service, options):
+        """Check the properties of the Ethernet service to make sure that
+        the address provided by the DHCP server is properly added to the
+        "Saved.Address".
+
+        @param service object the Service DBus interface to clear properties.
+        @param options dict parameters that were used to configure the DHCP
+            server.
+
+        """
+        intended_ip = options[dhcp_packet.OPTION_REQUESTED_IP]
+        properties = service.GetProperties()
+        if intended_ip != properties['SavedIP.Address']:
+            raise error.TestFail('Saved IP address %s is not DHCP address %s' %
+                                 (properties['SavedIP.Address'], intended_ip))
 
 
     def make_lease_negotiation_rules(self, options):
@@ -211,6 +228,7 @@ class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
         static_ip_options = options.copy()
         static_ip_options.update(self._static_ip_options)
         self.check_dhcp_config(static_ip_options)
+        self.check_saved_ip(service, options)
 
 
     def test_body(self):
