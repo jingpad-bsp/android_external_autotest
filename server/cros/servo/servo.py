@@ -62,8 +62,8 @@ class Servo(object):
     # Time to keep USB power off before and after USB mux direction is changed
     USB_POWEROFF_DELAY = 2
 
-    # Time to wait before timing out on a dut-control call.
-    CALL_TIMEOUT_SECS = 60
+    # Time to wait before timing out on servo initialization.
+    INIT_TIMEOUT_SECS = 10
 
     KEY_MATRIX_ALT_0 = {
         'ctrl_refresh':  ['0', '0', '0', '1'],
@@ -585,7 +585,7 @@ class Servo(object):
             # grabs the pwr_button state and if it times out raises an error.
             timeout, result = retry.timeout(
                     self._server.get, args=('pwr_button', ),
-                    timeout_sec=Servo.CALL_TIMEOUT_SECS)
+                    timeout_sec=Servo.INIT_TIMEOUT_SECS)
             if timeout:
                 raise error.AutotestError('Timed out getting value for '
                                           'pwr_button.')
