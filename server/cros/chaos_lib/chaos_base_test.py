@@ -190,7 +190,9 @@ class WiFiChaosConnectionTest(object):
         """
         # Setting the band gets you the bss
         ap.set_band(band)
-        ssid = '_'.join([ap.get_router_short_name(),
+        # Remove all white space from the ssid
+        sanitized_short_name = ap.get_router_short_name().replace(' ', '_')
+        ssid = '_'.join([sanitized_short_name,
                          str(self.band_channel_map[band]),
                          str(band).replace('.', '_')])
 
