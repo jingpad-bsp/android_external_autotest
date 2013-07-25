@@ -156,7 +156,7 @@ class SiteHost(remote.RemoteHost):
 
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 10
-    BOOT_TIMEOUT = 45
+    BOOT_TIMEOUT = 60
     USB_BOOT_TIMEOUT = 150
 
     # We have a long timeout to ensure we don't flakily fail due to other
@@ -781,7 +781,9 @@ class SiteHost(remote.RemoteHost):
         self.run('chromeos-install --yes', timeout=self._INSTALL_TIMEOUT)
         self.servo.power_long_press()
         self.servo.switch_usbkey('off')
-        self.servo.power_short_press()
+        # We *must* use power_on() here; on Parrot it's how we get
+        # out of recovery mode.
+        self.servo.get_power_state_controller().power_on()
         if not self.wait_up(timeout=self.BOOT_TIMEOUT):
             raise error.AutoservError('DUT failed to reboot installed '
                                       'test image after %d seconds' %

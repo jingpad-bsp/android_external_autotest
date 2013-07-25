@@ -191,6 +191,67 @@ class _StumpyController(_AlexController):
         self.cold_reset()
 
 
+class _ParrotController(_PowerStateController):
+
+    """Power-state controller for Parrot.
+
+    On Parrot, uncontrolled assertion of `cold_reset` sometimes
+    leaves the DUT unresponsive.  The `cold_reset()` method
+    implemented in this class is the only known, reliable way to
+    assert the `cold_reset` signal on Parrot.
+
+    The `rec_mode` signal on Parrot is finicky.  These are the
+    rules:
+     1. You can't read or write the signal unless the DUT is on.
+     2. The setting of the signal is only sampled during a cold
+        reset.  The sampled setting applies to every boot until the
+        next cold reset.
+     3. After cold reset, the signal is turned off.
+    N.B.  Rule 3 is subtle.  Although `rec_mode` is off after reset,
+    because of rule 2, the DUT will continue to boot with the prior
+    recovery mode setting until the next cold reset.
+
+    """
+
+    _RESET_HOLD_TIME = 0.0
+    _EC_RESET_DELAY = 0.5
+
+    # _PWR_BUTTON_READY_TIME: This represents the time after cold
+    #   reset until the EC will be able to see a power button press.
+    #   Used in power_off().
+    _PWR_BUTTON_READY_TIME = 4
+
+    # _REC_MODE_READY_TIME: This represents the time after power on
+    #   until the EC will be able to see changes to rec_mode.  Used
+    #   in power_on().
+    _REC_MODE_READY_TIME = 0.75
+
+    @_inherit_docstring(_PowerStateController)
+    def recovery_supported(self):
+        return True
+
+    @_inherit_docstring(_PowerStateController)
+    def cold_reset(self):
+        # The sequence here leaves the DUT powered on, similar to
+        # Chrome EC devices.
+        self._servo.set_nocheck('pwr_button', 'press')
+        super(_ParrotController, self).cold_reset()
+        self._servo.set_nocheck('pwr_button', 'release')
+
+    @_inherit_docstring(_PowerStateController)
+    def power_off(self):
+        self.cold_reset()
+        time.sleep(self._PWR_BUTTON_READY_TIME)
+        self._servo.power_short_press()
+
+    @_inherit_docstring(_PowerStateController)
+    def power_on(self, rec_mode=REC_OFF):
+        self._servo.power_short_press()
+        time.sleep(self._REC_MODE_READY_TIME)
+        self._servo.set_nocheck('rec_mode', rec_mode)
+        self.cold_reset()
+
+
 class _ChromeECController(_PowerStateController):
 
     """Power-state controller for systems with a Chrome EC.
@@ -274,6 +335,7 @@ _CONTROLLER_BOARD_MAP = {
     'spring': _DaisyController,
     'link': _LinkController,
     'lumpy': _AlexController,
+    'parrot': _ParrotController,
     'stumpy': _StumpyController,
     'x86-alex': _AlexController
 }
