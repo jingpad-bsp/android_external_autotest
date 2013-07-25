@@ -479,10 +479,10 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         page_range = range(1, self.get_number_of_pages() + 1)
         for i in page_range:
             page_commands = [x for x in self._command_list if x['page'] == i]
-            self._command_list = sorted(page_commands,
-                                        key=lambda k: k['priority'])
-            if self._command_list:
-                first_command = self._command_list[0]['method']
+            sorted_page_commands = sorted(page_commands,
+                                          key=lambda k: k['priority'])
+            if sorted_page_commands:
+                first_command = sorted_page_commands[0]['method']
                 # If the first command is bringing the router up or down,
                 # do that before navigating to a URL.
                 if (first_command == self._power_up_router or
@@ -493,12 +493,12 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                         direction = 'down'
                     logging.info('Powering %s %s', direction,
                                  self.get_router_name())
-                    first_command(*self._command_list[0]['args'])
-                    self._command_list.pop(0)
+                    first_command(*sorted_page_commands[0]['args'])
+                    sorted_page_commands.pop(0)
 
                 # If the router is off, no point in navigating
                 if not self.router_on:
-                    if len(self._command_list) == 0:
+                    if len(sorted_page_commands) == 0:
                         # If all that was requested was to power off
                         # the router then abort here and do not set the
                         # configuration_success bit.  The reason is
@@ -509,7 +509,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                     break
 
                 self.navigate_to_page(i)
-                for command in self._command_list:
+                for command in sorted_page_commands:
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
