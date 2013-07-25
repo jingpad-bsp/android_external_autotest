@@ -107,7 +107,12 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         logging.error('Dumping command list %s', self._command_list)
         self.configuration_success = False
         self._command_list = []
-        self.destroy_driver_connection()
+
+
+    def get_screenshot(self):
+        """Returns the file as a base 64 encoded string for screenshot."""
+        if self.driver_connection_established:
+            return self.driver.get_screenshot_as_base64()
 
 
     def get_router_name(self):
@@ -291,7 +296,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.rpm_client.queue_request(self.host_name, 'ON')
         self.establish_driver_connection()
         # With the 5 second timeout give the router up to 2 minutes
-        for i in range(1,25):
+        for i in range(1,10):
             try:
                 self.navigate_to_page(1)
                 logging.debug('Page navigation complete')
@@ -305,7 +310,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 logging.info('Waiting for router %s to come back up.',
                              self.get_router_name())
                 # Sometime the APs just don't come up right.
-                if i%4 == 0:
+                if i%2 == 0:
                     logging.info('Cannot connect to AP, forcing cycle')
                     self.rpm_client.queue_request(self.host_name, 'CYCLE')
         raise RuntimeError('Unable to load admin page after powering on the '
