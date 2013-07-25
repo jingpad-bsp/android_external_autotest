@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import json
 import logging
 import os
-import socket
 import subprocess
+import urllib2
 
 from autotest_lib.client.common_lib import error
 
@@ -51,20 +52,28 @@ def _webdriver_is_running():
     # workstation as a stop gap.
     servers = ['127.0.0.1', 'cl12-16-410.mtv.corp.google.com',
                'krisr.mtv.corp.google.com']
-    port = 9515
-    # Create a TCP socket
+    # Perform a proper request
     for address in servers:
-        s = socket.socket()
-        logging.debug('Attempt to connect to %s:%s', address, port)
+        url = 'http://' + address + ':9515' + '/session'
+        req = urllib2.Request(url, '{"desiredCapabilities":{}}')
         try:
-            s.connect((address, port))
-            logging.info('Connected to %s:%s. Assuming webdriver '
-                         'is already running', address, port)
-            s.close()
+            response = urllib2.urlopen(req)
+        except:
+            logging.info('Webdriver on server %s is not running.', address)
+            continue
+        json_dict = json.loads(response.read())
+        if json_dict['status'] == 0:
+            # Connection was successful, close the session
+            session_url = os.path.join(url, json_dict['sessionId'])
+            req = urllib2.Request(session_url)
+            req.get_method = lambda: 'DELETE'
+            response = urllib2.urlopen(req)
+            logging.info('Webdriver connection established to server %s',
+                         address)
             return address
-        except socket.error, e:
-            logging.debug('Connection to %s:%s failed: %r', address, port, e)
-    logging.debug('No available webdriver service found.')
+        logging.info('Webdriver host was running, but could not establish '
+                     'a connection: %s', json_dict)
+    logging.info('No available webdriver service found.')
     return None
 
 
