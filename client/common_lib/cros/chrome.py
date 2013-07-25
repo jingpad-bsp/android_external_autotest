@@ -2,7 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from telemetry.core import browser_finder, browser_options, extension_to_load
+import os
+
+from telemetry.core import browser_finder, browser_options, exceptions
+from telemetry.core import extension_to_load, util
 
 
 # Name of the logged-in user specified by the telemetry login extension.
@@ -61,3 +64,22 @@ class Chrome(object):
     def browser_type(self):
         """Returns the browser_type."""
         return self._browser_type
+
+
+    def wait_for_browser_to_come_up(self):
+        """Waits for the browser to come up."""
+        def _BrowserReady(cr):
+            try:
+                tab = cr.browser.tabs.New()
+            except (exceptions.BrowserGoneException,
+                    exceptions.BrowserConnectionGoneException):
+                return False
+            tab.Close()
+            return True
+        util.WaitFor(lambda: _BrowserReady(self), poll_interval=1, timeout=10)
+
+
+    def is_logged_in(self):
+        """Returns true iff logged in."""
+        # TODO(achuith): Do this better.
+        return os.path.exists('/var/run/state/logged-in')

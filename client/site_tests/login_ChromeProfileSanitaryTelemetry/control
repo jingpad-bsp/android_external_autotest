@@ -1,0 +1,26 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "login_ChromeProfileSanitaryTelemetry"
+PURPOSE = "Verify Chrome uses correct profile when it restarts."
+CRITERIA = """
+Fails if Chrome uses a different profile after it restarts.
+"""
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "login"
+TEST_TYPE = "client"
+EXPERIMENTAL = "True"
+
+# TODO(achuith, dennisjeffrey): Replace login_ChromeProfileSanitary with this
+# test after this is promoted to non-experimental.
+
+DOC = """
+This test checks that, after logging in successfully and crashing Chrome, the
+browser is still using the correct profile (the one on encrypted storage).
+"""
+
+job.run_test('login_ChromeProfileSanitaryTelemetry')
+
