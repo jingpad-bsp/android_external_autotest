@@ -8,6 +8,7 @@ import os, unittest
 import mox
 import common
 import subprocess
+import types
 from autotest_lib.site_utils import test_that
 
 
@@ -63,6 +64,17 @@ class TestThatUnittests(unittest.TestCase):
         # Deferred until schedule_local_suite knows about non-local builds.
         pass
 
+    def test_get_predicate_for_test_arg(self):
+        # Assert the type signature of get_predicate_for_test(...)
+        # Because control.test_that_wrapper calls this function,
+        # it is imperative for backwards compatilbility that
+        # the return type of the tested function does not change.
+        tests = ['dummy_test', 'e:name_expression', 'f:expression',
+                 'suite:suitename']
+        for test in tests:
+            pred, desc = test_that.get_predicate_for_test_arg(test)
+            self.assertTrue(isinstance(pred, types.FunctionType))
+            self.assertTrue(isinstance(desc, str))
 
     def test_run_job(self):
         class Object():

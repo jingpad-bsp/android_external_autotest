@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ast, datetime, logging
+import datetime, logging
 
 import common
 
@@ -17,6 +17,7 @@ from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.tko import utils as tko_utils
+
 
 
 """CrOS dynamic test suite generation and execution module.
@@ -222,7 +223,11 @@ class SuiteSpec(object):
                                level dependencies, which act just like test
                                dependencies and are appended to each test's
                                set of dependencies at job creation time.
-
+    @param predicate: Optional argument. If present, should be a function
+                      mapping ControlData objects to True if they should be
+                      included in suite. If argument is absent, suite
+                      behavior will default to creating a suite of based
+                      on the SUITE field of control files.
     """
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
@@ -231,7 +236,8 @@ class SuiteSpec(object):
                  timeout=24, firmware_reimage=False,
                  suite_dependencies=[], version_prefix=None,
                  bug_template={}, devserver_url=None,
-                 priority=priorities.Priority.DEFAULT, **dargs):
+                 priority=priorities.Priority.DEFAULT, predicate=None,
+                 **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -279,6 +285,12 @@ class SuiteSpec(object):
         @param version_prefix: A version prefix from provision.py that the
                                tests should be scheduled with.
         @param priority: Integer priority level.  Higher is more important.
+        @param predicate: Optional argument. If present, should be a function
+                          mapping ControlData objects to True if they should be
+                          included in suite. If argument is absent, suite
+                          behavior will default to creating a suite of based
+                          on the SUITE field of control files.
+
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -322,6 +334,7 @@ class SuiteSpec(object):
         self.bug_template = bug_template
         self.version_prefix = version_prefix
         self.priority = priority
+        self.predicate = predicate
 
 
 def skip_reimage(g):
@@ -366,6 +379,12 @@ def reimage_and_run(**dargs):
                                dependencies and are appended to each test's
                                set of dependencies at job creation time.
     @param devserver_url: url to the selected devserver.
+    @param predicate: Optional argument. If present, should be a function
+                      mapping ControlData objects to True if they should be
+                      included in suite. If argument is absent, suite
+                      behavior will default to creating a suite of based
+                      on the SUITE field of control files.
+
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for
@@ -403,25 +422,32 @@ def reimage_and_run(**dargs):
                                         user=suite_spec.job.user, debug=False)
 
     try:
-      my_job_id = int(tko_utils.get_afe_job_id(dargs['job'].tag))
-      logging.debug('Determined own job id: %d', my_job_id)
+        my_job_id = int(tko_utils.get_afe_job_id(dargs['job'].tag))
+        logging.debug('Determined own job id: %d', my_job_id)
     except ValueError:
-      my_job_id = None
-      logging.warning('Could not determine own job id.')
+        my_job_id = None
+        logging.warning('Could not determine own job id.')
+
+    if suite_spec.predicate is None:
+        predicate = Suite.name_in_tag_predicate(name)
+    else:
+        predicate = suite_spec.predicate
 
     _perform_reimage_and_run(suite_spec, afe, tko,
-                             suite_job_id=my_job_id)
+                             predicate, suite_job_id=my_job_id)
 
     logging.debug('Returning from dynamic_suite.reimage_and_run.')
 
 
-def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
+def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
     """
     Do the work of reimaging hosts and running tests.
 
     @param spec: a populated SuiteSpec object.
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param tko: an instance of TKO as defined in server/frontend.py.
+    @param predicate: A function mapping ControlData objects to True if they
+                      should be included in the suite.
     @param suite_job_id: Job id that will act as parent id to all sub jobs.
                          Default: None
     """
@@ -438,8 +464,9 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
         spec.job.resultdir,
         {constants.ARTIFACT_FINISHED_TIME: timestamp})
 
-    suite = Suite.create_from_name(
-        spec.name, spec.build, spec.board, spec.devserver,
+    suite = Suite.create_from_predicates(
+        predicates=[predicate], name=spec.name,
+        build=spec.build, board=spec.board, devserver=spec.devserver,
         afe=afe, tko=tko, pool=spec.pool,
         results_dir=spec.job.resultdir,
         max_runtime_mins=spec.max_runtime_mins, timeout=spec.timeout,

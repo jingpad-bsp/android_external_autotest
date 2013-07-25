@@ -86,6 +86,9 @@ def parse_options():
     parser.add_option("-r", "--priority", dest="priority",
                       default=priorities.Priority.DEFAULT,
                       action="store", help="Priority of suite")
+    parser.add_option("--suite_args", dest="suite_args",
+                      default=None, action="store",
+                      help="Argument string for suite control file.")
 
     options, args = parser.parse_args()
     return parser, options, args
@@ -588,7 +591,8 @@ def main():
         job_id = afe.run('create_suite_job', suite_name=options.name,
                          board=options.board, build=options.build,
                          check_hosts=wait, pool=options.pool, num=options.num,
-                         file_bugs=file_bugs, priority=priority)
+                         file_bugs=file_bugs, priority=priority,
+                         suite_args=options.suite_args)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)

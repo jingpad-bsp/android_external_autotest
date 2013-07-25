@@ -6,6 +6,7 @@
 import argparse
 import errno
 import os
+import pipes
 import re
 import shutil
 import signal
@@ -378,7 +379,6 @@ def validate_arguments(arguments):
     @raises: ValueError if arguments were invalid.
     """
     if arguments.remote == ':lab:':
-        raise ValueError('Running tests in test lab not yet supported.')
         if arguments.args:
             raise ValueError('--args flag not supported when running against '
                              ':lab:')
@@ -397,6 +397,8 @@ def parse_arguments(argv):
 
     @param argv: argument list to parse
     @returns:    parsed arguments.
+    @raises SystemExit if arguments are malformed, or required arguments
+            are not present.
     """
     parser = argparse.ArgumentParser(description='Run remote tests.')
 
@@ -618,9 +620,10 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
 
     logging.debug('test_that command line was: %s', argv)
 
-    # Hard coded to True temporarily. This will eventually be parsed to false
-    # if we are doing a run in the test lab.
-    local_run = True
+    if arguments.remote == ':lab:':
+      local_run = False
+    else:
+      local_run = True
 
     signal.signal(signal.SIGINT, sigint_handler)
     signal.signal(signal.SIGTERM, sigint_handler)
@@ -658,8 +661,16 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
         os.symlink(results_directory, _LATEST_RESULTS_DIRECTORY)
         return final_result
     else:
-        logging.error('Lab runs not yet supported.')
-        return 1
+        flattened_argv = ' '.join([pipes.quote(item) for item in argv])
+        command = [os.path.join(sysroot_autotest_path, 'site_utils',
+                                'run_suite.py'),
+                   '--board', arguments.board,
+                   '--build', arguments.build,
+                   '--suite_name', 'test_that_wrapper',
+                   '--pool', 'try-bot',
+                   '--suite_args', flattened_argv]
+        logging.info('About to start lab suite with command %s.', command)
+        return subprocess.call(command)
 
 
 def main(argv):

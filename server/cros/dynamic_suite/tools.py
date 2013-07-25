@@ -128,7 +128,7 @@ def inject_vars(vars, control_file_in):
     for key, value in vars.iteritems():
         # None gets injected as 'None' without this check; same for digits.
         if isinstance(value, str):
-            control_file += "%s='%s'\n" % (key, value)
+            control_file += "%s=%s\n" % (key, repr(value))
         else:
             control_file += "%s=%r\n" % (key, value)
     return control_file + control_file_in

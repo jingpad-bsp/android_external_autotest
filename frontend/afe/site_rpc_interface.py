@@ -81,7 +81,8 @@ def get_control_file_contents_by_name(build, board, ds, suite_name):
 
 def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                      num=None, file_bugs=False, timeout=24,
-                     priority=priorities.Priority.DEFAULT):
+                     priority=priorities.Priority.DEFAULT,
+                     suite_args=None):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -99,6 +100,9 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     @param file_bugs: File a bug on each test failure in this suite.
     @param timeout: The max lifetime of this suite, in hours.
     @param priority: Integer denoting priority. Higher is more important.
+    @param suite_args: Optional arguments which will be parsed by the suite
+                       control file. Used by control.test_that_wrapper to
+                       determine which tests to run.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
     @raises NoControlFileList: if we can't list the control files at all.
@@ -144,7 +148,10 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'file_bugs': file_bugs,
                    'timeout': timeout,
                    'devserver_url': ds.url(),
-                   'priority': priority}
+                   'priority': priority,
+                   'suite_args' : suite_args
+                   }
+
     control_file = tools.inject_vars(inject_dict, control_file_in)
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),
