@@ -257,12 +257,16 @@ class CrashServer(DevServer):
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
 
+        stats.Counter('CrashServer.symbolicate_dump').increment()
+        timer = stats.Timer('CrashServer.symbolicate_dump')
+        timer.start()
         # Symbolicate minidump.
         call = self.build_call('symbolicate_dump',
                                archive_url=_get_image_storage_server() + build)
         request = requests.post(
                 call, files={'minidump': open(minidump_path, 'rb')})
         if request.status_code == requests.codes.OK:
+            timer.stop()
             return request.text
 
         error_fd = cStringIO.StringIO(request.text)
