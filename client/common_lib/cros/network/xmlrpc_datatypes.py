@@ -143,6 +143,8 @@ class BgscanConfiguration(xmlrpc_types.XmlRpcStruct):
 
     SCAN_METHOD_DEFAULT = 'default'
     SCAN_METHOD_NONE = 'none'
+    DEFAULT_SHORT_INTERVAL_SECONDS = 30
+    DEFAULT_LONG_INTERVAL_SECONDS = 180
 
     def __init__(self, interface=None, signal=None, short_interval=None,
                  long_interval=None, method=None):

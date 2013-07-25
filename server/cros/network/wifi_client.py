@@ -415,7 +415,9 @@ class WiFiClient(object):
 
         """
         configuration.interface = self.wifi_if
-        self._shill_proxy.configure_bgscan(configuration)
+        if not self._shill_proxy.configure_bgscan(configuration):
+            raise error.TestError('Background scan configuration failed.')
+
         logging.info('bgscan configured.')
 
 
@@ -429,9 +431,12 @@ class WiFiClient(object):
 
     def enable_bgscan(self):
         """Enable wpa_supplicant bgscan."""
-        params = xmlrpc_datatypes.BgscanConfiguration()
-        params.interface = self.wifi_if
-        params.method = xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_DEFAULT
+        klass = xmlrpc_datatypes.BgscanConfiguration
+        params = xmlrpc_datatypes.BgscanConfiguration(
+                interface=self.wifi_if,
+                method=klass.SCAN_METHOD_DEFAULT,
+                short_interval=klass.DEFAULT_SHORT_INTERVAL_SECONDS,
+                long_interval=klass.DEFAULT_LONG_INTERVAL_SECONDS)
         self.configure_bgscan(params)
 
 
