@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 AUTHOR = "Aviv Keshet"
-NAME = "dummy_retry_alwaysflake"
+NAME = "dummy_Fail.retry_alwaysflake"
 PURPOSE = "Demonstrate failure methods of autotests."
 CRITERIA = "This test will never succeed."
-SUITE = "dummyflake"
+SUITE = "dummyflake, push_to_prod"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "dummy"
@@ -18,5 +18,6 @@ This is a dummy test that will be attempted 6 times, but always fail
 with TestFailRetry.
 """
 
-job.run_test('dummy_Fail', tag='Fail', to_throw='TestFailRetry')
-
+job.run_test('dummy_Fail', tag='RetryFail', to_throw='TestFailRetry')
+job.run_test('dummy_Fail', tag='RetrySuccess', to_throw='TestFailRetry',
+             retry_success_count=RETRIES)

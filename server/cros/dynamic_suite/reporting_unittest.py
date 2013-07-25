@@ -96,14 +96,14 @@ class ReportingTest(mox.MoxTestBase):
         Confirms that we call CreateTrackerIssue when an Issue search
         returns None.
         """
-        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
         client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                    mox.IgnoreArg())
         client.create_issue(mox.IgnoreArg()).AndReturn(
             {'id': self._FAKE_ISSUE_ID})
-        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
         reporting.TestBug.summary().AndReturn('')
 
@@ -120,7 +120,7 @@ class ReportingTest(mox.MoxTestBase):
         Confirms that we call AppendTrackerIssueById with the same issue
         returned by the issue search.
         """
-        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
         issue = self.mox.CreateMock(phapi_lib.Issue)
@@ -131,7 +131,7 @@ class ReportingTest(mox.MoxTestBase):
         client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                    mox.IgnoreArg())
         client.update_issue(self._FAKE_ISSUE_ID, mox.IgnoreArg())
-        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             issue)
 
         reporting.TestBug.summary().AndReturn('')
@@ -163,10 +163,10 @@ class ReportingTest(mox.MoxTestBase):
                     return False
             return True
 
-        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
-        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
         reporting.TestBug.summary().AndReturn('Summary')
 
@@ -185,11 +185,11 @@ class ReportingTest(mox.MoxTestBase):
 
     def testGenericBugCanBeFiled(self):
         """Test that we can use a Bug object to file a bug report."""
-        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
 
         bug = reporting.Bug('title', 'summary', 'marker')
 
-        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
 
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
@@ -231,7 +231,7 @@ class ReportingTest(mox.MoxTestBase):
 
 
 class FindIssueByMarkerTests(mox.MoxTestBase):
-    """Tests the _find_issue_by_marker function."""
+    """Tests the find_issue_by_marker function."""
 
     def setUp(self):
         super(FindIssueByMarkerTests, self).setUp()
@@ -260,7 +260,7 @@ class FindIssueByMarkerTests(mox.MoxTestBase):
                                                       mox.IgnoreArg())
 
         self.mox.ReplayAll()
-        result = reporting.Reporter()._find_issue_by_marker(None)
+        result = reporting.Reporter().find_issue_by_marker(None)
         self.assertTrue(result is None)
 
 
@@ -340,7 +340,7 @@ class LabelUpdateTests(mox.MoxTestBase):
 
 
     def _create_count_label(self, n):
-        return '%s%d' % (reporting.Reporter._AUTOFILED_COUNT, n)
+        return '%s%d' % (reporting.Reporter.AUTOFILED_COUNT, n)
 
 
     def _test_count_label_update(self, labels, remove, expected_count):
@@ -404,7 +404,7 @@ class LabelUpdateTests(mox.MoxTestBase):
         """Test that autofiled-count increment ignores unusual labels."""
         old_count = self._create_count_label(3)
         self._test_count_label_update(
-                [reporting.Reporter._AUTOFILED_COUNT + 'bogus',
+                [reporting.Reporter.AUTOFILED_COUNT + 'bogus',
                  self._create_count_label(8) + '-bogus',
                  old_count],
                 [old_count], 4)

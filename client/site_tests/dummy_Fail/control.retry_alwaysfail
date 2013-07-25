@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 AUTHOR = "Aviv Keshet"
-NAME = "dummy_retry_alwaysfail"
+NAME = "dummy_Fail.retry_alwaysfail"
 PURPOSE = "Demonstrate failure methods of autotests."
 CRITERIA = "This test will never succeed."
-SUITE = "dummyflake"
+SUITE = "dummyflake, push_to_prod"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "dummy"

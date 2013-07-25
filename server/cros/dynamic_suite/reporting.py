@@ -264,10 +264,10 @@ class Reporter(object):
     _oauth_credentials = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'credentials', default='')
 
-    # _AUTOFILED_COUNT is a label prefix used to indicate how
+    # AUTOFILED_COUNT is a label prefix used to indicate how
     # many times we think we've updated an issue automatically.
-    _AUTOFILED_COUNT = 'autofiled-count-'
-    _PREDEFINED_LABELS = ['autofiled', '%s%d' % (_AUTOFILED_COUNT, 1),
+    AUTOFILED_COUNT = 'autofiled-count-'
+    _PREDEFINED_LABELS = ['autofiled', '%s%d' % (AUTOFILED_COUNT, 1),
                           'OS-Chrome', 'Type-Bug',
                           'Restrict-View-Google']
 
@@ -390,7 +390,7 @@ class Reporter(object):
             return filed_bug.get('id')
 
 
-    def _modify_bug_report(self, issue_id, comment, label_update):
+    def modify_bug_report(self, issue_id, comment, label_update, status=''):
         """Modifies an existing bug report with a new comment.
 
         Adds the given comment and applies the given list of label
@@ -399,23 +399,24 @@ class Reporter(object):
         @param issue_id     Id of the issue to update with.
         @param comment      Comment to update the issue with.
         @param label_update List with label updates.
+        @param status       New status of the issue.
         """
         updates = {
             'content': comment,
-            'updates': { 'labels': label_update }
+            'updates': { 'labels': label_update, 'status': status }
         }
         try:
             self._phapi_client.update_issue(issue_id, updates)
         except phapi_lib.ProjectHostingApiException as e:
             logging.warning('Unable to update issue %s, comment %s, '
-                            'labels %r: %s', issue_id, comment,
-                            label_update, e)
+                            'labels %r, status %s: %s', issue_id, comment,
+                            label_update, status, e)
         else:
-            logging.info('Updated issue %s, comment %s, labels %r.',
-                         issue_id, comment, label_update)
+            logging.info('Updated issue %s, comment %s, labels %r, status %s.',
+                         issue_id, comment, label_update, status)
 
 
-    def _find_issue_by_marker(self, marker):
+    def find_issue_by_marker(self, marker):
         """
         Queries the tracker to find if there is a bug filed for this issue.
 
@@ -519,7 +520,7 @@ class Reporter(object):
         @return An Issue instance, representing an open issue that is a
                 duplicate of the one being searched for.
         """
-        issue = self._find_issue_by_marker(marker)
+        issue = self.find_issue_by_marker(marker)
         if not issue or issue.state == constants.ISSUE_OPEN:
             return issue
 
@@ -573,16 +574,16 @@ class Reporter(object):
         """
         counts = []
         count_max = 1
-        is_count_label = lambda l: l.startswith(self._AUTOFILED_COUNT)
+        is_count_label = lambda l: l.startswith(self.AUTOFILED_COUNT)
         for label in filter(is_count_label, issue.labels):
             try:
-                count = int(label[len(self._AUTOFILED_COUNT):])
+                count = int(label[len(self.AUTOFILED_COUNT):])
             except ValueError:
                 continue
             count_max = max(count, count_max)
             counts.append('-%s' % label)
         new_count = count_max + 1
-        counts.append('%s%d' % (self._AUTOFILED_COUNT, new_count))
+        counts.append('%s%d' % (self.AUTOFILED_COUNT, new_count))
         return counts, new_count
 
 
@@ -626,7 +627,7 @@ class Reporter(object):
             comment = '%s\n\n%s' % (bug.title(), self._anchor_summary(bug))
             count_update, bug_count = (
                     self._create_autofiled_count_update(issue))
-            self._modify_bug_report(issue.id, comment, count_update)
+            self.modify_bug_report(issue.id, comment, count_update)
             return issue.id, bug_count
 
         sheriffs = []

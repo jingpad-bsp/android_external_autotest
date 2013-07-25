@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "chrome-ui"
-NAME = "Telemetry Login Status Test"
+NAME = "telemetry_CrosTests.LoginStatus"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "server"
+SUITE = "push_to_prod"
 
 DOC = """
 This server control file executes the CrOS telemetry test: testLoginStatus.

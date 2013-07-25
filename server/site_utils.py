@@ -16,6 +16,7 @@ from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.server.cros.dynamic_suite import job_status
 
 
 _SHERIFF_JS = global_config.global_config.get_config_value(
@@ -272,3 +273,25 @@ def lock_host_with_labels(afe, lock_manager, labels):
                          host.hostname, labels)
 
     raise error.TestError('Could not lock a device with labels %s' % labels)
+
+
+def get_test_views_from_tko(suite_job_id, tko):
+    """Get test name and result for given suite job ID.
+
+    @param suite_job_id: ID of suite job.
+    @param tko: an instance of TKO as defined in server/frontend.py.
+    @return: A dictionary of test status keyed by test name, e.g.,
+             {'dummy_Fail.Error': 'ERROR', 'dummy_Fail.NAError': 'TEST_NA'}
+    @raise: Exception when there is no test view found.
+
+    """
+    views = tko.run('get_detailed_test_views', afe_job_id=suite_job_id)
+    relevant_views = filter(job_status.view_is_relevant, views)
+    if not relevant_views:
+        raise Exception('Failed to retrieve job results.')
+
+    test_views = {}
+    for view in relevant_views:
+        test_views[view['test_name']] = view['status']
+
+    return test_views

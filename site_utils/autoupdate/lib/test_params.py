@@ -10,6 +10,7 @@ import test_control
 
 
 _DEFAULT_AU_SUITE_NAME = 'au'
+_additional_suite_names = ', push_to_prod'
 
 
 class TestEnv(object):
