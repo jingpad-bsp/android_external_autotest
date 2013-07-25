@@ -92,6 +92,9 @@ class PingResult(object):
     5 packets transmitted, 5 received, 0% packet loss, time 4007ms
     rtt min/avg/max/mdev = 1.740/1.771/1.799/0.042 ms
 
+    We also sometimes see result lines like:
+    9 packets transmitted, 9 received, +1 duplicates, 0% packet loss, time 90 ms
+
     """
 
     @property
@@ -106,6 +109,15 @@ class PingResult(object):
                 'dev': str(self.dev_latency)}
 
 
+    @staticmethod
+    def _regex_int_from_string(regex, value):
+        m = re.search(regex, value)
+        if m is None:
+            return None
+
+        return int(m.group(1))
+
+
     def __init__(self,ping_output):
         """Construct a PingResult.
 
@@ -113,19 +125,19 @@ class PingResult(object):
 
         """
         super(PingResult, self).__init__()
-        m = re.search('([0-9]*) packets transmitted, '
-                      '([0-9]*) received, '
-                      '(\\+([0-9]*) errors, )?'
-                      '([0-9]*)% packet loss',
-                      ping_output)
-        if m is None:
+        loss_line = (filter(lambda x: x.find('packets transmitted') > 0,
+                            ping_output.splitlines()) or [''])[0]
+        self.sent = self._regex_int_from_string('([0-9]+) packets transmitted',
+                                                loss_line)
+        self.received = self._regex_int_from_string('([0-9]+) received',
+                                                    loss_line)
+        self.loss = self._regex_int_from_string('([0-9]+)% packet loss',
+                                                loss_line)
+        if None in (self.sent, self.received, self.loss):
             raise error.TestFail('Failed to parse transmission statistics.')
 
-        self.sent = int(m.group(1))
-        self.received = int(m.group(2))
-        self.loss = int(m.group(5))
         m = re.search('(round-trip|rtt) min[^=]*= '
-                      '([0-9.]*)/([0-9.]*)/([0-9.]*)/([0-9.]*)', ping_output)
+                      '([0-9.]+)/([0-9.]+)/([0-9.]+)/([0-9.]+)', ping_output)
         if m is not None:
             self.min_latency = float(m.group(2))
             self.avg_latency = float(m.group(3))
