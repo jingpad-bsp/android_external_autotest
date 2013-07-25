@@ -192,7 +192,7 @@ class Modem3gpp(modem.Modem):
 
     @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s',
                          async_callbacks=('return_cb', 'raise_cb'))
-    def Register(self, operator_id, return_cb, raise_cb):
+    def Register(self, operator_id, return_cb=None, raise_cb=None):
         """
         Request registration with a given modem network.
 
@@ -304,6 +304,10 @@ class Modem3gpp(modem.Modem):
             self, operator_id="", return_cb=None, raise_cb=None):
         """
         Overridden from superclass.
+
+        @param operator_id: See superclass documentation.
+        @param return_cb: See superclass documentation.
+        @param raise_cb: See superclass documentation.
 
         """
         register_machine.RegisterMachine(

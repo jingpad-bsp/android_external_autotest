@@ -26,6 +26,11 @@ class ActivationTest(object):
 
     """
     class TestModem(modem_3gpp.Modem3gpp):
+        """
+        Base class for the custom 3GPP fake modems that are defined in this
+        test.
+
+        """
         def _InitializeProperties(self):
             props = modem_3gpp.Modem3gpp._InitializeProperties(self)
             modem_props = props[mm1.I_MODEM]
@@ -50,7 +55,8 @@ class ActivationTest(object):
             }
             return props
 
-        def RegisterWithNetwork(self):
+        def RegisterWithNetwork(
+                self, operator_id='', return_cb=None, raise_cb=None):
             # Make this do nothing, so that we don't automatically
             # register to a network after enable.
             return
@@ -66,6 +72,11 @@ class ActivationTest(object):
         self.test_modem = self.SetupTestModem()
 
     def Cleanup(self):
+        """
+        Makes the modem look like it has been activated to satisfy the test
+        end condition.
+
+        """
         # Set the MDN to a non-zero value, so that shill removes the ICCID from
         # activating_iccid_store.profile. This way, individual test runs won't
         # interfere with each other.
@@ -78,6 +89,11 @@ class ActivationTest(object):
             self.test.CheckServiceActivationState('activated')
 
     def Run(self):
+        """
+        Configures the pseudomodem to run with the test modem, runs the test
+        and cleans up.
+
+        """
         if not self.test_modem:
             raise test.TestFail('Uninitialized test modem')
         self.pmm_context.SetModem(self.test_modem)
@@ -85,9 +101,20 @@ class ActivationTest(object):
         self.Cleanup()
 
     def SetupTestModem(self):
+        """
+        Returns the modem.Modem3gpp implementation that will be used by the
+        test. Should be implemented by the subclass.
+
+        @return An instance of ActivationTest.TestModem.
+
+        """
         raise NotImplementedError()
 
     def RunTest(self):
+        """
+        Runs the body of the test. Should be implemented by the subclass.
+
+        """
         raise NotImplementedError()
 
 class TimeoutResetTest(ActivationTest):
@@ -138,9 +165,16 @@ class TimeoutActivatedTest(ActivationTest):
     """
     def SetupTestModem(self):
         class Modem(ActivationTest.TestModem):
-            def RegisterWithNetwork(self):
+            """
+            Fake modem that only becomes registered if it has been reset at
+            least once.
+
+            """
+            def RegisterWithNetwork(
+                    self, operator_id='', return_cb=None, raise_cb=None):
                 if self.Get(I_ACTIVATION_TEST, 'ResetCalled'):
-                    modem_3gpp.Modem3gpp.RegisterWithNetwork(self)
+                    modem_3gpp.Modem3gpp.RegisterWithNetwork(
+                            self, operator_id, return_cb, raise_cb)
         return Modem()
 
     def RunTest(self):
@@ -180,11 +214,17 @@ class ResetAfterRegisterTest(ActivationTest):
     """
     def SetupTestModem(self):
         class Modem(ActivationTest.TestModem):
+            """
+            Fake modem that becomes registered once registration has been
+            triggered at least twice.
+
+            """
             def __init__(self):
                 ActivationTest.TestModem.__init__(self)
                 self.register_count = 0
 
-            def RegisterWithNetwork(self):
+            def RegisterWithNetwork(
+                    self, operator_id='', return_cb=None, raise_cb=None):
                 # Make the initial registration due triggered by Enable do
                 # nothing. We expect exactly two Enable commands:
                 #   1. Triggered by shill to enable the modem,
@@ -192,7 +232,8 @@ class ResetAfterRegisterTest(ActivationTest):
                 #      ResetAfterRegisterTest.RunTest.
                 self.register_count += 1
                 if self.register_count > 2:
-                    modem_3gpp.Modem3gpp.RegisterWithNetwork(self)
+                    modem_3gpp.Modem3gpp.RegisterWithNetwork(
+                            self, operator_id, return_cb, raise_cb)
         return Modem()
 
     def RunTest(self):
@@ -256,23 +297,42 @@ class ActivatedDueToMdnTest(ActivationTest):
         self.test.CheckServiceActivationState('activated')
 
 class network_LTEActivate(test.test):
+    """
+    After an online payment to activate a network, shill keeps track of service
+    activation by monitoring changes to network registration and MDN updates
+    combined with a modem reset. The test checks that the
+    Cellular.ActivationState property of the service has the correct value
+    associated with it by simulating possible scenarios using the pseudo modem
+    manager.
+
+    """
     version = 1
 
     def GetModem(self):
+        """Returns a modem proxy."""
         manager, modem_path  = mm.PickOneModem('')
         return manager.GetModem(modem_path)
 
     def GetModemState(self):
+        """Returns the current ModemManager modem state."""
         modem = self.GetModem()
         props = modem.GetAll(mm1.I_MODEM)
         return props['State']
 
     def GetModemResetCalled(self):
+        """Returns True, if the modem has been reset at least once."""
         modem = self.GetModem()
         props = modem.GetAll(I_ACTIVATION_TEST)
         return props['ResetCalled']
 
     def CheckServiceActivationState(self, expected_state):
+        """
+        Asserts that the service activation state matches |expected_state|
+        within ACTIVATION_STATE_TIMEOUT.
+
+        @param expected_state: The expected service activation state.
+
+        """
         service = self.FindCellularService()
         state = self.flim.WaitForServiceState(
             service=service,
@@ -285,12 +345,14 @@ class network_LTEActivate(test.test):
                 % (expected_state, state))
 
     def FindCellularService(self):
+        """Returns the current cellular service."""
         service = self.flim.FindCellularService()
         if not service:
             raise error.TestError('Could not find cellular service.')
         return service
 
     def FindCellularDevice(self):
+        """Returns the current cellular device."""
         device = self.flim.FindCellularDevice()
         if not device:
             raise error.TestError('Could not find cellular device.')
