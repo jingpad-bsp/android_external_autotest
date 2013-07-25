@@ -147,7 +147,7 @@ class Suite(object):
 
         @param predicates: A list of callables that accept ControlData
                            representations of control files. A test will be
-                           included in suite is all callables in this list
+                           included in suite if all callables in this list
                            return True on the given control file.
         @param build: the build on which we're running this suite.
         @param board: the board on which we're running this suite.
