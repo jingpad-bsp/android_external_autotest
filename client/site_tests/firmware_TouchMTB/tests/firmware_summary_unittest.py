@@ -186,7 +186,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
     def test_by_validator(self):
         expected_scores = {
             'fw_11.23': {
-                'CountTrackingIDValidator': 0.95652173913,
+                'CountTrackingIDValidator': 0.962962962963,
+                'CountPacketsValidator': 0.895833333333,
                 'DrumrollValidator': 0.75,
                 'Linearity(BothEnds)Validator': 0.0483588644595,
                 'Linearity(Middle)Validator': 0.239845374323,
@@ -195,7 +196,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
                 'StationaryFingerValidator': 0.832476442124,
             },
             'fw_11.27': {
-                'CountTrackingIDValidator': 0.971428571429,
+                'CountTrackingIDValidator': 0.975609756098,
+                'CountPacketsValidator': 1.0,
                 'DrumrollValidator': 0.666666666667,
                 'Linearity(BothEnds)Validator': 0.017763196141,
                 'Linearity(Middle)Validator': 0.313444723824,
@@ -210,10 +212,30 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
                 actual_score = round(actual_score, self._round_digits)
                 self.assertAlmostEqual(actual_score, expected_score)
 
+    def test_stat_metrics(self):
+        """Test the statistics of metrics."""
+        expected_stats_values = {
+            'fw_11.23': {
+                'CountPacketsValidator':
+                    [('pct of incorrect cases (%)-packets', 25.00)],
+            },
+            'fw_11.27': {
+                'CountPacketsValidator':
+                    [('pct of incorrect cases (%)-packets', 0.00)],
+            },
+        }
+
+        for fw, fw_stats_values in expected_stats_values.items():
+            for validator, stats_metrics in fw_stats_values.items():
+                result = self.slog.get_result(fw=fw, validator=validator)
+                for metric_name, expected_value in stats_metrics:
+                    actual_value = result.stat_metrics.stats_values[metric_name]
+                    self.assertAlmostEqual(actual_value, expected_value)
+
     def test_final_weighted_average(self):
         expected_weighted_averages = {
-            'fw_11.23': 0.7084620649934005,
-            'fw_11.27': 0.8343479552482307,
+            'fw_11.23': 0.7266936870585381,
+            'fw_11.27': 0.8499773935896175,
         }
         final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():

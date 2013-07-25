@@ -704,19 +704,28 @@ class CountPacketsValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None, slot=0):
-        name = self.__class__.__name__
+        self.name = self.__class__.__name__
         super(CountPacketsValidator, self).__init__(criteria_str, mf, device,
-                                                    name)
+                                                    self.name)
         self.slot = slot
 
     def check(self, packets, variation=None):
         """Check the number of packets in the specified slot."""
         self.init_check(packets)
         # Get the number of packets in that slot
-        num_packets = self.packets.get_num_packets(self.slot)
+        actual_count_packets = self.packets.get_num_packets(self.slot)
         msg = 'Number of packets slot%d: %s'
-        self.log_details(msg % (self.slot, num_packets))
-        self.vlog.score = self.fc.mf.grade(num_packets)
+        self.log_details(msg % (self.slot, actual_count_packets))
+
+        # Add the metric for the count of packets
+        result = re.search('>.*\s*(\d+)', self.criteria_str)
+        assert result, 'Check the criteria of %s' % self.name
+        expected_count_packets = int(result.group(1))
+        metric_value = (actual_count_packets, expected_count_packets)
+        metric_name = self.mnprops.COUNT_PACKETS
+        self.vlog.metrics = [firmware_log.Metric(metric_name, metric_value)]
+
+        self.vlog.score = self.fc.mf.grade(actual_count_packets)
         return self.vlog
 
 

@@ -57,7 +57,7 @@ from common_util import Debug, print_and_exit
 from firmware_constants import AXIS
 
 
-MetricProps = namedtuple('MetricProps', ['description', 'stat_func'])
+MetricProps = namedtuple('MetricProps', ['description', 'note', 'stat_func'])
 
 
 def _setup_debug(debug_flag):
@@ -129,10 +129,26 @@ class MetricNameProps:
                 'max error in y (mm)'
           . name variations: for example, ['x', 'y'] for MAX_ERR
           . metric name description: 'The max err of all samples'
+          . metric note: None
           . the stat function used to calculate the statistics for the metric:
             we use max() to calculate MAX_ERR in x/y for linearity.
+
+        About metric note:
+            We show tuples instead of percentages if the metrics values are
+            percentages. This is because such a tuple unveils more information
+            (i.e., the values of the nominator and the denominator) than a mere
+            percentage value. For examples,
+
+            1f-click miss rate (%):
+                one_finger_physical_click.center (20130710_063117) : (0, 1)
+                  the tuple means (the number of missed clicks, total clicks)
+
+            intervals > xxx ms (%)
+                one_finger_tap.top_left (20130710_063117) : (1, 6)
+                  the tuple means (the number of long intervals, total packets)
         """
-        # stat_functions include: max, average, pct_by_numbers, and pct_by_cases
+        # stat_functions include: max, average, pct_by_numbers,
+        # pct_by_cases_tids, and pct_by_cases_packets
         average = lambda lst: float(sum(lst)) / len(lst)
         _pct = lambda lst: float(lst[0]) / lst[1] * 100
 
@@ -143,78 +159,111 @@ class MetricNameProps:
 
         # pct of incorrect cases in [(acutal_value, expected_value), ...]
         #   E.g., lst = [(1, 1), (0, 1), (1, 1), (1, 1)]
-        #   pct_by_cases would be 1 / 4 * 100%
-        pct_by_cases = lambda lst: _pct(
+        #   pct_by_cases_tids would be 1 / 4 * 100%
+        # This is used for CountTrackingIDValidator
+        pct_by_cases_tids = lambda lst: _pct(
                 [len([pair for pair in lst if pair[0] != pair[1]]), len(lst)])
+
+        # pct of incorrect cases in [(acutal_value, min expected_value), ...]
+        #   E.g., lst = [(3, 3), (4, 3)]
+        #     pct_by_cases_packets would be 0 / 2 * 100%
+        #   E.g., lst = [(2, 3), (5, 3)]
+        #     pct_by_cases_packets would be 1 / 2 * 100%
+        # This is used for CountPacketsIDValidator
+        pct_by_cases_packets = lambda lst: _pct(
+                [len([pair for pair in lst if pair[0] < pair[1]]), len(lst)])
 
         max_report_interval_str = self.get_report_interval(conf.min_report_rate)
 
         # A dictionary from metric attribute to its properties:
-        #    {metric_attr: (template, name_variations, description, stat_func)}
-        # The keys below are ordered alphabetically.
+        #    {metric_attr: (template,
+        #                   name_variations,
+        #                   description,
+        #                   metric_note,
+        #                   stat_func)
+        #    }
+        # Ordered by validators
         self.raw_metrics_props = {
-            # Count TrackingID Validator
-            'TID': (
-                'pct of incorrect cases (%)',
+            # Count Packets Validator
+            'COUNT_PACKETS': (
+                'pct of incorrect cases (%)-packets',
                 None,
                 'pct of incorrect cases over total cases',
-                pct_by_cases),
+                '(actual number of packets, expected number of packets)',
+                pct_by_cases_packets),
+            # Count TrackingID Validator
+            'TID': (
+                'pct of incorrect cases (%)-tids',
+                None,
+                'pct of incorrect cases over total cases',
+                '(actual tracking IDs, expected tracking IDs)',
+                pct_by_cases_tids),
             # Drumroll Validator
             'CIRCLE_RADIUS': (
                 'circle radius (mm)',
                 None,
                 'Anything over 2mm is failure',
+                None,
                 max),
             # Linearity Validator
             'MAX_ERR': (
                 'max error in {} (mm)',
                 AXIS.LIST,
                 'The max err of all samples',
+                None,
                 max),
             'RMS_ERR': (
                 'rms error in {} (mm)',
                 AXIS.LIST,
                 'The mean of all rms means of all trials',
+                None,
                 average),
             # Physical Click Validator
             'CLICK': (
                 '{}f-click miss rate (%)',
                 conf.fingers_physical_click,
                 'Should be close to 0 (0 is perfect)',
+                '(the number of missed clicks, total clicks)',
                 pct_by_numbers),
             # Range Validator
             'RANGE': (
                 '{} edge not reached (mm)',
                 ['left', 'right', 'top', 'bottom'],
                 'Min unreachable distance',
+                None,
                 max),
             # Report Rate Validator
             'LONG_INTERVALS': (
                 'pct of intervals > {} ms (%)',
                 [max_report_interval_str,],
                 '0% is required',
+                '(the number of long intervals, total packets)',
                 pct_by_numbers),
             'AVE_TIME_INTERVAL': (
                 'average time interval (ms)',
                 None,
                 'less than %s ms is required' % max_report_interval_str,
+                None,
                 average),
             'MAX_TIME_INTERVAL': (
                 'max time interval (ms)',
                 None,
                 'less than %s ms is required' % max_report_interval_str,
+                None,
                 max),
             # Stationary Finger Validator
             'MAX_DISTANCE': (
                 'max distance (mm)',
                 None,
                 'max distance of any two points from any run',
+                None,
                 max),
         }
 
         # Set the metric attribute to its template
         #   E.g., self.MAX_ERR = 'max error in {} (mm)'
-        for key, (template, _, _, _) in self.raw_metrics_props.items():
+        for key, props in self.raw_metrics_props.items():
+            template = props[0]
             setattr(self, key, template)
 
     def _derive_metrics_props(self):
@@ -244,8 +293,8 @@ class MetricNameProps:
         """
         self.metrics_props = {}
         for raw_props in self.raw_metrics_props.values():
-            template, name_variations, description, stat_func = raw_props
-            metric_props = MetricProps(description, stat_func)
+            template, name_variations, description, note, stat_func = raw_props
+            metric_props = MetricProps(description, note, stat_func)
             if name_variations:
                 # Expand the template with every variations.
                 #   E.g., template = 'max error in {} (mm)' is expanded to

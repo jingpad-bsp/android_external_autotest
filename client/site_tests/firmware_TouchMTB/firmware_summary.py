@@ -207,6 +207,15 @@ class FirmwareSummary:
         self._print_summary_title('Test Summary (by validator)')
         self._print_result_stats()
 
+    def _get_metric_name_for_display(self, metric_name):
+        """Get the metric name for display.
+        We would like to shorten the metric name when displayed.
+
+        @param metric_name: a metric name
+        """
+        return metric_name.split('-')[0]
+
+
     def _print_statistics_of_metrics(self, gesture=None):
         """Print the statistics of metrics by gesture or by validator.
 
@@ -252,47 +261,11 @@ class FirmwareSummary:
                     if not fw_stats_values_printed:
                         fw_stats_values_printed = True
                         print ' ' * 2, validator
-                    print name_format.format(metric_name),
+                    disp_name = self._get_metric_name_for_display(metric_name)
+                    print name_format.format(disp_name),
                     print values_format.format(*values),
                     print description_format.format(
                             stat_metrics.metrics_props[metric_name].description)
-
-    def _get_metric_notes(self):
-        """Get the metric notes.
-
-        We show tuples instead of percentages if the metrics values are
-        percentages. This is because such a tuple unveils more information
-        (i.e., the values of the nominator and the denominator) than a mere
-        percentage value. For examples,
-
-        1f-click miss rate (%):
-            one_finger_physical_click.center (20130710_063117) : (0, 1)
-              the tuple means (the number of missed clicks, total clicks)
-
-        intervals > xxx ms (%)
-            one_finger_tap.top_left (20130710_063117) : (1, 6)
-              the tuple means (the number of long intervals, total packets)
-
-        We would like to add metric notes to explain such special cases.
-        """
-        # For physical clicks
-        mnprops = firmware_log.MetricNameProps()
-        note_physical_click = '(the number of missed clicks, total clicks)'
-        metric_notes = dict([(mnprops.CLICK.format(finger), note_physical_click)
-                             for finger in conf.fingers_physical_click])
-
-        # For the long interval metric of report rates
-        report_interval_str = mnprops.get_report_interval(conf.min_report_rate)
-        name_long_intervals = mnprops.LONG_INTERVALS.format(report_interval_str)
-        note_long_intervals = '(the number of long intervals, total packets)'
-        metric_notes[name_long_intervals] = note_long_intervals
-
-        # For count of tracking IDs
-        name_tid = mnprops.TID
-        note_tid = '(actual tracking IDs, expected tracking IDs)'
-        metric_notes[name_tid] = note_tid
-
-        return metric_notes
 
     def _print_raw_metrics_values(self):
         """Print the raw metrics values."""
@@ -304,19 +277,21 @@ class FirmwareSummary:
         # of the elements in the subkey.
         sum_len = lambda lst: sum([len(str(l)) if l else 0 for l in lst])
 
-        metric_notes = self._get_metric_notes()
+        mnprops = firmware_log.MetricNameProps()
         print '\n\nRaw metrics values'
         print '-' * 80
         for fw in self.slog.fws:
-            print fw
+            print '\n', fw
             for validator in self.slog.validators:
                 result = self.slog.get_result(fw=fw, validator=validator)
                 metrics_dict = result.stat_metrics.metrics_dict
                 if metrics_dict:
                     print '\n' + ' ' * 3 + validator
                 for metric_name, metrics in sorted(metrics_dict.items()):
-                    print ' ' * 6 + metric_name
-                    metric_note = metric_notes.get(metric_name, '')
+                    disp_name = self._get_metric_name_for_display(metric_name)
+                    print ' ' * 6 + disp_name
+
+                    metric_note = mnprops.metrics_props[metric_name].note
                     if metric_note:
                         msg = '** Note: value below represents '
                         print ' ' * 9 + msg + metric_note
