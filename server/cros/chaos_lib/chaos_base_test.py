@@ -86,7 +86,6 @@ class WiFiChaosConnectionTest(object):
         self.ap_config = ap_configurator_config.APConfiguratorConfig()
         self.psk_password = ''
         download_chromium_prebuilt.check_webdriver_ready()
-        self.screenshot_list = []
 
         # Test on channel 5 for 2.4GHz band and channel 48 for 5GHz band.
         # TODO(tgao): support user-specified channel.
@@ -150,15 +149,6 @@ class WiFiChaosConnectionTest(object):
                 {'error': self.FAILED_CONFIG_MSG,
                  'try': 0})
             self.error_list.append(ap_info)
-            # Capture screenshot when configuration fails
-            for image in screenshot_list:
-                snapshot = os.path.join(log_dir,
-                                        'config_error_screenshot_%d.png' %
-                                        self.screenshot_list.index(image))
-                f = open(snapshot, 'wb')
-                f.write(image.decode('base64'))
-                f.close()
-            self.screenshot_list = []
             return
 
         # Make iteration 1-indexed
@@ -297,12 +287,6 @@ class WiFiChaosConnectionTest(object):
             scan_list.append(ap)
         # Apply config settings to multiple APs in parallel.
         cartridge.run_configurators()
-        if not ap.get_configuration_success():
-            logging.debug('Taking screenshot of configuration error page')
-            screenshot = ap.get_screenshot()
-            if screenshot:
-                self.screenshot_list.append(screenshot)
-            ap.destroy_driver_connection()
         # iw mlan0 scan for ARM and iw wlan0 scan for x86
         scan_bss = 'for device in $(iw dev | grep Interface | awk \
                     \'{ print $2 }\'); do iw $device scan; done'
@@ -335,7 +319,6 @@ class WiFiChaosConnectionTest(object):
                                    ap_info['brand'], ap_info['model'],
                                    ap_info['ssid'], ap_info['bss'])
                     ap_info['configurator'].reset_command_list()
-                    ap.destroy_driver_connection()
         return configured_aps
 
 
