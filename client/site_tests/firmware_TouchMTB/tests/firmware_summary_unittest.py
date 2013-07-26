@@ -186,23 +186,25 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
     def test_by_validator(self):
         expected_scores = {
             'fw_11.23': {
-                'CountTrackingIDValidator': 0.962962962963,
                 'CountPacketsValidator': 0.895833333333,
+                'CountTrackingIDValidator': 0.935483870968,
                 'DrumrollValidator': 0.75,
                 'Linearity(BothEnds)Validator': 0.0483588644595,
                 'Linearity(Middle)Validator': 0.239845374323,
                 'NoGapValidator': 0.101144302433,
                 'PhysicalClickValidator': 0.75,
+                'PinchValidator': 0.875,
                 'StationaryFingerValidator': 0.832476442124,
             },
             'fw_11.27': {
-                'CountTrackingIDValidator': 0.975609756098,
                 'CountPacketsValidator': 1.0,
+                'CountTrackingIDValidator': 0.936170212766,
                 'DrumrollValidator': 0.666666666667,
                 'Linearity(BothEnds)Validator': 0.017763196141,
                 'Linearity(Middle)Validator': 0.313444723824,
                 'NoGapValidator': 0.623221473233,
                 'PhysicalClickValidator': 1.0,
+                'PinchValidator': 1.0,
                 'StationaryFingerValidator': 0.92770930158,
             }
         }
@@ -217,11 +219,15 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         expected_stats_values = {
             'fw_11.23': {
                 'CountPacketsValidator':
-                    [('pct of incorrect cases (%)-packets', 25.00)],
+                    [('pct of incorrect cases (%)--packets', 25.00)],
+                'PinchValidator':
+                    [('pct of incorrect cases (%)--pinch', 12.50)],
             },
             'fw_11.27': {
                 'CountPacketsValidator':
-                    [('pct of incorrect cases (%)-packets', 0.00)],
+                    [('pct of incorrect cases (%)--packets', 0.00)],
+                'PinchValidator':
+                    [('pct of incorrect cases (%)--pinch', 0.00)],
             },
         }
 
@@ -234,8 +240,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
 
     def test_final_weighted_average(self):
         expected_weighted_averages = {
-            'fw_11.23': 0.7266936870585381,
-            'fw_11.27': 0.8499773935896175,
+            'fw_11.23': 0.735617659970924,
+            'fw_11.27': 0.8575493345406989,
         }
         final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():

@@ -235,6 +235,22 @@ class BaseValidator(object):
         formatted_msg = '%s%s' % (prefix_space, msg)
         self.vlog.insert_details(formatted_msg)
 
+    def get_threshold(self, criteria_str, op):
+        """Search the criteria_str using regular expressions and get
+        the threshold value.
+
+        @param criteria_str: the criteria string to search
+        """
+        # In the search pattern, '.*?' is non-greedy, which will match as
+        # few characters as possible.
+        #   E.g., op = '>'
+        #         criteria_str = '>= 200, ~ -100'
+        #         pattern below would be '>.*?\s*(\d+)'
+        #         result.group(1) below would be '200'
+        pattern = '{}.*?\s*(\d+)'.format(op)
+        result = re.search(pattern, criteria_str)
+        return int(result.group(1)) if result else None
+
 
 class LinearityValidator1(BaseValidator):
     """Validator to verify linearity.
@@ -718,9 +734,8 @@ class CountPacketsValidator(BaseValidator):
         self.log_details(msg % (self.slot, actual_count_packets))
 
         # Add the metric for the count of packets
-        result = re.search('>.*\s*(\d+)', self.criteria_str)
-        assert result, 'Check the criteria of %s' % self.name
-        expected_count_packets = int(result.group(1))
+        expected_count_packets = self.get_threshold(self.criteria_str, '>')
+        assert expected_count_packets, 'Check the criteria of %s' % self.name
         metric_value = (actual_count_packets, expected_count_packets)
         metric_name = self.mnprops.COUNT_PACKETS
         self.vlog.metrics = [firmware_log.Metric(metric_name, metric_value)]
@@ -738,20 +753,29 @@ class PinchValidator(BaseValidator):
     """
 
     def __init__(self, criteria_str, mf=None, device=None):
-        name = self.__class__.__name__
-        super(PinchValidator, self).__init__(criteria_str, mf, device, name)
+        self.name = self.__class__.__name__
+        super(PinchValidator, self).__init__(criteria_str, mf, device,
+                                             self.name)
 
     def check(self, packets, variation):
         """Check the number of packets in the specified slot."""
         self.init_check(packets)
         # Get the relative motion of the two fingers
         slots = (0, 1)
-        relative_motion = self.packets.get_relative_motion(slots)
+        actual_relative_motion = self.packets.get_relative_motion(slots)
         if variation == GV.ZOOM_OUT:
-            relative_motion = -relative_motion
+            actual_relative_motion = -actual_relative_motion
         msg = 'Relative motions of the two fingers: %.2f px'
-        self.log_details(msg % relative_motion)
-        self.vlog.score = self.fc.mf.grade(relative_motion)
+        self.log_details(msg % actual_relative_motion)
+
+        # Add the metric for relative motion distance.
+        expected_relative_motion = self.get_threshold(self.criteria_str, '>')
+        assert expected_relative_motion, 'Check the criteria of %s' % self.name
+        metric_value = (actual_relative_motion, expected_relative_motion)
+        metric_name = self.mnprops.PINCH
+        self.vlog.metrics = [firmware_log.Metric(metric_name, metric_value)]
+
+        self.vlog.score = self.fc.mf.grade(actual_relative_motion)
         return self.vlog
 
 

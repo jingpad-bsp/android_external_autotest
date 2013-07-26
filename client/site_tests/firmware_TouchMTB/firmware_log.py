@@ -85,11 +85,35 @@ def _calc_sample_standard_deviation(sample):
     return np.std(np.array(sample), ddof=1)
 
 
+class float_d2(float):
+    """A float type with special __repr__ and __str__ methods that display
+    the float number to the 2nd decimal place."""
+    template = '%.2f'
+
+    def __str__(self):
+        """Display the float to the 2nd decimal place."""
+        return self.template % self.real
+
+    def __repr__(self):
+        """Display the float to the 2nd decimal place."""
+        return self.template % self.real
+
+
+def convert_float_to_float_d2(value):
+    """Convert the float(s) in value to float_d2."""
+    if isinstance(value, float):
+        return float_d2(value)
+    elif isinstance(value, tuple):
+        return tuple(float_d2(v) if isinstance(v, float) else v for v in value)
+    else:
+        return value
+
+
 class Metric:
     """A class to handle the name and the value of a metric."""
     def __init__(self, name, value):
         self.name = name
-        self.value = value
+        self.value = convert_float_to_float_d2(value)
 
     def insert_key(self, key):
         """Insert the key to this metric."""
@@ -148,7 +172,7 @@ class MetricNameProps:
                   the tuple means (the number of long intervals, total packets)
         """
         # stat_functions include: max, average, pct_by_numbers,
-        # pct_by_cases_tids, and pct_by_cases_packets
+        # pct_by_cases_neq, and pct_by_cases_less
         average = lambda lst: float(sum(lst)) / len(lst)
         _pct = lambda lst: float(lst[0]) / lst[1] * 100
 
@@ -159,18 +183,18 @@ class MetricNameProps:
 
         # pct of incorrect cases in [(acutal_value, expected_value), ...]
         #   E.g., lst = [(1, 1), (0, 1), (1, 1), (1, 1)]
-        #   pct_by_cases_tids would be 1 / 4 * 100%
+        #   pct_by_cases_neq would be 1 / 4 * 100%
         # This is used for CountTrackingIDValidator
-        pct_by_cases_tids = lambda lst: _pct(
+        pct_by_cases_neq = lambda lst: _pct(
                 [len([pair for pair in lst if pair[0] != pair[1]]), len(lst)])
 
         # pct of incorrect cases in [(acutal_value, min expected_value), ...]
         #   E.g., lst = [(3, 3), (4, 3)]
-        #     pct_by_cases_packets would be 0 / 2 * 100%
+        #     pct_by_cases_less would be 0 / 2 * 100%
         #   E.g., lst = [(2, 3), (5, 3)]
-        #     pct_by_cases_packets would be 1 / 2 * 100%
-        # This is used for CountPacketsIDValidator
-        pct_by_cases_packets = lambda lst: _pct(
+        #     pct_by_cases_less would be 1 / 2 * 100%
+        # This is used for CountPacketsIDValidator and PinchValidator
+        pct_by_cases_less = lambda lst: _pct(
                 [len([pair for pair in lst if pair[0] < pair[1]]), len(lst)])
 
         max_report_interval_str = self.get_report_interval(conf.min_report_rate)
@@ -186,18 +210,18 @@ class MetricNameProps:
         self.raw_metrics_props = {
             # Count Packets Validator
             'COUNT_PACKETS': (
-                'pct of incorrect cases (%)-packets',
+                'pct of incorrect cases (%)--packets',
                 None,
                 'pct of incorrect cases over total cases',
                 '(actual number of packets, expected number of packets)',
-                pct_by_cases_packets),
+                pct_by_cases_less),
             # Count TrackingID Validator
             'TID': (
-                'pct of incorrect cases (%)-tids',
+                'pct of incorrect cases (%)--tids',
                 None,
                 'pct of incorrect cases over total cases',
                 '(actual tracking IDs, expected tracking IDs)',
-                pct_by_cases_tids),
+                pct_by_cases_neq),
             # Drumroll Validator
             'CIRCLE_RADIUS': (
                 'circle radius (mm)',
@@ -225,6 +249,13 @@ class MetricNameProps:
                 'Should be close to 0 (0 is perfect)',
                 '(the number of missed clicks, total clicks)',
                 pct_by_numbers),
+            # Pinch Validator
+            'PINCH': (
+                'pct of incorrect cases (%)--pinch',
+                None,
+                'pct of incorrect cases over total cases',
+                '(actual relative motion (px), expected relative motion (px))',
+                pct_by_cases_less),
             # Range Validator
             'RANGE': (
                 '{} edge not reached (mm)',

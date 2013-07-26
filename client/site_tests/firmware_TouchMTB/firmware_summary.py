@@ -213,7 +213,7 @@ class FirmwareSummary:
 
         @param metric_name: a metric name
         """
-        return metric_name.split('-')[0]
+        return metric_name.split('--')[0]
 
 
     def _print_statistics_of_metrics(self, gesture=None):
