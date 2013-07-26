@@ -32,6 +32,7 @@ from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import remote
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
+from autotest_lib.tko import utils as tko_utils
 
 
 def _make_servo_hostname(hostname):
@@ -216,7 +217,7 @@ class SiteHost(remote.RemoteHost):
 
     # pylint: disable=E1120
     _NOTIFY_ADDRESS = global_config.global_config.get_config_value(
-        'SCHEDULER', 'notify_email', default='')
+        'SCHEDULER', 'notify_email_errors', default='')
 
     _SENDER_ADDRESS = global_config.global_config.get_config_value(
         'SCHEDULER', "notify_email_from", default=getpass.getuser())
@@ -225,8 +226,9 @@ class SiteHost(remote.RemoteHost):
     _ERROR_EMAIL_MSG_FORMAT = ('While verifying the job_repo_url on %(host)s '
                                'the devserver changed from %(old_devserver)s '
                                'to %(new_devserver)s. This might indicate a '
-                               'delay in %(build)s, re-staging artifacts took '
-                               'an additional %(stage_time)s seconds.')
+                               'delay in job with id: %(job_id)s, re-staging '
+                               'artifacts took an additional %(stage_time)s '
+                               'seconds.')
 
     @staticmethod
     def get_servo_arguments(args_dict):
@@ -378,7 +380,7 @@ class SiteHost(remote.RemoteHost):
         self.update_job_repo_url(devserver_url, image_name)
 
 
-    def verify_job_repo_url(self):
+    def verify_job_repo_url(self, tag=''):
         """
         Make sure job_repo_url of this host is valid.
 
@@ -391,6 +393,8 @@ class SiteHost(remote.RemoteHost):
 
         @param job_repo_url: A url pointing to the devserver where the autotest
             package for this build should be staged.
+        @param tag: The tag from the server job, in the format
+                    <job_id>-<user>/<hostname>, or <hostless> for a server job.
 
         @raises DevServerException: If we could not resolve a devserver.
         @raises AutoservError: If we're unable to save the new job_repo_url as
@@ -438,11 +442,21 @@ class SiteHost(remote.RemoteHost):
                 stage_time)
 
         if ds.url() != devserver_url:
+
+            # Since this is only to add traceability to devserver flakes we
+            # make a best effort attempt at getting the job id by parsing the
+            # tag.
+            try:
+                job_id = tko_utils.get_afe_job_id(tag)
+            except ValueError:
+                logging.debug('Could not determine job id from tag %s', tag)
+                job_id = 'NA'
+
             error_dict = {
                 'host': self.hostname,
                 'old_devserver': devserver_url,
                 'new_devserver': new_devserver_url,
-                'build': image_name,
+                'job_id': job_id,
                 'stage_time': stage_time,
             }
             try:
