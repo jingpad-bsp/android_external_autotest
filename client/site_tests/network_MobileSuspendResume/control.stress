@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResumeStress"
+NAME = "network_MobileSuspendResumeStress.stress"
 PURPOSE = "Test 3g modem state after suspend/resume over many iterations"
 CRITERIA = """
     Check the 3g state of the device after many iterations of suspend/resume.

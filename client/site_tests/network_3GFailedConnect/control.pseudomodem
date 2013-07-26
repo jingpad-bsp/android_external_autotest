@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GFailedConnect"
+NAME = "network_3GFailedConnect.pseudomodem"
 PURPOSE = "Verify that a failed modem connect attempt puts the service in a failed state."
 CRITERIA = """
 This test will fail if a connect failure does not immediately cause the

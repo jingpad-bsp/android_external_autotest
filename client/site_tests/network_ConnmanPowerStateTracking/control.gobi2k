@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_ConnmanPowerStateTracking"
+NAME = "network_ConnmanPowerStateTracking.gobi2k"
 PURPOSE = "Checks whether connman tracks device power state properly."
 CRITERIA = """
 This test fails if flimflam's state ever fails to match the modem's state.

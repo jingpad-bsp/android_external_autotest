@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResume"
+NAME = "network_MobileSuspendResume.gobi2k"
 PURPOSE = "Test 3g modem state after suspend/resume"
 CRITERIA = """
     Check the 3g state of the device after suspend and resume.  Verify

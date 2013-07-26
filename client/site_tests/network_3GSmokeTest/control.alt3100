@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GSmokeTest"
+NAME = "network_3GSmokeTest.alt3100"
 PURPOSE = "Verify 3G modem can connect to the network."
 CRITERIA = """
 This test will fail if one of the following conditions occur:

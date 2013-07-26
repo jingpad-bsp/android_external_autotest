@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GModemPresent"
+NAME = "network_3GModemPresent.y3400"
 PURPOSE = "Verify 3G modem is visible to Flimflam."
 CRITERIA = """
 This test will fail if neither Cromo nor ModemManager is exporting a modem

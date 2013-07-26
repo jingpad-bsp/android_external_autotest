@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "3GLoadFirmware"
+NAME = "network_3GLoadFirmware.gobi2k"
 SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

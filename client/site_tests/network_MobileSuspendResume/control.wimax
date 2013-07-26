@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResume"
+NAME = "network_MobileSuspendResume.wimax"
 PURPOSE = "Test wimax device state after suspend/resume"
 CRITERIA = """
     Check the wimax state of the device after suspend and resume.  Verify

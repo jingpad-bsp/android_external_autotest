@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GSafetyDance"
+NAME = "network_3GSafetyDance.e362"
 PURPOSE = "Stress-test all connman 3G operations."
 CRITERIA = """
 This test will fail if any DBus call times out or flimflam crashes.

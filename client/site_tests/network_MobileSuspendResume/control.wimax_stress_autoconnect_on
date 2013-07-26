@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResumeStress"
+NAME = "network_MobileSuspendResumeStress.wimax_stress_autoconnect_on"
 PURPOSE = "Test wimax device state after suspend/resume over many iterations"
 CRITERIA = """
     Check the wimax state of the device after many iterations of suspend/resume.

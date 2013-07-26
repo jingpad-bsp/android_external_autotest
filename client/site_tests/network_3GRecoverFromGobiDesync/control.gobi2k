@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GRecoverFromGobiDesync"
+NAME = "network_3GRecoverFromGobiDesync.gobi2k"
 PURPOSE = "Verify that gobi-cromo-plugin recovers from driver failures"
 SUITE = "network3g"
 TIME = "SHORT"

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_GobiUncleanDisconnect"
+NAME = "network_GobiUncleanDisconnect.gobi3k"
 PURPOSE = "Disconnects uncleanly from the Gobi a few times."
 CRITERIA = """
 This test will fail if any of its subtest programs fails to find or connect to
