@@ -23,6 +23,13 @@ class video_YouTubePage(test.test):
     PSEUDO_RANDOM_TIME_1 = 20.25
     PSEUDO_RANDOM_TIME_2 = 5.47
 
+    # Minimum number of timeupdates required to fire in the last second.
+    MIN_LAST_SECOND_UPDATES = 3
+
+    NO_DELAY = 0
+    MINIMAL_DELAY = 1
+    MAX_REBUFFER_DELAY = 10
+
     PLAYING_STATE = 'playing'
     PAUSED_STATE = 'paused'
     ENDED_STATE = 'ended'
@@ -87,11 +94,15 @@ class video_YouTubePage(test.test):
         self.tab.ExecuteJavaScript('window.__seek(%f);' % new_time)
 
 
-    def seek_to_almost_end(self):
+    def seek_to_almost_end(self, seconds_before_end):
         """Simple wrapper to seek to almost the end of the video.
 
+        @param seconds_before_end: How many seconds (a float, not integer)
+                before end of video.
+
         """
-        self.tab.ExecuteJavaScript('window.__seekToAlmostEnd();')
+        self.tab.ExecuteJavaScript(
+                'window.__seekToAlmostEnd(%f);' % seconds_before_end)
 
 
     def get_current_time(self):
@@ -103,14 +114,14 @@ class video_YouTubePage(test.test):
         return self.tab.EvaluateJavaScript('window.__getCurrentTime();')
 
 
-    def assert_event_state(self, event, op, error):
+    def assert_event_state(self, event, op, error_str):
         """Simple wrapper to get the status of a state in the video.
 
         @param event: A string denoting the event. Check the accompanying JS
                 file for the possible values.
         @param op: truth or not_ operator from the standard Python operator
                 module.
-        @param error: A string for the error output.
+        @param error_str: A string for the error output.
 
         @returns: Whether or not the input event has fired.
 
@@ -131,11 +142,23 @@ class video_YouTubePage(test.test):
         self.tab.ExecuteJavaScript('window.__clearEventHappened("%s");' % event)
 
 
-    def assert_player_state(self, state, max_wait=1):
+    def verify_last_second_playback(self):
+        """Simple wrapper to check the playback of the last second.
+
+        """
+        result = self.tab.EvaluateJavaScript(
+                'window.__getLastSecondTimeupdates()')
+        if result < self.MIN_LAST_SECOND_UPDATES:
+            raise error.TestError(
+                    'Last second did not play back correctly (%d events).' %
+                    result)
+
+
+    def assert_player_state(self, state, max_wait_secs):
         """Simple wrapper to busy wait and test the current state of the player.
 
         @param state: A string denoting the expected state of the player.
-        @param max_wait: Maximum amount of time to wait before failing.
+        @param max_wait_secs: Maximum amount of time to wait before failing.
 
         @raises: A error.TestError if the state is not as expected.
 
@@ -145,7 +168,7 @@ class video_YouTubePage(test.test):
             current_state = self.get_player_state()
             if current_state == state:
                 return
-            elif time.time() < start_time + max_wait:
+            elif time.time() < start_time + max_wait_secs:
                 time.sleep(0.5)
             else:
                 raise error.TestError(
@@ -164,7 +187,7 @@ class video_YouTubePage(test.test):
         """Test to check if the YT page starts off playing.
 
         """
-        self.assert_player_state(self.PLAYING_STATE, max_wait=0)
+        self.assert_player_state(self.PLAYING_STATE, self.NO_DELAY)
         if self.get_current_time() <= 0.0:
             raise error.TestError('perform_playing_test failed.')
 
@@ -173,20 +196,20 @@ class video_YouTubePage(test.test):
         """Test to check if the video is in the 'paused' state.
 
         """
-        self.assert_player_state(self.PLAYING_STATE, max_wait=0)
+        self.assert_player_state(self.PLAYING_STATE, self.NO_DELAY)
         self.pause_video()
-        self.assert_player_state(self.PAUSED_STATE)
+        self.assert_player_state(self.PAUSED_STATE, self.MINIMAL_DELAY)
 
 
     def perform_resuming_test(self):
         """Test to check if the video responds to resumption.
 
         """
-        self.assert_player_state(self.PLAYING_STATE, max_wait=0)
+        self.assert_player_state(self.PLAYING_STATE, self.NO_DELAY)
         self.pause_video()
-        self.assert_player_state(self.PAUSED_STATE)
+        self.assert_player_state(self.PAUSED_STATE, self.MINIMAL_DELAY)
         self.play_video()
-        self.assert_player_state(self.PLAYING_STATE)
+        self.assert_player_state(self.PLAYING_STATE, self.MINIMAL_DELAY)
 
 
     def perform_seeking_test(self):
@@ -194,9 +217,9 @@ class video_YouTubePage(test.test):
 
         """
         # Test seeking while playing.
-        self.assert_player_state(self.PLAYING_STATE, max_wait=0)
+        self.assert_player_state(self.PLAYING_STATE, self.NO_DELAY)
         self.seek_video(self.PSEUDO_RANDOM_TIME_1)
-        time.sleep(1)
+        time.sleep(self.MINIMAL_DELAY)
         if not self.tab.EvaluateJavaScript(
                 'window.__getCurrentTime() >= %f;' % self.PSEUDO_RANDOM_TIME_1):
             raise error.TestError(
@@ -209,10 +232,10 @@ class video_YouTubePage(test.test):
                 'seeked', operator.truth,
                 'perform_seeking_test failed: "seeked" state did not fire.')
 
-        # Make sure the video is still playing.
+        # Now make sure the video is still playing.
 
-        # Let it buffer/play for 5 seconds.
-        self.assert_player_state(self.PLAYING_STATE, max_wait=5)
+        # Let it buffer/play for at most 10 seconds before continuing.
+        self.assert_player_state(self.PLAYING_STATE, self.MAX_REBUFFER_DELAY)
 
         self.clear_event_state('seeking');
         self.clear_event_state('seeked');
@@ -227,10 +250,10 @@ class video_YouTubePage(test.test):
 
         # Test seeking while paused.
         self.pause_video()
-        self.assert_player_state(self.PAUSED_STATE)
+        self.assert_player_state(self.PAUSED_STATE, self.MINIMAL_DELAY)
 
         self.seek_video(self.PSEUDO_RANDOM_TIME_2)
-        time.sleep(1)
+        time.sleep(self.MINIMAL_DELAY)
         if not self.tab.EvaluateJavaScript(
                 'window.__getCurrentTime() === %f;' %
                 self.PSEUDO_RANDOM_TIME_2):
@@ -247,14 +270,14 @@ class video_YouTubePage(test.test):
                 'again.')
 
         # Make sure the video is paused.
-        self.assert_player_state(self.PAUSED_STATE, max_wait=0)
+        self.assert_player_state(self.PAUSED_STATE, self.NO_DELAY)
 
 
     def perform_frame_drop_test(self):
         """Test to check if there are too many dropped frames.
 
         """
-        self.assert_player_state(self.PLAYING_STATE, max_wait=0)
+        self.assert_player_state(self.PLAYING_STATE, self.NO_DELAY)
         time.sleep(15)
         dropped_frames_percentage = self.tab.EvaluateJavaScript(
                 'window.__videoElement.webkitDroppedFrameCount /'
@@ -269,9 +292,22 @@ class video_YouTubePage(test.test):
         """Test to check if the state is 'ended' at the end of a video.
 
         """
-        self.assert_player_state(self.PLAYING_STATE, max_wait=0)
-        self.seek_to_almost_end()
-        self.assert_player_state(self.ENDED_STATE, max_wait=5)
+        ALMOST_END = 0.1
+        self.assert_player_state(self.PLAYING_STATE, self.NO_DELAY)
+        self.seek_to_almost_end(ALMOST_END)
+        self.assert_player_state(self.ENDED_STATE, self.MAX_REBUFFER_DELAY)
+
+
+    def perform_last_second_test(self):
+        """Test to check if the last second is played.
+
+        """
+        NEAR_END = 2.0
+        self.assert_player_state(self.PLAYING_STATE, self.NO_DELAY)
+        self.seek_to_almost_end(NEAR_END)
+        self.assert_player_state(
+                self.ENDED_STATE, self.MAX_REBUFFER_DELAY + NEAR_END)
+        self.verify_last_second_playback()
 
 
     def run_once(self, subtest_name):
@@ -284,10 +320,11 @@ class video_YouTubePage(test.test):
         if self.DISABLE_COOKIES:
             # To stop the system from erasing the previous profile, enable:
             #  options.dont_override_profile = True
-            extension_paths.append(
-                    os.path.join(
-                            os.path.dirname(__file__),
-                            'files/cookie-disabler'))
+            extension_path = os.path.join(
+                    os.path.dirname(__file__),
+                    'files/cookie-disabler')
+            extension_paths.append(extension_path)
+
 
         with chrome.Chrome(extension_paths=extension_paths) as cr:
             self.initialize_test(cr, self.TEST_PAGE)
@@ -304,3 +341,5 @@ class video_YouTubePage(test.test):
                 self.perform_frame_drop_test()
             elif subtest_name is 'ending':
                 self.perform_ending_test()
+            elif subtest_name is 'last_second':
+                self.perform_last_second_test()

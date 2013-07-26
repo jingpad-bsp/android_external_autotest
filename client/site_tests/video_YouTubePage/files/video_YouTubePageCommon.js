@@ -4,12 +4,19 @@
 
 (function() {
   var videoElement = document.querySelector('#movie_player video');
-  var videoEvents = {};
+  var videoEvents = {
+    timeupdate: []
+  };
 
   if (videoElement instanceof HTMLMediaElement) {
     function logEventHappened(e) {
       videoEvents[e.type + '_completed'] = true;
     }
+
+    function logTimeUpdate(e) {
+      videoEvents.timeupdate.push(getCurrentTime());
+    }
+
     function onError(e) {
       console.error('Error playing video: ' + e.type);
     }
@@ -18,6 +25,7 @@
     videoElement.addEventListener('seeking', logEventHappened);
     videoElement.addEventListener('seeked', logEventHappened);
     videoElement.addEventListener('ended', logEventHappened);
+    videoElement.addEventListener('timeupdate', logTimeUpdate);
     videoElement.addEventListener('error', onError);
     videoElement.addEventListener('abort', onError);
   }
@@ -37,8 +45,8 @@
     videoElement.currentTime = time;
   }
 
-  function seekToAlmostEnd() {
-    videoElement.currentTime = getDuration() - 0.1;
+  function seekToAlmostEnd(seconds_before_end) {
+    videoElement.currentTime = getDuration() - seconds_before_end;
   }
 
   function setPlaybackQuality(quality) {
@@ -77,6 +85,19 @@
     delete videoEvents[e + '_completed'];
   }
 
+  function getLastSecondTimeupdates(e) {
+    var updatesInLastSecond = 0;
+    var duration = getDuration();
+
+    for (var index in videoEvents.timeupdate) {
+      var update_time = videoEvents.timeupdate[index];
+      if (update_time > duration - 1 && update_time < duration) {
+        updatesInLastSecond += 1;
+      }
+    }
+    return updatesInLastSecond;
+  }
+
   function getPlaybackQuality() {
     return videoElement.getPlaybackQuality();
   }
@@ -91,6 +112,7 @@
   window.__getCurrentTime = getCurrentTime;
   window.__getEventHappened = getEventHappened;
   window.__clearEventHappened = clearEventHappened;
+  window.__getLastSecondTimeupdates = getLastSecondTimeupdates;
 
   return window.__videoElement !== null;
 })();
