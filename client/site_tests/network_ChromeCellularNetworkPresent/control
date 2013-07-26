@@ -5,7 +5,7 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_ChromeCellularNetworkPresent"
 PURPOSE = "Verify that a cellular network is visible via networkingPrivate"
-SUITE = "network3g_pseudomodem"
+SUITE = "network_ui"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
