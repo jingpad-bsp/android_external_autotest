@@ -178,6 +178,11 @@ class MtbEvent:
         return (cls.is_EV_KEY(event) and event[MTB.EV_CODE] == BTN_LEFT)
 
     @classmethod
+    def is_BTN_LEFT_value(cls, event, value):
+        """Is this event BTN_LEFT with value equal to the specified value?"""
+        return (cls.is_BTN_LEFT(event) and event[MTB.EV_VALUE] == value)
+
+    @classmethod
     def is_BTN_TOOL_FINGER(cls, event):
         """Is this event BTN_TOOL_FINGER?"""
         return (cls.is_EV_KEY(event) and
@@ -273,6 +278,7 @@ class MtbStateMachine:
         self.pressure = {self.tid: None}
         self.syn_time = None
         self.new_tid = False
+        self.number_fingers = 0
 
     def add_event(self, event):
         """Update the internal states with the event.
@@ -291,10 +297,12 @@ class MtbStateMachine:
             self.slot_to_tid[self.slot] = self.tid
             self.new_tid = True
             self.point[self.tid] = Point()
+            self.number_fingers += 1
 
         # A slot is leaving. Remove the slot and its tracking ID.
         elif MtbEvent.is_finger_leaving(event):
             del self.slot_to_tid[self.slot]
+            self.number_fingers -= 1
 
         # Update x value.
         elif MtbEvent.is_ABS_MT_POSITION_X(event):
@@ -1055,6 +1063,61 @@ class Mtb:
         flag_fingers_touch = self.verify_exact_number_fingers_touch(num_fingers)
         click_cycles = self._get_event_cycles(self.check_event_func_click)
         return click_cycles if flag_fingers_touch else 0
+
+    def get_raw_physical_clicks(self):
+        """Get how many BTN_LEFT click events have been seen.
+
+        When calculating the raw BTN_LEFT click count, this method does not
+        consider whether BTN_LEFT comes with the correct finger (tracking) IDs.
+        A correct BTN_LEFT click consists of value 1 followed by value 0.
+        """
+        click_count = 0
+        btn_left_was_pressed = False
+        for packet in self.packets:
+            for event in packet:
+                # when seeing BTN_LEFT value: 0 -> 1
+                if (MtbEvent.is_BTN_LEFT_value(event, 1) and
+                        not btn_left_was_pressed):
+                    btn_left_was_pressed = True
+                # when seeing BTN_LEFT value: 1 -> 0
+                elif (MtbEvent.is_BTN_LEFT_value(event, 0) and
+                        btn_left_was_pressed):
+                    btn_left_was_pressed = False
+                    click_count += 1
+        return click_count
+
+    def get_correct_physical_clicks(self, number_fingers):
+        """Get the count of physical clicks correctly overlap with
+        the given number of fingers.
+
+        @param num_fingers: the expected number of fingers when a physical
+                click is seen
+        """
+        sm = MtbStateMachine()
+        correct_click_count = 0
+        click_with_correct_number_fingers = False
+        for packet in self.packets:
+            btn_left_was_pressed = False
+            btn_left_was_released = False
+            for event in packet:
+                sm.add_event(event)
+                if MtbEvent.is_BTN_LEFT_value(event, 1):
+                    btn_left_was_pressed = True
+                elif MtbEvent.is_BTN_LEFT_value(event, 0):
+                    btn_left_was_released = True
+
+            # Check the number of fingers only after all events in this packet
+            # have been processed.
+            if btn_left_was_pressed or btn_left_was_released:
+                click_with_correct_number_fingers |= (sm.number_fingers ==
+                                                      number_fingers)
+
+            # If BTN_LEFT was released, reset the flag and increase the count.
+            if btn_left_was_released and click_with_correct_number_fingers:
+                correct_click_count += 1
+                click_with_correct_number_fingers = False
+
+        return correct_click_count
 
 
 class MtbParser:

@@ -16,6 +16,7 @@ import validators
 
 from common_unittest_utils import create_mocked_devices, parse_tests_data
 from firmware_constants import GV, PLATFORM
+from firmware_log import MetricNameProps
 from touch_device import TouchDevice
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
@@ -434,6 +435,7 @@ class PhysicalClickValidatorTest(BaseValidatorTest):
         super(PhysicalClickValidatorTest, self).setUp()
         self.device = lumpy
         self.criteria = '== 1'
+        self.mnprops = MetricNameProps()
 
     def _test_physical_clicks(self, gesture_dir, files, expected_score):
         gesture_path = os.path.join(unittest_path_lumpy, gesture_dir)
@@ -482,6 +484,69 @@ class PhysicalClickValidatorTest(BaseValidatorTest):
         }
         expected_score = 0.0
         self._test_physical_clicks(gesture_dir, files, expected_score)
+
+    def test_physical_clicks_by_finger_IDs(self):
+        """Test that some physical clicks may come with or without correct
+        finger IDs.
+        """
+        # files is a dictionary of {
+        #     filename: (number_fingers, (actual clicks, expected clicks))}
+        files = {
+                # An incorrect case with 1 finger: the event sequence comprises
+                #   Event: ABS_MT_TRACKING_ID, value 284
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                #   Event: BTN_LEFT, value 1
+                #   Event: BTN_LEFT, value 0
+                # In this case, the BTN_LEFT occurs when there is no finger.
+                '1f_click_incorrect_behind_tid.dat': (1, (0, 1)),
+
+                # A correct case with 1 finger: the event sequence comprises
+                #   Event: ABS_MT_TRACKING_ID, value 284
+                #   Event: BTN_LEFT, value 1
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                #   Event: BTN_LEFT, value 0
+                # In this case, the BTN_LEFT occurs when there is no finger.
+                '1f_click.dat': (1, (1, 1)),
+
+                # An incorrect case with 2 fingers: the event sequence comprises
+                #   Event: ABS_MT_TRACKING_ID, value 18
+                #   Event: BTN_LEFT, value 1
+                #   Event: BTN_LEFT, value 0
+                #   Event: ABS_MT_TRACKING_ID, value 19
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                # In this case, the BTN_LEFT occurs when there is only 1 finger.
+                '2f_clicks_incorrect_before_2nd_tid.dat': (2, (0, 1)),
+
+                # An incorrect case with 2 fingers: the event sequence comprises
+                #   Event: ABS_MT_TRACKING_ID, value 18
+                #   Event: ABS_MT_TRACKING_ID, value 19
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                #   Event: BTN_LEFT, value 1
+                #   Event: BTN_LEFT, value 0
+                # In this case, the BTN_LEFT occurs when there is only 1 finger.
+                '2f_clicks_incorrect_behind_2_tids.dat': (2, (0, 1)),
+
+                # A correct case with 2 fingers: the event sequence comprises
+                #   Event: ABS_MT_TRACKING_ID, value 18
+                #   Event: ABS_MT_TRACKING_ID, value 19
+                #   Event: BTN_LEFT, value 1
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                #   Event: ABS_MT_TRACKING_ID, value -1
+                #   Event: BTN_LEFT, value 0
+                # In this case, the BTN_LEFT occurs when there is only 1 finger.
+                '2f_clicks.dat': (2, (1, 1)),
+        }
+        for filename, (fingers, expected_value) in files.items():
+            packets = parse_tests_data(filename)
+            validator = PhysicalClickValidator(self.criteria, fingers=fingers,
+                                               device=dontcare)
+            vlog = validator.check(packets)
+            metric_name = self.mnprops.CLICK_CHECK_TIDS.format(fingers)
+            for metric in vlog.metrics:
+                if metric.name == metric_name:
+                    self.assertEqual(metric.value, expected_value)
 
 
 class RangeValidatorTest(BaseValidatorTest):

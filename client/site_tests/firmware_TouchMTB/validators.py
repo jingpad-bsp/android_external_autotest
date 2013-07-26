@@ -806,6 +806,27 @@ class PhysicalClickValidator(BaseValidator):
             exit(-1)
         return expected_count
 
+    def _add_metrics(self):
+        """Add metrics"""
+        fingers = self.fingers
+        raw_click_count = self.packets.get_raw_physical_clicks()
+
+        # This is for the metric:
+        #   "of the n clicks, the % of clicks with the correct finger IDs"
+        correct_click_count = self.packets.get_correct_physical_clicks(fingers)
+        value_with_TIDs = (correct_click_count, raw_click_count)
+        name_with_TIDs = self.mnprops.CLICK_CHECK_TIDS.format(self.fingers)
+
+        # This is for the metric: "% of finger IDs with a click"
+        expected_click_count = self._get_expected_number()
+        value_clicks = (raw_click_count, expected_click_count)
+        name_clicks = self.mnprops.CLICK_CHECK_CLICK.format(self.fingers)
+
+        self.vlog.metrics = [
+            firmware_log.Metric(name_with_TIDs, value_with_TIDs),
+            firmware_log.Metric(name_clicks, value_clicks),
+        ]
+
     def check(self, packets, variation=None):
         """Check the number of packets in the specified slot."""
         self.init_check(packets)
@@ -814,11 +835,7 @@ class PhysicalClickValidator(BaseValidator):
         click_count = self.packets.get_physical_clicks(self.fingers)
         msg = 'Count of %d-finger physical clicks: %s'
         self.log_details(msg % (self.fingers, click_count))
-        expected_click_count = self._get_expected_number()
-        miss_count = expected_click_count - click_count
-        metric_click = (miss_count, expected_click_count)
-        metric_name = self.mnprops.CLICK.format(self.fingers)
-        self.vlog.metrics = [firmware_log.Metric(metric_name, metric_click)]
+        self._add_metrics()
         self.vlog.score = self.fc.mf.grade(click_count)
         return self.vlog
 

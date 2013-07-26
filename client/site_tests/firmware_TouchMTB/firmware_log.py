@@ -171,15 +171,27 @@ class MetricNameProps:
                 one_finger_tap.top_left (20130710_063117) : (1, 6)
                   the tuple means (the number of long intervals, total packets)
         """
-        # stat_functions include: max, average, pct_by_numbers,
-        # pct_by_cases_neq, and pct_by_cases_less
+        # stat_functions include: max, average,
+        #                         pct_by_numbers, pct_by_missed_numbers,
+        #                         pct_by_cases_neq, and pct_by_cases_less
         average = lambda lst: float(sum(lst)) / len(lst)
+        get_sums = lambda lst: [sum(count) for count in zip(*lst)]
         _pct = lambda lst: float(lst[0]) / lst[1] * 100
+        _missed_pct = lambda lst: float(lst[1] - lst[0]) / lst[1] * 100
 
         # pct by numbers: lst means [(incorrect number, total number), ...]
         #  E.g., lst = [(2, 10), (0, 10), (0, 10), (0, 10)]
         #  pct_by_numbers would be (2 + 0 + 0 + 0) / (10 + 10 + 10 + 10) * 100%
-        pct_by_numbers = lambda lst: _pct([sum(count) for count in zip(*lst)])
+        pct_by_numbers = lambda lst: _pct(get_sums(lst))
+
+        # pct by misssed numbers: lst means
+        #                         [(actual number, expected number), ...]
+        #  E.g., lst = [(0, 1), (1, 1), (1, 1), (1, 1)]
+        #  pct_by_missed_numbers would be
+        #       0 + 1 + 1 + 1  = 3
+        #       1 + 1 + 1 + 1  = 4
+        #       missed pct = (4 - 3) / 4 * 100% = 25%
+        pct_by_missed_numbers = lambda lst: _missed_pct(get_sums(lst))
 
         # pct of incorrect cases in [(acutal_value, expected_value), ...]
         #   E.g., lst = [(1, 1), (0, 1), (1, 1), (1, 1)]
@@ -243,12 +255,18 @@ class MetricNameProps:
                 None,
                 average),
             # Physical Click Validator
-            'CLICK': (
+            'CLICK_CHECK_CLICK': (
                 '{}f-click miss rate (%)',
                 conf.fingers_physical_click,
-                'Should be close to 0 (0 is perfect)',
-                '(the number of missed clicks, total clicks)',
-                pct_by_numbers),
+                'the pct of finger IDs w/o a click',
+                '(acutual clicks, expected clicks)',
+                pct_by_missed_numbers),
+            'CLICK_CHECK_TIDS': (
+                '{}f-click w/o finger IDs (%)',
+                conf.fingers_physical_click,
+                'the pct of clicks w/o correct finger IDs',
+                '(clicks with correct finger IDs, actual clicks)',
+                pct_by_missed_numbers),
             # Pinch Validator
             'PINCH': (
                 'pct of incorrect cases (%)--pinch',

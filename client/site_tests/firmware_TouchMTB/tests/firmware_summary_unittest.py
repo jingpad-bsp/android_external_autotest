@@ -218,16 +218,22 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         """Test the statistics of metrics."""
         expected_stats_values = {
             'fw_11.23': {
-                'CountPacketsValidator':
-                    [('pct of incorrect cases (%)--packets', 25.00)],
-                'PinchValidator':
-                    [('pct of incorrect cases (%)--pinch', 12.50)],
+                'CountPacketsValidator': [
+                    ('pct of incorrect cases (%)--packets', 25.00)],
+                'PhysicalClickValidator': [
+                    ('1f-click miss rate (%)', 12.50),
+                    ('2f-click miss rate (%)', 75.00)],
+                'PinchValidator': [
+                    ('pct of incorrect cases (%)--pinch', 12.50)],
             },
             'fw_11.27': {
-                'CountPacketsValidator':
-                    [('pct of incorrect cases (%)--packets', 0.00)],
-                'PinchValidator':
-                    [('pct of incorrect cases (%)--pinch', 0.00)],
+                'CountPacketsValidator': [
+                    ('pct of incorrect cases (%)--packets', 0.00)],
+                'PhysicalClickValidator': [
+                    ('1f-click miss rate (%)', 0.00),
+                    ('2f-click miss rate (%)', 0.00)],
+                'PinchValidator': [
+                    ('pct of incorrect cases (%)--pinch', 0.00)],
             },
         }
 
