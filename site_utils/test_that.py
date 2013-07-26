@@ -260,9 +260,11 @@ def parse_arguments(argv):
     parser.add_argument('tests', nargs='+', metavar='TEST',
                         help='Run given test(s). Use suite:SUITE to specify '
                         'test suite.')
-    parser.add_argument('-b', '--board', metavar='BOARD',
+    default_board = cros_build_lib.GetDefaultBoard()
+    parser.add_argument('-b', '--board', metavar='BOARD', default=default_board,
                         action='store',
-                        help='Board for which the test will run.')
+                        help='Board for which the test will run. Default: %s' %
+                             (default_board or 'Not configured'))
     parser.add_argument('-i', '--build', metavar='BUILD',
                         help='Build to test. Device will be reimaged if '
                         'necessary. Omit flag to skip reimage and test '
@@ -344,8 +346,6 @@ def main(argv):
         logging.error('Invalid arguments. %s', err.message)
         return 1
 
-    # TODO: Determine the following string programatically.
-    # (same TODO applied to autotest_quickmerge)
     sysroot_path = os.path.join('/build', arguments.board, '')
     sysroot_autotest_path = os.path.join(sysroot_path, 'usr', 'local',
                                          'autotest', '')
