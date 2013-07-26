@@ -10,7 +10,7 @@ CRITERIA = "All tests with SUITE=telemetry_unit must pass."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
-TEST_TYPE = "Client"
+TEST_TYPE = "Server"
 
 DOC = """
 Telemetry unit test suite.

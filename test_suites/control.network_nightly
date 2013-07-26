@@ -10,7 +10,7 @@ CRITERIA = "All tests with SUITE=network_nightly must pass."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
-TEST_TYPE = "Client"
+TEST_TYPE = "Server"
 
 DOC = """
 This dynamic suite runs a set of client-side networking tests.

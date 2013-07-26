@@ -10,7 +10,7 @@ CRITERIA = "All tests with SUITE='youtube_page' must pass."
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "suite"
-TEST_TYPE = "client"
+TEST_TYPE = "Server"
 
 DOC = """
 This test verify YouTube page video playback, states and resolutions.
