@@ -10,6 +10,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+EXPERIMENTAL = True
 
 DOC = """
 
@@ -19,4 +20,5 @@ properly propagates to Chrome.
 
 """
 
-job.run_test('network_ChromeCellularNetworkPresent')
+job.run_test('network_ChromeCellularNetworkPresent', family='3GPP', tag='3GPP')
+job.run_test('network_ChromeCellularNetworkPresent', family='CDMA', tag='CDMA')

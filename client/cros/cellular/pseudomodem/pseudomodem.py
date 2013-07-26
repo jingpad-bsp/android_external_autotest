@@ -28,7 +28,6 @@ from autotest_lib.client.cros import virtual_ethernet_pair
 IFACE_NAME = 'pseudomodem0'
 PEER_IFACE_NAME = IFACE_NAME + 'p'
 IFACE_IP_BASE = '192.168.7'
-DEFAULT_CARRIER = 'banana'
 # TODO(armansito): Remove 'cromo' once it gets deprecated.
 DEFAULT_MANAGERS = ['cromo', 'modemmanager']
 PARENT_SLEEP_TIMEOUT = 2
@@ -97,7 +96,7 @@ class TestModemManagerContext(object):
         else:
             raise TestModemManagerContextError(
                 "Invalid modem family value: " + str(family))
-        if not sim:
+        if not sim and family != 'CDMA':
             # Get a handle to the global 'sim' module here, as the name clashes
             # with a local variable.
             simmodule = globals()['sim']
