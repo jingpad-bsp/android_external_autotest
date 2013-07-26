@@ -11,6 +11,7 @@ import common
 from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros import tpm_store
 
 # pylint: disable=W0611
@@ -42,6 +43,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def __exit__(self, exception, value, traceback):
         super(ShillXmlRpcDelegate, self).__exit__(exception, value, traceback)
         self._tpm_store.__exit__(exception, value, traceback)
+        self.enable_ui()
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -207,6 +209,16 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         service_properties = service_object.GetProperties(
                 utf8_strings=True)
         return self._wifi_proxy.dbus2primitive(service_properties)
+
+
+    def disable_ui(self):
+        """@return True iff the UI is off when we return."""
+        return cros_ui.stop()
+
+
+    def enable_ui(self):
+        """@return True iff the UI was successfully started."""
+        return cros_ui.start()
 
 
 if __name__ == '__main__':
