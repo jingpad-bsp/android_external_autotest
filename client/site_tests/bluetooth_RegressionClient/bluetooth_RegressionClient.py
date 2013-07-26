@@ -43,7 +43,7 @@ class bluetooth_RegressionClient(
     def _suspend(self):
         self._test_init('suspend')
         self.ask_user('OS Suspend test: after pressing PASS, the OS will '
-                      'suspend.<br>After OS has been suspsended for several '
+                      'suspend.<br>After OS has been suspended for several '
                       'seconds, use a Bluetooth device to wake machine (or '
                       'use onboard inputs if no Bluetooth device is capable.)'
                       '<br>Audio will stop playing.')

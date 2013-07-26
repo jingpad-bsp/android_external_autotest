@@ -8,6 +8,7 @@ import dbus
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import sys_power
 from telemetry.core import browser_finder
 from telemetry.core import browser_options
 from telemetry.core import util
@@ -323,6 +324,8 @@ class BluetoothSemiAutoHelper(test.test):
     def os_idle_time_set(self, reset=False):
         """Function to set short idle time or to reset to normal.
 
+        Not using sys_power so that user can use Bluetooth to wake machine.
+
         @param reset: true to reset to normal idle time, false for short.
         """
         powerd_path = '/usr/bin/set_short_powerd_timeouts'
@@ -333,12 +336,8 @@ class BluetoothSemiAutoHelper(test.test):
             raise error.TestError('idle cmd: %s' % e)
 
     def os_suspend(self):
-        """Function to suspend ChromeOS."""
-        powerd_path = '/usr/bin/powerd_suspend'
-        try:
-            subprocess.check_call([powerd_path])
-        except Exception as e:
-            raise error.TestError('suspend cmd: %s' % e)
+        """Function to suspend ChromeOS using sys_power."""
+        sys_power.do_suspend(5)
 
     def initialize(self):
         self._close_browser = True
