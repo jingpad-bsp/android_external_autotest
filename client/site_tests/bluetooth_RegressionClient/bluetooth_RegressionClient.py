@@ -62,8 +62,8 @@ class bluetooth_RegressionClient(
         self.tell_user('Please disconnect all Bluetooth devices using (x).')
         self.wait_for_adapter(adapter_status=True)
         self.wait_for_connections(paired_status=True, connected_status=False)
-        self.ask_user('Audio playing through onboard speakers?<br>'
-                       'Audio NOT playing through Bluetooth device?')
+        self.ask_user('Audio NOT playing through onboard speakers?<br>'
+                      'Audio NOT playing through Bluetooth device?')
         self.collect_logs(message='After disconnect.')
         self.check_working()
         self.collect_logs(message='After reconnect.')
@@ -71,10 +71,10 @@ class bluetooth_RegressionClient(
     def _device_off(self):
         self._test_init('device_off')
         self.tell_user('Please turn off all Bluetooth devices.<br>'
-                        'Disconnect them on the Settings page if needed.')
+                       'Disconnect them on the Settings page if needed.')
         self.wait_for_adapter(adapter_status=True)
         self.wait_for_connections(paired_status=True, connected_status=False)
-        self.ask_user('Audio playing through onboard speakers?')
+        self.ask_user('Audio NOT playing through onboard speakers?')
         self.collect_logs(message='After device turned off.')
         self.check_working(message='Please turn devices back on and connect.')
         self.collect_logs(message='After device on.')
@@ -84,8 +84,8 @@ class bluetooth_RegressionClient(
         self.tell_user('Please unpair all Bluetooth devices (using (x))')
         self.wait_for_adapter(adapter_status=True)
         self.wait_for_connections(paired_status=False, connected_status=False)
-        self.ask_user('No Bluetooth devices work.<br> Audio is playing '
-                       'through onboard speakers or wired headphones.')
+        self.ask_user('No Bluetooth devices work.<br> Audio is NOT playing '
+                      'through onboard speakers or wired headphones.')
         self.collect_logs(message='After unpair.')
         self.check_working(message='Please re-pair and connect devices.')
         self.collect_logs(message='After re-pair.')
@@ -96,10 +96,10 @@ class bluetooth_RegressionClient(
         self.wait_for_adapter(adapter_status=False)
         self.collect_logs(message='While disabled')
         self.wait_for_connections(paired_status=True, connected_status=False)
-        self.ask_user('No Bluetooth devices work?<br> Audio is playing '
-                       'through onboard speakers or wired headphones?')
+        self.ask_user('No Bluetooth devices work?<br> Audio is NOT playing '
+                      'through onboard speakers or wired headphones?')
         self.tell_user('Please enable Bluetooth (check Enable Bluetooth).<br>'
-                        'Make sure all devices are still listed after enable.')
+                       'Make sure all devices are still listed after enable.')
         self.wait_for_adapter(adapter_status=True)
         self.check_working()
         self.collect_logs(message='After re-enable.')

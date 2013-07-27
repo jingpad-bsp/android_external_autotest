@@ -264,8 +264,8 @@ class BluetoothSemiAutoHelper(test.test):
 
     def ask_not_working(self):
         """Ask the user pre-defined message about NOT working."""
-        self.ask_user('No Bluetooth devices work.<br>Audio is playing through'
-                       'onboard speakers or wired headphones.')
+        self.ask_user('No Bluetooth devices work.<br>Audio is NOT playing '
+                      'through onboard speakers or wired headphones.')
 
     def start_dump(self, message=''):
         """Run hcidump in subprocess.
