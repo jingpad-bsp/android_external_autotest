@@ -297,7 +297,12 @@ class factory_Antenna(test.test):
         Setups the network of local host.
 
         The network setting in config should look like example below:
-        local_ip = ("192.168.132.66", "255.255.0.0")
+        # Using IP alias
+        local_ip = ("interface:1", "192.168.132.66", "255.255.0.0")
+
+        # Using a specific ethernet interface
+        local_ip = ("eth1", "192.168.132.66", "255.255.0.0")
+
         ena_mapping = {
             "192.168.132.114": {"MY46107777": "Taipei E5071C-1",
                                 "MY99999999": "Taipei E5071C-mock"},
@@ -314,23 +319,27 @@ class factory_Antenna(test.test):
         factory.console.info('Setup network...')
         _flush_route_cache()
         network_config = self.config['network']
-        interface = FindUsableEthDevice(raise_exception=True)
-        factory.console.info('Found Ethernet on %s' % interface)
-        # If a local IP is required create an IP alias of wired interface
+        default_interface = FindUsableEthDevice(raise_exception=True)
+        factory.console.info('Found Ethernet on %s' % default_interface)
+
+        # If a local IP is required, set based on the config.
         local_ip = network_config['local_ip']
         if local_ip is not None:
-            ip_address = local_ip[0]
-            netmask = local_ip[1]
-            alias_interface = interface + ":1"
-            factory.console.info('Creating IP alias with %s/%s',
-                                 ip_address, netmask)
-            Spawn(['ifconfig', alias_interface, ip_address,
+            interface, ip_address, netmask = local_ip
+            # Try to replace the string to default Ethernet interface.
+            use_alias = 'interface' in interface
+            interface = interface.replace('interface', default_interface)
+
+            factory.console.info('Set up interface %s with %s/%s',
+                                 interface, ip_address, netmask)
+            Spawn(['ifconfig', interface, ip_address,
                    'netmask', netmask],
                   call=True, check_call=True)
             # Make sure the underlying interface is up
-            Spawn(['ifconfig', interface, 'up'], call=True, check_call=True)
+            Spawn(['ifconfig', default_interface if use_alias else interface,
+                   'up'], call=True, check_call=True)
         else:
-            alias_interface = interface
+            interface = default_interface
 
         # Add the route information to each of the possible ENA in
         # the mapping list. In addition, check if there are only one
@@ -340,7 +349,7 @@ class factory_Antenna(test.test):
         for ena_ip in ena_mapping.iterkeys():
             # Manually add route information for all the possible ENA.
             # It might be duplicated, so ignore the exit code.
-            Spawn(['route', 'add', ena_ip, alias_interface], call=True)
+            Spawn(['route', 'add', ena_ip, interface], call=True)
             # Clear the route cache just in case.
             _flush_route_cache()
             # Ping the host
