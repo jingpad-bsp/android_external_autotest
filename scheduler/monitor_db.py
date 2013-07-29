@@ -1686,6 +1686,13 @@ class PreJobTask(SpecialAgentTask):
 
         if self.queue_entry:
             self.queue_entry.requeue()
+            # If we requeue a HQE, we should cancel any remaining pre-job
+            # tasks against this host, otherwise we'll be left in a state
+            # where a queued HQE has special tasks to run against a host.
+            models.SpecialTask.objects.filter(
+                    queue_entry__id=self.queue_entry.id,
+                    host__id=self.host.id,
+                    is_complete=0).update(is_complete=1, success=0)
 
             if models.SpecialTask.objects.filter(
                     task=models.SpecialTask.Task.REPAIR,
