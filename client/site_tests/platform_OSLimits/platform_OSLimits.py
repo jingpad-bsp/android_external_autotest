@@ -75,12 +75,15 @@ class platform_OSLimits(test.test):
                    'ngroups_max': 65536,
                    'nr_open': 1048576,
                    'pid_max': 32768,
-                   'randomize_va_space': 2,
                    'mmap_min_addr': 65536,
                   }
 
         ref_equal = {'leases': 1,
                      'panic': -1,
+                     'protected_hardlinks': 1,
+                     'protected_symlinks': 1,
+                     'ptrace_scope': 1,
+                     'randomize_va_space': 2,
                      'sched_rt_period_us': 1000000,
                      'sched_rt_runtime_us': 800000,
                      'sysrq': 1,
@@ -99,6 +102,9 @@ class platform_OSLimits(test.test):
                    'nr_open': '/proc/sys/fs/nr_open',
                    'panic': '/proc/sys/kernel/panic',
                    'pid_max': '/proc/sys/kernel/pid_max',
+                   'protected_hardlinks': '/proc/sys/fs/protected_hardlinks',
+                   'protected_symlinks': '/proc/sys/fs/protected_symlinks',
+                   'ptrace_scope': '/proc/sys/kernel/yama/ptrace_scope',
                    'randomize_va_space': '/proc/sys/kernel/randomize_va_space',
                    'sched_rt_period_us': '/proc/sys/kernel/sched_rt_period_us',
                    'sched_rt_runtime_us': '/proc/sys/kernel/sched_rt_runtime_us',
@@ -110,8 +116,15 @@ class platform_OSLimits(test.test):
         # Adjust arch-specific values.
         if utils.get_arch().startswith('arm'):
             ref_min['mmap_min_addr'] = 32768;
-            # FIXME(kees): armel builds need COMPAT_BRK removed.
-            ref_min['randomize_va_space'] = 1;
+
+        # Adjust version-specific details.
+        kernel_ver = os.uname()[2]
+        if utils.compare_versions(kernel_ver, "3.6") < 0:
+            # Prior to kernel version 3.6, Yama handled link restrictions.
+            refpath['protected_hardlinks'] = \
+                '/proc/sys/kernel/yama/protected_nonaccess_hardlinks'
+            refpath['protected_symlinks'] = \
+                '/proc/sys/kernel/yama/protected_sticky_symlinks'
 
         # Create osvalue dictionary with the same keys as refpath.
         osvalue = {}
@@ -121,25 +134,30 @@ class platform_OSLimits(test.test):
         for key in ref_min:
             osvalue[key] = self.get_limit(key, refpath[key])
             if osvalue[key] < ref_min[key]:
-                logging.warn('%s is %d' % (refpath[key], osvalue[key]))
-                logging.warn('%s should be at least %d' % (refpath[key],
-                             ref_min[key]))
+                logging.warn('%s is %d', refpath[key], osvalue[key])
+                logging.warn('%s should be at least %d', refpath[key],
+                             ref_min[key])
                 errors.add(key)
+            else:
+                logging.info('%s is %d <= %d', refpath[key], osvalue[key],
+                                               ref_min[key])
 
         for key in ref_equal:
             osvalue[key] = self.get_limit(key, refpath[key])
             if osvalue[key] != ref_equal[key]:
-                logging.warn('%s is set to %d' % (refpath[key], osvalue[key]))
-                logging.warn('Expected %d' % ref_equal[key])
+                logging.warn('%s is set to %d', refpath[key], osvalue[key])
+                logging.warn('Expected %d', ref_equal[key])
                 errors.add(key)
+            else:
+                logging.info('%s is %d', refpath[key], osvalue[key])
 
         # Look for anything from refpath that wasn't checked yet:
         for key in osvalue:
             if osvalue[key] == None:
-                logging.warn('%s was never checked')
+                logging.warn('%s was never checked', key)
                 errors.add(key)
 
         # If self.error is not zero, there were errors.
         if len(errors) > 0:
-            raise error.TestFail('Found incorrect values: %s' %
+            raise error.TestFail('Found incorrect values: %s',
                                  ', '.join(errors))
