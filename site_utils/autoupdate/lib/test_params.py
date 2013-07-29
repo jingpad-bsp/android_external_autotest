@@ -6,6 +6,8 @@
 
 import common
 
+import test_control
+
 
 _autoupdate_suite_name = 'au'
 
@@ -129,7 +131,7 @@ class TestConfig(object):
         """
         return '%s-release/%s/au/%s.%s' % (
                 self.board, self.target_release,
-                _autotest_test_name, self.unique_name_suffix())
+                test_control.get_test_name(), self.unique_name_suffix())
 
 
     def get_control_file_name(self):
