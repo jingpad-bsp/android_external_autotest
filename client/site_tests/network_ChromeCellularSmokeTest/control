@@ -9,7 +9,8 @@ CRITERIA = """
   The test will fail if the Chrome fails to connect to the network or if shill
   or the pseudomodem are not left in a working state.
 """
-TIME="FAST"
+SUITE = "network_ui"
+TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
@@ -21,5 +22,6 @@ DOC = """
   always connect to the network via chrome.networkingPrivate.
 """
 
-job.run_test('network_ChromeCellularSmokeTest')
+job.run_test('network_ChromeCellularSmokeTest', family='3GPP', tag='3GPP')
+job.run_test('network_ChromeCellularSmokeTest', family='CDMA', tag='CDMA')
 

@@ -32,6 +32,8 @@ IFACE_IP_BASE = '192.168.7'
 DEFAULT_MANAGERS = ['cromo', 'modemmanager']
 PARENT_SLEEP_TIMEOUT = 2
 
+DEFAULT_TEST_NETWORK_PREFIX = 'Test Network'
+
 class TestModemManagerContextError(Exception):
     """
     Exception subclass for exceptions that can be raised by

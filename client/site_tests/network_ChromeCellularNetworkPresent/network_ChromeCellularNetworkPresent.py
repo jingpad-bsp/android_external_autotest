@@ -8,8 +8,6 @@ from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 from autotest_lib.client.cros.cellular.chrome_testing \
         import chrome_networking_test_context as cntc
 
-TEST_NETWORK_NAME_PREFIX = 'Test Network'
-
 class network_ChromeCellularNetworkPresent(test.test):
     """
     This test is meant as a simple example using
@@ -34,7 +32,8 @@ class network_ChromeCellularNetworkPresent(test.test):
                             'Expected network of type "Cellular", found ' +
                             network["Type"])
 
-                if not network["Name"].startswith(TEST_NETWORK_NAME_PREFIX):
+                if not network["Name"].startswith(
+                        pseudomodem.DEFAULT_TEST_NETWORK_PREFIX):
                     raise error.TestFail('Network name is incorrect: ' +
                                          network["Name"])
 

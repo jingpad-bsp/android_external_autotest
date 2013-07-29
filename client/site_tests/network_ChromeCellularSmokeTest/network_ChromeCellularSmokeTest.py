@@ -74,7 +74,8 @@ class network_ChromeCellularSmokeTest(test.test):
             raise error.TestFail(
                     'Expected network of type "Cellular", found ' +
                     network['Type'])
-        if (network["Name"] != self._manager_context.sim.carrier.operator_name):
+        if not network["Name"].startswith(
+                pseudomodem.DEFAULT_TEST_NETWORK_PREFIX):
             raise error.TestFail('Network name is incorrect: ' +
                                  network["Name"])
 
@@ -125,8 +126,9 @@ class network_ChromeCellularSmokeTest(test.test):
             self._connect_cellular_network()
             self._disconnect_cellular_network()
 
-    def run_once(self):
-        with pseudomodem.TestModemManagerContext(True) as manager_context:
+    def run_once(self, family):
+        with pseudomodem.TestModemManagerContext(
+                True, family) as manager_context:
             with cntc.ChromeNetworkingTestContext() as testing_context:
                 self._manager_context = manager_context
                 self._chrome_testing = testing_context
