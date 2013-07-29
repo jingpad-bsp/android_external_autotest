@@ -16,6 +16,7 @@ import numpy as np
 import os
 import pprint
 import pyudev
+import random
 import re
 import select
 import serial
@@ -23,6 +24,7 @@ import signal
 import StringIO
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import xmlrpclib
@@ -33,14 +35,14 @@ import autotest_lib.client.cros.camera.renderer as renderer
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
-from cros.factory.event_log import Log
+from cros.factory.event_log import Log, GetDeviceId
 from cros.factory.test import factory
 from cros.factory.test import leds
 from cros.factory.test import shopfloor
 from cros.factory.test import test_ui
 from cros.factory.test import utils
 from cros.factory.test.media_util import MountedMedia
-from cros.factory.utils import net_utils
+from cros.factory.utils import net_utils, file_utils
 from cros.factory.utils.process_utils import SpawnOutput
 from autotest_lib.client.cros.rf.config import PluggableConfig
 from autotest_lib.client.cros import tty
@@ -162,31 +164,30 @@ class _ShopfloorWrapper(object):
         else:
             wrapper()
 
-    def upload_log(self, force_new_ip, aux_log):
+    def upload_log(self, force_new_ip, aux_log_list):
         '''Uploads logs to shopfloor server.
 
         Args:
             force_new_ip: Always set new IP regardless of existing IP.
-            aux_log: A tuple of (aux_log_name, aux_log_data).
+            aux_log_list: List of tuples of (log_name, log_data).
         '''
         self._prepare_network(force_new_ip)
         sf = self._get_shopfloor_connection()
 
-        if aux_log:
+        for log_name, log_data in aux_log_list:
             try:
-                aux_log_name = aux_log[0]
-                aux_log_data = aux_log[1]
-                factory.console.info('Uploading %s', aux_log_name)
+                factory.console.info('Uploading %s', log_name)
                 start_time = time.time()
-                sf.SaveAuxLog(aux_log_name, xmlrpclib.Binary(aux_log_data))
-                factory.console.info('Successfully synced %s in %.03f s',
-                                     aux_log_name, time.time() - start_time)
+                sf.SaveAuxLog(log_name, xmlrpclib.Binary(log_data))
             except:  # pylint: disable=W0702
                 exception_string = utils.FormatExceptionOnly()
                 factory.console.error('Failed to upload %s: %s',
-                                      aux_log_name,
+                                      log_name,
                                       exception_string)
                 raise
+            factory.console.info('Successfully synced %s in %.03f s',
+                                 log_name, time.time() - start_time)
+
 
 class ALS():
     '''Class to interface the ambient light sensor over iio.'''
@@ -581,9 +582,6 @@ class factory_CameraPerformanceAls(test.test):
             return False
         return True
 
-    def normalize_as_filename(self, token):
-        return re.sub(r'\W+', '_', token)
-
     def save_log_to_usb(self):
         # Save an image for further analysis
         self.update_status(mid='save_to_usb')
@@ -603,22 +601,40 @@ class factory_CameraPerformanceAls(test.test):
     def save_log_to_shopfloor(self):
         ''' Updates image and aux log to shopfloor server.'''
         self.update_status(mid='save_to_shopfloor')
-        aux_log_name = '%s_%s.txt' % (
-            self.normalize_as_filename(
-                os.environ.get('CROS_FACTORY_TEST_PATH')),
-            self.serial_number)
 
+        aux_log_list = []
+        log_prefix = '_'.join([re.sub(r'\W+', '_', x) for x in
+                               [os.environ.get('CROS_FACTORY_TEST_PATH'),
+                                re.sub(r':', '', GetDeviceId()),
+                                self.serial_number]])
+
+        aux_log_list.append((log_prefix + '.txt', self.log_to_file.getvalue()))
+
+        # Adds images to aux logs.
         if ((self.target is not None) and
             ((self.cam_pass and self.log_good_image) or
              (not self.cam_pass and self.log_bad_image))):
-            # TODO (jchuang): add image upload.
-            raise NotImplementedError(
-                'Image uploading is not implemented yet')
+            # TODO (jchuang): newer version of OpenCV has better imencode()
+            # Python method.
+            def get_image_data(cv_image, file_ext):
+                random_key = "%08d" % random.SystemRandom().randint(0, 1e8)
+                temp_fn = os.path.join(tempfile.gettempdir(),
+                                       random_key + file_ext)
+                try:
+                    cv2.imwrite(temp_fn, cv_image)
+                    with open(temp_fn, 'rb') as f:
+                        return f.read()
+                except: # pylint: disable=W0702
+                    factory.console.error('Failed to read image data')
+                finally:
+                    file_utils.TryUnlink(temp_fn)
 
-        self.shopfloor.upload_log(
-            force_new_ip=False, aux_log=(
-                aux_log_name,
-                self.log_to_file.getvalue()))
+            aux_log_list.extend([(log_prefix + '.bmp',
+                                  get_image_data(self.target, '.bmp')),
+                                 (log_prefix + '.jpg',
+                                  get_image_data(self.analyzed, '.jpg'))])
+
+        self.shopfloor.upload_log(force_new_ip=False, aux_log_list=aux_log_list)
 
     def finalize_test(self):
         self.generate_final_result()
