@@ -64,9 +64,7 @@ class FAFTClientAttribute(object):
         self.platform = platform
 
         # Set 'broken_warm_reset'
-        # TODO(vbendeb): drop Pit from the list once
-        # http://crosbug.com/p/21341 is fixed.
-        if platform in ['Butterfly', 'Parrot', 'Pit', 'Stout']:
+        if platform in ['Parrot', 'Butterfly', 'Stout']:
             self.broken_warm_reset = True
 
         # Set 'broken_rec_mode' for Stout because it does not have rec_mode GPIO
