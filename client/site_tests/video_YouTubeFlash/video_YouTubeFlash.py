@@ -14,8 +14,8 @@ FLASH_PROCESS_NAME = 'chrome/chrome --type=ppapi'
 PLAYER_PLAYING_STATE = 'Playing'
 
 
-class video_YouTubeHTML5(test.test):
-    """This test verify the YouTube HTML5 video.
+class video_YouTubeFlash(test.test):
+    """This test verify the YouTube Flash video.
 
     - verify the video playback.
     - verify the available video resolutions.
@@ -36,22 +36,22 @@ class video_YouTubeHTML5(test.test):
 
 
     def run_youtube_tests(self, browser):
-        """Run YouTube HTML5 sanity tests.
+        """Run YouTube Flash sanity tests.
 
         @param browser: The Browser object to run the test with.
 
         """
         tab = browser.tabs.New()
-        tab.Navigate('http://localhost:8000/youtube5.html')
+        tab.Navigate('http://localhost:8000/youtube.html')
         yh = youtube_helper.YouTubeHelper(tab)
         # Waiting for test video to load.
         yh.wait_for_player_state(PLAYER_PLAYING_STATE)
         yh.set_video_duration()
 
-        # Verify that YouTube is running in html5 mode.
+        # Verify that YouTube is running in Flash mode.
         prc = utils.get_process_list('chrome', '--type=ppapi')
-        if prc:
-            raise error.TestFail('Running YouTube in Flash mode.')
+        if not prc:
+            raise error.TestFail('No Flash process is running.')
 
         tab.ExecuteJavaScript('player.mute()')
         yh.verify_video_playback()

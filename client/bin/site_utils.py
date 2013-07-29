@@ -76,6 +76,41 @@ def get_oldest_pid_by_name(name):
         return int(str_pid)
 
 
+def get_process_list(name, command_line=None):
+    """
+    Return the list of pid for matching process |name command_line|.
+
+    on a system running
+      31475 ?    0:06 /opt/google/chrome/chrome --allow-webui-compositing -
+      31478 ?    0:00 /opt/google/chrome/chrome-sandbox /opt/google/chrome/
+      31485 ?    0:00 /opt/google/chrome/chrome --type=zygote --log-level=1
+      31532 ?    1:05 /opt/google/chrome/chrome --type=renderer
+
+    get_process_list('chrome')
+    would return ['31475', '31485', '31532']
+
+    get_process_list('chrome', '--type=renderer')
+    would return ['31532']
+
+    Arguments:
+      name: process name to search for. If command_line is provided, name is
+            matched against full command line. If command_line is not provided,
+            name is only matched against the process name.
+      command line: when command line is passed, the full process command line
+                    is used for matching.
+
+    Returns:
+      list of PIDs of the matching processes.
+
+    """
+    # TODO(rohitbm) crbug.com/268861
+    flag = '-x' if not command_line else '-f'
+    name = '\'%s.*%s\'' % (name, command_line) if command_line else name
+    str_pid = utils.system_output(
+            'pgrep %s %s' % (flag, name), ignore_status=True).rstrip()
+    return str_pid
+
+
 def nuke_process_by_name(name, with_prejudice=False):
     try:
         pid = get_oldest_pid_by_name(name)
