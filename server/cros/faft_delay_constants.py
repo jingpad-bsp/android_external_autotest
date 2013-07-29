@@ -80,3 +80,7 @@ class FAFTDelayConstants(object):
 
         if platform == 'Spring':
             self.software_sync_update = 6
+
+        if platform in ['Falco', 'Peppy', 'Slippy']:
+            # Measured boot-to-console as ~110ms, so this is safe
+            self.ec_boot_to_console = 0.6
