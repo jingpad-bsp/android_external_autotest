@@ -1861,10 +1861,11 @@ class ResetTask(PreJobTask):
 
         if self.success:
             self.host.update_field('dirty', 0)
-            self.host.set_status(models.Host.Status.READY)
 
             if self._should_pending():
                 self.queue_entry.on_pending()
+            else:
+                self.host.set_status(models.Host.Status.READY)
 
 
 class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
