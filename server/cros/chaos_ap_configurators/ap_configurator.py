@@ -74,6 +74,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.wep_authentication_shared = config.WEP_AUTHENTICATION_SHARED
 
         self._command_list = []
+        self._screenshot_list = []
 
         self.driver_connection_established = False
         self.router_on = False
@@ -108,6 +109,17 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.configuration_success = False
         self._command_list = []
         self.destroy_driver_connection()
+
+
+    @property
+    def screenshot_list(self):
+        """Returns the file as a base 64 encoded string for screenshot."""
+        if self.driver_connection_established:
+            screenshot = self.driver.get_screenshot_as_base64()
+            if screenshot:
+                self._screenshot_list.append(screenshot)
+        return self._screenshot_list
+        self._screenshot_list = []
 
 
     def get_router_name(self):
