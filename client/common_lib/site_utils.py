@@ -331,6 +331,8 @@ def urlopen_socket_timeout(url, data=None, timeout=5):
     @return: The response of the urlopen call.
 
     @raises: error.TimeoutException when a socket timeout occurs.
+             urllib2.URLError for errors that not caused by timeout.
+             urllib2.HTTPError for errors like 404 url not found.
     """
     old_timeout = socket.getdefaulttimeout()
     socket.setdefaulttimeout(timeout)
@@ -339,5 +341,6 @@ def urlopen_socket_timeout(url, data=None, timeout=5):
     except urllib2.URLError as e:
         if type(e.reason) is socket.timeout:
             raise error.TimeoutException(str(e))
+        raise
     finally:
         socket.setdefaulttimeout(old_timeout)

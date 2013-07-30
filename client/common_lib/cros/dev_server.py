@@ -68,6 +68,7 @@ def remote_devserver_call(timeout_min=30):
 
     This decorator converts urllib2.HTTPErrors into DevServerExceptions with
     any embedded error info converted into plain text.
+    The method retries on urllib2.URLError to avoid devserver flakiness.
     """
     #pylint: disable=C0111
     def inner_decorator(method):
