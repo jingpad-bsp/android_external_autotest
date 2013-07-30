@@ -3,12 +3,10 @@
 # found in the LICENSE file.
 
 import functools
-import getpass
 import httplib
 import logging
 import os
 import re
-import smtplib
 import socket
 import subprocess
 import time
@@ -17,7 +15,6 @@ import xmlrpclib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import mail
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
@@ -32,7 +29,6 @@ from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import remote
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
-from autotest_lib.tko import utils as tko_utils
 
 
 def _make_servo_hostname(hostname):
@@ -216,20 +212,6 @@ class SiteHost(remote.RemoteHost):
 
     _RPM_OUTLET_CHANGED = 'outlet_changed'
 
-    # pylint: disable=E1120
-    _NOTIFY_ADDRESS = global_config.global_config.get_config_value(
-        'SCHEDULER', 'notify_email_errors', default='')
-
-    _SENDER_ADDRESS = global_config.global_config.get_config_value(
-        'SCHEDULER', "notify_email_from", default=getpass.getuser())
-
-    _ERROR_EMAIL_SUBJECT_FORMAT = 'job_repo_url changed for host %s'
-    _ERROR_EMAIL_MSG_FORMAT = ('While verifying the job_repo_url on %(host)s '
-                               'the devserver changed from %(old_devserver)s '
-                               'to %(new_devserver)s. This might indicate a '
-                               'delay in job with id: %(job_id)s, re-staging '
-                               'artifacts took an additional %(stage_time)s '
-                               'seconds.')
 
     @staticmethod
     def get_servo_arguments(args_dict):
@@ -401,6 +383,8 @@ class SiteHost(remote.RemoteHost):
         @raises AutoservError: If we're unable to save the new job_repo_url as
             a result of choosing a new devserver because the old one failed to
             respond to a health check.
+        @raises urllib2.URLError: If the devserver embedded in job_repo_url
+                                  doesn't respond within the timeout.
         """
         job_repo_url = self.lookup_job_repo_url()
         if not job_repo_url:
@@ -411,8 +395,7 @@ class SiteHost(remote.RemoteHost):
         devserver_url, image_name = tools.get_devserver_build_from_package_url(
             job_repo_url)
 
-        ds = dev_server.ImageServer.resolve(image_name)
-        new_devserver_url = ds.url()
+        ds = dev_server.ImageServer(devserver_url)
 
         logging.info('Staging autotest artifacts for %s on devserver %s',
             image_name, ds.url())
@@ -430,44 +413,17 @@ class SiteHost(remote.RemoteHost):
         except site_utils.ParseBuildNameException as e:
             pass
         else:
-            new_devserver = new_devserver_url[
-                new_devserver_url.find('/')+2:new_devserver_url.rfind(':')]
+            devserver = devserver_url[
+                devserver_url.find('/')+2:devserver_url.rfind(':')]
             stats_key = {
                 'board': board,
                 'build_type': build_type,
                 'branch': branch,
-                'devserver': new_devserver.replace('.', '_'),
+                'devserver': devserver.replace('.', '_'),
             }
             stats.Gauge('verify_job_repo_url').send(
                 '%(board)s.%(build_type)s.%(branch)s.%(devserver)s' % stats_key,
                 stage_time)
-
-        if ds.url() != devserver_url:
-
-            # Since this is only to add traceability to devserver flakes we
-            # make a best effort attempt at getting the job id by parsing the
-            # tag.
-            try:
-                job_id = tko_utils.get_afe_job_id(tag)
-            except ValueError:
-                logging.debug('Could not determine job id from tag %s', tag)
-                job_id = 'NA'
-
-            error_dict = {
-                'host': self.hostname,
-                'old_devserver': devserver_url,
-                'new_devserver': new_devserver_url,
-                'job_id': job_id,
-                'stage_time': stage_time,
-            }
-            try:
-                mail.send(self._SENDER_ADDRESS, self._NOTIFY_ADDRESS, '',
-                    self._ERROR_EMAIL_SUBJECT_FORMAT % self.hostname,
-                    self._ERROR_EMAIL_MSG_FORMAT % error_dict)
-            except smtplib.SMTPDataError:
-                logging.warning(self._ERROR_EMAIL_MSG_FORMAT, error_dict)
-
-            self.update_job_repo_url(ds.url(), image_name)
 
 
     def _try_stateful_update(self, update_url, force_update, updater):

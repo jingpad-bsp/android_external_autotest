@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from distutils import version
+import httplib
 import json
 import logging
 import os
@@ -393,7 +394,14 @@ class ImageServer(DevServer):
                                archive_url=archive_url,
                                artifacts=artifacts,
                                async=True)
-        response = urllib2.urlopen(call).read()
+        try:
+            response = urllib2.urlopen(call).read()
+        except httplib.BadStatusLine as e:
+            logging.error(e)
+            raise DevServerException('Received Bad Status line, Devserver %s '
+                                     'might have gone down while handling '
+                                     'the call: %s' % (self.url(), call))
+
         if expected_response and not response == expected_response:
               raise DevServerException(error_message)
 
