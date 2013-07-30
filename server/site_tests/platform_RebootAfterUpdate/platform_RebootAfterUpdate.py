@@ -85,6 +85,7 @@ class platform_RebootAfterUpdate(test.test):
         # 'http://mydevserver:8080', 'x86-alex-release/R27-123.0.0'
         ds, build = tools.get_devserver_build_from_package_url(job_repo_url)
         devserver = dev_server.ImageServer(ds)
+        devserver.stage_artifacts(build, ['stateful'])
 
         # We only need to update stateful to do this test.
         updater = autoupdater.ChromiumOSUpdater(
