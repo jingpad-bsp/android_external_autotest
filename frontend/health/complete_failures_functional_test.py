@@ -104,8 +104,8 @@ class CompleteFailuresFunctionalTests(mox.MoxTestBase, test.TestCase):
                   ['chromeos-lab-infrastructure@google.com'],
                   [],
                   'Long Failing Tests',
-                  'The following tests have been failing for at '
-                  'least %i days:\n\ntest1\ntest2'
+                  '2/2 tests have been failing for at least %d days.\n'
+                  'They are the following:\n\ntest1\ntest2'
                   % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
         complete_failures.save_storage(storage)
 

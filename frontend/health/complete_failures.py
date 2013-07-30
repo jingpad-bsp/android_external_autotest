@@ -102,19 +102,21 @@ def get_recently_ran_test_names():
     return {test.encode('utf8') for test in valid_test_names}
 
 
-def get_tests_to_analyze():
+def get_tests_to_analyze(recent_test_names, last_pass_times):
     """
     Get all the recently ran tests as well as the last time they have passed.
 
     The minimum datetime is given as last pass time for tests that have never
     passed.
 
+    @param recent_test_names: The set of the names of tests that have been
+        recently ran.
+    @param last_pass_times: The dictionary of test_name:last_pass_time pairs.
+
     @return the dict of test_name:last_finish_time pairs.
 
     """
-    recent_test_names = get_recently_ran_test_names()
-    last_passes = utils.get_last_pass_times()
-    prepared_passes = prepare_last_passes(last_passes)
+    prepared_passes = prepare_last_passes(last_pass_times)
 
     running_passes = {}
     for test, pass_time in prepared_passes.items():
@@ -149,21 +151,25 @@ def store_results(tests, storage):
                 pass
 
 
-def email_about_test_failure(storage):
+def email_about_test_failure(storage, all_tests):
     """
     Send an email about all the tests in the storage object if there are any.
 
     @param storage: The storage object.
+    @param all_tests: All the names of tests that have been recently ran.
 
     """
     if storage:
+        tests = sorted(storage.keys())
         mail.send(_MAIL_RESULTS_FROM,
                   [_MAIL_RESULTS_TO],
                   [],
                   'Long Failing Tests',
-                  'The following tests have been failing for '
-                  'at least %s days:\n\n' % (_DAYS_TO_BE_FAILING_TOO_LONG) +
-                  '\n'.join(storage.keys()))
+                  '%d/%d tests have been failing for at least %d days.\n'
+                  'They are the following:\n\n%s'
+                  % (len(storage), len(all_tests),
+                     _DAYS_TO_BE_FAILING_TOO_LONG,
+                     '\n'.join(tests)))
 
 
 def main():
@@ -175,9 +181,11 @@ def main():
 
     """
     storage = load_storage()
-    tests = get_tests_to_analyze()
+    all_test_names = get_recently_ran_test_names()
+    last_passes = utils.get_last_pass_times()
+    tests = get_tests_to_analyze(all_test_names, last_passes)
     store_results(tests, storage)
-    email_about_test_failure(storage)
+    email_about_test_failure(storage, all_test_names)
     save_storage(storage)
 
     return 0

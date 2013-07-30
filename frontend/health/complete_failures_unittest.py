@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, unittest
+import collections, datetime, unittest
 
 import mox
 
@@ -14,7 +14,6 @@ import common
 from autotest_lib.frontend import setup_django_readonly_environment
 from autotest_lib.frontend import setup_test_environment
 import complete_failures
-from autotest_lib.frontend.health import utils
 from autotest_lib.client.common_lib import mail
 from autotest_lib.frontend.tko import models
 from django import test
@@ -143,16 +142,64 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
                 ['chromeos-lab-infrastructure@google.com'],
                 [],
                 'Long Failing Tests',
-                'The following tests have been failing for at '
-                'least %i days:\n\ntest'
+                '1/1 tests have been failing for at least %d days.\n'
+                'They are the following:\n\ntest'
                     % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
 
         storage = {'test': datetime.datetime.min}
+        all_tests = set(storage.keys())
 
         # The ReplayAll is required or else a mox object sneaks its way into
         # the storage object somehow.
         self.mox.ReplayAll()
-        complete_failures.email_about_test_failure(storage)
+        complete_failures.email_about_test_failure(storage, all_tests)
+
+
+    def test_email_has_test_names_sorted_alphabetically(self):
+        """Test that the email report has entries sorted alphabetically."""
+        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 60
+
+        mail.send(
+                'chromeos-test-health@google.com',
+                ['chromeos-lab-infrastructure@google.com'],
+                [],
+                'Long Failing Tests',
+                '2/2 tests have been failing for at least %d days.\n'
+                'They are the following:\n\ntest1\ntest2'
+                    % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
+
+        # We use an OrderedDict to gurantee that the elements would be out of
+        # order if we did a simple traversal.
+        storage = collections.OrderedDict((('test2', datetime.datetime.min),
+                                           ('test1', datetime.datetime.min)))
+        all_tests = set(storage.keys())
+
+        # The ReplayAll is required or else a mox object sneaks its way into
+        # the storage object somehow.
+        self.mox.ReplayAll()
+        complete_failures.email_about_test_failure(storage, all_tests)
+
+
+    def test_email_count_of_total_number_of_tests(self):
+        """Test that the email report displays total number of tests."""
+        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 60
+
+        mail.send(
+                'chromeos-test-health@google.com',
+                ['chromeos-lab-infrastructure@google.com'],
+                [],
+                'Long Failing Tests',
+                '1/2 tests have been failing for at least %d days.\n'
+                'They are the following:\n\ntest'
+                    % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
+
+        storage = {'test': datetime.datetime.min}
+        all_tests = set(storage.keys()) | {'not_failure'}
+
+        # The ReplayAll is required or else a mox object sneaks its way into
+        # the storage object somehow.
+        self.mox.ReplayAll()
+        complete_failures.email_about_test_failure(storage, all_tests)
 
 
 class IsValidTestNameTests(test.TestCase):
@@ -271,18 +318,13 @@ class GetTestsToAnalyzeTests(mox.MoxTestBase):
 
     def test_returns_recent_test_names(self):
         """Test should return all the test names in the database."""
-        self.mox.StubOutWithMock(utils, 'get_last_pass_times')
-        self.mox.StubOutWithMock(complete_failures,
-            'get_recently_ran_test_names')
 
-        utils.get_last_pass_times().AndReturn({'passing_test':
-            datetime.datetime(2012, 1 ,1),
-            'old_passing_test': datetime.datetime(2011, 1, 1)})
-        complete_failures.get_recently_ran_test_names().AndReturn(
-            {'passing_test',
-             'failing_test'})
-        self.mox.ReplayAll()
-        results = complete_failures.get_tests_to_analyze()
+        recent_tests = {'passing_test', 'failing_test'}
+        last_passes = {'passing_test': datetime.datetime(2012, 1 ,1),
+                       'old_passing_test': datetime.datetime(2011, 1, 1)}
+
+        results = complete_failures.get_tests_to_analyze(recent_tests,
+                                                         last_passes)
 
         self.assertEqual(results,
                          {'passing_test': datetime.datetime(2012, 1, 1),
@@ -291,15 +333,13 @@ class GetTestsToAnalyzeTests(mox.MoxTestBase):
 
     def test_returns_failing_tests_with_min_datetime(self):
         """Test that never-passed tests are paired with datetime.min."""
-        self.mox.StubOutWithMock(utils, 'get_last_pass_times')
-        self.mox.StubOutWithMock(complete_failures,
-                                 'get_recently_ran_test_names')
 
-        utils.get_last_pass_times().AndReturn({})
-        complete_failures.get_recently_ran_test_names().AndReturn({'test'})
+        recent_tests = {'test'}
+        last_passes = {}
 
         self.mox.ReplayAll()
-        results = complete_failures.get_tests_to_analyze()
+        results = complete_failures.get_tests_to_analyze(recent_tests,
+                                                         last_passes)
 
         self.assertEqual(results, {'test': datetime.datetime.min})
 
