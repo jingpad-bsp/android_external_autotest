@@ -32,8 +32,9 @@ class firmware_SelfSignedBoot(FAFTSequence):
         logging.info('Original dev_boot_usb value: %s',
                      str(self.original_dev_boot_usb))
 
-        self.root_dev = self.faft_client.system.get_root_dev()
-        self.set_usbdev_path()
+        self.usb_dev = self.get_dut_usb_dev()
+        if not self.usb_dev:
+            raise error.TestError("Unable to find USB disk")
 
 
     def cleanup(self):
@@ -55,25 +56,6 @@ class firmware_SelfSignedBoot(FAFTSequence):
             self.run_faft_step({
                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
             })
-
-
-    def set_usbdev_path(self):
-        """Mapping the right USBDev path as per DUT platform(x86/ARM)."""
-
-        # Default paths of USB dev for x86 and ARM.
-        usb_dev_x86 = "/dev/sdb"
-        usb_dev_arm = "/dev/sda"
-
-        # Default paths of root dev for x86 and ARM.
-        root_dev_x86 = "/dev/sda"
-        root_dev_arm = "/dev/mmcblk0"
-
-        if self.root_dev == root_dev_x86:
-            self.usb_dev = usb_dev_x86
-        elif self.root_dev == root_dev_arm:
-            self.usb_dev = usb_dev_arm
-        else:
-            raise error.TestError('DUT is neither of x86 or ARM platforms.')
 
 
     def try_ctrl_u_and_ctrl_d(self):
@@ -99,12 +81,14 @@ class firmware_SelfSignedBoot(FAFTSequence):
 
 
     def enable_crossystem_selfsigned(self):
+        """Enable dev_boot_signed_only + dev_boot_usb."""
         self.faft_client.system.run_shell_command(
             'crossystem dev_boot_signed_only=1')
         self.faft_client.system.run_shell_command('crossystem dev_boot_usb=1')
 
 
     def disable_crossystem_selfsigned(self):
+        """Disable dev_boot_signed_only + dev_boot_usb."""
         self.faft_client.system.run_shell_command(
             'crossystem dev_boot_signed_only=0')
         self.faft_client.system.run_shell_command('crossystem dev_boot_usb=0')
