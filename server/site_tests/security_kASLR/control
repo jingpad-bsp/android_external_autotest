@@ -8,6 +8,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"
 TEST_TYPE = "server"
+SUITE = "security_weekly"
 
 DOC = """
 This test reboots the host many times to check kASLR entropy.
