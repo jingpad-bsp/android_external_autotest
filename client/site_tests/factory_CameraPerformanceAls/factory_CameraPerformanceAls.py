@@ -16,11 +16,11 @@ import numpy as np
 import os
 import pprint
 import pyudev
-import random
 import re
 import select
 import serial
 import signal
+import socket
 import StringIO
 import subprocess
 import sys
@@ -35,7 +35,7 @@ import autotest_lib.client.cros.camera.renderer as renderer
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules #pylint:disable=W0611
-from cros.factory.event_log import Log, GetDeviceId
+from cros.factory.event_log import Log, GetDeviceId, TimedUuid
 from cros.factory.test import factory
 from cros.factory.test import leds
 from cros.factory.test import shopfloor
@@ -63,11 +63,232 @@ _IP_SETUP_TIMEOUT_SECS = 10 # Timeout for setting IP address.
 _SHOPFLOOR_TIMEOUT_SECS = 10 # Timeout for shopfloor connection.
 _SHOPFLOOR_RETRY_INTERVAL_SECS = 10 # Seconds to wait between retries.
 
+
+class ShopfloorBridgeException(Exception):
+    pass
+
+
+class ShopfloorBridge(object):
+    '''Warps shopfloor bridge connection.'''
+    # Uses very simple protocol in shopfloor bridge.
+    # <4-char ID><space><8-char data length>\r\n<variable length of data>
+    _PROT_PORT = 8000 # Default port for shopfloor bridge.
+    # Hello!
+    _PROT_COMMAND_HELLO = 'HELO'
+    # download test parameters
+    _PROT_COMMAND_PARA = 'PARA'
+    # uploads test results
+    _PROT_COMMAND_TEST = 'TEST'
+    _PROT_COMMAND_SIZE = 4
+    _PROT_STATUS_OK = 'OKAY'
+    _PROT_STATUS_FAIL = 'FAIL'
+    _PROT_DATALEN_SIZE = 8
+    _PROT_PREAMBLE_SIZE = _PROT_COMMAND_SIZE + 1 + _PROT_DATALEN_SIZE + 2
+    # Seconds to wait for request / connection. (The value should be large
+    # enough to avoid unnecessary retrying.)
+    _TIMEOUT_SECS = 20
+    # Seconds to wait between retries.
+    _RETRY_INTERVAL_SECS = 3
+
+    def __init__(self, bridge_ip, setup_network_callback):
+        '''ShopfloorBridge is usually used in module-level testing.
+
+        Reconfigure the IP with setup_network_callback since the test may run
+        for a very long time. Otherwise, if IP setting is lost,
+        self._reconnect() may get stuck in infinite loop.
+
+        Args:
+            bridge_ip: IP address of the shopfloor bridge server.
+            setup_network_callback: Callback to setup network IP.
+        '''
+        assert(bridge_ip)
+        self.bridge_ip = bridge_ip
+        self.setup_network_callback = setup_network_callback
+        self.socket = None
+        self.rfile = None
+        self.wfile = None
+
+    def __del__(self):
+        self._close()
+
+    def _close(self):
+        """Closes the connection to shopfloor bridge."""
+        if self.rfile:
+            self.rfile.close()
+            self.rfile = None
+        if self.wfile:
+            self.wfile.close()
+            self.wfile = None
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+
+    def _reconnect(self):
+        """Reconnects to shopfloor bridge."""
+        self._close();
+        self._connect()
+
+    def _connect(self,
+        timeout_secs=_TIMEOUT_SECS,
+        retry_interval_secs=_RETRY_INTERVAL_SECS):
+        """Connects to shopfloor bridge.
+
+        Args:
+            timeout_secs: Seconds to wait for connection.
+            retry_interval_secs: Seconds to wait between retries.
+        """
+        if self.socket: # already connected
+            return
+
+        factory.console.info('Connecting to shopfloor bridge...')
+        while True:
+            try:
+                self.socket = socket.socket(socket.AF_INET,
+                                            socket.SOCK_STREAM)
+                self.socket.settimeout(timeout_secs)
+                self.socket.connect((self.bridge_ip, self._PROT_PORT))
+                self.socket.settimeout(None)
+                break
+            except:  # pylint: disable=W0702
+                exception_string = utils.FormatExceptionOnly()
+                # Log the exception string only since it may happen repeatedly.
+                factory.console.error('Unable to connect to bridge: %s',
+                                      exception_string)
+                if self.setup_network_callback:
+                    self.setup_network_callback()
+
+            time.sleep(retry_interval_secs)
+
+        self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        self.rfile = self.socket.makefile('rb', -1)
+        self.wfile = self.socket.makefile('wb', 0) # No buffering
+
+    def _send_command(self, command, data,
+                      timeout_secs=_TIMEOUT_SECS,
+                      retry_interval_secs=_RETRY_INTERVAL_SECS):
+        """Sends command to shopfloor bridge.
+
+        Args:
+            command: Command to bridge.
+            data: Data to bridge.
+            timeout_secs: Seconds to wait for response.
+            retry_interval_secs: Seconds to wait between retries.
+
+        Returns:
+            A pair of (response okay, received data).
+        """
+        received_data = ''
+        self._connect()
+
+        data_len = len(data)
+        assert len(command) == 4
+        assert len('%d' % data_len) <= 8
+        preamble = '%s %08d\r\n' % (command, data_len)
+        assert len(preamble) == self._PROT_PREAMBLE_SIZE
+
+        response_ok = None
+        while response_ok is None:
+            try:
+                with utils.Timeout(timeout_secs):
+                    self.wfile.write(preamble)
+                    if data:
+                        self.wfile.write(data)
+                    self.wfile.flush()
+                    ack_preamble = self.rfile.read(self._PROT_PREAMBLE_SIZE)
+                    if len(ack_preamble) != self._PROT_PREAMBLE_SIZE:
+                        raise ShopfloorBridgeException(
+                            "Shopfloor Error: can't read %d bytes (preamble)." %
+                            self._PROT_PREAMBLE_SIZE)
+                    if ack_preamble[-2] != '\r' or ack_preamble[-1] != '\n':
+                        raise ShopfloorBridgeException(
+                            'Shopfloor Error: cannot find \\r or \\n in reply.')
+                    ack_status = ack_preamble[0:self._PROT_COMMAND_SIZE] # 0:4
+                    ack_datalen_str = ack_preamble[
+                            self._PROT_COMMAND_SIZE + 1:
+                            self._PROT_COMMAND_SIZE + 1 +
+                            self._PROT_DATALEN_SIZE] # 5:13
+                    factory.console.info(
+                        'Received "%s" "%s" from shopfloor bridge', ack_status,
+                        ack_datalen_str)
+                    ack_datalen = int(ack_datalen_str)
+                    if ack_datalen > 0:
+                        received_data = self.rfile.read(ack_datalen)
+                        if len(received_data) != ack_datalen:
+                            raise ShopfloorBridgeException(
+                                "Shopfloor Error: can't read %d bytes (data)." %
+                                ack_datalen)
+
+                if ack_status != self._PROT_STATUS_OK:
+                    # On fail, received_data contains error message.  End the
+                    # loop here because shopfloor may not recover from the error
+                    # anytime soon. We should make the test fails instead of
+                    # retrying to talk to shopfloor again.
+                    factory.console.error(
+                            'Shopfloor Error: bridge returns %s: %s',
+                            ack_status, received_data)
+                    response_ok = False
+                else:
+                    response_ok = True
+            except:  # pylint: disable=W0702
+                exception_string = utils.FormatExceptionOnly()
+                # Log the exception string only since it may happen repeatedly.
+                factory.console.error('Unable to get response from command %s '
+                                      'from shopfloor bridge: %s',
+                                      command, exception_string)
+
+                time.sleep(retry_interval_secs)
+                # Assume it's network problem. Simply reconnects the bridge!
+                self._reconnect()
+
+        return (response_ok, received_data)
+
+    def download_param(self, param_filename):
+        """Downloads parameter.
+
+        Returns:
+            Returns downloaded parameters.
+        """
+
+        response_ok, param_data =  self._send_command(self._PROT_COMMAND_PARA,
+                                                      param_filename)
+        # No way to handle the error case shopfloor returns FAIL in downloading
+        # parameters.
+        assert response_ok, 'Cannot download parameter from shopfloor'
+        return param_data
+
+    def upload_result(self, results):
+        """Uploads test results.
+
+        Returns:
+            Success or not.
+        """
+        response_ok, dummy = self._send_command(self._PROT_COMMAND_TEST,
+                                                results)
+        return response_ok
+
+
 class _ShopfloorWrapper(object):
     '''Wraps shopfloor connectivity.'''
 
-    def __init__(self, ip_addr):
+    def __init__(self, ip_addr, bridge_mode, bridge_ip,
+                 shopfloor_directory, shopfloor_param_file):
+        '''
+        Args:
+            ip_addr: IP address of DUT (None for DHCP).
+            bridge_mode: Use bridge mode or native shopfloor.
+            bridge_ip: IP of the bridge server.
+            shopfloor_directory: Relative path to shopfloor parameters folder.
+            shopfloor_param_file: Filename of parameter file on shopfloor.
+        '''
         self.ip_addr = ip_addr
+        if bridge_mode:
+            self.bridge = ShopfloorBridge(
+                    bridge_ip=bridge_ip,
+                    setup_network_callback=lambda: self._prepare_network(False))
+        else:
+            self.bridge = None
+        self.shopfloor_directory = shopfloor_directory
+        self.shopfloor_param_file = shopfloor_param_file
 
     def _prepare_network(self, force_new_ip):
         '''Blocks forever until network is prepared.
@@ -91,12 +312,13 @@ class _ShopfloorWrapper(object):
 
             # Only setup the IP if required so.
             current_ip = net_utils.GetEthernetIp(
-                net_utils.FindUsableEthDevice())
+                    net_utils.FindUsableEthDevice())
             if not current_ip or force_new_ip:
               factory.console.info('Setting up IP address...')
-              net_utils.PollForCondition(condition=_obtain_IP,
-                  timeout=_IP_SETUP_TIMEOUT_SECS,
-                  condition_name='Setup IP address')
+              net_utils.PollForCondition(
+                      condition=_obtain_IP,
+                      timeout=_IP_SETUP_TIMEOUT_SECS,
+                      condition_name='Setup IP address')
         except:  # pylint: disable=W0702
             exception_string = utils.FormatExceptionOnly()
             factory.console.error('Unable to setup network: %s',
@@ -120,49 +342,31 @@ class _ShopfloorWrapper(object):
         while True:
             try:
                 shopfloor_client = shopfloor.get_instance(
-                    detect=True, timeout=timeout_secs)
+                        detect=True, timeout=timeout_secs)
                 break
             except:  # pylint: disable=W0702
                 exception_string = utils.FormatExceptionOnly()
-                # Log only the exception string, not the entire exception,
-                # since this may happen repeatedly.
+                # Log the exception string only since it may happen repeatedly.
                 factory.console.error('Unable to sync with shopfloor: %s',
                                       exception_string)
             time.sleep(retry_interval_secs)
         return shopfloor_client
 
-    def download_param(self, on_param_downloaded, force_new_ip,
-                       directory, param_file,
-                       blocking):
+    def download_param(self, force_new_ip):
         '''Read parameters from shopfloor server.
 
         Args:
-            on_param_downloaded: Callback with downloaded parameters.
             force_new_ip: Always set new IP regardless of existing IP.
-            directory: Relative path to shopfloor parameters folder.
-            param_file: Filename of camera parameter file on shopfloor.
-            blocking: True if download parameters in the same thread. False if
-                      creating a dedicated thread for this.
         '''
-        def _impl(on_param_downloaded, force_new_ip,
-                  directory, param_file):
-            self._prepare_network(force_new_ip)
-            sf = self._get_shopfloor_connection()
-            param_path = os.path.join(directory, param_file)
-            binary_obj = sf.GetParameter(param_path)
-            factory.console.info('Read %s from shopfloor', param_path)
-            on_param_downloaded(binary_obj.data)
-
-        wrapper = lambda: _impl(on_param_downloaded=on_param_downloaded,
-                                  force_new_ip=force_new_ip,
-                                  directory=directory,
-                                  param_file=param_file)
-
-        if not blocking:
-            return utils.StartDaemonThread(
-                target=wrapper)
+        self._prepare_network(force_new_ip)
+        param_path = os.path.join(self.shopfloor_directory,
+                                  self.shopfloor_param_file)
+        factory.console.info('Read %s from shopfloor', param_path)
+        if self.bridge:
+            return self.bridge.download_param(param_path)
         else:
-            wrapper()
+            sf = self._get_shopfloor_connection()
+            return sf.GetParameter(param_path).data
 
     def upload_log(self, force_new_ip, aux_log_list):
         '''Uploads logs to shopfloor server.
@@ -170,23 +374,45 @@ class _ShopfloorWrapper(object):
         Args:
             force_new_ip: Always set new IP regardless of existing IP.
             aux_log_list: List of tuples of (log_name, log_data).
+
+        Returns:
+            Returns False if there is critical issue from shopfloor.
         '''
         self._prepare_network(force_new_ip)
-        sf = self._get_shopfloor_connection()
+        if not self.bridge:
+            sf = self._get_shopfloor_connection()
 
         for log_name, log_data in aux_log_list:
+            factory.console.info('Uploading %s', log_name)
+            start_time = time.time()
             try:
-                factory.console.info('Uploading %s', log_name)
-                start_time = time.time()
-                sf.SaveAuxLog(log_name, xmlrpclib.Binary(log_data))
+                if self.bridge:
+                    # Shopfloor bridge behaves differently than our built-in
+                    # shopfloor server.
+                    #
+                    # 1. Failing to upload to built-in shopfloor is either a bug
+                    # or wrong network setup. It should never happen. Raise
+                    # exception.
+                    #
+                    # 2. Failing to upload to shopfloor bridge (usually connects
+                    # to a proprietary shopfloor server of module house) may be
+                    # caused by factory flow issue. For example, DUT is tested
+                    # at a wrong stage. This is a critical error and we should
+                    # mark the test 'failed' for retesting DUT later.
+                    assert re.search(r'\.txt$', log_name), (
+                            'Only supports uploading of .txt files.')
+                    if not self.bridge.upload_result(log_data):
+                        return False
+                else:
+                    sf.SaveAuxLog(log_name, xmlrpclib.Binary(log_data))
             except:  # pylint: disable=W0702
                 exception_string = utils.FormatExceptionOnly()
                 factory.console.error('Failed to upload %s: %s',
-                                      log_name,
-                                      exception_string)
+                                      log_name, exception_string)
                 raise
             factory.console.info('Successfully synced %s in %.03f s',
                                  log_name, time.time() - start_time)
+        return True
 
 
 class ALS():
@@ -426,7 +652,15 @@ class factory_CameraPerformanceAls(test.test):
     def prepare_test(self):
         self.ref_data = camperf.PrepareTest(self.get_test_chart_file())
 
-    def on_param_downloaded_from_shopfloor(self, param):
+    def download_param_from_shopfloor(self, event):
+        """Download test parameters from shopfloor server.
+
+        This is callback from Javascript in order to run download_param() in
+        main thread because utils.Timeout only supports running in main thread.
+        """
+        assert self.shopfloor
+        param = self.shopfloor.download_param(force_new_ip=True)
+
         self.prepare_test()
         self.config = eval(param)
         self.reset_data()
@@ -617,9 +851,8 @@ class factory_CameraPerformanceAls(test.test):
             # TODO (jchuang): newer version of OpenCV has better imencode()
             # Python method.
             def get_image_data(cv_image, file_ext):
-                random_key = "%08d" % random.SystemRandom().randint(0, 1e8)
                 temp_fn = os.path.join(tempfile.gettempdir(),
-                                       random_key + file_ext)
+                                       TimedUuid() + file_ext)
                 try:
                     cv2.imwrite(temp_fn, cv_image)
                     with open(temp_fn, 'rb') as f:
@@ -634,7 +867,11 @@ class factory_CameraPerformanceAls(test.test):
                                  (log_prefix + '.jpg',
                                   get_image_data(self.analyzed, '.jpg'))])
 
-        self.shopfloor.upload_log(force_new_ip=False, aux_log_list=aux_log_list)
+        # If shopfloor.upload_log() returns FALSE only on critical error and
+        # we need to indicate error for retesting later.
+        if not self.shopfloor.upload_log(False, aux_log_list):
+            self.cam_pass = False
+            self.update_fail_cause("Shopfloor")
 
     def finalize_test(self):
         self.generate_final_result()
@@ -686,13 +923,15 @@ class factory_CameraPerformanceAls(test.test):
             return
         self.update_pbar(pid='start_test')
 
+        self.log('Parameter version: %s\n' % self.config['version'])
+
         if self.auto_serial_number:
             # If fails to get serial number, it will display failed in
             # test_camera_functionality() later
             ret, auto_sn, error_message = self.auto_get_serial_number()
             if ret:
                 self.serial_number = auto_sn
-                self.log('Read serial number %s\n' % auto_sn)
+                self.log('Read serial number: %s\n' % auto_sn)
             else:
                 self.serial_number = self._BAD_SERIAL_NUMBER
                 self.log('No serial number detected: %s\n' % error_message)
@@ -1106,7 +1345,7 @@ class factory_CameraPerformanceAls(test.test):
     def run_once(self, test_type = _TEST_TYPE_FULL, unit_test = False,
                  use_als = True, test_chart_version = 'A',
                  log_good_image = False, log_bad_image = True,
-                 data_method = 'usb', ip_addr = None,
+                 data_method = 'usb', ip_addr = None, bridge_ip_addr = None,
                  shopfloor_directory = None, shopfloor_param_file = None,
                  device_index = -1, ignore_enter_key = False,
                  auto_serial_number = None):
@@ -1133,12 +1372,13 @@ class factory_CameraPerformanceAls(test.test):
             log_good_image: Log images that pass that test.
             log_bad_image: Log images that fail that test.
             data_method: How to read parameter and save results.
-                         ('usb' or 'shopfloor')
-            ip_addr: Network setting when data_method is 'shopfloor'.
+                         ('usb', 'shopfloor', 'bridge')
+            ip_addr: Network setting when data_method is shopfloor or bridge.
                      If ip_addr is None, use DHCP.
             shopfloor_directory: Relative path to shopfloor parameters folder.
             shopfloor_param_file: Filename of camera parameter file on shopfloor
                                   server.
+            bridge_ip_addr: IP addr of shopfloor bridge.
             device_index: video device index (-1 to auto pick device by OpenCV).
             ignore_enter_key: disable enter key in serial number input.
                               (Some barcode reader automatically input enter
@@ -1168,9 +1408,10 @@ class factory_CameraPerformanceAls(test.test):
         assert test_chart_version in ['A', 'B']
         assert log_good_image in [True, False]
         assert log_bad_image in [True, False]
-        assert data_method in ['usb', 'shopfloor']
+        assert data_method in ['usb', 'shopfloor', 'bridge']
         assert shopfloor_directory is None or type(shopfloor_directory) == str
         assert shopfloor_param_file is None or type(shopfloor_param_file) == str
+        assert bridge_ip_addr is None or type(bridge_ip_addr) == str
         assert ignore_enter_key in [True, False]
         assert auto_serial_number is None or type(auto_serial_number) == tuple
         self.type = test_type
@@ -1179,8 +1420,17 @@ class factory_CameraPerformanceAls(test.test):
         self.test_chart_version = test_chart_version
         self.log_good_image = log_good_image
         self.log_bad_image = log_bad_image
-        if data_method == 'shopfloor':
-            self.shopfloor = _ShopfloorWrapper(ip_addr)
+        if data_method in ('shopfloor', 'bridge'):
+            if data_method == 'bridge':
+                bridge_mode = True
+            else:
+                bridge_mode = False
+            self.shopfloor = _ShopfloorWrapper(
+                    ip_addr=ip_addr,
+                    bridge_mode=bridge_mode,
+                    bridge_ip=bridge_ip_addr,
+                    shopfloor_directory=shopfloor_directory,
+                    shopfloor_param_file=shopfloor_param_file)
         else:
             self.shopfloor = None
         self.device_index = device_index
@@ -1196,15 +1446,7 @@ class factory_CameraPerformanceAls(test.test):
         self.base_config = PluggableConfig({})
         os.chdir(self.srcdir)
 
-        if self.shopfloor:
-            # test_ui.UI.Run() requires blocking UI thread for autotest.
-            self.shopfloor.download_param(
-                on_param_downloaded=self.on_param_downloaded_from_shopfloor,
-                force_new_ip=True,
-                directory=shopfloor_directory,
-                param_file=shopfloor_param_file,
-                blocking=False)
-        else:
+        if not self.shopfloor:
             # Setup the usb disk and usb-to-serial adapter monitor.
             usb_monitor = ConnectionMonitor()
             usb_monitor.start(subsystem='block', device_type='disk',
@@ -1224,7 +1466,8 @@ class factory_CameraPerformanceAls(test.test):
 
         # Startup the UI.
         self.ui = UI()
-        self.register_events(['sync_fixture', 'exit_test', 'run_test'])
+        self.register_events(['sync_fixture', 'exit_test', 'run_test',
+                              'download_param_from_shopfloor'])
         self.ui.CallJSFunction("InitLayout", self.talk_to_fixture,
                                True if self.shopfloor else False,
                                input_serial_number,

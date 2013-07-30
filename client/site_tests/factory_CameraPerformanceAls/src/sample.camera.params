@@ -1,4 +1,5 @@
 {
+    'version': '0000',
     'sn_format':r'^[a-zA-Z0-9]{23}$',
     'preview':  {
                     'scale': 0.5,

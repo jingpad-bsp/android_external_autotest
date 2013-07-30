@@ -15,6 +15,7 @@ var useFixture = true;
 var useUSBDisk = true;
 var useShopfloor = false;
 var disableEnterKey = false;
+var delayTimer;
 
 window.onkeydown = function(event) {
     if ((!disableEnterKey && event.keyCode == 13) || event.keyCode == 32) {
@@ -22,6 +23,11 @@ window.onkeydown = function(event) {
         if (!testButton.disabled)
             ButtonRunTestClick();
     }
+}
+
+function StartShopfloorDownloadParams() {
+    clearInterval(delayTimer);
+    test.sendTestEvent('download_param_from_shopfloor', {});
 }
 
 function InitLayout(talkToFixture, talkToShopfloor,
@@ -49,6 +55,8 @@ function InitLayout(talkToFixture, talkToShopfloor,
         document.getElementById("prompt_usb").hidden = true;
         document.getElementById("usb_status_panel").hidden = true;
         document.getElementById("prompt_ethernet").hidden = false;
+        // Wait 1 second for main thread to have time to update UI display.
+        delayTimer = setInterval(StartShopfloorDownloadParams, 1000);
     } else {
         useShopfloor = false;
         useUSBDisk = true;
