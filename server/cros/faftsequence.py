@@ -459,6 +459,38 @@ class FAFTSequence(ServoTest):
             self.servo.switch_usbkey('dut')
 
 
+    def get_dut_usb_dev(self):
+        """Get the USB disk device plugged-in the servo from the dut side.
+
+        Returns:
+          A string representing USB disk path, like '/dev/sdb', or None if
+          no USB disk is found.
+        """
+        cmd = 'ls /dev/sd[a-z]'
+        original_value = self.servo.get_usbkey_direction()
+
+        # Make the dut unable to see the USB disk.
+        self.servo.switch_usbkey('off')
+        no_usb_set = set(
+            self.faft_client.system.run_shell_command_get_output(cmd))
+
+        # Make the dut able to see the USB disk.
+        self.servo.switch_usbkey('dut')
+        time.sleep(self.delay.between_usb_plug)
+        has_usb_set = set(
+            self.faft_client.system.run_shell_command_get_output(cmd))
+
+        # Back to its original value.
+        if original_value != self.servo.get_usbkey_direction():
+            self.servo.switch_usbkey(original_value)
+
+        diff_set = has_usb_set - no_usb_set
+        if len(diff_set) == 1:
+            return diff_set.pop()
+        else:
+            return None
+
+
     def get_server_address(self):
         """Get the server address seen from the client.
 
