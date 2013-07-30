@@ -64,6 +64,18 @@ class security_kASLR(test.test):
 
         self._client = host
 
+        # Make sure we're expecting kernel ASLR at all.
+        kernel_ver = self._client.run('uname -r').stdout.rstrip()
+        if utils.compare_versions(kernel_ver, "3.8") < 0:
+            logging.info("kASLR not available on this device (kernel is %s)",
+                         kernel_ver)
+            return
+        arch = utils.get_arch(self._client.run)
+        if arch.startswith('arm'):
+            logging.info("kASLR not available on this device (arch is %s)",
+                         arch)
+            return
+
         kallsyms_filename = os.path.join(self.resultsdir, 'kallsyms')
         address_count = {}
 
