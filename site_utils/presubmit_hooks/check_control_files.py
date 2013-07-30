@@ -11,13 +11,69 @@ that edits a control file.
 """
 
 
-import os, re
+import glob, os, re, subprocess
 import common
 from autotest_lib.client.common_lib import control_data
 
 
 class ControlFileCheckerError(Exception):
     """Raised when a necessary condition of this checker isn't satisfied."""
+
+
+def IsInChroot():
+    """Return boolean indicating if we are running in the chroot."""
+    return os.path.exists("/etc/debian_chroot")
+
+
+def CommandPrefix():
+    """Return an argv list which must appear at the start of shell commands."""
+    if IsInChroot():
+        return []
+    else:
+        return ['cros_sdk', '--']
+
+
+def GetOverlayPath():
+    """Return the path to the chromiumos-overlay directory."""
+    ourpath = os.path.abspath(__file__)
+    overlay = os.path.join(os.path.dirname(ourpath),
+                           "../../../../chromiumos-overlay/")
+    return os.path.normpath(overlay)
+
+
+def GetAutotestTestPackages():
+    """Return a list of ebuilds which should be checked for test existance."""
+    overlay = GetOverlayPath()
+    packages = glob.glob(os.path.join(overlay, "chromeos-base/autotest-*"))
+    # Return the packages list with the leading overlay path removed.
+    return [x[(len(overlay) + 1):] for x in packages]
+
+
+def CheckSuites(ctrl_data, test_name):
+    """
+    Check that any test in a SUITE is also in an ebuild.
+
+    Throws a ControlFileCheckerError if a test within a SUITE
+    does not appear in an ebuild. For purposes of this check,
+    the psuedo-suite "manual" does not require a test to be
+    in an ebuild.
+
+    @param ctrl_data: The control_data object for a test.
+    @param test_name: A string with the name of the test.
+
+    @returns: None
+    """
+    if (hasattr(ctrl_data, 'suite') and ctrl_data.suite and
+        ctrl_data.suite != 'manual'):
+        cmd_args = (CommandPrefix() + ['equery', '-qC', 'uses'] +
+                    GetAutotestTestPackages())
+        useflags = subprocess.check_output(cmd_args).splitlines()
+        for flag in useflags:
+            if flag.startswith('-') or flag.startswith('+'):
+                flag = flag[1:]
+            if flag == 'tests_%s' % test_name:
+                return
+        raise ControlFileCheckerError('No ebuild entry for %s' % test_name)
 
 
 def main():
@@ -33,8 +89,9 @@ def main():
     for file_path in file_list.split('\n'):
         control_file = re.search(r'.*/control(?:\.\w+)?$', file_path)
         if control_file:
-            control_data.parse_control(control_file.group(0),
-                                       raise_warnings=True)
+            CheckSuites(control_data.parse_control(control_file.group(0),
+                                                   raise_warnings=True),
+                        os.path.basename(os.path.split(file_path)[0]))
 
 
 if __name__ == '__main__':
