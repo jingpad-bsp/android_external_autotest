@@ -9,7 +9,7 @@ import common
 import test_control
 
 
-_autoupdate_suite_name = 'au'
+_DEFAULT_AU_SUITE_NAME = 'au'
 
 
 class TestEnv(object):
@@ -87,7 +87,7 @@ class TestConfig(object):
     """
     def __init__(self, board, name, use_mp_images, is_delta_update,
                  source_release, target_release, source_image_uri,
-                 target_payload_uri):
+                 target_payload_uri, suite_name=_DEFAULT_AU_SUITE_NAME):
         """Initialize a test configuration.
 
         @param board: the board being tested (e.g. 'x86-alex')
@@ -98,6 +98,7 @@ class TestConfig(object):
         @param target_release: the target image version (e.g. '2673.0.0')
         @param source_image_uri: source image URI ('gs://...')
         @param target_payload_uri: target payload URI ('gs://...')
+        @param suite_name: the name of the test suite (default: 'au')
 
         """
         self.board = board
@@ -108,6 +109,7 @@ class TestConfig(object):
         self.target_release = target_release
         self.source_image_uri = source_image_uri
         self.target_payload_uri = target_payload_uri
+        self.suite_name = suite_name
 
 
     def get_image_type(self):
@@ -126,11 +128,11 @@ class TestConfig(object):
     def get_autotest_name(self):
         """Returns job name to use when creating an autotest job.
 
-        Returns a job name that conforms to the suite naming style assuming
-        'au' is the suite name.
+        Returns a job name that conforms to the suite naming style.
+
         """
-        return '%s-release/%s/au/%s.%s' % (
-                self.board, self.target_release,
+        return '%s-release/%s/%s/%s.%s' % (
+                self.board, self.target_release, self.suite_name,
                 test_control.get_test_name(), self.unique_name_suffix())
 
 
@@ -170,7 +172,7 @@ class TestConfig(object):
                         ('target_release', self.target_release),
                         ('source_image_uri', self.source_image_uri),
                         ('target_payload_uri', self.target_payload_uri),
-                        ('SUITE', _autoupdate_suite_name)]])
+                        ('SUITE', self.suite_name)]])
 
 
     def get_cmdline_args(self):
