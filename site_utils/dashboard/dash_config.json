@@ -74,7 +74,7 @@
               "sheriffs": true,
               "include_experimental": false,
               "cc": ["chromeos-test@google.com",
-                     "chromeos-tpms@google.com"]},
+                     "chromeos-tpms+automail@google.com"]},
              {"categories": "audio",
               "cc": ["rohitbm@google.com"]},
              {"categories": "audiovideo|graphics",
