@@ -166,7 +166,7 @@ class ReportHtml:
 
     def _encode_base64(self, filename):
         """Encode a file in base 64 format."""
-        if not os.path.isfile(filename):
+        if (filename is None) or (not os.path.isfile(filename)):
             return None
         encoded = urllib.quote(open(filename, "rb").read().encode("base64"))
         return encoded

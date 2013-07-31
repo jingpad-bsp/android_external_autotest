@@ -400,6 +400,10 @@ class TestFlow:
             self._add_scores(self.new_scores)
         self.output.report_html.insert_image(self.gesture_image_name)
         self.output.report_html.flush()
+        # After flushing to report_html, reset the gesture_image_name so that
+        # it will not be reused by next gesture variation accidentally.
+        self.gesture_image_name = None
+
         if self._pre_setup_this_gesture_variation(next_gesture=next_gesture):
             # There are more gestures.
             self._setup_this_gesture_variation()
