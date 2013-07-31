@@ -6,7 +6,7 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server.cros.network import netperf_runner
+from autotest_lib.server.cros.network import netperf_session
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
@@ -31,21 +31,23 @@ class network_WiFi_Netperf(wifi_cell_test_base.WiFiCellTestBase):
         for configuration in self._configurations:
             hostap_config, netperf_config, netperf_assertions = configuration
             self.context.configure(hostap_config)
-            assoc_params = xmlrpc_datatypes.AssociationParameters()
-            assoc_params.ssid = self.context.router.get_ssid()
+            assoc_params = xmlrpc_datatypes.AssociationParameters(
+                    ssid=self.context.router.get_ssid(),
+                    security_config=hostap_config.security_config)
             self.context.assert_connect_wifi(assoc_params)
-            with netperf_runner.NetperfRunner(self.context.client,
-                                              self.context.server,
-                                              netperf_config) as runner:
-                netperf_result = runner.run()
-                if not netperf_assertions.passes(netperf_result):
-                    logging.error('===========================================')
-                    logging.error('Netperf failed!')
-                    logging.error(hostap_config)
-                    logging.error(netperf_config)
-                    logging.error(netperf_result)
-                    logging.error(netperf_assertions)
-                    have_failures = True
+            session = netperf_session.NetperfSession(self.context.client,
+                                                     self.context.server)
+            session.warmup_stations()
+            netperf_result = session.run(netperf_config)
+            logging.debug('Checking assertions %r', netperf_assertions)
+            if not netperf_assertions.passes(netperf_result):
+                logging.error('===========================================')
+                logging.error('Netperf failed!')
+                logging.error(hostap_config)
+                logging.error(netperf_config)
+                logging.error(netperf_result)
+                logging.error(netperf_assertions)
+                have_failures = True
             self.context.client.shill.disconnect(assoc_params.ssid)
             self.context.router.deconfig()
         if have_failures:

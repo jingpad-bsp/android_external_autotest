@@ -2,11 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
+import math
 import time
 import os.path
 
 from autotest_lib.client.common_lib import error
+
 
 class NetperfResult(object):
     """Encapsulates logic to parse and represent netperf results."""
@@ -77,8 +80,54 @@ class NetperfResult(object):
         return result
 
 
-    def __init__(self, duration_seconds, throughput=None,
-                 errors=None, transaction_rate=None):
+    @staticmethod
+    def _get_stats(samples, field_name):
+        if any(map(lambda x: getattr(x, field_name) is None, samples)):
+            return (None, None)
+
+        values = map(lambda x: getattr(x, field_name), samples)
+        N = len(samples)
+        mean = math.fsum(values) / N
+        deviation = None
+        if N > 1:
+            differences = map(lambda x: math.pow(mean - x, 2), values)
+            deviation = math.sqrt(math.fsum(differences) / (N - 1))
+        return mean, deviation
+
+
+    @staticmethod
+    def from_samples(samples):
+        """Build an averaged NetperfResult from |samples|.
+
+        Calculate an representative sample with averaged values
+        and standard deviation from samples.
+
+        @param samples list of NetperfResult objects.
+        @return NetperfResult object.
+
+        """
+        if not samples:
+            return None
+
+        duration_seconds, duration_seconds_dev = NetperfResult._get_stats(
+                samples, 'duration_seconds')
+        throughput, throughput_dev = NetperfResult._get_stats(
+                samples, 'throughput')
+        errors, errors_dev = NetperfResult._get_stats(samples, 'errors')
+        transaction_rate, transaction_rate_dev = NetperfResult._get_stats(
+                samples, 'transaction_rate')
+        return NetperfResult(
+                duration_seconds, duration_seconds_dev=duration_seconds_dev,
+                throughput=throughput, throughput_dev=throughput_dev,
+                errors=errors, errors_dev=errors_dev,
+                transaction_rate=transaction_rate,
+                transaction_rate_dev=transaction_rate_dev)
+
+
+    def __init__(self, duration_seconds, duration_seconds_dev=None,
+                 throughput=None, throughput_dev=None,
+                 errors=None, errors_dev=None,
+                 transaction_rate=None, transaction_rate_dev=None):
         """Construct a NetperfResult.
 
         @param duration_seconds float how long the test took.
@@ -88,9 +137,13 @@ class NetperfResult(object):
 
         """
         self.duration_seconds = duration_seconds
+        self.duration_seconds_dev = duration_seconds_dev
         self.throughput = throughput
+        self.throughput_dev = throughput_dev
         self.errors = errors
+        self.errors_dev = errors_dev
         self.transaction_rate = transaction_rate
+        self.transaction_rate_dev = transaction_rate_dev
         if throughput is None and transaction_rate is None and errors is None:
             logging.error('Created a NetperfResult with no data.')
 
@@ -99,15 +152,41 @@ class NetperfResult(object):
         return '%s(%s)' % (self.__class__.__name__,
                            ', '.join(['%s=%0.2f' % item
                                       for item in vars(self).iteritems()
-                                      if item[1] is not None and
-                                         item[1] != -1.0]))
+                                      if item[1] is not None]))
+
+
+    def all_deviations_less_than_fraction(self, fraction):
+        """Check that this result is "acurate" enough.
+
+        We say that a NetperfResult is "acurate" enough when for each
+        measurement X with standard deviation d(X), d(X)/X <= |fraction|.
+
+        @param fraction float used in constraint above.
+        @return True on above condition.
+
+        """
+        for measurement in ['throughput', 'errors', 'transaction_rate']:
+            value = getattr(self, measurement)
+            dev = getattr(self, measurement + '_dev')
+            if value is None or dev is None:
+                continue
+
+            if value == 0.0 and dev != 0.0:
+                return False
+
+            if dev / value > fraction:
+                return False
+
+        return True
 
 
 class NetperfAssertion(object):
     """Defines a set of expectations for netperf results."""
 
-    @staticmethod
-    def _passes(value, bounds):
+    def _passes(self, result, field):
+        value = getattr(result, field)
+        deviation = getattr(result, field + '_dev')
+        bounds = getattr(self, field + '_bounds')
         if bounds[0] is None and bounds[1] is None:
             return True
 
@@ -115,16 +194,16 @@ class NetperfAssertion(object):
             # We have bounds requirements, but no value to check?
             return False
 
-        if bounds[0] is not None and bounds[0] > value:
+        if bounds[0] is not None and bounds[0] > value + deviation:
             return False
 
-        if bounds[1] is not None and bounds[1] < value:
+        if bounds[1] is not None and bounds[1] < value - deviation:
             return False
 
         return True
 
 
-    def __init__(self, duration_min=None, duration_max=None,
+    def __init__(self, duration_seconds_min=None, duration_seconds_max=None,
                  throughput_min=None, throughput_max=None,
                  error_min=None, error_max=None,
                  transaction_rate_min=None, transaction_rate_max=None):
@@ -132,8 +211,8 @@ class NetperfAssertion(object):
 
         Leaving bounds undefined sets them to values which are permissive.
 
-        @param duration_min float minimal test duration in seconds.
-        @param duration_max float maximal test duration in seconds.
+        @param duration_seconds_min float minimal test duration in seconds.
+        @param duration_seconds_max float maximal test duration in seconds.
         @param throughput_min float minimal throughput in Mbps.
         @param throughput_max float maximal throughput in Mbps.
         @param error_min int minimal number of UDP frame errors.
@@ -143,11 +222,13 @@ class NetperfAssertion(object):
         @param transaction_rate_max float max number of transactions per second.
 
         """
-        self.duration_bounds = (duration_min, duration_max)
-        self.throughput_bounds = (throughput_min, throughput_max)
-        self.error_bounds = (error_min, error_max)
-        self.transaction_rate_bounds = (transaction_rate_min,
-                                        transaction_rate_max)
+        Bound = collections.namedtuple('Bound', ['lower', 'upper'])
+        self.duration_seconds_bounds = Bound(duration_seconds_min,
+                                             duration_seconds_max)
+        self.throughput_bounds = Bound(throughput_min, throughput_max)
+        self.errors_bounds = Bound(error_min, error_max)
+        self.transaction_rate_bounds = Bound(transaction_rate_min,
+                                             transaction_rate_max)
 
 
     def passes(self, result):
@@ -157,33 +238,34 @@ class NetperfAssertion(object):
         @return True iff all this assertion passes for the give result.
 
         """
-        if (self._passes(result.duration_seconds, self.duration_bounds) and
-            self._passes(result.throughput, self.throughput_bounds) and
-            self._passes(result.errors, self.error_bounds) and
-            self._passes(result.transaction_rate,
-                         self.transaction_rate_bounds)):
+        passed = [self._passes(result, field)
+                  for field in ['duration_seconds', 'throughput',
+                                'errors', 'transaction_rate']]
+        if all(passed):
             return True
 
         return False
 
 
     def __repr__(self):
-        return ('%s(duration_min=%r, duration_max=%r, '
-                'thoughput_min=%r, throughput_max=%r, '
-                'error_min=%r, error_max=%r, '
-                'transaction_rate_min=%r, transaction_rate_max=%r)' % (
-                    self.__class__.__name__,
-                    self.duration_bounds[0], self.duration_bounds[1],
-                    self.throughput_bounds[0], self.throughput_bounds[1],
-                    self.error_bounds[0], self.error_bounds[1],
-                    self.transaction_rate_bounds[0],
-                    self.transaction_rate_bounds[1]))
+        fields = {'duration_seconds_min': self.duration_seconds_bounds.lower,
+                  'duration_seconds_max': self.duration_seconds_bounds.upper,
+                  'throughput_min': self.throughput_bounds.lower,
+                  'throughput_max': self.throughput_bounds.upper,
+                  'error_min': self.errors_bounds.lower,
+                  'error_max': self.errors_bounds.upper,
+                  'transaction_rate_min': self.transaction_rate_bounds.lower,
+                  'transaction_rate_max': self.transaction_rate_bounds.upper}
+        return '%s(%s)' % (self.__class__.__name__,
+                           ', '.join(['%s=%r' % item
+                                      for item in fields.iteritems()
+                                      if item[1] is not None]))
 
 
 class NetperfConfig(object):
     """Defines a single netperf run."""
 
-    DEFAULT_TEST_TIME = 15
+    DEFAULT_TEST_TIME = 10
     # Measures how many times we can connect, request a byte, and receive a
     # byte per second.
     TEST_TYPE_TCP_CRR = 'TCP_CRR'
@@ -232,7 +314,8 @@ class NetperfConfig(object):
             raise error.TestFail('Invalid netperf test type: %r.' % test_type)
 
 
-    def __init__(self, test_type, server_serves=True, test_time=None):
+    def __init__(self, test_type, server_serves=True,
+                 test_time=DEFAULT_TEST_TIME):
         """Construct a NetperfConfig.
 
         @param test_type string one of TEST_TYPE_* above.
@@ -244,7 +327,7 @@ class NetperfConfig(object):
         self._assert_is_valid_test_type(test_type)
         self.test_type = test_type
         self.server_serves = server_serves
-        self.test_time = test_time or self.DEFAULT_TEST_TIME
+        self.test_time = test_time
 
 
     def __repr__(self):

@@ -28,8 +28,7 @@ def run(machine):
                 frequency=5240,
                 mode=hostap_config.HostapConfig.MODE_11N_PURE)
     netperf_config = netperf_runner.NetperfConfig(
-            netperf_runner.NetperfConfig.TEST_TYPE_TCP_MAERTS,
-            test_time=60)
+            netperf_runner.NetperfConfig.TEST_TYPE_TCP_MAERTS)
     # TODO(wiley) On a lumpy this number could be more like 45, but on daisy
     #             we only get around 29 Mbps.  We could do much better though...
     MINIMAL_N_THROUGHPUT = 27.0
