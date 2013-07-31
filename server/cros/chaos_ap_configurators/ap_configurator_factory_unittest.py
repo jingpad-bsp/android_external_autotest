@@ -13,6 +13,8 @@ from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_config
 from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_factory
+from autotest_lib.server.cros.chaos_ap_configurators import \
+    ap_spec
 
 
 class APConfiguratorFactoryTest(mox.MoxTestBase):
@@ -23,7 +25,8 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
         """Mock object used to test _get_aps_with_bands()."""
 
         def __init__(self, bands_and_channels=[], bands_and_modes=[],
-                     supported_securities=[]):
+                     supported_securities=[], visibility_supported=False,
+                     host_name='mock_ap'):
             """Constructor.
 
             @param bands_and_channels: a list of dicts of strings, e.g.
@@ -35,11 +38,13 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
                  {'band': self.ap_config.BAND_5GHZ,
                   'modes': [self.ap_config.MODE_G]}]
             @param supported_securities: a list of integers.
+            @param visibility_supported: a boolean
             """
             self.bands_and_channels = bands_and_channels
             self.bands_and_modes = bands_and_modes
             self.supported_securities = supported_securities
-            self.host_name = 'mock_ap'
+            self.visibility_supported = visibility_supported
+            self.host_name = host_name
 
 
         def get_supported_bands(self):
@@ -59,6 +64,16 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
             @returns a boolean, True iff security is supported.
             """
             return security in self.supported_securities
+
+
+        def is_visibility_supported(self):
+            """Returns if visibility is supported."""
+            return self.visibility_supported
+
+
+        def host_name(self):
+            """Returns the host name of the AP."""
+            return self.host_name
 
 
     def setUp(self):
@@ -419,3 +434,90 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
             dict(bands=[self.ap_config.BAND_2GHZ],
                  securities=[self.ap_config.SECURITY_TYPE_WPA2PSK]))
         self.assertEquals([], actual)
+
+
+    """New tests that cover the new ap_spec use case."""
+    def _build_ap_test_inventory(self):
+        # AP1 supports 2.4GHz band, all modes, and all securities.
+        self.mock_ap1 = self.MockAp(
+            bands_and_channels=[{'band': ap_spec.BAND_2GHZ,
+                                 'channels': ap_spec.VALID_2GHZ_CHANNELS}],
+            bands_and_modes=[{'band': ap_spec.BAND_2GHZ,
+                              'modes': ap_spec.VALID_2GHZ_MODES}],
+            supported_securities=ap_spec.VALID_SECURITIES,
+            host_name='mock_ap1',
+            )
+        # AP2 supports 2.4 and 5 GHz, all modes, open system, and visibility.
+        self.mock_ap2 = self.MockAp(
+            bands_and_channels=[{'band': ap_spec.BAND_2GHZ,
+                                 'channels': ap_spec.VALID_2GHZ_CHANNELS},
+                                {'band': ap_spec.BAND_5GHZ,
+                                 'channels': ap_spec.VALID_5GHZ_CHANNELS}],
+            bands_and_modes=[{'band': ap_spec.BAND_2GHZ,
+                              'modes': ap_spec.VALID_2GHZ_MODES},
+                             {'band': ap_spec.BAND_5GHZ,
+                              'modes': ap_spec.VALID_5GHZ_MODES}],
+            supported_securities=[ap_spec.SECURITY_TYPE_DISABLED],
+            visibility_supported=True,
+            host_name='mock_ap2',
+            )
+        self.factory.ap_list = [self.mock_ap1, self.mock_ap2]
+
+
+    def testGetApConfigurators_WithBandAPSpec(self):
+        """Test with a band only specified AP Spec"""
+        self._build_ap_test_inventory()
+
+        spec = ap_spec.APSpec(band=ap_spec.BAND_2GHZ)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec)
+        self.assertEquals([self.mock_ap1, self.mock_ap2].sort(), actual.sort())
+
+        spec = ap_spec.APSpec(band=ap_spec.BAND_5GHZ)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec)
+        self.assertEquals([self.mock_ap2], actual)
+
+
+    def testGetAPConfigurators_WithModeAPSpec(self):
+        """Test with a mode only specified AP Spec"""
+        self._build_ap_test_inventory()
+
+        spec = ap_spec.APSpec(mode=ap_spec.DEFAULT_2GHZ_MODE)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec)
+        self.assertEquals([self.mock_ap1, self.mock_ap2].sort(), actual.sort())
+
+        spec = ap_spec.APSpec(mode=ap_spec.DEFAULT_5GHZ_MODE)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec)
+        self.assertEquals([self.mock_ap2], actual)
+
+
+    def testGetAPConfigurators_WithSecurityAPSpec(self):
+        """Test with a security only specified AP Spec"""
+        self._build_ap_test_inventory()
+        spec = ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPAPSK)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec)
+        self.assertEquals([self.mock_ap1], actual)
+
+
+    def testGetAPConfigurators_WithVisibilityAPSpec(self):
+        """Test with a visibility specified AP Spec."""
+        self._build_ap_test_inventory()
+
+        spec = ap_spec.APSpec(visible=True)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec)
+        self.assertEquals([self.mock_ap1, self.mock_ap2].sort(), actual.sort())
+
+        spec = ap_spec.APSpec(band=ap_spec.BAND_5GHZ, visible=False)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec)
+        self.assertEquals([self.mock_ap2], actual)
+
+
+    def testGetAPConfigurators_ByHostName(self):
+        """Test obtaining a list of APs by hostname."""
+        self._build_ap_test_inventory()
+
+        actual = self.factory.get_aps_configurators_by_hostnames(['mock_ap1'])
+        self.assertEquals([self.mock_ap1], actual)
+
+        actual = self.factory.get_aps_configurators_by_hostnames(['mock_ap1',
+                                                                  'mock_ap2'])
+        self.assertEquals([self.mock_ap1, self.mock_ap2].sort(), actual.sort())

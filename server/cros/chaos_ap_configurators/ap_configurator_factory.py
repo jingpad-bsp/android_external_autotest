@@ -169,6 +169,38 @@ class APConfiguratorFactory(object):
         return value
 
 
+    def _get_aps_by_visibility(self, visible=True):
+        """Returns all configurators that support setting visibility.
+
+        @param visibility = True if SSID should be visible; False otherwise.
+
+        @returns aps: a set of APConfigurators"""
+        if visible:
+            return set(self.ap_list)
+
+        return set(filter(lambda ap: ap.is_visibility_supported(),
+                          self.ap_list))
+
+
+    def _get_aps_by_mode(self, mode):
+        """Returns all configurators that support a given 802.11 mode.
+
+        @param mode: an 802.11 modes.
+
+        @returns aps: a set of APConfigurators.
+        """
+        if not mode:
+            return set(self.ap_list)
+
+        aps = []
+        for ap in self.ap_list:
+            modes = ap.get_supported_modes()
+            for d in modes:
+                if mode in d['modes']:
+                    aps.append(ap)
+        return set(aps)
+
+
     def _get_aps_with_modes(self, modes, ap_list):
         """Returns all configurators that support a given 802.11 mode.
 
@@ -196,6 +228,24 @@ class APConfiguratorFactory(object):
         return aps
 
 
+    def _get_aps_by_security(self, security):
+        """Returns all configurators that support a given security mode.
+
+        @param security: the security type
+
+        @returns aps: a set of APConfigurators.
+        """
+
+        if not security:
+            return set(self.ap_list)
+
+        aps = []
+        for ap in self.ap_list:
+            if ap.is_security_mode_supported(security):
+                aps.append(ap)
+        return set(aps)
+
+
     def _get_aps_with_securities(self, securities, ap_list):
         """Returns all configurators that support a given security mode.
 
@@ -218,6 +268,25 @@ class APConfiguratorFactory(object):
                 logging.debug('Found ap by security = %r', ap.host_name)
                 aps.append(ap)
         return aps
+
+
+    def _get_aps_by_band(self, band):
+        """Returns all APs that support a given band.
+
+        @param band: the band desired.
+
+        @returns aps: a set of APConfigurators.
+        """
+        if not band:
+            return set(self.ap_list)
+
+        aps = []
+        for ap in self.ap_list:
+            bands_and_channels = ap.get_supported_bands()
+            for d in bands_and_channels:
+                if d['band'] == band:
+                    aps.append(ap)
+        return set(aps)
 
 
     def _get_aps_with_bands(self, bands, ap_list):
@@ -243,6 +312,21 @@ class APConfiguratorFactory(object):
         return aps
 
 
+    def get_aps_configurators_by_hostnames(self, hostnames):
+        """Returns speciic APs by host name.
+
+        @param hostnames: a list of strings, AP's wan_hostname defined in
+                          ../chaos_dynamic_ap_list.conf.
+
+        @return a list of APConfigurators.
+        """
+        aps=[]
+        for ap in self.ap_list:
+            if ap.host_name in hostnames:
+                aps.append(ap)
+        return aps
+
+
     def _get_aps_with_hostnames(self, hostnames, ap_list):
         """Returns specific APs by host name.
 
@@ -259,6 +343,22 @@ class APConfiguratorFactory(object):
                 aps.append(ap)
 
         return aps
+
+
+    def get_ap_configurators_by_spec(self, ap_spec=None):
+        """Returns available configurators meeting spec.
+
+        @param ap_spec: a validated ap_spec object
+        @returns aps: a list of APConfigurator objects
+        """
+        if not ap_spec:
+            return self.ap_list
+
+        band_aps = self._get_aps_by_band(ap_spec.band)
+        mode_aps = self._get_aps_by_mode(ap_spec.mode)
+        security_aps = self._get_aps_by_security(ap_spec.security)
+        visible_aps = self._get_aps_by_visibility(ap_spec.visible)
+        return list(band_aps & mode_aps & security_aps & visible_aps)
 
 
     def get_ap_configurators(self, spec=None):
