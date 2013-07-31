@@ -139,7 +139,7 @@ class platform_OSLimits(test.test):
                              ref_min[key])
                 errors.add(key)
             else:
-                logging.info('%s is %d <= %d', refpath[key], osvalue[key],
+                logging.info('%s is %d >= %d', refpath[key], osvalue[key],
                                                ref_min[key])
 
         for key in ref_equal:
