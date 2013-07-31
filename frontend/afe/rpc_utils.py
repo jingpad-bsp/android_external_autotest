@@ -10,6 +10,7 @@ import datetime, os, inspect
 import django.http
 from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.server.cros import provision
 
 NULL_DATETIME = datetime.datetime.max
 NULL_DATE = datetime.date.max
@@ -233,7 +234,8 @@ def check_job_dependencies(host_objects, job_dependencies):
     hosts_in_job = models.Host.objects.filter(id__in=host_ids)
     ok_hosts = hosts_in_job
     for index, dependency in enumerate(job_dependencies):
-        ok_hosts = ok_hosts.filter(labels__name=dependency)
+        if not provision.can_provision(dependency):
+            ok_hosts = ok_hosts.filter(labels__name=dependency)
     failing_hosts = (set(host.hostname for host in host_objects) -
                      set(host.hostname for host in ok_hosts))
     if failing_hosts:
@@ -492,6 +494,21 @@ def create_new_job(owner, options, host_objects, metahost_objects,
     check_for_duplicate_hosts(host_objects)
 
     check_job_dependencies(host_objects, dependencies)
+
+    # There may be provisionable labels in the dependencies list
+    # that do not yet exist in the database. If so, create them.
+    new_label_added = False
+    for label_name in dependencies:
+        if provision.can_provision(label_name):
+            # TODO: We could save a few queries
+            # if we had a bulk ensure-label-exists function, which used
+            # a bulk .get() call. The win is probably very small.
+            new_label_added = (_ensure_label_exists(label_name) |
+                               new_label_added)
+    if new_label_added:
+        labels_by_name = dict((label.name, label)
+                              for label in models.Label.objects.all())
+
     options['dependencies'] = [labels_by_name[label_name]
                                for label_name in dependencies]
 
@@ -515,6 +532,29 @@ def create_new_job(owner, options, host_objects, metahost_objects,
     job.queue(all_host_objects, atomic_group=atomic_group,
               is_template=options.get('is_template', False))
     return job.id
+
+
+def _ensure_label_exists(name):
+    """
+    Ensure that a label called |name| exists in the Django models.
+
+    This function is to be called from within afe rpcs only, as an
+    alternative to server.cros.provision.ensure_label_exists(...). It works
+    by Django model manipulation, rather than by making another create_label
+    rpc call.
+
+    @param name: the label to check for/create.
+    @raises ValidationError: There was an error in the response that was
+                             not because the label already existed.
+    @returns True is a label was created, False otherwise.
+    """
+    try:
+        models.Label.objects.get(name=name)
+    except models.Label.DoesNotExist:
+        new_label = models.Label.objects.create(name=name)
+        new_label.save()
+        return True
+    return False
 
 
 def find_platform_and_atomic_group(host):
