@@ -5,6 +5,7 @@
 # found in the LICENSE file.
 
 import dbus
+import json
 import logging
 import logging.handlers
 import os
@@ -13,6 +14,7 @@ import shutil
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import xmlrpc_server
+from autotest_lib.client.common_lib.cros.bluetooth import bluetooth_socket
 from autotest_lib.client.cros import constants
 
 
@@ -51,6 +53,13 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def __init__(self):
         super(BluetoothClientXmlRpcDelegate, self).__init__()
 
+        # Open the Bluetooth Control socket to the kernel which provides us
+        # raw management access to the Bluetooth Host Subsystem. Read the list
+        # of adapter indexes to determine whether or not this device has a
+        # Bluetooth Adapter or not.
+        self._control = bluetooth_socket.BluetoothControlSocket()
+        self._has_adapter = len(self._control.read_index_list()) > 0
+
         # Set up the connection to Upstart so we can start and stop services
         # and fetch the bluetoothd job.
         self._upstart_conn = dbus.connection.Connection(self.UPSTART_PATH)
@@ -65,8 +74,9 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 None,
                 bluetoothd_path)
 
-        # Set up the connection to the D-Bus System Bus and get the object for
-        # BlueZ.
+        # Set up the connection to the D-Bus System Bus, get the object for
+        # the Bluetooth Userspace Daemon (BlueZ) and that daemon's object for
+        # the Bluetooth Adapter.
         self._system_bus = dbus.SystemBus()
         self._update_bluez()
         self._update_adapter()
@@ -74,6 +84,9 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     def _update_bluez(self):
         """Store a D-Bus proxy for the Bluetooth daemon in self._bluez.
+
+        This may be called in a loop until it returns True to wait for the
+        daemon to be ready after it has been started.
 
         @return True on success, False otherwise.
 
@@ -97,6 +110,14 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def _update_adapter(self):
         """Store a D-Bus proxy for the local adapter in self._adapter.
 
+        This may be called in a loop until it returns True to wait for the
+        daemon to be ready, and have obtained the adapter information itself,
+        after it has been started.
+
+        Since not all devices will have adapters, this will also return True
+        in the case where we have obtained an empty adapter index list from the
+        kernel.
+
         @return True on success, including if there is no local adapter,
             False otherwise.
 
@@ -104,6 +125,8 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self._adapter = None
         if self._bluez is None:
             return False
+        if not self._has_adapter:
+            return True
 
         objects = self._bluez.GetManagedObjects(
                 dbus_interface=self.BLUEZ_MANAGER_IFACE)
@@ -142,6 +165,19 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    def has_adapter(self):
+        """Return if an adapter is present.
+
+        This will only return True if we have determined both that there is
+        a Bluetooth adapter on this device (kernel adapter index list is not
+        empty) and that the Bluetooth daemon has exported an object for it.
+
+        @return True if an adapter is present, False if not.
+
+        """
+        return self._has_adapter and self._adapter is not None
+
+
     def _reset(self):
         """Reset the Bluetooth adapter and settings."""
         logging.debug('_reset')
@@ -161,8 +197,6 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self._bluetoothd.Start(dbus.Array(signature='s'), True,
                                dbus_interface=self.UPSTART_JOB_IFACE)
 
-        # We can't just pass self._update_bluez/adapter to poll_for_condition
-        # because we need to check the local state.
         logging.debug('waiting for bluez start')
         utils.poll_for_condition(
                 condition=self._update_bluez,
@@ -185,6 +219,10 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
+        if not powered and not self._adapter:
+            # Return success if we are trying to power off an adapter that's
+            # missing or gone away, since the expected result has happened.
+            return True
         self._set_powered(powered)
         return True
 
@@ -227,6 +265,32 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self._adapter.Set(self.BLUEZ_ADAPTER_IFACE, 'Pairable', pairable,
                           dbus_interface=dbus.PROPERTIES_IFACE)
         return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def get_adapter_properties(self):
+        """Read the adapter properties from the Bluetooth Daemon.
+
+        @return the properties as a JSON-encoded dictionary on success,
+            the value False otherwise.
+
+        """
+        objects = self._bluez.GetManagedObjects(
+                dbus_interface=self.BLUEZ_MANAGER_IFACE)
+        adapter = objects[self._adapter.object_path][self.BLUEZ_ADAPTER_IFACE]
+        return json.dumps(adapter)
+
+
+    def read_info(self):
+        """Read the adapter information from the Kernel.
+
+        @return the information as a JSON-encoded tuple of:
+          ( address, bluetooth_version, manufacturer_id,
+            supported_settings, current_settings, class_of_device,
+            name, short_name )
+
+        """
+        return json.dumps(self._control.read_info(0))
 
 
 if __name__ == '__main__':

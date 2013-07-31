@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import json
 
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
@@ -57,6 +58,11 @@ class BluetoothClient(object):
         return self._proxy.reset_off()
 
 
+    def has_adapter(self):
+        """@return True if an adapter is present, False if not."""
+        return self._proxy.has_adapter()
+
+
     def set_powered(self, powered):
         """Set the adapter power state.
 
@@ -88,6 +94,28 @@ class BluetoothClient(object):
 
         """
         return self._proxy.set_pairable(pairable)
+
+
+    def get_adapter_properties(self):
+        """Read the adapter properties from the Bluetooth Daemon.
+
+        @return the properties as a JSON-encoded dictionary on success,
+            the value False otherwise.
+
+        """
+        return json.loads(self._proxy.get_adapter_properties())
+
+
+    def read_info(self):
+        """Read the adapter information from the Kernel.
+
+        @return the information as a JSON-encoded tuple of:
+          ( address, bluetooth_version, manufacturer_id,
+            supported_settings, current_settings, class_of_device,
+            name, short_name )
+
+        """
+        return json.loads(self._proxy.read_info())
 
 
     def close(self):

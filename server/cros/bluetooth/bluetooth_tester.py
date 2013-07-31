@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.cros import constants
-from autotest_lib.server import autotest
+from autotest_lib.server import autotest, hosts
 
 
 class BluetoothTester(object):
@@ -43,3 +43,23 @@ class BluetoothTester(object):
         """Tear down state associated with the client."""
         # This kills the RPC server.
         self.host.close()
+
+
+def create_host_from(client_host):
+    """Creates a host object for the Tester associated with a DUT.
+
+    Will raise an exception if there isn't a tester for the DUT.
+
+    @param client_host: Autotest host object for the DUT.
+
+    @return Autotest host object for the Tester.
+
+    """
+
+    client_hostname = client_host.hostname
+
+    parts = client_hostname.split('.')
+    parts[0] = parts[0] + '-bluetooth'
+    tester_hostname = '.'.join(parts)
+
+    return hosts.create_host(tester_hostname)
