@@ -41,8 +41,10 @@ class TouchDevice:
             cmd = os.path.join(cmd, 'touchpad/tpcontrol')
         cmd += ' status | grep "Device Node"'
         device_node_str = common_util.simple_system_output(cmd)
-        device_node = device_node_str.split(':')[-1].strip().strip('"')
-        return device_node
+
+        # Extract and return the device node if device_node_str is not None
+        return (device_node_str.split(':')[-1].strip().strip('"')
+                if device_node_str else None)
 
     def get_dimensions_in_mm(self):
         """Get the width and height in mm of the device."""

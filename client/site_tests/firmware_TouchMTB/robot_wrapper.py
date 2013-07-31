@@ -62,9 +62,10 @@ class RobotWrapperError(Exception):
 class RobotWrapper:
     """A class to wrap and manipulate the robot library."""
 
-    def __init__(self, board, mode, should_calibrate=True):
+    def __init__(self, board, mode, is_touchscreen, should_calibrate=True):
         self._board = board
         self._mode = mode
+        self.is_touchscreen = is_touchscreen
         self._robot_script_dir = self._get_robot_script_dir()
         self._gesture_variation = None
 
@@ -240,6 +241,17 @@ class RobotWrapper:
         matches = re.match('[^0-9]*([0-9]*)[^0-9]*', gesture)
         return matches.group(1) if matches else None
 
+    def _reverse_coord_if_is_touchscreen(self, coordinates):
+        """Reverse the coordinates if the device is a touchscreen.
+
+        E.g., the original coordinates = (0.1, 0.9)
+              After reverse, the coordinates = (1 - 0.1, 1 - 0.9) = (0.9, 0.1)
+
+        @param coordinates: a tuple of coordinates
+        """
+        return (tuple(1.0 - c for c in coordinates) if self.is_touchscreen else
+                coordinates)
+
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
         # Determine whether this is a basic tracking gesture or a swipe.
@@ -270,7 +282,8 @@ class RobotWrapper:
             msg = 'Cannot derive the line/speed parameters from %s %s.'
             self._raise_error(msg % (gesture, variation))
 
-        start_x, start_y, end_x, end_y = line
+        start_x, start_y, end_x, end_y = self._reverse_coord_if_is_touchscreen(
+                line)
         para = (robot_script, self._board, start_x, start_y, end_x, end_y,
                 speed, basic_tracking_or_swipe)
         control_cmd = 'python %s %s %f %f %f %f %f %s' % para
@@ -282,7 +295,8 @@ class RobotWrapper:
         for element in variation:
             location = self._location_dict.get(element)
             if location:
-                location_str = ' '.join(map(str, location))
+                location_str = ' '.join(
+                    map(str, self._reverse_coord_if_is_touchscreen(location)))
                 break
 
         if location is None:
@@ -304,7 +318,8 @@ class RobotWrapper:
         for element in variation:
             location = self._location_dict.get(element)
             if location:
-                location_str = ' '.join(map(str, location))
+                location_str = ' '.join(
+                    map(str, self._reverse_coord_if_is_touchscreen(location)))
                 break
 
         if location is None:
@@ -319,7 +334,6 @@ class RobotWrapper:
         para = (robot_script, self._board, location_str, num_taps)
         control_cmd = 'python %s %s %s %s' % para
         return control_cmd
-
 
     def _get_control_command_replay(self, robot_script, gesture, variation):
         """Get robot control command for replaying the existent gestures."""

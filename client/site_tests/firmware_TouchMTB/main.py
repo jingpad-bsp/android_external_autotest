@@ -119,7 +119,7 @@ class firmware_TouchMTB:
                                             self.parser,
                                             self.output,
                                             firmware_version,
-                                            options=options)
+                                            options)
 
         # Register some callback functions for firmware window
         self.win.register_callback('expose_event',

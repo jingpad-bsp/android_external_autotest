@@ -69,7 +69,8 @@ class TestFlow:
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
         self.mtb_evemu = mtb.MtbEvemu(device)
-        self.robot = robot_wrapper.RobotWrapper(self.board, self.mode)
+        self.robot = robot_wrapper.RobotWrapper(
+                self.board, self.mode, options[OPTIONS.TOUCHSCREEN])
         self.robot_waiting = False
         self._rename_old_log_and_html_files()
         self._set_static_prompt_messages()
