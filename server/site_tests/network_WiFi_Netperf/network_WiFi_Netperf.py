@@ -27,8 +27,6 @@ class network_WiFi_Netperf(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Test body."""
-        runner = netperf_runner.NetperfRunner(self.context.client,
-                                              self.context.server)
         have_failures = False
         for configuration in self._configurations:
             hostap_config, netperf_config, netperf_assertions = configuration
@@ -36,15 +34,18 @@ class network_WiFi_Netperf(wifi_cell_test_base.WiFiCellTestBase):
             assoc_params = xmlrpc_datatypes.AssociationParameters()
             assoc_params.ssid = self.context.router.get_ssid()
             self.context.assert_connect_wifi(assoc_params)
-            netperf_result = runner.run(netperf_config)
-            if not netperf_assertions.passes(netperf_result):
-                logging.error('===========================================')
-                logging.error('Netperf failed!')
-                logging.error(hostap_config)
-                logging.error(netperf_config)
-                logging.error(netperf_result)
-                logging.error(netperf_assertions)
-                have_failures = True
+            with netperf_runner.NetperfRunner(self.context.client,
+                                              self.context.server,
+                                              netperf_config) as runner:
+                netperf_result = runner.run()
+                if not netperf_assertions.passes(netperf_result):
+                    logging.error('===========================================')
+                    logging.error('Netperf failed!')
+                    logging.error(hostap_config)
+                    logging.error(netperf_config)
+                    logging.error(netperf_result)
+                    logging.error(netperf_assertions)
+                    have_failures = True
             self.context.client.shill.disconnect(assoc_params.ssid)
             self.context.router.deconfig()
         if have_failures:

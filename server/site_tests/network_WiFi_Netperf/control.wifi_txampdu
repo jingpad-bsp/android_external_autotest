@@ -29,8 +29,7 @@ def run(machine):
                 mode=hostap_config.HostapConfig.MODE_11N_PURE)
     netperf_config = netperf_runner.NetperfConfig(
             netperf_runner.NetperfConfig.TEST_TYPE_TCP_STREAM,
-            test_time=60,
-            server_serves=False)
+            test_time=60)
     # TODO(wiley) lumpy/daisy have different behavior here and we should
     #             express that in our requirements. (50 Mbps vs 40 Mbps)
     MINIMAL_N_THROUGHPUT = 38.0

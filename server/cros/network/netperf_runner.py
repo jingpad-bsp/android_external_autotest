@@ -35,10 +35,9 @@ class NetperfResult(object):
 
             87380  16384  16384    2.00      941.28
             """
-            return NetperfResult(duration_seconds,
-                                 throughput=float(lines[6].split()[4]))
-
-        if test_type in NetperfConfig.UDP_STREAM_TESTS:
+            result = NetperfResult(duration_seconds,
+                                   throughput=float(lines[6].split()[4]))
+        elif test_type in NetperfConfig.UDP_STREAM_TESTS:
             """Parses the following and returns a tuple containing throughput
             and the number of errors.
 
@@ -52,11 +51,10 @@ class NetperfResult(object):
             131072           2.00         3673            961.87
             """
             udp_tokens = lines[5].split()
-            return NetperfResult(duration_seconds,
-                                 throughput=float(udp_tokens[5]),
-                                 errors=float(udp_tokens[4]))
-
-        if test_type in NetperfConfig.REQUEST_RESPONSE_TESTS:
+            result = NetperfResult(duration_seconds,
+                                   throughput=float(udp_tokens[5]),
+                                   errors=float(udp_tokens[4]))
+        elif test_type in NetperfConfig.REQUEST_RESPONSE_TESTS:
             """Parses the following which works for both rr (TCP and UDP)
             and crr tests and returns a singleton containing transfer rate.
 
@@ -70,10 +68,13 @@ class NetperfResult(object):
             16384  87380  1        1       2.00     14118.53
             16384  87380
             """
-            return NetperfResult(duration_seconds,
-                                 transaction_rate=float(lines[6].split()[5]))
+            result = NetperfResult(duration_seconds,
+                                   transaction_rate=float(lines[6].split()[5]))
+        else:
+            raise error.TestFail('Invalid netperf test type: %r.' % test_type)
 
-        raise error.TestFail('Invalid netperf test type: %r.' % test_type)
+        logging.info('%r', result)
+        return result
 
 
     def __init__(self, duration_seconds, throughput=None,
@@ -90,27 +91,38 @@ class NetperfResult(object):
         self.throughput = throughput
         self.errors = errors
         self.transaction_rate = transaction_rate
-        logging.info('netperf duration: %f seconds', duration_seconds)
-        if throughput is not None:
-            logging.info('netperf throughput: %f Mbps', throughput)
-        if errors is not None:
-            logging.info('netperf errors: %f UDP errors', errors)
-        if transaction_rate is not None:
-            logging.info('netperf transaction_rate: %f transactions/sec',
-                         transaction_rate)
+        if throughput is None and transaction_rate is None and errors is None:
+            logging.error('Created a NetperfResult with no data.')
 
 
     def __repr__(self):
-        return ('%s(duration_seconds=%f, throughput=%r, '
-                'errors=%r, transaction_rate=%r)' % (self.__class__.__name__,
-                                                     self.duration_seconds,
-                                                     self.throughput,
-                                                     self.errors,
-                                                     self.transaction_rate))
+        return '%s(%s)' % (self.__class__.__name__,
+                           ', '.join(['%s=%0.2f' % item
+                                      for item in vars(self).iteritems()
+                                      if item[1] is not None and
+                                         item[1] != -1.0]))
 
 
 class NetperfAssertion(object):
     """Defines a set of expectations for netperf results."""
+
+    @staticmethod
+    def _passes(value, bounds):
+        if bounds[0] is None and bounds[1] is None:
+            return True
+
+        if value is None:
+            # We have bounds requirements, but no value to check?
+            return False
+
+        if bounds[0] is not None and bounds[0] > value:
+            return False
+
+        if bounds[1] is not None and bounds[1] < value:
+            return False
+
+        return True
+
 
     def __init__(self, duration_min=None, duration_max=None,
                  throughput_min=None, throughput_max=None,
@@ -136,23 +148,6 @@ class NetperfAssertion(object):
         self.error_bounds = (error_min, error_max)
         self.transaction_rate_bounds = (transaction_rate_min,
                                         transaction_rate_max)
-
-
-    def _passes(self, value, bounds):
-        if bounds[0] is None and bounds[1] is None:
-            return True
-
-        if value is None:
-            # We have bounds requirements, but no value to check?
-            return False
-
-        if bounds[0] is not None and bounds[0] > value:
-            return False
-
-        if bounds[1] is not None and bounds[1] < value:
-            return False
-
-        return True
 
 
     def passes(self, result):
@@ -269,79 +264,70 @@ class NetperfRunner(object):
     NETPERF_COMMAND_TIMEOUT_MARGIN = 5
 
 
-    def __init__(self, client, server):
+    def __init__(self, client_proxy, server_proxy, config):
         """Construct a NetperfRunner.
 
         @param client WiFiClient object.
         @param server LinuxServer object.
 
         """
-        self._client_proxy = client
-        self._server_proxy = server
-
-
-    def _run_body(self, client_host, server_host, netperf, netserv, timeout):
-        """Actually run the commands on the remote hosts.
-
-        This method contains all the calls for a netperf run that are likely to
-        fail.  As such, it should only be called in a context where we know that
-        suitable cleanup will happen in case of a failure.
-
-        @param client_host Host object representing the 'client' test role.
-        @param server_host Host object representing the 'server' test role.
-        @param netperf string complete command with args to start netperf.
-        @param netserv string complete command with args to start netserv.
-        @param timeout int number of seconds to give the netperf command.
-        @return tuple (raw netperf output, duration of run in seconds).
-
-        """
-        logging.info('Starting netserver with command %s.', netserv)
-        server_host.run(netserv)
-        # Wait for the netserv to come up.
-        time.sleep(self.NETSERV_STARTUP_WAIT_TIME)
-        logging.info('Running netperf client with command %s.', netperf)
-        start_time = time.time()
-        result = client_host.run(netperf, timeout=timeout)
-        duration = time.time() - start_time
-        return result.stdout, duration
-
-
-    def run(self, config):
-        """Run netperf.
-
-        @param config NetperfConfig defines the parameters of the test.
-        @return NetperfResult summarizing the resulting test.
-
-        """
+        self._client_proxy = client_proxy
+        self._server_proxy = server_proxy
         if config.server_serves:
-            server_host = self._server_proxy.host
-            client_host = self._client_proxy.host
-            command_netserv = self._server_proxy.cmd_netserv
-            command_netperf = self._client_proxy.command_netperf
-            target_ip = self._server_proxy.wifi_ip
+            self._server_host = server_proxy.host
+            self._client_host = client_proxy.host
+            self._command_netserv = server_proxy.cmd_netserv
+            self._command_netperf = client_proxy.command_netperf
+            self._target_ip = server_proxy.wifi_ip
         else:
-            server_host = self._client_proxy.host
-            client_host = self._server_proxy.host
-            command_netserv = self._client_proxy.command_netserv
-            command_netperf = self._server_proxy.cmd_netperf
-            target_ip = self._client_proxy.wifi_ip
+            self._server_host = client_proxy.host
+            self._client_host = server_proxy.host
+            self._command_netserv = client_proxy.command_netserv
+            self._command_netperf = server_proxy.cmd_netperf
+            self._target_ip = client_proxy.wifi_ip
+        self._config = config
 
-        netserv = '%s -p %d &> /dev/null' % (command_netserv, self.NETPERF_PORT)
-        netperf = '%s -H %s -p %s -t %s -l %d -- -P 0,%d' % (
-                command_netperf,
-                target_ip,
-                self.NETPERF_PORT,
-                config.test_type,
-                config.test_time,
-                self.NETPERF_DATA_PORT)
+
+    def __enter__(self):
+        logging.info('Starting netserver...')
+        self._kill_netserv()
+        self._server_host.run('%s -p %d &> /dev/null' % (self._command_netserv,
+                                                         self.NETPERF_PORT))
+        startup_time = time.time()
         self._client_proxy.firewall_open('tcp', self._server_proxy.wifi_ip)
         self._client_proxy.firewall_open('udp', self._server_proxy.wifi_ip)
-        try:
-            raw_result,duration = self._run_body(
-                    client_host, server_host, netperf, netserv,
-                    config.test_time + self.NETPERF_COMMAND_TIMEOUT_MARGIN)
-        finally:
-            server_host.run('pkill %s' % os.path.basename(command_netserv))
-            self._client_proxy.firewall_cleanup()
-        return NetperfResult.from_netperf_results(config.test_type, raw_result,
-                                                  duration)
+        # Wait for the netserv to come up.
+        while time.time() - startup_time < self.NETSERV_STARTUP_WAIT_TIME:
+            time.sleep(0.1)
+        return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._client_proxy.firewall_cleanup()
+        self._kill_netserv()
+
+
+    def _kill_netserv(self):
+        """Kills any existing netserv process on the serving host."""
+        self._server_host.run('pkill %s' %
+                              os.path.basename(self._command_netserv),
+                              ignore_status=True)
+
+
+    def run(self):
+        """@return NetperfResult summarizing a netperf run."""
+        netperf = '%s -H %s -p %s -t %s -l %d -- -P 0,%d' % (
+                self._command_netperf,
+                self._target_ip,
+                self.NETPERF_PORT,
+                self._config.test_type,
+                self._config.test_time,
+                self.NETPERF_DATA_PORT)
+        logging.debug('Running netperf client.')
+        start_time = time.time()
+        logging.info('Running netperf for %d seconds.', self._config.test_time)
+        timeout = self._config.test_time + self.NETPERF_COMMAND_TIMEOUT_MARGIN
+        result = self._client_host.run(netperf, timeout=timeout)
+        duration = time.time() - start_time
+        return NetperfResult.from_netperf_results(
+                self._config.test_type, result.stdout, duration)
