@@ -23,10 +23,9 @@ class network_ChromeCellularSmokeTest(test.test):
     """
     version = 1
 
-    CONNECT_TIMEOUT = 5
-    DISCONNECT_TIMEOUT = 5
+    LONG_TIMEOUT = 120
+    SHORT_TIMEOUT = 10
     CONNECT_COUNT = 5
-    DEFAULT_TIMEOUT = 5
 
     def _setup_modem_proxy(self):
         self._bus = dbus.SystemBus()
@@ -61,7 +60,7 @@ class network_ChromeCellularSmokeTest(test.test):
 
     def _get_network_by_id(self, network_id):
         call_status = self._chrome_testing.call_test_function(
-                self.DEFAULT_TIMEOUT, 'getNetworkInfo', '"' + network_id + '"')
+                self.SHORT_TIMEOUT, 'getNetworkInfo', '"' + network_id + '"')
         if call_status['status'] != self._chrome_testing.STATUS_SUCCESS:
             raise error.TestFail(
                     'Failed to get network with id: ' + network_id)
@@ -93,22 +92,22 @@ class network_ChromeCellularSmokeTest(test.test):
         # Make sure that the network becomes disconnected.
         network_id = self._network['GUID']
         call_status = self._chrome_testing.call_test_function(
-                self.DISCONNECT_TIMEOUT,
+                self.LONG_TIMEOUT,
                 'disconnectFromNetwork',
                 '"' + network_id + '"')
         self._ensure_network_status(
-                network_id, 'NotConnected', self.DISCONNECT_TIMEOUT)
+                network_id, 'NotConnected', self.LONG_TIMEOUT)
         self._assert_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
 
     def _connect_cellular_network(self):
         # Make sure that the network becomes connected.
         network_id = self._network['GUID']
         call_status = self._chrome_testing.call_test_function(
-                self.CONNECT_TIMEOUT,
+                self.LONG_TIMEOUT,
                 'connectToNetwork',
                 '"' + network_id + '"')
         self._ensure_network_status(
-                network_id, 'Connected', self.CONNECT_TIMEOUT)
+                network_id, 'Connected', self.LONG_TIMEOUT)
         self._assert_modem_state(mm1.MM_MODEM_STATE_CONNECTED)
 
     def _run_once_internal(self):
