@@ -34,7 +34,7 @@ import autotest_lib.client.cros.camera.renderer as renderer
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory_setup_modules
+from autotest_lib.client.cros import factory_setup_modules #pylint:disable=W0611
 from cros.factory.event_log import Log, GetDeviceId
 from cros.factory.test import factory
 from cros.factory.test import leds
@@ -1229,4 +1229,7 @@ class factory_CameraPerformanceAls(test.test):
                                True if self.shopfloor else False,
                                input_serial_number,
                                self.ignore_enter_key)
-        self.ui.Run()
+        try:
+            self.ui.Run()
+        except factory.FactoryTestFailure as e:
+            raise error.TestError(e.message)
