@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import argparse
+import errno
 import logging
 import os
 import re
@@ -164,7 +165,8 @@ def setup_local_afe():
 
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
-                      pretend=False, no_experimental=False):
+                      pretend=False, no_experimental=False,
+                      results_directory=None):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
@@ -179,6 +181,9 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param pretend: If True, will print out autoserv commands rather than
                     running them.
     @param no_experimental: Skip experimental tests when scheduling a suite.
+    @param results_directory: Directory to store results in. Defaults to None,
+                              in which case results will be stored in a new
+                              subdirectory of /tmp
 
     @returns: directory in which results are stored.
     """
@@ -186,7 +191,17 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     afe.create_label(board)
     afe.create_host(remote)
 
-    results_directory = tempfile.mkdtemp(prefix='test_that_results_')
+    if results_directory is None:
+        # Create a results_directory as subdir of /tmp
+        results_directory = tempfile.mkdtemp(prefix='test_that_results_')
+    else:
+        # Create results_directory if it does not exist
+        try:
+            os.makedirs(results_directory)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
     os.chmod(results_directory, stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
     logging.info('Running jobs. Results will be placed in %s',
                  results_directory)
@@ -277,6 +292,12 @@ def parse_arguments(argv):
     parser.add_argument('--args', metavar='ARGS',
                         help='Argument string to pass through to test. Only '
                         'supported for runs against a local DUT.')
+    parser.add_argument('--results_dir', metavar='RESULTS_DIR',
+                        help='Instead of storing results in a new subdirectory'
+                        ' of /tmp , store results in RESULTS_DIR. If '
+                        'RESULTS_DIR already exists, will attempt to continue '
+                        'using this directory, which may result in test '
+                        'failures due to file collisions.')
     parser.add_argument('--pretend', action='store_true', default=False,
                         help='Print autoserv commands that would be run, '
                              'rather than running them.')
@@ -399,7 +420,8 @@ def main(argv):
                                    arguments.remote, arguments.fast_mode,
                                    args=arguments.args,
                                    pretend=arguments.pretend,
-                                   no_experimental=arguments.no_experimental)
+                                   no_experimental=arguments.no_experimental,
+                                   results_directory=arguments.results_dir)
         if arguments.pretend:
             logging.info('Finished pretend run. Exiting.')
             return 0
