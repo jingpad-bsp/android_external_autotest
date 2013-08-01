@@ -202,7 +202,8 @@ static void config_pcm(snd_pcm_t *handle,
     }
 }
 
-static int capture_some(snd_pcm_t *pcm, short *buf, unsigned len)
+static int capture_some(snd_pcm_t *pcm, short *buf, unsigned len,
+			snd_pcm_sframes_t *cap_delay_frames)
 {
     snd_pcm_sframes_t frames = snd_pcm_avail(pcm);
     int err;
@@ -210,6 +211,7 @@ static int capture_some(snd_pcm_t *pcm, short *buf, unsigned len)
     if (frames > 0) {
         frames = frames > len ? len : frames;
 
+        snd_pcm_delay(pcm, cap_delay_frames);
         if ((err = snd_pcm_readi(pcm, buf, frames)) != frames) {
             fprintf(stderr, "read from audio interface failed (%s)\n",
                     snd_strerror(err));
@@ -482,8 +484,8 @@ static void *alsa_capture(void *arg) {
     }
 
     while (!terminate_capture) {
-        snd_pcm_delay(capture_handle, &cap_delay_frames);
-        num_cap = capture_some(capture_handle, cap_buf, buffer_frames);
+        num_cap = capture_some(capture_handle, cap_buf,
+                               buffer_frames, &cap_delay_frames);
 
         if (num_cap > 0 && (noise_delay_frames = check_for_noise(cap_buf,
                 num_cap, channels)) >= 0) {
