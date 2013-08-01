@@ -524,6 +524,28 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         return devserver.get_test_image_url(image_name)
 
 
+    def stage_factory_image_for_servo(self, image_name):
+        """Stage a build on a devserver and return the update_url.
+
+        @param image_name: a name like <baord>/4262.204.0
+        @return: An update URL, eg:
+            http://<devserver>/static/canary-channel/\
+            <board>/4262.204.0/factory_test/chromiumos_factory_image.bin
+        """
+        if not image_name:
+            logging.error('Need an image_name to stage a factory image.')
+            return
+
+        logging.info('Staging build for servo install: %s', image_name)
+        devserver = dev_server.ImageServer.resolve(image_name)
+        devserver.stage_artifacts(
+                image_name,
+                ['factory_image'],
+                archive_url=dev_server._get_canary_channel_server())
+
+        return tools.factory_image_url_pattern() % (devserver.url(), image_name)
+
+
     def machine_install(self, update_url=None, force_update=False,
                         local_devserver=False, repair=False):
         """Install the DUT.

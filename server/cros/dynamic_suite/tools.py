@@ -24,6 +24,12 @@ def firmware_url_pattern():
     return _CONFIG.get_config_value('CROS', 'firmware_url_pattern', type=str)
 
 
+def factory_image_url_pattern():
+    """Returns path to factory image after it's been staged."""
+    return _CONFIG.get_config_value('CROS', 'factory_image_url_pattern',
+                                    type=str)
+
+
 def sharding_factor():
     """Returns sharding_factor from global_config."""
     return _CONFIG.get_config_value('CROS', 'sharding_factor', type=int)

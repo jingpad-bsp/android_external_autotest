@@ -66,6 +66,16 @@ def _get_image_storage_server():
     return CONFIG.get_config_value('CROS', 'image_storage_server', type=str)
 
 
+def _get_canary_channel_server():
+    """
+    Get the url of the canary-channel server,
+    eg: gsutil://chromeos-releases/canary-channel/<board>/<release>
+
+    @return: The url to the canary channel server.
+    """
+    return CONFIG.get_config_value('CROS', 'canary_channel_server', type=str)
+
+
 def _get_dev_server_list():
     return CONFIG.get_config_value('CROS', 'dev_server', type=list, default=[])
 
