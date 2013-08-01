@@ -11,7 +11,7 @@ TEST_CLASS = "security"
 TEST_TYPE = "client"
 
 DOC = """
-Runs SandboxStatusBrowserTest browser test.
+Runs sandbox browser tests.
 """
 
 job.run_test('security_SandboxStatusBrowserTest')

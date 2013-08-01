@@ -2,16 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_test
 
 
 class security_SandboxStatusBrowserTest(chrome_test.ChromeBinaryTest):
-    """Runs SandboxStatusBrowserTest browser test."""
+    """Runs sandbox browser tests."""
 
     version = 1
     binary_to_run = 'browser_tests'
-    browser_test_args = '--gtest_filter=SandboxLinuxTest.SandboxStatus'
+    # These will be passed to separate runs of |binary_to_run|
+    # using 'gtest_filter'.
+    tests_to_run = ['SandboxLinuxTest.SandboxStatus',
+                    'SandboxStatusUITest*']
 
 
     def initialize(self):
@@ -20,17 +25,23 @@ class security_SandboxStatusBrowserTest(chrome_test.ChromeBinaryTest):
 
 
     def run_once(self):
-        last_error_message = None
+        test_failures = {}
 
-        try:
-            self.run_chrome_binary_test(self.binary_to_run,
-                                        self.browser_test_args,
-                                        as_chronos=True)
-        except error.TestFail as test_error:
-            # We only track |last_error_message| as we rely on gtest_runnner
-            # to parse the failures for us when run. Right now all this
-            # suppresses is multiple browser_tests failed messages.
-            last_error_message = test_error.message
+        for test in self.tests_to_run:
+            current_log_line = "Running test '%s'" % test
+            logging.info(current_log_line)
 
-        if last_error_message:
-            raise error.TestFail(last_error_message)
+            try:
+                self.run_chrome_binary_test(self.binary_to_run,
+                                            '--gtest_filter=' + test,
+                                            as_chronos=False)
+            except error.TestFail as test_failure:
+                test_failures[test] = test_failure.message
+
+        if len(test_failures) > 0:
+            for failure, message in test_failures.iteritems():
+                failed_log_line = "Test '%s' failed: '%s'" % (failure, message)
+                logging.error(failed_log_line)
+
+            raise error.TestFail("One or more browser tests failed: " +
+                                 ", ".join(test_failures.keys()))
