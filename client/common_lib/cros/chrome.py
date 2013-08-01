@@ -79,6 +79,16 @@ class Chrome(object):
         util.WaitFor(lambda: _BrowserReady(self), poll_interval=1, timeout=10)
 
 
+    def did_browser_crash(self, func):
+        """Runs func, returns True if the browser crashed, False otherwise."""
+        try:
+            func()
+        except (exceptions.BrowserGoneException,
+                exceptions.BrowserConnectionGoneException):
+            return True
+        return False
+
+
     def is_logged_in(self):
         """Returns true iff logged in."""
         # TODO(achuith): Do this better.
