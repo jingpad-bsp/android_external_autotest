@@ -343,25 +343,24 @@ def _parse_options():
                OPTIONS.UPLOAD: None,
     }
 
-    # Get the environment OPTIONS
-    options_str = os.environ.get('OPTIONS')
-    if not options_str:
+    # Get the command line options or get the options from environment OPTIONS
+    options_list = sys.argv[1:] or os.environ.get('OPTIONS', '').split()
+    if not options_list:
         return options
 
-    options_list = options_str.split()
+    short_opt = 'hi:m:stu:'
+    long_opt = [OPTIONS.HELP,
+                OPTIONS.ITERATIONS + '=',
+                OPTIONS.MODE + '=',
+                OPTIONS.REPLAY + '=',
+                OPTIONS.RESUME + '=',
+                OPTIONS.SHOW_SPEC_V2,
+                OPTIONS.SIMPLIFIED,
+                OPTIONS.SKIP_HTML,
+                OPTIONS.TOUCHSCREEN,
+                OPTIONS.UPLOAD + '=',
+    ]
     try:
-        short_opt = 'hi:m:stu:'
-        long_opt = [OPTIONS.HELP,
-                    OPTIONS.ITERATIONS + '=',
-                    OPTIONS.MODE + '=',
-                    OPTIONS.REPLAY + '=',
-                    OPTIONS.RESUME + '=',
-                    OPTIONS.SHOW_SPEC_V2,
-                    OPTIONS.SIMPLIFIED,
-                    OPTIONS.SKIP_HTML,
-                    OPTIONS.TOUCHSCREEN,
-                    OPTIONS.UPLOAD + '=',
-        ]
         opts, args = getopt.getopt(options_list, short_opt, long_opt)
     except getopt.GetoptError, err:
         _parsing_error(str(err))

@@ -67,7 +67,6 @@ export DISPLAY=:0
 export XAUTHORITY=/home/chronos/.Xauthority
 for round_dir in "$TMP_LOG_ROOT"/*; do
   if [ -d $round_dir -a ! -L $round_dir ]; then
-    OPTIONS="-m complete $show_spec --skip_html -i 3 --replay $round_dir" \
-        python main.py
+    python main.py -m complete $show_spec --skip_html -i 3 --replay $round_dir
   fi
 done
