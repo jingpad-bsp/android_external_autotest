@@ -23,7 +23,6 @@ TESTS = [
   ('security_BundledExtensions', {}),
   ('security_DbusOwners', {}),
   ('security_HardlinkRestrictions', {}),
-  ('security_HciconfigDefaultSettings', {}),
   ('security_HtpdateHTTP', {}),
   ('security_Minijail0', {}),
   ('security_Minijail_seccomp', {}),
