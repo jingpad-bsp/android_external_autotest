@@ -3,21 +3,28 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 import dbus
 import dbus.types
+import logging
 import time
 
-from autotest_lib.client.cros import backchannel, network, flimflam_test_path
+from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
 from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
-import flimflam
+
+# pylint: disable=W0611
+from autotest_lib.client.cros import flimflam_test_path
+# pylint: enable=W0611
+import cellular_proxy
 
 I_ACTIVATION_TEST = 'Interface.LTEActivationTest'
-ACTIVATION_REGISTRATION_TIMEOUT = 20
-ACTIVATION_STATE_TIMEOUT = 10
+
+LONG_TIMEOUT = 20
+SHORT_TIMEOUT = 10
 
 class ActivationTest(object):
     """
@@ -85,7 +92,7 @@ class ActivationTest(object):
                                         'OwnNumbers',
                                         ['1111111111'])
         time.sleep(5)
-        if self.test.flim.FindCellularService():
+        if self.test.FindCellularService(False):
             self.test.CheckServiceActivationState('activated')
 
     def Run(self):
@@ -97,6 +104,7 @@ class ActivationTest(object):
         if not self.test_modem:
             raise test.TestFail('Uninitialized test modem')
         self.pmm_context.SetModem(self.test_modem)
+        time.sleep(5)
         self.RunTest()
         self.Cleanup()
 
@@ -127,15 +135,9 @@ class TimeoutResetTest(ActivationTest):
         return ActivationTest.TestModem()
 
     def RunTest(self):
-        network.ResetAllModems(self.test.flim)
-        time.sleep(5)
-
-        # The modem state should be ENABLED.
-        if not self.test.GetModemState() == mm1.MM_MODEM_STATE_ENABLED:
-            raise error.TestError('Modem should be in the ENABLED state.')
-
         # Service should appear as 'not-activated'.
         self.test.CheckServiceActivationState('not-activated')
+        self.test.CheckResetCalled(False)
 
         # Call 'CompleteActivation' on the device. The service should become
         # 'activating' and the modem should reset after 20 seconds.
@@ -143,17 +145,12 @@ class TimeoutResetTest(ActivationTest):
         service.CompleteCellularActivation()
         self.test.CheckServiceActivationState('activating')
 
-        time.sleep(5)
-        if self.test.GetModemResetCalled():
-            raise error.TestError('Modem shouldn\'t have been reset.')
-
         # Wait until the register timeout.
-        time.sleep(ACTIVATION_REGISTRATION_TIMEOUT)
-        if not self.test.GetModemResetCalled():
-            raise error.TestError('Modem should have been reset.')
+        time.sleep(LONG_TIMEOUT)
+        self.test.CheckResetCalled(True)
 
         # At this point, a service should never get created.
-        if self.test.flim.FindCellularService():
+        if self.test.FindCellularService(False):
             raise error.TestError('There should be no cellular service.')
 
 class TimeoutActivatedTest(ActivationTest):
@@ -178,15 +175,9 @@ class TimeoutActivatedTest(ActivationTest):
         return Modem()
 
     def RunTest(self):
-        network.ResetAllModems(self.test.flim)
-        time.sleep(5)
-
-        # The modem state should be ENABLED.
-        if not self.test.GetModemState() == mm1.MM_MODEM_STATE_ENABLED:
-            raise error.TestError('Modem should be in the ENABLED state.')
-
         # Service should appear as 'not-activated'.
         self.test.CheckServiceActivationState('not-activated')
+        self.test.CheckResetCalled(False)
 
         # Call 'CompleteActivation' on the device. The service should become
         # 'activating' and the modem should reset after 20 seconds.
@@ -194,14 +185,9 @@ class TimeoutActivatedTest(ActivationTest):
         service.CompleteCellularActivation()
         self.test.CheckServiceActivationState('activating')
 
-        time.sleep(5)
-        if self.test.GetModemResetCalled():
-            raise error.TestError('Modem shouldn\'t have been reset.')
-
         # Wait until the register timeout.
-        time.sleep(ACTIVATION_REGISTRATION_TIMEOUT)
-        if not self.test.GetModemResetCalled():
-            raise error.TestError('Modem should have been reset.')
+        time.sleep(LONG_TIMEOUT)
+        self.test.CheckResetCalled(True)
 
         # The service should register and be marked as 'activated'.
         self.test.CheckServiceActivationState('activated')
@@ -228,22 +214,15 @@ class ResetAfterRegisterTest(ActivationTest):
                 # Make the initial registration due triggered by Enable do
                 # nothing. We expect exactly two Enable commands:
                 #   1. Triggered by shill to enable the modem,
-                #   2. Triggered by ResetAllModems in
+                #   2. Triggered by ResetCellularDevice in
                 #      ResetAfterRegisterTest.RunTest.
                 self.register_count += 1
-                if self.register_count > 2:
+                if self.register_count > 1:
                     modem_3gpp.Modem3gpp.RegisterWithNetwork(
                             self, operator_id, return_cb, raise_cb)
         return Modem()
 
     def RunTest(self):
-        network.ResetAllModems(self.test.flim)
-        time.sleep(5)
-
-        # The modem state should be ENABLED.
-        if not self.test.GetModemState() == mm1.MM_MODEM_STATE_ENABLED:
-            raise error.TestError('Modem should be in the ENABLED state.')
-
         # Service should appear as 'not-activated'.
         self.test.CheckServiceActivationState('not-activated')
 
@@ -254,16 +233,17 @@ class ResetAfterRegisterTest(ActivationTest):
         self.test.CheckServiceActivationState('activating')
 
         time.sleep(5)
-        if self.test.GetModemResetCalled():
-            raise error.TestError('Modem shouldn\'t have been reset.')
+        self.test.CheckResetCalled(False)
 
         # The service should register and trigger shill to reset the modem.
+        self.test.EnsureModemStateReached(
+                mm1.MM_MODEM_STATE_ENABLED, SHORT_TIMEOUT)
+        time.sleep(5)
         mccmnc = self.test.sim.Get(mm1.I_SIM, 'OperatorIdentifier')
         self.test.GetModem().GsmModem().Register(mccmnc)
 
         time.sleep(5)
-        if not self.test.GetModemResetCalled():
-            raise error.TestError('Modem should have been reset.')
+        self.test.CheckResetCalled(True)
 
         # The new service should get marked as 'activated'.
         self.test.CheckServiceActivationState('activated')
@@ -278,13 +258,6 @@ class ActivatedDueToMdnTest(ActivationTest):
         return ActivationTest.TestModem()
 
     def RunTest(self):
-        network.ResetAllModems(self.test.flim)
-        time.sleep(5)
-
-        # The modem state should be ENABLED.
-        if not self.test.GetModemState() == mm1.MM_MODEM_STATE_ENABLED:
-            raise error.TestError('Modem should be in the ENABLED state.')
-
         # Service should appear as 'not-activated'.
         self.test.CheckServiceActivationState('not-activated')
 
@@ -308,10 +281,35 @@ class network_LTEActivate(test.test):
     """
     version = 1
 
+    def FindModem(self):
+        """
+        Tries to find a modem object exposed by the current modem manager and
+        returns a proxy to it.
+
+        @return A modem proxy, or None if not found.
+
+        """
+        try:
+            manager, modem_path  = mm.PickOneModem('')
+            return manager.GetModem(modem_path)
+        except ValueError as e:
+            # TODO(armansito): PickOneModem, for some predictably beautiful
+            # reason, raises a ValueError instead of something more specific.
+            # We should change that.
+            logging.info('Error while getting modem: ' + repr(e))
+            return None
+
     def GetModem(self):
-        """Returns a modem proxy."""
-        manager, modem_path  = mm.PickOneModem('')
-        return manager.GetModem(modem_path)
+        """
+        Returns a modem proxy. This method will block for a LONG_TIMEOUT amount
+        of time and retry to obtain a modem proxy until the timeout expires.
+
+        """
+        utils.poll_for_condition(
+                lambda: self.FindModem() is not None,
+                exception=error.TestFail('Modem not found.'),
+                timeout=LONG_TIMEOUT)
+        return self.FindModem()
 
     def GetModemState(self):
         """Returns the current ModemManager modem state."""
@@ -319,44 +317,108 @@ class network_LTEActivate(test.test):
         props = modem.GetAll(mm1.I_MODEM)
         return props['State']
 
-    def GetModemResetCalled(self):
-        """Returns True, if the modem has been reset at least once."""
+    def GetResetCalled(self, modem):
+        """
+        Returns the current value of the "ResetCalled" property of the current
+        modem.
+
+        @param modem: Modem proxy to send the query to.
+
+        """
+        return modem.GetAll(I_ACTIVATION_TEST)['ResetCalled']
+
+    def _CheckResetCalledHelper(self, expected_value):
         modem = self.GetModem()
-        props = modem.GetAll(I_ACTIVATION_TEST)
-        return props['ResetCalled']
+        try:
+            return self.GetResetCalled(modem) == expected_value
+        except dbus.exceptions.DBusException as e:
+            name = e.get_dbus_name()
+            unknown_method_str = 'org.feedesktop.DBus.Error.UnknownMethod'
+            unknown_object_str = 'org.feedesktop.DBus.Error.UnknowObject'
+            if name == unknown_method_str or name == unknown_object_str:
+                return False
+            raise e
+
+    def CheckResetCalled(self, expected_value):
+        """
+        Checks that the ResetCalled property on the modem matches the expect
+        value.
+
+        @param expected_value: The expected value of ResetCalled.
+
+        """
+        utils.poll_for_condition(
+            lambda: self._CheckResetCalledHelper(expected_value),
+            exception=error.TestFail("\"ResetCalled\" did not match: " +
+                                     str(expected_value)),
+            timeout=LONG_TIMEOUT)
+
+    def EnsureModemStateReached(self, expected_state, timeout):
+        """
+        Asserts that the underlying modem state becomes |expected_state| within
+        |timeout|.
+
+        @param expected_state: The expected modem state.
+        @param timeout: Timeout in which the condition should be met.
+
+        """
+        utils.poll_for_condition(
+                lambda: self.GetModemState() == expected_state,
+                exception=error.TestFail(
+                        'Modem failed to reach state ' +
+                        mm1.ModemStateToString(expected_state)),
+                timeout=timeout)
 
     def CheckServiceActivationState(self, expected_state):
         """
         Asserts that the service activation state matches |expected_state|
-        within ACTIVATION_STATE_TIMEOUT.
+        within SHORT_TIMEOUT.
 
         @param expected_state: The expected service activation state.
 
         """
         service = self.FindCellularService()
-        state = self.flim.WaitForServiceState(
-            service=service,
-            expected_states=[expected_state],
-            timeout=ACTIVATION_STATE_TIMEOUT,
-            property_name='Cellular.ActivationState')[0]
-        if state != expected_state:
+        success, state, duration = self.shill.wait_for_property_in(
+            service,
+            'Cellular.ActivationState',
+            [expected_state],
+            SHORT_TIMEOUT)
+        if not success and state != expected_state:
             raise error.TestError(
                 'Service activation state should be \'%s\', but it is \'%s\'.'
                 % (expected_state, state))
 
-    def FindCellularService(self):
-        """Returns the current cellular service."""
-        service = self.flim.FindCellularService()
-        if not service:
+    def FindCellularService(self, check_not_none=True):
+        """
+        Returns the current cellular service.
+
+        @param check_not_none: If True, an error will be raised if no service
+                was found.
+
+        """
+        service = self.shill.find_cellular_service_object()
+        if check_not_none and not service:
             raise error.TestError('Could not find cellular service.')
         return service
 
     def FindCellularDevice(self):
         """Returns the current cellular device."""
-        device = self.flim.FindCellularDevice()
+        device = self.shill.find_cellular_device_object()
         if not device:
             raise error.TestError('Could not find cellular device.')
         return device
+
+    def ResetCellularDevice(self):
+        """
+        Resets all modems, guaranteeing that the operation succeeds and doesn't
+        fail due to race conditions in pseudomodem start-up and test execution.
+
+        """
+        self.EnsureModemStateReached(
+                mm1.MM_MODEM_STATE_ENABLED, SHORT_TIMEOUT)
+        self.shill.reset_modem(self.FindCellularDevice())
+        self.EnsureModemStateReached(
+                mm1.MM_MODEM_STATE_ENABLED, SHORT_TIMEOUT)
 
     def run_once(self):
         with backchannel.Backchannel():
@@ -364,11 +426,8 @@ class network_LTEActivate(test.test):
                 mm1.MM_MODEM_ACCESS_TECHNOLOGY_LTE)
             with pseudomodem.TestModemManagerContext(True,
                                                      sim=self.sim) as tmmc:
-                self.flim = flimflam.FlimFlam()
-                self.device_manager = flimflam.DeviceManager(self.flim)
-                self.flim.SetDebugTags(
-                    'dbus+service+device+modem+cellular+portal+network+'
-                    'manager+dhcp')
+                self.shill = cellular_proxy.CellularProxy.get_proxy()
+                self.shill.set_logging_for_cellular_test()
 
                 tests = [
                     TimeoutResetTest(tmmc.GetPseudoModemManager(), self),
@@ -377,9 +436,5 @@ class network_LTEActivate(test.test):
                     ActivatedDueToMdnTest(tmmc.GetPseudoModemManager(), self)
                 ]
 
-                try:
-                    self.device_manager.ShutdownAllExcept('cellular')
-                    for test in tests:
-                        test.Run()
-                finally:
-                    self.device_manager.RestoreDevices()
+                for test in tests:
+                    test.Run()

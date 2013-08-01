@@ -5,6 +5,7 @@
 # found in the LICENSE file.
 
 import dbus
+import dbus.exceptions
 import dbus.mainloop.glib
 import gobject
 import logging
@@ -33,6 +34,7 @@ IFACE_IP_BASE = '192.168.7'
 # TODO(armansito): Remove 'cromo' once it gets deprecated.
 DEFAULT_MANAGERS = ['cromo', 'modemmanager']
 PARENT_SLEEP_TIMEOUT = 2
+MODEM_INIT_TIMEOUT = 10
 
 DEFAULT_TEST_NETWORK_PREFIX = 'Test Network'
 
@@ -258,6 +260,10 @@ class VirtualEthernetInterface(object):
 # pseudo modem manager can access the singleton via this variable.
 virtual_ethernet_interface = VirtualEthernetInterface()
 
+class PseudoModemManagerException(Exception):
+    """Class for exceptions thrown by PseudoModemManager."""
+    pass
+
 class PseudoModemManager(object):
     """
     This class is responsible for setting up the virtual ethernet interfaces,
@@ -327,7 +333,25 @@ class PseudoModemManager(object):
             if self.child == 0:
                 self._Run()
             else:
-                time.sleep(PARENT_SLEEP_TIMEOUT)
+                bus = dbus.SystemBus()
+                def _CheckModemIsUp():
+                    try:
+                        modem = bus.get_object(mm1.I_MODEM_MANAGER,
+                                               self.modem.path)
+                        iprops = dbus.Interface(modem, mm1.I_PROPERTIES)
+                        iprops.GetAll(mm1.I_MODEM)
+                        return True
+                    except dbus.exceptions.DBusException:
+                        return False
+                try:
+                    utils.poll_for_condition(
+                        _CheckModemIsUp,
+                        exception=PseudoModemManagerException(
+                                "Failed to initialize pseudo modem object."),
+                        timeout=MODEM_INIT_TIMEOUT)
+                except PseudoModemManagerException:
+                    self.Stop()
+                    raise
         else:
             self._Run()
 

@@ -208,16 +208,20 @@ class Modem3gpp(modem.Modem):
         if (self.Get(mm1.I_MODEM_3GPP, 'OperatorCode') == operator_id or
             ((not operator_id and self.Get(mm1.I_MODEM, 'State') >=
                     mm1.MM_MODEM_STATE_REGISTERED))):
-            logging.info('Already registered.')
-            if raise_cb:
-                raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED,
-                                         'Already registered'))
-            return
+            message = 'Already registered.'
+            logging.info(message)
+            raise mm1.MMCoreError(mm1.MMCoreError.FAILED, message)
+
+        if self.Get(mm1.I_MODEM, 'State') < mm1.MM_MODEM_STATE_ENABLED:
+            message = 'Cannot register the modem if not enabled.'
+            logging.info(message)
+            raise mm1.MMCoreError(mm1.MMCoreError.FAILED, message)
 
         self.CancelAllStateMachines()
 
         def _Reregister():
-            self.UnregisterWithNetwork()
+            if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_REGISTERED:
+                self.UnregisterWithNetwork()
             self.RegisterWithNetwork(operator_id, return_cb, raise_cb)
 
         if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_CONNECTED:
