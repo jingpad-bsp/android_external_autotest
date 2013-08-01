@@ -85,7 +85,7 @@ class platform_CorruptRootfs(test.test):
             kernelB = dev + 'p2'
             rootfsB = dev + 'p3'
         else:
-            raise TestError('Unexpected root device %s', rootdev)
+            raise error.TestError('Unexpected root device %s' % rootdev)
         return dev, kernelA, rootfsA, kernelB, rootfsB
 
 
