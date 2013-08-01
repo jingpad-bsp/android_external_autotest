@@ -17,7 +17,7 @@ cros-version label of a host to the desired setting.
 """
 
 
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import error, utils
 
 
 # Uncomment the below line, and change it to the correct value if you are
@@ -25,10 +25,10 @@ from autotest_lib.client.common_lib import utils
 # value = 'lumpy-release/R28-3993.0.0'
 
 
-if not locals().get('provision_labels'):
+if not locals().get('value'):
     args = utils.args_to_dict(args)
     if not args.get('value'):
-        raise TestError("No provision value!")
+        raise error.TestError("No provision value!")
     value = args['value']
 
 
