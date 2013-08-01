@@ -43,6 +43,11 @@ def _make_servo_hostname(hostname):
     return '.'.join(host_parts)
 
 
+class FactoryImageCheckerException(error.AutoservError):
+    """Exception raised when an image is a factory image."""
+    pass
+
+
 def _get_lab_servo(target_hostname):
     """Instantiate a Servo for |target_hostname| in the lab.
 
@@ -908,16 +913,42 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                hostname=self.hostname)
 
 
-    def cleanup(self):
+    def _is_factory_image(self):
+        """Checks if the image on the DUT is a factory image.
+
+        @return: True if the image on the DUT is a factory image.
+                 False otherwise.
+        """
+        result = self.run('[ -f /root/.factory_test ]', ignore_status=True)
+        return result.exit_status == 0
+
+
+    def _restart_ui(self):
+        """Restarts ui.
+
+        @raises: FactoryImageCheckerException for factory images, since
+                 we cannot attempt to restart ui on them.
+                 error.AutoservRunError for any other type of error that
+                 occurs while restarting ui.
+        """
+        if self._is_factory_image():
+           raise FactoryImageCheckerException('Cannot restart ui on factory '
+                                              'images')
+
         client_at = autotest.Autotest(self)
+        client_at.run_static_method('autotest_lib.client.cros.cros_ui',
+                                    '_clear_login_prompt_state')
+        self.run('restart ui')
+        client_at.run_static_method('autotest_lib.client.cros.cros_ui',
+                                    '_wait_for_login_prompt')
+
+
+    def cleanup(self):
         self.run('rm -f %s' % constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
-            client_at.run_static_method('autotest_lib.client.cros.cros_ui',
-                                        '_clear_login_prompt_state')
-            self.run('restart ui')
-            client_at.run_static_method('autotest_lib.client.cros.cros_ui',
-                                        '_wait_for_login_prompt')
-        except (error.AutotestRunError, error.AutoservRunError):
+            self._restart_ui()
+        except (error.AutotestRunError, error.AutoservRunError,
+                FactoryImageCheckerException):
             logging.warn('Unable to restart ui, rebooting device.')
             # Since restarting the UI fails fall back to normal Autotest
             # cleanup routines, i.e. reboot the machine.
@@ -966,7 +997,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             global_config.global_config.get_config_value(
                 'SERVER', 'gb_encrypted_diskspace_required', type=float,
                 default=0.1))
-        self.run('update_engine_client --status')
+
+        # Factory images don't run update engine,
+        # goofy controls dbus on these DUTs.
+        if not self._is_factory_image():
+            self.run('update_engine_client --status')
         # Makes sure python is present, loads and can use built in functions.
         # We have seen cases where importing cPickle fails with undefined
         # symbols in cPickle.so.
