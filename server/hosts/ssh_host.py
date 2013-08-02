@@ -10,7 +10,7 @@ You should import the "hosts" package instead of importing each type of host.
         SSHHost: a remote machine with a ssh access
 """
 
-import sys, re, traceback, logging
+import re, logging
 from autotest_lib.client.common_lib import error, pxssh
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import abstract_ssh
@@ -54,11 +54,11 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         Construct an ssh command with proper args for this host.
         """
         options = "%s %s" % (options, self.master_ssh_option)
-        base_cmd = abstract_ssh.make_ssh_command(user=self.user, port=self.port,
-                                                opts=options,
-                                                hosts_file=self.known_hosts_file,
-                                                connect_timeout=connect_timeout,
-                                                alive_interval=alive_interval)
+        base_cmd = self.make_ssh_command(user=self.user, port=self.port,
+                                         opts=options,
+                                         hosts_file=self.known_hosts_file,
+                                         connect_timeout=connect_timeout,
+                                         alive_interval=alive_interval)
         return "%s %s" % (base_cmd, self.hostname)
 
 

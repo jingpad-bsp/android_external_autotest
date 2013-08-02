@@ -1,6 +1,6 @@
 from autotest_lib.client.common_lib import utils, error, global_config
 from autotest_lib.server import autotest, utils as server_utils
-from autotest_lib.server.hosts import site_factory, ssh_host, serial
+from autotest_lib.server.hosts import site_factory, site_host, ssh_host, serial
 from autotest_lib.server.hosts import logfile_monitor
 
 DEFAULT_FOLLOW_PATH = '/var/log/kern.log'
@@ -8,19 +8,22 @@ DEFAULT_PATTERNS_PATH = 'console_patterns'
 SSH_ENGINE = global_config.global_config.get_config_value('AUTOSERV',
                                                           'ssh_engine',
                                                           type=str)
-
 # for tracking which hostnames have already had job_start called
 _started_hostnames = set()
 
 def create_host(
     hostname, auto_monitor=False, follow_paths=None, pattern_paths=None,
     netconsole=False, **args):
+
+    # TODO(fdeng): this method should should dynamically discover
+    # and allocate host types, crbug.com/273843
+    classes = [site_host.SiteHost]
     # by default assume we're using SSH support
     if SSH_ENGINE == 'paramiko':
         from autotest_lib.server.hosts import paramiko_host
-        classes = [paramiko_host.ParamikoHost]
+        classes.append(paramiko_host.ParamikoHost)
     elif SSH_ENGINE == 'raw_ssh':
-        classes = [ssh_host.SSHHost]
+        classes.append(ssh_host.SSHHost)
     else:
         raise error.AutoServError("Unknown SSH engine %s. Please verify the "
                                   "value of the configuration key 'ssh_engine' "

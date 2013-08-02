@@ -26,9 +26,12 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.cros.servo import servo
-from autotest_lib.server.hosts import remote
+from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
+
+
+GLOBAL_SSH_COMMAND_OPTIONS = ''
 
 
 def _make_servo_hostname(hostname):
@@ -60,46 +63,6 @@ def _get_lab_servo(target_hostname):
             pass
     return None
 
-GLOBAL_SSH_COMMAND_OPTIONS = ''
-
-def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
-                     connect_timeout=None, alive_interval=None):
-    """Override default make_ssh_command to use options tuned for Chrome OS.
-
-    Tuning changes:
-      - ConnectTimeout=30; maximum of 30 seconds allowed for an SSH connection
-      failure.  Consistency with remote_access.sh.
-
-      - ServerAliveInterval=180; which causes SSH to ping connection every
-      180 seconds. In conjunction with ServerAliveCountMax ensures that if the
-      connection dies, Autotest will bail out quickly. Originally tried 60 secs,
-      but saw frequent job ABORTS where the test completed successfully.
-
-      - ServerAliveCountMax=3; consistency with remote_access.sh.
-
-      - ConnectAttempts=4; reduce flakiness in connection errors; consistency
-      with remote_access.sh.
-
-      - UserKnownHostsFile=/dev/null; we don't care about the keys. Host keys
-      change with every new installation, don't waste memory/space saving them.
-
-      - SSH protocol forced to 2; needed for ServerAliveInterval.
-
-    @param user User name to use for the ssh connection.
-    @param port Port on the target host to use for ssh connection.
-    @param opts Additional options to the ssh command.
-    @param hosts_file Ignored.
-    @param connect_timeout Ignored.
-    @param alive_interval Ignored.
-    """
-    base_command = ('/usr/bin/ssh -a -x %s %s -o StrictHostKeyChecking=no'
-                    ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
-                    ' -o ConnectTimeout=30 -o ServerAliveInterval=180'
-                    ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
-                    ' -o Protocol=2 -l %s -p %d')
-    return base_command % (GLOBAL_SSH_COMMAND_OPTIONS, opts, user, port)
-
-
 
 def add_label_detector(label_function_list, label_list=None, label=None):
     """Decorator used to group functions together into the provided list.
@@ -121,7 +84,7 @@ def add_label_detector(label_function_list, label_list=None, label=None):
     return add_func
 
 
-class SiteHost(remote.RemoteHost):
+class SiteHost(abstract_ssh.AbstractSSHHost):
     """Chromium OS specific subclass of Host."""
 
     _parser = autoserv_parser.autoserv_parser
@@ -977,6 +940,46 @@ class SiteHost(remote.RemoteHost):
         self.run('python -c "import cPickle"')
 
 
+    def make_ssh_command(self, user='root', port=22, opts='', hosts_file=None,
+                         connect_timeout=None, alive_interval=None):
+        """Override default make_ssh_command to use options tuned for Chrome OS.
+
+        Tuning changes:
+          - ConnectTimeout=30; maximum of 30 seconds allowed for an SSH
+          connection failure.  Consistency with remote_access.sh.
+
+          - ServerAliveInterval=180; which causes SSH to ping connection every
+          180 seconds. In conjunction with ServerAliveCountMax ensures
+          that if the connection dies, Autotest will bail out quickly.
+          Originally tried 60 secs, but saw frequent job ABORTS where
+          the test completed successfully.
+
+          - ServerAliveCountMax=3; consistency with remote_access.sh.
+
+          - ConnectAttempts=4; reduce flakiness in connection errors;
+          consistency with remote_access.sh.
+
+          - UserKnownHostsFile=/dev/null; we don't care about the keys.
+          Host keys change with every new installation, don't waste
+          memory/space saving them.
+
+          - SSH protocol forced to 2; needed for ServerAliveInterval.
+
+        @param user User name to use for the ssh connection.
+        @param port Port on the target host to use for ssh connection.
+        @param opts Additional options to the ssh command.
+        @param hosts_file Ignored.
+        @param connect_timeout Ignored.
+        @param alive_interval Ignored.
+        """
+        base_command = ('/usr/bin/ssh -a -x %s %s -o StrictHostKeyChecking=no'
+                        ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
+                        ' -o ConnectTimeout=30 -o ServerAliveInterval=180'
+                        ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
+                        ' -o Protocol=2 -l %s -p %d')
+        return base_command % (GLOBAL_SSH_COMMAND_OPTIONS, opts, user, port)
+
+
     def xmlrpc_connect(self, command, port, command_name=None,
                        ready_test_name=None, timeout_seconds=10):
         """Connect to an XMLRPC server on the host.
@@ -1022,7 +1025,7 @@ class SiteHost(remote.RemoteHost):
         # target we use an ssh tunnel.
         local_port = utils.get_unused_port()
         tunnel_options = '-n -N -q -L %d:localhost:%d' % (local_port, port)
-        ssh_cmd = make_ssh_command(opts=tunnel_options)
+        ssh_cmd = self.make_ssh_command(opts=tunnel_options)
         tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
         logging.debug('Full tunnel command: %s', tunnel_cmd)
         tunnel_proc = subprocess.Popen(tunnel_cmd, shell=True, close_fds=True)

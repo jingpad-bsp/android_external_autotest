@@ -10,30 +10,7 @@ enable_master_ssh = get_value('AUTOSERV', 'enable_master_ssh', type=bool,
                               default=False)
 
 
-def _make_ssh_cmd_default(user="root", port=22, opts='', hosts_file='/dev/null',
-                          connect_timeout=30, alive_interval=300):
-    base_command = ("/usr/bin/ssh -a -x %s -o StrictHostKeyChecking=no "
-                    "-o UserKnownHostsFile=%s -o BatchMode=yes "
-                    "-o ConnectTimeout=%d -o ServerAliveInterval=%d "
-                    "-l %s -p %d")
-    assert isinstance(connect_timeout, (int, long))
-    assert connect_timeout > 0 # can't disable the timeout
-    return base_command % (opts, hosts_file, connect_timeout,
-                           alive_interval, user, port)
-
-
-make_ssh_command = utils.import_site_function(
-    __file__, "autotest_lib.server.hosts.site_host", "make_ssh_command",
-    _make_ssh_cmd_default)
-
-
-# import site specific Host class
-SiteHost = utils.import_site_class(
-    __file__, "autotest_lib.server.hosts.site_host", "SiteHost",
-    remote.RemoteHost)
-
-
-class AbstractSSHHost(SiteHost):
+class AbstractSSHHost(remote.RemoteHost):
     """
     This class represents a generic implementation of most of the
     framework necessary for controlling a host via ssh. It implements
@@ -60,6 +37,19 @@ class AbstractSSHHost(SiteHost):
         self.master_ssh_job = None
         self.master_ssh_tempdir = None
         self.master_ssh_option = ''
+
+
+    def make_ssh_command(self, user="root", port=22, opts='',
+                         hosts_file='/dev/null',
+                         connect_timeout=30, alive_interval=300):
+        base_command = ("/usr/bin/ssh -a -x %s -o StrictHostKeyChecking=no "
+                        "-o UserKnownHostsFile=%s -o BatchMode=yes "
+                        "-o ConnectTimeout=%d -o ServerAliveInterval=%d "
+                        "-l %s -p %d")
+        assert isinstance(connect_timeout, (int, long))
+        assert connect_timeout > 0 # can't disable the timeout
+        return base_command % (opts, hosts_file, connect_timeout,
+                               alive_interval, user, port)
 
 
     def use_rsync(self):
@@ -102,9 +92,9 @@ class AbstractSSHHost(SiteHost):
         appropriate rsync command for copying them. Remote paths must be
         pre-encoded.
         """
-        ssh_cmd = make_ssh_command(user=self.user, port=self.port,
-                                   opts=self.master_ssh_option,
-                                   hosts_file=self.known_hosts_file)
+        ssh_cmd = self.make_ssh_command(user=self.user, port=self.port,
+                                        opts=self.master_ssh_option,
+                                        hosts_file=self.known_hosts_file)
         if delete_dest:
             delete_flag = "--delete"
         else:
@@ -123,9 +113,9 @@ class AbstractSSHHost(SiteHost):
         Create a base ssh command string for the host which can be used
         to run commands directly on the machine
         """
-        base_cmd = make_ssh_command(user=self.user, port=self.port,
-                                    opts=self.master_ssh_option,
-                                    hosts_file=self.known_hosts_file)
+        base_cmd = self.make_ssh_command(user=self.user, port=self.port,
+                                         opts=self.master_ssh_option,
+                                         hosts_file=self.known_hosts_file)
 
         return '%s %s "%s"' % (base_cmd, self.hostname, utils.sh_escape(cmd))
 
