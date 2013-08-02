@@ -32,6 +32,7 @@ class Chrome(object):
 
         browser_to_create = browser_finder.FindBrowser(options)
         self._browser = browser_to_create.Create()
+        self._browser.Start()
 
 
     def __enter__(self):
