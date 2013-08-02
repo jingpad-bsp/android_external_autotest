@@ -487,11 +487,6 @@ class WPAEAPConfig(EAPConfig):
                 eap_identity=eap_identity, server_eap_users=server_eap_users)
 
 
-    def get_shill_service_properties(self):
-        """@return dict of shill service properties."""
-        return super(WPAEAPConfig, self).get_shill_service_properties()
-
-
     def get_hostapd_config(self):
         """@return dict fragment of hostapd configuration for security."""
         ret = super(WPAEAPConfig, self).get_hostapd_config()
@@ -555,7 +550,7 @@ class Tunneled1xConfig(WPAEAPConfig):
 
     def get_shill_service_properties(self):
         """@return dict of shill service properties."""
-        ret = super(WPAEAPConfig, self).get_shill_service_properties()
+        ret = super(Tunneled1xConfig, self).get_shill_service_properties()
         ret.update({self.SERVICE_PROPERTY_EAP_PASSWORD: self.password})
         if self.inner_protocol.startswith(self.TTLS_PREFIX):
             auth_str = 'auth=' + self.inner_protocol[len(self.TTLS_PREFIX):]

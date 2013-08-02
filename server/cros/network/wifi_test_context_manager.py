@@ -216,8 +216,6 @@ class WiFiTestContextManager(object):
         wifi_test_utils.sync_host_times((self.client.host,
                                          self.server.host,
                                          self.router.host))
-        logging.info('Turning off the UI.')
-        self.client.shill.disable_ui()
 
 
     def teardown(self):
@@ -225,8 +223,6 @@ class WiFiTestContextManager(object):
         logging.debug('Tearing down the test context.')
         if self.client is not None:
             self.client.shill.clean_profiles()
-            logging.info('Turning the UI back on.')
-            self.client.shill.enable_ui()
             self.client.close()
         if self._router is not None:
             self._router.destroy()

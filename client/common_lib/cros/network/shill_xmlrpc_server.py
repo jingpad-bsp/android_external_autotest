@@ -37,6 +37,8 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     def __enter__(self):
         super(ShillXmlRpcDelegate, self).__enter__()
+        if not cros_ui.stop(allow_fail=True):
+            logging.error('UI did not stop, there could be trouble ahead.')
         self._tpm_store.__enter__()
 
 
@@ -211,14 +213,9 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return self._wifi_proxy.dbus2primitive(service_properties)
 
 
-    def disable_ui(self):
-        """@return True iff the UI is off when we return."""
-        return cros_ui.stop()
-
-
     def enable_ui(self):
         """@return True iff the UI was successfully started."""
-        return cros_ui.start()
+        return cros_ui.start(allow_fail=True) == 0
 
 
 if __name__ == '__main__':
