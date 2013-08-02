@@ -179,7 +179,12 @@ def restart(impl=None):
 
 def nuke():
     """Nuke the login manager, waiting for it to restart."""
-    restart(lambda: utils.nuke_process_by_name('session_manager'))
+    restart(lambda: utils.nuke_process_by_name(constants.SESSION_MANAGER))
+
+
+def is_up():
+    """Return True if the UI is up, False if not."""
+    return 'start/running' in utils.system_output('initctl status ui')
 
 
 class ChromeSession(object):
