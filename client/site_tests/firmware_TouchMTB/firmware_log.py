@@ -43,7 +43,7 @@ How the logs work:
 
 
 import glob
-import numpy as n
+import numpy as np
 import pickle
 import os
 
@@ -82,7 +82,7 @@ def _calc_sample_standard_deviation(sample):
     Reference:
         http://en.wikipedia.org/wiki/Standard_deviation
     """
-    return n.std(n.array(sample), ddof=1)
+    return np.std(np.array(sample), ddof=1)
 
 
 class Metric:
@@ -329,7 +329,7 @@ class StatisticsScores:
     def __init__(self, scores):
         self.all_data = ()
         if scores:
-            self.average = n.average(n.array(scores))
+            self.average = np.average(np.array(scores))
             self.ssd = _calc_sample_standard_deviation(scores)
             self.count = len(scores)
             self.all_data = (self.average, self.ssd, self.count)
@@ -554,5 +554,5 @@ class SummaryLog:
                                       validator=validator).stat_scores.average
                       for validator in self.validators]
             _, weights = zip(*sorted(self.ext_validator_weights.items()))
-            weighted_average[fw] = n.average(scores, weights=weights)
+            weighted_average[fw] = np.average(scores, weights=weights)
         return weighted_average

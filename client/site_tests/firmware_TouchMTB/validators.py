@@ -54,7 +54,7 @@ Note that it is also possible to instantiate a validator as
 
 
 import copy
-import numpy as n
+import numpy as np
 import os
 import re
 
@@ -301,8 +301,8 @@ class LinearityValidator1(BaseValidator):
              http://en.wikipedia.org/wiki/Average_absolute_deviation
         """
         # Convert the int list to the float array
-        self._ax = 1.0 * n.array(ax)
-        self._ay = 1.0 * n.array(ay)
+        self._ax = 1.0 * np.array(ax)
+        self._ay = 1.0 * np.array(ay)
 
         # If there are less than 2 data points, it is not a line at all.
         asize = self._ax.size
@@ -311,9 +311,9 @@ class LinearityValidator1(BaseValidator):
 
         Sx = self._ax.sum()
         Sy = self._ay.sum()
-        Sxx = n.square(self._ax).sum()
-        Sxy = n.dot(self._ax, self._ay)
-        Syy = n.square(self._ay).sum()
+        Sxx = np.square(self._ax).sum()
+        Sxy = np.dot(self._ax, self._ay)
+        Syy = np.square(self._ay).sum()
         Sx2 = Sx * Sx
         Sy2 = Sy * Sy
 
@@ -331,17 +331,17 @@ class LinearityValidator1(BaseValidator):
         line characterized by the equation parameters alpha and beta.
         """
         # Convert the int list to the float array
-        ax = 1.0 * n.array(ax)
-        ay = 1.0 * n.array(ay)
+        ax = 1.0 * np.array(ax)
+        ay = 1.0 * np.array(ay)
 
         asize = ax.size
         partial = min(asize, max(1, self.MSE_PARTIAL_GROUP_SIZE))
 
         # spmse: squared root of partial mean squared error
-        spmse = n.square(ay - self._alpha - self._beta * ax)
+        spmse = np.square(ay - self._alpha - self._beta * ax)
         spmse.sort()
         spmse = spmse[asize - partial : asize]
-        spmse = n.sqrt(n.average(spmse))
+        spmse = np.sqrt(np.average(spmse))
         return spmse
 
     def check(self, packets, variation=None):
@@ -424,7 +424,7 @@ class LinearityValidator2(BaseValidator):
 
         # Calculate the simple linear regression line.
         degree = 1
-        regress_line = n.poly1d(n.polyfit(list_t, list_y, degree))
+        regress_line = np.poly1d(np.polyfit(list_t, list_y, degree))
 
         # Compute the fitting errors of the specified segments.
         if self._segments == VAL.BOTH_ENDS:
