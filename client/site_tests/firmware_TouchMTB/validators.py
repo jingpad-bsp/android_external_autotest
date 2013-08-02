@@ -915,6 +915,15 @@ class ReportRateValidator(BaseValidator):
         """
         import test_conf as conf
 
+        # If there are no packets at all due to a missing finger, calculating
+        # the metrics will result in division-by-0 error. So we just return.
+        # The missing finger problem will be captured by another validator,
+        # i.e., CountTrackingIDValidator. Besides, the current UI would show a
+        # warning message in red on the window about the missing finger problem,
+        # and ask the user to record the gesture again.
+        if len(list_syn_time) == 0:
+            return
+
         # Each packet consists of a list of events of which The last one is
         # the sync event.
         sync_intervals = [list_syn_time[i+1] - list_syn_time[i]

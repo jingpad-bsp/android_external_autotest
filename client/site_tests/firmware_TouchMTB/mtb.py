@@ -950,13 +950,15 @@ class Mtb:
         @param finger : the specified ith finger contact.
                 If a finger contact is specified, extract only the list of
                 syn_time from this finger contact.
-                Otherwise, when the finger contact is set to None,
-                take all packets into account.
+                Otherwise, when the finger contact is set to None, take all
+                packets into account. Note that the finger contact number
+                starts from 0.
 
-                Note: the last event in a packet is 'SYN_REPORT' of which
-                      the event time is the 'syn_time'.
+        Note: the last event in a packet, represented as packet[-1], is
+              'SYN_REPORT' of which the event time is the 'syn_time'.
         """
-        return (self.get_ordered_finger_path(finger, 'syn_time') if finger else
+        return (self.get_ordered_finger_path(finger, 'syn_time')
+                if isinstance(finger, int) else
                 [packet[-1].get(MTB.EV_TIME) for packet in self.packets])
 
     def _call_check_event_func(self, event, expected_value, check_event_result,
