@@ -299,9 +299,9 @@ class WiFiChaosConnectionTest(object):
         scan_bss = 'for device in $(iw dev | grep Interface | awk \
                     \'{ print $2 }\'); do iw $device scan; done'
         start_time = int(time.time())
-        # Setting 180s as timeout
+        # Setting 300s as timeout
         logging.info('Waiting for the DUT to find BSS... ')
-        while (int(time.time()) - start_time) < 180 and len(scan_list):
+        while (int(time.time()) - start_time) < 300 and len(scan_list):
            # If command failed: Device or resource busy (-16), run again.
            scan_result = self.host.run(scan_bss, ignore_status=True)
            if 'busy' in str(scan_result):
