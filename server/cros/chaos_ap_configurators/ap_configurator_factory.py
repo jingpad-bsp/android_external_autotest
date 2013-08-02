@@ -42,6 +42,7 @@ import netgear_single_band_configurator
 import trendnet_ap_configurator
 import trendnet691gr_ap_configurator
 import trendnet731br_ap_configurator
+import trendnet432brp_ap_configurator
 import westerndigitaln600_ap_configurator
 
 
@@ -71,6 +72,8 @@ class APConfiguratorFactory(object):
             trendnet691gr_ap_configurator.Trendnet691grAPConfigurator,
         'Trendnet731brAPConfigurator':
             trendnet731br_ap_configurator.Trendnet731brAPConfigurator,
+        'Trendnet432brpAPConfigurator':
+            trendnet432brp_ap_configurator.Trendnet432brpAPConfigurator,
         'DLinkDIR655APConfigurator':
             dlink_dir655_ap_configurator.DLinkDIR655APConfigurator,
         'BuffaloAPConfigurator':
