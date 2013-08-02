@@ -20,10 +20,10 @@ import glob, logging, os, re, time
 
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.server import hosts
 from autotest_lib.server import utils
 from autotest_lib.server.cros.factory_install_test import FactoryInstallTest
 from autotest_lib.server.cros.servo import servo
-from autotest_lib.server.hosts import ssh_host
 
 
 class factory_InstallServo(FactoryInstallTest):
@@ -34,7 +34,8 @@ class factory_InstallServo(FactoryInstallTest):
     """
 
     def _create_servo(self, servo_host, servo_port):
-        self.servo = servo.Servo(servo_host=servo_host, servo_port=servo_port)
+        self.servo = servo.Servo(
+                hosts.ServoHost(servo_host=servo_host, servo_port=servo_port))
         def kill_servo():
             del self.servo
         self.cleanup_tasks.append(kill_servo)
@@ -56,7 +57,7 @@ class factory_InstallServo(FactoryInstallTest):
         """
         Overridden from superclass.
         """
-        return ssh_host.SSHHost(self.dut_ip)
+        return hosts.SSHHost(self.dut_ip)
 
     def run_factory_install(self, shim_image):
         """

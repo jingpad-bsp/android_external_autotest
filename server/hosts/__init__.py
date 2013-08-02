@@ -17,6 +17,7 @@ from ssh_host import SSHHost
 from guest import Guest
 from kvm_guest import KVMGuest
 from cros_host import CrosHost
+from servo_host import ServoHost
 
 # extra logger classes
 from serial import SerialHost

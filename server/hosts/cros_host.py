@@ -25,8 +25,8 @@ from autotest_lib.server import autotest
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
-from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
@@ -37,39 +37,9 @@ except ImportError:
     jsonrpclib = None
 
 
-def _make_servo_hostname(hostname):
-    host_parts = hostname.split('.')
-    host_parts[0] = host_parts[0] + '-servo'
-    return '.'.join(host_parts)
-
-
 class FactoryImageCheckerException(error.AutoservError):
     """Exception raised when an image is a factory image."""
     pass
-
-
-def _get_lab_servo(target_hostname):
-    """Instantiate a Servo for |target_hostname| in the lab.
-
-    Assuming that |target_hostname| is a device in the CrOS test
-    lab, create and return a Servo object pointed at the servo
-    attached to that DUT.  The servo in the test lab is assumed
-    to already have servod up and running on it.
-
-    @param target_hostname: device whose servo we want to target.
-    @return an appropriately configured Servo instance.
-    """
-    servo_host = _make_servo_hostname(target_hostname)
-    if utils.host_is_in_lab_zone(servo_host):
-        try:
-            return servo.Servo(servo_host=servo_host)
-        except: # pylint: disable=W0702
-            # TODO(jrbarnette):  Long-term, if we can't get to
-            # a servo in the lab, we want to fail, so we should
-            # pass any exceptions along.  Short-term, we're not
-            # ready to rely on servo, so we ignore failures.
-            pass
-    return None
 
 
 def add_label_detector(label_function_list, label_list=None, label=None):
@@ -217,6 +187,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     *args, **dargs):
         """Initialize superclasses, and |self.servo|.
 
+        This method checks whether a servo is required by checking whether
+        servo_args is None. This method will only attempt to create a servo
+        object when servo is required by the test.
+
         For creating the host servo object, there are three
         possibilities:  First, if the host is a lab system known to
         have a servo board, we connect to that servo unconditionally.
@@ -236,9 +210,55 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self._rpc_proxy_map = {}
         self._ssh_verbosity_flag = ssh_verbosity_flag
         self._ssh_options = ssh_options
-        self.servo = _get_lab_servo(hostname)
-        if not self.servo and servo_args is not None:
-            self.servo = servo.Servo(**servo_args)
+        self.servo = None
+        # TODO(fdeng): We need to simplify the
+        # process of servo and servo_host initialization.
+        # crbug.com/298432
+        self._servo_host = self._create_servo_host(servo_args)
+        # TODO(fdeng): 'servo_args is not None' is used to determine whether
+        # a test needs a servo. Better solution is needed.
+        # There are three possible cases here:
+        # 1. servo_arg is None
+        # 2. servo arg is an empty dictionary
+        # 3. servo_arg is a dictionary that has entries of 'servo_host',
+        #    'servo_port'(optional).
+        # We assume that:
+        # a. A test that requires a servo always calls get_servo_arguments
+        # and passes in its return value as |servo_args|.
+        # b. get_servo_arguments never returns None.
+        # Based on the assumptions, we reason that only in case 2 and 3
+        # a servo is required, i.e. when the servo_args is not None.
+        if servo_args is not None:
+            self.servo = self._servo_host.create_healthy_servo_object()
+
+
+    def _create_servo_host(self, servo_args):
+        """Create a ServoHost object.
+
+        There three possible cases:
+        1) If the DUT is in Cros Lab and has a beaglebone and a servo, then
+           create a ServoHost object pointing to the beaglebone. servo_args
+           is ignored.
+        2) If not case 1) and servo_args is neither None nor empty, then
+           create a ServoHost object using servo_args.
+        3) If neither case 1) or 2) applies, return None.
+
+        @param servo_args: A dictionary that contains args for creating
+                           a ServoHost object,
+                           e.g. {'servo_host': '172.11.11.111',
+                                 'servo_port': 9999}.
+                           See comments above.
+
+        @returns: A ServoHost object or None. See comments above.
+
+        """
+        servo_host_name = servo_host.make_servo_hostname(self.hostname)
+        if utils.host_is_in_lab_zone(servo_host_name):
+            return servo_host.ServoHost(servo_host=servo_host_name)
+        elif servo_args is not None:
+            return servo_host.ServoHost(**servo_args)
+        else:
+            return None
 
 
     def get_repair_image_name(self):
@@ -861,6 +881,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         simplified implementation based on the capabilities in the
         Chrome OS test lab.
 
+        It first verifies and repairs servo if it is a DUT in CrOS
+        lab and a servo is attached. On success, it proceeds to
+        the following steps to repair the DUT.
+
         If `self.verify()` fails, the following procedures are
         attempted:
           1. Try to re-install to a known stable image using
@@ -878,7 +902,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @raises AutoservRepairTotalFailure if the repair process fails to
                 fix the DUT.
+        @raises ServoHostRepairTotalFailure if the repair process fails to
+                fix the servo host if one is attached to the DUT.
+        @raises AutoservSshPermissionDeniedError if it is unable
+                to ssh to the servo host due to permission error.
+
         """
+        if self._servo_host:
+            self.servo = self._servo_host.create_healthy_servo_object()
+
         # TODO(scottz): This should use something similar to label_decorator,
         # but needs to be populated in order so DUTs are repaired with the
         # least amount of effort.
