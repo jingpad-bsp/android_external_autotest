@@ -5,7 +5,7 @@
 import logging
 import subprocess
 
-from autotest_lib.server.cros.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
 
 
 class firmware_CgptState(FAFTSequence):

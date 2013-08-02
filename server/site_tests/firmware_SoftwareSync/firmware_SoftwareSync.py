@@ -5,7 +5,7 @@
 import logging
 import time
 
-from autotest_lib.server.cros.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
 
 
 class firmware_SoftwareSync(FAFTSequence):

@@ -5,7 +5,7 @@
 import logging
 
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
 
 
 class firmware_DevFwNormalBoot(FAFTSequence):

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
 
 
 class firmware_CorruptFwSigA(FAFTSequence):

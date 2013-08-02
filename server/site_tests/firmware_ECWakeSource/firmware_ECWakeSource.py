@@ -7,7 +7,7 @@ from threading import Timer
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
 
 
 def delayed(seconds):

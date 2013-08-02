@@ -14,9 +14,11 @@ import uuid
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft_checkers import FAFTCheckers
-from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
-from autotest_lib.server.cros.faft_delay_constants import FAFTDelayConstants
+from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
+from autotest_lib.server.cros.faft.config.faft_client_attribute import (
+       FAFTClientAttribute)
+from autotest_lib.server.cros.faft.config.faft_delay_constants import (
+       FAFTDelayConstants)
 from autotest_lib.server.cros.servo import chrome_ec
 from autotest_lib.server.cros.servo_test import ServoTest
 

@@ -6,7 +6,7 @@ import threading, time, logging, sys
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
-from autotest_lib.server.cros import faft_client_attribute
+from autotest_lib.server.cros.faft.config import faft_client_attribute
 from autotest_lib.server.cros import pyauto_proxy
 
 _RETRY_SUSPEND_ATTEMPTS = 1

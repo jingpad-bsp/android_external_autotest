@@ -6,7 +6,7 @@ import logging, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
-from autotest_lib.server.cros import faft_client_attribute
+from autotest_lib.server.cros.faft.config import faft_client_attribute
 
 BATTERY_MARGIN = -1.0
 BATTERY_MARGIN_PREF = '0.0'
