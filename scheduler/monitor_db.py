@@ -1581,9 +1581,8 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
         pending_tasks = models.SpecialTask.objects.filter(
                 queue_entry__id=self.queue_entry.id,
                 is_complete=0)
-        if pending_tasks:
-            for task in pending_tasks:
-                task.finish(False)
+        for task in pending_tasks:
+            task.finish(False)
 
 
     def cleanup(self):
