@@ -6,6 +6,7 @@ AUTHOR = 'tgao@chromium.com'
 NAME = 'network_WiFi_RateRange.udp_rx_ch6_ht40_plus'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
+SUITE = 'wifirvr'
 
 DOC = """
 This test takes rate vs. range measurement on for UDP downstream test

@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.client.common_lib.cros.wlan import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import rvr_test_base
 from autotest_lib.server.cros.network import iperf_runner
 
