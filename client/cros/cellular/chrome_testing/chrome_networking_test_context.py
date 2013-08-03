@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
@@ -100,6 +102,7 @@ class ChromeNetworkingTestContext(object):
         with private API priviliges.
 
         """
+        logging.info('ChromeNetworkingTestContext: setup')
         self._create_browser()
         self.STATUS_PENDING = self.network_test_extension.EvaluateJavaScript(
                 'chromeTesting.STATUS_PENDING')
@@ -113,6 +116,7 @@ class ChromeNetworkingTestContext(object):
         Closes the browser session.
 
         """
+        logging.info('ChromeNetworkingTestContext: teardown')
         if self._chrome:
             self._chrome.browser.Close()
             self._chrome = None

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import dbus
+import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -91,24 +92,34 @@ class network_ChromeCellularSmokeTest(test.test):
     def _disconnect_cellular_network(self):
         # Make sure that the network becomes disconnected.
         network_id = self._network['GUID']
+        logging.info('Disconnecting from network: ' + network_id)
         call_status = self._chrome_testing.call_test_function(
                 self.LONG_TIMEOUT,
                 'disconnectFromNetwork',
                 '"' + network_id + '"')
+        logging.info('Checking that the network is disconnected.')
         self._ensure_network_status(
                 network_id, 'NotConnected', self.LONG_TIMEOUT)
+        logging.info('The network is disconnected. Checking that the modem is '
+                     'in the REGISTERED state.')
         self._assert_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
+        logging.info('Modem is disconnected. Disconnect was successful.')
 
     def _connect_cellular_network(self):
         # Make sure that the network becomes connected.
         network_id = self._network['GUID']
+        logging.info('Connecting to network: ' + network_id)
         call_status = self._chrome_testing.call_test_function(
                 self.LONG_TIMEOUT,
                 'connectToNetwork',
                 '"' + network_id + '"')
+        logging.info('Checking that the network is connected.')
         self._ensure_network_status(
                 network_id, 'Connected', self.LONG_TIMEOUT)
+        logging.info('The network is connected. Checking that the modem is in '
+                     'the CONNECTED state.')
         self._assert_modem_state(mm1.MM_MODEM_STATE_CONNECTED)
+        logging.info('Modem is connected. Connect was successful.')
 
     def _run_once_internal(self):
         # Set up a ModemManager proxy to use to verify the modem state.
@@ -121,6 +132,7 @@ class network_ChromeCellularSmokeTest(test.test):
         # Disconnect from the network before doing any operations.
         self._disconnect_cellular_network()
 
+        logging.info('Starting connect/disconnect sequence.')
         for _ in xrange(self.CONNECT_COUNT):
             self._connect_cellular_network()
             self._disconnect_cellular_network()
