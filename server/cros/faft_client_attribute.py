@@ -105,7 +105,7 @@ class FAFTClientAttribute(object):
                                   'keyboard', 'lid', 'x86', 'thermal',
                                   'usb', 'peci']
             if platform == 'Link':
-                self.ec_capability.append('kblight')
+                self.ec_capability.extend(['kblight', 'smart_usb_charge'])
         elif platform in ['Pit', 'Snow', 'Spring']:
             self.ec_capability = (['battery', 'keyboard', 'arm'] +
                                   (['lid'] if platform in [
