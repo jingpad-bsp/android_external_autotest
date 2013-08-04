@@ -24,6 +24,12 @@ class firmware_ECUsbPorts(FAFTSequence):
     # Timeout range for waiting system to shutdown
     SHUTDOWN_TIMEOUT = 10
 
+    # USB charge modes, copied from ec/include/usb_charge.h
+    USB_CHARGE_MODE_DISABLED       = 0
+    USB_CHARGE_MODE_SDP2           = 1
+    USB_CHARGE_MODE_CDP            = 2
+    USB_CHARGE_MODE_DCP_SHORT      = 3
+    USB_CHARGE_MODE_ENABLED        = 4
 
     def setup(self):
         super(firmware_ECUsbPorts, self).setup()
@@ -43,11 +49,16 @@ class firmware_ECUsbPorts(FAFTSequence):
         reboot. If USB ports cannot be turned off or on, reboot step would
         fail.
         """
-        for_all_ports_cmd = ('id=0; while ectool usbchargemode "$id" %d;' +
-                             'do id=$((id+1)); sleep 0.5; done')
-        # Mode 0 = Port disabled. Mode 1 = Standard downstream port.
-        ports_off_cmd = for_all_ports_cmd % 0
-        ports_on_cmd = for_all_ports_cmd % 1
+        for_all_ports_cmd = ('id=0; while [ $id -lt %d ];' +
+                             'do ectool usbchargemode "$id" %d;' +
+                             'id=$((id+1)); sleep 0.5; done')
+        # Port disable - same for smart and dumb ports.
+        ports_off_cmd = for_all_ports_cmd % (self._port_count,
+                                             self.USB_CHARGE_MODE_DISABLED)
+        # Port enable - different command based on smart/dumb port.
+        port_enable_param = (self.USB_CHARGE_MODE_SDP2
+            if self._smart_usb_charge else self.USB_CHARGE_MODE_ENABLED)
+        ports_on_cmd = for_all_ports_cmd % (self._port_count, port_enable_param)
         cmd = ("(sleep %d; %s; sleep %d; %s)&" %
                 (self.RPC_DELAY, ports_off_cmd,
                  self.REBOOT_DELAY,
@@ -85,8 +96,8 @@ class firmware_ECUsbPorts(FAFTSequence):
         Wait for all USB ports to be disabled.
 
         Args:
-          port_count: Number of USB ports.
-          timeout: Timeout range.
+          @param port_count: Number of USB ports.
+          @param timeout: Timeout range.
         """
         logging.info('Waiting for %d USB ports to be disabled.', port_count)
         while timeout > 0:
@@ -107,21 +118,25 @@ class firmware_ECUsbPorts(FAFTSequence):
     def check_power_off_mode(self):
         """Shutdown the system and check USB ports are disabled."""
         self._failed = False
-        port_cnt = self.get_port_count()
         self.faft_client.system.run_shell_command("shutdown -P now")
-        if not self.wait_port_disabled(port_cnt, self.SHUTDOWN_TIMEOUT):
+        self.wait_for_client_offline()
+        if not self.wait_port_disabled(self._port_count, self.SHUTDOWN_TIMEOUT):
             logging.info("Fails to wait for USB port disabled")
             self._failed = True
         self.servo.power_short_press()
 
 
     def check_failure(self):
+        """Returns true if failure has been encountered."""
         return not self._failed
 
 
     def run_once(self):
         if not self.check_ec_capability(['usb']):
             raise error.TestNAError("Nothing needs to be tested on this device")
+        self._smart_usb_charge = (
+            'smart_usb_charge' in self.client_attr.ec_capability)
+        self._port_count = self.get_port_count()
         self.register_faft_sequence((
             {   # Step 1, turn off all USB ports and then turn them on again
                 'reboot_action': self.fake_reboot_by_usb_mode_change,
