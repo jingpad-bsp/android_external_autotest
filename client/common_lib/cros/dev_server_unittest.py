@@ -17,8 +17,18 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 
 def retry_mock(ExceptionToCheck, timeout_min):
-  """A mock retry decorator to use in place of the actual one for testing."""
+  """A mock retry decorator to use in place of the actual one for testing.
+
+  @param ExceptionToCheck: the exception to check.
+  @param timeout_mins: Amount of time in mins to wait before timing out.
+
+  """
   def inner_retry(func):
+    """The actual decorator.
+
+    @param func: Function to be called in decorator.
+
+    """
     return func
 
   return inner_retry
@@ -143,7 +153,13 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(dev_server.ImageServer, 'finish_download')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
-                                mox.StrContains(name))).AndReturn(to_return)
+                                mox.StrContains(name),
+                                mox.StrContains('stage?'))).AndReturn(to_return)
+        to_return = StringIO.StringIO('True')
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(name),
+                                mox.StrContains('is_staged'))).AndReturn(
+                                                                      to_return)
         self.dev_server.finish_download(name)
 
         # Synchronous case requires a call to finish download.
@@ -157,7 +173,13 @@ class DevServerTest(mox.MoxTestBase):
         name = 'fake/image'
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
-                                mox.StrContains(name))).AndReturn(to_return)
+                                mox.StrContains(name),
+                                mox.StrContains('stage?'))).AndReturn(to_return)
+        to_return = StringIO.StringIO('True')
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(name),
+                                mox.StrContains('is_staged'))).AndReturn(
+                                                                      to_return)
 
         self.mox.ReplayAll()
         self.dev_server.trigger_download(name, synchronous=False)
@@ -201,7 +223,13 @@ class DevServerTest(mox.MoxTestBase):
         name = 'fake/image'
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
-                                mox.StrContains(name))).AndReturn(to_return)
+                                mox.StrContains(name),
+                                mox.StrContains('stage?'))).AndReturn(to_return)
+        to_return = StringIO.StringIO('True')
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(name),
+                                mox.StrContains('is_staged'))).AndReturn(
+                                                                      to_return)
 
         # Synchronous case requires a call to finish download.
         self.mox.ReplayAll()

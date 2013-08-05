@@ -10,10 +10,12 @@ import urllib2
 import HTMLParser
 import cStringIO
 import re
+import sys
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.site_utils.graphite import stats
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
@@ -27,6 +29,16 @@ CONFIG = global_config.global_config
 #            '/path/to/autotest/control/site_tests/test3/control': ['dep3']}
 # }
 DEPENDENCIES_FILE = 'test_suites/dependency_info'
+# Number of seconds for caller to poll devserver's is_staged call to check if
+# artifacts are staged.
+_ARTIFACT_STAGE_POLLING_INTERVAL = 5
+# Artifacts that should be staged when client calls devserver RPC to stage an
+# image.
+_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = 'full_payload,test_suites,stateful'
+# Artifacts that should be staged when client calls devserver RPC to stage an
+# image with autotest artifact.
+_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST = ('full_payload,test_suites,'
+                                                   'autotest,stateful')
 
 
 class MarkupStripper(HTMLParser.HTMLParser):
@@ -277,7 +289,18 @@ class CrashServer(DevServer):
 
 
 class ImageServer(DevServer):
-    """Class for DevServer that handles image-related RPCs."""
+    """Class for DevServer that handles image-related RPCs.
+
+    The calls to devserver to stage artifacts, including stage and download, are
+    made in async mode. That is, when caller makes an RPC |stage| to request
+    devserver to stage certain artifacts, devserver handles the call and starts
+    staging artifacts in a new thread, and return |Success| without waiting for
+    staging being completed. When caller receives message |Success|, it polls
+    devserver's is_staged call until all artifacts are staged.
+    Such mechanism is designed to prevent cherrypy threads in devserver being
+    running out, as staging artifacts might take long time, and cherrypy starts
+    with a fixed number of threads that handle devserver rpc.
+    """
     @staticmethod
     def servers():
         return _get_dev_server_list()
@@ -318,6 +341,66 @@ class ImageServer(DevServer):
             self.nton_payload = nton_payload
 
 
+    def wait_for_artifacts_staged(self, archive_url, artifacts=''):
+        """Polling devserver.is_staged until all artifacts are staged.
+
+        @param archive_url: Google Storage URL for the build.
+        @param artifacts: Comma separated list of artifacts to download.
+        @return: True if all artifacts are staged in devserver.
+        """
+        call = self.build_call('is_staged',
+                               archive_url=archive_url,
+                               artifacts=artifacts)
+
+        def all_staged():
+            """Call devserver.is_staged rpc to check if all files are staged.
+
+            @return: True if all artifacts are staged in devserver. False
+                     otherwise.
+
+            """
+            try:
+                return urllib2.urlopen(call).read() == 'True'
+            except IOError:
+                return False
+
+        site_utils.poll_for_condition(all_staged,
+                                exception=site_utils.TimeoutError(),
+                                timeout=sys.maxint,
+                                sleep_interval=_ARTIFACT_STAGE_POLLING_INTERVAL)
+        return True
+
+
+    def call_and_wait(self, call_name, archive_url, artifacts,
+                      error_message, expected_response='Success'):
+        """Helper method to make a urlopen call, and wait for artifacts staged.
+
+        @param call_name: name of devserver rpc call.
+        @param archive_url: Google Storage URL for the build..
+        @param artifacts: Comma separated list of artifacts to download.
+        @param expected_response: Expected response from rpc, default to
+                                  |Success|. If it's set to None, do not compare
+                                  the actual response. Any response is consider
+                                  to be good.
+        @param error_message: Error message to be thrown if response does not
+                              match expected_response.
+
+        @return: The response from rpc.
+        @raise DevServerException upon any return code that's expected_response.
+
+        """
+        call = self.build_call(call_name,
+                               archive_url=archive_url,
+                               artifacts=artifacts,
+                               async=True)
+        response = urllib2.urlopen(call).read()
+        if expected_response and not response == expected_response:
+              raise DevServerException(error_message)
+
+        self.wait_for_artifacts_staged(archive_url, artifacts)
+        return response
+
+
     @remote_devserver_call()
     def stage_artifacts(self, image, artifacts):
         """Tell the devserver to download and stage |artifacts| from |image|.
@@ -334,14 +417,15 @@ class ImageServer(DevServer):
 
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        call = self.build_call('stage',
-                               archive_url=_get_image_storage_server() + image,
-                               artifacts=','.join(artifacts))
-        response = urllib2.urlopen(call)
-        if not response.read() == 'Success':
-              raise DevServerException("staging artifacts %s for %s failed;"
-                                       "HTTP OK not accompanied by 'Success'." %
-                                       (' '.join(artifacts), image))
+        archive_url = _get_image_storage_server() + image
+        artifacts = ','.join(artifacts)
+        error_message = ("staging artifacts %s for %s failed;"
+                         "HTTP OK not accompanied by 'Success'." %
+                         (' '.join(artifacts), image))
+        self.call_and_wait(call_name='stage',
+                           archive_url=archive_url,
+                           artifacts=artifacts,
+                           error_message=error_message)
 
 
     @remote_devserver_call()
@@ -364,16 +448,17 @@ class ImageServer(DevServer):
         @raise DevServerException upon any return code that's not HTTP OK.
 
         """
-        call = self.build_call(
-                'download', archive_url=_get_image_storage_server() + image)
-        response = urllib2.urlopen(call)
-        was_successful = response.read() == 'Success'
+        archive_url=_get_image_storage_server() + image
+        artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+        error_message = ("trigger_download for %s failed;"
+                         "HTTP OK not accompanied by 'Success'." % image)
+        response = self.call_and_wait(call_name='stage',
+                                      archive_url=archive_url,
+                                      artifacts=artifacts,
+                                      error_message=error_message)
+        was_successful = response == 'Success'
         if was_successful and synchronous:
             self.finish_download(image)
-        elif not was_successful:
-            raise DevServerException("trigger_download for %s failed;"
-                                     "HTTP OK not accompanied by 'Success'." %
-                                     image)
 
 
     @remote_devserver_call()
@@ -387,11 +472,13 @@ class ImageServer(DevServer):
 
         @returns path on the devserver that telemetry is installed to.
         """
-        call = self.build_call(
-                'setup_telemetry',
-                archive_url=_get_image_storage_server() + build)
-        response = urllib2.urlopen(call)
-        return response.read()
+        archive_url=_get_image_storage_server() + build
+        artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_TELEMETRY
+        response = self.call_and_wait(call_name='setup_telemetry',
+                                      archive_url=archive_url,
+                                      artifacts=artifacts,
+                                      expected_response=None)
+        return response
 
 
     @remote_devserver_call()
@@ -406,12 +493,15 @@ class ImageServer(DevServer):
         @param image: the image to fetch and stage.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        call = self.build_call('wait_for_status',
-                               archive_url=_get_image_storage_server() + image)
-        if urllib2.urlopen(call).read() != 'Success':
-            raise DevServerException("finish_download for %s failed;"
-                                     "HTTP OK not accompanied by 'Success'." %
-                                     image)
+        archive_url=_get_image_storage_server() + image
+        artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST
+        error_message = ("finish_download for %s failed;"
+                         "HTTP OK not accompanied by 'Success'." % image)
+        self.call_and_wait(call_name='stage',
+                           archive_url=archive_url,
+                           artifacts=artifacts,
+                           error_message=error_message)
+
 
     def get_update_url(self, image):
         """Returns the url that should be passed to the updater.
