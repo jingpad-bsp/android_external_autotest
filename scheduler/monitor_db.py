@@ -313,6 +313,8 @@ class BaseDispatcher(object):
         self._run_cleanup()
         self._log_tick_msg('Calling _find_aborting().')
         self._find_aborting()
+        self._log_tick_msg('Calling _find_aborted_special_tasks().')
+        self._find_aborted_special_tasks()
         self._log_tick_msg('Calling _process_recurring_runs().')
         self._process_recurring_runs()
         self._log_tick_msg('Calling _schedule_delay_tasks().')
@@ -371,6 +373,19 @@ class BaseDispatcher(object):
 
 
     def add_agent_task(self, agent_task):
+        """
+        Creates and adds an agent to the dispatchers list.
+
+        In creating the agent we also pass on all the queue_entry_ids and
+        host_ids from the special agent task. For every agent we create, we
+        add it to 1. a dict against the queue_entry_ids given to it 2. A dict
+        against the host_ids given to it. So theoritically, a host can have any
+        number of agents associated with it, and each of them can have any
+        special agent task, though in practice we never see > 1 agent/task per
+        host at any time.
+
+        @param agent_task: A SpecialTask for the agent to manage.
+        """
         agent = Agent(agent_task)
         self._agents.append(agent)
         agent.dispatcher = self
@@ -427,6 +442,17 @@ class BaseDispatcher(object):
 
 
     def _get_queue_entry_agent_tasks(self):
+        """
+        Get agent tasks for all hqe in the specified states.
+
+        Loosely this translates to taking a hqe in one of the specified states,
+        say parsing, and getting an AgentTask for it, like the FinalReparseTask,
+        through _get_agent_task_for_queue_entry. Each queue entry can only have
+        one agent task at a time, but there might be multiple queue entries in
+        the group.
+
+        @return: A list of AgentTasks.
+        """
         # host queue entry statuses handled directly by AgentTasks (Verifying is
         # handled through SpecialTasks, so is not listed here)
         statuses = (models.HostQueueEntry.Status.STARTING,
@@ -462,10 +488,10 @@ class BaseDispatcher(object):
 
     def _get_agent_task_for_queue_entry(self, queue_entry):
         """
-        Construct an AgentTask instance for the given active HostQueueEntry,
-        if one can currently run it.
+        Construct an AgentTask instance for the given active HostQueueEntry.
+
         @param queue_entry: a HostQueueEntry
-        @returns an AgentTask to run the queue entry
+        @return: an AgentTask to run the queue entry
         """
         task_entries = queue_entry.job.get_group_entries(queue_entry)
         self._check_for_duplicate_host_entries(task_entries)
@@ -512,6 +538,15 @@ class BaseDispatcher(object):
         """
         Construct an AgentTask class to run the given SpecialTask and add it
         to this dispatcher.
+
+        A special task is create through schedule_special_tasks, but only if
+        the host doesn't already have an agent. This happens through
+        add_agent_task. All special agent tasks are given a host on creation,
+        and a Null hqe. To create a SpecialAgentTask object, you need a
+        models.SpecialTask. If the SpecialTask used to create a SpecialAgentTask
+        object contains a hqe it's passed on to the special agent task, which
+        creates a HostQueueEntry and saves it as it's queue_entry.
+
         @param special_task: a models.SpecialTask instance
         @returns an AgentTask to run this SpecialTask
         """
@@ -598,6 +633,8 @@ class BaseDispatcher(object):
         """
         Returns all queued SpecialTasks prioritized for repair first, then
         cleanup, then verify.
+
+        @return: list of afe.models.SpecialTasks sorted according to priority.
         """
         queued_tasks = models.SpecialTask.objects.filter(is_active=False,
                                                          is_complete=False,
@@ -627,6 +664,12 @@ class BaseDispatcher(object):
     def _schedule_special_tasks(self):
         """
         Execute queued SpecialTasks that are ready to run on idle hosts.
+
+        Special tasks include PreJobTasks like verify, reset and cleanup.
+        They are created through _schedule_new_jobs and associated with a hqe
+        This method translates SpecialTasks to the appropriate AgentTask and
+        adds them to the dispatchers agents list, so _handle_agents can execute
+        them.
         """
         for task in self._get_prioritized_special_tasks():
             if self.host_has_agent(task.host):
@@ -731,6 +774,15 @@ class BaseDispatcher(object):
 
 
     def _schedule_new_jobs(self):
+        """
+        Find any new HQEs and call schedule_pre_job_tasks for it.
+
+        This involves setting the status of the HQE and creating a row in the
+        db corresponding the the special task, through
+        scheduler_models._queue_special_task. The new db row is then added as
+        an agent to the dispatcher through _schedule_special_tasks and
+        scheduled for execution on the drone through _handle_agents.
+        """
         queue_entries = self._refresh_pending_queue_entries()
         if not queue_entries:
             return
@@ -755,6 +807,20 @@ class BaseDispatcher(object):
 
 
     def _schedule_running_host_queue_entries(self):
+        """
+        Adds agents to the dispatcher.
+
+        Any AgentTask, like the QueueTask, is wrapped in an Agent. The
+        QueueTask for example, will have a job with a control file, and
+        the agent will have methods that poll, abort and check if the queue
+        task is finished. The dispatcher runs the agent_task, as well as
+        other agents in it's _agents member, through _handle_agents, by
+        calling the Agents tick().
+
+        This method creates an agent for each HQE in one of (starting, running,
+        gathering, parsing, archiving) states, and adds it to the dispatcher so
+        it is handled by _handle_agents.
+        """
         for agent_task in self._get_queue_entry_agent_tasks():
             self.add_agent_task(agent_task)
 
@@ -774,6 +840,13 @@ class BaseDispatcher(object):
 
 
     def _find_aborting(self):
+        """
+        Looks through the afe_host_queue_entries for an aborted entry.
+
+        The aborted bit is set on an HQE in many ways, the most common
+        being when a user requests an abort through the frontend, which
+        results in an rpc from the afe to abort_host_queue_entries.
+        """
         jobs_to_stop = set()
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='aborted and not complete'):
@@ -785,6 +858,46 @@ class BaseDispatcher(object):
         logging.debug('Aborting %d jobs this tick.', len(jobs_to_stop))
         for job in jobs_to_stop:
             job.stop_if_necessary()
+
+
+    def _find_aborted_special_tasks(self):
+        """
+        Find SpecialTasks that have been marked for abortion.
+
+        Poll the database looking for SpecialTasks that are active
+        and have been marked for abortion, then abort them.
+        """
+
+        # The completed and active bits are very important when it comes
+        # to scheduler correctness. The active bit is set through the prolog
+        # of a special task, and reset through the cleanup method of the
+        # SpecialAgentTask. The cleanup is called both through the abort and
+        # epilog. The complete bit is set in several places, and in general
+        # a hanging job will have is_active=1 is_complete=0, while a special
+        # task which completed will have is_active=0 is_complete=1. To check
+        # aborts we directly check active because the complete bit is set in
+        # several places, including the epilog of agent tasks.
+        aborted_tasks = models.SpecialTask.objects.filter(is_active=True,
+                                                          is_aborted=True)
+        for task in aborted_tasks:
+            # There are 2 ways to get the agent associated with a task,
+            # through the host and through the hqe. A special task
+            # always needs a host, but doesn't always need a hqe.
+            for agent in self._host_agents.get(task.host.id, []):
+                if isinstance(agent.task, SpecialAgentTask):
+
+                    # The epilog preforms critical actions such as
+                    # queueing the next SpecialTask, requeuing the
+                    # hqe etc, however it doesn't actually kill the
+                    # monitor process and set the 'done' bit. Epilogs
+                    # assume that the job failed, and that the monitor
+                    # process has already written an exit code. The
+                    # done bit is a necessary condition for
+                    # _handle_agents to schedule any more special
+                    # tasks against the host, and it must be set
+                    # in addition to is_active, is_complete and success.
+                    agent.task.epilog()
+                    agent.task.abort()
 
 
     def _can_start_agent(self, agent, num_started_this_cycle,
@@ -814,6 +927,38 @@ class BaseDispatcher(object):
 
 
     def _handle_agents(self):
+        """
+        Handles agents of the dispatcher.
+
+        Appropriate Agents are added to the dispatcher through
+        _schedule_running_host_queue_entries. These agents each
+        have a task. This method runs the agents task through
+        agent.tick() leading to:
+            agent.start
+                prolog -> AgentTasks prolog
+                          For each queue entry:
+                            sets host status/status to Running
+                            set started_on in afe_host_queue_entries
+                run    -> AgentTasks run
+                          Creates PidfileRunMonitor
+                          Queues the autoserv command line for this AgentTask
+                          via the drone manager. These commands are executed
+                          through the drone managers execute actions.
+                poll   -> AgentTasks/BaseAgentTask poll
+                          checks the monitors exit_code.
+                          Executes epilog if task is finished.
+                          Executes AgentTasks _finish_task
+                finish_task is usually responsible for setting the status
+                of the HQE/host, and updating it's active and complete fileds.
+
+            agent.is_done
+                Removed the agent from the dispatchers _agents queue.
+                Is_done checks the finished bit on the agent, that is
+                set based on the Agents task. During the agents poll
+                we check to see if the monitor process has exited in
+                it's finish method, and set the success member of the
+                task based on this exit code.
+        """
         num_started_this_cycle = 0
         have_reached_limit = False
         # iterate over copy, so we can remove agents during iteration

@@ -42,7 +42,7 @@ def get_parameterized_autoupdate_image_url(job):
     """Get the parameterized autoupdate image url from a parameterized job."""
     known_test_obj = models.Test.smart_get('autoupdate_ParameterizedJob')
     image_parameter = known_test_obj.testparameter_set.get(test=known_test_obj,
-                                                           name='image')        
+                                                           name='image')
     para_set = job.parameterized_job.parameterizedjobparameter_set
     job_test_para = para_set.get(test_parameter=image_parameter)
     return job_test_para.parameter_value
@@ -592,6 +592,16 @@ def abort_host_queue_entries(**filter_data):
     rpc_utils.check_abort_synchronous_jobs(host_queue_entries)
 
     models.HostQueueEntry.abort_host_queue_entries(host_queue_entries)
+
+
+def abort_special_tasks(**filter_data):
+    """\
+    Abort the special task, or tasks, specified in the filter.
+    """
+    query = models.SpecialTask.query_objects(filter_data)
+    special_tasks = query.filter(is_active=True)
+    for task in special_tasks:
+        task.abort()
 
 
 def _call_special_tasks_on_hosts(task, hosts):

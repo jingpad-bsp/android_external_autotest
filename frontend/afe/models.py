@@ -1542,6 +1542,7 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
     time_requested: date and time the request for this task was made
     is_active: task is currently running
     is_complete: task has finished running
+    is_aborted: task was aborted
     time_started: date and time the task started
     queue_entry: Host queue entry waiting on this task (or None, if task was not
                  started in preparation of a job)
@@ -1557,6 +1558,7 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
                                             null=False)
     is_active = dbmodels.BooleanField(default=False, blank=False, null=False)
     is_complete = dbmodels.BooleanField(default=False, blank=False, null=False)
+    is_aborted = dbmodels.BooleanField(default=False, blank=False, null=False)
     time_started = dbmodels.DateTimeField(null=True, blank=True)
     queue_entry = dbmodels.ForeignKey(HostQueueEntry, blank=True, null=True)
     success = dbmodels.BooleanField(default=False, blank=False, null=False)
@@ -1619,6 +1621,12 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
                                    requested_by=User.current_user())
         special_task.save()
         return special_task
+
+
+    def abort(self):
+        """ Abort this special task."""
+        self.is_aborted = True
+        self.save()
 
 
     def activate(self):
