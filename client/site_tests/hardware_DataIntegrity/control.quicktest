@@ -1,0 +1,20 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'hardware_DataIntegrity'
+AUTHOR = 'jcasse, grundler'
+PURPOSE = 'Data integrity test for storage qualification.'
+TIME = 'SHORT'
+TEST_TYPE = 'client'
+
+DOC = """
+This test checks correctness of data by writing all specified blocks of the
+unmounted root partition and then reading them back for verification.
+
+This is a quick test that writes in 1MiB block sizes. For a 2GiB partition, this
+will do 2048 writes followed by 2048 reads.
+
+"""
+
+job.run_test('hardware_DataIntegrity', options='-z 1048576')
