@@ -4,7 +4,9 @@ import os, sys, optparse, fcntl, errno, traceback, socket
 
 import common
 from autotest_lib.client.common_lib import mail, pidfile
-from autotest_lib.tko import db as tko_db, utils as tko_utils, status_lib, models
+from autotest_lib.tko import db as tko_db, utils as tko_utils
+from autotest_lib.tko import models, status_lib
+from autotest_lib.tko.perf_upload import perf_uploader
 from autotest_lib.client.common_lib import utils
 
 
@@ -158,6 +160,10 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
 
     # write the job into the database
     db.insert_job(jobname, job)
+
+    # Upload perf values to the perf dashboard, if applicable.
+    for test in job.tests:
+        perf_uploader.upload_test(job, test)
 
     # Serializing job into a binary file
     try:

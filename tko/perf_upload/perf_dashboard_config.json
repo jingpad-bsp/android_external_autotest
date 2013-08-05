@@ -1,0 +1,6 @@
+[
+  {
+    "autotest_name": "platform_GesturesRegressionTest",
+    "master_name": "ChromeOSTouchpad"
+  }
+]
