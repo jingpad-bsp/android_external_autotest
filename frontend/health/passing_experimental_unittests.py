@@ -35,7 +35,7 @@ class GetExperimentalTestsTests(test.TestCase):
 
     def tearDown(self):
         setup_test_environment.tear_down()
-        super(GetExperimentalTestsTests, self).setUp()
+        super(GetExperimentalTestsTests, self).tearDown()
 
 
     def test_returns_tests_marked_experimental(self):
@@ -75,7 +75,7 @@ class FindLongPassingTestsTests(mox.MoxTestBase, test.TestCase):
         passing_experimental._MAX_DAYS_SINCE_LAST_PASS = self._orig_since_pass
         passing_experimental._MIN_DAYS_SINCE_FAILURE = self._orig_since_failure
         datetime.datetime = self._datetime
-        super(FindLongPassingTestsTests, self).setUp()
+        super(FindLongPassingTestsTests, self).tearDown()
 
 
     def test_do_not_return_tests_that_have_failed_recently(self):
