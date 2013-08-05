@@ -180,6 +180,25 @@ class NetperfResult(object):
         return True
 
 
+    def get_keyval(self, prefix='', suffix=''):
+        ret = {}
+        if prefix:
+            prefix = prefix + '_'
+        if suffix:
+            suffix = '_' + suffix
+
+        for measurement in ['throughput', 'errors', 'transaction_rate']:
+            value = getattr(self, measurement)
+            dev = getattr(self, measurement + '_dev')
+            if dev is None:
+                margin = ''
+            else:
+                margin = '+-%0.2f' % dev
+            if value is not None:
+                ret[prefix + measurement + suffix] = '%0.2f%s' % (value, margin)
+        return ret
+
+
 class NetperfAssertion(object):
     """Defines a set of expectations for netperf results."""
 

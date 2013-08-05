@@ -32,6 +32,40 @@ class WiFiClient(object):
 
 
     @property
+    def machine_id(self):
+        """@return string unique to a particular board/cpu configuration."""
+        if self._machine_id:
+            return self._machine_id
+
+        lsb_release = self.host.run('cat /etc/lsb-release').stdout.splitlines()
+        BOARD_PREFIX = 'CHROMEOS_RELEASE_BOARD='
+        for line in lsb_release:
+            if line.startswith(BOARD_PREFIX):
+                board = line[len(BOARD_PREFIX):]
+                break
+
+        else:
+            raise error.TestError('Unable to detect board of test host.')
+
+        kernel_arch = self.host.run('uname -m').stdout.strip()
+        cpu_info = self.host.run('cat /proc/cpuinfo').stdout.splitlines()
+        cpu_count = len(filter(lambda x: x.lower().startswith('bogomips'),
+                               cpu_info))
+        cpu_count_str = ''
+        if cpu_count:
+            cpu_count_str = 'x%d' % cpu_count
+        ghz_value = ''
+        ghz_pattern = re.compile('([0-9.]+GHz)')
+        for line in cpu_info:
+            match = ghz_pattern.search(line)
+            if match is not None:
+                ghz_value = '_' + match.group(1)
+                break
+
+        return '%s_%s%s%s' % (board, kernel_arch, ghz_value, cpu_count_str)
+
+
+    @property
     def capabilities(self):
         """@return list of WiFi capabilities as parsed by LinuxSystem."""
         return self._capabilities
@@ -149,6 +183,7 @@ class WiFiClient(object):
 
         """
         super(WiFiClient, self).__init__()
+        self._machine_id = None
         self._ping_thread = None
         self._host = client_host
         # Make sure the client library is on the device so that the proxy code

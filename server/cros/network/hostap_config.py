@@ -99,7 +99,7 @@ class HostapConfig(object):
         @return string HT parameter for frequency configuration.
 
         """
-        if not self.n_capabilities:
+        if not self.is_11n:
             return None
 
         is_plus = '[HT40+]' in self.n_capabilities
@@ -121,6 +121,15 @@ class HostapConfig(object):
             return 'HT40-'
 
         return 'HT20'
+
+
+    @property
+    def printable_mode(self):
+        """@return human readable mode string."""
+        if self.is_11n:
+            return self.ht_packet_capture_mode
+
+        return '11' + self.hw_mode.upper()
 
 
     def __init__(self, mode=None, channel=None, frequency=None,

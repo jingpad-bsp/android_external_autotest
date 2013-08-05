@@ -28,6 +28,8 @@ class network_WiFi_Netperf(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self):
         """Test body."""
         have_failures = False
+        session = netperf_session.NetperfSession(self.context.client,
+                                                 self.context.server)
         for configuration in self._configurations:
             hostap_config, netperf_config, netperf_assertions = configuration
             self.context.configure(hostap_config)
@@ -35,10 +37,15 @@ class network_WiFi_Netperf(wifi_cell_test_base.WiFiCellTestBase):
                     ssid=self.context.router.get_ssid(),
                     security_config=hostap_config.security_config)
             self.context.assert_connect_wifi(assoc_params)
-            session = netperf_session.NetperfSession(self.context.client,
-                                                     self.context.server)
             session.warmup_stations()
             netperf_result = session.run(netperf_config)
+            config_suffix = 'ch%03d_mode%s_%s' % (
+                            hostap_config.channel,
+                            hostap_config.printable_mode,
+                            hostap_config.security_config.security)
+            self.write_perf_keyval(netperf_result.get_keyval(
+                    prefix=self.context.client.machine_id,
+                    suffix=config_suffix))
             logging.debug('Checking assertions %r', netperf_assertions)
             if not netperf_assertions.passes(netperf_result):
                 logging.error('===========================================')
