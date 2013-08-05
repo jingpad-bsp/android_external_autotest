@@ -22,6 +22,9 @@ class firmware_ECThermal(FAFTSequence):
     # Delay for waiting device stressing to stablize
     STRESS_DELAY = 30
 
+    # Delay for stressing device with fan off to check temperature increase
+    STRESS_DELAY_NO_FAN = 12
+
     # Margin for comparing servo based and ectool based CPU temperature
     TEMP_MISMATCH_MARGIN = 3
 
@@ -231,45 +234,36 @@ class firmware_ECThermal(FAFTSequence):
                     'CPU temperature readings from servo and ectool differ')
 
 
-    def _stress_dut(self, block_count=50, thread=4):
+    def _stress_dut(self, threads=4):
         """
         Stress DUT system.
 
         By reading from /dev/urandom and writing to /dev/null, we can stress
-        DUT and cause CPU temperature to go up.
+        DUT and cause CPU temperature to go up. We stress the system forever,
+        until _stop_stressing is called to kill the stress threads. This
+        function is non-blocking.
 
         Args:
-          block_count: Number of 1MB blocks to read from /dev/urandom. If
-            -1 is passed in, we stress the system forever. This function is
-            blocking if block_count is non-negative, and it is non-blocking
-            if block_count is -1.
-          thread: Number of thread when stressing forever.
+          threads: Number of threads (processes) when stressing forever.
 
         Returns:
-          If we are stressing the system forever, a list of process IDs is
-            returned. Otherwise, None.
+          A list of stress process IDs is returned.
         """
-        if block_count != -1:
-            stress_cmd = 'dd if=/dev/urandom of=/dev/null bs=1M count=%d'
-            logging.info("Stressing DUT...")
-            self.faft_client.system.run_shell_command(stress_cmd % block_count)
-            return None
-        else:
-            logging.info("Stressing DUT with %d threads...", thread)
-            self.faft_client.system.run_shell_command('pkill dd')
-            stress_cmd = 'dd if=/dev/urandom of=/dev/null bs=1M &'
-            # Grep for [d]d instead of dd to prevent getting the PID of grep
-            # itself.
-            pid_cmd = "ps -ef | grep '[d]d if=/dev/urandom' | awk '{print $2}'"
-            self._stress_pid = list()
-            for _ in xrange(thread):
-                self.faft_client.system.run_shell_command(stress_cmd)
-            lines = self.faft_client.system.run_shell_command_get_output(
-                        pid_cmd)
-            for line in lines:
-                logging.info("PID is %s", line)
-                self._stress_pid.append(int(line.strip()))
-            return self._stress_pid
+        logging.info("Stressing DUT with %d threads...", threads)
+        self.faft_client.system.run_shell_command('pkill dd')
+        stress_cmd = 'dd if=/dev/urandom of=/dev/null bs=1M &'
+        # Grep for [d]d instead of dd to prevent getting the PID of grep
+        # itself.
+        pid_cmd = "ps -ef | grep '[d]d if=/dev/urandom' | awk '{print $2}'"
+        self._stress_pid = list()
+        for _ in xrange(threads):
+            self.faft_client.system.run_shell_command(stress_cmd)
+        lines = self.faft_client.system.run_shell_command_get_output(
+                    pid_cmd)
+        for line in lines:
+            logging.info("PID is %s", line)
+            self._stress_pid.append(int(line.strip()))
+        return self._stress_pid
 
 
     def _stop_stressing(self):
@@ -301,7 +295,9 @@ class firmware_ECThermal(FAFTSequence):
         logging.info("CPU temperature before stressing is %d C",
                      cpu_temp_before)
         self._stress_dut()
+        time.sleep(self.STRESS_DELAY_NO_FAN)
         cpu_temp_after = int(self.servo.get('cpu_temp'))
+        self._stop_stressing()
         logging.info("CPU temperature after stressing is %d C",
                      cpu_temp_after)
         if cpu_temp_after - cpu_temp_before < self.TEMP_STRESS_INCREASE:
@@ -403,7 +399,7 @@ class firmware_ECThermal(FAFTSequence):
         Raises:
           error.TestFail: Raised when fan speed is not as expected.
         """
-        self._stress_dut(block_count=-1)
+        self._stress_dut()
         time.sleep(self.STRESS_DELAY)
         fan_rpm = int(self.servo.get('fan_target_rpm'))
         logging.info('Fan speed is %d RPM', fan_rpm)
