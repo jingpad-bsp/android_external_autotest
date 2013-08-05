@@ -16,19 +16,23 @@ class graphics_KernelMemory(test.test):
     # e.g. ".../memory" vs ".../gpu_memory" -- if the system has either one of
     # these, the test will read from that path.
 
-    arm_fields = {
+    arm_exynos_fields = {
         'gem_objects' : ['/sys/kernel/debug/dri/0/exynos_gem_objects'],
         'memory'      : ['/sys/devices/platform/mali.0/memory',
                          '/sys/devices/platform/mali.0/gpu_memory'],
+    }
+    arm_tegra_fields = {
+        'memory': ['/sys/kernel/debug/memblock/memory'],
     }
     x86_fields = {
         'gem_objects' : ['/sys/kernel/debug/dri/0/i915_gem_objects'],
         'memory'      : ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
     arch_fields = {
-        'arm'    : arm_fields,
-        'i386'   : x86_fields,
-        'x86_64' : x86_fields,
+        'arm_exynos' : arm_exynos_fields,
+        'arm_tegra'  : arm_tegra_fields,
+        'i386'       : x86_fields,
+        'x86_64'     : x86_fields,
     }
 
 
@@ -38,6 +42,13 @@ class graphics_KernelMemory(test.test):
 
         # Get architecture type and list of sysfs fields to read.
         arch = utils.get_cpu_arch()
+        if arch == 'arm':
+            if utils.system_output('cat /proc/cpuinfo | grep -i EXYNOS',
+                                   ignore_status=True):
+                arch = 'arm_exynos'
+            elif utils.system_output('cat /proc/cpuinfo | grep -i Tegra',
+                                     ignore_status=True):
+                arch = 'arm_tegra'
 
         if not arch in self.arch_fields:
             raise error.TestFail('Architecture "%s" not yet supported.' % arch)
