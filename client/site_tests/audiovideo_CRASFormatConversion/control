@@ -8,10 +8,11 @@ PURPOSE = 'Test playing audio with the CRAS test client.'
 CRITERIA = """
 Check that converting between different sample rates doesn't crash.
 """
-TIME='LONG'
+TIME='SHORT'
 TEST_CATEGORY = 'PLAYBACKCAPTURE'
-TEST_CLASS = "audiovideo"
+TEST_CLASS = 'audiovideo'
 TEST_TYPE = 'client'
+SUITE = 'audio'
 
 DOC = """
 NOTE: For this test to pass you need to have the line out looped back to mic-in.

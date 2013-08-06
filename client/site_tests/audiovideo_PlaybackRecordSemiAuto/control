@@ -10,8 +10,9 @@ Every expected hardware device must be listed in device list. Additionally, the 
 """
 TIME='MEDIUM'
 TEST_CATEGORY = 'PLAYBACKCAPTURE'
-TEST_CLASS = "audiovideo"
+TEST_CLASS = 'audiovideo'
 TEST_TYPE = 'client'
+SUITE = 'manual'
 
 DOC = """
 This is a semi-automated test that exercises the audio devices on the system.

@@ -9,10 +9,11 @@ CRITERIA = """
 This test is a benchmark. Failure criteria may be added by constraints in the
 suite control file.
 """
-SUITE = "hwqual"
-TIME='LONG'
+
+SUITE = 'hwqual'
+TIME='MEDIUM'
 TEST_CATEGORY = 'FFMPEG'
-TEST_CLASS = "audiovideo"
+TEST_CLASS = 'audiovideo'
 TEST_TYPE = 'client'
 
 DOC = """
