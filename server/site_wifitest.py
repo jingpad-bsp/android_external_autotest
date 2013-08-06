@@ -19,8 +19,6 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
 from autotest_lib.server import site_attenuator
-from autotest_lib.server import site_bsd_router
-from autotest_lib.server import site_cisco_router
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_host_route
 from autotest_lib.server import site_linux_bridge_router
@@ -28,7 +26,6 @@ from autotest_lib.server import site_linux_cros_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server import site_linux_system
-from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
@@ -44,7 +41,7 @@ class ScriptNotFound(Exception):
 
 class WiFiTest(object):
     """
-    WiFi Test.
+    Deprecated WiFi Test.
 
     Each test is specified as a dict.  There must be a "name" entry that
     gives the test name (a string) and a "steps" entry that has an ordered
@@ -85,14 +82,16 @@ class WiFiTest(object):
 
     Steps that are done on the client or server machine are implemented in
     this class.  Steps that are done on the wifi router are implemented in
-    a separate class that knows how to control the router.  There are presently
-    two classes: BSDRouter for routers based on FreeBSD and LinuxRouter for
-    those based on Linux/mac80211.  Additional router support can be added
+    a separate class that knows how to control the router.  We support
+    a setup that uses a stumpy with an extra radio and a special software
+    image set up to facillitate routing.  The driver stack on this machine
+    is based on Linux/mac80211.  Additional router support can be added
     by adding a new class and auto-selecting it in __init__.
 
     The WiFiTest class could be generalized to handle clients other than
     ChromeOS; this would useful for systems that use Network Manager or
     wpa_supplicant directly.
+
     """
 
     _result_expect_failure = 1
@@ -140,10 +139,8 @@ class WiFiTest(object):
         server = config['server']
         # NB: server may not be reachable on the control network
 
-        self.router = None
-        if not router['addr'].startswith('cisco'):
-            self.router = hosts.SSHHost(router['addr'],
-                                        port=int(router.get('port',22)))
+        self.router = hosts.SSHHost(router['addr'],
+                                    port=int(router.get('port', 22)))
         self.defssid = wifi_test_utils.get_default_ssid(self.name,
                                                         router['addr'],
                                                         self.router)
@@ -153,37 +150,16 @@ class WiFiTest(object):
         self.defpingcount = defaults.get('pingcount', 10)
         self.defwaittime = defaults.get('netperf_wait_time', 3)
         self.defiperfport = str(defaults.get('iperf_port', 12866))
-        self.defnetperfport = str(defaults.get('netperf_port', 12865))
-        if 'type' not in router:
-            # auto-detect router type
-            if router['addr'].startswith('cisco:'):
-                router['addr'] = router['addr'][6:]
-                router['type'] = 'cisco'
-            elif site_linux_router.isLinuxRouter(self.router):
-                router['type'] = 'linux'
-            elif site_bsd_router.isBSDRouter(self.router):
-                router['type'] = 'bsd'
-            else:
-                 raise error.TestFail('Unable to autodetect router type')
-        if router['type'] == 'linux':
-            if config['router']['addr'] == config['client']['addr']:
-                self.wifi = site_linux_vm_router.LinuxVMRouter(
-                    self.router, router, self.defssid)
-            elif site_linux_cros_router.isLinuxCrosRouter(self.router):
-                self.wifi = site_linux_cros_router.LinuxCrosRouter(
-                    self.router, router, self.defssid)
-            else:
-                self.wifi = site_linux_bridge_router.LinuxBridgeRouter(
-                    self.router, router, self.defssid)
-        elif router['type'] == 'bsd':
-            self.wifi = site_bsd_router.BSDRouter(self.router, router,
-                self.defssid)
-        elif router['type'] == 'cisco':
-            self.wifi = site_cisco_router.CiscoRouter(server['addr'], router,
-                self.defssid, router['addr'])
-            self.router = self.wifi.get_proxy()
-        else:
+
+        if not site_linux_router.isLinuxRouter(self.router):
             raise error.TestFail('Unsupported router')
+
+        if site_linux_cros_router.isLinuxCrosRouter(self.router):
+            self.wifi = site_linux_cros_router.LinuxCrosRouter(
+                self.router, router, self.defssid)
+        else:
+            self.wifi = site_linux_bridge_router.LinuxBridgeRouter(
+                self.router, router, self.defssid)
 
         attenuator = config.get('attenuator', dict())
         # NB: Attenuator must be reachable on the control network
@@ -207,7 +183,6 @@ class WiFiTest(object):
         self.client_signal_info = {}
         self.client_installed_scripts = {}
         self.client_logfile = client.get("logfile", "/var/log/messages")
-        self.ping_stats = {}
 
         if not 'addr' in server:
             raise error.TestError('All current WiFi tests require a server '

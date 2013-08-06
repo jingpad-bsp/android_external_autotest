@@ -151,7 +151,6 @@ class WiFiClient(object):
         super(WiFiClient, self).__init__()
         self._ping_thread = None
         self._host = client_host
-        self._ping_stats = {}
         # Make sure the client library is on the device so that the proxy code
         # is there when we try to call it.
         client_at = autotest.Autotest(self.host)
