@@ -69,7 +69,7 @@ KERNEL_MEMORY_ENTRIES = ['Slab', 'Shmem', 'KernelStack', 'PageTables']
 
 # Paths of files to read graphics memory usage from
 X86_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/i915_gem_objects'
-ARM_GEM_OBJECTS_PATH = '/sys/kernel/gebug/dri/0/exynos_gem_objects'
+ARM_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/exynos_gem_objects'
 
 GEM_OBJECTS_PATH = {'x86_64': X86_GEM_OBJECTS_PATH,
                     'i386'  : X86_GEM_OBJECTS_PATH,
