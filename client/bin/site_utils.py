@@ -117,6 +117,9 @@ def nuke_process_by_name(name, with_prejudice=False):
     except Exception as e:
         logging.error(e)
         return
+    if pid is None:
+        raise error.AutoservPidAlreadyDeadError(
+            'No process matching %s.' % name)
     if with_prejudice:
         utils.nuke_pid(pid, [signal.SIGKILL])
     else:

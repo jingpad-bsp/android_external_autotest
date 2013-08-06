@@ -11,7 +11,8 @@ class desktopui_Respawn(test.test):
     """Validate that the UI will cease respawning after a certain number of
        attempts in a time window. By design, this test does _not_ attempt to
        ensure that these values remain the same over time. The values are
-       somewhat arbitrary anyhow, so enforcing them is simply an over-constraint.
+       somewhat arbitrary anyhow, so enforcing them is simply an
+       over-constraint.
     """
     version = 1
 

@@ -117,7 +117,7 @@ def stop_and_wait_for_chrome_to_exit(timeout_secs=40):
         True upon successfully stopping the UI and all chrome processes exiting.
         False otherwise.
     """
-    status = utils.system("stop ui", ignore_status=True)
+    status = stop(allow_fail=True)
     if status:
         logging.error('stop ui returned non-zero status: %s', status)
         return False
