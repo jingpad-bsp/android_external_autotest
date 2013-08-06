@@ -4,8 +4,6 @@
 
 import copy
 import logging
-import random
-import string
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
@@ -197,9 +195,7 @@ class HostapConfig(object):
 
         self.wmm_enabled = False
         self.hw_mode = mode or self.MODE_11B
-        suffix_letters = string.ascii_lowercase + string.digits
-        unique_suffix = ''.join(random.choice(suffix_letters) for x in range(5))
-        self.ssid_suffix = '_%s_ch%d' % (unique_suffix, self.channel)
+        self.ssid_suffix = '_ch%d' % self.channel
         if n_capabilities is None:
             n_capabilities = []
         self.n_capabilities = set()
@@ -266,16 +262,6 @@ class HostapConfig(object):
                         self.bssid,
                         self.wmm_enabled,
                         self.security_config))
-
-
-    def get_ssid(self, default_ssid):
-        """Build up the SSID for this network given a router's default SSID.
-
-        @param default_ssid string default ssid for a router.
-        @return string configured ssid or a slight mutation of the default ssid.
-
-        """
-        return self.ssid or (default_ssid + self.ssid_suffix)[-32:]
 
 
     def get_security_hostapd_conf(self):

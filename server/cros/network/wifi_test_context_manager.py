@@ -186,16 +186,12 @@ class WiFiTestContextManager(object):
         router_host = hosts.SSHHost(self.router_address, port=router_port)
         # TODO(wiley) Simplify the router and make the parameters explicit.
         router_params = {}
-        default_ssid = wifi_test_utils.get_default_ssid(self._test_name,
-                                                        self.router_address,
-                                                        router_host)
-        logging.info('Default router SSID is %s.', default_ssid)
         if site_linux_cros_router.isLinuxCrosRouter(router_host):
             self._router = site_linux_cros_router.LinuxCrosRouter(
-                    router_host, router_params, default_ssid)
+                    router_host, router_params, self._test_name)
         else:
             self._router = site_linux_bridge_router.LinuxBridgeRouter(
-                    router_host, router_params, default_ssid)
+                    router_host, router_params, self._test_name)
         # If we're testing WiFi, we're probably going to need one of these.
         self._router.create_wifi_device()
         # The '_server' is a machine which hosts network

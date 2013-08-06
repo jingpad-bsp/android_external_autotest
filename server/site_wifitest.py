@@ -141,9 +141,6 @@ class WiFiTest(object):
 
         self.router = hosts.SSHHost(router['addr'],
                                     port=int(router.get('port', 22)))
-        self.defssid = wifi_test_utils.get_default_ssid(self.name,
-                                                        router['addr'],
-                                                        self.router)
 
         defaults = config.get('defaults', {})
         self.deftimeout = defaults.get('timeout', 30)
@@ -156,10 +153,10 @@ class WiFiTest(object):
 
         if site_linux_cros_router.isLinuxCrosRouter(self.router):
             self.wifi = site_linux_cros_router.LinuxCrosRouter(
-                self.router, router, self.defssid)
+                self.router, router, self.name)
         else:
             self.wifi = site_linux_bridge_router.LinuxBridgeRouter(
-                self.router, router, self.defssid)
+                self.router, router, self.name)
 
         attenuator = config.get('attenuator', dict())
         # NB: Attenuator must be reachable on the control network

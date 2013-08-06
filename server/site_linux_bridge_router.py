@@ -16,8 +16,8 @@ class LinuxBridgeRouter(site_linux_router.LinuxRouter):
     """
 
 
-    def __init__(self, host, params, defssid):
-        site_linux_router.LinuxRouter.__init__(self, host, params, defssid)
+    def __init__(self, host, params, test_name):
+        site_linux_router.LinuxRouter.__init__(self, host, params, test_name)
 
         self.bridgeif = params.get('bridgedev', "br-lan")
         self.wiredif = params.get('wiredev', "eth0")

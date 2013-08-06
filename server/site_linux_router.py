@@ -2,8 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import base64
 import logging
+import random
 import re
+import string
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
@@ -32,6 +35,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     """
 
+    KNOWN_TEST_PREFIX = 'network_WiFi'
+    SUFFIX_LETTERS = string.ascii_lowercase + string.digits
 
     def get_capabilities(self):
         """@return iterable object of AP capabilities for this system."""
@@ -45,12 +50,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return super(LinuxRouter, self).get_capabilities().union(caps)
 
 
-    def __init__(self, host, params, defssid):
+    def __init__(self, host, params, test_name):
         """Build a LinuxRouter.
 
         @param host Host object representing the remote machine.
         @param params dict of settings from site_wifitest based tests.
-        @param defssid string default SSID for networks created on this router.
+        @param test_name string name of this test.  Used in SSID creation.
 
         """
         site_linux_system.LinuxSystem.__init__(self, host, params, 'router')
@@ -68,9 +73,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
-        self.defssid = defssid
+        self.ssid_prefix = test_name
+        if self.ssid_prefix.startswith(self.KNOWN_TEST_PREFIX):
+            # Many of our tests start with an uninteresting prefix.
+            # Remove it so we can have more unique bytes.
+            self.ssid_prefix = self.ssid_prefix[len(self.KNOWN_TEST_PREFIX):]
+        self.ssid_prefix = self.ssid_prefix.lstrip('_')
+        self.ssid_prefix += '_'
+
         self.default_config = {
-            'ssid': defssid,
             'hw_mode': 'g',
             'ctrl_interface': '/tmp/hostapd-test.control',
             'logger_syslog': '-1',
@@ -86,9 +97,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         }
         self.station = {
             'configured': False,
-            'conf': {
-                'ssid': defssid,
-            },
+            'conf': {},
         }
         self.local_servers = []
         self.hostapd_instances = []
@@ -251,7 +260,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         conf['rts_threshold'] = '2347'
         conf['fragm_threshold'] = '2346'
         conf['driver'] = self.hostapd['driver']
+        conf['ssid'] = self._get_ssid('')
         return conf
+
+
+    def _get_ssid(self, suffix):
+        unique_salt = ''.join([random.choice(self.SUFFIX_LETTERS)
+                               for x in range(5)])
+        return (self.ssid_prefix + unique_salt + suffix)[-32:]
 
 
     def hostap_configure(self, configuration, multi_interface=None):
@@ -268,7 +284,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.deconfig()
         # Start with the default hostapd config parameters.
         conf = self.__get_default_hostap_config()
-        conf['ssid'] = configuration.get_ssid(self.defssid)
+        conf['ssid'] = (configuration.ssid or
+                        self._get_ssid(configuration.ssid_suffix))
         if configuration.bssid:
             conf['bssid'] = configuration.bssid
         conf['channel'] = configuration.channel
@@ -332,7 +349,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             if k == 'ssid':
                 conf['ssid'] = v
             elif k == 'ssid_suffix':
-                conf['ssid'] = self.defssid[:(32-len(v))] + v
+                conf['ssid'] = self._get_ssid(v)
             elif k == 'channel':
                 freq = int(v)
                 self.hostapd['frequency'] = freq
@@ -492,12 +509,13 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.deconfig()
         interface = self._get_wlanif(config.frequency, self.phytype,
                                      config.hw_mode)
-        ssid = config.get_ssid(self.defssid)
-        self.station['conf']['ssid'] = ssid
+        self.station['conf']['ssid'] = (config.ssid or
+                                        self._get_ssid(config.ssid_suffix))
         # Connect the station
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
-        self.router.run('%s dev %s ibss join %s %d' % (self.cmd_iw, interface,
-                                                       ssid, config.frequency))
+        self.router.run('%s dev %s ibss join %s %d' % (
+                self.cmd_iw, interface, self.station['conf']['ssid'],
+                config.frequency))
         # Always start a local server.
         self.start_local_server(interface)
         # Remember that this interface is up.
@@ -718,6 +736,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """@return string ssid for the network stemming from this router."""
         if self.hostapd['configured']:
             return self.hostapd['conf']['ssid']
+
+        if not 'ssid' in self.station['conf']:
+            raise error.TestFail('Requested ssid of an unconfigured AP.')
 
         return self.station['conf']['ssid']
 

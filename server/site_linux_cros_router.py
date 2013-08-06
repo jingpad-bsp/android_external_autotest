@@ -29,7 +29,7 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
                 [self.CAPABILITY_IBSS])
 
 
-    def __init__(self, host, params, defssid):
+    def __init__(self, host, params, test_name):
         cros_params = params.copy()
         cros_params.update({
             'cmd_ip': '/usr/local/sbin/ip',
@@ -41,7 +41,7 @@ class LinuxCrosRouter(site_linux_router.LinuxRouter):
                 'monitor': 'usb',
                 'managed': 'pci'
             }})
-        super(LinuxCrosRouter, self).__init__(host, cros_params, defssid)
+        super(LinuxCrosRouter, self).__init__(host, cros_params, test_name)
         self.cmd_iptables = params.get('cmd_iptables', '/sbin/iptables')
 
 
