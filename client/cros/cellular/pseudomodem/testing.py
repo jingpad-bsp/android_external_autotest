@@ -22,13 +22,13 @@ class Testing(dbus_std_ifaces.DBusProperties):
     def _InitializeProperties(self):
         return { mm1.I_TESTING: { 'Modem': self._modem.path } }
 
-    @dbus.service.method(mm1.I_TESTING, in_signature='a{sv}')
-    def ReceiveSms(self, properties):
+    @dbus.service.method(mm1.I_TESTING, in_signature='ss')
+    def ReceiveSms(self, sender, text):
         """
         Simulates a fake SMS.
 
-        @param properties: Dictionary, containing the SMS properties, as
-                defined according to org.freedesktop.ModemManager1.Sms.
+        @param sender: String containing the phone number of the sender.
+        @param text: String containing the SMS message contents.
 
         """
-        raise NotImplementedError()
+        self._modem.sms_handler.receive_sms(text, sender)

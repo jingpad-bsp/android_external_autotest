@@ -28,10 +28,6 @@ class Messaging(dbus.service.Interface):
 
         @return The list of SMS object paths.
 
-        Emits:
-            Added
-            Completed
-
         """
         raise NotImplementedError()
 

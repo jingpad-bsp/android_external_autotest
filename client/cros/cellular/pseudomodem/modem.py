@@ -12,8 +12,10 @@ import random
 import bearer
 import disable_machine
 import enable_machine
+import messaging
 import mm1
 import modem_simple
+import sms_handler
 
 ALLOWED_BEARER_PROPERTIES = [
     'apn',
@@ -29,7 +31,9 @@ ALLOWED_BEARER_PROPERTIES = [
     'number'
 ]
 
-class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
+class Modem(dbus_std_ifaces.DBusProperties,
+            modem_simple.ModemSimple,
+            messaging.Messaging):
     """
     Pseudomodem implementation of the org.freedesktop.ModemManager1.Modem
     interface. This class serves as the abstract base class of all fake modem
@@ -76,6 +80,8 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
         self._modemmanager = None
         self.resetting = False
+
+        self._sms_handler = sms_handler.SmsHandler(self, bus)
 
     def _InitializeProperties(self):
         """
@@ -169,6 +175,14 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
 
         """
         self._modemmanager = manager
+
+    @property
+    def sms_handler(self):
+        """
+        @return sms_handler.SmsHandler responsible for handling SMS.
+
+        """
+        return self._sms_handler
 
     def IsPendingEnable(self):
         """
@@ -275,6 +289,16 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
             self.sim.modem = self
             self.UpdateLockStatus()
         self.Set(mm1.I_MODEM, 'Sim', dbus.types.ObjectPath(val))
+
+    def SetBus(self, bus):
+        """
+        Overridden from dbus_std_ifaces.DBusProperties.
+
+        @param bus
+
+        """
+        dbus_std_ifaces.DBusProperties.SetBus(self, bus)
+        self._sms_handler.bus = bus
 
     def UpdateLockStatus(self):
         """
@@ -715,3 +739,33 @@ class Modem(dbus_std_ifaces.DBusProperties, modem_simple.ModemSimple):
         """
         logging.info('Modem state changed from %u to %u for reason %u',
                 old, new, reason)
+
+    # org.freedesktop.ModemManager1.Messaging
+
+    def List(self):
+        """
+        Overriden from messaging.Messaging.
+
+        """
+        return self._sms_handler.list_messages()
+
+    def Delete(self, path):
+        """
+        Overriden from messaging.Messaging.
+
+        @param path
+
+        """
+        self._sms_handler.delete_message(path)
+
+    @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='ob')
+    def Added(self, path, received):
+        """
+        Overriden from messaging.Messaging.
+
+        @param path
+        @param received
+
+        """
+        logging.info('New SMS added: path: ' + path + ' received: ' +
+                     str(received))

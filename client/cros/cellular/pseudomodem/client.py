@@ -64,6 +64,43 @@ class PseudoModemClient(cmd.Cmd):
         """Handles the 'help properties' command."""
         print '\nReturns the properties under the testing interface.\n'
 
+    def do_sms(self, args):
+        """
+        Simulates a received SMS.
+
+        @param args: A string containing the sender and the text message
+                content, in which everything before the first ' ' character
+                belongs to the sender and everything else belongs to the
+                message content. For example "Gandalf You shall not pass!"
+                will be parsed into:
+
+                    sender="Gandalf"
+                    content="You shall not pass!"
+
+                Pseudomodem doesn't distinguish between phone numbers and
+                strings containing non-numeric characters for the sender field
+                so args can contain pretty much anything.
+
+        """
+        arglist = args.split(' ', 1)
+        if len(arglist) != 2:
+            print '\nMalformed SMS args: ' + args + '\n'
+            return
+        try:
+            self._get_proxy().ReceiveSms(
+                    arglist[0], arglist[1], dbus_interface=mm1.I_TESTING)
+            print '\nSMS sent!\n'
+        except dbus.exceptions.DBusException as e:
+            print ('\nAn error occurred while communicating with '
+                   'PseudoModemManager: ' + e.get_dbus_name() + ' - ' +
+                   e.message + '\n')
+        return False
+
+    def help_sms(self):
+        """Handles the 'help sms' command."""
+        print '\nUsage: sms <sender phone #> <message text>\n'
+
+
     def do_exit(self, args):
         """
         Handles the 'exit' command.
