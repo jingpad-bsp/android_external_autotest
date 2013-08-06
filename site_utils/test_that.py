@@ -311,6 +311,11 @@ def parse_arguments(argv):
                         help='When scheduling a suite, skip any tests marked '
                              'as experimental. Applies only to tests scheduled'
                              ' via suite:[SUITE].')
+    parser.add_argument('--whitelist-chrome-crashes', action='store_true',
+                        default=False, dest='whitelist_chrome_crashes',
+                        help='Ignore chrome crashes when producing test '
+                        'report. This flag gets passed along to the report '
+                        'generation tool.')
 
     return parser.parse_args(argv)
 
@@ -426,7 +431,11 @@ def main(argv):
             logging.info('Finished pretend run. Exiting.')
             return 0
 
-        final_result = subprocess.call([_TEST_REPORT_SCRIPTNAME, res_dir])
+        test_report_command = [_TEST_REPORT_SCRIPTNAME]
+        if arguments.whitelist_chrome_crashes:
+            test_report_command.append('--whitelist_chrome_crashes')
+        test_report_command.append(res_dir)
+        final_result = subprocess.call(test_report_command)
         logging.info('Finished running tests. Results can be found in %s',
                      res_dir)
         try:
