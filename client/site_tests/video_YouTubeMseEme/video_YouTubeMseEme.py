@@ -4,7 +4,7 @@
 
 import logging, os, time
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import httpd
@@ -18,7 +18,7 @@ class video_YouTubeMseEme(test.test):
 
     version = 1
 
-    PLAYER_PAGE = 'http://localhost:8000/video_YouTubeMseEme.html'
+    PLAYER_PAGE = 'http://localhost:8000/files/video_YouTubeMseEme.html'
     TEST_JS = 'files/video_YouTubeMseEme.js'
 
     POLLING_TIME = 0.1
@@ -31,8 +31,7 @@ class video_YouTubeMseEme(test.test):
         @param player_page: Dummy HTML file to load.
 
         """
-        self._testServer = httpd.HTTPListener(
-                8000, docroot=os.path.join(os.path.dirname(__file__), 'files'))
+        self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 
         self.tab = chrome.browser.tabs[0]
@@ -41,23 +40,31 @@ class video_YouTubeMseEme(test.test):
         self.load_javascript(self.TEST_JS)
 
 
-    def check_event_happened(self, event, delay_time_sec=2):
+    def check_event_happened(self, event_name, delay_time_sec=5):
         """A wrapper to check if an event in JS has fired.
 
-        @param event: A string to denote the event to check.
+        @param event_name: A string to denote the name of the event to check.
         @param delay_time_sec: Time to wait before querying the test (float).
                 This is to give the VM some time to schedule the next execution.
 
         @returns: A boolean indicating if the event has fired.
 
         """
+        def _event_reported_condition(event_name):
+            """An inner function to test if the event has happened.
+
+            @param event_name: A string to denote the event's name to check.
+
+            @returns: A boolean indicating if the event happened.
+
+            """
+            return self.tab.EvaluateJavaScript(
+                    'window.__eventReporter["%s"] === true;' % event_name)
+
         start_time = time.time()
-        while time.time() - start_time <= delay_time_sec:
-            if self.tab.EvaluateJavaScript(
-                    'window.__eventReporter["%s"] === true;' % event):
-                return True
-            time.sleep(self.POLLING_TIME)
-        return False
+        return utils.poll_for_condition(
+                lambda: _event_reported_condition(event_name),
+                timeout=delay_time_sec)
 
 
     def load_javascript(self, sub_path):
@@ -73,7 +80,7 @@ class video_YouTubeMseEme(test.test):
             logging.info('Loaded accompanying .js script.')
 
 
-    def get_test_state(self, test_name, delay_time_sec=2):
+    def get_test_state(self, test_name, delay_time_sec=5):
         """A wrapper to check the state of a test in the accompanying JS.
 
         @param test_name: The name of the test that was ran.
@@ -83,13 +90,22 @@ class video_YouTubeMseEme(test.test):
         @returns: A boolean value indicating the success of the test.
 
         """
+        def _test_passed_condition(test_name):
+            """An inner function to test if the test passed.
+
+            @param test_name: The name of the test that was ran.
+
+            @returns: A boolean indicating if the test passed.
+
+            """
+            return self.tab.EvaluateJavaScript(
+                    'window.__testState["%s"];' % test_name)
+
         start_time = time.time()
-        while time.time() - start_time <= delay_time_sec:
-            if self.tab.EvaluateJavaScript(
-                    'window.__testState["%s"]' % test_name):
-                return True
-            time.sleep(self.POLLING_TIME)
-        return False
+        test_result = ''
+        return utils.poll_for_condition(
+                lambda: _test_passed_condition(test_name),
+                timeout=delay_time_sec)
 
 
     def test_media_source_presence(self):
@@ -164,13 +180,103 @@ class video_YouTubeMseEme(test.test):
                 msg='test_initial_media_source_state failed.')
 
 
+    def test_append(self):
+        """Tests appending audio and video streams.
+
+        """
+        self.tab.ExecuteJavaScript('window.__testAppend_audio();')
+        self.assert_(
+                self.get_test_state('append_audio'),
+                msg='test_append failed on audio append.')
+
+        self.tab.ExecuteJavaScript('window.__testAppend_video();')
+        self.assert_(
+                self.get_test_state('append_video'),
+                msg='test_append failed on video append.')
+
+
+    def test_append_abort(self):
+        """Tests appending followed by aborting audio and video streams.
+
+        """
+        self.tab.ExecuteJavaScript('window.__testAppendAbort_audio();')
+        self.assert_(
+                self.get_test_state('appendAbort_audio'),
+                msg='test_append_abort failed on audio.')
+
+        self.tab.ExecuteJavaScript('window.__testAppendAbort_video();')
+        self.assert_(
+                self.get_test_state('appendAbort_video'),
+                msg='test_append_abort failed on video.')
+
+
+    def test_append_timestamp_offset(self):
+        """Tests appending with a timestamp offset.
+
+        """
+        self.tab.ExecuteJavaScript(
+                'window.__testAppendTimestampOffset_audio();')
+        self.assert_(
+                self.get_test_state('appendTimestampOffset_audio'),
+                msg='test_append_timestamp_offset failed on audio.')
+
+        self.tab.ExecuteJavaScript(
+                'window.__testAppendTimestampOffset_video();')
+        self.assert_(
+                self.get_test_state('appendTimestampOffset_video'),
+                msg='test_append_timestamp_offset failed on video.')
+
+
+    def test_duration(self):
+        """Tests if it's possible to set the duration on the Media Source.
+
+        """
+        self.tab.ExecuteJavaScript('window.__testDuration();')
+        self.assert_(
+                self.get_test_state('duration'),
+                msg='test_duration failed.')
+
+
+    def test_duration_after_append(self):
+        """Tests if the duration changes after appending to the source buffer.
+
+        """
+        self.tab.ExecuteJavaScript('window.__testDurationAfterAppend_audio();')
+        self.assert_(
+                self.get_test_state('durationAfterAppend_audio'),
+                msg='test_duration_after_append failed on audio.')
+
+        self.tab.ExecuteJavaScript('window.__testDurationAfterAppend_video();')
+        self.assert_(
+                self.get_test_state('durationAfterAppend_video'),
+                msg='test_duration_after_append failed on video.')
+
+
+    def test_source_remove(self):
+        """Tests if removing the source buffers works correctly.
+
+        """
+        self.tab.ExecuteJavaScript('window.__testSourceRemove();')
+        self.assert_(
+                self.get_test_state('sourceRemove'),
+                msg='test_source_remove failed.')
+
+
+    def test_can_play_webm(self):
+        """Tests if it's possible to play WebM content.
+
+        """
+        self.assert_(
+                self.tab.EvaluateJavaScript('window.__testCanPlayWebM();'),
+                msg='test_can_play_webm failed.')
+
+
     def test_can_play_clear_key(self):
         """Tests if it's possible to play ClearKey content.
 
         """
         self.assert_(
-                self.tab.EvaluateJavaScript(
-                        'window.__testCanPlayClearKey();'),
+                self.tab.EvaluateJavaScript('window.__testCanPlayClearKey();'),
                 msg='test_can_play_clear_key failed.')
 
 
@@ -182,6 +288,15 @@ class video_YouTubeMseEme(test.test):
                 self.tab.EvaluateJavaScript(
                         'window.__testCanNotPlayPlayReady();'),
                 msg='test_can_not_play_play_ready failed.')
+
+
+    def test_can_play_widevine(self):
+        """Tests if it's possible to play Widevine content.
+
+        """
+        self.assert_(
+                self.tab.EvaluateJavaScript('window.__testCanPlayWidevine();'),
+                msg='test_can_play_widevine failed.')
 
 
     def run_once(self, subtest_name):
