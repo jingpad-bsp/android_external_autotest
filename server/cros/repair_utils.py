@@ -10,11 +10,12 @@ import datetime, logging, operator, urllib2, xmlrpclib
 
 import common
 
-from autotest_lib.client.common_lib import logging_config
+from autotest_lib.client.common_lib import global_config, logging_config
 from autotest_lib.server import frontend
 
-# Ignore any jobs that were ran more than this many hours ago.
-_CUTOFF_HOURS = 24
+# Ignore any jobs that were ran more than this many mins past the max job
+# timeout.
+_CUTOFF_AFTER_TIMEOUT_MINS = 60
 LOGFILE_NAME = 'machine_death.log'
 
 
@@ -52,10 +53,14 @@ def _find_problem_test(machine, rpc):
         or None if there is no such job.
     """
     # Going through the RPC interface means we cannot use the latest() django
-    # QuerySet function. So we will instead look at the past 24 hours and
-    # pick the most recent run from there.
+    # QuerySet function. So we will instead look at the past
+    # job_max_runtime_mins_default plus _CUTOFF_AFTER_TIMEOUT_MINS
+    # and pick the most recent run from there.
+    default_timeout_mins = global_config.global_config.get_config_value(
+        'AUTOTEST_WEB', 'job_max_runtime_mins_default', type=int)
     cutoff = (datetime.datetime.today() -
-              datetime.timedelta(hours=_CUTOFF_HOURS))
+              datetime.timedelta(minutes=default_timeout_mins) -
+              datetime.timedelta(minutes=_CUTOFF_AFTER_TIMEOUT_MINS))
 
     results = rpc.run('get_host_queue_entries', host__hostname=machine,
                       started_on__gte=str(cutoff))

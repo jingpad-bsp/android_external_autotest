@@ -13,7 +13,7 @@ import common
 # We want to import setup_django_lite_environment first so that the database
 # is setup correctly.
 from autotest_lib.frontend import setup_django_lite_environment
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import global_config, utils
 from autotest_lib.frontend.afe import models, rpc_interface
 from django import test
 from autotest_lib.server.cros import repair_utils
@@ -46,14 +46,16 @@ class FindProblemTestTests(mox.MoxTestBase, test.TestCase):
     def setUp(self):
         super(FindProblemTestTests, self).setUp()
         self.mox.StubOutWithMock(MockDatetime, 'today')
+        self.mox.StubOutWithMock(global_config.global_config,
+                                 'get_config_value')
 
         self.datetime = datetime.datetime
         datetime.datetime = MockDatetime
-        self._orig_cutoff = repair_utils._CUTOFF_HOURS
+        self._orig_cutoff = repair_utils._CUTOFF_AFTER_TIMEOUT_MINS
 
 
     def tearDown(self):
-        repair_utils._CUTOFF_HOURS = self._orig_cutoff
+        repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = self._orig_cutoff
         datetime.datetime = self.datetime
         super(FindProblemTestTests, self).tearDown()
 
@@ -82,7 +84,9 @@ class FindProblemTestTests(mox.MoxTestBase, test.TestCase):
 
         mock_rpc = MockAFE()
         datetime.datetime.today().AndReturn(datetime.datetime(2012,1,1))
-        repair_utils._CUTOFF_HOURS = 24
+        global_config.global_config.get_config_value('AUTOTEST_WEB',
+            'job_max_runtime_mins_default', type=int).AndReturn(1440)
+        repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = 60
 
         self.mox.ReplayAll()
         result = repair_utils._find_problem_test('host', mock_rpc)
@@ -115,12 +119,41 @@ class FindProblemTestTests(mox.MoxTestBase, test.TestCase):
 
         mock_rpc = MockAFE()
         datetime.datetime.today().AndReturn(datetime.datetime(2012,1,1))
-        repair_utils._CUTOFF_HOURS = 24
+        global_config.global_config.get_config_value('AUTOTEST_WEB',
+            'job_max_runtime_mins_default', type=int).AndReturn(1440)
+        repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = 60
 
         self.mox.ReplayAll()
         result = repair_utils._find_problem_test('correct_host', mock_rpc)
 
         self.assertEqual(result['job']['name'], 'correct_job')
+
+
+    def test_return_jobs_ran_soon_after_max_job_runtime(self):
+        """Test that we get jobs that are just past the max runtime."""
+
+        host = models.Host(hostname='host')
+        host.save()
+
+        new_job = models.Job(owner='me', name='new_job',
+                             created_on=datetime.datetime(2012, 1, 1, 0, 0))
+        new_job.save()
+        new_host_queue_entry = models.HostQueueEntry(
+                job=new_job, host=host, status='test',
+                started_on=datetime.datetime(2012, 1, 1, 2))
+        new_host_queue_entry.save()
+
+        mock_rpc = MockAFE()
+        datetime.datetime.today().AndReturn(datetime.datetime(2012, 1, 2, 0,
+                                                              30))
+        global_config.global_config.get_config_value('AUTOTEST_WEB',
+            'job_max_runtime_mins_default', type=int).AndReturn(1440)
+        repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = 60
+
+        self.mox.ReplayAll()
+        result = repair_utils._find_problem_test('host', mock_rpc)
+
+        self.assertEqual(result['job']['name'], 'new_job')
 
 
 if __name__ == '__main__':
