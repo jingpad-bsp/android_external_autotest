@@ -11,7 +11,7 @@ fails. Running video_decode_accelerator_unittest is skipped on machines that are
 known not to support video decode.
 """
 SUITE = "vda, video_weekly_regression"
-TIME = "LONG"
+TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "audiovideo"
 TEST_TYPE = "client"
