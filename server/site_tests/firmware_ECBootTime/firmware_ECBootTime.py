@@ -20,15 +20,27 @@ class firmware_ECBootTime(FAFTSequence):
 
 
     def check_boot_time(self):
-        boot_msg = ("([0-9\.]+) Port 80"
-                if self._x86 else "([0-9\.]+) AP running")
+        """Check EC and AP boot times"""
+        # Initialize a list of two strings, one printed by the EC when the AP
+        # is taken out of reset, and another one printed when the EC observes
+        # the AP running. These strings are used as for console output anchors
+        # when calculating the AP boot time.
+        #
+        # This is very approximate, a better long term solution would be to
+        # have the EC print the same fixed strings for these two events on all
+        # platforms. http://crosbug.com/p/21628 has been opened to track this
+        # issue.
+        if self._x86:
+            boot_anchors = ["\[([0-9\.]+) PB", "\[([0-9\.]+) Port 80"]
+        else:
+            boot_anchors = ["\[([0-9\.]+) AP running ...",
+                            "\[([0-9\.]+) XPSHOLD seen"]
         power_cmd = "powerbtn" if self._x86 else "power on"
         reboot = self.ec.send_command_get_output(
             "reboot ap-off",
             ["([0-9\.]+) Inits done"])
         power_press = self.ec.send_command_get_output(
-            power_cmd,
-            ["\[([0-9\.]+) PB", boot_msg])
+            power_cmd, boot_anchors)
         reboot_time = float(reboot[0][1])
         power_press_time = float(power_press[0][1])
         firmware_resp_time = float(power_press[1][1])
