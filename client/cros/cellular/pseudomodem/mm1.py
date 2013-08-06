@@ -17,6 +17,10 @@ MM1 = '/org/freedesktop/ModemManager1'
 ROOT_PATH = '/'
 
 # Interfaces
+# PseudoModemManager Testing Interfaces
+TESTING_PATH = '/org/chromium/Pseudomodem/Testing'
+I_TESTING = 'org.chromium.Pseudomodem.Testing'
+
 # Standard Interfaces
 I_PROPERTIES = 'org.freedesktop.DBus.Properties'
 I_INTROSPECTABLE = 'org.freedesktop.DBus.Introspectable'

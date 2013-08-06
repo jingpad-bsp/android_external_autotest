@@ -14,10 +14,12 @@ import signal
 import subprocess
 import time
 
+import client
 import mm1
 import modem_3gpp
 import modemmanager
 import sim
+import testing
 
 import common
 from autotest_lib.client.bin import utils
@@ -293,12 +295,7 @@ class PseudoModemManager(object):
     def __init__(self,
                  modem,
                  sim=None,
-                 detach=True,
-                 logfile=None):
-        # TODO(armansito): The following line just doesn't work.
-        logging.basicConfig(format='%(asctime)-15s %(message)s',
-                            filename=logfile,
-                            level=logging.DEBUG)
+                 detach=True):
         self.modem = modem
         self.sim = sim
         self.detach = detach
@@ -392,6 +389,7 @@ class PseudoModemManager(object):
     def _Run(self):
         if not self.modem:
             raise Exception('No modem object has been provided.')
+
         global virtual_ethernet_interface
         virtual_ethernet_interface.Setup()
         dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
@@ -403,6 +401,8 @@ class PseudoModemManager(object):
         if self.sim:
             self.modem.SetSIM(self.sim)
         self.manager.Add(self.modem)
+
+        self.testing_object = testing.Testing(self.modem, bus)
 
         self.mainloop = gobject.MainLoop()
 
@@ -432,7 +432,7 @@ class PseudoModemManager(object):
 
 
 def Start(use_cdma=False, activated=True, sim_locked=False,
-          roaming_networks=0):
+          roaming_networks=0, interactive=False):
     """
     Runs the pseudomodem in script mode. This function is called only by the
     main function.
@@ -447,6 +447,8 @@ def Start(use_cdma=False, activated=True, sim_locked=False,
                        This option does nothing if 'use_cdma' is also True.
     @param roaming_networks: The number networks that will be returned from a
                              network scan in addition to the home network.
+    @param interactive: If True, the pseudomodem gets launched with an
+                        interactive shell.
 
     """
     # TODO(armansito): Support "not activated" initialization option for 3GPP
@@ -474,8 +476,12 @@ def Start(use_cdma=False, activated=True, sim_locked=False,
                     mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
                     locked=sim_locked)
 
-    with PseudoModemManager(modem=m, sim=s, detach=False, logfile=None):
-        pass
+    if interactive:
+        logging.disable(logging.INFO)
+    with PseudoModemManager(modem=m, sim=s, detach=interactive):
+        if interactive:
+            pmclient = client.PseudoModemClient()
+            pmclient.Begin()
 
 def main():
     """
@@ -491,9 +497,6 @@ def main():
 
     """
 
-    # TODO(armansito): Correctly utilize the below options.
-    # See crbug.com/238430.
-
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-f', '--family', dest='family',
                       metavar='<family>', type="string",
@@ -508,6 +511,9 @@ def main():
                       default=0, type="int", metavar="<# networks>",
                       help='Number of roaming networks available for scan '
                            '(3GPP only).')
+    parser.add_option('-i', '--interactive', dest='interactive',
+                      action='store_true', default=False,
+                      help='Launch in interactive mode.')
 
     (opts, args) = parser.parse_args()
     if not opts.family:
@@ -530,7 +536,7 @@ def main():
         return
 
     Start(family == 'CDMA', not opts.not_activated, opts.sim_locked,
-          opts.roaming_networks)
+          opts.roaming_networks, opts.interactive)
 
 
 if __name__ == '__main__':
