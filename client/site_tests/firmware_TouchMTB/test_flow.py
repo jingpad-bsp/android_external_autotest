@@ -74,6 +74,8 @@ class TestFlow:
         self.robot_waiting = False
         self._rename_old_log_and_html_files()
         self._set_static_prompt_messages()
+        self.gesture_image_name = None
+        self.gesture_continues_flag = False
 
     def __del__(self):
         self.system_device.close()
@@ -392,7 +394,7 @@ class TestFlow:
         """Control the robot to perform the action."""
         self.robot.control(self.gesture, self.variation)
 
-    def _handle_user_choice_save_after_parsing(self, next_gesture):
+    def _handle_user_choice_save_after_parsing(self, next_gesture=True):
         """Handle user choice for saving the parsed gesture file."""
         self.output.print_window('')
         if self.saved_msg:
@@ -519,7 +521,7 @@ class TestFlow:
         elif self._is_parsing_gesture_file_done():
             # Save this gesture file and go to next gesture.
             if choice in (TFK.SAVE, TFK.SAVE2):
-                self._handle_user_choice_save_after_parsing(next_gesture=True)
+                self._handle_user_choice_save_after_parsing()
             # Save this file and perform the same gesture again.
             elif choice == TFK.MORE:
                 self._handle_user_choice_save_after_parsing(next_gesture=False)
@@ -556,13 +558,21 @@ class TestFlow:
 
     def gesture_timeout_callback(self):
         """A callback watching whether a gesture has timed out."""
+        if self.replay_dir:
+            # There are event files to replay for this gesture variation.
+            if self.use_existent_event_file_flag:
+                self._handle_user_choice_validate_before_parsing()
+            self._handle_user_choice_save_after_parsing(next_gesture=True)
+            return False
+
         # A gesture is stopped only when two conditions are met simultaneously:
         # (1) there are no reported packets for a timeout interval, and
         # (2) the number of tracking IDs is 0.
-        if (self.gesture_continues_flag or
+        elif (self.gesture_continues_flag or
             not self.mtb_evemu.all_fingers_leaving()):
             self.gesture_continues_flag = False
             return True
+
         else:
             self._handle_user_choice_validate_before_parsing()
             self.win.remove_event_source(self.gesture_file_watch_tag)
@@ -656,12 +666,7 @@ class TestFlow:
         """Set up the recording process or use an existent event data file."""
         if self.replay_dir:
             self.record_new_file = False
-            if self.use_existent_event_file_flag:
-                self._handle_user_choice_validate_before_parsing()
-                self._handle_keyboard_event(TFK.SAVE)
-            else:
-                # No existent event file to replay for this gesture variation.
-                self._handle_user_choice_save_after_parsing(next_gesture=True)
+            self.win.register_timeout_add(self.gesture_timeout_callback, 0)
             return
 
         if self.resume_dir and self.use_existent_event_file_flag:
