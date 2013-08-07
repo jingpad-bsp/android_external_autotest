@@ -9,6 +9,10 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 class security_StatefulPermissions(test.test):
+    """
+    Report all unexpected writable paths in the /mnt/stateful_partition
+    tree.
+    """
     version = 1
     _STATEFUL_ROOT = "/mnt/stateful_partition"
 
@@ -22,18 +26,15 @@ class security_StatefulPermissions(test.test):
                      "chronos": ["/encrypted/chronos",
                                  "/encrypted/var/cache/app_pack",
                                  "/encrypted/var/cache/echo",
+                                 "/encrypted/var/cache/external_cache",
                                  "/encrypted/var/cache/touch_trial/selection",
                                  "/encrypted/var/lib/cromo",
                                  "/encrypted/var/lib/timezone",
-                                 # TODO(derat) power_manager crosbug.com/36510
-                                 "/encrypted/var/lib/power_manager",
                                  "/encrypted/var/lib/Synaptics/chronos.1000",
                                  "/encrypted/var/lib/opencryptoki",
                                  "/encrypted/var/log/connectivity.log",
                                  "/encrypted/var/log/connectivity.bak",
                                  "/encrypted/var/log/window_manager",
-                                 # TODO(derat) power_manager crosbug.com/36510
-                                 "/encrypted/var/log/power_manager",
                                  "/encrypted/var/log/metrics",
                                  "/encrypted/var/log/chrome",
                                  "/encrypted/var/minidumps",
@@ -78,6 +79,13 @@ class security_StatefulPermissions(test.test):
                     }
 
     def generate_find(self, user, prunelist):
+        """
+        Generates the "find" command that spits out all files in stateful
+        writable by a given user, with the given list of directories removed.
+
+        @param user: report writable paths owned by this user
+        @param prunelist: list of paths to ignore
+        """
         if prunelist is None:
             return "true" # return a no-op shell command, e.g. for root.
 
@@ -131,6 +139,8 @@ class security_StatefulPermissions(test.test):
         """
         Sends information about all files in the stateful partition
         owned by a given owner to the standard logging facility.
+
+        @param owner: paths owned by this user will be report
         """
         cmd = "find STATEFUL_ROOT -user %s -ls" % owner
         cmd_output = self.subst_run(cmd)
@@ -138,6 +148,12 @@ class security_StatefulPermissions(test.test):
 
 
     def subst_run(self, cmd, stateful_root=_STATEFUL_ROOT):
+        """
+        Replace "STATEFUL_ROOT" with the actual stateful partition path.
+
+        @param cmd: string containing the command to examine
+        @param stateful_root: path used to replace "STATEFUL_ROOT"
+        """
         cmd = cmd.replace("STATEFUL_ROOT", stateful_root)
         return utils.system_output(cmd, ignore_status=True)
 
@@ -180,12 +196,12 @@ class security_StatefulPermissions(test.test):
                 testfail = True
                 logging.error("su failed while attempting to run:")
                 logging.error(cmd)
-                logging.error("[Got %s]" % cmd_output)
+                logging.error("[Got %s]", cmd_output)
             elif not re.search("^\s*EOF\s*$", cmd_output):
                 # we got test failures before 'EOF'
                 testfail = True
-                logging.error("Test for '%s' found unexpected files:\n%s" %
-                              (user,cmd_output))
+                logging.error("Test for '%s' found unexpected files:\n%s",
+                              user, cmd_output)
 
         if testfail:
             raise error.TestFail("Unexpected files/perms in stateful")
