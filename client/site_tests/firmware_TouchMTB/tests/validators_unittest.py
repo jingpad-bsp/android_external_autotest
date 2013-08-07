@@ -15,7 +15,7 @@ import test_conf as conf
 import validators
 
 from common_unittest_utils import create_mocked_devices, parse_tests_data
-from firmware_constants import GV, PLATFORM
+from firmware_constants import AXIS, GV, PLATFORM, VAL
 from firmware_log import MetricNameProps
 from touch_device import TouchDevice
 from validators import (CountPacketsValidator,
@@ -360,7 +360,61 @@ class LinearityValidator2Test(BaseValidatorTest):
         self.assertAlmostEqual(max_err_px, 0)
         self.assertAlmostEqual(rms_err_px, 0)
 
-    def test_simple_linear_regression1(self):
+    def test_simple_linear_regression0b(self):
+        """An imperfect y-t line from bottom left to top right with
+        the first and the last entries as outliers.
+
+        In this test case:
+          begin segment = [1,]
+          end segment = [188, 190]
+          middle segment = [20, 40, 60, 80, 100, 120, 140, 160]
+
+          the simple linear regression line is calculated based on the
+          middle segment, and is
+            y = 20 * t
+          the error = [1, 0, 0, 0, 0, 0, 0, 0, 0, 8, 10]
+        """
+        list_y = [1, 20, 40, 60, 80, 100, 120, 140, 160, 188, 190]
+        list_t = range(len(list_y))
+
+        expected_errs_dict = {
+            VAL.WHOLE: [1, 0, 0, 0, 0, 0, 0, 0, 0, 8, 10],
+            VAL.BEGIN: [1, ],
+            VAL.END: [8, 10],
+            VAL.BOTH_ENDS: [1, 8, 10],
+        }
+
+        for segment_flag, expected_errs in expected_errs_dict.items():
+            self.validator._segments= segment_flag
+            (max_err, rms_err) = self.validator._calc_errors_single_axis(list_t,
+                                                                         list_y)
+            expected_max_err = max(expected_errs)
+            expected_rms_err = (sum([i ** 2 for i in expected_errs]) /
+                                len(expected_errs)) ** 0.5
+            self.assertAlmostEqual(max_err, expected_max_err)
+            self.assertAlmostEqual(rms_err, expected_rms_err)
+
+    def test_log_details_and_metrics(self):
+        """Test the axes in _log_details_and_metrics"""
+        # gesture_dir: tests/data/linearity
+        gesture_dir = 'linearity'
+        filenames_axes = {
+            'two_finger_tracking.right_to_left.slow-lumpy-fw_11.27-robot-'
+                '20130227_204458.dat': [AXIS.X],
+            'one_finger_to_edge.center_to_top.slow-lumpy-fw_11.27-robot-'
+                '20130227_203228.dat': [AXIS.Y],
+            'two_finger_tracking.bottom_left_to_top_right.normal-lumpy-'
+                'fw_11.27-robot-20130227_204902.dat': [AXIS.X, AXIS.Y],
+        }
+        for filename, expected_axes in filenames_axes.items():
+            packets = parse_tests_data(filename, gesture_dir=gesture_dir)
+            # get the direction of the gesture
+            direction = [filename.split('-')[0].split('.')[1]]
+            self.validator.check(packets, direction)
+            actual_axes = sorted(self.validator.list_coords.keys())
+            self.assertEqual(actual_axes, expected_axes)
+
+    def _test_simple_linear_regression1(self):
         """A y-t line taken from a real example.
 
         Refer to the "Numerical example" in the wiki page:
@@ -608,7 +662,7 @@ class RangeValidatorTest(BaseValidatorTest):
 
 
 class StationaryFingerValidatorTest(BaseValidatorTest):
-    """Unit tests for LinearityValidator class."""
+    """Unit tests for StationaryFingerValidator class."""
 
     def setUp(self):
         super(StationaryFingerValidatorTest, self).setUp(show_spec_v2_flag=True)

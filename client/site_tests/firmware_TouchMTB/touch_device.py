@@ -11,6 +11,8 @@ import re
 
 import common_util
 
+from firmware_constants import AXIS
+
 
 # Define AbsAxis class with axis attributes: min, max, and resolution
 AbsAxis = collections.namedtuple('AbsAxis', ['min', 'max', 'resolution'])
@@ -26,6 +28,7 @@ class TouchDevice:
         self.device_node = (device_node if device_node
                                 else self.get_device_node(is_touchscreen))
         self.axis_x, self.axis_y = self.parse_abs_axes(device_description)
+        self.axes = {AXIS.X: self.axis_x, AXIS.Y: self.axis_y}
 
     def get_device_node(self, is_touchscreen):
         """Get the touch device node through xinput
@@ -107,6 +110,10 @@ class TouchDevice:
         """Convert the coordinate from pixel to mm."""
         value_mm = float(value_pixel - axis.min) / axis.resolution
         return value_mm
+
+    def pixel_to_mm_single_axis_by_name(self, value_pixel, axis_name):
+        """Convert the coordinate from pixel to mm."""
+        return self.pixel_to_mm_single_axis(value_pixel, self.axes[axis_name])
 
     def get_dimensions(self):
         """Get the vendor-specified dimensions of the touch device."""

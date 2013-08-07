@@ -866,8 +866,15 @@ class Mtb:
 
         return displacements
 
-    def _get_segments(self, src_list, segment_flag, ratio):
-        """Get the segments based on segment_flag and ratio."""
+    def _get_segments_by_length(self, src_list, segment_flag, ratio):
+        """Get the segments based on segment_flag and the ratio of the
+        src_list length (size).
+
+        @param src_list: could be list_x, list_y, or list_t
+        @param segment_flag: indicating which segment (the begin, the end, or
+                the middle segment) to extract
+        @param ratio: the ratio of the time interval of the segment
+        """
         end_size = int(round(len(src_list) * ratio))
         if segment_flag == VAL.WHOLE:
             return src_list
@@ -886,9 +893,90 @@ class Mtb:
 
     def get_segments_x_and_y(self, ax, ay, segment_flag, ratio):
         """Get the segments for both x and y axes."""
-        segment_x = self._get_segments(ax, segment_flag, ratio)
-        segment_y = self._get_segments(ay, segment_flag, ratio)
+        segment_x = self._get_segments_by_length(ax, segment_flag, ratio)
+        segment_y = self._get_segments_by_length(ay, segment_flag, ratio)
         return (segment_x, segment_y)
+
+    def _get_segments_by_distance(self, list_t, list_coord, segment_flag,
+                                  ratio):
+        """Partition list_coord into the begin, the middle, and the end
+        segments based on segment_flag and the ratio. And then use the
+        derived indexes to partition list_t.
+
+        @param list_t: the list of syn_report time instants
+        @param list_coord: could be list_x, list_y
+        @param segment_flag: indicating which segment (the being, the end, or
+                the middle segment) to extract
+        @param ratio: the ratio of the distance of the begin/end segment
+                with the value between 0.0 and 1.0
+        """
+        def _find_boundary_index(list_coord, boundary_distance):
+            """Find the boundary index i such that
+               abs(list_coord[i] - list_coord[0]) > boundary_distance
+
+            @param list_coord: a list of coordinates
+            @param boundary_distance: the min distance between boundary_coord
+                    and list_coord[0]
+            """
+            for i, c in enumerate(list_coord):
+                if abs(c - list_coord[0]) > boundary_distance:
+                    return i
+
+        end_to_end_distance = abs(list_coord[-1] - list_coord[0])
+        first_idx_mid_seg = _find_boundary_index(
+                list_coord, end_to_end_distance * ratio)
+        last_idx_mid_seg = _find_boundary_index(
+                list_coord, end_to_end_distance * (1 - ratio))
+
+        if segment_flag == VAL.WHOLE:
+            segment_coord = list_coord
+            segment_t = list_t
+        elif segment_flag == VAL.MIDDLE:
+            segment_coord = list_coord[first_idx_mid_seg:last_idx_mid_seg]
+            segment_t = list_t[first_idx_mid_seg:last_idx_mid_seg]
+        elif segment_flag == VAL.BEGIN:
+            segment_coord = list_coord[:first_idx_mid_seg]
+            segment_t = list_t[:first_idx_mid_seg]
+        elif segment_flag == VAL.END:
+            segment_coord = list_coord[last_idx_mid_seg:]
+            segment_t = list_t[last_idx_mid_seg:]
+        else:
+            segment_coord = []
+            segment_t = []
+
+        return (segment_t, segment_coord)
+
+    def get_segments(self, list_t, list_coord, segment_flag, ratio):
+        """Partition list_t and list_coord into the segments specified by
+        the segment_flag and the ratio.
+
+        If the list_coord stretches long enough, it represents a normal
+        line. We will partition list_t and list_coord by distance.
+
+        On the other hand, if the min and max values in list_coord are
+        close to each other, it probably does not represent a line. We will
+        partition list_t and list_coord by time in this case.
+        E.g., in the follow cases, it is better to partition using length
+              instead of using distance.
+        list_coord = [105, 105, 105, 105, 105, 105, 105, 105, 105, 105] or
+        list_coord = [104, 105, 105, 105, 105, 105, 105, 105, 105, 105] or
+        list_coord = [105, 105, 105, 105, 105, 105, 105, 105, 105, 106]
+
+        @param list_t: the list of syn_report time instants
+        @param list_coord: could be list_x, list_y
+        @param segment_flag: indicating which segment (the being, the end, or
+                the middle segment) to extract
+        @param ratio: the ratio of the distance of the begin/end segment
+                with the value between 0.0 and 1.0
+        """
+        MIN_STRAIGHT_LINE_DIST = 20
+        if (max(list_coord) - min(list_coord)) > MIN_STRAIGHT_LINE_DIST:
+            return self._get_segments_by_distance(list_t, list_coord,
+                                                  segment_flag, ratio)
+        else:
+            return (self._get_segments_by_length(list_t, segment_flag, ratio),
+                    self._get_segments_by_length(list_coord, segment_flag,
+                                                 ratio))
 
     def get_reversed_motions(self, target_slot, direction,
                              segment_flag=VAL.WHOLE, ratio=None):
@@ -946,8 +1034,8 @@ class Mtb:
             if axis_moving_direction is None:
                 continue
             displacement = displacement_dict[axis]
-            displacement_segment = self._get_segments(displacement,
-                                                      segment_flag, ratio)
+            displacement_segment = self._get_segments_by_length(
+                    displacement, segment_flag, ratio)
             reversed_func = reversed_functions[axis_moving_direction]
             reversed_motions[axis] = sum(filter(reversed_func,
                                                 displacement_segment))

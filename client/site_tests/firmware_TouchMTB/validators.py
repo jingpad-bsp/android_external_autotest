@@ -439,23 +439,27 @@ class LinearityValidator2(BaseValidator):
         if len(list_t) < 2 or len(list_y) < 2:
             return []
 
+        mid_segment_t, mid_segment_y = self.packets.get_segments(
+                list_t, list_y, VAL.MIDDLE, END_PERCENTAGE)
+
         # Calculate the simple linear regression line.
         degree = 1
-        regress_line = np.poly1d(np.polyfit(list_t, list_y, degree))
+        regress_line = np.poly1d(np.polyfit(mid_segment_t, mid_segment_y,
+                                            degree))
 
         # Compute the fitting errors of the specified segments.
         if self._segments == VAL.BOTH_ENDS:
-            begin_segment = self.packets.get_segments_x_and_y(
+            begin_segments = self.packets.get_segments(
                     list_t, list_y, VAL.BEGIN, END_PERCENTAGE)
-            end_segment = self.packets.get_segments_x_and_y(
+            end_segments = self.packets.get_segments(
                     list_t, list_y, VAL.END, END_PERCENTAGE)
-            begin_error = self._calc_residuals(regress_line, *begin_segment)
-            end_error = self._calc_residuals(regress_line, *end_segment)
+            begin_error = self._calc_residuals(regress_line, *begin_segments)
+            end_error = self._calc_residuals(regress_line, *end_segments)
             return begin_error + end_error
         else:
-            target_segment = self.packets.get_segments_x_and_y(
+            target_segments = self.packets.get_segments(
                     list_t, list_y, self._segments, END_PERCENTAGE)
-            return self._calc_residuals(regress_line, *target_segment)
+            return self._calc_residuals(regress_line, *target_segments)
 
     def _calc_errors_single_axis(self, list_t, list_y):
         """Calculate various errors for axis-time.
@@ -491,33 +495,52 @@ class LinearityValidator2(BaseValidator):
         self.rms_err_x_mm, self.rms_err_y_mm = self.device.pixel_to_mm(
                 (rms_err_x_px, rms_err_y_px))
 
-    def check(self, packets, variation=None):
-        """Check if the packets conforms to specified criteria."""
-        self.init_check(packets)
+    def _log_details_and_metrics(self, variation):
+        """Log the details and calculate the metrics.
+
+        @param variation: the gesture variation
+        """
         points = self.packets.get_ordered_finger_path(self.finger, 'point')
         list_x = [p.x for p in points]
         list_y = [p.y for p in points]
         list_t = self.packets.get_ordered_finger_path(self.finger, 'syn_time')
 
-        # Calculate various errors
-        self._calc_errors_all_axes(list_t, list_x, list_y)
-
-        self.log_details('max_err: (%.2f, %.2f) mm' %
-                         (self.max_err_x_mm, self.max_err_y_mm))
-        self.log_details('rms_err: (%.2f, %.2f) mm' %
-                         (self.rms_err_x_mm, self.rms_err_y_mm))
-
         X, Y = AXIS.LIST
-        mnprops = self.mnprops
-        self.vlog.metrics = [
-            firmware_log.Metric(mnprops.MAX_ERR.format(X), self.max_err_x_mm),
-            firmware_log.Metric(mnprops.MAX_ERR.format(Y), self.max_err_y_mm),
-            firmware_log.Metric(mnprops.RMS_ERR.format(X), self.rms_err_x_mm),
-            firmware_log.Metric(mnprops.RMS_ERR.format(Y), self.rms_err_y_mm),
-        ]
+        # For horizontal lines, only consider x axis
+        if self.is_horizontal(variation):
+            self.list_coords = {X: list_x}
+        # For vertical lines, only consider y axis
+        elif self.is_vertical(variation):
+            self.list_coords = {Y: list_y}
+        # For diagonal lines, consider both x and y axes
+        elif self.is_diagonal(variation):
+            self.list_coords = {X: list_x, Y: list_y}
 
+        self.max_err_mm = {}
+        self.rms_err_mm = {}
+        self.vlog.metrics = []
+        mnprops = self.mnprops
+        pixel_to_mm = self.device.pixel_to_mm_single_axis_by_name
+        for axis, list_c in self.list_coords.items():
+            max_err_px, rms_err_px = self._calc_errors_single_axis(
+                    list_t, list_c)
+            max_err_mm = pixel_to_mm(max_err_px, axis)
+            rms_err_mm = pixel_to_mm(rms_err_px, axis)
+            self.log_details('max_err[%s]: %.2f mm' % (axis, max_err_mm))
+            self.log_details('rms_err[%s]: %.2f mm' % (axis, rms_err_mm))
+            self.vlog.metrics.extend([
+                firmware_log.Metric(mnprops.MAX_ERR.format(axis), max_err_mm),
+                firmware_log.Metric(mnprops.RMS_ERR.format(axis), rms_err_mm),
+            ])
+            self.max_err_mm[axis] = max_err_mm
+            self.rms_err_mm[axis] = rms_err_mm
+
+    def check(self, packets, variation=None):
+        """Check if the packets conforms to specified criteria."""
+        self.init_check(packets)
+        self._log_details_and_metrics(variation)
         # Calculate the score based on the max error
-        max_err = max(self.max_err_x_mm, self.max_err_y_mm)
+        max_err = max(self.max_err_mm.values())
         self.vlog.score = self.fc.mf.grade(max_err)
         return self.vlog
 

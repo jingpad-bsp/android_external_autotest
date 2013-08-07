@@ -555,6 +555,62 @@ class MtbTest(unittest.TestCase):
                                     ((70 - 16) / 10.0) ** 2) ** 0.5
         self.assertAlmostEqual(max_distance_mm, expected_max_distance_mm)
 
+    def _test_get_segments(self, list_t, list_coord, expected_segments, ratio):
+        """Test get_segments
+
+        @param expected_segments: a dictionary of
+                {segment_flag: expected_segment_indexes}
+        """
+        mtb_packets = mtb.Mtb(device=mocked_device[PLATFORM.LUMPY])
+        for segment_flag, (expected_segment_t, expected_segment_coord) in \
+                expected_segments.items():
+            segment_t, segment_coord = mtb_packets.get_segments(
+                    list_t, list_coord, segment_flag, ratio)
+            self.assertEqual(segment_t, expected_segment_t)
+            self.assertEqual(segment_coord, expected_segment_coord)
+
+    def test_get_segments_by_distance(self):
+        """Test get_segments_by_distance
+
+        In the test case below,
+            min_coord = 100
+            max_coord = 220
+            max_distance = max_coord - min_coord = 220 - 100 = 120
+            ratio = 0.1
+            120 * 0.1 = 12
+            begin segment: 100 ~ 112
+            end segment: 208 ~ 220
+        """
+        list_coord = [102, 101, 101, 100, 100, 103, 104, 110, 118, 120,
+                      122, 124, 131, 140, 150, 160, 190, 210, 217, 220]
+        list_t = [1000 + 0.012 * i for i in range(len(list_coord))]
+        ratio = 0.1
+        expected_segments= {
+                VAL.WHOLE: (list_t, list_coord),
+                VAL.MIDDLE: (list_t[8:17], list_coord[8:17]),
+                VAL.BEGIN: (list_t[:8], list_coord[:8]),
+                VAL.END: (list_t[17:], list_coord[17:]),
+        }
+        self._test_get_segments(list_t, list_coord, expected_segments, ratio)
+
+    def test_get_segments_by_length(self):
+        """Test get_segments_by_length"""
+        list_coords = [
+                [105, 105, 105, 105, 105, 105, 105, 105, 105, 105],
+                [104, 105, 105, 105, 105, 105, 105, 105, 105, 105],
+                [105, 105, 105, 105, 105, 105, 105, 105, 105, 106],
+        ]
+        ratio = 0.1
+        for list_c in list_coords:
+            list_t = [1000 + 0.012 * i for i in range(len(list_c))]
+            expected_segments= {
+                    VAL.WHOLE: (list_t, list_c),
+                    VAL.MIDDLE: (list_t[1:9], list_c[1:9]),
+                    VAL.BEGIN: (list_t[:1], list_c[:1]),
+                    VAL.END: (list_t[9:], list_c[9:]),
+            }
+            self._test_get_segments(list_t, list_c, expected_segments, ratio)
+
 
 if __name__ == '__main__':
   unittest.main()
