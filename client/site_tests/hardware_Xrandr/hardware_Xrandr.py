@@ -102,13 +102,13 @@ class hardware_Xrandr(test.test):
     def _is_internal(self, output):
         """
         Determines if the given output is an internal output.  Internal outputs
-        are identified by name -- either eDP or LVDS.
+        are identified by name -- eDP, LVDS, or DSI.
 
         Args:
           output:     name of output to check
         Return value:
-          True if |output| is eDP or LVDS, False otherwise.
+          True if |output| is eDP, LVDS, or DSI, False otherwise.
         """
-        internal_types = ['edp', 'lvds']
+        internal_types = ['edp', 'lvds', 'dsi']
         matches = [output.lower().startswith(type) for type in internal_types]
         return True in matches
