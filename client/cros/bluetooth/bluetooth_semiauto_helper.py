@@ -2,15 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json, logging, os, pwd, shutil, StringIO, subprocess, time
+import json, logging, os, pwd, shutil, subprocess, time
 
 import dbus
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import semiauto_framework
 from autotest_lib.client.cros import sys_power
-from telemetry.core import browser_finder
-from telemetry.core import browser_options
 from telemetry.core import util
 
 _USER_TIMEOUT_TIME = 321  # Seconds a tester has to respond to prompts
@@ -21,7 +19,7 @@ _TIME_FORMAT = '%d %b %Y %H:%M:%S' # Human-readable time format for logs
 _SECTION_BREAK = '='*75
 
 
-class BluetoothSemiAutoHelper(test.test):
+class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
     """Generic Bluetooth SemiAutoTest.
 
     Contains functions needed to implement an actual Bluetooth SemiAutoTest,
@@ -128,15 +126,8 @@ class BluetoothSemiAutoHelper(test.test):
         Assumes the existence of 'client/cros/audio/music.mp3' file, and will
         fail if not found.
         """
-        # Set browser options
-        options = browser_options.BrowserOptions()
-        options.browser_type = 'system'
-        options.profile_type = 'typical_user'
-        browser_to_create = browser_finder.FindBrowser(options)
-        logging.debug('Browser Found: %s', browser_to_create)
-        self._browser = browser_to_create.Create()
-        self._browser.SetHTTPServerDirectories(
-                os.path.join(self.bindir, '..', '..', 'cros', 'bluetooth'))
+        # Open browser and interactive tab
+        self.login_and_open_interactive_tab()
 
         # Find mounted home directory
         user_home = None
@@ -168,79 +159,46 @@ class BluetoothSemiAutoHelper(test.test):
         self._settings_tab.Navigate('chrome://settings/search#Bluetooth')
         music_tab = self._browser.tabs.New()
         music_tab.Navigate('file:///home/chronos/user/Downloads/loop.html')
-        self._tab = self._browser.tabs.New()
-        self._tab.Navigate(self._browser.http_server.UrlOf('shell.html'))
-
-    def _open_dialog(self, html):
-        """Replace the body of self._tab with provided html."""
-        html_esc = html.replace('"', '\\"')
-        self._tab.ExecuteJavaScript('window.__ready = 0; '
-                                    'document.body.innerHTML="%s";' % html_esc)
-        self._tab.Activate()
-        self._tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
 
     def ask_user(self, message):
         """Ask the user a yes or no question in an open tab.
 
-        Reset dialog page to be a question (message param) with 'YES' and 'NO'
-        buttons.  Wait for answer.  If no, ask for more information.
+        Reset dialog page to be a question (message param) with 'PASS' and
+        'FAIL' buttons.  Wait for answer.  If no, ask for more information.
 
         @param message: string sent to the user via browswer interaction.
         """
         logging.info('Asking user "%s"', message)
+        sandbox = 'SANDBOX:<input type="text"/>'
+        html = '<h3>%s</h3>%s' % (message, sandbox)
+        self.set_tab_with_buttons(html, buttons=['PASS', 'FAIL'])
 
-        def _button(label, func):
-            fmt_str = '<input type="button" value="%s" onclick="%s"/>'
-            return fmt_str % (label, func)
-        def _textbox(label):
-            return '%s<input type="text" id="textinput"/>' % label
-        func_str = 'submit_button(%d)'
-        fmt_str = '<h3>%s</h3><form>%s%s<br><br><br></form>%s'
-        html = fmt_str % (message, _button('PASS', func_str % 1),
-                          _button('FAIL', func_str % -1), _textbox('SANDBOX'))
-        self._open_dialog(html)
+        # Intepret results.
+        result = self.wait_for_tab_result(timeout=_USER_TIMEOUT_TIME)
+        if result == 1:
+            # Ask for more information on error.
+            html='<h3>Please provide more info:</h3>'
+            self.set_tab_with_textbox(html)
 
-        def get_response():
-            """Waits for response from user and gets result."""
-
-            stream = StringIO.StringIO()
-            self._tab.message_output_stream = stream
-
-            def _complete():
-                return self._tab.EvaluateJavaScript('window.__ready') == 1
-            try:
-                util.WaitFor(_complete, _USER_TIMEOUT_TIME)
-            except:
-                raise error.TestError('Timeout on answer to "%s"' % message)
-
-            return self._tab.EvaluateJavaScript('window.__result')
-
-        # Intepret results
-        result = get_response()
-        if result == -1:
-            fmt_str = '<h3>Please provide more info:</h3>%s<br><form>%s</form>'
-            html = fmt_str % (_textbox(''), _button('SUBMIT', 'get_text()'))
-            self._open_dialog(html)
-
-            result = get_response()
-            self._open_dialog('')
+            # Get explanation of error, clear output, and raise error.
+            result = self.wait_for_tab_result(timeout=_USER_TIMEOUT_TIME)
+            self.clear_output()
             self._err('Testing %s. "%s"' % (self._test_type, result))
-        elif result != 1:
+        elif result != 0:
             raise error.TestError('Bad dialog value: %s' % result)
         logging.info('Answer was PASS')
 
-        # Clear user screen
-        self._open_dialog('')
+        # Clear user screen.
+        self.clear_output()
 
     def tell_user(self, message):
         """Tell the user the given message in an open tab.
 
-        @param message: the text string to be displayed
+        @param message: the text string to be displayed.
         """
-
         logging.info('Telling user "%s"', message)
         html = '<h3>%s</h3>' % message
-        self._open_dialog(html)
+        self.set_tab(html)
 
     def check_working(self, message=None):
         """Steps to check that all devices are functioning.
@@ -340,7 +298,7 @@ class BluetoothSemiAutoHelper(test.test):
         sys_power.do_suspend(5)
 
     def initialize(self):
-        self._close_browser = True
+        self._will_close_browser = True
         self._bus = dbus.SystemBus()
         self._dump = None
         self.login_and_open_browser()
@@ -359,7 +317,7 @@ class BluetoothSemiAutoHelper(test.test):
         self._addrs = addrs
         self._test_type = 'start'
         self._test_phase = test_phase
-        self._close_browser = close_browser
+        self._will_close_browser = close_browser
 
     def cleanup(self):
         """Cleanup of various files/processes opened during test.
@@ -369,8 +327,8 @@ class BluetoothSemiAutoHelper(test.test):
         """
         if self._dump:
             self._dump.kill()
-        if self._close_browser and self._browser:
-            self._browser.Close()
+        if self._will_close_browser:
+            self.close_browser()
         if os.path.exists(self._added_loop_file):
             os.remove(self._added_loop_file)
         if os.path.exists(self._added_music_file):
