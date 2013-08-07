@@ -50,6 +50,7 @@ class network_BasicProfileProperties(test.test):
         with shill_temporary_profile.ShillTemporaryProfile(
                 shill.manager, profile_name=self.PROFILE_NAME):
             profiles = shill.get_profiles()
+            logging.info('Got profiles %r', profiles)
             # The last profile should be the one we just created.
             profile = profiles[-1]
             profile_properties = shill.dbus2primitive(
@@ -61,13 +62,15 @@ class network_BasicProfileProperties(test.test):
                 raise error.TestFail('Found unexpected top profile with name '
                                      '%r.' % profile_name)
 
-            entries = self.get_field_from_properties(
-                    profile_properties, self.PROFILE_PROPERTY_ENTRIES)
-            ethernet_if = interface.Interface.get_ethernet_interface()
+            entries = shill.dbus2primitive(self.get_field_from_properties(
+                    profile_properties, self.PROFILE_PROPERTY_ENTRIES))
+            logging.info('Found entries: %r', entries)
+            ethernet_if = interface.Interface.get_connected_ethernet_interface()
             mac = ethernet_if.mac_address.replace(':', '').lower()
             ethernet_entry_key = 'ethernet_%s' % mac
             if not ethernet_entry_key in entries:
-                raise error.TestFail('Missing ethernet entry from profile.')
+                raise error.TestFail('Missing ethernet entry %s from profile.' %
+                                     ethernet_entry_key)
 
             entry = profile.GetEntry(ethernet_entry_key)
             self.get_field_from_properties(entry, self.ENTRY_PROPERTY_FAVORITE)
