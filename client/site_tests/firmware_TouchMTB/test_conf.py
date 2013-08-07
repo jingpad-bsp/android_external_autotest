@@ -766,9 +766,9 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 4'),
-                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
                                    segments=VAL.MIDDLE),
-                LinearityValidator(relaxed_linearity_criteria, slot=1,
+                LinearityValidator(relaxed_linearity_criteria, slot=0,
                                    segments=VAL.BOTH_ENDS),
                 NoGapValidator(no_gap_criteria, slot=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
