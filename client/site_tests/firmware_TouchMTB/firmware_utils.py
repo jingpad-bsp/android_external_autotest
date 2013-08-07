@@ -57,7 +57,10 @@ def get_fw_and_date(filename):
         '20130422_020631-fw_1.0.170-manual'
         return (fw_1.0.170, 20130422_020631)
     """
-    result = re.search('-(%s[._0-9]+?)-' % conf.fw_prefix, filename)
+    # The firmware could be fw_1.0.170 or fw_1.0.AA which always comes with
+    # 'fw_' as its prefix. The character '-' is used to separate components
+    # in the filename.
+    result = re.search('-(%s[^-]+?)-' % conf.fw_prefix, filename)
     fw = result.group(1) if result else None
 
     result = re.search('(\d{8}_\d{6})[-.]', filename)
