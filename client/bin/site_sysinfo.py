@@ -312,16 +312,23 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
 
 
     def _get_chrome_version(self):
-        """Gets the Chrome version number as a string.
+        """Gets the Chrome version number and milestone as strings.
 
-        @return The current Chrome version number as a string.  It is specified
-            in format "X.X.X.X" if it can be parsed in that format, otherwise
-            it is specified as the full output of "chrome --version".
+        Invokes "chrome --version" to get the version number and milestone.
+
+        @return A tuple (chrome_ver, milestone) where "chrome_ver" is the
+            current Chrome version number as a string (in the form "W.X.Y.Z")
+            and "milestone" is the first component of the version number
+            (the "W" from "W.X.Y.Z").  If the version number cannot be parsed
+            in the "W.X.Y.Z" format, the "chrome_ver" will be the full output
+            of "chrome --version" and the milestone will be the empty string.
 
         """
         version_string = utils.system_output(self._CHROME_VERSION_COMMAND)
-        match = re.search('\d+\.\d+\.\d+\.\d+', version_string)
-        return match.group(0) if match else version_string
+        match = re.search('(\d+)\.\d+\.\d+\.\d+', version_string)
+        ver = match.group(0) if match else version_string
+        milestone = match.group(1) if match else ''
+        return ver, milestone
 
 
     def log_test_keyvals(self, test_sysinfodir):
@@ -357,8 +364,9 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
                                   mainfw_type)
                 raise
 
-        # Get the chrome version.
-        keyval["CHROME_VERSION"] = self._get_chrome_version()
+        # Get the chrome version and milestone numbers.
+        keyval["CHROME_VERSION"], keyval["MILESTONE"] = (
+                self._get_chrome_version())
 
         # Return the updated keyvals.
         return keyval
