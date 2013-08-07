@@ -178,10 +178,17 @@ def unmount_vault(user):
 
 def __get_mount_info(mount_point, allow_fail=False):
     """Get information about the active mount at a given mount point."""
-    print utils.system_output('cat /proc/$(pgrep cryptohomed)/mounts')
-    mount_line = utils.system_output(
-        'grep %s /proc/$(pgrep cryptohomed)/mounts' % mount_point,
-        ignore_status=allow_fail)
+    cryptohomed_path = '/proc/$(pgrep cryptohomed)/mounts'
+    try:
+        logging.info(utils.system_output('cat %s' % cryptohomed_path))
+        mount_line = utils.system_output(
+            'grep %s %s' % (mount_point, cryptohomed_path),
+            ignore_status=allow_fail)
+    except Exception as e:
+        logging.error(e)
+        raise ChromiumOSError('Could not get info about cryptohome vault '
+                              'through %s. See logs for complete mount-point.'
+                              % os.path.dirname(str(mount_point)))
     return mount_line.split()
 
 
