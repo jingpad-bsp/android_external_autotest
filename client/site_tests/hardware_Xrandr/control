@@ -20,5 +20,5 @@ Call "xrandr --output [OUTPUT] --auto/--on" to turn screen off/on, respectively.
 """
 
 job.run_test('hardware_Xrandr',
-             constraints=['s_max_internal_off_time <= 1.0',
-                          's_max_internal_on_time <= 1.0'])
+             constraints=['s_internal_off_max_time <= 1.0',
+                          's_internal_on_max_time <= 1.0'])
