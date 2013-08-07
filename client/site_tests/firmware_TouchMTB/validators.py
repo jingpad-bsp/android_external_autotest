@@ -256,16 +256,16 @@ class LinearityValidator1(BaseValidator):
     """Validator to verify linearity.
 
     Example:
-        To check the linearity of the line drawn in slot 1:
-          LinearityValidator1('<= 0.03, ~ +0.07', slot=1)
+        To check the linearity of the line drawn in finger 1:
+          LinearityValidator1('<= 0.03, ~ +0.07', finger=1)
     """
     # Define the partial group size for calculating Mean Squared Error
     MSE_PARTIAL_GROUP_SIZE = 1
 
-    def __init__(self, criteria_str, mf=None, device=None, slot=0,
+    def __init__(self, criteria_str, mf=None, device=None, finger=0,
                  segments=VAL.WHOLE):
         self._segments = segments
-        self.slot = slot
+        self.finger = finger
         name = get_derived_name(self.__class__.__name__, segments)
         super(LinearityValidator1, self).__init__(criteria_str, mf, device,
                                                   name)
@@ -364,7 +364,7 @@ class LinearityValidator1(BaseValidator):
         """Check if the packets conforms to specified criteria."""
         self.init_check(packets)
         resolution_x, resolution_y = self.device.get_resolutions()
-        (list_x, list_y) = self.packets.get_x_y(self.slot)
+        (list_x, list_y) = self.packets.get_x_y(self.finger)
         # Compute average distance (fitting error) in pixels, and
         # average deviation on touch device in mm.
         if self.is_vertical(variation):
@@ -375,8 +375,8 @@ class LinearityValidator1(BaseValidator):
             deviation = ave_distance / resolution_y
 
         self.log_details('ave fitting error: %.2f px' % ave_distance)
-        msg_device = 'deviation slot%d: %.2f mm'
-        self.log_details(msg_device % (self.slot, deviation))
+        msg_device = 'deviation finger%d: %.2f mm'
+        self.log_details(msg_device % (self.finger, deviation))
         self.vlog.score = self.fc.mf.grade(deviation)
         return self.vlog
 
@@ -385,16 +385,17 @@ class LinearityValidator2(BaseValidator):
     """A new validator to verify linearity based on x-t and y-t
 
     Example:
-        To check the linearity of the line drawn in slot 1:
-          LinearityValidator2('<= 0.03, ~ +0.07', slot=1)
+        To check the linearity of the line drawn in finger 1:
+          LinearityValidator2('<= 0.03, ~ +0.07', finger=1)
+        Note: the finger number begins from 0
     """
     # Define the partial group size for calculating Mean Squared Error
     MSE_PARTIAL_GROUP_SIZE = 1
 
-    def __init__(self, criteria_str, mf=None, device=None, slot=0,
+    def __init__(self, criteria_str, mf=None, device=None, finger=0,
                  segments=VAL.WHOLE):
         self._segments = segments
-        self.slot = slot
+        self.finger = finger
         name = get_derived_name(self.__class__.__name__, segments)
         super(LinearityValidator2, self).__init__(criteria_str, mf, device,
                                                   name)
@@ -493,10 +494,10 @@ class LinearityValidator2(BaseValidator):
     def check(self, packets, variation=None):
         """Check if the packets conforms to specified criteria."""
         self.init_check(packets)
-        points = self.packets.get_slot_data(self.slot, 'point')
+        points = self.packets.get_ordered_finger_path(self.finger, 'point')
         list_x = [p.x for p in points]
         list_y = [p.y for p in points]
-        list_t = self.packets.get_slot_data(self.slot, 'syn_time')
+        list_t = self.packets.get_ordered_finger_path(self.finger, 'syn_time')
 
         # Calculate various errors
         self._calc_errors_all_axes(list_t, list_x, list_y)

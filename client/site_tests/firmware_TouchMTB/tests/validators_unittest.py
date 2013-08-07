@@ -196,15 +196,15 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.criteria = conf.linearity_criteria
         validators.show_new_spec = False
 
-    def _test_linearity_criteria(self, criteria_str, slots, device):
+    def _test_linearity_criteria(self, criteria_str, fingers, device):
         filename = '2f_scroll_diagonal.dat'
         direction = GV.DIAGONAL
         packets = parse_tests_data(filename)
         scores = {}
-        for slot in slots:
+        for finger in fingers:
             validator = LinearityValidator(criteria_str, device=device,
-                                           slot=slot)
-            scores[slot] = validator.check(packets, direction).score
+                                           finger=finger)
+            scores[finger] = validator.check(packets, direction).score
         return scores
 
     def test_linearity_criteria0(self):
@@ -228,15 +228,16 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertTrue(scores[0] == 1)
         self.assertTrue(scores[1] == 1)
 
-    def _test_linearity_validator(self, filename, criteria, slots, device,
+    def _test_linearity_validator(self, filename, criteria, fingers, device,
                                   direction):
         packets = parse_tests_data(filename)
         scores = {}
-        if isinstance(slots, int):
-            slots = (slots,)
-        for slot in slots:
-            validator = LinearityValidator(criteria, device=device, slot=slot)
-            scores[slot] = validator.check(packets, direction).score
+        if isinstance(fingers, int):
+            fingers = (fingers,)
+        for finger in fingers:
+            validator = LinearityValidator(criteria, device=device,
+                                           finger=finger)
+            scores[finger] = validator.check(packets, direction).score
         return scores
 
     def test_two_finger_jagged_lines(self):
@@ -294,7 +295,7 @@ class LinearityValidatorTest(BaseValidatorTest):
     def test_first_point_jump(self):
         """Test the first point jump
 
-        At slot 0, the positions of (x, y) looks like
+        At finger 0, the positions of (x, y) looks like
             x: 208, 241, 242, 245, 246, ...
             y: 551, 594, 595, 597, 598, ...
         Note that the the first y position is a jump.
@@ -305,7 +306,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertTrue(scores[0] < 0.3)
 
     def test_simple_linear_regression0(self):
-        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, slot=0)
+        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, finger=0)
         validator.init_check()
         # A perfect line from bottom left to top right
         list_x = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -314,7 +315,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertEqual(spmse, 0)
 
     def test_simple_linear_regression1(self):
-        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, slot=0)
+        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, finger=0)
         validator.init_check()
         # Another perfect line from top left to bottom right
         list_x = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -323,7 +324,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertEqual(spmse, 0)
 
     def test_simple_linear_regression2(self):
-        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, slot=0)
+        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, finger=0)
         validator.init_check()
         # An outlier in y axis
         list_x = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -332,7 +333,7 @@ class LinearityValidatorTest(BaseValidatorTest):
         self.assertTrue(spmse > 0)
 
     def test_simple_linear_regression3(self):
-        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, slot=0)
+        validator = LinearityValidator('<= 0.2, ~ +0.3', device=lumpy, finger=0)
         validator.init_check()
         # Repeated values in x axis
         list_x = [1, 2, 2, 4, 5, 6, 7, 8]
@@ -347,7 +348,7 @@ class LinearityValidator2Test(BaseValidatorTest):
     def setUp(self):
         super(LinearityValidator2Test, self).setUp(show_spec_v2_flag=True)
         self.validator = LinearityValidator(conf.linearity_criteria,
-                                            device=lumpy, slot=0)
+                                            device=lumpy, finger=0)
         self.validator.init_check()
 
     def test_simple_linear_regression0(self):
