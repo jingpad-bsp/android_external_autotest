@@ -20,7 +20,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
     def __init__(self, bus, properties, config=None):
         self._active = False
         self._bearer_props = properties
-        path = '%s/Bearers/%d' % (mm1.MM1, Bearer.count)
+        path = '%s/Bearer/%d' % (mm1.MM1, Bearer.count)
         Bearer.count += 1
         dbus_std_ifaces.DBusProperties.__init__(self, path, bus, config)
 
