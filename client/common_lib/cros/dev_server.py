@@ -477,6 +477,7 @@ class ImageServer(DevServer):
         response = self.call_and_wait(call_name='setup_telemetry',
                                       archive_url=archive_url,
                                       artifacts=artifacts,
+                                      error_message=None,
                                       expected_response=None)
         return response
 
