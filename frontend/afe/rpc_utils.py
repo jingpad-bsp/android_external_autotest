@@ -271,7 +271,7 @@ def check_abort_synchronous_jobs(host_queue_entries):
 
 
 def check_atomic_group_create_job(synch_count, host_objects, metahost_objects,
-                                  dependencies, atomic_group, labels_by_name):
+                                  dependencies, atomic_group):
     """
     Attempt to reject create_job requests with an atomic group that
     will be impossible to schedule.  The checks are not perfect but
@@ -281,7 +281,6 @@ def check_atomic_group_create_job(synch_count, host_objects, metahost_objects,
     @param host_objects - A list of models.Host instances.
     @param metahost_objects - A list of models.Label instances.
     @param dependencies - A list of job dependency label names.
-    @param atomic_group - The models.AtomicGroup instance.
     @param labels_by_name - A dictionary mapping label names to models.Label
             instance.  Used to look up instances for dependencies.
 
@@ -306,8 +305,7 @@ def check_atomic_group_create_job(synch_count, host_objects, metahost_objects,
         possible_hosts.update(h.hostname for h in label.host_set.all())
 
     # Filter out hosts that don't match all of the job dependency labels.
-    for label_name in set(dependencies):
-        label = labels_by_name[label_name]
+    for label in models.Label.objects.filter(name__in=dependencies):
         hosts_in_label = (h.hostname for h in label.host_set.all())
         possible_hosts.intersection_update(hosts_in_label)
 
@@ -463,8 +461,6 @@ def check_for_duplicate_hosts(host_objects):
 
 def create_new_job(owner, options, host_objects, metahost_objects,
                    atomic_group=None):
-    labels_by_name = dict((label.name, label)
-                          for label in models.Label.objects.all())
     all_host_objects = host_objects + metahost_objects
     metahost_counts = _get_metahost_counts(metahost_objects)
     dependencies = options.get('dependencies', [])
@@ -473,7 +469,7 @@ def create_new_job(owner, options, host_objects, metahost_objects,
     if atomic_group:
         check_atomic_group_create_job(
                 synch_count, host_objects, metahost_objects,
-                dependencies, atomic_group, labels_by_name)
+                dependencies, atomic_group)
     else:
         if synch_count is not None and synch_count > len(all_host_objects):
             raise model_logic.ValidationError(
@@ -497,20 +493,15 @@ def create_new_job(owner, options, host_objects, metahost_objects,
 
     # There may be provisionable labels in the dependencies list
     # that do not yet exist in the database. If so, create them.
-    new_label_added = False
     for label_name in dependencies:
         if provision.can_provision(label_name):
             # TODO: We could save a few queries
             # if we had a bulk ensure-label-exists function, which used
             # a bulk .get() call. The win is probably very small.
-            new_label_added = (_ensure_label_exists(label_name) |
-                               new_label_added)
-    if new_label_added:
-        labels_by_name = dict((label.name, label)
-                              for label in models.Label.objects.all())
+            _ensure_label_exists(label_name)
 
-    options['dependencies'] = [labels_by_name[label_name]
-                               for label_name in dependencies]
+    options['dependencies'] = list(
+            models.Label.objects.filter(name__in=dependencies))
 
     for label in metahost_objects + options['dependencies']:
         if label.atomic_group and not atomic_group:
@@ -696,9 +687,6 @@ def create_job_common(name, priority, control_type, control_file=None,
     user = models.User.current_user()
     owner = user.login
 
-    # Convert metahost names to lower case, to avoid case sensitivity issues
-    meta_hosts = [meta_host.lower() for meta_host in meta_hosts]
-
     # input validation
     if not (hosts or meta_hosts or one_time_hosts or atomic_group_name
             or hostless):
@@ -718,16 +706,14 @@ def create_job_common(name, priority, control_type, control_file=None,
                     'control_type': 'Hostless jobs cannot use client-side '
                                     'control files'})
 
-    labels_by_name = dict((label.name.lower(), label)
-                          for label in models.Label.objects.all())
-    atomic_groups_by_name = dict((ag.name.lower(), ag)
+    atomic_groups_by_name = dict((ag.name, ag)
                                  for ag in models.AtomicGroup.objects.all())
+    label_objects = list(models.Label.objects.filter(name__in=meta_hosts))
 
     # Schedule on an atomic group automagically if one of the labels given
     # is an atomic group label and no explicit atomic_group_name was supplied.
     if not atomic_group_name:
-        for label_name in meta_hosts or []:
-            label = labels_by_name.get(label_name)
+        for label in label_objects:
             if label and label.atomic_group:
                 atomic_group_name = label.atomic_group.name
                 break
@@ -735,10 +721,10 @@ def create_job_common(name, priority, control_type, control_file=None,
     # convert hostnames & meta hosts to host/label objects
     host_objects = models.Host.smart_get_bulk(hosts)
     metahost_objects = []
+    meta_host_labels_by_name = {label.name: label for label in label_objects}
     for label_name in meta_hosts or []:
-        if label_name in labels_by_name:
-            label = labels_by_name[label_name]
-            metahost_objects.append(label)
+        if label_name in meta_host_labels_by_name:
+            metahost_objects.append(meta_host_labels_by_name[label_name])
         elif label_name in atomic_groups_by_name:
             # If given a metahost name that isn't a Label, check to
             # see if the user was specifying an Atomic Group instead.
