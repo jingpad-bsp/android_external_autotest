@@ -21,10 +21,11 @@ class network_WiFi_IBSS(wifi_cell_test_base.WiFiCellTestBase):
         configuration = hostap_config.HostapConfig(
                 frequency=2412, mode=hostap_config.HostapConfig.MODE_11B)
         self.context.configure(configuration, is_ibss=True)
-        assoc_params = xmlrpc_datatypes.AssociationParameters()
-        assoc_params.ssid = self.context.router.get_ssid()
-        assoc_params.station_type = \
-                xmlrpc_datatypes.AssociationParameters.STATION_TYPE_IBSS
+        assoc_params = xmlrpc_datatypes.AssociationParameters(
+                ssid=self.context.router.get_ssid(),
+                discovery_timeout=30,
+                station_type=xmlrpc_datatypes.
+                        AssociationParameters.STATION_TYPE_IBSS)
         self.context.assert_connect_wifi(assoc_params)
         self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)
