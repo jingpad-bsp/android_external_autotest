@@ -2075,6 +2075,9 @@ class ProvisionTask(PreJobTask):
         # thus we fail the HQE.  This difference is handled only here for now,
         # but some refactoring of PreJobTask should likely happen sometime in
         # the future?
+        # This call is needed to log the status and call into self.cleanup(),
+        # which is PreJobTasks's cleanup, which marks is_complete=1.
+        AgentTask.epilog(self)
 
         if not self.success:
             # TODO(milleral) http://crbug.com/231452
