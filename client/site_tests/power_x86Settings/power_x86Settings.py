@@ -321,7 +321,9 @@ class power_x86Settings(test.test):
                 drpc_info_file = open (param_path, "r")
                 for line in drpc_info_file:
                     match = re.search(r'Current RC state: (.*)', line)
-                    found = match and match.group(1) != 'on'
+                    if match:
+                        found = match.group(1) != 'on'
+                        break
 
                 tries += 1
                 drpc_info_file.close()
