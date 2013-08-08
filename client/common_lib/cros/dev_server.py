@@ -473,7 +473,7 @@ class ImageServer(DevServer):
         @returns path on the devserver that telemetry is installed to.
         """
         archive_url=_get_image_storage_server() + build
-        artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_TELEMETRY
+        artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST
         response = self.call_and_wait(call_name='setup_telemetry',
                                       archive_url=archive_url,
                                       artifacts=artifacts,
