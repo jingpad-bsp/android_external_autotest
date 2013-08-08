@@ -150,6 +150,7 @@ class network_VPNConnect(test.test):
                 'OpenVPN.CACertPEM': [ site_eap_certs.ca_cert_1 ],
                 'OpenVPN.Pkcs11.ID': site_eap_certs.cert_1_tpm_key_id,
                 'OpenVPN.Pkcs11.PIN': tpm.PIN,
+                'OpenVPN.RemoteCertEKU': 'TLS Web Server Authentication',
                 'OpenVPN.Verb': '5'
             }
             if 'user_pass' in self._vpn_type:
