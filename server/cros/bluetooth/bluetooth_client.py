@@ -120,6 +120,8 @@ class BluetoothClient(object):
 
     def close(self):
         """Tear down state associated with the client."""
+        # Turn off the discoverable flag since it may affect future tests.
+        self._proxy.set_discoverable(False)
         # Leave the adapter powered off, but don't do a full reset.
         self._proxy.set_powered(False)
         # This kills the RPC server.

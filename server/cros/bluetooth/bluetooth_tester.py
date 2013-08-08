@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import base64
+import json
+
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest, hosts
 
@@ -37,6 +40,45 @@ class BluetoothTester(object):
                 ready_test_name=
                   constants.BLUETOOTH_TESTER_XMLRPC_SERVER_READY_METHOD,
                 timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
+
+
+    def setup(self, profile):
+        """Set up the tester with the given profile.
+
+        @param profile: Profile to use for this test, valid values are:
+                computer - a standard computer profile
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.setup(profile)
+
+
+    def discover_devices(self, br_edr=True, le_public=True, le_random=True):
+        """Discover remote devices.
+
+        Activates device discovery and collects the set of devices found,
+        returning them as a list.
+
+        @param br_edr: Whether to detect BR/EDR devices.
+        @param le_public: Whether to detect LE Public Address devices.
+        @param le_random: Whether to detect LE Random Address devices.
+
+        @return List of devices found as tuples with the format
+                (address, address_type, rssi, flags, base64-encoded eirdata),
+                or False if discovery could not be started.
+
+        """
+        devices = self._proxy.discover_devices(br_edr, le_public, le_random)
+        if devices == False:
+            return False
+
+        return (
+                (address, address_type, rssi, flags,
+                 base64.decodestring(eirdata))
+                for address, address_type, rssi, flags, eirdata
+                in json.loads(devices)
+        )
 
 
     def close(self):

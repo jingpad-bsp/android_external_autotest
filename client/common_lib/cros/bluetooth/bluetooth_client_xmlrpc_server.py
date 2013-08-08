@@ -247,6 +247,11 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
+        if not discoverable and not self._adapter:
+            # Return success if we are trying to make an adapter that's
+            # missing or gone away, undiscoverable, since the expected result
+            # has happened.
+            return True
         self._adapter.Set(self.BLUEZ_ADAPTER_IFACE,
                           'Discoverable', discoverable,
                           dbus_interface=dbus.PROPERTIES_IFACE)

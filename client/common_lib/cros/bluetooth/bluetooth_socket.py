@@ -120,6 +120,57 @@ MGMT_DEV_FOUND_CONFIRM_NAME    = 0x01
 MGMT_DEV_FOUND_LEGACY_PAIRING  = 0x02
 
 
+# EIR Data field types
+EIR_FLAGS                      = 0x01
+EIR_UUID16_SOME                = 0x02
+EIR_UUID16_ALL                 = 0x03
+EIR_UUID32_SOME                = 0x04
+EIR_UUID32_ALL                 = 0x05
+EIR_UUID128_SOME               = 0x06
+EIR_UUID128_ALL                = 0x07
+EIR_NAME_SHORT                 = 0x08
+EIR_NAME_COMPLETE              = 0x09
+EIR_TX_POWER                   = 0x0A
+EIR_CLASS_OF_DEV               = 0x0D
+EIR_SSP_HASH                   = 0x0E
+EIR_SSP_RANDOMIZER             = 0x0F
+EIR_DEVICE_ID                  = 0x10
+EIR_GAP_APPEARANCE             = 0x19
+
+
+def parse_eir(eirdata):
+    """Parse Bluetooth Extended Inquiry Result (EIR) data structuree.
+
+    @param eirdata: Encoded eir data structure.
+
+    @return Dictionary equivalent to the expanded structure keyed by EIR_*
+            fields, with any data members parsed to useful formats.
+
+    """
+    fields = {}
+    pos = 0
+    while pos < len(eirdata):
+        # Byte at the current position is the field length, which should be
+        # zero at the end of the structure.
+        (field_len,) = struct.unpack('B', buffer(eirdata, pos, 1))
+        if field_len == 0:
+            break
+        # Next byte is the field type, and the rest of the field is the data.
+        # Note that the length field doesn't include itself so that's why the
+        # offsets and lengths look a little odd.
+        (field_type,) = struct.unpack('B', buffer(eirdata, pos + 1, 1))
+        data = eirdata[pos+2:pos+field_len+1]
+        pos += field_len + 1
+        # Parse the individual fields to make the data meaningful.
+        if field_type == EIR_NAME_SHORT or field_type == EIR_NAME_COMPLETE:
+            data = data.rstrip('\0')
+        # Place in the dictionary keyed by type.
+        fields[field_type] = data
+
+    return fields
+
+
+
 class BluetoothSocketError(Exception):
     """Error raised for general issues with BluetoothSocket."""
     pass
@@ -290,6 +341,62 @@ class BluetoothSocket(btsocket.socket):
                 self.events.append((event, index, data))
 
 
+    def wait_for_events(self, index, events):
+        """Wait for and return the first of a set of events specified.
+
+        @param index: Controller index of event, may be btsocket.HCI_DEV_NONE.
+        @param events: List of event codes to wait for.
+
+        Use settimeout() to set whether this method will block if there is no
+        event received, return immediately or wait for a specific length of
+        time before timing out and raising TimeoutError.
+
+        @return Tuple of (event, data)
+
+        """
+        while True:
+            for idx, (event, event_index, data) in enumerate(self.events):
+                if event_index == index and event in events:
+                    self.events.pop(idx)
+                    return (event, data)
+
+            (event, event_index, data) = self.recv_event()
+            if event_index == index and event in events:
+                return (event, data)
+            elif event == MGMT_EV_CMD_COMPLETE:
+                if len(data) < 3:
+                    raise BluetoothInvalidPacketError(
+                            ('Incorrect command complete event data length: ' +
+                             '%d (expected at least 3)' % len(data)))
+
+                (code, status) = struct.unpack_from('<HB', buffer(data, 0, 3))
+                logging.debug('[0x%04x] command 0x%04x complete: 0x%02x '
+                              '(Ignored)', index, code, status)
+
+            elif event == MGMT_EV_CMD_STATUS:
+                if len(data) != 3:
+                    raise BluetoothInvalidPacketError(
+                            ('Incorrect command status event data length: ' +
+                             '%d (expected 3)' % len(data)))
+
+                (code, status) = struct.unpack_from('<HB', buffer(data, 0, 3))
+                logging.debug('[0x%04x] command 0x%02x status: 0x%02x '
+                              '(Ignored)', index, code, status)
+
+            elif event == MGMT_EV_CONTROLLER_ERROR:
+                if len(data) != 1:
+                    raise BluetoothInvalidPacketError(
+                        ('Incorrect controller error event data length: ' +
+                         '%d (expected 1)' % len(data)))
+
+                (error_code) = struct.unpack_from('<B', buffer(data, 0, 1))
+                logging.debug('[0x%04x] controller error: %d (Ignored)',
+                              index, error_code)
+
+            else:
+                self.events.append((event, index, data))
+
+
 class BluetoothControlSocket(BluetoothSocket):
     """Bluetooth Control Socket.
 
@@ -402,7 +509,8 @@ class BluetoothControlSocket(BluetoothSocket):
 
         @return tuple (address, bluetooth_version, manufacturer,
                        supported_settings, current_settings,
-                       class_of_device, name, short_name)
+                       class_of_device, name, short_name) on success,
+                None on failure.
 
         """
         (status, data) = self.send_command_and_wait(
@@ -430,3 +538,429 @@ class BluetoothControlSocket(BluetoothSocket):
                         (class_of_device_hi << 16)),
                 name.rstrip('\0'),
                 short_name.rstrip('\0'))
+
+
+    def set_powered(self, index, powered):
+        """Set the powered state of a controller.
+
+        @param index: Controller index.
+        @param powered: Whether controller radio should be powered.
+
+        @return New controller settings on success, None on failure.
+
+        """
+        msg_data = struct.pack('<B', bool(powered))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_POWERED,
+                index,
+                msg_data,
+                expected_length=4)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_discoverable(self, index, discoverable, timeout=0):
+        """Set the discoverable state of a controller.
+
+        @param index: Controller index.
+        @param discoverable: Whether controller should be discoverable.
+        @param timeout: Timeout in seconds before disabling discovery again,
+                ignored when discoverable is False, must not be zero when
+                discoverable is True.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<BH', bool(discoverable), timeout)
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_DISCOVERABLE,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not discoverable:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_connectable(self, index, connectable):
+        """Set the connectable state of a controller.
+
+        @param index: Controller index.
+        @param connectable: Whether controller should be connectable.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(connectable))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_CONNECTABLE,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not connectable:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_fast_connectable(self, index, connectable):
+        """Set the fast connectable state of a controller.
+
+        Fast Connectable is a state where page scan parameters are set to favor
+        faster connect times at the expense of higher power consumption.
+
+        Unlike most other set_* commands, this may only be used when the
+        controller is powered.
+
+        @param index: Controller index.
+        @param connectable: Whether controller should be fast connectable.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False or the controller is
+                powered down, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(connectable))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_FAST_CONNECTABLE,
+                index,
+                msg_data)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not set_fast_connectable:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+        # This is documented as returning current settings, but doesn't in
+        # our kernel version (probably a bug), so if no data is returned,
+        # pretend that was success.
+        if len(data) == 0:
+            return 0
+        elif len(data) != 4:
+            raise BluetoothInvalidPacketError(
+                    ('Incorrect length of data for response: ' +
+                     '%d (expected 4)' % len(data)))
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_pairable(self, index, pairable):
+        """Set the pairable state of a controller.
+
+        @param index: Controller index.
+        @param pairable: Whether controller should be pairable.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(pairable))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_PAIRABLE,
+                index,
+                msg_data,
+                expected_length=4)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_link_security(self, index, link_security):
+        """Set the link security state of a controller.
+
+        Toggles the use of link level security (aka Security Mode 3) for a
+        controller.
+
+        @param index: Controller index.
+        @param link_security: Whether controller should be link_security.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(link_security))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_LINK_SECURITY,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not link_security:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_ssp(self, index, ssp):
+        """Set the whether a controller supports Simple Secure Pairing.
+
+        @param index: Controller index.
+        @param ssp: Whether controller should support SSP.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(ssp))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_SSP,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not ssp:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_hs(self, index, hs):
+        """Set the whether a controller supports Bluetooth High Speed.
+
+        @param index: Controller index.
+        @param hs: Whether controller should support High Speed.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(hs))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_HS,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not hs:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_le(self, index, le):
+        """Set the whether a controller supports Bluetooth Low Energy.
+
+        @param index: Controller index.
+        @param le: Whether controller should support Low Energy.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(le))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_LE,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not le:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_device_class(self, index, major, minor):
+        """Set the device class of the controller.
+
+        Consult the Bluetooth Baseband Assigned Numbers specification for valid
+        values, in general both values are bit fields defined by that
+        specification.
+
+        If the device class is set while the controller is powered off, 0 will
+        be returned, but the new class will be set by the host subsystem after
+        the controller is powered on.
+
+        @param index: Controller index.
+        @param major: Major device class.
+        @param minor: Minor device class.
+
+        @return New three-octet device class on success, None on failure.
+
+        """
+        msg_data = struct.pack('<BB', major, minor)
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_DEV_CLASS,
+                index,
+                msg_data,
+                expected_length=3)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (class_of_device_lo, class_of_device_mid,
+         class_of_device_hi) = struct.unpack_from('<3B', buffer(data))
+        return (class_of_device_lo |(class_of_device_mid << 8) |
+                (class_of_device_hi << 16))
+
+
+    def set_local_name(self, index, name, short_name):
+        """Set the local name of the controller.
+
+        @param index: Controller index.
+        @param name: Full length name, up to 248 characters.
+        @param short_name: Short name, up to 10 characters.
+
+        @return Tuple of (name, short_name) on success, None on failure.
+
+        """
+        # Truncate the provided parameters and then zero-pad using struct
+        # so we pass a fixed-length null-terminated string to the kernel.
+        msg_data = struct.pack('<249s11s', name[:248], short_name[:10])
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_LOCAL_NAME,
+                index,
+                msg_data,
+                expected_length=260)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (name, short_name) = struct.unpack_from('<249s11s', buffer(data))
+        return (name.rstrip('\0'), short_name.rstrip('\0'))
+
+
+    def start_discovery(self, index, address_type):
+        """Start discovering remote devices.
+
+        Call get_discovered_devices() to retrieve the list of devices found.
+
+        @param index: Controller index.
+        @param address_type: Address types to discover.
+
+        @return Address types discovery was started for on success,
+                None on failure.
+
+        """
+        msg_data = struct.pack('<B', address_type)
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_START_DISCOVERY,
+                index,
+                msg_data,
+                expected_length=1)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (address_type,) = struct.unpack_from('<B', buffer(data))
+        return address_type
+
+
+    def stop_discovery(self, index, address_type):
+        """Stop discovering remote devices.
+
+        There is usually no need to call this method explicitly as discovery
+        is automatically stopped once it has iterated through the necessary
+        channels.
+
+        @param index: Controller index.
+        @param address_type: Address types to stop discovering.
+
+        @return Address types discovery was stopped for on success,
+                None on failure.
+
+        """
+        msg_data = struct.pack('<B', address_type)
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_STOP_DISCOVERY,
+                index,
+                msg_data,
+                expected_length=1)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (address_type,) = struct.unpack_from('<B', buffer(data))
+        return address_type
+
+
+    def get_discovered_devices(self, index):
+        """Return list of discovered remote devices.
+
+        This method may be called any time after start_discovery() and will
+        wait until the full list of devices has been returned, there is usually
+        no need to call stop_discovery() explicitly.
+
+        Use settimeout() to set whether this method will block if there are no
+        events, return immediately or wait for a specific length of time before
+        timing out and raising TimeoutError.
+
+        @param index: Controller index.
+
+        @return List of devices found as tuples with the format
+                (address, address_type, rssi, flags, eirdata)
+
+        """
+        devices = []
+        discovering = True
+        while discovering:
+            (event, data) = self.wait_for_events(
+                    index,
+                    ( MGMT_EV_DISCOVERING, MGMT_EV_DEVICE_FOUND ))
+
+            if event == MGMT_EV_DISCOVERING:
+                if len(data) != 2:
+                    raise BluetoothInvalidPacketError(
+                            ('Incorrect discovering event data length: ' +
+                             '%d (expected 2)' % len(data)))
+
+                (address_type,
+                 discovering) = struct.unpack_from('<BB', buffer(data))
+
+            elif event == MGMT_EV_DEVICE_FOUND:
+                if len(data) < 14:
+                    raise BluetoothInvalidPacketError(
+                            ('Incorrect device found event data length: ' +
+                             '%d (expected at least 14)' % len(data)))
+
+                (address, address_type, rssi,
+                 flags, eir_len) = struct.unpack_from('<6sBbLH',
+                                                      buffer(data, 0, 14))
+
+                if len(data) != 14 + eir_len:
+                    raise BluetoothInvalidPacketError(
+                            ('Incorrect device found event data length: ' +
+                             '%d (expected %d)' % (len(data), 14 + eir_len)))
+
+                devices.append((
+                        ':'.join('%02X' % x
+                                 for x in reversed(
+                                        struct.unpack('6B', address))),
+                        address_type,
+                        rssi,
+                        flags,
+                        bytes(data[14:])
+                ))
+
+                # The kernel might want us to confirm whether or not we
+                # know the name of the device. We don't really care whether
+                # or not this works, we just have to do it to get the EIR
+                # Request - what's more, despite the documentation, this never
+                # returns a CMD_COMPLETE.
+                if flags & MGMT_DEV_FOUND_CONFIRM_NAME:
+                    msg_data = struct.pack('<6sBB',
+                                           address, address_type, False)
+                    self.send_command(
+                            MGMT_OP_CONFIRM_NAME,
+                            index,
+                            msg_data)
+
+
+        return devices

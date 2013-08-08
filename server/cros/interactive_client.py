@@ -28,7 +28,7 @@ class InteractiveClient(object):
         client_at = autotest.Autotest(self._host)
         client_at.install()
         # Start up the XML-RPC proxy on the client.
-        self._proxy = self.host.xmlrpc_connect(
+        self._proxy = self._host.xmlrpc_connect(
                 constants.INTERACTIVE_XMLRPC_SERVER_COMMAND,
                 constants.INTERACTIVE_XMLRPC_SERVER_PORT,
                 command_name=
