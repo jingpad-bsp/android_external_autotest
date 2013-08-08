@@ -5,6 +5,7 @@
 
 import collections
 import logging
+import os
 
 import common
 from autotest_lib.client.common_lib import global_config
@@ -83,5 +84,29 @@ def CheckDependencies(tasks):
         # Failures to parse a config entry result in a logging.warn(),
         # so let's keep the output the same across different errors
         logging.warn("Increase %s to |num: %d|", c[0], c[1])
+
+    return 1 if corrections else 0
+
+
+def CheckControlFileExistance(tasks):
+    """
+    Make sure that for any task that schedules a suite, that
+    test_suites/control.<suite> exists. this prevents people from accidentally
+    adding a suite to suite_scheduler.ini but not adding an actual suite
+    control file, thus resulting in their suite not running and the lab team
+    getting lots of email
+
+    @param tasks The list of tasks to check.
+    @return 0 if no missing control files are found
+            1 if there are at least one missing control files
+    """
+    corrections = False
+
+    for task in tasks:
+        suite_path = os.path.join(common.autotest_dir,
+                                  'test_suites', 'control.'+task.suite)
+        if not os.path.exists(suite_path):
+            corrections = True
+            logging.warn("No suite control file for %s", task.suite)
 
     return 1 if corrections else 0
