@@ -2150,7 +2150,7 @@ class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
         execution_tag = self.queue_entries[0].execution_tag()
         params = _autoserv_command_line(
             hostnames,
-            ['-P', execution_tag, '-n', '--verify_job_repo_url',
+            ['-P', execution_tag, '-n',
              _drone_manager.absolute_path(control_path)],
             job=self.job, verbose=False)
         if self.job.is_image_update_job():
@@ -2281,6 +2281,11 @@ class QueueTask(AbstractQueueTask):
         for queue_entry in self.queue_entries:
             queue_entry.set_status(models.HostQueueEntry.Status.GATHERING)
             queue_entry.host.set_status(models.Host.Status.RUNNING)
+
+
+    def _command_line(self):
+         invocation = super(QueueTask, self)._command_line()
+         return invocation + ['--verify_job_repo_url']
 
 
 class HostlessQueueTask(AbstractQueueTask):
