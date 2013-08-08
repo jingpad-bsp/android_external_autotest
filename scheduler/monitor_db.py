@@ -2097,23 +2097,15 @@ class ProvisionTask(PreJobTask):
             # the recursive aborting of all child jobs, but that shouldn't
             # matter here, as only suites have children, and those
             # are hostless and thus don't have provisioning.
+            # TODO(milleral) http://crbug.com/188217
+            # However, we can't actually do this yet, as if we set the abort bit
+            # the FinalReparseTask will set the status of the HQE to ABORTED,
+            # which then means that we don't show the status in run_suite.
+            # So in the meantime, don't mark the HQE as aborted.
             queue_entry = models.HostQueueEntry.objects.get(
                     id=self.queue_entry.id)
-            queue_entry.abort()
-            # Calling abort will set the aborted bit.  However, complete is
-            # still unset, so we end up kicking off a QueueTask and aborting
-            # that also, which causes some chaos because we effectivly abort
-            # something twice.  The end effect of which is that it hides the
-            # reason field we try to inject via the abort reason.
-            # Thus, we manually poke the complete bit here, so suppress
-            # the QueueTask abort.
-            # TODO(milleral) http://crbug.com/268596
-            # We really should be calling set_status here, but if we set the
-            # HQE to status='Aborted', then suddenly we stop getting a reason
-            # field showing up in run_suite.  So for the moment, the tests will
-            # be getting marked as Failed instead of Aborted, which should get
-            # fixed.
-            self.queue_entry.update_field('complete', 1)
+            # queue_entry.abort()
+
             # The machine is in some totally unknown state, so let's kick off
             # a repair task to get it back to some known sane state.
             models.SpecialTask.objects.create(
