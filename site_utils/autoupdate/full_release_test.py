@@ -532,7 +532,7 @@ def run_test_afe(test, env, control_code, afe, dry_run):
     if not dry_run:
         job = afe.create_job(
                 parametrized_control_code,
-                name=test.get_autotest_name(), priority='Low',
+                name=test.get_autotest_name(), priority='Medium',
                 control_type='Server', meta_hosts=meta_hosts,
                 dependencies=dependencies)
         return job.id
