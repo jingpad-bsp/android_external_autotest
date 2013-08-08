@@ -25,9 +25,9 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         dbus_std_ifaces.DBusProperties.__init__(self, path, bus, config)
 
     def _InitializeProperties(self):
-        import pseudomodem
+        import net_interface
         props = {
-            'Interface': pseudomodem.IFACE_NAME,
+            'Interface': net_interface.PseudoNetInterface.IFACE_NAME,
             'Connected': dbus.types.Boolean(False),
             'Suspended': dbus.types.Boolean(False),
             'Properties': self._bearer_props

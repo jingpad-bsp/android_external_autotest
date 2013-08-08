@@ -12,25 +12,20 @@ import logging
 import optparse
 import os
 import signal
-import subprocess
 import time
 
 import client
 import mm1
 import modem_3gpp
 import modemmanager
+import net_interface
 import sim
 import testing
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import virtual_ethernet_pair
 
-
-IFACE_NAME = 'pseudomodem0'
-PEER_IFACE_NAME = IFACE_NAME + 'p'
-IFACE_IP_BASE = '192.168.7'
 
 DEFAULT_TEST_NETWORK_PREFIX = 'Test Network'
 
@@ -143,122 +138,6 @@ class TestModemManagerContext(object):
         """
         return self.pseudo_modem_manager
 
-class VirtualEthernetInterface(object):
-    """
-    VirtualEthernetInterface sets up a virtual Ethernet pair and runs dnsmasq
-    on one end of the pair. This is used to enable the pseudo modem to expose
-    a network interface and be assigned a dynamic IP address.
-
-    """
-    def __init__(self):
-        self.vif = virtual_ethernet_pair.VirtualEthernetPair(
-                interface_name=IFACE_NAME,
-                peer_interface_name=PEER_IFACE_NAME,
-                interface_ip=None,
-                peer_interface_ip=IFACE_IP_BASE + '.1/24')
-        self.dnsmasq = None
-
-    def BringIfaceUp(self):
-        """
-        Brings up the pseudo modem network interface.
-
-        """
-        utils.run('sudo ifconfig %s up' % IFACE_NAME)
-
-    def BringIfaceDown(self):
-        """
-        Brings down the pseudo modem network interface.
-
-        """
-        utils.run('sudo ifconfig %s down' % IFACE_NAME);
-
-    def StartDHCPServer(self):
-        """
-        Runs dnsmasq on the peer end of the virtual Ethernet pair.
-
-        """
-        lease_file = '/tmp/dnsmasq.%s.leases' % IFACE_NAME
-        os.close(os.open(lease_file, os.O_CREAT | os.O_TRUNC))
-        self.dnsmasq = subprocess.Popen(
-                ['sudo',
-                 '/usr/local/sbin/dnsmasq',
-                 '-k',
-                 '--dhcp-leasefile=' + lease_file,
-                 '--dhcp-range=%s.2,%s.254' % (
-                        IFACE_IP_BASE, IFACE_IP_BASE),
-                 '--port=0',
-                 '--interface=' + PEER_IFACE_NAME,
-                 '--bind-interfaces'
-                ])
-
-    def StopDHCPServer(self):
-        """
-        Stops dnsmasq if its currently running on the peer end of the virtual
-        Ethernet pair.
-
-        """
-        if self.dnsmasq:
-            self.dnsmasq.terminate()
-
-    def RestartDHCPServer(self):
-        """
-        Restarts dnsmasq on the peer end of the virtual Ethernet pair.
-
-        """
-        self.StopDHCPServer()
-        self.StartDHCPServer()
-
-    def Setup(self):
-        """
-        Sets up the virtual Ethernet pair and starts dnsmasq.
-
-        """
-        self.vif.setup()
-        self.BringIfaceDown()
-        if not self.vif.is_healthy:
-            raise Exception('Could not initialize virtual ethernet pair')
-
-        utils.run('sudo route add -host 255.255.255.255 dev ' +
-                  PEER_IFACE_NAME)
-
-        # Make sure 'dnsmasq' can receive DHCP requests.
-        utils.run('sudo iptables -I INPUT -p udp --dport 67 -j ACCEPT')
-        utils.run('sudo iptables -I INPUT -p udp --dport 68 -j ACCEPT')
-
-        self.StartDHCPServer()
-
-    def Teardown(self):
-        """
-        Stops dnsmasq and takes down the virtual Ethernet pair.
-
-        """
-        self.StopDHCPServer()
-        try:
-            utils.run('sudo route del -host 255.255.255.255 dev ' +
-                       PEER_IFACE_NAME)
-        except:
-            pass
-
-        # Remove iptables rules.
-        try:
-            utils.run('sudo iptables -D INPUT -p udp --dport 67 -j ACCEPT')
-            utils.run('sudo iptables -D INPUT -p udp --dport 68 -j ACCEPT')
-        except:
-            pass
-
-        self.vif.teardown()
-
-    def Restart(self):
-        """
-        Restarts the configuration.
-
-        """
-        self.Teardown()
-        self.Setup()
-
-# This is the global VirtualEthernetInterface instance. Classes inside the
-# pseudo modem manager can access the singleton via this variable.
-virtual_ethernet_interface = VirtualEthernetInterface()
 
 class PseudoModemManagerException(Exception):
     """Class for exceptions thrown by PseudoModemManager."""
@@ -299,6 +178,8 @@ class PseudoModemManager(object):
     """
 
     MODEM_INIT_TIMEOUT = 5
+
+    modem_net_interface = net_interface.PseudoNetInterface()
 
     def __init__(self,
                  modem,
@@ -390,15 +271,12 @@ class PseudoModemManager(object):
         self.Restart()
 
     def _Cleanup(self):
-        global virtual_ethernet_interface
-        virtual_ethernet_interface.Teardown()
+        self.modem_net_interface.Teardown()
 
     def _Run(self):
         if not self.modem:
             raise Exception('No modem object has been provided.')
-
-        global virtual_ethernet_interface
-        virtual_ethernet_interface.Setup()
+        self.modem_net_interface.Setup()
         dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
         bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
         name = dbus.service.BusName(mm1.I_MODEM_MANAGER, bus)

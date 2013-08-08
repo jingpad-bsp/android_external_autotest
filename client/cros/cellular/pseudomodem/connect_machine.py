@@ -6,7 +6,6 @@ import logging
 import subprocess
 
 import mm1
-import pseudomodem
 import state_machine
 
 class ConnectMachine(state_machine.StateMachine):
@@ -136,8 +135,6 @@ class ConnectMachine(state_machine.StateMachine):
         try:
             bearer_path = self._GetBearerToActivate()
             self._modem.ActivateBearer(bearer_path)
-            logging.info('ConnectMachine: Restarting DHCP server.')
-            pseudomodem.virtual_ethernet_interface.RestartDHCPServer()
             logging.info('ConnectMachine: Setting state to CONNECTED.')
             reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
             self._modem.ChangeState(mm1.MM_MODEM_STATE_CONNECTED, reason)
