@@ -31,10 +31,6 @@ from autotest_lib.client.cros import virtual_ethernet_pair
 IFACE_NAME = 'pseudomodem0'
 PEER_IFACE_NAME = IFACE_NAME + 'p'
 IFACE_IP_BASE = '192.168.7'
-# TODO(armansito): Remove 'cromo' once it gets deprecated.
-DEFAULT_MANAGERS = ['cromo', 'modemmanager']
-PARENT_SLEEP_TIMEOUT = 2
-MODEM_INIT_TIMEOUT = 10
 
 DEFAULT_TEST_NETWORK_PREFIX = 'Test Network'
 
@@ -63,9 +59,12 @@ class TestModemManagerContext(object):
     this class a no-op, not affecting any environment configuration.
 
     """
+
+    DEFAULT_MANAGERS = [ ('modemmanager', 'ModemManager'),
+                         ('cromo', 'cromo') ]
+
     def __init__(self, use_pseudomodem,
                  family='3GPP',
-                 real_managers=DEFAULT_MANAGERS,
                  sim=None,
                  modem=None):
         """
@@ -77,11 +76,6 @@ class TestModemManagerContext(object):
                        this parameter, which is a string that contains either
                        '3GPP' or 'CDMA'. The default value is '3GPP'.
 
-        @param real_managers: Array containing the names of real modem manager
-                              daemons that need to be stopped before starting
-                              the pseudo modem manager,
-                              e.g. ['cromo', 'modemmanager']
-
         @param sim: An instance of sim.SIM. This is required for 3GPP modems
                     as it encapsulates information about the carrier.
 
@@ -90,7 +84,6 @@ class TestModemManagerContext(object):
 
         """
         self.use_pseudomodem = use_pseudomodem
-        self.real_managers = real_managers
         if modem:
             self.pseudo_modem = modem
         elif family == '3GPP':
@@ -113,11 +106,18 @@ class TestModemManagerContext(object):
 
     def __enter__(self):
         if self.use_pseudomodem:
-            for modem_manager in self.real_managers:
+            for manager in self.DEFAULT_MANAGERS:
                 try:
-                    utils.run('/sbin/stop %s' % modem_manager)
+                    utils.run('/sbin/stop %s' % manager[0])
                 except error.CmdError:
-                    pass
+                    logging.info('Failed to stop upstart job "%s". Will try to'
+                                 ' kill directly.', manager[0])
+                    try:
+                        utils.run('/usr/bin/pkill %s' % manager[1])
+                    except error.CmdError:
+                        logging.info(
+                                'Failed to kill "%s", assuming it is gone',
+                                manager[1])
             self.pseudo_modem_manager = \
                 PseudoModemManager(modem=self.pseudo_modem, sim=self.sim)
             self.pseudo_modem_manager.Start()
@@ -127,9 +127,9 @@ class TestModemManagerContext(object):
         if self.use_pseudomodem:
             self.pseudo_modem_manager.Stop()
             self.pseudo_modem_manager = None
-            for modem_manager in self.real_managers:
+            for manager in self.DEFAULT_MANAGERS:
                 try:
-                    utils.run('/sbin/start %s' % modem_manager)
+                    utils.run('/sbin/start %s' % manager[0])
                 except error.CmdError:
                     pass
 
@@ -298,6 +298,8 @@ class PseudoModemManager(object):
 
     """
 
+    MODEM_INIT_TIMEOUT = 5
+
     def __init__(self,
                  modem,
                  sim=None,
@@ -327,31 +329,12 @@ class PseudoModemManager(object):
         logging.info('Starting pseudo modem manager.')
         self.started = True
 
-        # TODO(armansito): See crosbug.com/36235
         if self.detach:
             self.child = os.fork()
             if self.child == 0:
                 self._Run()
             else:
-                bus = dbus.SystemBus()
-                def _CheckModemIsUp():
-                    try:
-                        modem = bus.get_object(mm1.I_MODEM_MANAGER,
-                                               self.modem.path)
-                        iprops = dbus.Interface(modem, mm1.I_PROPERTIES)
-                        iprops.GetAll(mm1.I_MODEM)
-                        return True
-                    except dbus.exceptions.DBusException:
-                        return False
-                try:
-                    utils.poll_for_condition(
-                        _CheckModemIsUp,
-                        exception=PseudoModemManagerException(
-                                "Failed to initialize pseudo modem object."),
-                        timeout=MODEM_INIT_TIMEOUT)
-                except PseudoModemManagerException:
-                    self.Stop()
-                    raise
+                time.sleep(self.MODEM_INIT_TIMEOUT)
         else:
             self._Run()
 
