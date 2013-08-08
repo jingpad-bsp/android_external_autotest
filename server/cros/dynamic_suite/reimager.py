@@ -660,7 +660,7 @@ class OsReimager(Reimager):
 
     class FakeReimageJob(object):
         def __init__(self):
-            self.id = None
+            self.id = 0
             self.owner = None
 
 
