@@ -153,9 +153,34 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
 
 
     @_timer.decorate
-    def _get_labels(self):
-        return dict((label.id, label) for label
-                    in scheduler_models.Label.fetch())
+    def _get_labels(self, job_dependencies):
+        """
+        Calculate a dict mapping label id to label object so that we don't
+        frequently round trip to the database every time we need a label.
+
+        @param job_dependencies: A dict mapping an integer job id to a list of
+            integer label id's.  ie. {job_id: [label_id]}
+        @return: A dict mapping an integer label id to a scheduler model label
+            object.  ie. {label_id: label_object}
+
+        """
+        id_to_label = dict()
+        # Pull all the labels on hosts we might look at
+        host_labels = scheduler_models.Label.fetch(
+                where="id IN (SELECT label_id FROM afe_hosts_labels)")
+        id_to_label.update([(label.id, label) for label in host_labels])
+        # and pull all the labels on jobs we might look at.
+        job_label_set = set()
+        for job_deps in job_dependencies.values():
+            job_label_set.update(job_deps)
+        # On the rare/impossible chance that no jobs have any labels, we
+        # can skip this.
+        if job_label_set:
+            job_string_label_list = ','.join([str(x) for x in job_label_set])
+            job_labels = scheduler_models.Label.fetch(
+                    where="id IN (%s)" % job_string_label_list)
+            id_to_label.update([(label.id, label) for label in job_labels])
+        return id_to_label
 
 
     def recovery_on_startup(self):
@@ -163,6 +188,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
             metahost_scheduler.recovery_on_startup()
 
 
+    @_timer.decorate
     def refresh(self, pending_queue_entries):
         self._hosts_available = self._get_ready_hosts()
 
@@ -176,7 +202,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         self._host_acls = self._get_host_acls(host_ids)
         self._label_hosts, self._host_labels = self._get_label_hosts(host_ids)
 
-        self._labels = self._get_labels()
+        self._labels = self._get_labels(self._job_dependencies)
 
 
     @_timer.decorate
