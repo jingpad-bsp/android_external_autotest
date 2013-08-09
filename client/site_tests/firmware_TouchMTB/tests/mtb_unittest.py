@@ -20,6 +20,7 @@ from mtb import FingerPath, TidPacket
 from geometry.elements import Point, about_eq
 
 
+unittest_path_lumpy = os.path.join(os.getcwd(), 'tests/logs/lumpy')
 mocked_device = create_mocked_devices()
 
 
@@ -159,6 +160,20 @@ class MtbTest(unittest.TestCase):
                 'two_finger_with_slot_0.dat', {2101: 121, 2102: 59})
         self._test_get_all_finger_paths_about_numbers_of_packets(
                 'two_finger_without_slot_0.dat', {2097: 104, 2098: 10})
+
+    def test_data_ready(self):
+        """Test data_ready flag when point.x could be 0."""
+        filename = ('20130506_030025-fw_11.27-robot_sim/'
+                    'one_finger_to_edge.center_to_left.slow-lumpy-fw_11.27-'
+                    'robot_sim-20130506_031554.dat')
+        filepath = os.path.join(unittest_path_lumpy, filename)
+        mtb_packets = get_mtb_packets(filepath)
+        points = mtb_packets.get_ordered_finger_path(0, 'point')
+        # Note:
+        # 1. In the first packet, there exists the event ABS_PRESSURE
+        #    but no ABS_MT_PRESSURE.
+        # 2. The last packet with ABS_MT_TRACKING_ID = -1 is not counted.
+        self.assertEqual(len(points), 77)
 
     def _test_drumroll(self, filename, expected_max_distance):
         """expected_max_distance: unit in pixel"""

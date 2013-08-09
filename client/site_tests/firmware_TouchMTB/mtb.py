@@ -332,8 +332,15 @@ class MtbStateMachine:
         for slot, tid in self.slot_to_tid.items():
             point = copy.deepcopy(self.point.get(tid))
             pressure = self.pressure.get(tid)
-            # check if all attributes are assigned proper values.
-            data_ready = all([all(point.value()), pressure, self.syn_time])
+            # Check if all attributes are non-None values.
+            # Note: we cannot use
+            #           all([all(point.value()), pressure, self.syn_time])
+            #       E.g., for a point = (0, 300), it will return False
+            #       which is not what we want. We want it to return False
+            #       only when there are None values.
+            data_ready = all(map(lambda e: e is not None,
+                             list(point.value()) + [pressure, self.syn_time]))
+
             if (not request_data_ready) or data_ready:
                 tid_packet = TidPacket(self.syn_time, point, pressure)
             else:
