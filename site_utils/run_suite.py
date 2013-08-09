@@ -41,6 +41,12 @@ def setup_logging(logfile=None):
 
     @param logfile: If specified dump output to a file as well.
     """
+    # Remove all existing handlers. client/common_lib/logging_config adds
+    # a StreamHandler to logger when modules are imported, e.g.,
+    # autotest_lib.client.bin.utils. A new StreamHandler will be added here to
+    # log only messages, not severity.
+    logging.getLogger().handlers = []
+
     screen_handler = logging.StreamHandler()
     screen_handler.setFormatter(logging.Formatter('%(message)s'))
     logging.getLogger().addHandler(screen_handler)
