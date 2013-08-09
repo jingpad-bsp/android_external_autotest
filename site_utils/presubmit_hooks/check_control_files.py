@@ -51,7 +51,15 @@ def GetAutotestTestPackages():
 
 def GetEqueryWrappers():
     """Return a list of all the equery variants that should be consulted."""
-    return ['equery'] + glob.glob('/usr/local/bin/equery-*')
+    # Note that we can't just glob.glob('/usr/local/bin/equery-*'), because
+    # we might be running outside the chroot.
+    pattern = '/usr/local/bin/equery-*'
+    cmd = CommandPrefix() + ['sh', '-c', 'echo %s' % pattern]
+    wrappers = subprocess.check_output(cmd).split()
+    # If there was no match, we get the literal pattern string echoed back.
+    if wrappers and wrappers[0] == pattern:
+        wrappers = []
+    return ['equery'] + wrappers
 
 
 def CheckSuites(ctrl_data, test_name):
