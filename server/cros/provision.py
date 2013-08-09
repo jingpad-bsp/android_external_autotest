@@ -12,6 +12,7 @@ from autotest_lib.server import frontend
 
 ### Constants for label prefixes
 CROS_VERSION_PREFIX = 'cros-version'
+FW_VERSION_PREFIX = 'fw-version'
 
 
 ### Helpers to convert value to label
@@ -31,6 +32,7 @@ def cros_version_to_label(image):
 # need to hand-maintain a list of all of them.
 _provision_types = {
     CROS_VERSION_PREFIX:'provision_AutoUpdate',
+    FW_VERSION_PREFIX:'provision_FirmwareUpdate',
 }
 
 
