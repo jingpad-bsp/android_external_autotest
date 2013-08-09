@@ -87,7 +87,8 @@ class TestConfig(object):
     """
     def __init__(self, board, name, use_mp_images, is_delta_update,
                  source_release, target_release, source_image_uri,
-                 target_payload_uri, suite_name=_DEFAULT_AU_SUITE_NAME):
+                 target_payload_uri, suite_name=_DEFAULT_AU_SUITE_NAME,
+                 source_archive_uri=None):
         """Initialize a test configuration.
 
         @param board: the board being tested (e.g. 'x86-alex')
@@ -99,6 +100,7 @@ class TestConfig(object):
         @param source_image_uri: source image URI ('gs://...')
         @param target_payload_uri: target payload URI ('gs://...')
         @param suite_name: the name of the test suite (default: 'au')
+        @param source_archive_uri: location of source build artifacts
 
         """
         self.board = board
@@ -110,6 +112,7 @@ class TestConfig(object):
         self.source_image_uri = source_image_uri
         self.target_payload_uri = target_payload_uri
         self.suite_name = suite_name
+        self.source_archive_uri = source_archive_uri
 
 
     def get_image_type(self):
@@ -163,16 +166,21 @@ class TestConfig(object):
 
     def _get_args(self, assign, delim, is_quote_val):
         template = "%s%s'%s'" if is_quote_val else "%s%s%s"
+        arg_values = [
+            ('name', self.name),
+            ('image_type', self.get_image_type()),
+            ('update_type', self.get_update_type()),
+            ('source_release', self.source_release),
+            ('target_release', self.target_release),
+            ('source_image_uri', self.source_image_uri),
+            ('target_payload_uri', self.target_payload_uri),
+            ('SUITE', self.suite_name)
+        ]
+        if self.source_archive_uri:
+          arg_values.append(('source_archive_uri', self.source_archive_uri))
+
         return delim.join(
-                [template % (key, assign, val) for key, val in [
-                        ('name', self.name),
-                        ('image_type', self.get_image_type()),
-                        ('update_type', self.get_update_type()),
-                        ('source_release', self.source_release),
-                        ('target_release', self.target_release),
-                        ('source_image_uri', self.source_image_uri),
-                        ('target_payload_uri', self.target_payload_uri),
-                        ('SUITE', self.suite_name)]])
+                [template % (key, assign, val) for key, val in arg_values])
 
 
     def get_cmdline_args(self):
