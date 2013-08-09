@@ -8,7 +8,9 @@ import time
 import urlparse
 
 # Import 'flimflam_test_path' first in order to import flimflam' and 'mm'.
+# pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
+# pylint: enable=W0611
 import flimflam
 import mm
 
@@ -138,34 +140,31 @@ class network_3GSmokeTest(test.test):
             service, state = cell_tools.ConnectToCellular(self.flim,
                                                           CONNECT_TIMEOUT)
 
-            # TODO(armansito): The pseudomodem currently cannot connect
-            # to the internet. See crosbug.com/36235
-            if not self.use_pseudomodem:
-                if state == 'portal':
-                    url_pattern = ('https://quickaccess.verizonwireless.com/'
-                                   'images_b2c/shared/nav/'
-                                   'vz_logo_quickaccess.jpg?foo=%d')
-                    bytes_to_fetch = 4476
-                else:
-                    url_pattern = network.FETCH_URL_PATTERN_FOR_TEST
-                    bytes_to_fetch = 64 * 1024
+            if state == 'portal':
+                url_pattern = ('https://quickaccess.verizonwireless.com/'
+                               'images_b2c/shared/nav/'
+                               'vz_logo_quickaccess.jpg?foo=%d')
+                bytes_to_fetch = 4476
+            else:
+                url_pattern = network.FETCH_URL_PATTERN_FOR_TEST
+                bytes_to_fetch = 64 * 1024
 
-                device = self.flim.GetObjectInterface(
-                    'Device', service.GetProperties()['Device'])
-                interface = device.GetProperties()['Interface']
-                logging.info('Expected interface for %s: %s',
-                             service.object_path, interface)
-                network.CheckInterfaceForDestination(
-                    urlparse.urlparse(url_pattern).hostname,
-                    interface)
+            device = self.flim.GetObjectInterface(
+                'Device', service.GetProperties()['Device'])
+            interface = device.GetProperties()['Interface']
+            logging.info('Expected interface for %s: %s',
+                         service.object_path, interface)
+            network.CheckInterfaceForDestination(
+                urlparse.urlparse(url_pattern).hostname,
+                interface)
 
-                fetch_time = network.FetchUrl(url_pattern, bytes_to_fetch,
-                                              self.fetch_timeout)
-                self.write_perf_keyval({
-                    'seconds_3G_fetch_time': fetch_time,
-                    'bytes_3G_bytes_received': bytes_to_fetch,
-                    'bits_second_3G_speed': 8 * bytes_to_fetch / fetch_time
-                })
+            fetch_time = network.FetchUrl(url_pattern, bytes_to_fetch,
+                                          self.fetch_timeout)
+            self.write_perf_keyval({
+                'seconds_3G_fetch_time': fetch_time,
+                'bytes_3G_bytes_received': bytes_to_fetch,
+                'bits_second_3G_speed': 8 * bytes_to_fetch / fetch_time
+            })
 
             self.DisconnectFrom3GNetwork(disconnect_timeout=DISCONNECT_TIMEOUT)
 
