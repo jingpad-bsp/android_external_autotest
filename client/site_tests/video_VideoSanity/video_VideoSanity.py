@@ -4,7 +4,7 @@
 
 import logging, time
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import httpd
@@ -97,5 +97,11 @@ class video_VideoSanity(test.test):
 
 
     def run_once(self):
+        boards = ['x86-mario', 'x86-zgb']
+        # TODO(scottz): Remove this when crbug.com/220147 is fixed.
+        dut_board = utils.get_current_board()
+        if dut_board in boards:
+           raise error.TestNAError('This test is not available on %s' %
+                                    dut_board)
         with chrome.Chrome() as cr:
             self.run_video_sanity_test(cr.browser)
