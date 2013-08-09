@@ -4,8 +4,9 @@
 
 import logging
 
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd
+from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.audio import audio_helper
 
 _DEFAULT_NUM_CHANNELS = 2
@@ -13,8 +14,10 @@ _DEFAULT_RECORD_DURATION = 15
 _DEFAULT_VOLUME_LEVEL = 100
 _DEFAULT_CAPTURE_GAIN = 2500
 
+_PLAYER_READY_TIMEOUT = 45
 
-class desktopui_AudioFeedback(cros_ui_test.UITest):
+
+class desktopui_AudioFeedback(test.test):
     """Verifies if youtube playback can be captured."""
     version = 1
 
@@ -46,9 +49,27 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         self._ah.setup_deps(['audioloop', 'sox'])
 
         super(desktopui_AudioFeedback, self).initialize()
-        self._test_url = 'http://localhost:8000/youtube.html'
-        self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
-        self._testServer.run()
+
+    def play_video(self, player_ready_callback, tab):
+        """Plays a Youtube video to record audio samples.
+
+           Skipping initial 60 seconds so we can ignore initial silence
+           in the video.
+
+           @param player_ready_callback: callback when yt player is ready.
+           @param tab: the tab to load page for testing.
+        """
+        tab.Navigate(self._test_url)
+        utils.poll_for_condition(
+            condition=lambda: tab.EvaluateJavaScript('getPlayerStatus()') ==
+                    'player ready',
+            exception=error.TestError('Failed to load the Youtube player'),
+            sleep_interval=1,
+            timeout=_PLAYER_READY_TIMEOUT)
+
+        tab.ExecuteJavaScript('seekAndPlay()')
+        if player_ready_callback:
+            player_ready_callback()
 
     def run_once(self):
         """Entry point of this test."""
@@ -60,32 +81,15 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         noise_file_name = self._ah.create_wav_file("noise")
         self._ah.record_sample(noise_file_name)
 
-        # Play the same video to test all channels.
-        self.play_video(lambda: self._ah.loopback_test_channels(
-                noise_file_name))
+        with chrome.Chrome() as cr:
+            cr.browser.SetHTTPServerDirectories(self.bindir)
+            self._test_url = cr.browser.http_server.UrlOf('youtube.html')
+            logging.info('Playing back youtube media file %s.', self._test_url)
 
-    def play_video(self, player_ready_callback):
-        """Plays a Youtube video to record audio samples.
+            cr.wait_for_browser_to_come_up()
+            if not cr.is_logged_in():
+                raise error.TestError('Logged out unexpectedly!')
 
-           Skipping initial 60 seconds so we can ignore initial silence
-           in the video.
-
-           @param player_ready_callback: callback when yt player is ready.
-        """
-        logging.info('Playing back youtube media file %s.', self._test_url)
-        self.pyauto.NavigateToURL(self._test_url)
-
-        # Default automation timeout is 45 seconds.
-        if not self.pyauto.WaitUntil(lambda: self.pyauto.ExecuteJavascript("""
-                    player_status = document.getElementById('player_status');
-                    window.domAutomationController.send(player_status.innerHTML);
-               """), expect_retval='player ready'):
-            raise error.TestError('Failed to load the Youtube player')
-        self.pyauto.ExecuteJavascript("""
-            ytplayer.pauseVideo();
-            ytplayer.seekTo(60, true);
-            ytplayer.playVideo();
-            window.domAutomationController.send('');
-        """)
-        if player_ready_callback:
-            player_ready_callback()
+            # Play the same video to test all channels.
+            self.play_video(lambda: self._ah.loopback_test_channels(
+                    noise_file_name), cr.browser.tabs[0])

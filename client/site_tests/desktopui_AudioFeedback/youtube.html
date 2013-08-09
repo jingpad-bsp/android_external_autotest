@@ -18,6 +18,14 @@ function loadPlayer() {
     "http://www.youtube.com/e/QNdT65_4xtQ?enablejsapi=1&playerapiid=ytplayer",
     "ytapiplayer", "800", "600", "8", null, null, params, atts);
 }
+function getPlayerStatus() {
+  return document.getElementById('player_status').innerHTML;
+}
+function seekAndPlay() {
+  ytplayer.pauseVideo();
+  ytplayer.seekTo(60, true);
+  ytplayer.playVideo();
+}
 </script>
 
 <body onload="loadPlayer()">
