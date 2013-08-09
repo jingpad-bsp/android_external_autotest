@@ -85,10 +85,10 @@ class DedupingScheduler(object):
         sheriffs = site_utils.get_sheriffs(lab_only=True)
         owner = sheriffs[0] if sheriffs else ''
         logging.info('Filing a bug: %s', title)
-        return bug_reporter.create_bug_report(description=description,
-                                              title=title,
-                                              name='',
-                                              owner=owner,
+        bug = reporting.Bug(title=title,
+                            summary=description,
+                            owner=owner)
+        return bug_reporter.create_bug_report(bug,
                                               bug_template=template,
                                               sheriffs=[])
 

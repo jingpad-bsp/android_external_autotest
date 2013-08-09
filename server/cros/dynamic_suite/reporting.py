@@ -34,8 +34,53 @@ else:
 
 BUG_CONFIG_SECTION = 'BUG_REPORTING'
 
+CHROMIUM_EMAIL_ADDRESS = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'chromium_email_address', default='')
 
-class TestFailure(object):
+
+class Bug(object):
+    """Holds the minimum information needed to make a dedupable bug report."""
+
+    def __init__(self, title, summary, search_marker=None, labels=None,
+                 owner='', cc=None):
+        """
+        Initializes Bug object.
+
+        @param title: The title of the bug.
+        @param summary: The summary of the bug.
+        @param search_marker: The string used to determine if a bug is a
+                              duplicate report or not. All Bugs with the same
+                              search_marker are considered to be for the same
+                              bug. Make this None if you do not want to dedupe.
+        @param labels: The labels that the filed bug will have.
+        @param owner: The owner/asignee of this bug. Typically left blank.
+        @param cc: Who to cc'd for this bug.
+        """
+        self._title = title
+        self._summary = summary
+        self._search_marker = search_marker
+        self.owner = owner
+
+        self.labels = labels if labels is not None else []
+        self.cc = cc if cc is not None else []
+
+
+    def title(self):
+        """Combines information about this bug into a title string."""
+        return self._title
+
+
+    def summary(self):
+        """Combines information about this bug into a summary string."""
+        return self._summary
+
+
+    def search_marker(self):
+        """Return an Anchor that we can use to dedupe this exact bug."""
+        return self._search_marker
+
+
+class TestFailure(Bug):
     """
     Wrap up all information needed to make an intelligent report about a
     test failure. Each TestFailure has a search marker associated with it
@@ -68,7 +113,8 @@ class TestFailure(object):
     _build_prefix = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'build_prefix', default='')
 
-
+    OWNER = global_config.global_config.get_config_value(
+            BUG_CONFIG_SECTION, 'test_failure_owner', default='')
     # Number of times to retry if a gs command fails. Defaults to 10,
     # which is far too long given that we already wait on these files
     # before starting HWTests.
@@ -91,9 +137,10 @@ class TestFailure(object):
         self.build = build
         self.chrome_version = chrome_version
         self.suite = suite
-        self.test = result.test_name
+        self.name = result.test_name
         self.reason = result.reason
-        self.owner = result.owner
+        # The result_owner is used to find results and logs.
+        self.result_owner = result.owner
         self.hostname = result.hostname
         self.job_id = result.id
 
@@ -102,17 +149,21 @@ class TestFailure(object):
         # are disabled till crbug.com/188217 is resolved.
         self.lab_error = job_status.is_for_infrastructure_fail(result)
 
+        # The owner is who the bug is assigned to.
+        self.owner = ''
+        self.cc = [self.OWNER]
+        self.labels = []
 
-    def bug_title(self):
+    def title(self):
         """Combines information about this failure into a title string."""
-        return '[%s] %s failed on %s' % (self.suite, self.test, self.build)
+        return '[%s] %s failed on %s' % (self.suite, self.name, self.build)
 
 
-    def bug_summary(self):
+    def summary(self):
         """Combines information about this failure into a summary string."""
 
         links = self._get_links_for_failure()
-        summary = ('This bug has been automatically filed to track the '
+        template = ('This bug has been automatically filed to track the '
                    'following failure:\nTest: %(test)s.\nSuite: %(suite)s.\n'
                    'Chrome Version: %(chrome_version)s.\n'
                    'Build: %(build)s.\n\nReason:\n%(reason)s.\n'
@@ -121,7 +172,7 @@ class TestFailure(object):
                    'buildbot stages: %(buildbot_stages)s.\n')
 
         specifics = {
-            'test': self.test,
+            'test': self.name,
             'suite': self.suite,
             'build': self.build,
             'chrome_version': self.chrome_version,
@@ -130,13 +181,14 @@ class TestFailure(object):
             'results_log': links.results,
             'buildbot_stages': links.buildbot,
         }
-        return summary % specifics
+
+        return template % specifics
 
 
     def search_marker(self):
         """Return an Anchor that we can use to dedupe this exact failure."""
         return "%s(%s,%s,%s)" % ('TestFailure', self.suite,
-                                 self.test, self.reason)
+                                 self.name, self.reason)
 
 
     def _link_build_artifacts(self):
@@ -147,8 +199,8 @@ class TestFailure(object):
 
     def _link_result_logs(self):
         """Returns an url to test logs on google storage."""
-        if self.job_id and self.owner and self.hostname:
-            path_to_object = '%s-%s/%s/%s' % (self.job_id, self.owner,
+        if self.job_id and self.result_owner and self.hostname:
+            path_to_object = '%s-%s/%s/%s' % (self.job_id, self.result_owner,
                                               self.hostname, self._debug_dir)
             return (self._retrieve_logs_cgi + self._generic_results_bin +
                     path_to_object)
@@ -209,8 +261,7 @@ class TestFailure(object):
 
 class Reporter(object):
     """
-    Files external reports about bug failures that happened inside
-    autotest.
+    Files external reports about bugs that happened inside autotest.
     """
     _project_name = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'project_name', default='')
@@ -218,7 +269,6 @@ class Reporter(object):
         BUG_CONFIG_SECTION, 'username', default='')
     _password = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'password', default='')
-    _SEARCH_MARKER = 'ANCHOR  '
 
     # Credentials for access to the project hosting api
     _oauth_credentials = global_config.global_config.get_config_value(
@@ -226,15 +276,15 @@ class Reporter(object):
 
     _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome',
                           'Type-Bug', 'Restrict-View-Google']
-    _CHROMIUM_EMAIL_ADDRESS = '@chromium.org'
-    _OWNER = 'beeps%s' % _CHROMIUM_EMAIL_ADDRESS
 
     _LAB_ERROR_TEMPLATE = {
         'labels': ['Bug-Filer-Bug'],
-        'owner': _OWNER,
+        'owner': TestFailure.OWNER,
         # Set the status to Invalid so we don't dedupe against these bugs.
         'status': 'Invalid',
     }
+
+    _SEARCH_MARKER = 'ANCHOR  '
 
 
     def __init__(self):
@@ -257,56 +307,24 @@ class Reporter(object):
         return fundamental_libs and self._phapi_client
 
 
-    def _get_owner(self, failure):
+    def _get_owner(self, bug):
         """
-        Returns an owner for the given failure.
+        Returns an owner for the given bug.
 
-        @param failure: A failure object for which a bug is about to get filed.
-        @return: A string with the email address of the owner of this failure.
-                 The issue associated with the failure will get assigned to the
+        @param bug: A Bug object for which a bug is about to get filed.
+        @return: A string with the email address of the owner of this bug.
+                 The issue associated with the bug will get assigned to the
                  owner and they will receive an email from the bug tracker. If
-                 there is no obvious owner for the failure an empty string is
+                 there is no obvious owner for the bug an empty string is
                  returned.
         """
-        if failure.lab_error:
-            return self._OWNER
-        return ''
+        try:
+            if bug.lab_error:
+                return TestFailure.OWNER
+        except AttributeError:
+            pass
 
-
-    def _get_labels(self, test_name):
-        """
-        Creates labels for an issue.
-
-        Does a simple check to see if any of the areas listed in the
-        projects pre-defined labels are embedded in the name of the
-        failing test.
-
-        @param test_name: name of the failing test.
-        @return: a list of labels.
-        """
-        def match_area(test_name, test_area):
-            """
-            Matches the prefix of a test name to an area, and then the suffix
-            of the area (if any) to the test name. Both parts of the test name
-            don't need to be in the area, this function prioritizes the first
-            half of the test name. A helical match is needed to allow situations
-            like the third example:
-
-            kernel_Video matches kernel, kernel-video but not kernel-audio.
-            network_Ping matches Systems-Network.
-            kernel_ConfigVerify matches kernel, but would also match both
-                                kernel-config and kernel-verify.
-
-            @param test_name: lower case test name.
-            @param test_area: lower case Cr-OS area from tracker.
-            """
-            return (test_name and test_name[:test_name.find('_')] in test_area
-                    and (not '-' in test_area or
-                         test_area[test_area.find('-')+1:] in test_name))
-
-        cros_areas = self._phapi_client.get_areas()
-        return ['Cr-OS-%s' % area for area in cros_areas
-                if match_area(test_name, area.lower())]
+        return bug.owner
 
 
     def _format_issue_options(self, override, **kwargs):
@@ -332,23 +350,36 @@ class Reporter(object):
         # The existence of an owner key will cause the api to try and match
         # the value under the key to a member of the project, resulting in a
         # 404 or 500 Http response when the owner is invalid.
-        if (self._CHROMIUM_EMAIL_ADDRESS not in kwargs['owner']):
+        if (CHROMIUM_EMAIL_ADDRESS not in kwargs['owner']):
             del(kwargs['owner'])
         else:
             kwargs['owner'] = {'name': kwargs['owner']}
         return kwargs
 
 
-    # TODO(beeps):crbug.com/254256
-    def create_bug_report(self, description, title, name, owner,
-                           bug_template={}, sheriffs=[]):
+    def _anchor_summary(self, bug):
+        """
+        Creates the summary that can be used for bug deduplication.
+
+        Only attaches the anchor if the search_marker on the bug is not None.
+
+        @param: The bug to create the anchored summary for.
+
+        @return the summary with the anchor appened if the search marker is not
+                None, otherwise return the summary.
+        """
+        if bug.search_marker() is None:
+            return bug.summary()
+        else:
+            return '%s\n\n%s%s\n' % (bug.summary(), self._SEARCH_MARKER,
+                                     bug.search_marker())
+
+
+    def create_bug_report(self, bug, bug_template={}, sheriffs=[]):
         """
         Creates a new bug report.
 
-        @param description: A summary of the failure.
-        @param title: Title of the bug.
-        @param name: Failing Test name, used to assigning labels.
-        @param owner: The owner of the new bug.
+        @param bug: The Bug instance to create the report for.
         @param bug_template: A template of options to use for filing bugs.
         @param sheriffs: A list of chromium email addresses (of sheriffs)
                          to cc on this bug. Since the list of sheriffs is
@@ -363,20 +394,23 @@ class Reporter(object):
             logging.error("Can't file: %s", title)
             return None
 
-        issue = self._format_issue_options(bug_template, title=title,
-            description=description, labels=self._get_labels(name.lower()),
-            status='Untriaged', owner=owner, cc=[self._OWNER],
+        anchored_summary = self._anchor_summary(bug)
+
+        issue = self._format_issue_options(bug_template, title=bug.title(),
+            description=anchored_summary, labels=bug.labels,
+            status='Untriaged', owner=self._get_owner(bug), cc=bug.cc,
             sheriffs=sheriffs)
 
         try:
-            bug = self._phapi_client.create_issue(issue)
+            filed_bug = self._phapi_client.create_issue(issue)
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create a bug for issue with title: %s and '
-                          'description %s', title, description)
+                          'description %s', bug.title(),
+                          anchored_summary)
         else:
             logging.info('Filing new bug %s, with description %s',
-                         bug.get('id'), description)
-            return bug.get('id')
+                         filed_bug.get('id'), anchored_summary)
+            return filed_bug.get('id')
 
 
     def _modify_bug_report(self, issue_id, comment=''):
@@ -418,8 +452,13 @@ class Reporter(object):
         @param marker The marker string to search for to find a duplicate of
                      this issue.
         @return A gdata_lib.Issue instance of the issue that was found, or
-                None if no issue was found.
+                None if no issue was found. Also returns None if the marker
+                is None.
         """
+
+        if marker is None:
+            logging.info('No search marker specified, will create new issue.')
+            return None
 
         # Note that this method cannot handle markers which have already been
         # html escaped, as it will try and unescape them by converting the &
@@ -462,7 +501,7 @@ class Reporter(object):
         if not issues:
             return
 
-        # Breadth first, since open issues/failure probably < comments/issue.
+        # Breadth first, since open issues/bugs probably < comments/issue.
         # If we find more than one issue matching a particular anchor assign
         # a mystery bug with all relevent information on the owner and return
         # the first matching issue.
@@ -485,20 +524,21 @@ class Reporter(object):
                 return issue
 
 
-    def report(self, failure, bug_template={}):
+    def report(self, bug, bug_template={}):
         """
-        Report a failure to the bug tracker. If this failure has already
+        Report a bug to the bug tracker. If this bug has already
         happened, post a comment on the existing bug about it occurring again.
-        If this is a new failure, create a new bug about it.
+        If this is a new bug, create a new bug about it.
 
-        @param failure A TestFailure instance about the failure.
+        @param bug: A Bug instance about the bug.
         @param bug_template: A template dictionary specifying the default bug
-                             filing options for failures in this suite.
+                             filing options for the bug or failures in this
+                             suite.
 
         @return: The issue id of the issue that was either created or modified.
         """
         if not self._check_tracker():
-            logging.error("Can't file %s", failure.bug_title())
+            logging.error("Can't file %s", bug.title())
             return None
 
         # If our search string sends pythons xml module into a state which it
@@ -508,28 +548,28 @@ class Reporter(object):
         # issue than fail in dedulicating such cases.
         issue = None
         try:
-            issue = self._find_issue_by_marker(failure.search_marker())
+            issue = self._find_issue_by_marker(bug.search_marker())
         except expat.ExpatError as e:
             logging.warning('Unable to deduplicate, creating new issue: %s',
                             str(e))
 
-        summary = '%s\n\n%s%s\n' % (failure.bug_summary(),
-                                    self._SEARCH_MARKER,
-                                    failure.search_marker())
-
         if issue:
-            comment = '%s\n\n%s' % (failure.bug_title(), summary)
+            comment = '%s\n\n%s' % (bug.title(), self._anchor_summary(bug))
             self._modify_bug_report(issue.id, comment)
             return issue.id
 
         sheriffs = []
-        if failure.lab_error:
-            if bug_template.get('labels'):
-                self._LAB_ERROR_TEMPLATE['labels'] += bug_template.get('labels')
-            bug_template = self._LAB_ERROR_TEMPLATE
-        elif failure.suite == 'bvt':
-            sheriffs = site_utils.get_sheriffs()
 
-        return self.create_bug_report(summary, failure.bug_title(),
-                                      failure.test, self._get_owner(failure),
-                                      bug_template, sheriffs)
+        # TODO(beeps): move this to classify_bug
+        try:
+            if bug.lab_error:
+                if bug_template.get('labels'):
+                    self._LAB_ERROR_TEMPLATE['labels'] += bug_template.get(
+                                                            'labels')
+                bug_template = self._LAB_ERROR_TEMPLATE
+            elif bug.suite == 'bvt':
+                sheriffs = site_utils.get_sheriffs()
+        except AttributeError:
+            pass
+
+        return self.create_bug_report(bug, bug_template, sheriffs)

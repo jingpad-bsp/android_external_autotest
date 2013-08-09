@@ -65,7 +65,6 @@ class ReportingTest(mox.MoxTestBase):
     def setUp(self):
         super(ReportingTest, self).setUp()
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
-        self.mox.StubOutClassWithMocks(gdata_lib, 'TrackerComm')
         self._orig_project_name = reporting.Reporter._project_name
         self._orig_username = reporting.Reporter._username
         self._orig_password = reporting.Reporter._password
@@ -91,17 +90,15 @@ class ReportingTest(mox.MoxTestBase):
         Confirms that we call CreateTrackerIssue when an Issue search returns None.
         """
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.Reporter, '_get_labels')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
+        self.mox.StubOutWithMock(reporting.TestFailure, 'summary')
 
         client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                    mox.IgnoreArg())
         client.create_issue(mox.IgnoreArg()).AndReturn(
             {'id': self._FAKE_ISSUE_ID})
-        reporting.Reporter._get_labels(mox.IgnoreArg()).AndReturn([])
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
-        reporting.TestFailure.bug_summary().AndReturn('')
+        reporting.TestFailure.summary().AndReturn('')
 
         self.mox.ReplayAll()
         bug_id = reporting.Reporter().report(self._get_failure())
@@ -117,7 +114,7 @@ class ReportingTest(mox.MoxTestBase):
         returned by the issue search.
         """
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
+        self.mox.StubOutWithMock(reporting.TestFailure, 'summary')
 
         issue = self.mox.CreateMock(gdata_lib.Issue)
         issue.id = self._FAKE_ISSUE_ID
@@ -128,7 +125,7 @@ class ReportingTest(mox.MoxTestBase):
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             issue)
 
-        reporting.TestFailure.bug_summary().AndReturn('')
+        reporting.TestFailure.summary().AndReturn('')
 
         self.mox.ReplayAll()
         bug_id = reporting.Reporter().report(self._get_failure())
@@ -157,13 +154,11 @@ class ReportingTest(mox.MoxTestBase):
             return True
 
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.Reporter, '_get_labels')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
+        self.mox.StubOutWithMock(reporting.TestFailure, 'summary')
 
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
-        reporting.Reporter._get_labels(mox.IgnoreArg()).AndReturn(['Test'])
-        reporting.TestFailure.bug_summary().AndReturn('Summary')
+        reporting.TestFailure.summary().AndReturn('Summary')
 
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                       mox.IgnoreArg())
@@ -176,6 +171,127 @@ class ReportingTest(mox.MoxTestBase):
                                              self.bug_template)
 
         self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+
+
+    def testGenericBugCanBeFiled(self):
+        """Test that we can use a Bug object to file a bug report."""
+        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
+
+        bug = reporting.Bug('title', 'summary', 'marker')
+
+        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+            None)
+
+        mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg())
+        mock_host.create_issue(mox.IgnoreArg()).AndReturn(
+            {'id': self._FAKE_ISSUE_ID})
+
+        self.mox.ReplayAll()
+        bug_id = reporting.Reporter().report(bug)
+
+        self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+
+
+    def testWithSearchMarkerSetToNoneIsNotDeduped(self):
+        """Test that we do not dedupe bugs that have no search marker."""
+
+        bug = reporting.Bug('title', 'summary', search_marker=None)
+
+        mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg())
+        mock_host.create_issue(mox.IgnoreArg()).AndReturn(
+            {'id': self._FAKE_ISSUE_ID})
+
+        self.mox.ReplayAll()
+        bug_id = reporting.Reporter().report(bug)
+
+        self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+
+
+class FindIssueByMarkerTests(mox.MoxTestBase):
+    """Tests the _find_issue_by_marker function."""
+
+    def setUp(self):
+        super(FindIssueByMarkerTests, self).setUp()
+        self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
+        self._orig_project_name = reporting.Reporter._project_name
+        self._orig_username = reporting.Reporter._username
+        self._orig_password = reporting.Reporter._password
+
+        # We want to have some data so that the Reporter doesn't fail at
+        # initialization.
+        reporting.Reporter._project_name = 'project'
+        reporting.Reporter._username = 'username'
+        reporting.Reporter._password = 'password'
+
+
+    def tearDown(self):
+        reporting.Reporter._project_name = self._orig_project_name
+        reporting.Reporter._username = self._orig_username
+        reporting.Reporter._password = self._orig_password
+        super(FindIssueByMarkerTests, self).tearDown()
+
+
+    def testReturnNoneIfMarkerIsNone(self):
+        """Test that we do not look up an issue if the search marker is None."""
+        mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        result = reporting.Reporter()._find_issue_by_marker(None)
+        self.assertTrue(result is None)
+
+
+class AnchorSummaryTests(mox.MoxTestBase):
+    """Tests the _anchor_summary function."""
+
+    def setUp(self):
+        super(AnchorSummaryTests, self).setUp()
+        self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
+        self._orig_project_name = reporting.Reporter._project_name
+        self._orig_username = reporting.Reporter._username
+        self._orig_password = reporting.Reporter._password
+
+        # We want to have some data so that the Reporter doesn't fail at
+        # initialization.
+        reporting.Reporter._project_name = 'project'
+        reporting.Reporter._username = 'username'
+        reporting.Reporter._password = 'password'
+
+
+    def tearDown(self):
+        reporting.Reporter._project_name = self._orig_project_name
+        reporting.Reporter._username = self._orig_username
+        reporting.Reporter._password = self._orig_password
+        super(AnchorSummaryTests, self).tearDown()
+
+
+    def test_summary_returned_untouched_if_no_search_maker(self):
+        """Test that we just return the summary if we have no search marker."""
+        mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg())
+
+        bug = reporting.Bug('title', 'summary', None)
+
+        self.mox.ReplayAll()
+        result = reporting.Reporter()._anchor_summary(bug)
+
+        self.assertEqual(result, 'summary')
+
+
+    def test_append_anchor_to_summary_if_search_marker(self):
+        """Test that we add an anchor to the search marker."""
+        mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg())
+
+        bug = reporting.Bug('title', 'summary', 'marker')
+
+        self.mox.ReplayAll()
+        result = reporting.Reporter()._anchor_summary(bug)
+
+        self.assertEqual(result, 'summary\n\n%smarker\n' %
+                                 reporting.Reporter._SEARCH_MARKER)
 
 
 if __name__ == '__main__':

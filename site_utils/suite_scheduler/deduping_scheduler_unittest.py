@@ -160,6 +160,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(reporting.Reporter, '__init__')
         self.mox.StubOutWithMock(reporting.Reporter, 'create_bug_report')
         self.mox.StubOutWithMock(site_utils, 'get_sheriffs')
+        self.mox.StubOutClassWithMocks(reporting, 'Bug')
         self.scheduler._file_bug = True
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
@@ -180,11 +181,11 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                   self._SUITE, self._BUILD, self._BOARD, self._POOL))
         site_utils.get_sheriffs(
                 lab_only=True).AndReturn(['dummy@chromium.org'])
+        bug = reporting.Bug(title=title,
+                            summary=mox.IgnoreArg(),
+                            owner='dummy@chromium.org')
         reporting.Reporter.create_bug_report(
-                description=mox.IgnoreArg(),
-                title=title,
-                name='',
-                owner='dummy@chromium.org',
+                bug,
                 bug_template = {'labels': ['Suite-Scheduler-Bug'],
                                 'status': 'Available'},
                 sheriffs=[]).AndReturn(1158)
