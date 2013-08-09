@@ -849,7 +849,7 @@ class BaseDispatcher(object):
         """
         jobs_to_stop = set()
         for entry in scheduler_models.HostQueueEntry.fetch(
-                where='aborted and not complete'):
+                where='aborted=1 and complete=0'):
             logging.info('Aborting %s', entry)
             for agent in self.get_agents_for_entry(entry):
                 agent.abort()
