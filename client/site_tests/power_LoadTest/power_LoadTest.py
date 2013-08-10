@@ -232,8 +232,6 @@ class power_LoadTest(cros_ui_test.UITest):
                 logging.info('Exiting due to low battery')
                 break
 
-            self.pyauto.OpenNewBrowserWindow(True)
-
             try:
                 self.pyauto.UninstallExtensionById(ext_id)
             except pyauto.AutomationCommandFail, e:
