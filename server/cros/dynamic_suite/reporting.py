@@ -14,7 +14,6 @@ from xml.parsers import expat
 import common
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import site_utils as client_site_utils
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import job_status
 
@@ -139,15 +138,6 @@ class TestFailure(object):
                                  self.test, self.reason)
 
 
-    def get_milestone(self):
-        """Parses the build string and returns a milestone."""
-        try:
-            return 'M-%s'% client_site_utils.ParseBuildName(self.build)[2]
-        except client_site_utils.ParseBuildNameException as e:
-            logging.error(e)
-            return ''
-
-
     def _link_build_artifacts(self):
         """Returns an url to build artifacts on google storage."""
         return (self._gs_domain + self._arg_prefix +
@@ -245,31 +235,17 @@ class Reporter(object):
         'status': 'Invalid',
     }
 
-    def _get_tracker(self, project, user, password):
-        """Returns an initialized tracker object."""
-        if project and user and password:
-            creds = gdata_lib.Creds()
-            creds.SetCreds(user, password)
-            tracker = gdata_lib.TrackerComm()
-            tracker.Connect(creds, project)
-            return tracker
-        logging.error('Tracker auth not set up in shadow_config.ini, '
-                      'cannot file bugs.')
-        return None
-
 
     def __init__(self):
         if not fundamental_libs:
             logging.warning("Bug filing disabled due to missing imports.")
             return
 
-        self._tracker = self._get_tracker(self._project_name,
-                                          self._username, self._password)
-
         try:
             self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                                     self._oauth_credentials,
-                                     self._project_name)
+                self._oauth_credentials,
+                self._project_name)
+
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create project hosting api client: %s', e)
             self._phapi_client = None
@@ -277,7 +253,7 @@ class Reporter(object):
 
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
-        return fundamental_libs and self._tracker and self._phapi_client
+        return fundamental_libs and self._phapi_client
 
 
     def _get_owner(self, failure):
@@ -348,9 +324,7 @@ class Reporter(object):
         if override:
             kwargs.update((k,v) for k,v in override.iteritems() if v)
 
-        kwargs['labels'] = list(set(kwargs['labels'] + kwargs['milestone'] +
-                                    self._PREDEFINED_LABELS))
-
+        kwargs['labels'] = list(set(kwargs['labels'] + self._PREDEFINED_LABELS))
         kwargs['cc'] = list(map(lambda cc: {'name': cc},
                                 set(kwargs['cc'] + kwargs['sheriffs'])))
 
@@ -363,8 +337,9 @@ class Reporter(object):
             kwargs['owner'] = {'name': kwargs['owner']}
         return kwargs
 
+
     # TODO(beeps):crbug.com/254256
-    def create_bug_report(self, description, title, name, owner, milestone='',
+    def create_bug_report(self, description, title, name, owner,
                            bug_template={}, sheriffs=[]):
         """
         Creates a new bug report.
@@ -373,6 +348,12 @@ class Reporter(object):
         @param title: Title of the bug.
         @param name: Failing Test name, used to assigning labels.
         @param owner: The owner of the new bug.
+        @param bug_template: A template of options to use for filing bugs.
+        @param sheriffs: A list of chromium email addresses (of sheriffs)
+                         to cc on this bug. Since the list of sheriffs is
+                         dynamic it needs to be determined at runtime, as
+                         opposed to the normal cc list which is available
+                         through the bug template.
         @return: id of the created issue, or None if an issue wasn't created.
                  Note that if either the description or title fields are missing
                  we won't be able to create a bug.
@@ -383,8 +364,8 @@ class Reporter(object):
 
         issue = self._format_issue_options(bug_template, title=title,
             description=description, labels=self._get_labels(name.lower()),
-            status='Untriaged', milestone=[milestone], owner=owner,
-            cc=[self._OWNER], sheriffs=sheriffs)
+            status='Untriaged', owner=owner, cc=[self._OWNER],
+            sheriffs=sheriffs)
 
         try:
             bug = self._phapi_client.create_issue(issue)
@@ -550,5 +531,4 @@ class Reporter(object):
 
         return self.create_bug_report(summary, failure.bug_title(),
                                       failure.test, self._get_owner(failure),
-                                      failure.get_milestone(), bug_template,
-                                      sheriffs)
+                                      bug_template, sheriffs)

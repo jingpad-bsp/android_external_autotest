@@ -185,7 +185,6 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                 title=title,
                 name='',
                 owner='dummy@chromium.org',
-                milestone='',
                 bug_template = {'labels': ['Suite-Scheduler-Bug'],
                                 'status': 'Available'},
                 sheriffs=[]).AndReturn(1158)

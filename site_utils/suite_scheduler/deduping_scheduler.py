@@ -89,7 +89,6 @@ class DedupingScheduler(object):
                                               title=title,
                                               name='',
                                               owner=owner,
-                                              milestone='',
                                               bug_template=template,
                                               sheriffs=[])
 

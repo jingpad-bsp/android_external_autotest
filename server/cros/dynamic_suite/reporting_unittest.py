@@ -5,12 +5,13 @@
 import mox
 
 from autotest_lib.server.cros.dynamic_suite import job_status, reporting
+from autotest_lib.site_utils import phapi_lib
 from chromite.lib import gdata_lib
 
 
 class ReportingTest(mox.MoxTestBase):
     """
-    Unittests for the summary field of a new bug.
+    Unittests to verify basic control flow for automatic bug filing.
     """
 
     # fake issue id to use in testing duplicate issues
@@ -43,6 +44,7 @@ class ReportingTest(mox.MoxTestBase):
 
         @return: a failure object initialized with values from test_report.
         """
+
         expected_result = job_status.Status(self.test_report.get('status'),
             self.test_report.get('test'),
             reason=self.test_report.get('reason'),
@@ -55,53 +57,35 @@ class ReportingTest(mox.MoxTestBase):
             self.test_report.get('suite'), expected_result)
 
 
-    def _stub_out_tracker(self, mock_tracker=None):
-        """
-        Stub out tracker so a test can proceed without valid credentials.
-        """
-        self.mox.StubOutWithMock(reporting.Reporter, '_get_tracker')
-        reporting.Reporter._get_tracker(mox.IgnoreArg(),
-                                        mox.IgnoreArg(),
-                                        mox.IgnoreArg()).AndReturn(mock_tracker)
-        if mock_tracker is None:
-            self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
-            reporting.Reporter._check_tracker().AndReturn(True)
-
-
     def testNewIssue(self):
         """
         Add a new issue to the tracker when a matching issue isn't found.
 
-        Confirms that:
-        1. We call CreateTrackerIssue when an Issue search returns None.
-        2. The new issue has an 'autofiled' label.
+        Confirms that we call CreateTrackerIssue when an Issue search returns None.
         """
-
-        def check_autofiled_label(issue):
-            """
-            Checks to see if an issue has the 'autofiled' label.
-
-            @param issue: issue to check labels on.
-            """
-            return 'autofiled' in issue.labels
-
+        self.mox.StubOutWithMock(phapi_lib.ProjectHostingApiClient, '__init__')
+        self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.Reporter, '_get_labels')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
+        self.mox.StubOutWithMock(reporting.Reporter, '_get_owner')
+        self.mox.StubOutWithMock(phapi_lib.ProjectHostingApiClient, 'create_issue')
 
+        phapi_lib.ProjectHostingApiClient.__init__(mox.IgnoreArg(),
+                                                   mox.IgnoreArg())
+        reporting.Reporter._check_tracker().AndReturn(True)
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
         reporting.Reporter._get_labels(mox.IgnoreArg()).AndReturn([])
-        reporting.TestFailure.bug_summary().AndReturn('')
-        tracker = self.mox.CreateMock(gdata_lib.TrackerComm)
-        self._stub_out_tracker(tracker)
-
-        self.mox.StubOutWithMock(tracker, 'CreateTrackerIssue')
-        tracker.CreateTrackerIssue(mox.Func(check_autofiled_label))
+        reporting.Reporter._check_tracker().AndReturn(True)
+        reporting.Reporter._get_owner(mox.IgnoreArg()).AndReturn('')
+        phapi_lib.ProjectHostingApiClient.create_issue(
+            mox.IgnoreArg()).AndReturn({'id':123})
 
         self.mox.ReplayAll()
 
-        reporting.Reporter().report(self._get_failure())
+        reporter = reporting.Reporter()
+        reporter.phapi_client = self.mox.CreateMock(phapi_lib.ProjectHostingApiClient)
+        reporter.report(self._get_failure())
 
 
     def testDuplicateIssue(self):
@@ -111,63 +95,26 @@ class ReportingTest(mox.MoxTestBase):
         Confirms that we call AppendTrackerIssueById with the same issue
         returned by the issue search.
         """
+        self.mox.StubOutWithMock(phapi_lib.ProjectHostingApiClient, '__init__')
+        self.mox.StubOutWithMock(phapi_lib.ProjectHostingApiClient, 'update_issue')
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
+        self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
 
+        phapi_lib.ProjectHostingApiClient.__init__(mox.IgnoreArg(),
+                                                   mox.IgnoreArg())
+        reporting.Reporter._check_tracker().AndReturn(True)
         issue = self.mox.CreateMock(gdata_lib.Issue)
         issue.id = self._FAKE_ISSUE_ID
 
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             issue)
-        reporting.TestFailure.bug_summary().AndReturn('')
-        tracker = self.mox.CreateMock(gdata_lib.TrackerComm)
-        self._stub_out_tracker(tracker)
 
-        tracker.AppendTrackerIssueById(self._FAKE_ISSUE_ID, mox.IgnoreArg(),
-                                       mox.IgnoreArg())
+        phapi_lib.ProjectHostingApiClient.update_issue(
+            self._FAKE_ISSUE_ID, mox.IgnoreArg())
+
 
         self.mox.ReplayAll()
 
-        reporting.Reporter().report(self._get_failure())
-
-
-    def testSuiteIssueConfig(self):
-        """Test that the suite bug template values are not overridden."""
-
-        def check_suite_options(issue):
-            """
-            Checks to see if the options specified in bug_template reflect in
-            the issue we're about to file, and that the autofiled label was not
-            lost in the process.
-
-            @param issue: issue to check labels on.
-            """
-            assert('autofiled' in issue.labels)
-            for k, v in self.bug_template.iteritems():
-                if (isinstance(v, list)
-                    and all(item in getattr(issue, k) for item in v)):
-                    continue
-                if v and getattr(issue, k) is not v:
-                    return False
-            return True
-
-        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.Reporter, '_get_labels')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'bug_summary')
-
-        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            None)
-        reporting.Reporter._get_labels(mox.IgnoreArg()).AndReturn(['Test'])
-        reporting.TestFailure.bug_summary().AndReturn('Summary')
-        tracker = self.mox.CreateMock(gdata_lib.TrackerComm)
-        self._stub_out_tracker(tracker)
-
-        tracker.AppendTrackerIssueById(mox.IgnoreArg(), mox.IgnoreArg(),
-                                       self.bug_template['owner'])
-
-        self.mox.StubOutWithMock(tracker, 'CreateTrackerIssue')
-        tracker.CreateTrackerIssue(mox.Func(check_suite_options))
-
-        self.mox.ReplayAll()
-
-        reporting.Reporter().report(self._get_failure(), self.bug_template)
+        reporter = reporting.Reporter()
+        reporter.phapi_client = self.mox.CreateMock(phapi_lib.ProjectHostingApiClient)
+        reporter.report(self._get_failure())
