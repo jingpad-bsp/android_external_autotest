@@ -125,7 +125,12 @@ class graphics_GLBench(test.test):
     logging.info('initctl status ui returns: %s', status_output)
     need_restart_ui = status_output.startswith('ui start')
 
-    cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; kill $!' % cmd
+    # Just sending SIGTERM to X is not enough; we must wait for it to
+    # really die before we start a new X server (ie start ui).
+    # The term_process function of /sbin/killers makes sure that all X
+    # process are really dead before returning; this is what stop ui uses.
+    kill_cmd = '. /sbin/killers; term_process "^X$"'
+    cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
 
     if need_restart_ui:
       utils.system('initctl stop ui', ignore_status=True)
