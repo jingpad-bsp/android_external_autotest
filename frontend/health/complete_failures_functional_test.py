@@ -28,6 +28,29 @@ from django import test
 GOOD_STATUS_IDX = 6
 FAIL_STATUS_IDX = 4
 
+ERROR_STATUS = models.Status(status_idx=2, word='ERROR')
+ABORT_STATUS = models.Status(status_idx=3, word='ABORT')
+FAIL_STATUS = models.Status(status_idx=4, word='FAIL')
+WARN_STATUS = models.Status(status_idx=5, word='WARN')
+GOOD_STATUS = models.Status(status_idx=6, word='GOOD')
+ALERT_STATUS = models.Status(status_idx=7, word='ALERT')
+
+
+def add_statuses():
+    """
+    Save the statuses to the in-memory database.
+
+    These normally exist in the database and the code expects them. However, the
+    normal test database setup does not do this for us.
+    """
+    ERROR_STATUS.save()
+    ABORT_STATUS.save()
+    FAIL_STATUS.save()
+    WARN_STATUS.save()
+    GOOD_STATUS.save()
+    ALERT_STATUS.save()
+
+
 # During the tests there is a point where Django does a type check on
 # datetime.datetime. Unfortunately this means when datetime is mocked out,
 # horrible failures happen when Django tries to do this check. The solution
@@ -44,15 +67,14 @@ class CompleteFailuresFunctionalTests(mox.MoxTestBase, test.TestCase):
     """
     Does a functional test of the complete_failures script.
 
-    It uses an in-memory database, mocks out the saving and loading of the
-    storage object and mocks out the sending of the email. Everything else
-    is a full run.
+    This uses an in-memory database but everything else is a full run.
 
     """
 
     def setUp(self):
         super(CompleteFailuresFunctionalTests, self).setUp()
         setup_test_environment.set_up()
+        add_statuses()
         # All of our tests will involve mocking out the datetime.today() class
         # method.
         self.mox.StubOutWithMock(MockDatetime, 'today')
@@ -61,10 +83,6 @@ class CompleteFailuresFunctionalTests(mox.MoxTestBase, test.TestCase):
         # We need to mock out the send function in all tests or else the
         # emails will be sent out during tests.
         self.mox.StubOutWithMock(mail, 'send')
-        # We also need to mock out the storage access as we do not want
-        # to worry about hitting a real file system
-        self.mox.StubOutWithMock(complete_failures, 'load_storage')
-        self.mox.StubOutWithMock(complete_failures, 'save_storage')
 
         self._orignal_too_late = complete_failures._DAYS_TO_BE_FAILING_TOO_LONG
 
@@ -84,30 +102,32 @@ class CompleteFailuresFunctionalTests(mox.MoxTestBase, test.TestCase):
         success_status = models.Status(status_idx=GOOD_STATUS_IDX)
         fail_status = models.Status(status_idx=FAIL_STATUS_IDX)
 
-        passing_test = models.Test(job=job, status=success_status,
-                                   kernel=kernel, machine=machine,
-                                   test='test1',
-                                   started_time=self.datetime(2012, 1, 1))
-        passing_test.save()
+        old_passing_test = models.Test(job=job, status=success_status,
+                                       kernel=kernel, machine=machine,
+                                       test='test1',
+                                       started_time=self.datetime(2012, 1, 1))
+        old_passing_test.save()
         failing_test = models.Test(job=job, status=fail_status,
                                    kernel=kernel, machine=machine,
                                    test='test2',
                                    started_time=self.datetime(2012,1,1))
         failing_test.save()
+        good_test = models.Test(job=job, status=success_status,
+                                kernel=kernel, machine=machine,
+                                test='test3',
+                                started_time=self.datetime(2012, 1, 20))
+        good_test.save()
 
         complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 10
-        storage = {}
-        complete_failures.load_storage().AndReturn(storage)
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         mail.send('chromeos-test-health@google.com',
                   ['chromeos-lab-infrastructure@google.com'],
                   [],
                   'Long Failing Tests',
-                  '2/2 tests have been failing for at least %d days.\n'
+                  '2/3 tests have been failing for at least %d days.\n'
                   'They are the following:\n\ntest1\ntest2'
                   % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
-        complete_failures.save_storage(storage)
 
         self.mox.ReplayAll()
         complete_failures.main()

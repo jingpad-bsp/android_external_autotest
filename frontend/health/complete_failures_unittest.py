@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections, datetime, unittest
+import datetime, unittest
 
 import mox
 
@@ -27,96 +27,9 @@ class MockDatetime(datetime.datetime):
     pass
 
 
-class StoreResultsTests(mox.MoxTestBase):
-    """Test that entries are properly stored in the storage object."""
-
-    def setUp(self):
-        super(StoreResultsTests, self).setUp()
-        self._orig_too_long = complete_failures._DAYS_TO_BE_FAILING_TOO_LONG
-
-
-    def tearDown(self):
-        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = self._orig_too_long
-        super(StoreResultsTests, self).tearDown()
-
-
-    def test_add_failing_test(self):
-        """Test adding a failing test to storage."""
-        # We will want to keep all the datetime logic intact and so we need to
-        # keep a reference to the unmocked datetime.
-        self.datetime = datetime.datetime
-        self.mox.StubOutWithMock(datetime, 'datetime')
-        datetime.datetime.today().AndReturn(self.datetime(2012, 1, 1))
-        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 60
-
-        storage = {}
-
-        self.mox.ReplayAll()
-        complete_failures.store_results(
-                {'test': datetime.datetime.min}, storage)
-
-        self.assertEqual(storage['test'], self.datetime(2012, 1, 1))
-
-
-    def test_remove_test_if_it_has_succeeded_recently_enough(self):
-        """Test that we remove a passing test from the storage object."""
-        storage = {'test': datetime.datetime(2012, 1, 1)}
-        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 60
-        today = datetime.datetime(2012, 4, 10)
-        safe_date = datetime.datetime(2012, 4, 9)
-
-        self.mox.StubOutWithMock(datetime, 'datetime')
-        datetime.datetime.today().AndReturn(today)
-
-        self.mox.ReplayAll()
-        complete_failures.store_results({'test': safe_date}, storage)
-
-        self.assertTrue('test' not in storage)
-
-
-    def test_no_crashing_on_test_that_has_never_failed_for_too_long(self):
-        """Test that we do not crash for tests that have always passed."""
-        storage = {}
-        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 60
-        today = datetime.datetime(2012, 4, 10)
-        safe_date = datetime.datetime(2012, 4, 9)
-
-        self.mox.StubOutWithMock(datetime, 'datetime')
-        datetime.datetime.today().AndReturn(today)
-
-        self.mox.ReplayAll()
-        complete_failures.store_results({'test': safe_date}, storage)
-
-        self.assertTrue('test' not in storage)
-
-
-    def test_do_not_delete_if_still_failing(self):
-        """Test that an old failing test is not removed from storage."""
-        # We will want to keep all the datetime logic intact and so we need to
-        # keep a reference to the unmocked datetime.
-        self.datetime = datetime.datetime
-        today = datetime.datetime(2012, 1, 1)
-        self.mox.StubOutWithMock(datetime, 'datetime')
-        datetime.datetime.today().AndReturn(today)
-
-        storage = {'test': datetime.datetime.min}
-
-        # The ReplayAll is required or else a mox object sneaks its way into
-        # the storage object somehow.
-        self.mox.ReplayAll()
-        complete_failures.store_results(
-            {'test': datetime.datetime.min}, storage)
-
-        self.assertTrue('test' in storage)
-
-
 class EmailAboutTestFailureTests(mox.MoxTestBase):
     """
     Tests that emails are sent about failed tests.
-
-    This currently means an email is sent about all the entries of the
-    storage object.
-
     """
     def setUp(self):
         super(EmailAboutTestFailureTests, self).setUp()
@@ -133,8 +46,8 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
         super(EmailAboutTestFailureTests, self).tearDown()
 
 
-    def test_email_sent_about_all_entries_in_storage(self):
-        """Test that the email report mentions all the entries in storage."""
+    def test_email_sent_about_all_failed_tests(self):
+        """Test that the email report mentions all the failed_tests."""
         complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 60
 
         mail.send(
@@ -146,13 +59,11 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
                 'They are the following:\n\ntest'
                     % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
 
-        storage = {'test': datetime.datetime.min}
-        all_tests = set(storage.keys())
+        failures = ['test']
+        all_tests = set(failures)
 
-        # The ReplayAll is required or else a mox object sneaks its way into
-        # the storage object somehow.
         self.mox.ReplayAll()
-        complete_failures.email_about_test_failure(storage, all_tests)
+        complete_failures.email_about_test_failure(failures, all_tests)
 
 
     def test_email_has_test_names_sorted_alphabetically(self):
@@ -170,14 +81,11 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
 
         # We use an OrderedDict to gurantee that the elements would be out of
         # order if we did a simple traversal.
-        storage = collections.OrderedDict((('test2', datetime.datetime.min),
-                                           ('test1', datetime.datetime.min)))
-        all_tests = set(storage.keys())
+        failures = ['test2', 'test1']
+        all_tests = set(failures)
 
-        # The ReplayAll is required or else a mox object sneaks its way into
-        # the storage object somehow.
         self.mox.ReplayAll()
-        complete_failures.email_about_test_failure(storage, all_tests)
+        complete_failures.email_about_test_failure(failures, all_tests)
 
 
     def test_email_count_of_total_number_of_tests(self):
@@ -193,13 +101,11 @@ class EmailAboutTestFailureTests(mox.MoxTestBase):
                 'They are the following:\n\ntest'
                     % complete_failures._DAYS_TO_BE_FAILING_TOO_LONG)
 
-        storage = {'test': datetime.datetime.min}
-        all_tests = set(storage.keys()) | {'not_failure'}
+        failures = ['test']
+        all_tests = set(failures) | {'not_failure'}
 
-        # The ReplayAll is required or else a mox object sneaks its way into
-        # the storage object somehow.
         self.mox.ReplayAll()
-        complete_failures.email_about_test_failure(storage, all_tests)
+        complete_failures.email_about_test_failure(failures, all_tests)
 
 
 class IsValidTestNameTests(test.TestCase):
@@ -237,7 +143,6 @@ class PrepareLastPassesTests(test.TestCase):
         results = complete_failures.prepare_last_passes(['invalid_test/name'])
 
         self.assertEqual(results, {})
-
 
 
 class GetRecentlyRanTestNamesTests(mox.MoxTestBase, test.TestCase):
@@ -342,6 +247,49 @@ class GetTestsToAnalyzeTests(mox.MoxTestBase):
                                                          last_passes)
 
         self.assertEqual(results, {'test': datetime.datetime.min})
+
+
+class FilterOutGoodTestsTests(mox.MoxTestBase):
+    """Tests the filter_our_good_tests function."""
+
+    def setUp(self):
+        super(FilterOutGoodTestsTests, self).setUp()
+        self.mox.StubOutWithMock(MockDatetime, 'today')
+        self.datetime = datetime.datetime
+        datetime.datetime = MockDatetime
+        self._orig_too_long = complete_failures._DAYS_TO_BE_FAILING_TOO_LONG
+
+
+    def tearDown(self):
+        datetime.datetime = self.datetime
+        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = self._orig_too_long
+        super(FilterOutGoodTestsTests, self).tearDown()
+
+
+    def test_remove_all_tests_that_have_passed_recently_enough(self):
+        """Test that all recently passing tests are not returned."""
+
+        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 10
+        datetime.datetime.today().AndReturn(self.datetime(2012, 1, 21))
+
+        self.mox.ReplayAll()
+        result = complete_failures.filter_out_good_tests(
+                {'test': self.datetime(2012, 1, 20)})
+
+        self.assertEqual(result, [])
+
+
+    def test_keep_all_tests_that_have_not_passed_recently_enough(self):
+        """Test that the tests that have not recently passed are returned."""
+
+        complete_failures._DAYS_TO_BE_FAILING_TOO_LONG = 10
+        datetime.datetime.today().AndReturn(self.datetime(2012, 1, 21))
+
+        self.mox.ReplayAll()
+        result = complete_failures.filter_out_good_tests(
+                {'test': self.datetime(2012, 1, 10)})
+
+        self.assertEqual(result, ['test'])
 
 
 if __name__ == '__main__':

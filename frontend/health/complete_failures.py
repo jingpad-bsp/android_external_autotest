@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 
-import datetime, shelve, sys
+import datetime, sys
 
 import common
 from autotest_lib.client.common_lib import mail
@@ -17,36 +17,12 @@ from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.frontend.health import utils
 
 
-_STORAGE_FILE = 'failure_storage'
 # Mark a test as failing too long if it has not passed in this many days
 _DAYS_TO_BE_FAILING_TOO_LONG = 60
 # Ignore any tests that have not ran in this many days
 _DAYS_NOT_RUNNING_CUTOFF = 60
 _MAIL_RESULTS_FROM = 'chromeos-test-health@google.com'
 _MAIL_RESULTS_TO = 'chromeos-lab-infrastructure@google.com'
-
-
-def load_storage():
-    """
-    Loads the storage object from disk.
-
-    This object keeps track of which tests we have already sent mail about so
-    we only send emails when the status of a test changes.
-
-    @return the storage object.
-
-    """
-    return shelve.open(_STORAGE_FILE)
-
-
-def save_storage(storage):
-    """
-    Saves the storage object to disk.
-
-    @param storage: The storage object to save to disk.
-
-    """
-    storage.close()
 
 
 def is_valid_test_name(name):
@@ -128,48 +104,40 @@ def get_tests_to_analyze(recent_test_names, last_pass_times):
     return dict(always_failed.items() + running_passes.items())
 
 
-def store_results(tests, storage):
+def email_about_test_failure(failed_tests, all_tests):
     """
-    Store information about tests that have been failing for a long time.
+    Send an email about all the tests that have failed if there are any.
 
-
-    @param tests: The test_name:time_of_last_pass pairs.
-    @param storage: The storage object.
-
-    """
-    failing_time_cutoff = datetime.timedelta(_DAYS_TO_BE_FAILING_TOO_LONG)
-
-    today = datetime.datetime.today()
-    for test, last_fail in tests.iteritems():
-        if today - last_fail >= failing_time_cutoff:
-            if test not in storage:
-                storage[test] = today
-        else:
-            try:
-                del storage[test]
-            except KeyError:
-                pass
-
-
-def email_about_test_failure(storage, all_tests):
-    """
-    Send an email about all the tests in the storage object if there are any.
-
-    @param storage: The storage object.
+    @param failed_tests: The list of failed tests. This will be sorted in this
+        function.
     @param all_tests: All the names of tests that have been recently ran.
 
     """
-    if storage:
-        tests = sorted(storage.keys())
+    if failed_tests:
+        failed_tests.sort()
         mail.send(_MAIL_RESULTS_FROM,
                   [_MAIL_RESULTS_TO],
                   [],
                   'Long Failing Tests',
                   '%d/%d tests have been failing for at least %d days.\n'
                   'They are the following:\n\n%s'
-                  % (len(storage), len(all_tests),
+                  % (len(failed_tests), len(all_tests),
                      _DAYS_TO_BE_FAILING_TOO_LONG,
-                     '\n'.join(tests)))
+                     '\n'.join(failed_tests)))
+
+
+def filter_out_good_tests(tests):
+    """
+    Remove all tests that have passed recently enough to be good.
+
+    @param tests: The tests to filter on.
+
+    @return: A list of tests that have not passed for a long time.
+
+    """
+    cutoff = (datetime.datetime.today() -
+              datetime.timedelta(_DAYS_TO_BE_FAILING_TOO_LONG))
+    return [name for name, last_pass in tests.items() if last_pass < cutoff]
 
 
 def main():
@@ -180,15 +148,11 @@ def main():
     important if a nice way to test this code can be determined.
 
     """
-    storage = load_storage()
     all_test_names = get_recently_ran_test_names()
     last_passes = utils.get_last_pass_times()
     tests = get_tests_to_analyze(all_test_names, last_passes)
-    store_results(tests, storage)
-    email_about_test_failure(storage, all_test_names)
-    save_storage(storage)
-
-    return 0
+    failures = filter_out_good_tests(tests)
+    email_about_test_failure(failures, all_test_names)
 
 
 if __name__ == '__main__':
