@@ -121,7 +121,14 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
 
                 showText(name, "view_label");
                 showField(jobObject, "owner", "view_owner");
+                String parent_job_url = Utils.jsonToString(jobObject.get("parent_job")).trim();
+                if (parent_job_url.equals("<null>")){
+                    parent_job_url = "http://www.youtube.com/watch?v=oHg5SJYRHA0";
+                } else {
+                    parent_job_url = "#tab_id=view_job&object_id=" + parent_job_url;
+                }
                 showField(jobObject, "parent_job", "view_parent");
+                getElementById("view_parent").setAttribute("href", parent_job_url);
                 showField(jobObject, "test_retry", "view_test_retry");
                 showField(jobObject, "priority", "view_priority");
                 showField(jobObject, "created_on", "view_created");
