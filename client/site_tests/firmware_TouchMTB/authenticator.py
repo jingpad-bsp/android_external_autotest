@@ -167,7 +167,7 @@ class SpreadsheetAuthorizer:
                                                 USER_AGENT)
                 redirect_url = 'http://localhost:' + str(self.port)
                 url = token.generate_authorize_url(redirect_url)
-                print ('\nPlease open the following URL and use your non-corp'
+                print ('\nPlease open the following URL and use @chromium.org'
                        'account for authentication and authorization of the'
                        'spreadsheet access:\n' + url)
                 print 'Waiting for you to authenticate...'
