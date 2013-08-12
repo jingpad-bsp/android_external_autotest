@@ -73,10 +73,9 @@
         "effective_host_permissions": [],
         "api_permissions": []
       },
-      { "id": "ebpbnabdhheoknfklmpddcdijjkmklkp",
+      { "id": "efjnaogkjbogokcnohkmnjdojkikgobo",
         "name": "Google+ Photos",
-        "boards": ["link"],
-        "effective_host_permissions": ["http://maps.googleapis.com/*",
+        "effective_host_permissions": ["https://maps.googleapis.com/*",
                                        "https://*.googleusercontent.com/*",
                                        "https://accounts.google.com/*",
                                        "https://apis.google.com/*",
