@@ -136,7 +136,7 @@ class graphics_GLBench(test.test):
     # The term_process function of /sbin/killers makes sure that all X
     # process are really dead before returning; this is what stop ui uses.
     kill_cmd = '. /sbin/killers; term_process "^X$"'
-    cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
+    cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
 
     summary = utils.system_output(cmd, retain_output=True)
 
