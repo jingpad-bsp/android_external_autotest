@@ -171,7 +171,14 @@ class NetperfResult(object):
             if value is None or dev is None:
                 continue
 
-            if value == 0.0 and dev != 0.0:
+            if not dev and not value:
+                # 0/0 is undefined, but take this to be good for our purposes.
+                continue
+
+            if dev and not value:
+                # Deviation is non-zero, but the average is 0.  Deviation
+                # as a fraction of the value is undefined but in theory
+                # a "very large number."
                 return False
 
             if dev / value > fraction:
@@ -310,6 +317,10 @@ class NetperfConfig(object):
     # flow control here, and generally sending is easier that receiving, so
     # there will be two types of throughput, both receiving and sending.
     TEST_TYPE_UDP_STREAM = 'UDP_STREAM'
+    # This isn't a real test type, but we can emulate a UDP stream from the
+    # server to the DUT by running the netperf server on the DUT and the
+    # client on the server and then doing a UDP_STREAM test.
+    TEST_TYPE_UDP_MAERTS = 'UDP_MAERTS'
     # Different kinds of tests have different output formats.
     REQUEST_RESPONSE_TESTS = [ TEST_TYPE_TCP_CRR,
                                TEST_TYPE_TCP_RR,
@@ -333,27 +344,57 @@ class NetperfConfig(object):
             raise error.TestFail('Invalid netperf test type: %r.' % test_type)
 
 
-    def __init__(self, test_type, server_serves=True,
-                 test_time=DEFAULT_TEST_TIME):
+    @property
+    def test_type(self):
+        """@return string test type suitable for passing to netperf."""
+        if self._test_type == self.TEST_TYPE_UDP_MAERTS:
+            return self.TEST_TYPE_UDP_STREAM
+
+        return self._test_type
+
+
+    @property
+    def meaningful_test_type(self):
+        """@return string human readable test description."""
+        return {self.TEST_TYPE_TCP_CRR: 'tcp_connect_roundtrip_rate',
+                self.TEST_TYPE_TCP_MAERTS: 'tcp_downstream',
+                self.TEST_TYPE_TCP_RR: 'tcp_roundtrip_rate',
+                self.TEST_TYPE_TCP_SENDFILE: 'tcp_upstream_sendfile',
+                self.TEST_TYPE_TCP_STREAM: 'tcp_upstream',
+                self.TEST_TYPE_UDP_RR: 'udp_roundtrip',
+                self.TEST_TYPE_UDP_STREAM: 'udp_upstream',
+                self.TEST_TYPE_UDP_MAERTS: 'udp_downstream'}.get(
+                        self._test_type, 'unknown')
+
+
+    @property
+    def server_serves(self):
+        """False iff the server and DUT should switch roles for running netperf.
+
+        @return True iff netserv should be run on server host.  When false
+                this indicates that the DUT should run netserv and netperf
+                should be run on the server against the client.
+
+        """
+        return self._test_type != self.TEST_TYPE_UDP_MAERTS
+
+
+    def __init__(self, test_type, test_time=DEFAULT_TEST_TIME):
         """Construct a NetperfConfig.
 
         @param test_type string one of TEST_TYPE_* above.
-        @param server_serves bool True iff server is acting as the netperf
-            server.
         @param test_time int number of seconds to run the test for.
 
         """
-        self._assert_is_valid_test_type(test_type)
-        self.test_type = test_type
-        self.server_serves = server_serves
+        self._test_type = test_type
         self.test_time = test_time
+        self._assert_is_valid_test_type(self.test_type)
 
 
     def __repr__(self):
-        return '%s(test_type=%r, server_serves=%r, test_time=%r' % (
+        return '%s(test_type=%r, test_time=%r' % (
                 self.__class__.__name__,
-                self.test_type,
-                self.server_serves,
+                self._test_type,
                 self.test_time)
 
 

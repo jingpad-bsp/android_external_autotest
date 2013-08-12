@@ -100,7 +100,8 @@ class NetperfSession(object):
         @param config: NetperfConfig object.
 
         """
-        logging.info('Performing measurements in netperf session.')
+        logging.info('Performing %s measurements in netperf session.',
+                     config.meaningful_test_type)
         history = []
         with netperf_runner.NetperfRunner(
                 self._client_proxy, self._server_proxy, config) as runner:
