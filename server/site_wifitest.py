@@ -283,7 +283,6 @@ class WiFiTest(object):
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
         if 'no_cleanup_disconnect' not in self.run_options:
-            self.disconnect({})
             self.wifi.destroy({})
 
         self.wifi.cleanup({})

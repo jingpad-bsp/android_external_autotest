@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import base64
 import logging
 import random
 import re
@@ -260,11 +259,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         conf['rts_threshold'] = '2347'
         conf['fragm_threshold'] = '2346'
         conf['driver'] = self.hostapd['driver']
-        conf['ssid'] = self._get_ssid('')
+        conf['ssid'] = self._build_ssid('')
         return conf
 
 
-    def _get_ssid(self, suffix):
+    def _build_ssid(self, suffix):
         unique_salt = ''.join([random.choice(self.SUFFIX_LETTERS)
                                for x in range(5)])
         return (self.ssid_prefix + unique_salt + suffix)[-32:]
@@ -285,7 +284,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Start with the default hostapd config parameters.
         conf = self.__get_default_hostap_config()
         conf['ssid'] = (configuration.ssid or
-                        self._get_ssid(configuration.ssid_suffix))
+                        self._build_ssid(configuration.ssid_suffix))
         if configuration.bssid:
             conf['bssid'] = configuration.bssid
         conf['channel'] = configuration.channel
@@ -349,7 +348,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             if k == 'ssid':
                 conf['ssid'] = v
             elif k == 'ssid_suffix':
-                conf['ssid'] = self._get_ssid(v)
+                conf['ssid'] = self._build_ssid(v)
             elif k == 'channel':
                 freq = int(v)
                 self.hostapd['frequency'] = freq
@@ -510,7 +509,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         interface = self._get_wlanif(config.frequency, self.phytype,
                                      config.hw_mode)
         self.station['conf']['ssid'] = (config.ssid or
-                                        self._get_ssid(config.ssid_suffix))
+                                        self._build_ssid(config.ssid_suffix))
         # Connect the station
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
         self.router.run('%s dev %s ibss join %s %d' % (
@@ -619,7 +618,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.hostap_config(params)
         else:
             config = hostap_config.HostapConfig(
-                    ssid=self.get_ssid(),
                     frequency=int(params.get('channel', None)))
             self.ibss_configure(config)
 
