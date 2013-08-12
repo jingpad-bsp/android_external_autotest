@@ -9,6 +9,7 @@ import urllib2
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros import service_stopper
 
 # to run this test manually on a test target
 # ssh root@machine
@@ -36,6 +37,9 @@ def ReferenceImageExists(images_file, images_url, imagename):
 class graphics_GLBench(test.test):
   version = 1
   preserve_srcdir = True
+
+  # None-init vars used by cleanup() here, in case setup() fails
+  _services = None
 
   reference_images_file = 'deps/glbench/glbench_reference_images.txt'
   knownbad_images_file = 'deps/glbench/glbench_knownbad_images.txt'
@@ -100,6 +104,13 @@ class graphics_GLBench(test.test):
   def setup(self):
     self.job.setup_dep(['glbench'])
 
+  def initialize(self):
+    self._services = service_stopper.ServiceStopper(['ui'])
+
+  def cleanup(self):
+    if self._services:
+      self._services.restore_services()
+
   def run_once(self, options=''):
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
@@ -118,12 +129,7 @@ class graphics_GLBench(test.test):
     cmd = '%s %s' % (exefile, options)
 
     # If UI is running, we must stop it and restore later.
-    need_restart_ui = False
-    status_output = utils.system_output('initctl status ui')
-    # If chrome is running, result will be similar to:
-    #   ui start/running, process 11895
-    logging.info('initctl status ui returns: %s', status_output)
-    need_restart_ui = status_output.startswith('ui start')
+    self._services.stop_services()
 
     # Just sending SIGTERM to X is not enough; we must wait for it to
     # really die before we start a new X server (ie start ui).
@@ -132,19 +138,11 @@ class graphics_GLBench(test.test):
     kill_cmd = '. /sbin/killers; term_process "^X$"'
     cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
 
-    if need_restart_ui:
-      utils.system('initctl stop ui', ignore_status=True)
-
-    try:
-      summary = utils.system_output(cmd, retain_output=True)
-    finally:
-      if need_restart_ui:
-        utils.system('initctl start ui')
+    summary = utils.system_output(cmd, retain_output=True)
 
     # write a copy of stdout to help debug failures
     results_path = os.path.join(self.outputdir, 'summary.txt')
     f = open(results_path, 'w+')
-    f.write('# need ui restart: %s\n' % need_restart_ui)
     f.write('# ---------------------------------------------------\n')
     f.write('# [' + cmd + ']\n')
     f.write(summary)
