@@ -3,17 +3,44 @@
 # found in the LICENSE file.
 
 import os
-from autotest_lib.client.bin import utils
-from autotest_lib.client.cros import graphics_ui_test
 
-class graphics_Sanity(graphics_ui_test.GraphicsUITest):
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.cros import service_stopper
+
+# to run this test manually on a test target
+# ssh root@machine
+# cd /usr/local/autotest/deps/glbench
+# stop ui
+# X :0 & sleep 1; DISPLAY=:0 ./windowmanagertest --screenshot1_sec 2 \
+#    --screenshot2_sec 1  --cooldown_sec 1 \
+#    --screenshot1_cmd "DISPLAY=:0 import -channel RGB -colorspace RGB \
+#        -depth 8 -window root screenshot1_generated.png" \
+#    --screenshot2_cmd "DISPLAY=:0 import -channel RGB -colorspace RGB \
+#        -depth 8 -window root screenshot2_generated.png"
+# start ui
+
+class graphics_Sanity(test.test):
     """
     This test is meant to be used as a quick sanity check for GL/GLES.
     """
     version = 1
 
+    # None-init vars used by cleanup() here, in case setup() fails
+    _services = None
+
+
     def setup(self):
         self.job.setup_dep(['glbench'])
+
+
+    def initialize(self):
+        self._services = service_stopper.ServiceStopper(['ui'])
+
+
+    def cleanup(self):
+        if self._services:
+            self._services.restore_services()
+
 
     def run_once(self):
         """
@@ -38,23 +65,32 @@ class graphics_Sanity(graphics_ui_test.GraphicsUITest):
                                             "screenshot2_generated_resized.png")
 
         exefile = os.path.join(self.autodir, 'deps/glbench/windowmanagertest')
-        # Enable running in window manager.
-        exefile = ('chvt 1 && DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority '
-                   + exefile)
 
         # Delay before screenshot: 1 second has caused failures.
         options = ' --screenshot1_sec 2'
         options += ' --screenshot2_sec 1'
         options += ' --cooldown_sec 1'
         # perceptualdiff can handle only 8 bit images.
-        options += ' --screenshot1_cmd "DISPLAY=:0 import -channel RGB'
+        options += ' --screenshot1_cmd "DISPLAY=:1 import -channel RGB'
         options += ' -colorspace RGB -depth 8 -window root'
         options += ' %s"' % screenshot1_generated
-        options += ' --screenshot2_cmd "DISPLAY=:0 import -channel RGB'
+        options += ' --screenshot2_cmd "DISPLAY=:1 import -channel RGB'
         options += ' -colorspace RGB -depth 8 -window root'
         options += ' %s"' % screenshot2_generated
 
-        utils.system(exefile + " " + options)
+        cmd = "%s %s" % (exefile, options)
+        # Just sending SIGTERM to X is not enough; we must wait for it to
+        # really die before we start a new X server (ie start ui).
+        # The term_process function of /sbin/killers makes sure that all X
+        # process are really dead before returning; this is what stop ui uses.
+        kill_cmd = '. /sbin/killers; term_process "^X$"'
+        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd,
+                                                                   kill_cmd)
+
+        # If UI is running, we must stop it and restore later.
+        self._services.stop_services()
+
+        utils.system(cmd)
 
         # convert -resize -depth 8 does not work. But resize honors previously
         # chosen bit depth.
