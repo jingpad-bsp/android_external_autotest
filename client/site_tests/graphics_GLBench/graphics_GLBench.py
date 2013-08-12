@@ -125,10 +125,7 @@ class graphics_GLBench(test.test):
     logging.info('initctl status ui returns: %s', status_output)
     need_restart_ui = status_output.startswith('ui start')
 
-    # If UI is just stopped or if there's no known X session, we have to start a
-    # new one. For factory test, it provides X (DISPLAY) so we can reuse it.
-    if need_restart_ui or (not os.getenv('DISPLAY')):
-        cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; kill $!' % cmd
+    cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; kill $!' % cmd
 
     if need_restart_ui:
       utils.system('initctl stop ui', ignore_status=True)
