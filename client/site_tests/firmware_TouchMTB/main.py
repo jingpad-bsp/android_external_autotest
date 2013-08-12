@@ -215,6 +215,11 @@ class firmware_TouchMTB:
             print ('  $ DISPLAY=:0 OPTIONS="-u 20130702_063631-fw_11.23-manual"'
                    ' python main.py\n')
 
+            if self.options[OPTIONS.MODE] == MODE.CALIBRATION:
+                print ('Please upload the raw data to the spreadsheet after '
+                       'the calibration tests have been finished successfully:')
+                print '$ python spreadsheet.py -v'
+
 
 def upload_to_gs(log_dir):
     """Upload the gesture event files specified in log_dir to Google cloud
