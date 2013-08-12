@@ -86,6 +86,53 @@ class HostapConfig(object):
 
 
     @property
+    def channel(self):
+        """@return int channel number for self.frequency."""
+        return self.CHANNEL_MAP[self.frequency]
+
+
+    @channel.setter
+    def channel(self, value):
+        """Sets the channel number to configure hostapd to listen on.
+
+        @param value: int channel number.
+
+        """
+        for frequency, channel in self.CHANNEL_MAP.iteritems():
+            if channel == value:
+                self.frequency = frequency
+                break
+
+        else:
+            raise error.TestFail('Tried to set an invalid channel: %r.' %
+                                 value)
+
+
+    @property
+    def frequency(self):
+        """@return int frequency for hostapd to listen on."""
+        return self._frequency
+
+
+    @frequency.setter
+    def frequency(self, value):
+        """Sets the frequency for hostapd to listen on.
+
+        @param value: int frequency in MHz.
+
+        """
+        if value not in self.CHANNEL_MAP:
+            raise error.TestFail('Tried to set an invalid frequency: %r.' %
+                                 value)
+
+        if not self.supports_frequency(value):
+            raise error.TestFail('Invalid frequency %d for configuration %r' %
+                                 (value, self))
+
+        self._frequency = value
+
+
+    @property
     def ht_packet_capture_mode(self):
         """Get an appropriate packet capture HT parameter.
 
@@ -124,6 +171,31 @@ class HostapConfig(object):
 
 
     @property
+    def hw_mode(self):
+        """@return string hardware mode understood by hostapd."""
+        if self._mode == self.MODE_11A:
+            return self.MODE_11A
+        if self._mode == self.MODE_11B:
+            return self.MODE_11B
+        if self._mode == self.MODE_11G:
+            return self.MODE_11G
+        if self._mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE):
+            # For their own historical reasons, hostapd wants it this way.
+            if self.frequency > 5000:
+                return self.MODE_11A
+
+            return self.MODE_11G
+
+        raise error.TestFail('Invalid mode.')
+
+
+    @property
+    def is_11n(self):
+        """@return True iff we're trying to host an 802.11n network."""
+        return self._mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE)
+
+
+    @property
     def printable_mode(self):
         """@return human readable mode string."""
         if self.is_11n:
@@ -132,8 +204,23 @@ class HostapConfig(object):
         return '11' + self.hw_mode.upper()
 
 
-    def __init__(self, mode=None, channel=None, frequency=None,
-                 n_capabilities=None, hide_ssid=None, beacon_interval=None,
+    @property
+    def require_ht(self):
+        """@return True iff clients should be required to support HT."""
+        # TODO(wiley) Why? (crbug.com/237370)
+        logging.warning('Not enforcing pure N mode because Snow does '
+                        'not seem to support it...')
+        return False
+
+
+    @property
+    def ssid_suffix(self):
+        """@return meaningful suffix for SSID."""
+        return '_ch%d' % self.channel
+
+
+    def __init__(self, mode=MODE_11B, channel=None, frequency=None,
+                 n_capabilities=[], hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
                  force_wmm=None, security_config=None,
                  pmf_support=PMF_SUPPORT_DISABLED):
@@ -165,48 +252,22 @@ class HostapConfig(object):
             raise error.TestError('Specify either frequency or channel '
                                   'but not both.')
 
-        if channel is None and frequency is None:
+        if n_capabilities and mode is None:
+            mode = self.MODE_11N_PURE
+        self._mode = mode
+
+        if channel:
+            self.channel = channel
+        elif frequency:
+            self.frequency = frequency
+        else:
             raise error.TestError('Specify either frequency or channel.')
 
-        for real_frequency, real_channel in self.CHANNEL_MAP.iteritems():
-            if frequency == real_frequency or channel == real_channel:
-                self.frequency = real_frequency
-                self.channel = real_channel
-                break
-        else:
-            raise error.TestError('Invalid channel %r or frequency %r '
-                                  'specified.' % (channel, frequency))
-
-        self.is_11n = False
-        self.require_ht = False
-        if mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE) or n_capabilities:
-            if mode == self.MODE_11N_PURE:
-                # TODO(wiley) Why? (crbug.com/237370)
-                logging.warning('Not enforcing pure N mode because Snow does '
-                                'not seem to support it...')
-                #self.require_ht = True
-            # For their own historical reasons, hostapd wants it this way.
-            if self.frequency > 5000:
-                mode = self.MODE_11A
-            else:
-                mode = self.MODE_11G
-            self.is_11n = True
-        if self.frequency > 5000 and mode != self.MODE_11A:
-            raise error.TestError('Must use 11a or 11n mode for '
-                                  'frequency > 5Ghz')
-
-        if self.frequency < 5000 and mode == self.MODE_11A:
-            raise error.TestError('Cannot use 11a with frequency %d.' %
-                                  self.frequency)
-
-        if not mode in (self.MODE_11A, self.MODE_11B, self.MODE_11G, None):
-            raise error.TestError('Invalid router mode %r' % mode)
+        if not self.supports_frequency(self.frequency):
+            raise error.TestFail('Configured a mode %s that does not support '
+                                 'frequency %d' % (self._mode, self.frequency))
 
         self.wmm_enabled = False
-        self.hw_mode = mode or self.MODE_11B
-        self.ssid_suffix = '_ch%d' % self.channel
-        if n_capabilities is None:
-            n_capabilities = []
         self.n_capabilities = set()
         for cap in n_capabilities:
             self.wmm_enabled = True
@@ -259,7 +320,7 @@ class HostapConfig(object):
                 'dtim_period=%r, frag_threshold=%r, ssid=%r, bssid=%r, '
                 'wmm_enabled=%r, security_config=%r)' % (
                         self.__class__.__name__,
-                        self.hw_mode,
+                        self._mode,
                         self.channel,
                         self.frequency,
                         self.n_capabilities,
@@ -274,4 +335,35 @@ class HostapConfig(object):
 
 
     def get_security_hostapd_conf(self):
+        """@return dict of hostapd settings related to security."""
         return self.security_config.get_hostapd_config()
+
+
+    def supports_channel(self, value):
+        """Check whether channel is supported by the current hardware mode.
+
+        @param value: int channel to check.
+        @return True iff the current mode supports the band of the channel.
+
+        """
+        for freq, channel in self.CHANNEL_MAP.iteritems():
+            if channel == value:
+                return self.supports_frequency(freq)
+
+        return False
+
+
+    def supports_frequency(self, frequency):
+        """Check whether frequency is supported by the current hardware mode.
+
+        @param frequency: int frequency to check.
+        @return True iff the current mode supports the band of the frequency.
+
+        """
+        if self._mode == self.MODE_11A and frequency < 5000:
+            return False
+
+        if self._mode in (self.MODE_11B, self.MODE_11G) and frequency > 5000:
+            return False
+
+        return True
