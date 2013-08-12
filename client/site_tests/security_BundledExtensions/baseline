@@ -191,6 +191,11 @@
       }
   ],
   "component_extension_baseline": [
+      { "id": "idddmepepmjcgiedknnmlbadcokidhoa",
+        "name": "NCDLauncher",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
       { "id": "pmfjbimdmchhbnneeidfognadeopoehp",
         "name": "Image Loader",
         "effective_host_permissions": [],
