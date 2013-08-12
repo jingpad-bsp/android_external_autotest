@@ -64,6 +64,7 @@ def _get_lab_servo(target_hostname):
             pass
     return None
 
+GLOBAL_SSH_COMMAND_OPTIONS = ''
 
 def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
                      connect_timeout=None, alive_interval=None):
@@ -95,12 +96,12 @@ def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
     @param connect_timeout Ignored.
     @param alive_interval Ignored.
     """
-    base_command = ('/usr/bin/ssh -a -x %s -o StrictHostKeyChecking=no'
+    base_command = ('/usr/bin/ssh -a -x %s %s -o StrictHostKeyChecking=no'
                     ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
                     ' -o ConnectTimeout=30 -o ServerAliveInterval=180'
                     ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
                     ' -o Protocol=2 -l %s -p %d')
-    return base_command % (opts, user, port)
+    return base_command % (GLOBAL_SSH_COMMAND_OPTIONS, opts, user, port)
 
 
 

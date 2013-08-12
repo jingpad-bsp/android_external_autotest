@@ -156,6 +156,11 @@ class base_autoserv_parser(object):
                                dest="disable_sysinfo", default=False,
                                help="Turns off sysinfo collection to shave "
                                     "time off test runs.")
+        self.parser.add_option("--ssh_verbosity", action="store",
+                               dest="ssh_verbosity", default=0,
+                               type="choice", choices=["0", "1", "2", "3"],
+                               help=("Verbosity level for ssh, between 0 "
+                                     "and 3 inclusive. [default: 0]"))
 
 
     def parse_args(self):

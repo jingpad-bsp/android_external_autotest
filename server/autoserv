@@ -105,6 +105,7 @@ def run_autoserv(pid_file_manager, results, parser):
     test_retry = parser.options.test_retry
     verify_job_repo_url = parser.options.verify_job_repo_url
     skip_crash_collection = parser.options.skip_crash_collection
+    ssh_verbosity = int(parser.options.ssh_verbosity)
 
     # can't be both a client and a server side test
     if client and server:
@@ -117,6 +118,11 @@ def run_autoserv(pid_file_manager, results, parser):
                        provision or reset)
     if len(parser.args) < 1 and not is_special_task:
         parser.parser.error("Missing argument: control file")
+
+    if ssh_verbosity > 0:
+        # ssh_verbosity is an integer between 0 and 3, inclusive
+        ssh_verbosity_flag = '-' + 'v' * ssh_verbosity
+        site_host.GLOBAL_SSH_COMMAND_OPTIONS += ssh_verbosity_flag
 
     # We have a control file unless it's just a verify/repair/cleanup job
     if len(parser.args) > 0:
