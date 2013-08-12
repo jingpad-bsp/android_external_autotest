@@ -7,7 +7,7 @@ AUTHOR = "The Chromium OS Authors"
 DOC = """
 Ensures appropriate permissions on data within the chronos profile.
 """
-NAME = "security_ProfilePermissions"
+NAME = "security_ProfilePermissionsTelemetry"
 PURPOSE = "Protect the security boundary enforced by filesystem permissions"
 CRITERIA = """
 Fail if there are any files or directories writable by group/other in ~.
