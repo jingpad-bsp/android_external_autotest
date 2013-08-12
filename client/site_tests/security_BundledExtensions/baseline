@@ -46,8 +46,12 @@
                                        "https://relay.google.com/*",
                                        "https://*.talkgadget.google.com/*",
 "https://*.talkgadget.google.com/talkgadget/oauth/chrome-remote-desktop/rel/*",
+"https://*.talkgadget.google.com/talkgadget/oauth/chrome-remote-desktop/thirdpartyauth*",
                                        "https://www.googleapis.com/*"],
-        "api_permissions": ["clipboardRead", "clipboardWrite", "storage"]
+        "api_permissions": ["clipboardRead",
+                            "clipboardWrite",
+                            "nativeMessaging",
+                            "storage"]
       },
       { "id": "icppfcnhkcmnfdhfhphakoifcfokfdhg",
         "name": "Google Play Music",
