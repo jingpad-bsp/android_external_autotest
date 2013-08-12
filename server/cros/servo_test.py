@@ -19,7 +19,7 @@ class ServoTest(test.test):
     version = 2
 
     _REMOTE_PORT = 9990
-    _REMOTE_COMMAND = '/usr/local/autotest/cros/faft_client.py'
+    _REMOTE_COMMAND = '/usr/local/autotest/cros/faft/faft_client.py'
     _REMOTE_COMMAND_SHORT = 'faft_client'
     _REMOTE_LOG_FILE = '/tmp/faft_client.log'
     _SSH_CONFIG = ('-o StrictHostKeyChecking=no '

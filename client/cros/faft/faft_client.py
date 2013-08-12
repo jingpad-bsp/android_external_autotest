@@ -14,9 +14,15 @@ import functools, os, shutil, tempfile
 from optparse import OptionParser
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
-from saft import cgpt_state, chromeos_interface, flashrom_handler
-from saft import kernel_handler, saft_flashrom_util, tpm_handler
-from firmware_updater import FirmwareUpdater
+import common
+from autotest_lib.client.cros.faft.utils import (cgpt_state,
+                                                 chromeos_interface,
+                                                 firmware_updater,
+                                                 flashrom_handler,
+                                                 kernel_handler,
+                                                 saft_flashrom_util,
+                                                 tpm_handler,
+                                                )
 
 
 def allow_multiple_section_input(image_operator):
@@ -135,7 +141,7 @@ class FAFTClient(object):
         self._cgpt_state = cgpt_state.CgptState(
                 'SHORT', self._chromeos_interface, self._system_get_root_dev())
 
-        self._updater = FirmwareUpdater(self._chromeos_interface)
+        self._updater = firmware_updater.FirmwareUpdater(self._chromeos_interface)
 
         # Initialize temporary directory path
         self._temp_path = '/var/tmp/faft/autest'
