@@ -119,10 +119,10 @@ class TestThatUnittests(unittest.TestCase):
         # Test run_job.
         self.mox.ReplayAll()
         job_res = test_that.run_job(job1, remote, autotest_path, results_dir,
-                                    fast_mode, id_digits, args)
+                                    fast_mode, id_digits, 0, args)
         self.assertEqual(job_res, job1_results_dir)
         job_res = test_that.run_job(job2, remote, autotest_path, results_dir,
-                                    fast_mode, id_digits, args)
+                                    fast_mode, id_digits, 0, args)
 
         self.assertEqual(job_res, job2_results_dir)
         self.mox.UnsetStubs()
@@ -141,6 +141,7 @@ class TestThatUnittests(unittest.TestCase):
         suite_control_files=['c1', 'c2', 'c3', 'c4']
         results_dir = '/tmp/test_that_results_fake'
         id_digits = 1
+        ssh_verbosity=2
         args = 'matey'
 
         def fake_suite_callback(*args, **dargs):
@@ -168,11 +169,11 @@ class TestThatUnittests(unittest.TestCase):
             test_that.run_job(mox.ContainsAttributeValue('control_file',
                                                          control_file),
                              remote, autotest_path, results_dir, fast_mode,
-                             id_digits, args, False)
+                             id_digits, ssh_verbosity, args, False)
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
                                     remote, fast_mode, build=build, board=board,
-                                    args=args)
+                                    ssh_verbosity=ssh_verbosity, args=args)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
 

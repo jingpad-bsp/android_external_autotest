@@ -12,7 +12,8 @@ from autotest_lib.client.common_lib import control_data
 def autoserv_run_job_command(autoserv_directory, machines,
                              results_directory=None, extra_args=[], job=None,
                              queue_entry=None, verbose=True,
-                             write_pidfile=True, fast_mode=False):
+                             write_pidfile=True, fast_mode=False,
+                             ssh_verbosity=0):
     """
     Construct an autoserv command from a job or host queue entry.
 
@@ -33,6 +34,8 @@ def autoserv_run_job_command(autoserv_directory, machines,
     @param write_pidfile: Boolean (default: True) for whether autoserv should
                           write a pidfile.
     @param fast_mode: bool to use fast mode (disables slow autotest features).
+    @param ssh_verbosity: integer between 0 and 3 (inclusive) which sents the
+                          verbosity level of ssh. Default: 0.
     @returns The autoserv command line as a list of executable + parameters.
     """
     command = [os.path.join(autoserv_directory, 'autoserv')]
@@ -45,6 +48,9 @@ def autoserv_run_job_command(autoserv_directory, machines,
 
     if machines:
         command += ['-m', machines]
+
+    if ssh_verbosity:
+        command += ['--ssh_verbosity', str(ssh_verbosity)]
 
     if job or queue_entry:
         if not job:

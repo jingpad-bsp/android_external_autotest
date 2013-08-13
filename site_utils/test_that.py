@@ -102,7 +102,7 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
 
 
 def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
-            id_digits=1, args=None, pretend=False):
+            id_digits=1, ssh_verbosity=0, args=None, pretend=False):
     """
     Shell out to autoserv to run an individual test job.
 
@@ -116,6 +116,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
     @param id_digits: The minimum number of digits that job ids should be
                       0-padded to when formatting as a string for results
                       directory.
+    @param ssh_verbosity: SSH verbosity level, passed along to autoserv_utils
     @param args: String that should be passed as args parameter to autoserv,
                  and then ultimitely to test itself.
     @param pretend: If True, will print out autoserv commands rather than
@@ -135,7 +136,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
                 os.path.join(sysroot_autotest_path, 'server'),
                 machines=host, job=job, verbose=False,
                 results_directory=results_directory,
-                fast_mode=fast_mode,
+                fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
                 extra_args=extra_args)
 
         if not pretend:
@@ -166,7 +167,7 @@ def setup_local_afe():
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
                       pretend=False, no_experimental=False,
-                      results_directory=None):
+                      results_directory=None, ssh_verbosity=0):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
@@ -184,6 +185,8 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param results_directory: Directory to store results in. Defaults to None,
                               in which case results will be stored in a new
                               subdirectory of /tmp
+    @param ssh_verbosity: SSH verbosity level, passed through to
+                          autoserv_utils.
 
     @returns: directory in which results are stored.
     """
@@ -230,7 +233,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     job_id_digits=len(str(last_job_id))
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory, fast_mode,
-                job_id_digits, args, pretend)
+                job_id_digits, ssh_verbosity, args, pretend)
 
     return results_directory
 
@@ -256,6 +259,10 @@ def validate_arguments(arguments):
                              ':lab:')
         if arguments.pretend:
             raise ValueError('--pretend flag not supported when running '
+                             'against :lab:')
+
+        if arguments.ssh_verbosity:
+            raise ValueError('--ssh_verbosity flag not supported when running '
                              'against :lab:')
 
 
@@ -316,7 +323,10 @@ def parse_arguments(argv):
                         help='Ignore chrome crashes when producing test '
                         'report. This flag gets passed along to the report '
                         'generation tool.')
-
+    parser.add_argument('--ssh_verbosity', action='store', type=int,
+                        choices=[0, 1, 2, 3], default=0,
+                        help='Verbosity level for ssh, between 0 and 3 '
+                             'inclusive.')
     return parser.parse_args(argv)
 
 
@@ -426,7 +436,8 @@ def main(argv):
                                    args=arguments.args,
                                    pretend=arguments.pretend,
                                    no_experimental=arguments.no_experimental,
-                                   results_directory=arguments.results_dir)
+                                   results_directory=arguments.results_dir,
+                                   ssh_verbosity=arguments.ssh_verbosity)
         if arguments.pretend:
             logging.info('Finished pretend run. Exiting.')
             return 0
