@@ -1,4 +1,5 @@
 import os
+import logging
 
 
 class PidFileManager(object):
@@ -12,6 +13,7 @@ class PidFileManager(object):
         self.pid_file = open(self.path, "w")
         self.pid_file.write("%s\n" % os.getpid())
         self.pid_file.flush()
+        logging.info("Logged pid %s to %s", os.getpid(), self.path)
 
 
     def close_file(self, exit_code, signal_code=0):

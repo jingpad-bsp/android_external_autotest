@@ -511,6 +511,7 @@ class base_server_job(base_job.base_job):
         # for a normal job, make sure the uncollected logs file exists
         # for a crashinfo-only run it should already exist, bail out otherwise
         created_uncollected_logs = False
+        logging.info("I am PID %s", os.getpid())
         if self.resultdir and not os.path.exists(self._uncollected_log_file):
             if only_collect_crashinfo:
                 # if this is a crashinfo-only run, and there were no existing
