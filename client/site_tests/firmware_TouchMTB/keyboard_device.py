@@ -59,6 +59,10 @@ class KeyboardDevice:
                     device_found = device_pattern.search(line)
         return device_node
 
+    def exists(self):
+        """Indicate whether this device exists or not."""
+        return bool(self.device_node)
+
     def _non_blocking_open(self, filename):
         """Open the system file in the non-blocking mode."""
         fd = open(filename)

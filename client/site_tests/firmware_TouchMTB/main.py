@@ -5,6 +5,7 @@
 """This module sets up the system for the touch device firmware test suite."""
 
 import getopt
+import glob
 import logging
 import os
 import sys
@@ -22,12 +23,13 @@ import validators
 from common_util import print_and_exit
 from firmware_constants import MODE, OPTIONS
 from report_html import ReportHtml
-from telemetry.core import browser_options, browser_finder
 
 
 def _display_test_result(report_html_name, flag_skip_html):
     """Display the test result html doc using telemetry."""
     if not flag_skip_html and os.path.isdir('/usr/local/telemetry'):
+        from telemetry.core import browser_options, browser_finder
+
         base_url = os.path.basename(report_html_name)
         url = os.path.join('file://' + conf.docroot, base_url)
         logging.info('Navigate to the URL: %s', url)
@@ -49,12 +51,17 @@ class firmware_TouchMTB:
         self.options = options
 
         # Get the board name
-        self.board = firmware_utils.get_board()
+        self._get_board()
+
+        # We may need to use a device description file to create a fake device
+        # for replay purpose.
+        self._get_device_description()
 
         # Create the touch device
         # If you are going to be testing a touchscreen, set it here
         self.touch_device = touch_device.TouchDevice(
-            is_touchscreen=options[OPTIONS.TOUCHSCREEN])
+            is_touchscreen=options[OPTIONS.TOUCHSCREEN],
+            device_description=self.device_description)
         self._check_device(self.touch_device)
         validators.init_base_validator(self.touch_device)
 
@@ -118,6 +125,7 @@ class firmware_TouchMTB:
                                             self.win,
                                             self.parser,
                                             self.output,
+                                            self.board,
                                             firmware_version,
                                             options)
 
@@ -137,9 +145,61 @@ class firmware_TouchMTB:
 
     def _check_device(self, device):
         """Check if a device has been created successfully."""
-        if device.device_node is None:
+        if not device.exists():
             logging.error('Cannot find device_node.')
-            exit(-1)
+            exit(1)
+
+    def _get_board(self):
+        """Get the board.
+
+        If this is in replay mode, get the board from the replay directory.
+        Otherwise, get the board name from current chromebook machine.
+        """
+        replay_dir = self.options[OPTIONS.REPLAY]
+        if replay_dir:
+            self.board = firmware_utils.get_board_from_directory(replay_dir)
+            if self.board is None:
+                msg = 'Error: cannot get the board from the replay directory %s'
+                print_and_exit(msg % replay_dir)
+        else:
+            self.board = firmware_utils.get_board()
+        print '      board: %s' % self.board
+
+    def _get_device_description(self):
+        """Get the device description files for replay purpose.
+
+        Get the device description file only when it is in replay mode and
+        the system DEVICE option is not specified.
+
+        The priority to locate the device description file:
+        (1) in the directory specified by the REPLAY option,
+        (2) in the tests/device/ directory
+
+        A device description file name looks like "link.touchpad"
+        """
+        self.device_description = None
+        # Replay without using the system device. So use a mocked device.
+        if self.options[OPTIONS.REPLAY] and not self.options[OPTIONS.DEVICE]:
+            device_ext = ('touchscreen' if self.options[OPTIONS.TOUCHSCREEN]
+                          else 'touchpad')
+            board = self.board
+            descriptions = [
+                # (1) Try to find the device description in REPLAY directory.
+                (self.options[OPTIONS.REPLAY], '*.%s' % device_ext),
+                # (2) Try to find the device description in tests/device/
+                (conf.device_description_dir, '%s.%s' % (board, device_ext),)
+            ]
+
+            for description_dir, description_pattern in descriptions:
+                files = glob.glob(os.path.join(description_dir,
+                                               description_pattern))
+                if files:
+                    self.device_description = files[0]
+                    break
+            else:
+                msg = 'Error: cannot find the device description file.'
+                print_and_exit(msg)
+        print '      device description file: %s' % self.device_description
 
     def _create_report_name(self, mode, firmware_version):
         """Create the report names for both plain-text and html files.
@@ -248,6 +308,8 @@ def _usage_and_exit():
     """Print the usage of this program."""
     print 'Usage: $ DISPLAY=:0 [OPTIONS="options"] python %s\n' % sys.argv[0]
     print 'options:'
+    print '  -d, --%s' % OPTIONS.DEVICE
+    print '        use the system device for replay'
     print '  -h, --%s' % OPTIONS.HELP
     print '        show this help'
     print '  -i, --%s iterations' % OPTIONS.ITERATIONS
@@ -299,11 +361,14 @@ def _usage_and_exit():
     print '  # Replay the gesture files in the latest log directory.'
     print '  $ DISPLAY=:0 OPTIONS="--replay latest" python main.py\n'
     example_log_dir = '20130226_040802-fw_1.2-manual'
-    print '  # Replay the gesture files in %s/%s' % (conf.log_root_dir,
-                                                     example_log_dir)
+    print ('  # Replay the gesture files in %s/%s with a mocked device.' %
+            (conf.log_root_dir, example_log_dir))
     print '  $ DISPLAY=:0 OPTIONS="--replay %s" python main.py\n' % \
             example_log_dir
-
+    print ('  # Replay the gesture files in %s/%s with the system device.' %
+            (conf.log_root_dir, example_log_dir))
+    print ('  $ DISPLAY=:0 OPTIONS="--replay %s -d" python main.py\n' %
+            example_log_dir)
     print '  # Resume recording the gestures in the latest log directory.'
     print '  $ DISPLAY=:0 OPTIONS="--resume latest" python main.py\n'
     print '  # Resume recording the gestures in %s/%s.' % (conf.log_root_dir,
@@ -337,7 +402,8 @@ def _parse_options():
     because pyauto seems not compatible with command line options.
     """
     # Set the default values of options.
-    options = {OPTIONS.ITERATIONS: 1,
+    options = {OPTIONS.DEVICE: False,
+               OPTIONS.ITERATIONS: 1,
                OPTIONS.MODE: MODE.MANUAL,
                OPTIONS.REPLAY: None,
                OPTIONS.RESUME: None,
@@ -353,8 +419,9 @@ def _parse_options():
     if not options_list:
         return options
 
-    short_opt = 'hi:m:stu:'
-    long_opt = [OPTIONS.HELP,
+    short_opt = 'dhi:m:stu:'
+    long_opt = [OPTIONS.DEVICE,
+                OPTIONS.HELP,
                 OPTIONS.ITERATIONS + '=',
                 OPTIONS.MODE + '=',
                 OPTIONS.REPLAY + '=',
@@ -371,7 +438,9 @@ def _parse_options():
         _parsing_error(str(err))
 
     for opt, arg in opts:
-        if opt in ('-h', '--%s' % OPTIONS.HELP):
+        if opt in ('-d', '--%s' % OPTIONS.DEVICE):
+            options[OPTIONS.DEVICE] = True
+        elif opt in ('-h', '--%s' % OPTIONS.HELP):
             _usage_and_exit()
         elif opt in ('-i', '--%s' % OPTIONS.ITERATIONS):
             if arg.isdigit():

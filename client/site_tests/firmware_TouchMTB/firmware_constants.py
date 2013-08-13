@@ -151,6 +151,7 @@ class _Options(_Constant):
     pass
 OPTIONS = _Options()
 OPTIONS.DEBUG = 'debug'
+OPTIONS.DEVICE = 'system_device'
 OPTIONS.DIR = 'directory'
 OPTIONS.HELP = 'help'
 OPTIONS.ITERATIONS = 'iterations'

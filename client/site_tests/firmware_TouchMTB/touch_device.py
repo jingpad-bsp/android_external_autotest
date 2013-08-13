@@ -23,10 +23,11 @@ class TouchDevice:
     def __init__(self, device_node=None, is_touchscreen=False,
                  device_description=None):
         """If the device_description is provided (i.e., not None), it is
-        used to create a mocked device for testing purpose.
+        used to create a mocked device for testing purpose or for replaying.
         """
         self.device_node = (device_node if device_node
                                 else self.get_device_node(is_touchscreen))
+        self.device_description = device_description
         self.axis_x, self.axis_y = self.parse_abs_axes(device_description)
         self.axes = {AXIS.X: self.axis_x, AXIS.Y: self.axis_y}
 
@@ -48,6 +49,10 @@ class TouchDevice:
         # Extract and return the device node if device_node_str is not None
         return (device_node_str.split(':')[-1].strip().strip('"')
                 if device_node_str else None)
+
+    def exists(self):
+        """Indicate whether this device exists or not."""
+        return bool(self.device_node or self.device_description)
 
     def get_dimensions_in_mm(self):
         """Get the width and height in mm of the device."""
@@ -78,12 +83,15 @@ class TouchDevice:
         pattern = 'A:\s*%s\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)'
         pattern_x = pattern % '00'
         pattern_y = pattern % '01'
-        cmd = 'evemu-describe %s' % self.device_node
-        if device_description is None:
-            device_description = common_util.simple_system_output(cmd)
-        axis_x = axis_y = None
         if device_description:
-            for line in device_description.splitlines():
+            with open(device_description) as dd:
+                device_description_contents = dd.read()
+        else:
+            cmd = 'evemu-describe %s' % self.device_node
+            device_description_contents = common_util.simple_system_output(cmd)
+        axis_x = axis_y = None
+        if device_description_contents:
+            for line in device_description_contents.splitlines():
                 if not axis_x:
                     result = re.search(pattern_x, line, re.I)
                     if result:

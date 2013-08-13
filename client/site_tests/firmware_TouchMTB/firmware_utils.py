@@ -4,6 +4,7 @@
 
 """Some utility classes and functions."""
 
+import glob
 import os
 import re
 import sys
@@ -45,6 +46,30 @@ def get_board():
     return board
 
 
+def get_board_from_filename(filename):
+    """Get the board name from a given string which is usually a log file.
+
+    A log file looks like:
+        touch_firmware_report-lumpy-fw_11.27-complete-20130610_150540.log
+
+    @param filename: the filename used to extract the board
+    """
+    pieces = filename.split('-')
+    return pieces[1] if len(pieces) >= 2 else None
+
+def get_board_from_directory(directory):
+    """Get the board name from the log in the replay directory.
+
+    @param directory: the log directory
+    """
+    log_files = glob.glob(os.path.join(conf.log_root_dir, directory, '*.log'))
+    for log_file in log_files:
+        board = get_board_from_filename(os.path.basename(log_file))
+        if board:
+            return board
+    return None
+
+
 def get_fw_and_date(filename):
     """Get the firmware version and the test date from a log directory
        or a log file.
@@ -83,7 +108,7 @@ def create_log_dir(firmware_version, mode):
         os.makedirs(log_dir)
     except OSError, e:
         print 'Error in create the directory (%s): %s' % (log_dir, e)
-        sys.exit(-1)
+        sys.exit(1)
 
     # Set up the latest symbolic link to the newly created log directory.
     try:
@@ -92,7 +117,7 @@ def create_log_dir(firmware_version, mode):
         os.symlink(log_dir, latest_symlink)
     except OSError, e:
         print 'Error in setup latest symlink (%s): %s' % (latest_symlink, e)
-        sys.exit(-1)
+        sys.exit(1)
     return log_dir
 
 

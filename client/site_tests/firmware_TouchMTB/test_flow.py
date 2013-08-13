@@ -39,13 +39,13 @@ class TestFlow:
     """Guide the user to perform gestures. Record and validate the gestures."""
 
     def __init__(self, device_geometry, device, keyboard, win, parser, output,
-                 firmware_version, options):
+                 board, firmware_version, options):
         self.device_geometry = device_geometry
         self.device = device
         self.device_node = self.device.device_node
         self.keyboard = keyboard
         self.firmware_version = firmware_version
-        self.board = firmware_utils.get_board()
+        self.board = board
         self.output = output
         self._get_record_cmd()
         self.win = win
@@ -351,7 +351,7 @@ class TestFlow:
 
         self.primary_name = conf.filename.sep.join([
                 gesture_name,
-                firmware_utils.get_board(),
+                self.board,
                 conf.fw_prefix + self.firmware_version])
         root_name = conf.filename.sep.join([
                 self.primary_name,

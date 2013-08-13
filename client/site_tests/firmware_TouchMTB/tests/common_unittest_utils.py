@@ -53,17 +53,16 @@ def create_mocked_devices():
     description_path = get_device_description_path()
     mocked_device = {}
     for platform in PLATFORM.LIST:
-        description_filename = '%s.device' % platform
+        description_filename = '%s.touchpad' % platform
         description_filepath = os.path.join(description_path,
                                             description_filename)
         if not os.path.isfile(description_filepath):
             mocked_device[platform] = None
             warn_msg = 'Warning: device description file %s does not exist'
-            print msg % description_filepath
+            print warn_msg % description_filepath
             continue
-        device_description = open(description_filepath).read()
         mocked_device[platform] = TouchDevice(
-                device_description=device_description)
+                device_description=description_filepath)
     return mocked_device
 
 
