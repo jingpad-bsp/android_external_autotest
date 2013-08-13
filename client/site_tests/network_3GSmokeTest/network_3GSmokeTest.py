@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
 import logging
 import time
 import urlparse
@@ -12,12 +11,11 @@ import urlparse
 from autotest_lib.client.cros import flimflam_test_path
 # pylint: enable=W0611
 import flimflam
-import mm
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
-from autotest_lib.client.cros.cellular import cell_tools
+from autotest_lib.client.cros.cellular import cell_tools, mm
 
 # TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
 # cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
@@ -84,37 +82,8 @@ class network_3GSmokeTest(test.test):
         devices = mm.EnumerateDevices()
         print 'Devices: %s' % ', '.join([p for _, p in devices])
         for manager, path in devices:
-            modem = manager.Modem(path)
-            props = manager.Properties(path)
-            info = {}
-
-            try:
-                info = dict(info=modem.GetInfo())
-                modem_type = props['Type']
-                if modem_type == mm.ModemManager.CDMA_MODEM:
-                    cdma_modem = manager.CdmaModem(path)
-
-                    info['esn'] = cdma_modem.GetEsn()
-                    info['rs'] = cdma_modem.GetRegistrationState()
-                    info['ss'] = cdma_modem.GetServingSystem()
-                    info['quality'] = cdma_modem.GetSignalQuality()
-
-                elif modem_type == mm.ModemManager.GSM_MODEM:
-                    gsm_card = manager.GsmCard(path)
-                    info['imsi'] = gsm_card.GetImsi()
-
-                    gsm_network = manager.GsmNetwork(path)
-                    info['ri'] = gsm_network.GetRegistrationInfo()
-                else:
-                    print 'Unknown modem type %s' % modem_type
-                    continue
-
-            except dbus.exceptions.DBusException, e:
-                logging.info('Info: %s.', info)
-                logging.error('MODEM_DBUS_FAILURE: %s: %s.', path, e)
-                continue
-
-            results[path] = info
+            modem = manager.GetModem(path)
+            results[path] = modem.GetModemProperties()
         return results
 
 
