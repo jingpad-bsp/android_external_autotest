@@ -365,3 +365,78 @@ class DevServerTest(mox.MoxTestBase):
         call = self.crash_server.build_call('symbolicate_dump')
         self.assertTrue(call.startswith(self._CRASH_HOST))
 
+
+    def _stageTestHelper(self, artifacts=[], files=[], archive_url=None):
+        """Helper to test combos of files/artifacts/urls with stage call."""
+        expected_archive_url = archive_url
+        if not archive_url:
+            expected_archive_url = 'gs://my_default_url'
+            self.mox.StubOutWithMock(dev_server, '_get_image_storage_server')
+            dev_server._get_image_storage_server().AndReturn(
+                'gs://my_default_url')
+            name = 'fake/image'
+        else:
+            # This is embedded in the archive_url. Not needed.
+            name = ''
+
+        to_return = StringIO.StringIO('Success')
+        urllib2.urlopen(mox.And(mox.StrContains(expected_archive_url),
+                                mox.StrContains(name),
+                                mox.StrContains('artifacts=%s' %
+                                                ','.join(artifacts)),
+                                mox.StrContains('files=%s' % ','.join(files)),
+                                mox.StrContains('stage?'))).AndReturn(to_return)
+        to_return = StringIO.StringIO('True')
+        urllib2.urlopen(mox.And(mox.StrContains(expected_archive_url),
+                                mox.StrContains(name),
+                                mox.StrContains('artifacts=%s' %
+                                                ','.join(artifacts)),
+                                mox.StrContains('files=%s' % ','.join(files)),
+                                mox.StrContains('is_staged'))).AndReturn(
+                                        to_return)
+
+        self.mox.ReplayAll()
+        self.dev_server.stage_artifacts(name, artifacts, files, archive_url)
+        self.mox.VerifyAll()
+
+
+    def testStageArtifactsBasic(self):
+        """Basic functionality to stage artifacts (similar to trigger_download).
+        """
+        self._stageTestHelper(artifacts=['full_payload', 'stateful'])
+
+
+    def testStageArtifactsBasicWithFiles(self):
+        """Basic functionality to stage artifacts (similar to trigger_download).
+        """
+        self._stageTestHelper(artifacts=['full_payload', 'stateful'],
+                              files=['taco_bell.coupon'])
+
+
+    def testStageArtifactsOnlyFiles(self):
+        """Test staging of only file artifacts."""
+        self._stageTestHelper(files=['tasty_taco_bell.coupon'])
+
+
+    def testStageWithArchiveURL(self):
+        """Basic functionality to stage artifacts (similar to trigger_download).
+        """
+        self._stageTestHelper(files=['tasty_taco_bell.coupon'],
+                              archive_url='gs://tacos_galore/my/dir')
+
+
+    def testStagedFileUrl(self):
+        """Sanity tests that the staged file url looks right."""
+        devserver_label = 'x86-mario-release/R30-1234.0.0'
+        url = self.dev_server.get_staged_file_url('stateful.tgz',
+                                                  devserver_label)
+        expected_url = '/'.join([self._HOST, 'static', devserver_label,
+                                 'stateful.tgz'])
+        self.assertEquals(url, expected_url)
+
+        devserver_label = 'something_crazy/that/you_MIGHT/hate'
+        url = self.dev_server.get_staged_file_url('chromiumos_image.bin',
+                                                  devserver_label)
+        expected_url = '/'.join([self._HOST, 'static', devserver_label,
+                                 'chromiumos_image.bin'])
+        self.assertEquals(url, expected_url)

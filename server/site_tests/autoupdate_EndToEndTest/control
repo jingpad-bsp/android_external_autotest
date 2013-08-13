@@ -38,6 +38,8 @@ Values pertaining to the test case include:
   target_release=REL      target image release version (e.g. 2673.0.0)
   source_image_uri=URI    URI of the source image / payload. Image must be used
                           if use_servo specified.
+  source_archive_uri=URI  URI of where the artifacts for the source image are
+                          e.g. stateful.tgz.
   target_payload_uri=URI  URI of the target payload
 
 Other values pertaining to the test environment include:
@@ -55,7 +57,7 @@ enable public key authentication in your sshd config.
 
 TEST_CONF_KEYS = (
     'name', 'image_type', 'update_type', 'source_release', 'target_release',
-    'source_image_uri', 'target_payload_uri')
+    'source_image_uri', 'source_archive_uri', 'target_payload_uri')
 
 
 args_dict = utils.args_to_dict(args)
@@ -70,9 +72,6 @@ if use_servo:
 test_conf = {}
 for key in TEST_CONF_KEYS:
     test_conf[key] = args_dict.get(key) or locals().get(key)
-    # Currently all args are required. #TODO(sosa) - make some optional.
-    if not test_conf[key]:
-        error.AutotestError('Must specify %s in arglist.' % key)
 
 
 def run_test(machine):

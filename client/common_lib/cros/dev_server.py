@@ -6,7 +6,6 @@ from distutils import version
 import httplib
 import json
 import logging
-import os
 import urllib2
 import HTMLParser
 import cStringIO
@@ -138,16 +137,16 @@ class DevServer(object):
         @param timeout_min: How long to wait in minutes before deciding the
                             the devserver is not up (float).
         """
-        server_name =  re.sub(r':\d+$', '', devserver.lstrip('http://'))
+        server_name = re.sub(r':\d+$', '', devserver.lstrip('http://'))
         # statsd treats |.| as path separator.
-        server_name =  server_name.replace('.', '_')
+        server_name = server_name.replace('.', '_')
         call = DevServer._build_call(devserver, 'check_health')
 
         @remote_devserver_call(timeout_min=timeout_min)
         def make_call():
             """Inner method that makes the call."""
             return utils.urlopen_socket_timeout(call,
-                timeout=timeout_min*60).read()
+                timeout=timeout_min * 60).read()
 
         try:
             result_dict = json.load(cStringIO.StringIO(make_call()))
@@ -162,7 +161,8 @@ class DevServer(object):
             elif (free_disk < DevServer._MIN_FREE_DISK_SPACE_GB):
                 logging.error('Devserver check_health failed. Free disk space '
                               'is low. Only %dGB is available.', free_disk)
-                stats.Counter(server_name +'.devserver_not_healthy').increment()
+                stats.Counter(server_name +
+                              '.devserver_not_healthy').increment()
                 return False
 
             # This counter indicates the load of a devserver. By comparing the
@@ -172,7 +172,7 @@ class DevServer(object):
             return True
         except Exception as e:
             logging.error('Devserver call failed: "%s", timeout: %s seconds,'
-                          ' Error: %s', call, timeout_min*60, str(e))
+                          ' Error: %s', call, timeout_min * 60, e)
             stats.Counter(server_name + '.devserver_not_healthy').increment()
             return False
 
@@ -342,16 +342,18 @@ class ImageServer(DevServer):
             self.nton_payload = nton_payload
 
 
-    def wait_for_artifacts_staged(self, archive_url, artifacts=''):
+    def wait_for_artifacts_staged(self, archive_url, artifacts='', files=''):
         """Polling devserver.is_staged until all artifacts are staged.
 
         @param archive_url: Google Storage URL for the build.
         @param artifacts: Comma separated list of artifacts to download.
+        @param files: Comma separated list of files to download.
         @return: True if all artifacts are staged in devserver.
         """
         call = self.build_call('is_staged',
                                archive_url=archive_url,
-                               artifacts=artifacts)
+                               artifacts=artifacts,
+                               files=files)
 
         def all_staged():
             """Call devserver.is_staged rpc to check if all files are staged.
@@ -365,20 +367,22 @@ class ImageServer(DevServer):
             except IOError:
                 return False
 
-        site_utils.poll_for_condition(all_staged,
-                                exception=site_utils.TimeoutError(),
-                                timeout=sys.maxint,
-                                sleep_interval=_ARTIFACT_STAGE_POLLING_INTERVAL)
+        site_utils.poll_for_condition(
+                all_staged,
+                exception=site_utils.TimeoutError(),
+                timeout=sys.maxint,
+                sleep_interval=_ARTIFACT_STAGE_POLLING_INTERVAL)
         return True
 
 
-    def call_and_wait(self, call_name, archive_url, artifacts,
+    def call_and_wait(self, call_name, archive_url, artifacts, files,
                       error_message, expected_response='Success'):
         """Helper method to make a urlopen call, and wait for artifacts staged.
 
         @param call_name: name of devserver rpc call.
         @param archive_url: Google Storage URL for the build..
         @param artifacts: Comma separated list of artifacts to download.
+        @param files: Comma separated list of files to download.
         @param expected_response: Expected response from rpc, default to
                                   |Success|. If it's set to None, do not compare
                                   the actual response. Any response is consider
@@ -393,6 +397,7 @@ class ImageServer(DevServer):
         call = self.build_call(call_name,
                                archive_url=archive_url,
                                artifacts=artifacts,
+                               files=files,
                                async=True)
         try:
             response = urllib2.urlopen(call).read()
@@ -405,12 +410,13 @@ class ImageServer(DevServer):
         if expected_response and not response == expected_response:
               raise DevServerException(error_message)
 
-        self.wait_for_artifacts_staged(archive_url, artifacts)
+        self.wait_for_artifacts_staged(archive_url, artifacts, files)
         return response
 
 
     @remote_devserver_call()
-    def stage_artifacts(self, image, artifacts):
+    def stage_artifacts(self, image, artifacts=None, files=None,
+                        archive_url=None):
         """Tell the devserver to download and stage |artifacts| from |image|.
 
         This is the main call point for staging any specific artifacts for a
@@ -422,17 +428,28 @@ class ImageServer(DevServer):
 
         @param image: the image to fetch and stage.
         @param artifacts: A list of artifacts.
+        @param files: A list of files to stage.
+        @param archive_url: Optional parameter that has the archive_url to stage
+                this artifact from. Default is specified in autotest config +
+                image.
 
         @raise DevServerException upon any return code that's not HTTP OK.
+        @raise DevServerException upon any return code that's not HTTP OK.
         """
-        archive_url = _get_image_storage_server() + image
-        artifacts = ','.join(artifacts)
-        error_message = ("staging artifacts %s for %s failed;"
+        assert artifacts or files, 'Must specify something to stage.'
+        if not archive_url:
+            archive_url = _get_image_storage_server() + image
+
+        artifacts_arg = ','.join(artifacts) if artifacts else ''
+        files_arg = ','.join(files) if files else ''
+        error_message = ("staging %s for %s failed;"
                          "HTTP OK not accompanied by 'Success'." %
-                         (' '.join(artifacts), image))
+                         ('artifacts=%s files=%s ' % (artifacts_arg, files_arg),
+                          image))
         self.call_and_wait(call_name='stage',
                            archive_url=archive_url,
-                           artifacts=artifacts,
+                           artifacts=artifacts_arg,
+                           files=files_arg,
                            error_message=error_message)
 
 
@@ -456,13 +473,14 @@ class ImageServer(DevServer):
         @raise DevServerException upon any return code that's not HTTP OK.
 
         """
-        archive_url=_get_image_storage_server() + image
+        archive_url = _get_image_storage_server() + image
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
         error_message = ("trigger_download for %s failed;"
                          "HTTP OK not accompanied by 'Success'." % image)
         response = self.call_and_wait(call_name='stage',
                                       archive_url=archive_url,
                                       artifacts=artifacts,
+                                      files='',
                                       error_message=error_message)
         was_successful = response == 'Success'
         if was_successful and synchronous:
@@ -480,11 +498,12 @@ class ImageServer(DevServer):
 
         @returns path on the devserver that telemetry is installed to.
         """
-        archive_url=_get_image_storage_server() + build
+        archive_url = _get_image_storage_server() + build
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST
         response = self.call_and_wait(call_name='setup_telemetry',
                                       archive_url=archive_url,
                                       artifacts=artifacts,
+                                      files='',
                                       error_message=None,
                                       expected_response=None)
         return response
@@ -502,13 +521,14 @@ class ImageServer(DevServer):
         @param image: the image to fetch and stage.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        archive_url=_get_image_storage_server() + image
+        archive_url = _get_image_storage_server() + image
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST
         error_message = ("finish_download for %s failed;"
                          "HTTP OK not accompanied by 'Success'." % image)
         self.call_and_wait(call_name='stage',
                            archive_url=archive_url,
                            artifacts=artifacts,
+                           files='',
                            error_message=error_message)
 
 
@@ -530,27 +550,12 @@ class ImageServer(DevServer):
         url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
                                               type=str)
         return (url_pattern % (self.url(), image)).replace(
-                  'update', 'static')
+                'update', 'static')
 
 
-    def get_delta_payload_url(self, payload_type, image):
-        """Returns a URL to a staged delta payload.
-
-        @param payload_type: either 'mton' or 'nton'
-        @param image: the image that was fetched.
-
-        @return A fully qualified URL that can be used for downloading the
-                payload.
-
-        @raise DevServerException if payload type argument is invalid.
-
-        """
-        if payload_type not in ('mton', 'nton'):
-            raise DevServerException('invalid delta payload type: %s' %
-                                     payload_type)
-        version = os.path.basename(image)
-        base_url = self._get_image_url(image)
-        return base_url + '/au/%s_%s/update.gz' % (version, payload_type)
+    def get_staged_file_url(self, filename, image):
+        """Returns the url of a staged file for this image on the devserver."""
+        return '/'.join([self._get_image_url(image), filename])
 
 
     def get_full_payload_url(self, image):

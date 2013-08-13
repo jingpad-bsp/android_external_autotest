@@ -224,7 +224,8 @@ class ChromiumOSUpdater():
                                     (self.host.hostname, str(e)))
 
 
-    def _update_root(self):
+    def update_rootfs(self):
+        """Updates the rootfs partition only."""
         logging.info('Updating root partition...')
 
         # Run update_engine using the specified URL.
@@ -309,7 +310,7 @@ class ChromiumOSUpdater():
 
         try:
             updaters = [
-                multiprocessing.process.Process(target=self._update_root),
+                multiprocessing.process.Process(target=self.update_rootfs),
                 multiprocessing.process.Process(target=self.update_stateful)
                 ]
             if not update_root:

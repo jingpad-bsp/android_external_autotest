@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import json
 import logging
 import time
@@ -13,6 +14,7 @@ from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
 from autotest_lib.server import hosts, test
+from autotest_lib.server.cros.dynamic_suite import tools
 
 
 def _wait(secs, desc=None):
@@ -341,7 +343,7 @@ class OmahaDevserver(object):
             OmahaDevserverFailedToStart: If the time limit is reached and we
                                          cannot connect to the devserver.
         """
-        update_payload_url_base, update_payload_path, _ = self._split_url(
+        update_payload_url_base, update_payload_path = self._split_url(
                 self._update_payload_lorry_url)
         # Invoke the Omaha/devserver on the remote server.
         cmdlist = [
@@ -423,6 +425,12 @@ class OmahaDevserver(object):
         return '%s:%s' % (self._omaha_host, self._omaha_port)
 
 
+    def get_update_url(self):
+        """Returns the update_url you can use to update via this server."""
+        return urlparse.urlunsplit(('http', self.get_netloc(), '/update',
+                                    '', ''))
+
+
     def dump_devserver_log(self, logging_level=logging.ERROR):
         """Dump the devserver log to the autotest log.
 
@@ -435,14 +443,12 @@ class OmahaDevserver(object):
 
     @staticmethod
     def _split_url(url):
-        """Splits a URL into the URL base, path and file name."""
+        """Splits a URL into the URL base and path."""
         split_url = urlparse.urlsplit(url)
         url_base = urlparse.urlunsplit(
-                [split_url.scheme, split_url.netloc, '', '', ''])
-        url_path = url_file = ''
-        if split_url.path:
-            url_path, url_file = split_url.path.rsplit('/', 1)
-        return url_base, url_path.lstrip('/'), url_file
+                (split_url.scheme, split_url.netloc, '', '', ''))
+        url_path = split_url.path
+        return url_base, url_path.lstrip('/')
 
 
     @staticmethod
@@ -512,6 +518,18 @@ class autoupdate_EndToEndTest(test.test):
     _WAIT_FOR_UPDATE_COMPLETED_SECONDS = 4 * 60
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
     _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
+
+    # Named tuple containing urls for staged urls needed for test.
+    # source_url: url to find the update payload for the source image.
+    # source_stateful_url: url to find the stateful payload for the source
+    #                      image.
+    # target_url: url to find the update payload for the target image.
+    # target_stateful_url: url to find the stateful payload for the target
+    #                      image.
+    _STAGED_URLS = collections.namedtuple(
+            'StagedUrls',
+            ['source_url', 'source_stateful_url', 'target_url',
+             'target_stateful_url'])
 
 
     def _servo_dut_power_up(self):
@@ -601,22 +619,19 @@ class autoupdate_EndToEndTest(test.test):
         self._servo_dut_reboot(disconnect_usbkey=True)
 
 
-    def _trigger_test_update(self, omaha_netloc):
+    def _trigger_test_update(self, omaha_devserver):
         """Trigger an update check on a test image.
 
         Uses update_engine_client via SSH. This is an async call, hence a very
         short timeout.
 
-        @param omaha_netloc: the network location of the Omaha/devserver
-               (http://host:port)
-
+        @param omaha_devserver: Instance of OmahaDevserver that will serve the
+                                update.
         @raise RootFSUpdateError if anything went wrong.
 
         """
-        omaha_update_url = urlparse.urlunsplit(
-                ['http', omaha_netloc, '/update', '', ''])
-        updater = autoupdater.ChromiumOSUpdater(omaha_update_url,
-                                                host=self._host)
+        updater = autoupdater.ChromiumOSUpdater(
+                omaha_devserver.get_update_url(), host=self._host)
         updater.trigger_update()
 
 
@@ -632,7 +647,7 @@ class autoupdate_EndToEndTest(test.test):
         return self._host.run('rootdev -s', timeout=10).stdout.strip()
 
 
-    def stage_image(self, lorry_devserver, image_uri):
+    def _stage_image(self, lorry_devserver, image_uri):
         """Stage a Chrome OS image on Lorry/devserver.
 
         @param lorry_devserver: instance of client.common_lib.dev_server to use
@@ -643,7 +658,6 @@ class autoupdate_EndToEndTest(test.test):
         @raise error.TestError if there's a problem with staging.
 
         """
-        staged_url = None
         if self._use_test_image:
             # For this call, we just need the URL path up to the image.zip file
             # (exclusive).
@@ -651,76 +665,121 @@ class autoupdate_EndToEndTest(test.test):
                     'image.zip')[0].strip('/')
             try:
                 lorry_devserver.stage_artifacts(image_uri_path, ['test_image'])
-                staged_url = lorry_devserver.get_test_image_url(image_uri_path)
+                return lorry_devserver.get_test_image_url(image_uri_path)
             except dev_server.DevServerException, e:
                 raise error.TestError(
                         'failed to stage source test image: %s' % e)
         else:
             # TODO(garnold) chromium-os:33766: implement staging of MP-signed
             # images.
-            pass
-
-        if not staged_url:
-            raise error.TestError('staged source test image url missing')
-        return staged_url
+            raise NotImplementedError()
 
 
-    def stage_payload(self, lorry_devserver, payload_uri, is_delta, is_nton):
-        """Stage an update target payload on Lorry/devserver.
+    def _stage_payload(self, lorry_devserver, payload_uri=None,
+                       devserver_label=None, filename=None):
+        """Stage the given payload onto the devserver.
+
+        Works for either a stateful or full/delta test payload. Expects the
+        gs_path or a combo of devserver_label + filename.
 
         @param lorry_devserver: instance of client.common_lib.dev_server to use
                                 to reach the devserver instance for this build.
-        @param payload_uri: The uri of the payload.
-        @param is_delta: If true, this payload is a delta payload.
-        @param is_nton: If true, this payload is an nplus1 payload.
+        @param payload_uri: The full uri of the payload
+        @param devserver_label: The build name e.g. x86-mario-release/<version>.
+                                If set, assumes default gs archive bucket and
+                                requires filename to be specified.
+        @param filename: In conjunction with devserver_label, if just specifying
+                         the devserver label name, this is which file are you
+                         downloading.
 
         @return URL of the staged payload on the server.
 
         @raise error.TestError if there's a problem with staging.
 
         """
-        staged_url = None
-        if self._use_test_image:
-            # For this call, we'll need the URL path without the payload file
-            # name.
-            payload_uri_path = urlparse.urlsplit(payload_uri).path.rsplit(
-                    '/', 1)[0].strip('/')
-            try:
-                if is_delta:
-                    lorry_devserver.stage_artifacts(
-                            payload_uri_path, ['delta_payloads', 'stateful'])
-                    staged_url = lorry_devserver.get_delta_payload_url(
-                            'nton' if is_nton else 'mton', payload_uri_path)
-                else:
-                    lorry_devserver.stage_artifacts(
-                            payload_uri_path, ['full_payload', 'stateful'])
-                    staged_url = lorry_devserver.get_full_payload_url(
-                            payload_uri_path)
-            except dev_server.DevServerException, e:
-                raise error.TestError('failed to stage test payload: %s' % e)
-        else:
-            # TODO(garnold) chromium-os:33766: implement staging of MP-signed
-            # images.
-            pass
+        if not ((devserver_label and filename) or payload_uri):
+            raise error.TestError(
+                    'failed to stage payload: insufficent arguments.')
 
-        if not staged_url:
-            raise error.TestError('staged test payload url missing')
-
-        return staged_url
+        payload_archive_url = None
+        if not (devserver_label and filename):
+            payload_archive_url, _, filename = payload_uri.rpartition('/')
+            devserver_label = urlparse.urlsplit(
+                    payload_archive_url).path.strip('/')
+        try:
+            lorry_devserver.stage_artifacts(
+                    image=devserver_label, artifacts=None, files=[filename],
+                    archive_url=payload_archive_url)
+            return lorry_devserver.get_staged_file_url(filename,
+                                                       devserver_label)
+        except dev_server.DevServerException, e:
+            raise error.TestError('failed to stage payload: %s' % e)
 
 
     def _payload_to_update_url(self, payload_url):
-        """Given a payload url, returns the Update Engine update url for it."""
-         # image_url is of the format that is in the devserver i.e.
-        # <hostname>/static/...LABEL/update.gz.
+        """Given a update or stateful payload url, returns the update url."""
         # We want to transform it to the correct omaha url which is
         # <hostname>/update/...LABEL.
-        update_url = payload_url.rpartition('/update.gz')[0]
-        return update_url.replace('/static/', '/update/')
+        base_url = payload_url.rpartition('/')[0]
+        return base_url.replace('/static/', '/update/')
 
 
-    def _install_source_image(self, image_url):
-        """Prepare the specified host with the image."""
+    def _payload_to_stateful_url(self, payload_url):
+        """Given a payload url, returns the stateful url."""
+        base_url = payload_url.rpartition('/')[0]
+        return '/'.join([base_url, 'stateful.tgz'])
+
+
+    def update_via_test_payloads(self, omaha_host, payload_url, stateful_url,
+                                 clobber):
+      """Given the following update and stateful urls, update the DUT.
+
+      Only updates the rootfs/stateful if the respective url is provided.
+
+      @param omaha_host: If updating rootfs, redirect updates through this
+                         host. Should be None iff payload_url is None.
+      @param payload_url: If set, the specified url to find the update payload.
+      @param stateful_url: If set, the specified url to find the stateful
+                           payload.
+      @param clobber: If True, do a clean install of stateful.
+      """
+      # We create a OmahaDevserver to redirect blah.bin to update/. This allows
+      # us to use any payload filename to serve an update.
+      temp_devserver = None
+      try:
+          if payload_url:
+              temp_devserver = OmahaDevserver(
+                      omaha_host, self._devserver_dir, self._host.ip,
+                      payload_url)
+              temp_devserver.start_devserver()
+              payload_url = temp_devserver.get_update_url()
+
+          stateful_url = self._payload_to_update_url(stateful_url)
+
+          for (url, is_stateful) in (payload_url, False), (stateful_url, True):
+              if not url:
+                  continue
+
+              updater = autoupdater.ChromiumOSUpdater(url, host=self._host)
+              if not is_stateful:
+                  updater.update_rootfs()
+              else:
+                  updater.update_stateful(clobber=clobber)
+      finally:
+          if temp_devserver:
+              temp_devserver.kill()
+
+
+    def install_source_version(self, omaha_host, image_url, stateful_url):
+        """Prepare the specified host with the image given by the urls.
+
+        @param omaha_host: If updating rootfs, redirect updates through this
+                           host. Should be None iff image_url is None.
+        @param image_url: If set, the specified url to find the source image
+                          or full payload for the source image.
+        @param stateful_url: If set, the specified url to find the stateful
+                             payload.
+        """
         if self._use_servo:
             # Install source image (test vs MP).
             if self._use_test_image:
@@ -730,44 +789,85 @@ class autoupdate_EndToEndTest(test.test):
 
         else:
             try:
-                self._host.machine_install(
-                        self._payload_to_update_url(image_url),
-                        force_update=True)
+                # Reboot to get us into a clean state.
+                self._host.reboot()
+                # Since we are installing the source image of the test, clobber
+                # stateful.
+                self.update_via_test_payloads(omaha_host, image_url,
+                                              stateful_url, clobber=True)
+                self._host.reboot()
             except error.AutoservRunError:
                 logging.fatal('Error re-imaging the machine with the source '
                               'image %s', image_url)
-                raise error.TestFail(
+                raise error.TestError(
                         'Could not update to pre-conditions of test. This is '
                         'most likely a problem with the autotest lab and not '
                         'autoupdate.')
 
-    def _stage_images_onto_devserver(self, lorry_devserver, test_conf):
-        """Stages images that will be used by the test onto the devserver.
 
-        @return a tuple containing the urls of the source and target payloads.
+    def stage_artifacts_onto_devserver(self, lorry_devserver, test_conf):
+        """Stages artifacts that will be used by the test onto the devserver.
+
+        @param lorry_devserver: instance of client.common_lib.dev_server to use
+                                to reach the devserver instance for this build.
+        @param test_conf: a dictionary containing test configuration values
+
+        @return a _STAGED_URLS tuple containing the staged urls.
         """
         logging.info('staging images onto lorry/devserver (%s)',
                      lorry_devserver.url())
 
         source_url = None
         if self._use_servo:
-            source_url = self.stage_image(
+            source_url = self._stage_image(
                     lorry_devserver, test_conf['source_image_uri'])
+            # Test image already has stateful payload.
+            source_stateful_url = None
             logging.info('test image for source image staged at %s', source_url)
         else:
-            source_url = self.stage_payload(
-                    lorry_devserver, test_conf['source_image_uri'], False,
-                    False)
-            logging.info('full payload for source image staged at %s',
-                         source_url)
+            source_url = self._stage_payload(
+                    lorry_devserver, test_conf['source_image_uri'])
 
-        target_url = self.stage_payload(
-                lorry_devserver, test_conf['target_payload_uri'],
-                test_conf['update_type'] == 'delta',
-                test_conf['target_release'] == test_conf['source_release'])
+            # Tests may have their source artifacts in a different location than
+            # their payloads. If so, this is set. If not set, use the same path
+            # to the source image minus the name of the payload.
+            source_archive_uri = test_conf.get('source_archive_uri')
+            if not source_archive_uri:
+                source_archive_uri = self._payload_to_stateful_url(
+                        test_conf['source_image_uri'])
+            else:
+                source_archive_uri = '/'.join([source_archive_uri,
+                                               'stateful.tgz'])
+
+            source_stateful_url = self._stage_payload(lorry_devserver,
+                                                      source_archive_uri)
+
+        target_url = self._stage_payload(
+                lorry_devserver, test_conf['target_payload_uri'])
+        if self._job_repo_url:
+            _, devserver_label = tools.get_devserver_build_from_package_url(
+                    self._job_repo_url)
+            target_stateful_url = self._stage_payload(
+                    lorry_devserver, None, devserver_label, 'stateful.tgz')
+        else:
+            target_archive_uri = self._payload_to_stateful_url(
+                    test_conf['source_image_uri'])
+            target_stateful_url = self._stage_payload(
+                    lorry_devserver, target_archive_uri)
+
+        # Log all the urls.
         logging.info('%s payload for update test staged at %s',
                      test_conf['update_type'], target_url)
-        return source_url, target_url
+        logging.info('stateful payload for target image staged at %s',
+                     target_stateful_url)
+        if source_url:
+            logging.info('full payload for source image staged at %s',
+                         source_url)
+            logging.info('stateful payload for source image staged at %s',
+                         source_stateful_url)
+
+        return self._STAGED_URLS(source_url, source_stateful_url,
+                                 target_url, target_stateful_url)
 
 
     def initialize(self):
@@ -778,6 +878,7 @@ class autoupdate_EndToEndTest(test.test):
         self._omaha_devserver = None
 
         self._use_test_image = True
+        self._job_repo_url = None
         self._devserver_dir = global_config.global_config.get_config_value(
                 'CROS', 'devserver_dir', default=None)
         if self._devserver_dir is None:
@@ -830,6 +931,14 @@ class autoupdate_EndToEndTest(test.test):
                error.TestFail if any part of the test has failed.
 
         """
+        # Attempt to get the job_repo_url to find the stateful payload for the
+        # target image.
+        try:
+            self._job_repo_url = host.lookup_job_repo_url()
+        except KeyError:
+            logging.warning('Job Repo URL not found. Assuming stateful '
+                            'payload can be found along with the target update')
+
         self._host = host
         self._use_test_image = test_conf.get('image_type') != 'mp'
         self._use_servo = use_servo
@@ -844,11 +953,16 @@ class autoupdate_EndToEndTest(test.test):
         # mechanism.
         lorry_devserver = dev_server.ImageServer.resolve(
                 test_conf['target_payload_uri'])
-        source_url, target_payload_url = self._stage_images_onto_devserver(
+        omaha_host = urlparse.urlparse(lorry_devserver.url()).hostname
+
+        # Ensure all the artifacts we'll need for this test and grab the urls
+        # on the devserver they are staged onto.
+        staged_urls = self.stage_artifacts_onto_devserver(
                 lorry_devserver, test_conf)
 
-        # Install the source image onto the DUT.
-        self._install_source_image(source_url)
+        # Install the source version onto the DUT.
+        self.install_source_version(omaha_host, staged_urls.source_url,
+                                    staged_urls.source_stateful_url)
 
         # On test images, record the active root partition.
         source_rootfs_partition = None
@@ -857,23 +971,22 @@ class autoupdate_EndToEndTest(test.test):
             logging.info('source image rootfs partition: %s',
                          source_rootfs_partition)
 
-        omaha_host = urlparse.urlparse(lorry_devserver.url()).hostname
         self._omaha_devserver = OmahaDevserver(
                 omaha_host, self._devserver_dir, self._host.ip,
-                target_payload_url)
+                staged_urls.target_url)
 
         self._omaha_devserver.start_devserver()
 
-        # Trigger an update (test vs MP).
-        omaha_netloc = self._omaha_devserver.get_netloc()
+        # Trigger an update.
         if self._use_test_image:
-            self._trigger_test_update(omaha_netloc)
+            self._trigger_test_update(self._omaha_devserver)
         else:
             # TODO(garnold) chromium-os:33766: use GPIOs to trigger an
             # update.
             pass
 
         # Track update progress.
+        omaha_netloc = self._omaha_devserver.get_netloc()
         omaha_hostlog_url = urlparse.urlunsplit(
                 ['http', omaha_netloc, '/api/hostlog',
                  'ip=' + self._host.ip, ''])
@@ -915,15 +1028,15 @@ class autoupdate_EndToEndTest(test.test):
         if use_servo:
             self._servo_dut_reboot()
         else:
-            # Stateful from source may not be compatible with target. Update it.
-            update_url = self._payload_to_update_url(target_payload_url)
-            updater = autoupdater.ChromiumOSUpdater(update_url, host=self._host)
-            updater.update_stateful(clobber=False)
+            # Only update the stateful partition since the test has updated the
+            # rootfs.
+            self.update_via_test_payloads(
+                    None, None, staged_urls.target_stateful_url, clobber=False)
             self._host.reboot()
 
         # Trigger a second update check (again, test vs MP).
         if self._use_test_image:
-            self._trigger_test_update(omaha_netloc)
+            self._trigger_test_update(self._omaha_devserver)
         else:
             # TODO(garnold) chromium-os:33766: use GPIOs to trigger an
             # update.
