@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 
-import datetime, logging, os, subprocess, sys
+import datetime, sys
 
 import common
 from autotest_lib.client.common_lib import mail
@@ -24,20 +24,6 @@ _MAX_DAYS_SINCE_LAST_PASS = 30
 
 _MAIL_RESULTS_FROM = 'chromeos-test-health@google.com'
 _MAIL_RESULTS_TO = 'chromeos-lab-infrastructure@google.com'
-
-
-def update_afe_autotests_table():
-    """Runs the test_importer.py script to update the afe_autotests table."""
-    dirname = os.path.dirname(__file__)
-    utils_dir = os.path.abspath(os.path.join(dirname, os.pardir, os.pardir,
-                                             'utils'))
-    test_importer_script = os.path.join(utils_dir, 'test_importer.py')
-    return_code = subprocess.call([test_importer_script])
-
-    if return_code != 0:
-        logging.warn('Update DB failed: '
-                     'test_importer.py had nonzero return code %d.',
-                      return_code)
 
 
 def get_experimental_tests():
@@ -87,8 +73,6 @@ def main():
     important if a nice way to test this code can be determined.
 
     """
-    update_afe_autotests_table()
-
     experimental_tests = get_experimental_tests()
     pass_times = utils.get_last_pass_times()
     fail_times = utils.get_last_fail_times()

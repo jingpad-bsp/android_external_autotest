@@ -60,8 +60,6 @@ class PassingExperimentalFunctionalTests(mox.MoxTestBase, test.TestCase):
         # testing. So we will mock this out even though we will mock out the
         # function that calls it in case of refactoring.
         self.mox.StubOutWithMock(subprocess, 'call')
-        self.mox.StubOutWithMock(passing_experimental,
-                                 'update_afe_autotests_table')
         self._orig_since_failure = passing_experimental._MIN_DAYS_SINCE_FAILURE
         self._orig_since_pass = passing_experimental._MAX_DAYS_SINCE_LAST_PASS
 
@@ -103,7 +101,6 @@ class PassingExperimentalFunctionalTests(mox.MoxTestBase, test.TestCase):
         passing_experimental._MAX_DAYS_SINCE_LAST_PASS = 10
         passing_experimental._MIN_DAYS_SINCE_FAILURE = 10
 
-        passing_experimental.update_afe_autotests_table()
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         mail.send('chromeos-test-health@google.com',
