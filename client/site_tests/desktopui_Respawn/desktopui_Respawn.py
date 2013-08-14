@@ -22,11 +22,15 @@ class desktopui_Respawn(test.test):
         """Nuke the UI with prejudice, then wait for it to come up.
 
         @param timeout: time in seconds to wait for browser to come back."""
-        utils.nuke_process_by_name(constants.SESSION_MANAGER,
-                                   with_prejudice=True)
-        utils.poll_for_condition(cros_ui.is_up,
-                                 desc='ui to come up',
-                                 timeout=timeout)
+        try:
+            utils.nuke_process_by_name(constants.SESSION_MANAGER,
+                                       with_prejudice=True)
+        except utils.AutoservPidAlreadyDeadError:
+            pass
+        utils.poll_for_condition(
+            lambda: utils.get_oldest_pid_by_name(constants.SESSION_MANAGER),
+            desc='ui to come back up.',
+            timeout=timeout)
 
 
     def run_once(self):

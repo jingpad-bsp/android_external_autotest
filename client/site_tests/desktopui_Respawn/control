@@ -4,7 +4,7 @@
 
 AUTHOR = "cmasone, jrbarnette"
 NAME = "desktopui_Respawn"
-SUITE = "smoke, bvt"
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
