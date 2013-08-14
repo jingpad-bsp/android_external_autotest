@@ -25,7 +25,6 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
-from autotest_lib.site_utils.suite_scheduler import base_event
 from autotest_lib.site_utils.graphite import stats
 
 CONFIG = global_config.global_config
@@ -601,10 +600,10 @@ def main():
     logging.info('Started suite job: %s', job_id)
 
     code = RETURN_CODES.OK
-    while wait and True:
-        if not afe.get_jobs(id=job_id, finished=True):
+    if wait:
+        while not afe.get_jobs(id=job_id, finished=True):
             time.sleep(1)
-            continue
+
         views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
         # The intended behavior is to refrain from recording stats if the suite
         # was aborted (either by a user or through the golo rpc). Since all the
@@ -695,7 +694,6 @@ def main():
                      'Output below this line is for buildbot consumption:')
         for link in buildbot_links:
             logging.info(link.GenerateBuildbotLink())
-        break
     else:
         logging.info('Created suite job: %r', job_id)
         link = LogLink(options.name, '%s-%s' % (job_id, getpass.getuser()))
