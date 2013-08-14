@@ -51,7 +51,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['beeps@chromium.org']
+    'ccs': ['beeps@chromium.org', 'chromeos-lab-errors@google.com']
 }
 
 dynamic_suite.reimage_and_run(
