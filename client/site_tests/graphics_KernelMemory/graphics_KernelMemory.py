@@ -18,8 +18,8 @@ class graphics_KernelMemory(test.test):
 
     arm_exynos_fields = {
         'gem_objects' : ['/sys/kernel/debug/dri/0/exynos_gem_objects'],
-        'memory'      : ['/sys/devices/platform/mali.0/memory',
-                         '/sys/devices/platform/mali.0/gpu_memory'],
+        'memory'      : ['/sys/class/misc/mali0/device/memory',
+                         '/sys/class/misc/mali0/device/gpu_memory'],
     }
     arm_tegra_fields = {
         'memory': ['/sys/kernel/debug/memblock/memory'],
