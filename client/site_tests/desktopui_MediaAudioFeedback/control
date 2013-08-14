@@ -8,7 +8,7 @@ PURPOSE = "Verify sound from media files is audible"
 CRITERIA = """
 This test will fail if media files sound is not audible.
 """
-SUITE = "audio"
+SUITE = "audio, qav"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
