@@ -5,6 +5,7 @@
 import httplib, logging, os, socket, subprocess, sys, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error, utils
+import autotest_lib.client.cros.faft.config
 from autotest_lib.server import autotest, test
 
 
@@ -18,12 +19,7 @@ class ServoTest(test.test):
     """
     version = 2
 
-    _REMOTE_PORT = 9990
-    _REMOTE_COMMAND = '/usr/local/autotest/cros/faft/faft_client.py'
-    _REMOTE_COMMAND_SHORT = 'faft_client'
-    _REMOTE_LOG_FILE = '/tmp/faft_client.log'
-    _SSH_CONFIG = ('-o StrictHostKeyChecking=no '
-                   '-o UserKnownHostsFile=/dev/null ')
+    config = autotest_lib.client.cros.faft.config.Config()
 
     def initialize(self, host):
         """Create a Servo object and install the dependency.
@@ -102,11 +98,11 @@ class ServoTest(test.test):
         self._kill_remote_process()
         self._launch_ssh_tunnel()
 
-        logging.info('Client command: %s', self._REMOTE_COMMAND)
-        logging.info("Logging to %s", self._REMOTE_LOG_FILE)
+        logging.info('Client command: %s', self.config.rpc_command)
+        logging.info("Logging to %s", self.config.rpc_logfile)
         full_cmd = ['ssh -n %s root@%s \'%s &> %s\'' % (
-                      self._SSH_CONFIG, self._client.ip,
-                      self._REMOTE_COMMAND, self._REMOTE_LOG_FILE)]
+                      self.config.rpc_ssh_options, self._client.ip,
+                      self.config.rpc_command, self.config.rpc_logfile)]
         logging.info('Starting process %s', ' '.join(full_cmd))
         self._remote_process = subprocess.Popen(full_cmd, shell=True,
                                                 stdout=subprocess.PIPE,
@@ -154,12 +150,13 @@ class ServoTest(test.test):
                 logging.info("HTTP/HTTPS headers: %s", rpc_error.headers)
                 logging.info("Error code: %d", rpc_error.errcode)
                 logging.info("Error message: %s", rpc_error.errmsg)
-            p = subprocess.Popen([
-                'ssh -n -q %s root@%s \'cat %s\'' % (self._SSH_CONFIG,
-                self._client.ip, self._REMOTE_LOG_FILE)], shell=True,
-                stdout=subprocess.PIPE)
+            p = subprocess.Popen(
+                 ['ssh -n -q %s root@%s \'cat %s\'' % (
+                    self.config.rpc_ssh_options,
+                    self._client.ip, self.config.rpc_logfile)],
+                  shell=True, stdout=subprocess.PIPE)
             logging.info('Log of running remote %s:',
-                         self._REMOTE_COMMAND_SHORT)
+                         self.config.rpc_command_short)
             logging.info(p.communicate()[0])
         assert succeed, 'Timed out connecting to client RPC server.'
 
@@ -227,18 +224,18 @@ class ServoTest(test.test):
         if not self._ssh_tunnel or self._ssh_tunnel.poll() is not None:
             self._ssh_tunnel = subprocess.Popen([
                 'ssh -N -n -q %s -L %s:localhost:%s root@%s' %
-                (self._SSH_CONFIG, self._local_port, self._REMOTE_PORT,
-                self._client.ip)], shell=True)
+                (self.config.rpc_ssh_options, self._local_port,
+                 self.config.rpc_port, self._client.ip)], shell=True)
             assert self._ssh_tunnel.poll() is None, \
                 'The SSH tunnel on port %d is not up.' % self._local_port
 
     def _kill_remote_process(self):
         """Ensure the remote process and local ssh process are terminated.
         """
-        kill_cmd = 'pkill -f %s' % self._REMOTE_COMMAND_SHORT
+        kill_cmd = 'pkill -f %s' % self.config.rpc_command_short
         subprocess.call(['ssh -n -q %s root@%s \'%s\'' %
-                         (self._SSH_CONFIG, self._client.ip, kill_cmd)],
-                        shell=True)
+                         (self.config.rpc_ssh_options,
+                          self._client.ip, kill_cmd)], shell=True)
         if self._remote_process and self._remote_process.poll() is None:
             self._remote_process.terminate()
 

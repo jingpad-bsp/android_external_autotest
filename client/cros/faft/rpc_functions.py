@@ -1,18 +1,13 @@
-#!/usr/bin/python -u
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Exposes the FAFTClient interface over XMLRPC.
+"""Code to provide functions for FAFT tests.
 
-It launches a XMLRPC server and exposes the interface of FAFTClient object.
-The FAFTClient object aggreates some useful functions of exisintg SAFT
-libraries.
+These can be exposed via a xmlrpci server running on the DUT.
 """
 
 import functools, os, shutil, tempfile
-from optparse import OptionParser
-from SimpleXMLRPCServer import SimpleXMLRPCServer
 
 import common
 from autotest_lib.client.cros.faft.utils import (cgpt_state,
@@ -69,8 +64,8 @@ class LazyFlashromHandlerProxy:
         self._loaded = False
 
 
-class FAFTClient(object):
-    """A class of FAFT client which aggregates some useful functions of SAFT.
+class RPCFunctions(object):
+    """A class which aggregates some useful functions for firmware testing.
 
     This class can be exposed via a XMLRPC server such that its functions can
     be accessed remotely. Method naming should fit the naming rule
@@ -722,25 +717,3 @@ class FAFTClient(object):
     def cleanup(self):
         """Cleanup for the RPC server. Currently nothing."""
         pass
-
-
-def main():
-    """The Main program, to run the XMLRPC server."""
-    parser = OptionParser(usage='Usage: %prog [options]')
-    parser.add_option('--port', type='int', dest='port', default=9990,
-                      help='port number of XMLRPC server')
-    (options, _) = parser.parse_args()
-
-    faft_client = FAFTClient()
-
-    # Launch the XMLRPC server to provide FAFTClient commands.
-    server = SimpleXMLRPCServer(('localhost', options.port), allow_none=True,
-                                logRequests=True)
-    server.register_introspection_functions()
-    server.register_instance(faft_client)
-    print 'XMLRPC Server: Serving FAFTClient on port %s' % options.port
-    server.serve_forever()
-
-
-if __name__ == '__main__':
-    main()
