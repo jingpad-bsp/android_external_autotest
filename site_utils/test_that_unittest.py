@@ -8,7 +8,6 @@ import os, unittest
 import mox
 import common
 import subprocess
-import stat
 import tempfile
 from autotest_lib.site_utils import test_that
 
@@ -162,7 +161,6 @@ class TestThatUnittests(unittest.TestCase):
         self.mox.StubOutWithMock(tempfile, 'mkdtemp')
         self.mox.StubOutWithMock(os, 'chmod')
         tempfile.mkdtemp(prefix='test_that_results_').AndReturn(results_dir)
-        os.chmod(results_dir, stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
 
         # Test perform_local_run. Enforce that run_job is called correctly.
         for control_file in suite_control_files:

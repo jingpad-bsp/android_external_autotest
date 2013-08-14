@@ -9,7 +9,6 @@ import logging
 import os
 import re
 import signal
-import stat
 import subprocess
 import sys
 import tempfile
@@ -205,7 +204,6 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
             if e.errno != errno.EEXIST:
                 raise
 
-    os.chmod(results_directory, stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
     logging.info('Running jobs. Results will be placed in %s',
                  results_directory)
     # Schedule tests / suites in local afe
