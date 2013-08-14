@@ -109,7 +109,7 @@ class Configuration(object):
                     self.ip = machine
                     break
                 ifconfig = subprocess.Popen(['/sbin/ifconfig'],
-                                     tdout=subprocess.PIPE).communicate()[0]
+                        stdout=subprocess.PIPE).communicate()[0]
         if not machine:
             raise LabConfigError(
                 'Could not determine which machine we are.\n'
