@@ -133,7 +133,6 @@ def tar_packages(pkgmgr, pkg_type, pkg_names, src_dir, temp_dir):
                                               temp_dir, exclude_string)
 
         tarballs.append(tarball_path)
-
     return tarballs
 
 
@@ -169,16 +168,23 @@ def process_all_packages(pkgmgr, client_dir, remove=False):
 
     # Update md5sum
     if not remove:
-        tar_packages(pkgmgr, 'profiler', profilers, prof_dir, temp_dir)
-        tar_packages(pkgmgr, 'dep', deps, dep_dir, temp_dir)
-        tar_packages(pkgmgr, 'test', site_tests, client_dir, temp_dir)
-        tar_packages(pkgmgr, 'test', tests, client_dir, temp_dir)
-        tar_packages(pkgmgr, 'client', 'autotest', client_dir, temp_dir)
+        all_packages = []
+        all_packages.extend(tar_packages(pkgmgr, 'profiler', profilers,
+                                         prof_dir, temp_dir))
+        all_packages.extend(tar_packages(pkgmgr, 'dep', deps, dep_dir,
+                                         temp_dir))
+        all_packages.extend(tar_packages(pkgmgr, 'test', site_tests,
+                                         client_dir, temp_dir))
+        all_packages.extend(tar_packages(pkgmgr, 'test', tests, client_dir,
+                                         temp_dir))
+        all_packages.extend(tar_packages(pkgmgr, 'client', 'autotest',
+                                         client_dir, temp_dir))
         cwd = os.getcwd()
         os.chdir(temp_dir)
         client_utils.system('md5sum * > packages.checksum')
         os.chdir(cwd)
-        pkgmgr.upload_pkg(temp_dir)
+        for package in all_packages:
+            pkgmgr.upload_pkg(package, update_checksum=True)
         client_utils.run('rm -rf ' + temp_dir)
     else:
         process_packages(pkgmgr, 'test', tests, client_dir, remove=remove)
