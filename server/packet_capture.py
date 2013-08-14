@@ -69,28 +69,33 @@ class PacketCapture(object):
         return 'class: %s, host: %s' % (self.__class__.__name__, self._host)
 
 
-    def allocate_packet_capture_machine(self):
+    def allocate_packet_capture_machine(self, hostname=None):
         """
-        Allocates a machine to capture packets.  Locks it so nobody else can
-        use it.
+        Allocates a machine to capture packets.  Locks it (if packet_capture
+        was discovered via AFE) so nobody else can use it.
+
+        @param hostname string optional hostname of packet_capture host
 
         @raises error.TestError if unable to allocate or lock a tracer.
         """
-        afe = frontend.AFE(debug=True)
-        hosts_maybe = afe.get_hosts(multiple_labels=['packet_capture'])
-        if not hosts_maybe:
-            raise error.TestError('No packet capture machines available')
+        if hostname is not None:
+            self._host = hosts.SSHHost(hostname)
+        else:
+            afe = frontend.AFE(debug=True)
+            hosts_maybe = afe.get_hosts(multiple_labels=['packet_capture'])
+            if not hosts_maybe:
+                raise error.TestError('No packet capture machines available')
 
-        self._host = None
-        # Shuffle order of hosts for load distribution.
-        shuffle(hosts_maybe)
-        for host in hosts_maybe:
-            if self.manager.lock([host.hostname]):
-                logging.info('locked %s', host.hostname)
-                self._host = hosts.SSHHost(host.hostname+'.cros')
-                break
-            else:
-                logging.info('Unable to lock %s', host.hostname)
+            self._host = None
+            # Shuffle order of hosts for load distribution.
+            shuffle(hosts_maybe)
+            for host in hosts_maybe:
+                if self.manager.lock([host.hostname]):
+                    logging.info('locked %s', host.hostname)
+                    self._host = hosts.SSHHost(host.hostname+'.cros')
+                    break
+                else:
+                    logging.info('Unable to lock %s', host.hostname)
 
         if not self._host:
             raise error.TestError('Could not allocate a packet tracer.')
