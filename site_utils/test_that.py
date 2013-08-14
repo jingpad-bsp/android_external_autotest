@@ -5,7 +5,6 @@
 
 import argparse
 import errno
-import logging
 import os
 import re
 import signal
@@ -14,11 +13,20 @@ import sys
 import tempfile
 import threading
 
+import logging
+# Turn the logging level to INFO before importing other autotest
+# code, to avoid having failed import logging messages confuse the
+# test_that user.
+logging.basicConfig(level=logging.INFO)
+
 import common
 from autotest_lib.client.common_lib.cros import dev_server, retry
+from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.server.cros.dynamic_suite import suite
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server import autoserv_utils
+from autotest_lib.server import server_logging_config
+
 
 try:
     from chromite.lib import cros_build_lib
@@ -136,11 +144,21 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
                 machines=host, job=job, verbose=False,
                 results_directory=results_directory,
                 fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
-                extra_args=extra_args)
+                extra_args=extra_args,
+                no_console_prefix=True)
 
         if not pretend:
+            logging.debug('Running autoserv command: %s', ' '.join(command))
             global _autoserv_proc
-            _autoserv_proc = subprocess.Popen(command)
+            _autoserv_proc = subprocess.Popen(command,
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.STDOUT)
+            # This incantation forces unbuffered reading from stdout,
+            # so that autoserv output can be displayed to the user
+            # immediately.
+            for message in iter(_autoserv_proc.stdout.readline, b''):
+                logging.info('autoserv| %s', message.strip())
+
             _autoserv_proc.wait()
             _autoserv_proc = None
             return results_directory
@@ -186,26 +204,11 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                               subdirectory of /tmp
     @param ssh_verbosity: SSH verbosity level, passed through to
                           autoserv_utils.
-
-    @returns: directory in which results are stored.
     """
     afe.create_label(constants.VERSION_PREFIX + build)
     afe.create_label(board)
     afe.create_host(remote)
 
-    if results_directory is None:
-        # Create a results_directory as subdir of /tmp
-        results_directory = tempfile.mkdtemp(prefix='test_that_results_')
-    else:
-        # Create results_directory if it does not exist
-        try:
-            os.makedirs(results_directory)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
-
-    logging.info('Running jobs. Results will be placed in %s',
-                 results_directory)
     # Schedule tests / suites in local afe
     for test in tests:
         suitematch = re.match(r'suite:(.*)', test)
@@ -225,15 +228,12 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
 
     if not afe.get_jobs():
         logging.info('No jobs scheduled. End of local run.')
-        return results_directory
 
     last_job_id = afe.get_jobs()[-1].id
     job_id_digits=len(str(last_job_id))
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory, fast_mode,
                 job_id_digits, ssh_verbosity, args, pretend)
-
-    return results_directory
 
 
 def validate_arguments(arguments):
@@ -275,11 +275,11 @@ def parse_arguments(argv):
 
     parser.add_argument('remote', metavar='REMOTE',
                         help='hostname[:port] for remote device. Specify '
-                        ':lab: to run in test lab, or :vm:PORT_NUMBER to '
-                        'run in vm.')
+                             ':lab: to run in test lab, or :vm:PORT_NUMBER to '
+                             'run in vm.')
     parser.add_argument('tests', nargs='+', metavar='TEST',
                         help='Run given test(s). Use suite:SUITE to specify '
-                        'test suite.')
+                             'test suite.')
     default_board = cros_build_lib.GetDefaultBoard()
     parser.add_argument('-b', '--board', metavar='BOARD', default=default_board,
                         action='store',
@@ -287,8 +287,8 @@ def parse_arguments(argv):
                              (default_board or 'Not configured'))
     parser.add_argument('-i', '--build', metavar='BUILD',
                         help='Build to test. Device will be reimaged if '
-                        'necessary. Omit flag to skip reimage and test '
-                        'against already installed DUT image.')
+                             'necessary. Omit flag to skip reimage and test '
+                             'against already installed DUT image.')
     parser.add_argument('--fast', action='store_true', dest='fast_mode',
                         default=False,
                         help='Enable fast mode.  This will cause test_that to '
@@ -296,13 +296,13 @@ def parse_arguments(argv):
                              'collecting crash information.')
     parser.add_argument('--args', metavar='ARGS',
                         help='Argument string to pass through to test. Only '
-                        'supported for runs against a local DUT.')
+                             'supported for runs against a local DUT.')
     parser.add_argument('--results_dir', metavar='RESULTS_DIR',
                         help='Instead of storing results in a new subdirectory'
-                        ' of /tmp , store results in RESULTS_DIR. If '
-                        'RESULTS_DIR already exists, will attempt to continue '
-                        'using this directory, which may result in test '
-                        'failures due to file collisions.')
+                             ' of /tmp , store results in RESULTS_DIR. If '
+                             'RESULTS_DIR already exists, will attempt to '
+                             'continue using this directory, which may result '
+                             'in test failures due to file collisions.')
     parser.add_argument('--pretend', action='store_true', default=False,
                         help='Print autoserv commands that would be run, '
                              'rather than running them.')
@@ -319,12 +319,16 @@ def parse_arguments(argv):
     parser.add_argument('--whitelist-chrome-crashes', action='store_true',
                         default=False, dest='whitelist_chrome_crashes',
                         help='Ignore chrome crashes when producing test '
-                        'report. This flag gets passed along to the report '
-                        'generation tool.')
+                             'report. This flag gets passed along to the '
+                             'report generation tool.')
     parser.add_argument('--ssh_verbosity', action='store', type=int,
                         choices=[0, 1, 2, 3], default=0,
                         help='Verbosity level for ssh, between 0 and 3 '
                              'inclusive.')
+    parser.add_argument('--debug', action='store_true',
+                        help='Include DEBUG level messages in stdout. Note: '
+                             'these messages will be included in output log '
+                             'file regardless.')
     return parser.parse_args(argv)
 
 
@@ -367,17 +371,16 @@ def main(argv):
     Entry point for test_that script.
     @param argv: arguments list
     """
-    if not cros_build_lib.IsInsideChroot():
-        logging.error('Script must be invoked inside the chroot.')
-        return 1
 
-    logging.getLogger('').setLevel(logging.INFO)
+    if not cros_build_lib.IsInsideChroot():
+        print >> sys.stderr, 'Script must be invoked inside the chroot.'
+        return 1
 
     arguments = parse_arguments(argv)
     try:
         validate_arguments(arguments)
     except ValueError as err:
-        logging.error('Invalid arguments. %s', err.message)
+        print >> sys.stderr, ('Invalid arguments. %s' % err.message)
         return 1
 
     sysroot_path = os.path.join('/build', arguments.board, '')
@@ -387,12 +390,12 @@ def main(argv):
                                             'site_utils')
 
     if not os.path.exists(sysroot_path):
-        logging.error('%s does not exist. Have you run setup_board?',
-                      sysroot_path)
+        print >> sys.stderr, ('%s does not exist. Have you run '
+                              'setup_board?' % sysroot_path)
         return 1
     if not os.path.exists(sysroot_autotest_path):
-        logging.error('%s does not exist. Have you run build_packages?',
-                      sysroot_autotest_path)
+        print >> sys.stderr, ('%s does not exist. Have you run '
+                              'build_packages?' % sysroot_autotest_path)
         return 1
 
     # If we are not running the sysroot version of script, perform
@@ -400,12 +403,23 @@ def main(argv):
     # the sysroot version of script with the same arguments.
     realpath = os.path.realpath(__file__)
     if os.path.dirname(realpath) != sysroot_site_utils_path:
+        logging_manager.configure_logging(
+                server_logging_config.ServerLoggingConfig(),
+                use_console=True,
+                verbose=arguments.debug)
         if arguments.no_quickmerge:
             logging.info('Skipping quickmerge step as requested.')
         else:
-            subprocess.call([_QUICKMERGE_SCRIPTNAME,
-                             '--board='+arguments.board])
+            logging.info('Running autotest_quickmerge step.')
+            s = subprocess.Popen([_QUICKMERGE_SCRIPTNAME,
+                                  '--board='+arguments.board],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT)
+            for message in iter(s.stdout.readline, b''):
+                logging.debug('quickmerge| %s', message.strip())
+            s.wait()
 
+        logging.info('Re-running test_that script in sysroot.')
         script_command = os.path.join(sysroot_site_utils_path,
                                       os.path.basename(realpath))
         proc = None
@@ -420,6 +434,30 @@ def main(argv):
 
         return proc.wait()
 
+    # We are running the sysroot version of the script.
+    # No further levels of bootstrapping that will occur, so
+    # create a results directory and start sending our logging messages
+    # to it.
+    results_directory = arguments.results_dir
+    if results_directory is None:
+        # Create a results_directory as subdir of /tmp
+        results_directory = tempfile.mkdtemp(prefix='test_that_results_')
+    else:
+        # Create results_directory if it does not exist
+        try:
+            os.makedirs(results_directory)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
+    logging_manager.configure_logging(
+            server_logging_config.ServerLoggingConfig(),
+            results_dir=results_directory,
+            use_console=True,
+            verbose=arguments.debug,
+            debug_log_name='test_that')
+    logging.info('Began logging to %s', results_directory)
+
     # Hard coded to True temporarily. This will eventually be parsed to false
     # if we are doing a run in the test lab.
     local_run = True
@@ -429,13 +467,13 @@ def main(argv):
 
     if local_run:
         afe = setup_local_afe()
-        res_dir= perform_local_run(afe, sysroot_autotest_path, arguments.tests,
-                                   arguments.remote, arguments.fast_mode,
-                                   args=arguments.args,
-                                   pretend=arguments.pretend,
-                                   no_experimental=arguments.no_experimental,
-                                   results_directory=arguments.results_dir,
-                                   ssh_verbosity=arguments.ssh_verbosity)
+        perform_local_run(afe, sysroot_autotest_path, arguments.tests,
+                          arguments.remote, arguments.fast_mode,
+                          args=arguments.args,
+                          pretend=arguments.pretend,
+                          no_experimental=arguments.no_experimental,
+                          results_directory=results_directory,
+                          ssh_verbosity=arguments.ssh_verbosity)
         if arguments.pretend:
             logging.info('Finished pretend run. Exiting.')
             return 0
@@ -443,15 +481,15 @@ def main(argv):
         test_report_command = [_TEST_REPORT_SCRIPTNAME]
         if arguments.whitelist_chrome_crashes:
             test_report_command.append('--whitelist_chrome_crashes')
-        test_report_command.append(res_dir)
+        test_report_command.append(results_directory)
         final_result = subprocess.call(test_report_command)
         logging.info('Finished running tests. Results can be found in %s',
-                     res_dir)
+                     results_directory)
         try:
             os.unlink(_LATEST_RESULTS_DIRECTORY)
         except OSError:
             pass
-        os.symlink(res_dir, _LATEST_RESULTS_DIRECTORY)
+        os.symlink(results_directory, _LATEST_RESULTS_DIRECTORY)
         return final_result
 
 

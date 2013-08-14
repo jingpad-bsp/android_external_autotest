@@ -8,7 +8,6 @@ import os, unittest
 import mox
 import common
 import subprocess
-import tempfile
 from autotest_lib.site_utils import test_that
 
 
@@ -97,22 +96,34 @@ class TestThatUnittests(unittest.TestCase):
 
         # Stub out subprocess.Popen and wait calls.
         # Make them expect correct arguments.
+        def fake_readline():
+            return b''
         mock_process_1 = self.mox.CreateMock(subprocess.Popen)
         mock_process_2 = self.mox.CreateMock(subprocess.Popen)
+        fake_stdout = self.mox.CreateMock(file)
+        mock_process_1.stdout = fake_stdout
+        mock_process_2.stdout = fake_stdout
+
         self.mox.StubOutWithMock(subprocess, 'Popen')
 
-        arglist_1 = [autoserv_command, '-p', '-r', job1_results_dir, '-m',
-                     remote, '-c']
+        arglist_1 = [autoserv_command, '-p', '-r', job1_results_dir,
+                     '-m', remote, '--no_console_prefix', '-c']
         subprocess.Popen(mox.And(StartsWithList(arglist_1),
-                                 ContainsSublist(expected_args_sublist))
+                                 ContainsSublist(expected_args_sublist)),
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT
                         ).AndReturn(mock_process_1)
+        mock_process_1.stdout.readline().AndReturn(b'')
         mock_process_1.wait()
 
-        arglist_2 = [autoserv_command, '-p', '-r', job2_results_dir, '-m',
-                     remote, '-s']
+        arglist_2 = [autoserv_command, '-p', '-r', job2_results_dir,
+                     '-m', remote,  '--no_console_prefix', '-s']
         subprocess.Popen(mox.And(StartsWithList(arglist_2),
-                                 ContainsSublist(expected_args_sublist))
+                                 ContainsSublist(expected_args_sublist)),
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT
                         ).AndReturn(mock_process_2)
+        mock_process_2.stdout.readline().AndReturn(b'')
         mock_process_2.wait()
 
         # Test run_job.
@@ -157,11 +168,6 @@ class TestThatUnittests(unittest.TestCase):
                 ).WithSideEffects(fake_suite_callback)
         self.mox.StubOutWithMock(test_that, 'run_job')
 
-        # Mock out temporary results directory creation
-        self.mox.StubOutWithMock(tempfile, 'mkdtemp')
-        self.mox.StubOutWithMock(os, 'chmod')
-        tempfile.mkdtemp(prefix='test_that_results_').AndReturn(results_dir)
-
         # Test perform_local_run. Enforce that run_job is called correctly.
         for control_file in suite_control_files:
             test_that.run_job(mox.ContainsAttributeValue('control_file',
@@ -171,7 +177,8 @@ class TestThatUnittests(unittest.TestCase):
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
                                     remote, fast_mode, build=build, board=board,
-                                    ssh_verbosity=ssh_verbosity, args=args)
+                                    ssh_verbosity=ssh_verbosity, args=args,
+                                    results_directory=results_dir)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
 
