@@ -580,22 +580,6 @@
     ]
   },
   {
-    "test_name": "audiovideo_FFMPEG",
-    "graphs": [
-      {
-        "graph_name": "tulip_fps",
-        "units": "fps",
-        "better_direction": "higher",
-        "info_url": "../../../../../scripts/doc/default.html",
-        "keys": [
-          "fps_tulip_hp_mp4",
-          "fps_tulip_bp_mp4",
-          "fps_tulip_ogv"
-        ]
-      }
-    ]
-  },
-  {
     "test_name": "graphics_GLBench",
     "graphs": [
       {

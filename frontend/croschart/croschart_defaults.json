@@ -67,7 +67,6 @@
    "KB_MemLive-EndGemObj-0Tabs0,KB_MemLive-MaxGemObj-10Tabs1,KB_MemLive-EndGemObj-0Tabs1,KB_MemLive-MaxGemObj-10Tabs2,KB_MemLive-EndGemObj-0Tabs2"],
   ["desktopui_PyAutoPerfTests",
    "KB_MemLive-EndMemFree-0Tabs0,KB_MemLive-MinMemFree-10Tabs1,KB_MemLive-EndMemFree-0Tabs1,KB_MemLive-MinMemFree-10Tabs2,KB_MemLive-EndMemFree-0Tabs2"],
-  ["audiovideo_FFMPEG", "fps_tulip_hp_mp4,fps_tulip_bp_mp4,fps_tulip_ogv"],
   ["graphics_GLBench",
    "1280x768_fps_compositing,mpixels_sec_clear_color,mpixels_sec_fill_solid,mpixels_sec_yuv_shader_2,mpixels_sec_yuv_shader_4,mtri_sec_triangle_setup"],
   ["graphics_GLMark2", "glmark2_score"],

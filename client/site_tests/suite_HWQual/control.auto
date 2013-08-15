@@ -65,11 +65,6 @@ job.run_test('graphics_GLBench',
 job.run_test('graphics_SanAngeles', creds='$backdoor')
 
 # Video
-job.run_test('audiovideo_FFMPEG',
-             fps_warning=40,
-             constraints=['fps_video_min >= 40.0',
-                          'tpf_audio_max <= 4.0', # [ms/frame]
-             ])
 job.run_test('audiovideo_V4L2')
 
 # RealTimeComm

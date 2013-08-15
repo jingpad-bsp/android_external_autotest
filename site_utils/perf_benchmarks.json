@@ -243,15 +243,6 @@
         ]
     },
     {
-        "benchmark": "ffmpeg",
-        "autotest_name": "audiovideo_FFMPEG/control$",
-        "perf_keys": [
-            "fps_tulip_bp_mp4",
-            "fps_tulip_hp_mp4",
-            "fps_tulip_ogv"
-        ]
-    },
-    {
         "benchmark": "boot_perf",
         "autotest_name": "platform_BootPerfServer/control$",
         "perf_keys": [
