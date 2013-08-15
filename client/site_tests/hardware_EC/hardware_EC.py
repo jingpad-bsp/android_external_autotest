@@ -18,6 +18,10 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
+def has_ectool():
+    cmd = 'which ectool'
+    return (utils.system(cmd, ignore_status=True) == 0)
+
 class ECControl(object):
     HELLO_RE = "EC says hello"
     GET_FANSPEED_RE = "Current fan RPM: ([0-9]*)"
@@ -31,8 +35,8 @@ class ECControl(object):
     def ec_command(self, cmd):
         full_cmd = 'ectool %s' % cmd
         result = utils.system_output(full_cmd)
-        logging.info('Command: %s' % full_cmd)
-        logging.info('Result: %s' % result)
+        logging.info('Command: %s', full_cmd)
+        logging.info('Result: %s', result)
         return result
 
     def hello(self):
@@ -91,6 +95,14 @@ class hardware_EC(test.test):
                  test_battery=False,
                  test_lightbar=False,
                  fan_delay_secs=3):
+
+        if not has_ectool():
+            ec_info = utils.system_output("mosys ec info",
+                                          ignore_status=True)
+            logging.warn("Ectool absent on this platform ( %s )",
+                         ec_info)
+            raise error.TestNAError("Platform doesn't support ectool")
+
         ec = ECControl()
 
         if not ec.hello():
@@ -125,7 +137,7 @@ class hardware_EC(test.test):
             temperature = ec.get_temperature(idx) - 273
             if temperature < 0 or temperature > 100:
                 raise error.TestError(
-                        'Abnormal temperature reading on sensor %d' % idx);
+                        'Abnormal temperature reading on sensor %d' % idx)
 
         if test_battery and not ec.get_battery():
             raise error.TestError('Battery communication failed')
