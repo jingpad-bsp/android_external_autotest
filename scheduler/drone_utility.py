@@ -155,7 +155,8 @@ class BaseDroneUtility(object):
                 'check_parse', lambda x: False)
         results = {
             'pidfiles' : self._read_pidfiles(pidfile_paths),
-            'all_processes' : list(self._get_process_info()),
+            # element 0 of _get_process_info() is the headers from `ps`
+            'all_processes' : list(self._get_process_info())[1:],
             'autoserv_processes' : self._refresh_processes('autoserv'),
             'parse_processes' : self._refresh_processes(
                     'parse', site_check_parse=site_check_parse),

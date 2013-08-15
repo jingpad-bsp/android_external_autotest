@@ -142,6 +142,8 @@ class BaseDroneManager(object):
         self._results_dir = None
         # holds Process objects
         self._process_set = set()
+        # holds the list of all processes running on all drones
+        self._all_processes = {}
         # maps PidfileId to PidfileContents
         self._pidfiles = {}
         # same as _pidfiles
@@ -269,6 +271,7 @@ class BaseDroneManager(object):
 
     def _reset(self):
         self._process_set = set()
+        self._all_processes = {}
         self._pidfiles = {}
         self._pidfiles_second_read = {}
         self._drone_queue = []
@@ -355,29 +358,35 @@ class BaseDroneManager(object):
         pidfile_paths = [pidfile_id.path
                          for pidfile_id in self._registered_pidfile_info]
         all_results = self._call_all_drones('refresh', pidfile_paths)
-        all_procs = []
 
         for drone, results_list in all_results.iteritems():
             results = results_list[0]
 
-            for process_info in results['autoserv_processes']:
-                self._add_autoserv_process(drone, process_info)
+            for process_info in results['all_processes']:
+                if process_info['comm'] == 'autoserv':
+                    self._add_autoserv_process(drone, process_info)
+                drone_pid = drone.hostname, int(process_info['pid'])
+                self._all_processes[drone_pid] = process_info
             for process_info in results['parse_processes']:
                 self._add_process(drone, process_info)
 
             self._process_pidfiles(drone, results['pidfiles'], self._pidfiles)
             self._process_pidfiles(drone, results['pidfiles_second_read'],
                                    self._pidfiles_second_read)
-            all_procs.extend(results['all_processes'])
 
             self._compute_active_processes(drone)
             if drone.enabled:
                 self._enqueue_drone(drone)
 
-        logging.info('existing pidfiles: %s', ', '.join(str(x)+':'+str(y.process) for x,y in self._pidfiles.items()))
-        logging.info('existing 2nd pidfiles: %s', ', '.join(str(x)+':'+str(y.process) for x,y in self._pidfiles_second_read.items()))
-        logging.info('existing processes: %s', ', '.join(map(str, self._process_set)))
-        logging.info('all processes: %s', ', '.join(str(x) for x in all_procs))
+        logging.info('existing pidfiles: %s', ', '.join(
+                str(x)+':'+str(y.process) for x,y in self._pidfiles.items()))
+        logging.info('all processes: %s', ', '.join(
+                str(x) for x in self._all_processes.values()))
+        logging.info('existing processes: %s', ', '.join(
+                str(x) for x in self._process_set))
+        logging.info('existing re-read pidfiles: %s', ', '.join(
+                str(x)+':'+str(y.process) for x,y in
+                self._pidfiles_second_read.items()))
 
 
     def execute_actions(self):
@@ -612,7 +621,16 @@ class BaseDroneManager(object):
         """
         Check if the given process is in the running process list.
         """
-        return process in self._process_set
+        if process in self._process_set:
+            return True
+
+        drone_pid = process.drone, process.pid
+        if drone_pid in self._all_processes:
+            logging.error('Process %s found, but not an autoserv process. '
+                    'Is %s', process, self._all_processes[drone_pid])
+            return True
+
+        return False
 
 
     def get_temporary_path(self, base_name):
