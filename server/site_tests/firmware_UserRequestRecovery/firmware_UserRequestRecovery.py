@@ -45,7 +45,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
         """Try pressing Ctrl-D and enter to check its firmware behavior."""
         # Pressing Ctrl-D + Enter / Enter + Enter should not trigger
         # dev / normal mode switching.
-        if self.client_attr.keyboard_dev:
+        if self.faft_config.keyboard_dev:
             self.wait_fw_screen_and_switch_keyboard_dev_mode(not dev_mode)
             if not dev_mode:
                 self.wait_fw_screen_and_ctrl_d()

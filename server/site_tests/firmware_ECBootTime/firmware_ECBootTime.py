@@ -56,7 +56,7 @@ class firmware_ECBootTime(FAFTSequence):
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self._x86 = ('x86' in self.client_attr.ec_capability)
+        self._x86 = ('x86' in self.faft_config.ec_capability)
         dev_mode = self.checkers.crossystem_checker({'devsw_boot': '1'})
         self.register_faft_sequence((
             {   # Step 1, Reboot and check EC cold boot time and host boot time

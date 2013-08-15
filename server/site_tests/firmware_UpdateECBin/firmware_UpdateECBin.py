@@ -94,7 +94,7 @@ class firmware_UpdateECBin(FAFTSequence):
 
 
     def software_sync_and_ctrl_d(self):
-        time.sleep(self.delay.software_sync)
+        time.sleep(self.faft_config.software_sync)
         self.wait_dev_screen_and_ctrl_d()
 
 

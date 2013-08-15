@@ -159,7 +159,7 @@ class firmware_FAFTSetup(FAFTSequence):
             self.press_ctrl_d()
             self.press_enter()
 
-        keys = self.client_attr.key_checker
+        keys = self.faft_config.key_checker
 
         expected_output = [
                 ("keycode  {0:x} {1}".format(keys[0][0], keys[0][1]),
@@ -183,7 +183,7 @@ class firmware_FAFTSetup(FAFTSequence):
             self.servo.enter_key()
             self.servo.refresh_key()
 
-        keys = self.client_attr.key_checker_strict
+        keys = self.faft_config.key_checker_strict
 
         expected_output = list("keycode  %x %s" % (k, p) for k, p in keys)
 
@@ -217,7 +217,7 @@ class firmware_FAFTSetup(FAFTSequence):
             {   # Step 4, Check keyboard simulation
                 "state_checker": (self.strict_keyboard_checker if
                                   self._spec_check and
-                                  self.client_attr.has_keyboard else
+                                  self.faft_config.has_keyboard else
                                   self.keyboard_checker),
             },
         ))

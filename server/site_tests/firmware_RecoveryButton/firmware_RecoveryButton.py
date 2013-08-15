@@ -61,7 +61,7 @@ class firmware_RecoveryButton(FAFTSequence):
                 #   if dev_mode OFF,
                 #     the old models need users to remove and insert the USB;
                 #     the new models directly boot to the USB.
-                'firmware_action': None if self.client_attr.keyboard_dev or
+                'firmware_action': None if self.faft_config.keyboard_dev or
                                    dev_mode or not remove_usb else
                                    self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,

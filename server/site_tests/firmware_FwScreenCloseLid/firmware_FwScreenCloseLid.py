@@ -31,13 +31,13 @@ class firmware_FwScreenCloseLid(FAFTSequence):
         """Wait and trigger yuck screen and clod lid."""
         # Insert a corrupted USB stick. A yuck screen is expected.
         self.servo.switch_usbkey('dut')
-        time.sleep(self.delay.load_usb)
+        time.sleep(self.faft_config.load_usb)
         self.wait_longer_fw_screen_and_close_lid()
 
 
     def setup(self):
         super(firmware_FwScreenCloseLid, self).setup()
-        if self.client_attr.has_lid:
+        if self.faft_config.has_lid:
             self.assert_test_image_in_usb_disk()
             self.setup_dev_mode(dev_mode=True)
             self.servo.switch_usbkey('host')
@@ -48,7 +48,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
 
 
     def cleanup(self):
-        if self.client_attr.has_lid:
+        if self.faft_config.has_lid:
             self.servo.switch_usbkey('host')
             usb_dev = self.servo.probe_host_usb_dev()
             # Restore the kernel of USB stick which is corrupted on setup phase.
@@ -57,13 +57,13 @@ class firmware_FwScreenCloseLid(FAFTSequence):
 
 
     def run_once(self):
-        if not self.client_attr.has_lid:
+        if not self.faft_config.has_lid:
             logging.info('This test does nothing on devices without lid.')
             return
 
-        if self.client_attr.chrome_ec and not self.check_ec_capability(['lid']):
+        if self.faft_config.chrome_ec and not self.check_ec_capability(['lid']):
             raise error.TestNAError("TEST IT MANUALLY! Chrome EC can't control "
-                    "lid on the device %s" % self.client_attr.platform)
+                    "lid on the device %s" % self.faft_config.platform)
 
         self.register_faft_sequence((
             {   # Step 1, expected dev mode and reboot.

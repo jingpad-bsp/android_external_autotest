@@ -41,7 +41,7 @@ class firmware_ECSharedMem(FAFTSequence):
 
     def jump_checker(self):
         self.ec.send_command("sysjump RW")
-        time.sleep(self.delay.ec_boot_to_console)
+        time.sleep(self.faft_config.ec_boot_to_console)
         return self.shared_mem_checker()
 
 

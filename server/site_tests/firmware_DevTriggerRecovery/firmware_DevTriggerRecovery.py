@@ -67,7 +67,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
 
 
     def run_once(self):
-        if self.client_attr.keyboard_dev:
+        if self.faft_config.keyboard_dev:
             logging.info('This test is no longer valid in keyboard controlled '
                          'dev mode firmware.')
             return

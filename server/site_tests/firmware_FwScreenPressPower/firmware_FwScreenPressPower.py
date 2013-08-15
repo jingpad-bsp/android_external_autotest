@@ -29,7 +29,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
         """Insert corrupted USB for yuck screen and press power button."""
         # This USB stick will be removed in cleanup phase.
         self.servo.switch_usbkey('dut')
-        time.sleep(self.delay.load_usb)
+        time.sleep(self.faft_config.load_usb)
         self.wait_longer_fw_screen_and_press_power()
 
 

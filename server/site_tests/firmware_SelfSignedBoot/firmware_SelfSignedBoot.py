@@ -63,7 +63,7 @@ class firmware_SelfSignedBoot(FAFTSequence):
         self.wait_fw_screen_and_ctrl_u()
         # If the above Ctrl-U doesn't work, the firmware beeps twice.
         # Should wait the beep done before pressing Ctrl-D.
-        time.sleep(self.delay.beep)
+        time.sleep(self.faft_config.beep)
         self.press_ctrl_d()
 
 
@@ -95,7 +95,7 @@ class firmware_SelfSignedBoot(FAFTSequence):
 
 
     def run_once(self):
-        if (self.client_attr.has_keyboard and
+        if (self.faft_config.has_keyboard and
                 not self.check_ec_capability(['keyboard'])):
             raise error.TestNAError("TEST IT MANUALLY! This test can't be "
                                   "automated on non-Chrome-EC devices.")

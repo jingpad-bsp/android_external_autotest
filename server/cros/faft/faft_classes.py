@@ -14,11 +14,8 @@ import uuid
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
+from autotest_lib.server.cros.faft.config.config import Config as faft_config
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
-from autotest_lib.server.cros.faft.config.faft_client_attribute import (
-       FAFTClientAttribute)
-from autotest_lib.server.cros.faft.config.faft_delay_constants import (
-       FAFTDelayConstants)
 from autotest_lib.server.cros.servo import chrome_ec
 from autotest_lib.server.cros.servo_test import ServoTest
 
@@ -163,16 +160,14 @@ class FAFTSequence(ServoTest):
 
         super(FAFTSequence, self).initialize(host)
 
-        self.client_attr = FAFTClientAttribute(
-                self.faft_client.system.get_platform_name())
-        self.delay = FAFTDelayConstants(
+        self.faft_config = faft_config(
                 self.faft_client.system.get_platform_name())
         self.checkers = FAFTCheckers(self, self.faft_client)
 
-        if self.client_attr.chrome_ec:
+        if self.faft_config.chrome_ec:
             self.ec = chrome_ec.ChromeEC(self.servo)
 
-        if not self.client_attr.has_keyboard:
+        if not self.faft_config.has_keyboard:
             # The environment variable USBKM232_UART_DEVICE should point
             # to the USB-KM232 UART device.
             if ('USBKM232_UART_DEVICE' not in os.environ or
@@ -181,7 +176,7 @@ class FAFTSequence(ServoTest):
                         'variable USBKM232_UART_DEVICE.')
 
         # Setting up key matrix mapping
-        self.servo.set_key_matrix(self.client_attr.key_matrix_layout)
+        self.servo.set_key_matrix(self.faft_config.key_matrix_layout)
 
     def setup(self, ec_wp=None):
         """Autotest setup function."""
@@ -452,7 +447,7 @@ class FAFTSequence(ServoTest):
 
         # Make the dut able to see the USB disk.
         self.servo.switch_usbkey('dut')
-        time.sleep(self.delay.between_usb_plug)
+        time.sleep(self.faft_config.between_usb_plug)
         has_usb_set = set(
             self.faft_client.system.run_shell_command_get_output(cmd))
 
@@ -535,7 +530,7 @@ class FAFTSequence(ServoTest):
                         image_base)
 
             # Wait devserver startup completely
-            time.sleep(self.delay.devserver)
+            time.sleep(self.faft_config.devserver)
             # devserver is a service running forever. If it is terminated,
             # some error does happen.
             if devserver.poll():
@@ -628,7 +623,7 @@ class FAFTSequence(ServoTest):
         @param suppress_warning: True to suppress any warning messages.
         @return: True if requirements are met. Otherwise, False.
         """
-        if not self.client_attr.chrome_ec:
+        if not self.faft_config.chrome_ec:
             if not suppress_warning:
                 logging.warn('Requires Chrome EC to run this test.')
             return False
@@ -637,7 +632,7 @@ class FAFTSequence(ServoTest):
             return True
 
         for cap in required_cap:
-            if cap not in self.client_attr.ec_capability:
+            if cap not in self.faft_config.ec_capability:
                 if not suppress_warning:
                     logging.warn('Requires EC capability "%s" to run this '
                                  'test.', cap)
@@ -716,7 +711,7 @@ class FAFTSequence(ServoTest):
 
         @param enable: True if asserting write protect pin. Otherwise, False.
         """
-        self.servo.set('fw_wp_vref', self.client_attr.wp_voltage)
+        self.servo.set('fw_wp_vref', self.faft_config.wp_voltage)
         self.servo.set('fw_wp_en', 'on')
         self.servo.set('fw_wp', 'on' if enable else 'off')
 
@@ -740,7 +735,7 @@ class FAFTSequence(ServoTest):
         @param enable: True if activating EC write protect. Otherwise, False.
         """
         self.set_hardware_write_protect(enable)
-        if self.client_attr.chrome_ec:
+        if self.faft_config.chrome_ec:
             self.set_chrome_ec_write_protect_and_reboot(enable)
         else:
             self.faft_client.ec.set_write_protect(enable)
@@ -797,7 +792,7 @@ class FAFTSequence(ServoTest):
 
     def press_ctrl_d(self):
         """Send Ctrl-D key to DUT."""
-        if not self.client_attr.has_keyboard:
+        if not self.faft_config.has_keyboard:
             logging.info('Running usbkm232-ctrld...')
             os.system('usbkm232-ctrld')
         else:
@@ -809,7 +804,7 @@ class FAFTSequence(ServoTest):
         @raise TestError: if a non-Chrome EC device or no Ctrl-U command given
                           on a no-build-in-keyboard device.
         """
-        if not self.client_attr.has_keyboard:
+        if not self.faft_config.has_keyboard:
             logging.info('Running usbkm232-ctrlu...')
             os.system('usbkm232-ctrlu')
         elif self.check_ec_capability(['keyboard'], suppress_warning=True):
@@ -817,7 +812,7 @@ class FAFTSequence(ServoTest):
             self.ec.key_down('u')
             self.ec.key_up('u')
             self.ec.key_up('<ctrl_l>')
-        elif self.client_attr.has_keyboard:
+        elif self.faft_config.has_keyboard:
             raise error.TestError(
                     "Can't send Ctrl-U to DUT without using Chrome EC.")
         else:
@@ -829,7 +824,7 @@ class FAFTSequence(ServoTest):
 
         @param press_secs: Seconds of holding the key.
         """
-        if not self.client_attr.has_keyboard:
+        if not self.faft_config.has_keyboard:
             logging.info('Running usbkm232-enter...')
             os.system('usbkm232-enter')
         else:
@@ -837,17 +832,17 @@ class FAFTSequence(ServoTest):
 
     def wait_dev_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
-        time.sleep(self.delay.dev_screen)
+        time.sleep(self.faft_config.dev_screen)
         self.press_ctrl_d()
 
     def wait_fw_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.faft_config.firmware_screen)
         self.press_ctrl_d()
 
     def wait_fw_screen_and_ctrl_u(self):
         """Wait for firmware warning screen and press Ctrl-U."""
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.faft_config.firmware_screen)
         self.press_ctrl_u()
 
     def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
@@ -856,7 +851,7 @@ class FAFTSequence(ServoTest):
         @param need_dev_transition: True when needs dev mode transition, only
                                     for Alex/ZGB.
         """
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.faft_config.firmware_screen)
 
         # Pressing Enter for too long triggers a second key press.
         # Let's press it without delay
@@ -865,14 +860,14 @@ class FAFTSequence(ServoTest):
         # For Alex/ZGB, there is a dev warning screen in text mode.
         # Skip it by pressing Ctrl-D.
         if need_dev_transition:
-            time.sleep(self.delay.legacy_text_screen)
+            time.sleep(self.faft_config.legacy_text_screen)
             self.press_ctrl_d()
 
     def wait_fw_screen_and_unplug_usb(self):
         """Wait for firmware warning screen and then unplug the servo USB."""
-        time.sleep(self.delay.load_usb)
+        time.sleep(self.faft_config.load_usb)
         self.servo.switch_usbkey('host')
-        time.sleep(self.delay.between_usb_plug)
+        time.sleep(self.faft_config.between_usb_plug)
 
     def wait_fw_screen_and_plug_usb(self):
         """Wait for firmware warning screen and then unplug and plug the USB."""
@@ -881,7 +876,7 @@ class FAFTSequence(ServoTest):
 
     def wait_fw_screen_and_press_power(self):
         """Wait for firmware warning screen and press power button."""
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.faft_config.firmware_screen)
         # While the firmware screen, the power button probing loop sleeps
         # 0.25 second on every scan. Use the normal delay (1.2 second) for
         # power press.
@@ -889,17 +884,17 @@ class FAFTSequence(ServoTest):
 
     def wait_longer_fw_screen_and_press_power(self):
         """Wait for firmware screen without timeout and press power button."""
-        time.sleep(self.delay.dev_screen_timeout)
+        time.sleep(self.faft_config.dev_screen_timeout)
         self.wait_fw_screen_and_press_power()
 
     def wait_fw_screen_and_close_lid(self):
         """Wait for firmware warning screen and close lid."""
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.faft_config.firmware_screen)
         self.servo.lid_close()
 
     def wait_longer_fw_screen_and_close_lid(self):
         """Wait for firmware screen without timeout and close lid."""
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.faft_config.firmware_screen)
         self.wait_fw_screen_and_close_lid()
 
     def setup_uart_capture(self):
@@ -907,7 +902,7 @@ class FAFTSequence(ServoTest):
         self.cpu_uart_file = os.path.join(self.resultsdir, 'cpu_uart.txt')
         self.servo.set('cpu_uart_capture', 'on')
         self.ec_uart_file = None
-        if self.client_attr.chrome_ec:
+        if self.faft_config.chrome_ec:
             try:
                 self.servo.set('ec_uart_capture', 'on')
                 self.ec_uart_file = os.path.join(self.resultsdir, 'ec_uart.txt')
@@ -923,7 +918,7 @@ class FAFTSequence(ServoTest):
         if self.cpu_uart_file:
             with open(self.cpu_uart_file, 'a') as f:
                 f.write(ast.literal_eval(self.servo.get('cpu_uart_stream')))
-        if self.ec_uart_file and self.client_attr.chrome_ec:
+        if self.ec_uart_file and self.faft_config.chrome_ec:
             with open(self.ec_uart_file, 'a') as f:
                 f.write(ast.literal_eval(self.servo.get('ec_uart_stream')))
 
@@ -932,7 +927,7 @@ class FAFTSequence(ServoTest):
         # Flush the remaining UART output.
         self.record_uart_capture()
         self.servo.set('cpu_uart_capture', 'off')
-        if self.ec_uart_file and self.client_attr.chrome_ec:
+        if self.ec_uart_file and self.faft_config.chrome_ec:
             self.servo.set('ec_uart_capture', 'off')
 
     def fetch_servo_log(self):
@@ -971,7 +966,7 @@ class FAFTSequence(ServoTest):
 
     def setup_gbb_flags(self):
         """Setup the GBB flags for FAFT test."""
-        if self.client_attr.gbb_version < 1.1:
+        if self.faft_config.gbb_version < 1.1:
             logging.info('Skip modifying GBB on versions older than 1.1.')
             return
 
@@ -1028,34 +1023,34 @@ class FAFTSequence(ServoTest):
         i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
         recovery mode, i.e. just press Power + Esc + Refresh.
         """
-        if self.client_attr.chrome_ec:
+        if self.faft_config.chrome_ec:
             # Reset twice to emulate a long recovery-key-combo hold.
-            cold_reset_num = 2 if self.client_attr.long_rec_combo else 1
+            cold_reset_num = 2 if self.faft_config.long_rec_combo else 1
             for i in range(cold_reset_num):
                 if i:
-                    time.sleep(self.delay.ec_boot_to_console)
+                    time.sleep(self.faft_config.ec_boot_to_console)
                 # Cold reset to clear EC_IN_RW signal
                 self.servo.set('cold_reset', 'on')
-                time.sleep(self.delay.hold_cold_reset)
+                time.sleep(self.faft_config.hold_cold_reset)
                 self.servo.set('cold_reset', 'off')
-            time.sleep(self.delay.ec_boot_to_console)
+            time.sleep(self.faft_config.ec_boot_to_console)
             self.ec.reboot("ap-off")
-            time.sleep(self.delay.ec_boot_to_console)
+            time.sleep(self.faft_config.ec_boot_to_console)
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
             self.servo.power_short_press()
-        elif self.client_attr.broken_rec_mode:
+        elif self.faft_config.broken_rec_mode:
             self.power_cycle()
             logging.info('Booting to recovery mode.')
             self.servo.custom_recovery_mode()
         else:
             self.servo.enable_recovery_mode()
             self.cold_reboot()
-            time.sleep(self.delay.ec_boot_to_console)
+            time.sleep(self.faft_config.ec_boot_to_console)
             self.servo.disable_recovery_mode()
 
     def enable_dev_mode_and_reboot(self):
         """Switch to developer mode and reboot."""
-        if self.client_attr.keyboard_dev:
+        if self.faft_config.keyboard_dev:
             self.enable_keyboard_dev_mode()
         else:
             self.servo.enable_development_mode()
@@ -1064,7 +1059,7 @@ class FAFTSequence(ServoTest):
 
     def enable_normal_mode_and_reboot(self):
         """Switch to normal mode and reboot."""
-        if self.client_attr.keyboard_dev:
+        if self.faft_config.keyboard_dev:
             self.disable_keyboard_dev_mode()
         else:
             self.servo.disable_development_mode()
@@ -1076,12 +1071,12 @@ class FAFTSequence(ServoTest):
 
         @param dev: True if switching into dev mode. Otherwise, False.
         """
-        time.sleep(self.delay.firmware_screen)
+        time.sleep(self.faft_config.firmware_screen)
         if dev:
             self.press_ctrl_d()
         else:
             self.press_enter()
-        time.sleep(self.delay.confirm_screen)
+        time.sleep(self.faft_config.confirm_screen)
         self.press_enter()
 
     def enable_keyboard_dev_mode(self):
@@ -1096,15 +1091,15 @@ class FAFTSequence(ServoTest):
 
         # TODO (crosbug.com/p/16231) remove this conditional completely if/when
         # issue is resolved.
-        if self.client_attr.platform == 'Parrot':
+        if self.faft_config.platform == 'Parrot':
             self.wait_for_client_offline()
             self.cold_reboot()
 
     def disable_keyboard_dev_mode(self):
         """Disable keyboard controlled developer mode"""
         logging.info("Disabling keyboard controlled developer mode")
-        if (not self.client_attr.chrome_ec and
-            not self.client_attr.broken_rec_mode):
+        if (not self.faft_config.chrome_ec and
+            not self.faft_config.broken_rec_mode):
             self.servo.disable_recovery_mode()
         self.cold_reboot()
         self.wait_for_client_offline()
@@ -1124,7 +1119,7 @@ class FAFTSequence(ServoTest):
                                 else None),
         })
         if dev_mode:
-            if (not self.client_attr.keyboard_dev and
+            if (not self.faft_config.keyboard_dev and
                 not self.checkers.crossystem_checker({'devsw_cur': '1'})):
                 logging.info('Dev switch is not on. Now switch it on.')
                 self.servo.enable_development_mode()
@@ -1132,14 +1127,14 @@ class FAFTSequence(ServoTest):
                     'mainfw_type': 'developer'}):
                 logging.info('System is not in dev mode. Reboot into it.')
                 self.run_faft_step({
-                    'userspace_action': None if self.client_attr.keyboard_dev
+                    'userspace_action': None if self.faft_config.keyboard_dev
                         else (self.faft_client.system.run_shell_command,
                         'chromeos-firmwareupdate --mode todev && reboot'),
                     'reboot_action': self.enable_keyboard_dev_mode if
-                        self.client_attr.keyboard_dev else None,
+                        self.faft_config.keyboard_dev else None,
                 })
         else:
-            if (not self.client_attr.keyboard_dev and
+            if (not self.faft_config.keyboard_dev and
                 not self.checkers.crossystem_checker({'devsw_cur': '0'})):
                 logging.info('Dev switch is not off. Now switch it off.')
                 self.servo.disable_development_mode()
@@ -1147,11 +1142,11 @@ class FAFTSequence(ServoTest):
                     'mainfw_type': 'normal'}):
                 logging.info('System is not in normal mode. Reboot into it.')
                 self.run_faft_step({
-                    'userspace_action': None if self.client_attr.keyboard_dev
+                    'userspace_action': None if self.faft_config.keyboard_dev
                         else (self.faft_client.system.run_shell_command,
                         'chromeos-firmwareupdate --mode tonormal && reboot'),
                     'reboot_action': self.disable_keyboard_dev_mode if
-                        self.client_attr.keyboard_dev else None,
+                        self.faft_config.keyboard_dev else None,
                 })
 
     def setup_rw_boot(self, section='a'):
@@ -1207,7 +1202,7 @@ class FAFTSequence(ServoTest):
         A wrapper for underlying servo warm reset.
         """
         # Use cold reset if the warm reset is broken.
-        if self.client_attr.broken_warm_reset:
+        if self.faft_config.broken_warm_reset:
             logging.info('broken_warm_reset is True. Cold rebooting instead.')
             self.cold_reboot()
         else:
@@ -1218,11 +1213,11 @@ class FAFTSequence(ServoTest):
 
         A wrapper for underlying servo cold reset.
         """
-        if self.client_attr.broken_warm_reset:
+        if self.faft_config.broken_warm_reset:
             self.servo.set('pwr_button', 'press')
             self.servo.set('cold_reset', 'on')
             self.servo.set('cold_reset', 'off')
-            time.sleep(self.delay.ec_boot_to_pwr_button)
+            time.sleep(self.faft_config.ec_boot_to_pwr_button)
             self.servo.set('pwr_button', 'release')
         else:
             self.servo.get_power_state_controller().cold_reset()
@@ -1233,7 +1228,7 @@ class FAFTSequence(ServoTest):
         This is the default reboot action on FAFT.
         """
         self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.delay.sync)
+        time.sleep(self.faft_config.sync)
         self.warm_reboot()
 
     def sync_and_cold_reboot(self):
@@ -1242,7 +1237,7 @@ class FAFTSequence(ServoTest):
         This reboot action is used to reset EC for recovery mode.
         """
         self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.delay.sync)
+        time.sleep(self.faft_config.sync)
         self.cold_reboot()
 
     def sync_and_ec_reboot(self, flags=''):
@@ -1254,9 +1249,9 @@ class FAFTSequence(ServoTest):
                           'hard': EC cold/hard reboot.
         """
         self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.delay.sync)
+        time.sleep(self.faft_config.sync)
         self.ec.reboot(flags)
-        time.sleep(self.delay.ec_boot_to_console)
+        time.sleep(self.faft_config.ec_boot_to_console)
         self.check_lid_and_power_on()
 
     def reboot_with_factory_install_shim(self):
@@ -1271,18 +1266,18 @@ class FAFTSequence(ServoTest):
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
             self.enable_dev_mode_and_reboot()
-        time.sleep(self.delay.sync)
+        time.sleep(self.faft_config.sync)
         self.enable_rec_mode_and_reboot()
         self.wait_fw_screen_and_plug_usb()
-        time.sleep(self.delay.install_shim_done)
+        time.sleep(self.faft_config.install_shim_done)
         self.warm_reboot()
 
     def full_power_off_and_on(self):
         """Shutdown the device by pressing power button and power on again."""
         # Press power button to trigger Chrome OS normal shutdown process.
         # We use a customized delay since the normal-press 1.2s is not enough.
-        self.servo.power_key(self.delay.hold_pwr_button)
-        time.sleep(self.delay.shutdown)
+        self.servo.power_key(self.faft_config.hold_pwr_button)
+        time.sleep(self.faft_config.shutdown)
         # Short press power button to boot DUT again.
         self.servo.power_short_press()
 
@@ -1294,7 +1289,7 @@ class FAFTSequence(ServoTest):
         necessary.
         """
         if self.servo.get("lid_open") == "no":
-            time.sleep(self.delay.software_sync)
+            time.sleep(self.faft_config.software_sync)
             self.servo.power_short_press()
 
     def _modify_usb_kernel(self, usb_dev, from_magic, to_magic):
@@ -1408,7 +1403,7 @@ class FAFTSequence(ServoTest):
         logging.info('Wait to ensure DUT shut down...')
         try:
             if shutdown_timeout is None:
-                shutdown_timeout = self.delay.shutdown_timeout
+                shutdown_timeout = self.faft_config.shutdown_timeout
             self.wait_for_client(timeout=shutdown_timeout)
             raise error.TestFail(
                     'Should shut the device down after calling %s.' %

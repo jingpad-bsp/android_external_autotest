@@ -135,7 +135,7 @@ class firmware_ECUsbPorts(FAFTSequence):
         if not self.check_ec_capability(['usb']):
             raise error.TestNAError("Nothing needs to be tested on this device")
         self._smart_usb_charge = (
-            'smart_usb_charge' in self.client_attr.ec_capability)
+            'smart_usb_charge' in self.faft_config.ec_capability)
         self._port_count = self.get_port_count()
         self.register_faft_sequence((
             {   # Step 1, turn off all USB ports and then turn them on again

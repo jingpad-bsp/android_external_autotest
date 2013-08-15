@@ -48,10 +48,10 @@ class firmware_SoftwareSync(FAFTSequence):
     def wait_software_sync_and_boot(self):
         """Wait for software sync to update EC."""
         if self.dev_mode:
-            time.sleep(self.delay.software_sync_update + self.delay.dev_screen)
+            time.sleep(self.faft_config.software_sync_update + self.faft_config.dev_screen)
             self.press_ctrl_d()
         else:
-            time.sleep(self.delay.software_sync_update)
+            time.sleep(self.faft_config.software_sync_update)
 
 
     def run_once(self):
