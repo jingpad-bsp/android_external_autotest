@@ -355,6 +355,7 @@ class BaseDroneManager(object):
         pidfile_paths = [pidfile_id.path
                          for pidfile_id in self._registered_pidfile_info]
         all_results = self._call_all_drones('refresh', pidfile_paths)
+        all_procs = []
 
         for drone, results_list in all_results.iteritems():
             results = results_list[0]
@@ -367,6 +368,7 @@ class BaseDroneManager(object):
             self._process_pidfiles(drone, results['pidfiles'], self._pidfiles)
             self._process_pidfiles(drone, results['pidfiles_second_read'],
                                    self._pidfiles_second_read)
+            all_procs.extend(results['all_processes'])
 
             self._compute_active_processes(drone)
             if drone.enabled:
@@ -375,6 +377,7 @@ class BaseDroneManager(object):
         logging.info('existing pidfiles: %s', ', '.join(str(x)+':'+str(y.process) for x,y in self._pidfiles.items()))
         logging.info('existing 2nd pidfiles: %s', ', '.join(str(x)+':'+str(y.process) for x,y in self._pidfiles_second_read.items()))
         logging.info('existing processes: %s', ', '.join(map(str, self._process_set)))
+        logging.info('all processes: %s', ', '.join(str(x) for x in all_procs))
 
 
     def execute_actions(self):
