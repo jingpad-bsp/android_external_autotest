@@ -624,7 +624,7 @@ class BaseDroneManager(object):
         if process in self._process_set:
             return True
 
-        drone_pid = process.drone, process.pid
+        drone_pid = process.hostname, process.pid
         if drone_pid in self._all_processes:
             logging.error('Process %s found, but not an autoserv process. '
                     'Is %s', process, self._all_processes[drone_pid])
