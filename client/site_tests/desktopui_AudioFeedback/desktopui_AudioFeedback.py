@@ -60,6 +60,9 @@ class desktopui_AudioFeedback(test.test):
            @param tab: the tab to load page for testing.
         """
         tab.Navigate(self._test_url)
+        tab.Activate()
+        tab.WaitForDocumentReadyStateToBeComplete()
+
         utils.poll_for_condition(
             condition=lambda: tab.EvaluateJavaScript('getPlayerStatus()') ==
                     'player ready',
@@ -73,7 +76,6 @@ class desktopui_AudioFeedback(test.test):
 
     def run_once(self):
         """Entry point of this test."""
-        self._ah.set_volume_levels(self._volume_level, self._capture_gain)
         if not self._ah.check_loopback_dongle():
             raise error.TestError('Audio loopback dongle is in bad state.')
 
@@ -87,9 +89,14 @@ class desktopui_AudioFeedback(test.test):
             logging.info('Playing back youtube media file %s.', self._test_url)
 
             cr.wait_for_browser_to_come_up()
+
             if not cr.is_logged_in():
                 raise error.TestError('Logged out unexpectedly!')
 
+            # Set volume and capture gain after Chrome is up, or those value
+            # will be overriden by Chrome.
+            self._ah.set_volume_levels(self._volume_level, self._capture_gain)
+
             # Play the same video to test all channels.
             self.play_video(lambda: self._ah.loopback_test_channels(
-                    noise_file_name), cr.browser.tabs[0])
+                    noise_file_name), cr.browser.tabs.New())
