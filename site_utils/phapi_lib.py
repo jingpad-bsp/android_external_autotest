@@ -16,7 +16,7 @@ try:
   from oauth2client import file as oauth_client_fileio
 except ImportError as e:
   apiclient_build = None
-  logging.info("API client for bug filing disabled. %s", e)
+  logging.debug("API client for bug filing disabled. %s", e)
 
 
 class ProjectHostingApiException(Exception):

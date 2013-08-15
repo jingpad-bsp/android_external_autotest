@@ -1,3 +1,5 @@
+# pylint: disable-msg=C0111
+# TODO: get rid of above, fix docstrings. crbug.com/273903
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -9,7 +11,7 @@ import common
 try:
     import statsd
 except ImportError:
-    logging.info('import statsd failed, no stats will be reported.')
+    logging.debug('import statsd failed, no stats will be reported.')
     import statsd_mock as statsd
 
 from autotest_lib.client.common_lib import global_config
