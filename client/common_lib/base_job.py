@@ -1033,13 +1033,17 @@ class base_job(object):
         self._toolsdir = readonly_dir(self.clientdir, 'tools')
 
         # directories which are in serverdir on a server, clientdir on a client
+        # tmp, tests, and site_tests need to be read_write for client, but only
+        # read for server
         if self.serverdir:
             root = self.serverdir
+            r_or_rw_dir = readonly_dir
         else:
             root = self.clientdir
-        self._tmpdir = readwrite_dir(root, 'tmp')
-        self._testdir = readwrite_dir(root, 'tests')
-        self._site_testdir = readwrite_dir(root, 'site_tests')
+            r_or_rw_dir = readwrite_dir
+        self._tmpdir = r_or_rw_dir(root, 'tmp')
+        self._testdir = r_or_rw_dir(root, 'tests')
+        self._site_testdir = r_or_rw_dir(root, 'site_tests')
 
         # various server-specific directories
         if self.serverdir:
