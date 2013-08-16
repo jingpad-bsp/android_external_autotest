@@ -53,17 +53,18 @@ class WifiChaosTest(object):
         return helper
 
 
-    def run(self, job, ap_spec, batch_size, tries):
+    def run(self, job, ap_spec, batch_size, tries, capture_host=None):
         """Executes Chaos test.
 
         @param job: an Autotest job object.
         @param ap_spec: a Python dictionary, desired attributes of Chaos APs.
         @param batch_size: an integer, max number of APs to lock in one batch.
         @param tries: an integer, number of iterations to run per AP.
+        @param capture_host: a string or None, hostname or IP of capturer.
         """
         self._ap_spec = ap_spec
         with packet_capture.PacketCaptureManager() as capturer:
-            capturer.allocate_packet_capture_machine()
+            capturer.allocate_packet_capture_machine(hostname=capture_host)
             helper = self._setup(capturer)
             with ap_batch_locker.ApBatchLockerManager(
                     ap_spec=self._ap_spec) as batch_locker:
