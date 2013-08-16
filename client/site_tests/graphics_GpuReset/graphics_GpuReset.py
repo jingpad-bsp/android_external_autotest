@@ -4,13 +4,11 @@
 
 import logging
 import os
-import pprint
 import time
-import urllib2
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import graphics_ui_test
+from autotest_lib.client.cros.graphics import graphics_utils
 
 # to run this test manually on a test target
 # ssh root@machine
@@ -19,15 +17,26 @@ from autotest_lib.client.cros import graphics_ui_test
 # ./gpureset
 # start ui
 
-class graphics_GpuReset(graphics_ui_test.GraphicsUITest):
+class graphics_GpuReset(test.test):
+  """
+  Reset the GPU and check recovery mechanism.
+  """
   version = 1
   preserve_srcdir = True
   loops = 1
+  GSC = None
 
   def setup(self):
     os.chdir(self.srcdir)
     utils.make('clean')
     utils.make('all')
+
+  def initialize(self):
+    self.GSC = graphics_utils.GraphicsStateChecker()
+
+  def cleanup(self):
+    if self.GSC:
+      self.GSC.finalize()
 
   def run_once(self, options=''):
     exefile = os.path.join(self.srcdir, 'gpureset')

@@ -3,12 +3,17 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, graphics_ui_test
+from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros.graphics import graphics_utils
 
-class graphics_O3DSelenium(graphics_ui_test.GraphicsUITest):
+class graphics_O3DSelenium(test.test):
+    """
+    This test is broken and should be removed when possible.
+    """
     version = 1
+    GSC = None
 
     flaky_test_list = ["TestSampleanimated_sceneLarge",
                        "TestSamplebillboardsMedium",
@@ -51,6 +56,12 @@ class graphics_O3DSelenium(graphics_ui_test.GraphicsUITest):
             shutil.copyfile(os.path.join(src_assets_path, tgz_file),
                             os.path.join(dst_assets_path, tgz_file))
 
+    def initialize(self):
+        self.GSC = graphics_utils.GraphicsStateChecker()
+
+    def cleanup(self):
+        if self.GSC:
+            self.GSC.finalize()
 
     def run_once(self, timeout=300):
         os.chdir(os.path.join(self.bindir, 'O3D', 'o3d'))
@@ -105,7 +116,7 @@ class graphics_O3DSelenium(graphics_ui_test.GraphicsUITest):
         for report_item in report:
             if report_item in self.flaky_test_list:
                 ignored_failures += 1
-                logging.info("FAILURE (ignored): %s" % report_item)
+                logging.info("FAILURE (ignored): %s", report_item)
             else:
                 error_message += " " + report_item
 

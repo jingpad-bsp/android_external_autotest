@@ -4,20 +4,30 @@
 
 import logging, os, re
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, graphics_ui_test, login
+from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros.graphics import graphics_utils
 
-class graphics_SanAngeles(graphics_ui_test.GraphicsUITest):
+class graphics_SanAngeles(test.test):
+    """
+    Benchmark OpenGL object rendering.
+    """
     version = 2
     preserve_srcdir = True
-
+    GSC = None
 
     def setup(self):
         os.chdir(self.srcdir)
         utils.make('clean')
         utils.make('all')
 
+    def initialize(self):
+        self.GSC = graphics_utils.GraphicsStateChecker()
+
+    def cleanup(self):
+        if self.GSC:
+            self.GSC.finalize()
 
     def run_once(self):
         cmd_gl = os.path.join(self.srcdir, 'SanOGL')
@@ -42,7 +52,7 @@ class graphics_SanAngeles(graphics_ui_test.GraphicsUITest):
                                  result.stdout + ') ' + result.stderr)
 
         frame_rate = float(report[0])
-        logging.info('frame_rate = %.1f' % frame_rate)
+        logging.info('frame_rate = %.1f', frame_rate)
         self.write_perf_keyval(
             {'frames_per_sec_rate_san_angeles': frame_rate})
         if 'error' in result.stderr.lower():

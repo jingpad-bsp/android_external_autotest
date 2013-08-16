@@ -8,15 +8,26 @@ Runs the piglit OpenGL suite of tests.
 import logging, os, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, graphics_ui_test, login
+from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros.graphics import graphics_utils
 
-# most graphics tests need the auto_login feature of UITest
-class graphics_Piglit(graphics_ui_test.GraphicsUITest):
+class graphics_Piglit(test.test):
+    """
+    Collection of automated tests for OpenGL implementations.
+    """
     version = 2
     preserve_srcdir = True
+    GSC = None
 
     def setup(self):
         self.job.setup_dep(['piglit'])
+
+    def initialize(self):
+        self.GSC = graphics_utils.GraphicsStateChecker()
+
+    def cleanup(self):
+        if self.GSC:
+            self.GSC.finalize()
 
     # hard wiring the cros-driver.test config file until we
     # need to parameterize this test for short/extended testing
@@ -53,7 +64,7 @@ class graphics_Piglit(graphics_ui_test.GraphicsUITest):
             # piglit-run.log and store everything for future inspection.
             cmd = cmd + ' | tee ' + log_path
             cmd = cros_ui.xcommand(cmd)
-            logging.info('Calling %s' % cmd)
+            logging.info('Calling %s', cmd)
             utils.run(cmd)
             # count number of pass, fail, warn and skip in the test summary
             summary_path = os.path.join(results_path, 'main')
@@ -93,4 +104,3 @@ class graphics_Piglit(graphics_ui_test.GraphicsUITest):
         cmd = cmd + ' ' + os.path.join(results_path, 'html')
         cmd = cmd + ' ' + results_path
         utils.run(cmd)
-

@@ -2,15 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
-from autotest_lib.client.bin import utils
+import os, re
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, graphics_ui_test
+from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros.graphics import graphics_utils
 
-class graphics_GLAPICheck(graphics_ui_test.GraphicsUITest):
+
+class graphics_GLAPICheck(test.test):
+    """
+    Verify correctness of OpenGL/GLES and X11 versions/extensions.
+    """
     version = 1
     preserve_srcdir = True
     error_message = ""
+    GSC = None
 
 
     def setup(self):
@@ -132,6 +138,15 @@ class graphics_GLAPICheck(graphics_ui_test.GraphicsUITest):
         result = utils.system_output(cmd, retain_output=True,
                                      ignore_status=True)
         return result
+
+
+    def initialize(self):
+        self.GSC = graphics_utils.GraphicsStateChecker()
+
+
+    def cleanup(self):
+        if self.GSC:
+            self.GSC.finalize()
 
 
     def run_once(self):

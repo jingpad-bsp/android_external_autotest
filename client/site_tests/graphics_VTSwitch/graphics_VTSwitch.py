@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 import glob, logging, os
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import base_utils, error
-from autotest_lib.client.cros import cros_ui_test
+from autotest_lib.client.cros.graphics import graphics_utils
 
 def get_percent_difference(file1, file2):
     """
@@ -28,13 +28,26 @@ def get_percent_difference(file1, file2):
     return round(100. * diff_bytes / sizes[file1])
 
 
-class graphics_VTSwitch(cros_ui_test.UITest):
+class graphics_VTSwitch(test.test):
+    """
+    Verify that VT switching works.
+    """
     version = 1
+    GSC = None
     # TODO(crosbug.com/36417): Need to handle more than one display screen.
 
     def setup(self):
         self.job.setup_dep(['gfxtest'])
 
+    def initialize(self):
+        self.GSC = graphics_utils.GraphicsStateChecker()
+
+    def cleanup(self):
+        # Return to VT1 when done.  Ideally, the screen should already be in VT1
+        # but the test might fail and terminate while in VT2.
+        self._switch_to_vt(1)
+        if self.GSC:
+            self.GSC.finalize()
 
     def run_once(self,
                  num_iterations=2,
@@ -73,7 +86,7 @@ class graphics_VTSwitch(cros_ui_test.UITest):
 
         # Repeatedly switch between VT1 and VT2.
         for iteration in xrange(num_iterations):
-            logging.info('Iteration #%d' % iteration)
+            logging.info('Iteration #%d', iteration)
 
             # Go to VT1 and take a screenshot.
             self._switch_to_vt(1)
@@ -87,9 +100,9 @@ class graphics_VTSwitch(cros_ui_test.UITest):
                 max_vt1_difference_percent = \
                     max(diff, max_vt1_difference_percent)
                 self._num_errors += 1
-                logging.error('VT1 screenshots differ by %d %%: %s vs %s' %
-                              (diff, logged_out_screenshot,
-                               current_vt1_screenshot))
+                logging.error('VT1 screenshots differ by %d %%: %s vs %s',
+                              diff, logged_out_screenshot,
+                              current_vt1_screenshot)
             else:
                 num_identical_vt1_screenshots += 1
 
@@ -106,16 +119,12 @@ class graphics_VTSwitch(cros_ui_test.UITest):
                     max(diff, max_vt2_difference_percent)
                 self._num_errors += 1
                 logging.error(
-                    'VT2 screenshots differ by %d %%: %s vs %s' %
-                    (diff, vt2_screenshot, current_vt2_screenshot))
+                    'VT2 screenshots differ by %d %%: %s vs %s',
+                    diff, vt2_screenshot, current_vt2_screenshot)
             else:
                 num_identical_vt2_screenshots += 1
 
-        # Now make sure we can login again.
         self._switch_to_vt(1)
-        self.login()
-        if not self.logged_in():
-            logging.error('Cannot log in after repeated VT switching.')
 
         keyvals['percent_VT1_screenshot_max_difference'] = \
             max_vt1_difference_percent
@@ -131,15 +140,6 @@ class graphics_VTSwitch(cros_ui_test.UITest):
                                   self._num_errors)
 
 
-    def cleanup(self):
-        # Return to VT1 when done.  Ideally, the screen should already be in VT1
-        # but the test might fail and terminate while in VT2.
-        self._switch_to_vt(1)
-
-        if self.logged_in():
-            self.logout()
-
-
     def _take_current_vt_screenshot(self):
         """
         Captures a screenshot of the current VT screen in BMP format.
@@ -148,9 +148,11 @@ class graphics_VTSwitch(cros_ui_test.UITest):
         current_vt = int(utils.system_output('fgconsole'))
         extension = 'bmp'
 
-        # In VT1, X is running so use the screenshot function in cros_ui_test.
+        # In VT1, X is running so use that screenshot function.
         if current_vt == 1:
-            return self.take_screenshot('graphics_VTSwitch_VT1', extension)
+            return graphics_utils.take_screenshot(self.resultsdir,
+                                                  'graphics_VTSwitch_VT1',
+                                                  extension)
 
         # Otherwise, grab the framebuffer using DRM.
         prefix = 'graphics_VTSwitch_VT2'
@@ -162,6 +164,9 @@ class graphics_VTSwitch(cros_ui_test.UITest):
 
 
     def _take_drm_screenshot(self, output_path):
+        """
+        Takes drm screenshot.
+        """
         autotest_deps_path = os.path.join(self.autodir, 'deps')
         getfb_path = os.path.join(autotest_deps_path, 'gfxtest', 'getfb')
         output = utils.system_output('%s %s.rgba' % (getfb_path, output_path))
@@ -175,7 +180,7 @@ class graphics_VTSwitch(cros_ui_test.UITest):
         utils.system('convert -depth 8 -size %s %s.rgba %s' %
                      (size, output_path, output_path))
 
-        logging.info('Saving screenshot to %s' % output_path)
+        logging.info('Saving screenshot to %s', output_path)
         return output_path
 
 
@@ -194,8 +199,8 @@ class graphics_VTSwitch(cros_ui_test.UITest):
             expected_value=vt)
         if vt != current_vt:
             self._num_errors += 1
-            logging.error('Current VT %d does not match expected VT %d' %
-                          (current_vt, vt))
+            logging.error('Current VT %d does not match expected VT %d',
+                          current_vt, vt)
             return False
-        logging.info('Switched to VT%d' % vt)
+        logging.info('Switched to VT%d', vt)
         return True
