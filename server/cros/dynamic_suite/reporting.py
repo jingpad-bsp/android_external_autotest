@@ -16,6 +16,7 @@ import common
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
@@ -460,7 +461,7 @@ class Reporter(object):
 
         @param marker The marker string to search for to find a duplicate of
                      this issue.
-        @return A gdata_lib.Issue instance of the issue that was found, or
+        @return A phapi_lib.Issue instance of the issue that was found, or
                 None if no issue was found. Also returns None if the marker
                 is None.
         """
@@ -497,13 +498,14 @@ class Reporter(object):
         # unescaped text.
         #
         # TODO(beeps): when we start merging issues this could return bloated
-        # results, for now we only search open issues.
+        # results, but for now we have to include duplicate issues so that
+        # we can find the original one with the hook.
         markers = ['"' + self._SEARCH_MARKER + html_escaped_marker + '"',
                    self._SEARCH_MARKER + marker,
                    self._SEARCH_MARKER + ','.join(marker.split(',')[:2])]
         for decorated_marker in markers:
             issues = self._phapi_client.get_tracker_issues_by_text(
-                decorated_marker)
+                decorated_marker, include_dupes=True)
             if issues:
                 break
 
@@ -531,6 +533,40 @@ class Reporter(object):
             if any(unescaped_clean_marker in re.sub('[0-9]+', '', comment)
                    for comment in issue.comments):
                 return issue
+
+
+    def _dedupe_issue(self, marker):
+        """Finds an issue, then checks if it has a parent that's still open.
+
+        @param marker: The marker string to search for to find a duplicate of
+                       a issue.
+        @return An Issue instance, representing an open issue that is a
+                duplicate of the one being searched for.
+        """
+        issue = self._find_issue_by_marker(marker)
+        if not issue or issue.state == constants.ISSUE_OPEN:
+            return issue
+
+        # Iterativly look through the chain of parents, until we find one whose
+        # state is 'open' or reach the end of the chain.
+        # It is possible that the chain forms a circle. Record the visited
+        # issues to prevent loop on a circle.
+        visited_issues = set([issue.id])
+        while issue.merged_into is not None:
+            issue = self._phapi_client.get_tracker_issue_by_id(
+                issue.merged_into)
+            if not issue or issue.id in visited_issues:
+                break
+            elif issue.state == constants.ISSUE_OPEN:
+                logging.debug('Return the active issue %d that duplicated '
+                              'issue(s) have been merged into.', issue.id)
+                return issue
+            else:
+                visited_issues.add(issue.id)
+        logging.debug('All merged issues %s have been closed, marked '
+                      'invalid etc, will create a new issue instead.',
+                      list(visited_issues))
+        return None
 
 
     def _create_autofiled_count_update(self, issue):
@@ -598,7 +634,7 @@ class Reporter(object):
 
         issue = None
         try:
-            issue = self._find_issue_by_marker(bug.search_marker())
+            issue = self._dedupe_issue(bug.search_marker())
         except expat.ExpatError as e:
             # If our search string sends python's xml module into a
             # state which it believes will lead to an xml syntax

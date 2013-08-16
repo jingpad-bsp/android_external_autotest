@@ -9,6 +9,7 @@ import unittest
 import mox
 
 import common
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status, reporting
 from autotest_lib.site_utils import phapi_lib
 from chromite.lib import gdata_lib
@@ -112,9 +113,10 @@ class ReportingTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.TestFailure, 'summary')
 
-        issue = self.mox.CreateMock(gdata_lib.Issue)
+        issue = self.mox.CreateMock(phapi_lib.Issue)
         issue.id = self._FAKE_ISSUE_ID
         issue.labels = []
+        issue.state = constants.ISSUE_OPEN
 
         client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                    mox.IgnoreArg())

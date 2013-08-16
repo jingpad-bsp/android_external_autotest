@@ -8,6 +8,7 @@ import logging
 import common
 
 import httplib2
+from autotest_lib.server.cros.dynamic_suite import constants
 from chromite.lib import gdata_lib
 
 try:
@@ -48,6 +49,15 @@ class Issue(gdata_lib.Issue):
         # actual summary is the update at index 0.
         self.summary = t_issue.get('updates')[0]
         self.comments = t_issue.get('updates')[1:]
+
+        # open or closed statuses are classified according to labels like
+        # unconfirmed, verified, fixed etc just like through the front end.
+        self.state = t_issue.get(constants.ISSUE_STATE)
+        self.merged_into = None
+        if (t_issue.get(constants.ISSUE_STATUS) == constants.ISSUE_DUPLICATE and
+            constants.ISSUE_MERGEDINTO in t_issue):
+            parent_issue_dict = t_issue.get(constants.ISSUE_MERGEDINTO)
+            self.merged_into = parent_issue_dict.get('issueId')
 
 
 class ProjectHostingApiClient():
@@ -166,23 +176,46 @@ class ProjectHostingApiClient():
         return self._execute_request(request)
 
 
-    def _list_issues(self, search_marker):
+    def _get_issue(self, issue_id):
+        """
+        Gets an issue given it's id.
+
+        @param issue_id: A string representing the issue id.
+        @raises: ProjectHostingApiException, if failed to get the issue.
+
+        @return: A json formatted python dict that has the issue content.
+        """
+        issues = self._codesite_service.issues()
+        try:
+            request = issues.get(projectId=self._project_name,
+                                 issueId=issue_id)
+        except TypeError as e:
+            raise ProjectHostingApiException(
+                'Unable to get issue %s from project %s: %s' %
+                (issue_id, self._project_name, str(e)))
+        return self._execute_request(request)
+
+
+    def _list_issues(self, search_marker, search_space='all'):
         """
         List issues containing the search marker. This method will only list
         the summary, title and id of an issue, though it searches through the
         comments. Eg: if we're searching for the marker '123', issues that
         contain a comment of '123' will appear in the output, but the string
         '123' itself may not, because the output only contains issue summaries.
-        Also note that this method will only search through open issues.
 
         @param search_marker: The anchor string used in the search.
+        @param search_space: a string representing the search space that is
+                             passed to the google api, can be 'all', 'new',
+                             'open', 'owned', 'reported', 'starred',
+                             or 'to-verify', defaults to 'all'.
         @raises: ProjectHostingApiException, if the request execution fails.
 
         @return: A json formatted python dict of all matching issues.
         """
         issues = self._codesite_service.issues()
         request = issues.list(projectId=self._project_name,
-                              q=search_marker, can='open',
+                              q=search_marker, can=search_space,
                               maxResults=self._max_results_for_issue)
         return self._execute_request(request)
 
@@ -340,7 +373,7 @@ class ProjectHostingApiClient():
 
 
     def get_tracker_issues_by_text(self, search_text, full_text=True,
-                                  only_open=True):
+                                   include_dupes=False):
         """
         Find all Tracker issues that contain the specified search text.
 
@@ -348,27 +381,32 @@ class ProjectHostingApiClient():
         @param full_text: True if we would like an extensive search through
                           issue comments. If False the search will be restricted
                           to just summaries and titles.
-        @param only_open: Only search over all open issues if True.
-
+        @param include_dupes: If True, search over both open issues as well as
+                          closed issues whose status is 'Duplicate'. If False,
+                          only search over open issues.
         @return: A list of issues that contain the search text, or an empty list
                  when we're either unable to list issues or none match the text.
         """
         issue_list = []
         try:
-            feed = self._list_issues(search_text)
+            search_space = 'all' if include_dupes else 'open'
+            feed = self._list_issues(search_text, search_space)
         except ProjectHostingApiException as e:
             logging.error('Unable to search for issues with marker %s: %s',
                           search_text, e)
             return issue_list
 
         for t_issue in self._get_property_values(feed):
-
+            state = t_issue.get(constants.ISSUE_STATE)
+            status = t_issue.get(constants.ISSUE_STATUS)
+            is_open_or_dup = (state == constants.ISSUE_OPEN or
+                              (state == constants.ISSUE_CLOSED
+                               and status == constants.ISSUE_DUPLICATE))
             # All valid issues will have an issue id we can use to retrieve
             # more information about it. If we encounter a failure mode that
             # returns a bad Http response code but doesn't throw an exception
             # we won't find an issue id in the returned json.
-            if t_issue.get('id'):
-
+            if t_issue.get('id') and is_open_or_dup:
                 # TODO(beeps): If this method turns into a performance bottle
                 # neck yield each issue and refactor the reporter. For now
                 # passing all issues allows us to detect when deduping fails
@@ -378,5 +416,22 @@ class ProjectHostingApiClient():
                         Issue(self._populate_issue_updates(t_issue)))
                 except ProjectHostingApiException as e:
                     logging.error('Unable to list the updates of issue %s: %s',
-                                   t_issue['id'], str(e))
+                                   t_issue.get('id'), str(e))
         return issue_list
+
+
+    def get_tracker_issue_by_id(self, issue_id):
+        """
+        Returns an issue object given the id.
+
+        @param issue_id: A string representing the issue id.
+
+        @return: An Issue object on success or None on failure.
+        """
+        try:
+            t_issue = self._get_issue(issue_id)
+            return Issue(self._populate_issue_updates(t_issue))
+        except ProjectHostingApiException as e:
+            logging.error('Creation of an Issue object for %s fails: %s',
+                          issue_id, str(e))
+            return None
