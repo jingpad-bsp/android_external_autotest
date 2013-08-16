@@ -68,6 +68,7 @@ class Modem3gpp(modem.Modem):
                              config=config)
 
         self._scanned_networks = {}
+        self._cached_pco_value = ''
 
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
@@ -130,8 +131,41 @@ class Modem3gpp(modem.Modem):
             'OperatorCode' : '',
             'OperatorName' : '',
             'EnabledFacilityLocks' : (
-                    dbus.types.UInt32(self.sim.enabled_locks))
+                    dbus.types.UInt32(self.sim.enabled_locks)),
+            'VendorPcoInfo': ''
         }
+
+    def AssignPcoValue(self, pco_value):
+        """
+        Stores the given value so that it is shown as the value of VendorPcoInfo
+        when the modem is in a registered state.
+
+        Always prefer this method over calling "Set" directly if the PCO value
+        should be cached.
+
+        Note: See testing.Testing.UpdatePcoInfo, which allows calling this
+        method over D-Bus.
+
+        @param pco_value: String containing the PCO value to remember.
+
+        """
+        self._cached_pco_value = pco_value
+        self.UpdatePcoInfo()
+
+    def UpdatePcoInfo(self):
+        """
+        Updates the current PCO value based on the registration state.
+
+        """
+        if not mm1.I_MODEM_3GPP in self._properties:
+            return
+        state = self.Get(mm1.I_MODEM_3GPP, 'RegistrationState')
+        if (state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME or
+            state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING):
+            new_pco_value = self._cached_pco_value
+        else:
+            new_pco_value = ''
+        self.Set(mm1.I_MODEM_3GPP, 'VendorPcoInfo', new_pco_value)
 
     def UpdateLockStatus(self):
         """
@@ -180,6 +214,7 @@ class Modem3gpp(modem.Modem):
 
         """
         self.SetUInt32(mm1.I_MODEM_3GPP, 'RegistrationState', state)
+        self.UpdatePcoInfo()
 
     @property
     def scanned_networks(self):

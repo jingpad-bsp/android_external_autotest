@@ -32,3 +32,16 @@ class Testing(dbus_std_ifaces.DBusProperties):
 
         """
         self._modem.sms_handler.receive_sms(text, sender)
+
+    @dbus.service.method(mm1.I_TESTING, in_signature='s')
+    def UpdatePcoInfo(self, pco_value):
+        """
+        Sets the VendorPcoInfo to the specified value. If the Modem.Modem3gpp
+        properties are currently not exposed (e.g. due to a locked or absent
+        SIM), this method will do nothing.
+
+        @param pco_value: The PCO string.
+
+        """
+        if mm1.I_MODEM_3GPP in self._modem.properties:
+            self._modem.AssignPcoValue(pco_value)

@@ -4,12 +4,12 @@
 
 import dbus
 import dbus.types
-import dbus_std_ifaces
 import gobject
 import logging
 import random
 
 import bearer
+import dbus_std_ifaces
 import disable_machine
 import enable_machine
 import messaging

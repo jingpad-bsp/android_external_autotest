@@ -79,6 +79,14 @@ class DBusProperties(dbus.service.Object):
                 for prop, val in props:
                     self.Set(key, prop, val)
 
+    @property
+    def properties(self):
+        """
+        @return The property dictionary.
+
+        """
+        return self._properties
+
     def SetBus(self, bus):
         """
         Sets the pydbus bus object that this instance of DBusProperties should

@@ -101,6 +101,46 @@ class PseudoModemClient(cmd.Cmd):
         print '\nUsage: sms <sender phone #> <message text>\n'
 
 
+    def do_set(self, args):
+        """
+        Handles various commands that start with 'set'.
+
+        @param args: Defines the set command to be issued and its
+                arguments. Currently supported commands are:
+
+                  set pco <pco-value>
+
+        """
+        arglist = args.split(' ')
+        if len(arglist) < 1:
+            print '\nInvalid command: set ' + args + '\n'
+            return
+        if arglist[0] == 'pco':
+            if len(arglist) == 1:
+                arglist.append('')
+            elif len(arglist) != 2:
+                print '\nExpected: pco <pco-value>. Found: ' + args + '\n'
+                return
+            pco_value = arglist[1]
+            try:
+                self._get_proxy().UpdatePcoInfo(
+                        pco_value, dbus_interface=mm1.I_TESTING)
+                print '\nPCO value updated!\n'
+            except dbus.exceptions.DBusException as e:
+                print ('\nAn error occurred while communicating with '
+                       'PseudoModemManager: ' + e.get_dbus_name() + ' - ' +
+                       e.message + '\n')
+        else:
+            print '\nUnknown command: set ' + args + '\n'
+        return False
+
+
+    def help_set(self):
+        """Handles the 'help set' command."""
+        print ('\nUsage: set pco <pco-value>\n<pco-value> can be empty to set'
+               ' the PCO value to an empty string.\n')
+
+
     def do_exit(self, args):
         """
         Handles the 'exit' command.
