@@ -1466,6 +1466,23 @@ class SiteHost(remote.RemoteHost):
             return None
 
 
+    @label_decorator('graphics')
+    def get_graphics(self):
+        """
+        Determine the correct board label for this host.
+
+        @returns a string representing this host's graphics. For now ARM boards
+        return graphics:gles while all other boards return graphics:gl. This
+        may change over time, but for robustness reasons this should avoid
+        executing code in actual graphics libraries (which may not be ready and
+        is tested by graphics_GLAPICheck).
+        """
+        uname = self.run('uname -a').stdout.lower()
+        if 'arm' in uname:
+            return 'graphics:gles'
+        return 'graphics:gl'
+
+
     def get_labels(self):
         """Return a list of labels for this given host.
 
