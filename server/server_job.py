@@ -242,6 +242,10 @@ class base_server_job(base_job.base_job):
             self, self._indenter, 'status.log', 'status.log',
             record_hook=server_job_record_hook(self))
 
+        # Initialize a flag to indicate DUT failure during the test, e.g.,
+        # unexpected reboot.
+        self.failed_with_device_error = False
+
 
     @classmethod
     def _find_base_directories(cls):
@@ -595,8 +599,8 @@ class base_server_job(base_job.base_job):
                 self._execute_code(server_control_file, namespace)
                 logging.info("Finished processing control file")
 
-                # no error occured, so we don't need to collect crashinfo
-                collect_crashinfo = False
+                # If no device error occured, no need to collect crashinfo.
+                collect_crashinfo = self.failed_with_device_error
             except Exception, e:
                 try:
                     logging.exception(

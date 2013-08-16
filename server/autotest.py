@@ -885,6 +885,7 @@ class _BaseRun(object):
                     self.host.job.record('FAIL', None, None, str(e))
                     self.host.job.record('END FAIL', None, None)
                     self.host.job.record('END GOOD', None, None)
+                    self.host.job.failed_with_device_error = True
                     return
                 except AutotestAbort as e:
                     self.host.job.record('ABORT', None, None, str(e))
@@ -944,6 +945,7 @@ class log_collector(object):
         try:
             self.host.get_file(self.client_results_dir + '/',
                                self.server_results_dir, preserve_symlinks=True)
+
             # Only report time used for successful get_file calls.
             timer.stop();
         except Exception:

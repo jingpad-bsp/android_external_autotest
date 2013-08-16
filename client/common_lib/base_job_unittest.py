@@ -93,6 +93,8 @@ class test_init(unittest.TestCase):
             'warning_manager', 'warning_loggers', 'label', 'test_retry',
             ])
 
+        OPTIONAL_ATTRIBUTES_DEVICE_ERROR = set(['failed_with_device_error'])
+
         def test_public_attributes_initialized(self):
             # only the known public attributes should be there after __init__
             self.call_init()
@@ -104,7 +106,8 @@ class test_init(unittest.TestCase):
             self.assertEqual(missing_attributes, set([]),
                              'Missing attributes: %s' %
                              ', '.join(sorted(missing_attributes)))
-            extra_attributes = public_attributes - expected_attributes
+            extra_attributes = (public_attributes - expected_attributes -
+                                self.OPTIONAL_ATTRIBUTES_DEVICE_ERROR)
             self.assertEqual(extra_attributes, set([]),
                              'Extra public attributes found: %s' %
                              ', '.join(sorted(extra_attributes)))

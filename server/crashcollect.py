@@ -1,7 +1,9 @@
-import os, time, pickle, logging, shutil
+import os, time, logging, shutil
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
+from autotest_lib.site_utils.graphite import stats
 
 
 # import any site hooks for the crashdump and crashinfo collection
@@ -32,6 +34,11 @@ def get_crashinfo(host, test_start_time):
         collect_command(host, "dmesg", os.path.join(crashinfo_dir, "dmesg"))
         collect_uncollected_logs(host)
 
+        # Collect everything in /var/log.
+        log_path = os.path.join(crashinfo_dir, 'var')
+        os.makedirs(log_path)
+        collect_log_file(host, constants.LOG_DIR, log_path)
+
 
 # Load default for number of hours to wait before giving up on crash collection.
 HOURS_TO_WAIT = global_config.global_config.get_config_value(
@@ -54,6 +61,7 @@ def wait_for_machine_to_recover(host, hours_to_wait=HOURS_TO_WAIT):
     logging.info("Waiting %s hours for %s to come up (%s)",
                  hours_to_wait, host.hostname, current_time)
     if not host.wait_up(timeout=hours_to_wait * 3600):
+        stats.Counter('collect_crashinfo_timeout').increment()
         logging.warning("%s down, unable to collect crash info",
                         host.hostname)
         return False
