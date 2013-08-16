@@ -378,16 +378,6 @@ class BaseDroneManager(object):
             if drone.enabled:
                 self._enqueue_drone(drone)
 
-        logging.info('existing pidfiles: %s', ', '.join(
-                str(x)+':'+str(y.process) for x,y in self._pidfiles.items()))
-        logging.info('all processes: %s', ', '.join(
-                str(x) for x in self._all_processes.values()))
-        logging.info('existing processes: %s', ', '.join(
-                str(x) for x in self._process_set))
-        logging.info('existing re-read pidfiles: %s', ', '.join(
-                str(x)+':'+str(y.process) for x,y in
-                self._pidfiles_second_read.items()))
-
 
     def execute_actions(self):
         """
