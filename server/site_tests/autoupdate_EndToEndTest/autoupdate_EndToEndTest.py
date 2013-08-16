@@ -346,7 +346,6 @@ class OmahaDevserver(object):
         # Invoke the Omaha/devserver on the remote server.
         cmdlist = [
                 '%s/devserver.py' % self._devserver_dir,
-                '--archive_dir=static/',
                 '--payload=%s' % update_payload_path,
                 '--port=%d' % self._omaha_port,
                 '--remote_payload',
