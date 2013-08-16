@@ -10,8 +10,8 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
 class network_WiFi_Regulatory(wifi_cell_test_base.WiFiCellTestBase):
-    """Test that the client vacates the channel and can no longer ping after
-    notification from the AP that it should switch channels."""
+    """Test that the client vacates the channel after notification
+    from the AP that it should switch channels."""
     version = 1
 
 
@@ -37,12 +37,20 @@ class network_WiFi_Regulatory(wifi_cell_test_base.WiFiCellTestBase):
             self.context.assert_connect_wifi(assoc_params)
             ping_config = ping_runner.PingConfig(
                     self.context.get_wifi_addr(ap_num=0))
+            client_mac = self.context.client.wifi_mac
             for attempt in range(10):
+                # Since the client might be in power-save, we are not
+                # guaranteed it will hear this message the first time around.
                 self.context.router.send_management_frame(
                         'channel_switch:%d' % alternate_channel)
-                # This should fail at some point.  Since the client
-                # might be in power-save, we are not guaranteed it will hear
-                # this message the first time around.
+
+                # Test to see if the router received a deauth message from
+                # the client.
+                if self.context.router.detect_client_deauth(client_mac):
+                    break
+
+                # Otherwise detect the client leaving indirectly by measuring
+                # client pings.  This should fail at some point.
                 ping_config = ping_runner.PingConfig(
                         self.context.get_wifi_addr(ap_num=0),
                         count=3, ignore_status=True,

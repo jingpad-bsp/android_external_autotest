@@ -785,6 +785,22 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self._release_wlanif(interface)
 
 
+    def detect_client_deauth(self, client_mac, instance=0):
+        """Detects whether hostapd has logged a deauthentication from
+        |client_mac|.
+
+        @param client_mac string the MAC address of the client to detect.
+        @param instance int indicating which hostapd instance to query.
+
+        """
+        interface = self.hostapd_instances[instance]['interface']
+        deauth_msg = "%s: deauthentication: STA=%s" % (interface, client_mac)
+        log_file = self.hostapd_instances[instance]['log_file']
+        result = self.router.run("grep -qi '%s' %s" % (deauth_msg, log_file),
+                                 ignore_status=True)
+        return result.exit_status == 0
+
+
     def _pre_config_hook(self, config):
         """Hook for subclasses.
 
