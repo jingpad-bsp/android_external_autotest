@@ -271,7 +271,7 @@ class factory_AudioQuality(test.test):
                 Using b2a_hex is to avoid the file content including special
                 character such as '\x03', '\x04', and '\x05'.
                 """
-                rawdata = (self._parameters[1] + ';' +
+                rawdata = (os.path.basename(self._parameters[1]) + ';' +
                            str(len(rawstring)) + ';' +
                            binascii.b2a_hex(rawstring))
 
