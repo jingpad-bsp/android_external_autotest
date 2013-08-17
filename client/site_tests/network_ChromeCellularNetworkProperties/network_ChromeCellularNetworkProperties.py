@@ -169,7 +169,7 @@ class network_ChromeCellularNetworkProperties(test.test):
                 logging.info('Checking UI property: %s', ui_prop)
                 test_utils.check_ui_property(
                         self._chrome, self._network_guid,
-                        ui_prop, ui_value)
+                        ui_prop, ui_value, 2)
 
 
     def _run_once_internal(self):
@@ -208,6 +208,30 @@ class network_ChromeCellularNetworkProperties(test.test):
                     mm1.I_MODEM_3GPP),
                 self.SimplePropagationTest(
                     self._chrome_testing,
+                    { 'properties': ( 'OperatorName',
+                                      'Cellular.ServingOperator.Name' ),
+                      'values': [ ( name_prefix + ' Service 1',
+                                    name_prefix + ' Service 1' ),
+                                  ( name_prefix + ' Service 2',
+                                    name_prefix + ' Service 2' ),
+                                  ( name_prefix + ' Service 3',
+                                    name_prefix + ' Service 3' ),
+                                  ( name_prefix + ' Service 4',
+                                    name_prefix + ' Service 4' ) ]
+                    },
+                    mm1.I_MODEM_3GPP),
+                self.SimplePropagationTest(
+                    self._chrome_testing,
+                    { 'properties': ( 'OperatorCode',
+                                      'Cellular.ServingOperator.Code' ),
+                      'values': [ ( '001001', '001001' ),
+                                  ( '001002', '001002' ),
+                                  ( '001003', '001003' ),
+                                  ( '001000', '001000' ) ]
+                    },
+                    mm1.I_MODEM_3GPP),
+                self.SimplePropagationTest(
+                    self._chrome_testing,
                     { 'properties': ( 'RegistrationState',
                                       'Cellular.RoamingState' ),
                       'values': [
@@ -221,6 +245,17 @@ class network_ChromeCellularNetworkProperties(test.test):
             ])
         elif self._family == 'CDMA':
             tests.extend([
+                self.SimplePropagationTest(
+                    self._chrome_testing,
+                    { 'properties': ( 'Sid',
+                                      'Cellular.ServingOperator.Code' ),
+                      'values': [ ( 99995, '99995' ),
+                                  ( 99996, '99996' ),
+                                  ( 99997, '99997' ),
+                                  ( 99998, '99998' ) ]
+                    },
+                    mm1.I_MODEM_CDMA,
+                    dbus.types.UInt32),
                 self.SimplePropagationTest(
                     self._chrome_testing,
                     { 'properties': ( 'EvdoRegistrationState',
