@@ -3,11 +3,12 @@
 # found in the LICENSE file.
 
 import os
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
+class Keeboxw150nrAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Derived class to control the Keeboxw150nr AP."""
 
 

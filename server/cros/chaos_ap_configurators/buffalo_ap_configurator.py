@@ -8,10 +8,11 @@ import logging
 import time
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
-class BuffaloAPConfigurator(ap_configurator.APConfigurator):
+class BuffaloAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Configurator for Buffalo AP."""
 
     def get_number_of_pages(self):

@@ -7,14 +7,15 @@
 import logging
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 from selenium.common.exceptions import WebDriverException
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 
 
-class BelkinF9KAPConfigurator(ap_configurator.APConfigurator):
+class BelkinF9KAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Class to configure Blekin f9k1002v4 router."""
 
     security_popup = '//select[@name="security_type"]'

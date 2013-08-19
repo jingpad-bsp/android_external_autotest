@@ -9,11 +9,12 @@ import os
 import time
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class DLinkwbr1310APConfigurator(ap_configurator.APConfigurator):
+class DLinkwbr1310APConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Class to control the DLink wbr1310."""
 
 

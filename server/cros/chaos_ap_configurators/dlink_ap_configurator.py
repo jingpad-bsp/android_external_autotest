@@ -6,12 +6,13 @@
 
 import os
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 
-class DLinkAPConfigurator(ap_configurator.APConfigurator):
+class DLinkAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Derived class to control the DLink DAP-1522."""
 
     def _open_landing_page(self):

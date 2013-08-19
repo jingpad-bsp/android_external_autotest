@@ -6,13 +6,14 @@
 
 import logging
 import urlparse
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 
-class NetgearSingleBandAPConfigurator(ap_configurator.APConfigurator):
+class NetgearSingleBandAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Baseclass to control Netgear single band routers."""
 
 

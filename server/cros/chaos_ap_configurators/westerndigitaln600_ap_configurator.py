@@ -6,13 +6,14 @@ import logging
 import urlparse
 import time
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 from selenium.common.exceptions import WebDriverException
 
 
-class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
+class WesternDigitalN600APConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for objects to configure Western Digital N600 access point
        using webdriver."""
 

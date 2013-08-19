@@ -6,11 +6,12 @@ import logging
 import time
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class TrendnetAPConfigurator(ap_configurator.APConfigurator):
+class TrendnetAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Derived class to control the Trendnet TEW-639GR."""
 
 

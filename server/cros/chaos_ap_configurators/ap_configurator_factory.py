@@ -47,6 +47,7 @@ import trendnet692gr_ap_configurator
 import trendnet654tr_ap_configurator
 import trendnet812dru_ap_configurator
 import westerndigitaln600_ap_configurator
+import static_ap_configurator
 
 
 class APConfiguratorFactory(object):
@@ -135,6 +136,8 @@ class APConfiguratorFactory(object):
             linksyswrt160_ap_configurator.LinksysWRT160APConfigurator,
         'Keeboxw150nrAPConfigurator':
             keeboxw150nr_ap_configurator.Keeboxw150nrAPConfigurator,
+        'StaticAPConfigurator':
+            static_ap_configurator.StaticAPConfigurator,
     }
 
     BANDS = 'bands'

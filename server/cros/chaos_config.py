@@ -130,7 +130,7 @@ class ChaosAP(object):
 
     def get_frequency(self):
         """@return int frequency for AP from config file"""
-        return self.ap_config.get(self.bss, self.CONF_FREQUENCY)
+        return int(self.ap_config.get(self.bss, self.CONF_FREQUENCY))
 
     def get_channel(self):
         """@return int channel for AP from config file"""
@@ -139,7 +139,7 @@ class ChaosAP(object):
 
     def get_band(self):
         """@return string band for AP from config file"""
-        if int(frequency) < 4915:
+        if self.get_frequency() < 4915:
             return self.BAND_2GHZ
         else:
             return self.BAND_5GHZ

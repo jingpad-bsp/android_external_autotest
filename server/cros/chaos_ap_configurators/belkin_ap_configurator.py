@@ -9,13 +9,14 @@ import os
 import time
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 from selenium.common.exceptions import NoSuchElementException as \
     SeleniumNoSuchElementException
 
 
-class BelkinAPConfigurator(ap_configurator.APConfigurator):
+class BelkinAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for Belkin F5D8235-4 V2 router."""
 
 

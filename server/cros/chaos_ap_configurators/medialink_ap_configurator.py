@@ -7,11 +7,12 @@
 import logging
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
+class MediaLinkAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Class to control MediaLink wapr150n router."""
 
 

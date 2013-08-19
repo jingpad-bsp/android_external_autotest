@@ -7,11 +7,12 @@
 import logging
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class LinksysAPConfigurator(ap_configurator.APConfigurator):
+class LinksysAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Derived class to control Linksys WRT54G2 router."""
 
 

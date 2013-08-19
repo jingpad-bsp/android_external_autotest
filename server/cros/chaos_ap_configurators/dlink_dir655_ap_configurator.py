@@ -8,13 +8,14 @@ import logging
 import time
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 
 
-class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
+class DLinkDIR655APConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Derived class to control the DLink DIR-655."""
     first_login = True
 

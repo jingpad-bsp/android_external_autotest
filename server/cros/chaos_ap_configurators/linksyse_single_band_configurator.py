@@ -8,13 +8,14 @@
 import logging
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 from selenium.common.exceptions import WebDriverException
 
 
-class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
+class LinksyseSingleBandAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for objects to configure Linksys single band access points
        using webdriver."""
 

@@ -1,95 +1,51 @@
-# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-class APConfigurator():
-    """Base class to find and control access points."""
+import logging
+from autotest_lib.server.cros.chaos_ap_configurators.ap_configurator \
+        import APConfigurator
+from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+
+class StaticAPConfigurator(APConfigurator):
+    """Derived class to supply AP configuration information."""
 
 
     def __init__(self, ap_config=None):
-        """Construct an APConfigurator.
+        #super(StaticAPConfigurator, self).__init__(ap_config)
 
-        @param ap_config: information from the configuration file
-
-        """
         if ap_config:
-            # Load the data for the config file
+            # This allows the ability to build a generic configurator
+            # which can be used to get access to the members above.
             self.admin_interface_url = ap_config.get_admin()
             self.class_name = ap_config.get_class()
             self.short_name = ap_config.get_model()
             self.mac_address = ap_config.get_wan_mac()
             self.host_name = ap_config.get_wan_host()
             self.config_data = ap_config
-
-        # Set a default band, this can be overriden by the subclasses
-        self.current_band = ap_spec.BAND_2GHZ
-
-        # Diagnostic members
-        self._command_list = []
-        self._screenshot_list = []
-        self._traceback = None
-
-        self.driver_connection_established = False
-        self.router_on = False
-        self.configuration_success = False
-
-        self.ap_spec = set_ap_spec
-        if self.ap_spec:
-            self.set_using_ap_spec(self.ap_spec)
+            self.frequency = ap_config.get_frequency()
+            self.bandwidth = ap_config.get_bandwidth()
+            self.channel = ap_config.get_channel()
+            self.band = ap_config.get_band()
 
 
-    @staticmethod
-    def is_dynamic():
-        """
-        Test for dynamically configurable AP
-
-        @return bool
-
-        """
-        return False
+    def power_down_router(self):
+        """ Ignore and log power down request """
+        logging.error('%s.%s: Can not run for Static APs',
+                self.__class__.__name__,
+                self.power_down_router.__name__)
 
 
-    @property
-    def traceback(self):
-        """
-        Returns the traceback of a configuration error as a string.
-
-        Note that if get_configuration_success returns True this will
-        be none.
-
-        """
-        return self._traceback
-
-
-    @traceback.setter
-    def traceback(self, value):
-        """
-        Set the traceback.
-
-        If the APConfigurator crashes use this to store what the traceback
-        was as a string.  It can be used later to debug configurator errors.
-
-        @param value: a string representation of the exception traceback
-
-        """
-        self._traceback = value
-
-
-    def get_router_name(self):
-        """Returns a string to describe the router."""
-        return ('Router name: %s, Controller class: %s, MAC '
-                'Address: %s' % (self.short_name, self.class_name,
-                                 self.mac_address))
+    def power_up_router(self):
+        """ Ignore and log power up request """
+        logging.error('%s.%s: Can not run for Static APs',
+                self.__class__.__name__,
+                self.power_up_router.__name__)
 
 
     def get_configuration_success(self):
-        """Returns True if the configuration was a success; False otherwise"""
-        return self.configuration_success
-
-
-    def get_router_short_name(self):
-        """Returns a short string to describe the router."""
-        return self.short_name
+        """Returns True, there is no config step for Static APs"""
+        return True
 
 
     def get_supported_bands(self):
@@ -101,23 +57,16 @@ class APConfigurator():
 
         supported_bands = [{'band' : self.band_2GHz,
                             'channels' : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
-                           {'band' : ap_spec.BAND_5GHZ,
+                           {'band' : self.band_5ghz,
                             'channels' : [26, 40, 44, 48, 149, 153, 165]}]
-
-        Note: The derived class must implement this method.
 
         @return a list of dictionaries as described above
 
         """
-        raise NotImplementedError
+        supported_bands = [{'band' : self.band,
+                            'channels' : [self.channel]}]
 
-
-    def get_bss(self):
-        """Returns the bss of the AP."""
-        if self.current_band == ap_spec.BAND_2GHZ:
-            return self.config_data.get_bss()
-        else:
-            return self.config_data.get_bss5()
+        return supported_bands
 
 
     def get_supported_modes(self):
@@ -130,25 +79,28 @@ class APConfigurator():
 
         supported_modes = [{'band' : self.band_2GHz,
                             'modes' : [mode_b, mode_b | mode_g]},
-                           {'band' : ap_spec.BAND_5GHZ,
+                           {'band' : self.band_5ghz,
                             'modes' : [mode_a, mode_n, mode_a | mode_n]}]
-
-        Note: The derived class must implement this method.
 
         @return a list of dictionaries as described above
 
         """
-        raise NotImplementedError
+        supported_modes = [{'band' : self.band,
+                            'modes' : [ap_spec.DEFAULT_5GHZ_MODE
+                    if self.band in ap_spec.VALID_5GHZ_CHANNELS
+                    else ap_spec.DEFAULT_2GHZ_MODE]}]
+
+        return supported_modes
 
 
     def is_visibility_supported(self):
         """
         Returns if AP supports setting the visibility (SSID broadcast).
 
-        @return True if supported; False otherwise.
+        @return False
 
         """
-        return True
+        return False
 
 
     def is_band_and_channel_supported(self, band, channel):
@@ -173,8 +125,6 @@ class APConfigurator():
         """
         Returns if a given security_type is supported.
 
-        Note: The derived class must implement this method.
-
         @param security_mode: one of the following modes:
                          self.security_disabled,
                          self.security_wep,
@@ -184,4 +134,11 @@ class APConfigurator():
         @return True if the security mode is supported; False otherwise.
 
         """
-        raise NotImplementedError
+        return self.security == security_mode
+
+
+    def apply_settings(self):
+        """Apply all settings to the access point."""
+        logging.error('%s.%s: Can not run for Static APs',
+                self.__class__.__name__,
+                self.apply_settings.__name__)

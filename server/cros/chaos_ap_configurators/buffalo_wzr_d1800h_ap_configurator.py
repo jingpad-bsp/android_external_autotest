@@ -7,11 +7,12 @@
 import logging
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
+class BuffalowzrAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for Buffalo WZR router."""
 
 

@@ -6,12 +6,13 @@
 
 import logging
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 import selenium.common.exceptions
 
 
-class AsusAPConfigurator(ap_configurator.APConfigurator):
+class AsusAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for Asus RT-N56U router."""
 
 

@@ -6,11 +6,12 @@
 
 import logging
 import urlparse
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
+class Linksyse2000APConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Derived class to control Linksyse2000 AP"""
 
     def _sec_alert(self, alert):

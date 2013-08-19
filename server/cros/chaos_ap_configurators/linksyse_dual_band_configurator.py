@@ -8,10 +8,11 @@
 import logging
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
-class LinksyseDualBandAPConfigurator(ap_configurator.APConfigurator):
+class LinksyseDualBandAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for objects to configure Linksys dual band access points
        using webdriver."""
 

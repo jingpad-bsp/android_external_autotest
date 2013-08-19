@@ -6,11 +6,12 @@
 
 import urlparse
 
-import ap_configurator
+import dynamic_ap_configurator
 import ap_spec
 
 
-class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
+class NetgearDualBandAPConfigurator(
+        dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for NetgearWNDR dual band routers."""
 
 
