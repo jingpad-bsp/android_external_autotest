@@ -8,6 +8,7 @@ import random
 from time import sleep
 
 import common
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_factory
@@ -102,6 +103,10 @@ class ApBatchLocker(object):
         @param ap_locker: an ApLocker object, AP to be locked.
         @return a boolean, True iff ap_locker is locked.
         """
+        if not utils.host_is_in_lab_zone(ap_locker.configurator.host_name):
+            ap_locker.to_be_locked = False
+            return True
+
         if self.manager.lock([ap_locker.configurator.host_name]):
             logging.info('locked %s', ap_locker.configurator.host_name)
             ap_locker.to_be_locked = False

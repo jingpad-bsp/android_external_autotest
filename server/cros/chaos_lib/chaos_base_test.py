@@ -14,6 +14,8 @@ from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_config
 from autotest_lib.server.cros.chaos_ap_configurators import \
     download_chromium_prebuilt
+from autotest_lib.server.cros.chaos_ap_configurators.static_ap_configurator \
+    import StaticAPConfigurator
 from autotest_lib.server.cros.chaos_config import ChaosAP
 from autotest_lib.server.cros.wlan import connector, disconnector
 from autotest_lib.server.cros.network import profile_manager
@@ -283,6 +285,22 @@ class WiFiChaosConnectionTest(object):
                 logging.info('Skip %s: band %s and channel %d not supported',
                              ap.get_router_name(), band,
                              self.band_channel_map[band])
+                continue
+
+            if isinstance(ap, StaticAPConfigurator):
+                configured_aps.append({'configurator': ap,
+                        'bss': ap.config_data.get_bss(),
+                        'band': band,
+                        'channel': ap.config_data.get_channel(),
+                        'frequency': ap.config_data.get_frequency(),
+                        'radio': True,
+                        'ssid': ap.config_data.get_ssid(),
+                        'visibility': visibility,
+                        'security': ap.config_data.get_security(),
+                        self.PSK: ap.config_data.get_psk(),
+                        'brand': ap.config_data.get_brand(),
+                        'model': ap.get_router_short_name(),
+                        'ok_to_unlock': False,})
                 continue
 
             logging.info('Configuring AP %s', ap.get_router_name())
