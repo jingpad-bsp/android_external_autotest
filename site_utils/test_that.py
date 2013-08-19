@@ -7,7 +7,9 @@ import argparse
 import errno
 import os
 import re
+import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -45,6 +47,9 @@ _NO_BOARD = 'ad_hoc_board'
 _NO_BUILD = 'ad_hoc_build'
 
 _QUICKMERGE_SCRIPTNAME = '/mnt/host/source/chromite/bin/autotest_quickmerge'
+_TEST_KEY_FILENAME = 'testing_rsa'
+_TEST_KEY_PATH = ('/mnt/host/source/src/scripts/mod_for_test_scripts/'
+                  'ssh_keys/%s' % _TEST_KEY_FILENAME)
 
 _TEST_REPORT_SCRIPTNAME = '/usr/bin/generate_test_report'
 
@@ -209,6 +214,23 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param ssh_verbosity: SSH verbosity level, passed through to
                           autoserv_utils.
     """
+    # Add the testing key to the current ssh agent.
+    if os.environ.has_key('SSH_AGENT_PID'):
+      # Copy the testing key to the results directory and make it NOT
+      # world-readable. Otherwise, ssh-add complains.
+      shutil.copy(_TEST_KEY_PATH, results_directory)
+      key_copy_path = os.path.join(results_directory, _TEST_KEY_FILENAME)
+      os.chmod(key_copy_path, stat.S_IRUSR | stat.S_IWUSR)
+      p = subprocess.Popen(['ssh-add', key_copy_path],
+                           stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+      p_out, _ = p.communicate()
+      for line in p_out.splitlines():
+        logging.info(line)
+    else:
+      logging.warning('There appears to be no running ssh-agent. Attempting '
+                      'to continue without running ssh-add, but ssh commands '
+                      'may fail.')
+
     afe.create_label(constants.VERSION_PREFIX + build)
     afe.create_label(board)
     afe.create_host(remote)
