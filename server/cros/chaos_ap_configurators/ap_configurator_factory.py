@@ -11,44 +11,6 @@ from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_ap_configurators import \
         ap_configurator_config
 
-import asus_ap_configurator
-import asus_ac66r_ap_configurator
-import asus_qis_ap_configurator
-import belkin_ap_configurator
-import belkinF9K_ap_configurator
-import buffalo_ap_configurator
-import buffalo_wzr_d1800h_ap_configurator
-import dlink_ap_configurator
-import dlink_dir655_ap_configurator
-import dlinkwbr1310_ap_configurator
-import keeboxw150nr_ap_configurator
-import linksys_ap_configurator
-import linksys_ap_15_configurator
-import linksyse_dual_band_configurator
-import linksyse_single_band_configurator
-import linksyse1000_ap_configurator
-import linksyse2000_ap_configurator
-import linksyse2100_ap_configurator
-import linksyse2500_ap_configurator
-import linksyswrt160_ap_configurator
-import medialink_ap_configurator
-import netgear3700_ap_configurator
-import netgear4300_ap_configurator
-import netgearR6200_ap_configurator
-import netgear1000_ap_configurator
-import netgear2000_ap_configurator
-import netgear_WNDR_dual_band_configurator
-import netgear_single_band_configurator
-import trendnet_ap_configurator
-import trendnet691gr_ap_configurator
-import trendnet731br_ap_configurator
-import trendnet432brp_ap_configurator
-import trendnet692gr_ap_configurator
-import trendnet654tr_ap_configurator
-import trendnet812dru_ap_configurator
-import westerndigitaln600_ap_configurator
-import static_ap_configurator
-
 
 class APConfiguratorFactory(object):
     """Class that instantiates all available APConfigurators.
@@ -63,81 +25,119 @@ class APConfiguratorFactory(object):
     @attribute ap_config: an APConfiguratorConfig object.
     """
 
+    PREFIX='autotest_lib.server.cros.chaos_ap_configurators.'
     CONFIGURATOR_MAP = {
         'LinksysAPConfigurator':
-            linksys_ap_configurator.LinksysAPConfigurator,
+            [PREFIX + 'linksys_ap_configurator',
+                'LinksysAPConfigurator'],
         'LinksysAP15Configurator':
-            linksys_ap_15_configurator.LinksysAP15Configurator,
+            [PREFIX + 'linksys_ap_15_configurator',
+                'LinksysAP15Configurator'],
         'DLinkAPConfigurator':
-            dlink_ap_configurator.DLinkAPConfigurator,
+            [PREFIX + 'dlink_ap_configurator',
+                'DLinkAPConfigurator'],
         'TrendnetAPConfigurator':
-            trendnet_ap_configurator.TrendnetAPConfigurator,
+            [PREFIX + 'trendnet_ap_configurator',
+                'TrendnetAPConfigurator'],
         'Trendnet691grAPConfigurator':
-            trendnet691gr_ap_configurator.Trendnet691grAPConfigurator,
+            [PREFIX + 'trendnet691gr_ap_configurator',
+                'Trendnet691grAPConfigurator'],
         'Trendnet731brAPConfigurator':
-            trendnet731br_ap_configurator.Trendnet731brAPConfigurator,
+            [PREFIX + 'trendnet731br_ap_configurator',
+                'Trendnet731brAPConfigurator'],
         'Trendnet432brpAPConfigurator':
-            trendnet432brp_ap_configurator.Trendnet432brpAPConfigurator,
+            [PREFIX + 'trendnet432brp_ap_configurator',
+                'Trendnet432brpAPConfigurator'],
         'Trendnet692grAPConfigurator':
-            trendnet692gr_ap_configurator.Trendnet692grAPConfigurator,
+            [PREFIX + 'trendnet692gr_ap_configurator',
+                'Trendnet692grAPConfigurator'],
         'Trendnet654trAPConfigurator':
-            trendnet654tr_ap_configurator.Trendnet654trAPConfigurator,
+            [PREFIX + 'trendnet654tr_ap_configurator',
+                'Trendnet654trAPConfigurator'],
         'Trendnet812druAPConfigurator':
-            trendnet812dru_ap_configurator.Trendnet812druAPConfigurator,
+            [PREFIX + 'trendnet812dru_ap_configurator',
+                'Trendnet812druAPConfigurator'],
         'DLinkDIR655APConfigurator':
-            dlink_dir655_ap_configurator.DLinkDIR655APConfigurator,
+            [PREFIX + 'dlink_dir655_ap_configurator',
+                'DLinkDIR655APConfigurator'],
         'BuffaloAPConfigurator':
-            buffalo_ap_configurator.BuffaloAPConfigurator,
+            [PREFIX + 'buffalo_ap_configurator',
+                'BuffaloAPConfigurator'],
         'BuffalowzrAPConfigurator':
-            buffalo_wzr_d1800h_ap_configurator.BuffalowzrAPConfigurator,
+            [PREFIX + 'buffalo_wzr_d1800h_ap_configurator',
+                'BuffalowzrAPConfigurator'],
         'AsusAPConfigurator':
-            asus_ap_configurator.AsusAPConfigurator,
+            [PREFIX + 'asus_ap_configurator',
+                'AsusAPConfigurator'],
         'AsusQISAPConfigurator':
-            asus_qis_ap_configurator.AsusQISAPConfigurator,
+            [PREFIX + 'asus_qis_ap_configurator',
+                'AsusQISAPConfigurator'],
         'Asus66RAPConfigurator':
-            asus_ac66r_ap_configurator.Asus66RAPConfigurator,
+            [PREFIX + 'asus_ac66r_ap_configurator',
+                'Asus66RAPConfigurator'],
         'Netgear3700APConfigurator':
-            netgear3700_ap_configurator.Netgear3700APConfigurator,
+            [PREFIX + 'netgear3700_ap_configurator',
+                'Netgear3700APConfigurator'],
         'NetgearR6200APConfigurator':
-            netgearR6200_ap_configurator.NetgearR6200APConfigurator,
+            [PREFIX + 'netgearR6200_ap_configurator',
+                'NetgearR6200APConfigurator'],
         'Netgear1000APConfigurator':
-            netgear1000_ap_configurator.Netgear1000APConfigurator,
+            [PREFIX + 'netgear1000_ap_configurator',
+                'Netgear1000APConfigurator'],
         'Netgear2000APConfigurator':
-            netgear2000_ap_configurator.Netgear2000APConfigurator,
+            [PREFIX + 'netgear2000_ap_configurator',
+                'Netgear2000APConfigurator'],
         'Netgear4300APConfigurator':
-            netgear4300_ap_configurator.Netgear4300APConfigurator,
+            [PREFIX + 'netgear4300_ap_configurator',
+                'Netgear4300APConfigurator'],
         'LinksyseDualBandAPConfigurator':
-            linksyse_dual_band_configurator.LinksyseDualBandAPConfigurator,
+            [PREFIX + 'linksyse_dual_band_configurator',
+                'LinksyseDualBandAPConfigurator'],
         'Linksyse2000APConfigurator':
-            linksyse2000_ap_configurator.Linksyse2000APConfigurator,
+            [PREFIX + 'linksyse2000_ap_configurator',
+                'Linksyse2000APConfigurator'],
         'NetgearDualBandAPConfigurator':
-            netgear_WNDR_dual_band_configurator.NetgearDualBandAPConfigurator,
+            [PREFIX + 'netgear_WNDR_dual_band_configurator',
+                'NetgearDualBandAPConfigurator'],
         'BelkinAPConfigurator':
-            belkin_ap_configurator.BelkinAPConfigurator,
+            [PREFIX + 'belkin_ap_configurator',
+                'BelkinAPConfigurator'],
         'BelkinF9KAPConfigurator':
-            belkinF9K_ap_configurator.BelkinF9KAPConfigurator,
+            [PREFIX + 'belkinF9K_ap_configurator',
+                'BelkinF9KAPConfigurator'],
         'MediaLinkAPConfigurator':
-            medialink_ap_configurator.MediaLinkAPConfigurator,
+            [PREFIX + 'medialink_ap_configurator',
+                'MediaLinkAPConfigurator'],
         'NetgearSingleBandAPConfigurator':
-            netgear_single_band_configurator.NetgearSingleBandAPConfigurator,
+            [PREFIX + 'netgear_single_band_configurator',
+                'NetgearSingleBandAPConfigurator'],
         'DLinkwbr1310APConfigurator':
-            dlinkwbr1310_ap_configurator.DLinkwbr1310APConfigurator,
+            [PREFIX + 'dlinkwbr1310_ap_configurator',
+                'DLinkwbr1310APConfigurator'],
         'Linksyse2100APConfigurator':
-            linksyse2100_ap_configurator.Linksyse2100APConfigurator,
+            [PREFIX + 'linksyse2100_ap_configurator',
+                'Linksyse2100APConfigurator'],
         'LinksyseSingleBandAPConfigurator':
-            linksyse_single_band_configurator.LinksyseSingleBandAPConfigurator,
+            [PREFIX + 'linksyse_single_band_configurator',
+                'LinksyseSingleBandAPConfigurator'],
         'Linksyse2500APConfigurator':
-            linksyse2500_ap_configurator.Linksyse2500APConfigurator,
+            [PREFIX + 'linksyse2500_ap_configurator',
+                'Linksyse2500APConfigurator'],
         'WesternDigitalN600APConfigurator':
-            westerndigitaln600_ap_configurator.WesternDigitalN600APConfigurator,
+            [PREFIX + 'westerndigitaln600_ap_configurator',
+                'WesternDigitalN600APConfigurator'],
         'Linksyse1000APConfigurator':
-            linksyse1000_ap_configurator.Linksyse1000APConfigurator,
+            [PREFIX + 'linksyse1000_ap_configurator',
+                'Linksyse1000APConfigurator'],
         'LinksysWRT160APConfigurator':
-            linksyswrt160_ap_configurator.LinksysWRT160APConfigurator,
+            [PREFIX + 'linksyswrt160_ap_configurator',
+                'LinksysWRT160APConfigurator'],
         'Keeboxw150nrAPConfigurator':
-            keeboxw150nr_ap_configurator.Keeboxw150nrAPConfigurator,
+            [PREFIX + 'keeboxw150nr_ap_configurator',
+                'Keeboxw150nrAPConfigurator'],
         'StaticAPConfigurator':
-            static_ap_configurator.StaticAPConfigurator,
+            [PREFIX + 'static_ap_configurator',
+                'StaticAPConfigurator'],
     }
 
     BANDS = 'bands'
@@ -147,11 +147,21 @@ class APConfiguratorFactory(object):
 
 
     def __init__(self):
+        webdriver_ready = False
         chaos_ap_list = chaos_config.ChaosAPList()
 
         self.ap_list = []
         for ap in chaos_ap_list:
-            configurator = self.CONFIGURATOR_MAP[ap.get_class()]
+            module_name, configurator_class = \
+                    self.CONFIGURATOR_MAP[ap.get_class()]
+            module = __import__(module_name, fromlist=configurator_class)
+            configurator = module.__dict__[configurator_class]
+            if not webdriver_ready and configurator.is_dynamic():
+                from autotest_lib.server.cros.chaos_ap_configurators import \
+                    download_chromium_prebuilt
+                download_chromium_prebuilt.check_webdriver_ready()
+                webdriver_ready = True
+
             self.ap_list.append(configurator(ap_config=ap))
 
 

@@ -12,8 +12,6 @@ from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_config
-from autotest_lib.server.cros.chaos_ap_configurators import \
-    download_chromium_prebuilt
 from autotest_lib.server.cros.chaos_ap_configurators.static_ap_configurator \
     import StaticAPConfigurator
 from autotest_lib.server.cros.chaos_config import ChaosAP
@@ -87,7 +85,6 @@ class WiFiChaosConnectionTest(object):
         self.error_list = []
         self.ap_config = ap_configurator_config.APConfiguratorConfig()
         self.psk_password = ''
-        download_chromium_prebuilt.check_webdriver_ready()
 
         # Test on channel 5 for 2.4GHz band and channel 48 for 5GHz band.
         # TODO(tgao): support user-specified channel.
