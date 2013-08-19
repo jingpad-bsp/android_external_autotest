@@ -360,11 +360,29 @@ class ImageServer(DevServer):
 
             @return: True if all artifacts are staged in devserver. False
                      otherwise.
+            @rasies DevServerException, the exception is a wrapper of all
+                    exceptions that were raised when devserver tried to download
+                    the artifacts. devserver raises an HTTPError when an
+                    exception was raised in the code. Such exception should be
+                    re-raised here to stop the caller from waiting. If the call
+                    to devserver failed for connection issue, a URLError
+                    exception is raised, and caller should retry the call to
+                    avoid such network flakiness.
 
             """
             try:
                 return urllib2.urlopen(call).read() == 'True'
-            except IOError:
+            except urllib2.HTTPError as e:
+                error_markup = e.read()
+                strip = MarkupStripper()
+                try:
+                    strip.feed(error_markup.decode('utf_32'))
+                except UnicodeDecodeError:
+                    strip.feed(error_markup)
+                raise DevServerException(strip.get_data())
+            except urllib2.URLError as e:
+                # Could be connection issue, retry it.
+                # For example: <urlopen error [Errno 111] Connection refused>
                 return False
 
         site_utils.poll_for_condition(
