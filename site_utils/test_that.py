@@ -133,8 +133,12 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
     with tempfile.NamedTemporaryFile() as temp_file:
         temp_file.write(job.control_file)
         temp_file.flush()
+        name_tail = job.name.split('/')[-1]
+        print 'NAME TAIL IS : '
+        print name_tail
         results_directory = os.path.join(results_directory,
-                                         'results-%0*d' % (id_digits, job.id))
+                                         'results-%0*d-%s' % (id_digits, job.id,
+                                                              name_tail))
         extra_args = [temp_file.name]
         if args:
             extra_args.extend(['--args', args])

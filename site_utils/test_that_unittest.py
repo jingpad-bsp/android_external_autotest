@@ -76,8 +76,8 @@ class TestThatUnittests(unittest.TestCase):
         remote = 'etomer'
         results_dir = '/tmp/fakeresults'
         fast_mode = False
-        job1_results_dir = '/tmp/fakeresults/results-1'
-        job2_results_dir = '/tmp/fakeresults/results-2'
+        job1_results_dir = '/tmp/fakeresults/results-1-gilbert'
+        job2_results_dir = '/tmp/fakeresults/results-2-sullivan'
         args = 'matey'
         expected_args_sublist = ['--args', args]
         self.mox = mox.Mox()
@@ -88,9 +88,12 @@ class TestThatUnittests(unittest.TestCase):
         setattr(job1, 'control_type', 'cLiEnT')
         setattr(job1, 'control_file', 'c1')
         setattr(job1, 'id', 1)
+        setattr(job1, 'name', 'gilbert')
+
         setattr(job2, 'control_type', 'Server')
         setattr(job2, 'control_file', 'c2')
         setattr(job2, 'id', 2)
+        setattr(job2, 'name', 'sullivan')
 
         id_digits = 1
 
@@ -107,7 +110,8 @@ class TestThatUnittests(unittest.TestCase):
         self.mox.StubOutWithMock(subprocess, 'Popen')
 
         arglist_1 = [autoserv_command, '-p', '-r', job1_results_dir,
-                     '-m', remote, '--no_console_prefix', '-c']
+                     '-m', remote, '--no_console_prefix', '-l', 'gilbert',
+                     '-c']
         subprocess.Popen(mox.And(StartsWithList(arglist_1),
                                  ContainsSublist(expected_args_sublist)),
                          stdout=subprocess.PIPE,
@@ -117,7 +121,8 @@ class TestThatUnittests(unittest.TestCase):
         mock_process_1.wait()
 
         arglist_2 = [autoserv_command, '-p', '-r', job2_results_dir,
-                     '-m', remote,  '--no_console_prefix', '-s']
+                     '-m', remote,  '--no_console_prefix', '-l', 'sullivan',
+                     '-s']
         subprocess.Popen(mox.And(StartsWithList(arglist_2),
                                  ContainsSublist(expected_args_sublist)),
                          stdout=subprocess.PIPE,
