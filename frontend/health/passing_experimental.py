@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 
-import datetime, sys
+import argparse, datetime, sys
 
 import common
 from autotest_lib.client.common_lib import mail
@@ -65,14 +65,29 @@ def find_long_passing_tests(pass_times, fail_times, valid_names):
     return recent_passes - recent_fails
 
 
-def main():
+def parse_options(args):
+    """Parse the command line options."""
+
+    description = ('Collects information about which experimental tests '
+                   'have been passing for a long time and creates an email '
+                   'summarizing the results.')
+    parser = argparse.ArgumentParser(description=description)
+    parser.parse_args(args)
+
+
+def main(args=None):
     """
     The script code.
 
     Allows other python code to import and run this code. This will be more
     important if a nice way to test this code can be determined.
 
+    @param args: The command line arguments being passed in.
+
     """
+    args = [] if args is None else args
+    parse_options(args)
+
     experimental_tests = get_experimental_tests()
     pass_times = utils.get_last_pass_times()
     fail_times = utils.get_last_fail_times()
@@ -93,4 +108,4 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(sys.argv))

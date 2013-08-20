@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, subprocess, sys
+import argparse, logging, os, subprocess, sys
 
 THIS_DIR = os.path.dirname(__file__)
 UTILS_DIR = os.path.abspath(os.path.join(THIS_DIR, os.pardir, os.pardir,
@@ -80,15 +80,27 @@ def run_analysis_scripts(scripts):
     return success
 
 
-def main():
+def parse_options(args):
+    """Parse the command line options."""
+
+    description = ('Runs test health and preparation scripts.')
+    parser = argparse.ArgumentParser(description=description)
+    parser.parse_args(args)
+
+
+def main(args=None):
     """
     The main function.
 
     This allows us to test this function by calling it in the unit test file.
 
+    @param args: The command line arguments being passed in.
+
     @return 0 if everything succeeded and a non-zero integer otherwise.
 
     """
+    args = [] if args is None else args
+    parse_options(args)
 
     logging.getLogger().setLevel(logging.INFO)
 
@@ -104,4 +116,4 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(sys.argv))
