@@ -878,7 +878,7 @@ class factory_CameraPerformanceAls(test.test):
         if self.shopfloor:
             self.save_log_to_shopfloor()
             self.update_pbar(pid='save_to_shopfloor')
-        elif self.type in [_TEST_TYPE_AB, _TEST_TYPE_MODULE]:
+        else:
             # We block the test flow until we successfully dumped the result.
             while not self.save_log_to_usb():
                 time.sleep(0.5)
