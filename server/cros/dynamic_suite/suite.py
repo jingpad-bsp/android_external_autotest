@@ -441,9 +441,16 @@ class Suite(object):
         if self._file_bugs:
             bug_reporter = reporting.Reporter()
         try:
-            for result in job_status.wait_for_results(self._afe,
-                                                      self._tko,
-                                                      self._jobs):
+            if self._suite_job_id:
+                results_generator = job_status.wait_for_child_results(
+                        self._afe, self._tko, self._suite_job_id)
+            else:
+                logging.warn('Unknown suite_job_id, falling back to less '
+                             'efficient results_generator.')
+                results_generator = job_status.wait_for_results(self._afe,
+                                                                self._tko,
+                                                                self._jobs)
+            for result in results_generator:
                 result.record_all(record)
                 if (self._results_dir and
                     job_status.is_for_infrastructure_fail(result)):

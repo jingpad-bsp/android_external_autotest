@@ -26,12 +26,13 @@ class FakeControlData(object):
 
 class FakeJob(object):
     """Faked out RPC-client-side Job object."""
-    def __init__(self, id=0, statuses=[], hostnames=[]):
+    def __init__(self, id=0, statuses=[], hostnames=[], parent_job_id=None):
         self.id = id
         self.hostnames = hostnames if hostnames else ['host%d' % id]
         self.owner = 'tester'
         self.name = 'Fake Job %d' % self.id
         self.statuses = statuses
+        self.parent_job_id = parent_job_id
 
 
 class FakeHost(object):

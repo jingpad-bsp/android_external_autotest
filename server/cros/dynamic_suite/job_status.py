@@ -309,6 +309,67 @@ def _status_for_test(status):
                 status.test_name.startswith('CLIENT_JOB'))
 
 
+def _yield_job_results(afe, tko, job):
+    """
+    Yields the results of an individual job.
+
+    Yields one Status object per test.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param tko: an instance of TKO as defined in server/frontend.py.
+    @param job: Job object to get results from, as defined in
+                server/frontend.py
+    @yields an iterator of Statuses, one per test.
+    """
+    entries = afe.run('get_host_queue_entries', job=job.id)
+    if reduce(_collate_aborted, entries, False):
+        yield Status('ABORT', job.name)
+    else:
+        statuses = tko.get_job_test_statuses_from_db(job.id)
+        for s in statuses:
+            if _status_for_test(s):
+                yield Status(s.status, s.test_name, s.reason,
+                             s.test_started_time, s.test_finished_time,
+                             job.id, job.owner, s.hostname, job.name)
+            else:
+                if s.status != 'GOOD':
+                    yield Status(s.status,
+                                 '%s_%s' % (entries[0]['job']['name'],
+                                            s.test_name),
+                                 s.reason, s.test_started_time,
+                                 s.test_finished_time, job.id,
+                                 job.owner, s.hostname, job.name)
+
+
+def wait_for_child_results(afe, tko, parent_job_id):
+    """
+    Wait for results of all tests in jobs with given parent id.
+
+    Currently polls for results every 5s.  Yields one Status object per test
+    as results become available.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param tko: an instance of TKO as defined in server/frontend.py.
+    @param parent_job_id: Parent job id for the jobs to wait on.
+    @yields an iterator of Statuses, one per test.
+    """
+    remaining_child_jobs = set(job.id for job in
+                               afe.get_jobs(parent_job_id=parent_job_id))
+    while remaining_child_jobs:
+        new_finished_jobs = [job for job in
+                             afe.get_jobs(parent_job_id=parent_job_id,
+                                          finished=True)
+                             if job.id in remaining_child_jobs]
+
+        for job in new_finished_jobs:
+
+            remaining_child_jobs.remove(job.id)
+            for result in _yield_job_results(afe, tko, job):
+                yield result
+
+        time.sleep(5)
+
+
 def wait_for_results(afe, tko, jobs):
     """
     Wait for results of all tests in all jobs in |jobs|.
@@ -319,7 +380,7 @@ def wait_for_results(afe, tko, jobs):
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param tko: an instance of TKO as defined in server/frontend.py.
     @param jobs: a list of Job objects, as defined in server/frontend.py.
-    @return a list of Statuses, one per test.
+    @yields an iterator of Statuses, one per test.
     """
     local_jobs = list(jobs)
     while local_jobs:
@@ -328,25 +389,9 @@ def wait_for_results(afe, tko, jobs):
                 continue
 
             local_jobs.remove(job)
+            for result in _yield_job_results(afe, tko, job):
+                yield result
 
-            entries = afe.run('get_host_queue_entries', job=job.id)
-            if reduce(_collate_aborted, entries, False):
-                yield Status('ABORT', job.name)
-            else:
-                statuses = tko.get_job_test_statuses_from_db(job.id)
-                for s in statuses:
-                    if _status_for_test(s):
-                        yield Status(s.status, s.test_name, s.reason,
-                                     s.test_started_time, s.test_finished_time,
-                                     job.id, job.owner, s.hostname, job.name)
-                    else:
-                        if s.status != 'GOOD':
-                            yield Status(s.status,
-                                         '%s_%s' % (entries[0]['job']['name'],
-                                                    s.test_name),
-                                         s.reason, s.test_started_time,
-                                         s.test_finished_time, job.id,
-                                         job.owner, s.hostname, job.name)
         time.sleep(5)
 
 

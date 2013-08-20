@@ -4,6 +4,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# pylint: disable-msg=C0111
+
 """Unit tests for server/cros/dynamic_suite/job_status.py."""
 
 import mox
@@ -407,12 +409,17 @@ class StatusTest(mox.MoxTestBase):
 
     def expect_result_gathering(self, job):
         self.afe.get_jobs(id=job.id, finished=True).AndReturn(job)
+        self.expect_yield_job_entries(job)
+
+
+    def expect_yield_job_entries(self, job):
         entries = [s.entry for s in job.statuses]
         self.afe.run('get_host_queue_entries',
                      job=job.id).AndReturn(entries)
         if True not in map(lambda e: 'aborted' in e and e['aborted'], entries):
             self.tko.get_job_test_statuses_from_db(job.id).AndReturn(
                     job.statuses)
+
 
     def testWaitForResults(self):
         """Should gather status and return records for job summaries."""
@@ -446,6 +453,65 @@ class StatusTest(mox.MoxTestBase):
         results = [result for result in job_status.wait_for_results(self.afe,
                                                                     self.tko,
                                                                     jobs)]
+        for job in jobs[:6]:  # the 'GOOD' SERVER_JOB shouldn't be there.
+            for status in job.statuses:
+                self.assertTrue(True in map(status.equals_record, results))
+
+
+    def testWaitForChildResults(self):
+        """Should gather status and return records for job summaries."""
+        parent_job_id = 54321
+        jobs = [FakeJob(0, [FakeStatus('GOOD', 'T0', ''),
+                            FakeStatus('GOOD', 'T1', '')],
+                        parent_job_id=parent_job_id),
+                FakeJob(1, [FakeStatus('ERROR', 'T0', 'err', False),
+                            FakeStatus('GOOD', 'T1', '')],
+                        parent_job_id=parent_job_id),
+                FakeJob(2, [FakeStatus('TEST_NA', 'T0', 'no')],
+                        parent_job_id=parent_job_id),
+                FakeJob(3, [FakeStatus('FAIL', 'T0', 'broken')],
+                        parent_job_id=parent_job_id),
+                FakeJob(4, [FakeStatus('ERROR', 'SERVER_JOB', 'server error'),
+                            FakeStatus('GOOD', 'T0', '')],
+                        parent_job_id=parent_job_id),
+                FakeJob(5, [FakeStatus('ERROR', 'T0', 'gah', True)],
+                        parent_job_id=parent_job_id),
+                # The next job shouldn't be recorded in the results.
+                FakeJob(6, [FakeStatus('GOOD', 'SERVER_JOB', '')],
+                        parent_job_id=12345)]
+        for status in jobs[4].statuses:
+            status.entry['job'] = {'name': 'broken_infra_job'}
+
+        # Expect one call to get a list of all child jobs.
+        self.afe.get_jobs(parent_job_id=parent_job_id).AndReturn(jobs[:6])
+
+        # Have the first two jobs be finished by the first polling,
+        # and the remaining ones (not including #6) for the second polling.
+        self.afe.get_jobs(parent_job_id=parent_job_id,
+                          finished=True).AndReturn([jobs[1]])
+        self.expect_yield_job_entries(jobs[1])
+
+        self.afe.get_jobs(parent_job_id=parent_job_id,
+                          finished=True).AndReturn(jobs[:2])
+        self.expect_yield_job_entries(jobs[0])
+
+        self.afe.get_jobs(parent_job_id=parent_job_id,
+                          finished=True).AndReturn(jobs[:6])
+        for job in jobs[2:6]:
+            self.expect_yield_job_entries(job)
+        # Then, expect job[0] to be ready.
+
+        # Expect us to poll thrice
+        self.mox.StubOutWithMock(time, 'sleep')
+        time.sleep(5)
+        time.sleep(5)
+        time.sleep(5)
+        self.mox.ReplayAll()
+
+        results = [result for result in job_status.wait_for_child_results(
+                                                self.afe,
+                                                self.tko,
+                                                parent_job_id)]
         for job in jobs[:6]:  # the 'GOOD' SERVER_JOB shouldn't be there.
             for status in job.statuses:
                 self.assertTrue(True in map(status.equals_record, results))
