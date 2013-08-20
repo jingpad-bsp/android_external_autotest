@@ -64,7 +64,6 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
                                             record_command=cmd_rec,
                                             num_channels=num_channels,
                                             mix_command=cmd_mix)
-        self._ah.setup_deps(['audioloop', 'sox'])
 
         super(desktopui_MediaAudioFeedback, self).initialize()
         self._test_url = 'http://localhost:8000/play.html'

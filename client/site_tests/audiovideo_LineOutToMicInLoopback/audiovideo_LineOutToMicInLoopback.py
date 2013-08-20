@@ -42,7 +42,6 @@ class audiovideo_LineOutToMicInLoopback(test.test):
 
         self._ah = audio_helper.AudioHelper(self,
                 num_channels=self._num_channels)
-        self._ah.setup_deps(['sox', 'audioloop'])
 
         super(audiovideo_LineOutToMicInLoopback, self).initialize()
 

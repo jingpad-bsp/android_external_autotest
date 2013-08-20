@@ -34,7 +34,6 @@ class audiovideo_LoopbackLatency(test.test):
         self._capture_gain = default_capture_gain
 
         self._ah = audio_helper.AudioHelper(self)
-        self._ah.setup_deps(['audioloop'])
 
         super(audiovideo_LoopbackLatency, self).initialize()
 

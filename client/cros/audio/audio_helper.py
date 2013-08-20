@@ -36,6 +36,14 @@ _AUDIO_NOT_FOUND_RE = r'Audio\snot\sdetected'
 _MEASURED_LATENCY_RE = r'Measured\sLatency:\s(\d+)\suS'
 _REPORTED_LATENCY_RE = r'Reported\sLatency:\s(\d+)\suS'
 
+# Tools from platform/audiotest
+AUDIOFUNTEST_PATH = 'audiofuntest'
+AUDIOLOOP_PATH = 'looptest'
+LOOPBACK_LATENCY_PATH = 'loopback_latency'
+SOX_PATH = 'sox'
+TEST_TONES_PATH = 'test_tones'
+
+
 class RecordSampleThread(threading.Thread):
     '''Wraps the execution of arecord in a thread.'''
     def __init__(self, audio, recordfile):
@@ -77,51 +85,6 @@ class AudioHelper(object):
         self._rec_cmd = record_command
         self._num_channels = num_channels
         self._mix_cmd = mix_command
-
-    def setup_deps(self, deps):
-        '''
-        Sets up audio related dependencies.
-
-        @param deps: List of dependencies to set up.
-        '''
-        for dep in deps:
-            if dep == 'test_tones':
-                dep_dir = os.path.join(self._test.autodir, 'deps', dep)
-                self._test.job.install_pkg(dep, 'dep', dep_dir)
-                self.test_tones_path = os.path.join(dep_dir, 'src', dep)
-            elif dep == 'audioloop':
-                dep_dir = os.path.join(self._test.autodir, 'deps', dep)
-                self._test.job.install_pkg(dep, 'dep', dep_dir)
-                self.audioloop_path = os.path.join(dep_dir, 'src',
-                        'looptest')
-                self.loopback_latency_path = os.path.join(dep_dir, 'src',
-                        'loopback_latency')
-            elif dep == 'sox':
-                dep_dir = os.path.join(self._test.autodir, 'deps', dep)
-                self._test.job.install_pkg(dep, 'dep', dep_dir)
-                self.sox_path = os.path.join(dep_dir, 'bin', dep)
-                self.sox_lib_path = os.path.join(dep_dir, 'lib')
-                if os.environ.has_key(LD_LIBRARY_PATH):
-                    paths = os.environ[LD_LIBRARY_PATH].split(':')
-                    if not self.sox_lib_path in paths:
-                        paths.append(self.sox_lib_path)
-                        os.environ[LD_LIBRARY_PATH] = ':'.join(paths)
-                else:
-                    os.environ[LD_LIBRARY_PATH] = self.sox_lib_path
-
-    def cleanup_deps(self, deps):
-        '''
-        Cleans up environments which has been setup for dependencies.
-
-        @param deps: List of dependencies to clean up.
-        '''
-        for dep in deps:
-            if dep == 'sox':
-                if (os.environ.has_key(LD_LIBRARY_PATH)
-                        and hasattr(self, 'sox_lib_path')):
-                    paths = filter(lambda x: x != self.sox_lib_path,
-                            os.environ[LD_LIBRARY_PATH].split(':'))
-                    os.environ[LD_LIBRARY_PATH] = ':'.join(paths)
 
     def set_volume_levels(self, volume, capture):
         '''
@@ -263,7 +226,7 @@ class AudioHelper(object):
         @return The output of sox stat command
         '''
         sox_mixer_cmd = self.get_sox_mixer_cmd(infile, channel)
-        stat_cmd = '%s -c 1 %s - -n stat 2>&1' % (self.sox_path,
+        stat_cmd = '%s -c 1 %s - -n stat 2>&1' % (SOX_PATH,
                 self._sox_format)
         sox_cmd = '%s | %s' % (sox_mixer_cmd, stat_cmd)
         return utils.system_output(sox_cmd, retain_output=True)
@@ -311,7 +274,7 @@ class AudioHelper(object):
             else:
                 pan_values = '%s%s' % (pan_values, ',0')
 
-        return '%s -c 2 %s %s -c 1 %s - mixer %s' % (self.sox_path,
+        return '%s -c 2 %s %s -c 1 %s - mixer %s' % (SOX_PATH,
                 self._sox_format, infile, self._sox_format, pan_values)
 
     def noise_reduce_file(self, in_file, noise_file, out_file):
@@ -325,10 +288,10 @@ class AudioHelper(object):
 
         @return The name of the file containing the noise-reduced data.
         '''
-        prof_cmd = '%s -c 2 %s %s -n noiseprof' % (self.sox_path,
+        prof_cmd = '%s -c 2 %s %s -n noiseprof' % (SOX_PATH,
                 _SOX_FORMAT, noise_file)
         reduce_cmd = ('%s -c 2 %s %s -c 2 %s %s noisered' %
-                (self.sox_path, _SOX_FORMAT, in_file, _SOX_FORMAT, out_file))
+                (SOX_PATH, _SOX_FORMAT, in_file, _SOX_FORMAT, out_file))
         utils.system('%s | %s' % (prof_cmd, reduce_cmd))
 
     def record_sample(self, tmpfile):
@@ -437,7 +400,7 @@ class AudioHelper(object):
         '''
         noise_threshold = str(args['n']) if args.has_key('n') else '400'
 
-        cmd = '%s -n %s' % (self.loopback_latency_path, noise_threshold)
+        cmd = '%s -n %s' % (LOOPBACK_LATENCY_PATH, noise_threshold)
 
         output = utils.system_output(cmd, retain_output=True)
 
@@ -489,7 +452,7 @@ class AudioHelper(object):
         @param duration: duration of the generated sine tone.
         @param sample_size: output audio sample size. Default to 16.
         '''
-        cmdargs = [self.sox_path, '-b', str(sample_size), '-n', '-t', 'alsa',
+        cmdargs = [SOX_PATH, '-b', str(sample_size), '-n', '-t', 'alsa',
                    odev, 'synth', str(duration)]
         if channel == 0:
             cmdargs += ['sine', str(freq), 'sine', '0']

@@ -46,7 +46,6 @@ class desktopui_AudioFeedback(test.test):
                                             record_command=cmd_rec,
                                             num_channels=num_channels,
                                             mix_command=cmd_mix)
-        self._ah.setup_deps(['audioloop', 'sox'])
 
         super(desktopui_AudioFeedback, self).initialize()
 

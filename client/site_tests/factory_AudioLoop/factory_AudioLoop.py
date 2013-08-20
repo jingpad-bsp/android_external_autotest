@@ -94,7 +94,8 @@ class factory_AudioLoop(test.test):
         Stop capturing data
         '''
         factory.console.info('Run audiofuntest')
-        self._proc = subprocess.Popen([self._audiofuntest_path, '-r', '48000',
+        self._proc = subprocess.Popen([audio_helper.AUDIOFUNTEST_PATH,
+                                       '-r', '48000',
                                        '-i', idev, '-o', odev, '-l',
                                        '%d' % dur], stderr=subprocess.PIPE)
 
@@ -140,7 +141,6 @@ class factory_AudioLoop(test.test):
 
             # TODO(hychao): split deps and I/O devices to different
             # utils so we can setup deps only once.
-            self._ah.setup_deps(['sox'])
             for output_device in self._output_devices:
                 # Record a sample of "silence" to use as a noise profile.
                 with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
@@ -201,15 +201,6 @@ class factory_AudioLoop(test.test):
         if mixer_controls is not None:
             self._ah.set_mixer_controls(mixer_controls)
 
-        # Setup dependencies
-        self._ah.setup_deps(['sox', 'test_tones'])
-        self._audiofuntest_path = os.path.join(self.autodir, 'deps',
-                'test_tones', 'src', 'audiofuntest')
-        if not (os.path.exists(self._audiofuntest_path) and
-                os.access(self._audiofuntest_path, os.X_OK)):
-            raise error.TestError(
-                    '%s is not an executable' % self._audiofuntest_path)
-
         # Setup HTML UI, and event handler
         self.ui = UI()
         self.ui.AddEventHandler('start_run_test', self.start_run_test)
@@ -219,4 +210,3 @@ class factory_AudioLoop(test.test):
         self.ui.CallJSFunction('init', autostart, require_dongle)
         factory.console.info('Run UI')
         self.ui.Run()
-

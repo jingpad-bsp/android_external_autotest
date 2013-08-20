@@ -409,11 +409,12 @@ class factory_AudioQuality(test.test):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP)
         if self._use_sox_loop:
-            cmdargs = [self._ah.sox_path, '-t', 'alsa', self._input_dev, '-t',
-                    'alsa', self._output_dev]
+            cmdargs = [audio_helper.SOX_PATH, '-t', 'alsa',
+                       self._input_dev, '-t',
+                       'alsa', self._output_dev]
             self._loop_process = subprocess.Popen(cmdargs)
         else:
-            cmdargs = [self._ah.audioloop_path, '-i', self._input_dev, '-o',
+            cmdargs = [audio_helper.AUDIOLOOP_PATH, '-i', self._input_dev, '-o',
                     self._output_dev, '-c', str(self._loop_buffer_count)]
             self._loop_process = subprocess.Popen(cmdargs)
 
@@ -497,7 +498,6 @@ class factory_AudioQuality(test.test):
         utils.system('ifconfig %s down' % self._eth)
         utils.system('ifconfig %s up' % self._eth)
         self.restore_configuration()
-        self._ah.cleanup_deps(['sox', 'audioloop'])
 
     def mock_command(self, event):
         """Receive test command from FA-utility.
@@ -693,7 +693,6 @@ class factory_AudioQuality(test.test):
         logging.info('%s run_once', self.__class__)
 
         self._ah = audio_helper.AudioHelper(self)
-        self._ah.setup_deps(['sox', 'audioloop'])
         self._input_dev = input_dev
         self._output_dev = output_dev
         self._eth = None

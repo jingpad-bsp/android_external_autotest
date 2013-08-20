@@ -41,7 +41,6 @@ class audio_SuspendResumeStress(cros_ui_test.UITest):
         self._ah = audio_helper.AudioHelper(self,
                 record_command=cmd_rec,
                 num_channels=num_channels)
-        self._ah.setup_deps(['audioloop', 'sox'])
         self._suspender = power_suspend.Suspender(self.resultsdir,
                                                   method=sys_power.do_suspend)
 

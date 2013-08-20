@@ -445,7 +445,6 @@ class factory_Connector(state_machine.FactoryStateMachine):
         '''
         factory.log('Start audiofuntest')
         errors = []
-        self._ah.setup_deps(['test_tones'])
         audiofuntest_path = os.path.join(self.autodir, 'deps',
                 'test_tones', 'src', 'audiofuntest')
         if not (os.path.exists(audiofuntest_path) and
@@ -481,7 +480,6 @@ class factory_Connector(state_machine.FactoryStateMachine):
         '''
         factory.log('Start audioloop')
         errors = []
-        self._ah.setup_deps(['sox'])
         self._ah.set_mixer_controls(
                 [{'name': '"Digital-Mic Capture Switch"',
                   'value': 'on'},
@@ -492,7 +490,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
 
         # Callbacks for sound playback and record result check.
         def playback_sine():
-            cmd = '%s -n -d synth %d sine %d' % (self._ah.sox_path,
+            cmd = '%s -n -d synth %d sine %d' % (audio_helper.SOX_PATH,
                     loop_duration, test_freq)
             utils.system(cmd)
 

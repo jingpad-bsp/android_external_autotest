@@ -7,6 +7,7 @@ import copy, logging, os, pprint, re, threading, time, urllib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
+from autotest_lib.client.cros.audio import audio_helper
 
 # HTML templates.
 _STATIC_CSS ='''
@@ -422,7 +423,6 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
 
     def setup(self):
-        self.job.setup_dep(['test_tones'])
         # build alsa_caps as well.
         os.chdir(self.srcdir)
         utils.make('clean')
@@ -438,15 +438,6 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self._pp = pprint.PrettyPrinter()
         logging.info('Test Definitions:')
         logging.info(self._pp.pformat(_TESTS))
-
-        dep = 'test_tones'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
-        self._test_tones_path = os.path.join(dep_dir, 'src', dep)
-        if not (os.path.exists(self._test_tones_path) and
-                os.access(self._test_tones_path, os.X_OK)):
-            raise error.TestError(
-                    '%s is not an executable' % self._test_tones_path)
 
         self._alsa_caps_path = os.path.join(self.srcdir, 'alsa_caps')
         if not (os.path.exists(self._alsa_caps_path) and
@@ -1382,7 +1373,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                     active_channel: integer to select channel for playback.
                                     None means playback on all channels.
         """
-        args['exec'] = self._test_tones_path
+        args['exec'] = audio_helper.TEST_TONES_PATH
 
         if not 'tone_end_volume' in args:
             args['tone_end_volume'] = args['tone_volume']

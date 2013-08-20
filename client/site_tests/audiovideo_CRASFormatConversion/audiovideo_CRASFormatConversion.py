@@ -44,7 +44,6 @@ class audiovideo_CRASFormatConversion(test.test):
         self._ah = audio_helper.AudioHelper(self,
                                             record_command = cmd_rec,
                                             sox_threshold = _MIN_SOX_RMS_VALUE)
-        self._ah.setup_deps(['sox'])
         self._sox_min_rms = _MIN_SOX_RMS_VALUE
         super(audiovideo_CRASFormatConversion, self).initialize()
 
