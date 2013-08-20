@@ -45,6 +45,7 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
             self.supported_securities = supported_securities
             self.visibility_supported = visibility_supported
             self.host_name = host_name
+            self.channel = None
 
 
         def get_supported_bands(self):
@@ -74,6 +75,19 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
         def host_name(self):
             """Returns the host name of the AP."""
             return self.host_name
+
+
+        def set_using_ap_spec(self, ap_spec):
+            """Sets a limited numberof setting of the AP.
+
+            @param ap_spec: APSpec object
+            """
+            self.channel = ap_spec.channel
+
+
+        def get_channel(self):
+            """Returns the channel."""
+            return self.channel
 
 
     def setUp(self):
@@ -521,3 +535,16 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
         actual = self.factory.get_aps_configurators_by_hostnames(['mock_ap1',
                                                                   'mock_ap2'])
         self.assertEquals([self.mock_ap1, self.mock_ap2].sort(), actual.sort())
+
+
+    def testGetAndPreConfigureAPConfigurators(self):
+        """Test preconfiguring APs."""
+        self._build_ap_test_inventory()
+
+        # Pick something that is not the default channel.
+        channel = ap_spec.VALID_5GHZ_CHANNELS[-1]
+        spec = ap_spec.APSpec(channel=channel)
+        actual = self.factory.get_ap_configurators_by_spec(ap_spec=spec,
+                                                           pre_configure=True)
+        self.assertEquals([self.mock_ap2], actual)
+        self.assertEquals(actual[0].get_channel(), channel)

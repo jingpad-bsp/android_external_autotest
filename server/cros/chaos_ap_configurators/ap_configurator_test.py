@@ -14,6 +14,7 @@ sys.path.append(os.path.join(
 from utils import common
 
 import ap_batch_locker
+import ap_spec
 
 
 class ConfiguratorTest(unittest.TestCase):
@@ -38,7 +39,7 @@ class ConfiguratorTest(unittest.TestCase):
     """
 
     # Specify the Chaos AP to run the tests against.
-    AP_SPEC = dict(hostnames=['chromeos3-row1-rack2-host11'])
+    AP_SPEC = dict(hostnames=['chromeos3-row2-rack1-host3'])
 
 
     @classmethod
@@ -301,6 +302,13 @@ class ConfiguratorTest(unittest.TestCase):
         if self.ap.is_security_mode_supported(self.ap.security_type_wep):
             self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
         self.ap.set_radio(enabled=False)
+        self.ap.apply_settings()
+
+
+    def test_configuring_with_ap_spec(self):
+        """Test configuring the AP using an APSpec."""
+        spec = ap_spec.APSpec()
+        self.ap.set_using_ap_spec(spec)
         self.ap.apply_settings()
 
 

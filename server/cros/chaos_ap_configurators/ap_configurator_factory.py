@@ -348,10 +348,14 @@ class APConfiguratorFactory(object):
         return aps
 
 
-    def get_ap_configurators_by_spec(self, ap_spec=None):
+    def get_ap_configurators_by_spec(self, ap_spec=None, pre_configure=False):
         """Returns available configurators meeting spec.
 
         @param ap_spec: a validated ap_spec object
+        @param pre_configure: boolean, True to set all of the configuration
+                              options for the APConfigurator object using the
+                              given ap_spec; False otherwise.  An ap_spec must
+                              be passed for this to have any effect.
         @returns aps: a list of APConfigurator objects
         """
         if not ap_spec:
@@ -361,7 +365,11 @@ class APConfiguratorFactory(object):
         mode_aps = self._get_aps_by_mode(ap_spec.mode)
         security_aps = self._get_aps_by_security(ap_spec.security)
         visible_aps = self._get_aps_by_visibility(ap_spec.visible)
-        return list(band_aps & mode_aps & security_aps & visible_aps)
+        matching_aps = list(band_aps & mode_aps & security_aps & visible_aps)
+        if pre_configure:
+            for ap in matching_aps:
+                ap.set_using_ap_spec(ap_spec)
+        return matching_aps
 
 
     def get_ap_configurators(self, spec=None):

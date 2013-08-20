@@ -11,8 +11,7 @@ import xmlrpclib
 
 import web_driver_core_helpers
 from autotest_lib.server.cros.chaos_ap_configurators import \
-        ap_configurator_config
-
+        ap_spec
 from autotest_lib.server.cros.chaos_ap_configurators import \
     download_chromium_prebuilt
 
@@ -31,15 +30,20 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     """Base class for objects to configure access points using webdriver."""
 
 
-    def __init__(self, ap_config=None):
+    def __init__(self, ap_config=None, set_ap_spec=None):
+        """Construct an APConfigurator.
+
+        @param ap_config: information from the configuration file
+        @param set_ap_spec: APSpec object that when passed will set all
+                            of the configuration options
+        """
         super(APConfigurator, self).__init__()
         self.rpm_client = xmlrpclib.ServerProxy(
             'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
             verbose=False)
 
         if ap_config:
-            # This allows the ability to build a generic configurator
-            # which can be used to get access to the members above.
+            # Load the data for the config file
             self.admin_interface_url = ap_config.get_admin()
             self.class_name = ap_config.get_class()
             self.short_name = ap_config.get_model()
@@ -47,31 +51,29 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             self.host_name = ap_config.get_wan_host()
             self.config_data = ap_config
 
-        config = ap_configurator_config.APConfiguratorConfig()
-
         # Possible bands
-        self.band_2ghz = config.BAND_2GHZ
-        self.band_5ghz = config.BAND_5GHZ
+        self.band_2ghz = ap_spec.BAND_2GHZ
+        self.band_5ghz = ap_spec.BAND_5GHZ
         # Set a default band, this can be overriden by the subclasses
-        self.current_band = config.BAND_2GHZ
+        self.current_band = ap_spec.BAND_2GHZ
 
         # Possible modes
-        self.mode_a = config.MODE_A
-        self.mode_b = config.MODE_B
-        self.mode_g = config.MODE_G
-        self.mode_n = config.MODE_N
-        self.mode_auto = config.MODE_AUTO
-        self.mode_m = config.MODE_M
-        self.mode_d = config.MODE_D
+        self.mode_a = ap_spec.MODE_A
+        self.mode_b = ap_spec.MODE_B
+        self.mode_g = ap_spec.MODE_G
+        self.mode_n = ap_spec.MODE_N
+        self.mode_auto = ap_spec.MODE_AUTO
+        self.mode_m = ap_spec.MODE_M
+        self.mode_d = ap_spec.MODE_D
 
         # Possible security types
-        self.security_type_disabled = config.SECURITY_TYPE_DISABLED
-        self.security_type_wep = config.SECURITY_TYPE_WEP
-        self.security_type_wpapsk = config.SECURITY_TYPE_WPAPSK
-        self.security_type_wpa2psk = config.SECURITY_TYPE_WPA2PSK
+        self.security_type_disabled = ap_spec.SECURITY_TYPE_DISABLED
+        self.security_type_wep = ap_spec.SECURITY_TYPE_WEP
+        self.security_type_wpapsk = ap_spec.SECURITY_TYPE_WPAPSK
+        self.security_type_wpa2psk = ap_spec.SECURITY_TYPE_WPA2PSK
 
-        self.wep_authentication_open = config.WEP_AUTHENTICATION_OPEN
-        self.wep_authentication_shared = config.WEP_AUTHENTICATION_SHARED
+        self.wep_authentication_open = ap_spec.WEP_AUTHENTICATION_OPEN
+        self.wep_authentication_shared = ap_spec.WEP_AUTHENTICATION_SHARED
 
         self._command_list = []
         self._screenshot_list = []
@@ -79,6 +81,10 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.driver_connection_established = False
         self.router_on = False
         self.configuration_success = False
+
+        self.ap_spec = set_ap_spec
+        if self.ap_spec:
+            self.set_using_ap_spec(self.ap_spec)
 
 
     def __del__(self):
@@ -333,6 +339,26 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         @param page_number: Page number of the page to save.
         """
         raise NotImplementedError
+
+
+    def set_using_ap_spec(self, set_ap_spec):
+        """
+        Sets all configurator options.
+
+        @param set_ap_spec: APSpec object
+        """
+        self.set_ssid(set_ap_spec.ssid)
+        if self.is_visibility_supported():
+            self.set_visibility(set_ap_spec.visible)
+        if (set_ap_spec.security == ap_spec.SECURITY_TYPE_WPAPSK or
+            set_ap_spec.security == ap_spec.SECURITY_TYPE_WPA2PSK):
+            self.set_security_wpapsk(set_ap_spec.password)
+        else:
+            self.set_security_disabled()
+        self.set_band(set_ap_spec.band)
+        self.set_mode(set_ap_spec.mode)
+        self.set_channel(set_ap_spec.channel)
+        self.ap_spec = set_ap_spec
 
 
     def set_mode(self, mode, band=None):
