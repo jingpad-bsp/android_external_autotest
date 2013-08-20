@@ -160,38 +160,28 @@ class FirmwareSummary:
         print title_statistics
         print '-' * len(title_statistics)
 
-    def _print_statistics_score(self, stat):
-        """Print the score statistics including average, ssd, and counts.
-
-        stat: a list about score statistics, [average, ssd, count]
-        """
-        # Create a flexible format to print scores, ssd, and counts according to
-        # the number of firmware versions which could be 1, 2, or more.
-        # As an example with 2 firmware versions, the format looks like
-        #   '  {0:<35}:  {1:>8.2f} {2:>6.2f} {3:>5} {4:>8.2f} {5:>6.2f} {6:>5}'
-        if len(stat) <= 1:
-            return
-
-        statistics_format_list = ['  {0:<35}:',]
-        score_ssd_count_format = '{%d:>8.2f} {%d:>6.2f} {%d:>5}'
-        for i in range(len(self.slog.fws)):
-            statistics_format_list.append(
-                    score_ssd_count_format % (i * 3 + 1, i * 3 + 2, i * 3 + 3))
-        statistics_format = ' '.join(statistics_format_list)
-        print statistics_format.format(*tuple(stat))
-
     def _print_result_stats(self, gesture=None):
         """Print the result statistics of validators."""
         for validator in self.slog.validators:
-            stat_scores_data = [validator,]
+            stat_scores_data = []
+            statistics_format_list = []
             for fw in self.slog.fws:
                 result = self.slog.get_result(fw=fw, gesture=gesture,
                                               validator=validator)
-                if result:
-                    stat_scores_data += result.stat_scores.all_data
+                scores_data = result.stat_scores.all_data
+                if scores_data:
+                    stat_scores_data += scores_data
+                    statistics_format_list.append('{:>8.2f} {:>6.2f} {:>5}')
+                else:
+                    stat_scores_data.append('')
+                    statistics_format_list.append('{:>21}')
 
             # Print the score statistics of all firmwares on the same row.
-            self._print_statistics_score(stat_scores_data)
+            if any(stat_scores_data):
+                stat_scores_data.insert(0, validator)
+                statistics_format_list.insert(0,'  {:<35}:')
+                statistics_format = ' '.join(statistics_format_list)
+                print statistics_format.format(*tuple(stat_scores_data))
 
     def _print_result_stats_by_gesture(self):
         """Print the summary of the test results by gesture."""
