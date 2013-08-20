@@ -250,6 +250,7 @@ def main():
             logging.error("No existing results directory found: %s", results)
             sys.exit(1)
 
+    logging.debug('autoserv command was: %s', ' '.join(sys.argv))
 
     if parser.options.write_pidfile:
         pid_file_manager = pidfile.PidFileManager(parser.options.pidfile_label,
@@ -288,12 +289,14 @@ def main():
     try:
         try:
             run_autoserv(pid_file_manager, results, parser)
-        except SystemExit, e:
+        except SystemExit as e:
             exit_code = e.code
-        except:
-            traceback.print_exc()
+            if exit_code:
+                logging.exception(e)
+        except Exception as e:
             # If we don't know what happened, we'll classify it as
             # an 'abort' and return 1.
+            logging.exception(e)
             exit_code = 1
     finally:
         if pid_file_manager:
