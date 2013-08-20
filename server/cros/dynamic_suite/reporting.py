@@ -28,7 +28,7 @@ except ImportError, e:
     fundamental_libs = False
     logging.debug('Bug filing disabled. %s', e)
 else:
-    from chromite.lib import cros_build_lib, gdata_lib, gs
+    from chromite.lib import cros_build_lib, gs
     fundamental_libs = True
 
 
@@ -274,8 +274,12 @@ class Reporter(object):
     _oauth_credentials = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'credentials', default='')
 
-    _PREDEFINED_LABELS = ['autofiled', 'OS-Chrome',
-                          'Type-Bug', 'Restrict-View-Google']
+    # _AUTOFILED_COUNT is a label prefix used to indicate how
+    # many times we think we've updated an issue automatically.
+    _AUTOFILED_COUNT = 'autofiled-count-'
+    _PREDEFINED_LABELS = ['autofiled', '%s%d' % (_AUTOFILED_COUNT, 1),
+                          'OS-Chrome', 'Type-Bug',
+                          'Restrict-View-Google']
 
     _LAB_ERROR_TEMPLATE = {
         'labels': ['Bug-Filer-Bug'],
@@ -413,20 +417,29 @@ class Reporter(object):
             return filed_bug.get('id')
 
 
-    def _modify_bug_report(self, issue_id, comment=''):
-        """
-        Modifies an existing bug report with a new comment.
+    def _modify_bug_report(self, issue_id, comment, label_update):
+        """Modifies an existing bug report with a new comment.
 
-        @param issue_id: Id of the issue to update with.
-        @param comment: Comment to update the issue with.
+        Adds the given comment and applies the given list of label
+        updates.
+
+        @param issue_id     Id of the issue to update with.
+        @param comment      Comment to update the issue with.
+        @param label_update List with label updates.
         """
+        updates = {
+            'content': comment,
+            'updates': { 'labels': label_update }
+        }
         try:
-            self._phapi_client.update_issue(issue_id, {'content': comment})
+            self._phapi_client.update_issue(issue_id, updates)
         except phapi_lib.ProjectHostingApiException as e:
-            logging.warning('Unable to add comment %s to existing issue %s: %s',
-                            comment, issue_id, e)
+            logging.warning('Unable to update issue %s, comment %s, '
+                            'labels %r: %s', issue_id, comment,
+                            label_update, e)
         else:
-            logging.info('Added comment %s, to issue %s', comment, issue_id)
+            logging.info('Updated issue %s, comment %s, labels %r.',
+                         issue_id, comment, label_update)
 
 
     def _find_issue_by_marker(self, marker):
@@ -524,38 +537,80 @@ class Reporter(object):
                 return issue
 
 
-    def report(self, bug, bug_template={}):
+    def _create_autofiled_count_update(self, issue):
+        """Return label updates for an issue's 'autofiled-count'.
+
+        Automatically filed issues have a label of the form
+        `autofiled-count-<number>` that indicates about how many
+        times the autofiling code has updated the issue.  This
+        routine goes through the labels for the given issue to find
+        the existing count label, and calculate a new count label.
+
+        Updates to issues aren't guaranteed to be atomic, so in
+        some cases count labels may (in theory at least) be dropped
+        or duplicated.
+
+        Old bugs may not have a count; this routine implicitly
+        assigns those bugs an initial count of one.
+
+        The return value is a list of label updates:  All existing
+        count labels will be prefixed with '-' to remove them, and a
+        new label with a new count will be added to the set.  Labels
+        not related to the count aren't updated.
+
+        @param issue Issue whose 'autofiled-count' is to be updated.
+        @return      List of label updates.
         """
-        Report a bug to the bug tracker. If this bug has already
-        happened, post a comment on the existing bug about it occurring again.
-        If this is a new bug, create a new bug about it.
+        counts = []
+        count_max = 1
+        is_count_label = lambda l: l.startswith(self._AUTOFILED_COUNT)
+        for label in filter(is_count_label, issue.labels):
+            try:
+                count = int(label[len(self._AUTOFILED_COUNT):])
+            except ValueError:
+                continue
+            count_max = max(count, count_max)
+            counts.append('-%s' % label)
+        counts.append('%s%d' % (self._AUTOFILED_COUNT, count_max + 1))
+        return counts
 
-        @param bug: A Bug instance about the bug.
-        @param bug_template: A template dictionary specifying the default bug
-                             filing options for the bug or failures in this
-                             suite.
 
-        @return: The issue id of the issue that was either created or modified.
+    def report(self, bug, bug_template={}):
+        """Report a failure to the bug tracker.
+
+        If this failure has happened before, post a comment on the
+        existing bug about it occurring again, and update the
+        'autofiled-count' label.  If this is a new failure, create a
+        new bug for it.
+
+        @param bug          A Bug instance about the failure.
+        @param bug_template A template dictionary specifying the
+                            default bug filing options for failures
+                            in this suite.
+        @return             The issue id of the issue that was
+                            either created or modified.
         """
         if not self._check_tracker():
             logging.error("Can't file %s", bug.title())
             return None
 
-        # If our search string sends pythons xml module into a state which it
-        # believes will lead to an xml syntax error, it will give up and throw
-        # an exception. This might happen with aborted jobs that contain weird
-        # escape charactes in their reason fields. We'd rather create a new
-        # issue than fail in dedulicating such cases.
         issue = None
         try:
             issue = self._find_issue_by_marker(bug.search_marker())
         except expat.ExpatError as e:
+            # If our search string sends python's xml module into a
+            # state which it believes will lead to an xml syntax
+            # error, it will give up and throw an exception. This
+            # might happen with aborted jobs that contain weird
+            # escape characters in their reason fields. We'd rather
+            # create a new issue than fail in deduplicating such cases.
             logging.warning('Unable to deduplicate, creating new issue: %s',
                             str(e))
 
         if issue:
             comment = '%s\n\n%s' % (bug.title(), self._anchor_summary(bug))
-            self._modify_bug_report(issue.id, comment)
+            count_update = self._create_autofiled_count_update(issue)
+            self._modify_bug_report(issue.id, comment, count_update)
             return issue.id
 
         sheriffs = []
