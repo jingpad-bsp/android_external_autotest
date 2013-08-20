@@ -1,7 +1,11 @@
+"""Provides a factory method to create a host object."""
+
+
 from autotest_lib.client.common_lib import utils, error, global_config
 from autotest_lib.server import autotest, utils as server_utils
 from autotest_lib.server.hosts import site_factory, site_host, ssh_host, serial
 from autotest_lib.server.hosts import logfile_monitor
+
 
 DEFAULT_FOLLOW_PATH = '/var/log/kern.log'
 DEFAULT_PATTERNS_PATH = 'console_patterns'
@@ -11,9 +15,33 @@ SSH_ENGINE = global_config.global_config.get_config_value('AUTOSERV',
 # for tracking which hostnames have already had job_start called
 _started_hostnames = set()
 
+
 def create_host(
     hostname, auto_monitor=False, follow_paths=None, pattern_paths=None,
     netconsole=False, **args):
+    """Create a host object.
+
+    This method mixes host classes that are needed into a new subclass
+    and creates a instance of the new class.
+
+    @param hostname: A string representing the host name of the device.
+    @param auto_monitor: A boolean value, if True, will try to mix
+                         SerialHost in. If the host supports use as SerialHost,
+                         will not mix in LogfileMonitorMixin anymore.
+                         If the host doesn't support it, will
+                         fall back to direct demesg logging and mix
+                         LogfileMonitorMixin in.
+    @param follow_paths: A list, passed to LogfileMonitorMixin,
+                         remote paths to monitor.
+    @param pattern_paths: A list, passed to LogfileMonitorMixin,
+                          local paths to alert pattern definition files.
+    @param netconsole: A boolean value, if True, will mix NetconsoleHost in.
+    @param args: Args that will be passed to the constructor of
+                 the new host class.
+
+    @returns: A host object which is an instance of the newly created
+              host class.
+    """
 
     # TODO(fdeng): this method should should dynamically discover
     # and allocate host types, crbug.com/273843
@@ -73,6 +101,7 @@ def create_host(
 
     hostname, args['user'], args['password'], args['port'] = \
             server_utils.parse_machine(hostname, ssh_user, ssh_pass, ssh_port)
+    args['ssh_verbosity_flag'] = ssh_verbosity_flag
 
     # create a custom host class for this machine and return an instance of it
     host_class = type("%s_host" % hostname, tuple(classes), {})

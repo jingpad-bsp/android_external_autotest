@@ -34,7 +34,6 @@ except ImportError, e:
         sys.exit(1)
 
 from autotest_lib.server import frontend
-from autotest_lib.server.hosts import site_host
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import server_job, utils, autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
@@ -122,7 +121,8 @@ def run_autoserv(pid_file_manager, results, parser):
     if ssh_verbosity > 0:
         # ssh_verbosity is an integer between 0 and 3, inclusive
         ssh_verbosity_flag = '-' + 'v' * ssh_verbosity
-        site_host.GLOBAL_SSH_COMMAND_OPTIONS += ssh_verbosity_flag
+    else:
+        ssh_verbosity_flag = ''
 
     # We have a control file unless it's just a verify/repair/cleanup job
     if len(parser.args) > 0:
@@ -157,8 +157,8 @@ def run_autoserv(pid_file_manager, results, parser):
         kwargs['control_filename'] = control_filename
     job = server_job.server_job(control, parser.args[1:], results, label,
                                 user, machines, client, parse_job,
-                                ssh_user, ssh_port, ssh_pass, test_retry,
-                                **kwargs)
+                                ssh_user, ssh_port, ssh_pass,
+                                ssh_verbosity_flag, test_retry, **kwargs)
     job.logging.start_logging()
     job.init_parser()
 

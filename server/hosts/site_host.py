@@ -31,12 +31,11 @@ from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 
-GLOBAL_SSH_COMMAND_OPTIONS = ''
-
 try:
     import jsonrpclib
 except ImportError:
     jsonrpclib = None
+
 
 def _make_servo_hostname(hostname):
     host_parts = hostname.split('.')
@@ -208,7 +207,8 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         return servo_args
 
 
-    def _initialize(self, hostname, servo_args=None, *args, **dargs):
+    def _initialize(self, hostname, servo_args=None, ssh_verbosity_flag='',
+                    *args, **dargs):
         """Initialize superclasses, and |self.servo|.
 
         For creating the host servo object, there are three
@@ -228,6 +228,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         # errors that might happen.
         self.env['LIBC_FATAL_STDERR_'] = '1'
         self._rpc_proxy_map = {}
+        self._ssh_verbosity_flag = ssh_verbosity_flag
         self.servo = _get_lab_servo(hostname)
         if not self.servo and servo_args is not None:
             self.servo = servo.Servo(**servo_args)
@@ -1007,7 +1008,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
                         ' -o ConnectTimeout=30 -o ServerAliveInterval=180'
                         ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
                         ' -o Protocol=2 -l %s -p %d')
-        return base_command % (GLOBAL_SSH_COMMAND_OPTIONS, opts, user, port)
+        return base_command % (self._ssh_verbosity_flag, opts, user, port)
 
 
     def _create_ssh_tunnel(self, port, local_port):
