@@ -51,7 +51,6 @@ import test_conf as conf
 import validators as val
 
 from collections import defaultdict, namedtuple
-from sets import Set
 
 from common_util import Debug, print_and_exit
 from firmware_constants import AXIS
@@ -513,8 +512,10 @@ class SummaryLog:
         self.validator_weights = validator_weights
         _setup_debug(debug_flag)
         self._read_logs()
-        self.ext_validator_weights = self._compute_extended_validator_weight(
-                self.validators)
+        self.ext_validator_weights = {}
+        for fw, validators in self.fw_validators.items():
+            self.ext_validator_weights[fw] = \
+                    self._compute_extended_validator_weight(validators)
 
     def _get_firmware_version(self, filename):
         """Get the firmware version from the given filename."""
@@ -532,15 +533,23 @@ class SummaryLog:
             print_and_exit(err_msg % self.log_dir)
 
         self.log_table = SimpleTable()
-        self.fws = Set()
-        self.gestures = Set()
-        self.validators = Set()
+        self.fws = set()
+        self.gestures = set()
+        # fw_validators keeps track of the validators of every firmware
+        self.fw_validators = defaultdict(set)
+
         for log_filename in log_filenames:
             self._add_round_log(log_filename)
 
+        # Convert set to list below
         self.fws = sorted(list(self.fws))
         self.gestures = sorted(list(self.gestures))
-        self.validators = sorted(list(self.validators))
+        # Construct validators by taking the union of the validators of
+        # all firmwares.
+        self.validators = sorted(list(set.union(*self.fw_validators.values())))
+
+        for fw in self.fws:
+            self.fw_validators[fw] = sorted(list(self.fw_validators[fw]))
 
     def _add_round_log(self, log_filename):
         """Add the round log, decompose the validator logs, and build
@@ -554,7 +563,7 @@ class SummaryLog:
         for glog in glogs:
             self.gestures.add(glog.name)
             for vlog in glog.vlogs:
-                self.validators.add(vlog.name)
+                self.fw_validators[fw].add(vlog.name)
                 key = (fw, round_name, glog.name, glog.variation, vlog.name)
                 self.log_table.insert(key, vlog)
 
@@ -647,10 +656,10 @@ class SummaryLog:
     def get_final_weighted_average(self):
         """Calculate the final weighted average."""
         weighted_average = {}
-        for fw in self.fws:
-            scores = [self.get_result(fw=fw,
-                                      validator=validator).stat_scores.average
-                      for validator in self.validators]
-            _, weights = zip(*sorted(self.ext_validator_weights.items()))
+        # for fw in self.fws:
+        for fw, validators in self.fw_validators.items():
+            scores = [self.get_result(fw=fw, validator=val).stat_scores.average
+                      for val in validators]
+            _, weights = zip(*sorted(self.ext_validator_weights[fw].items()))
             weighted_average[fw] = np.average(scores, weights=weights)
         return weighted_average
