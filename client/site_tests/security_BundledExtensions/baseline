@@ -263,6 +263,14 @@
                             "networkingPrivate",
                             "socket"]
       },
+      { "id": "gfdkimpbcpahaombhbimeihdjnejgicl",
+        "name": "Feedback",
+        "effective_host_permissions": ["chrome://resources/*"],
+        "api_permissions": ["app.currentWindowInternal",
+                            "app.runtime",
+                            "app.window",
+                            "feedbackPrivate"]
+      },
       { "id": "plamffmopddapimaopfdbibfkjpbojbf",
         "name": "Registration",
         "boards": ["butterfly"],
