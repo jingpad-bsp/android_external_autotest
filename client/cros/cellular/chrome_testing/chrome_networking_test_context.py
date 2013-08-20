@@ -4,11 +4,9 @@
 
 import logging
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-
-from telemetry.core import exceptions
-from telemetry.core import util
 
 class ChromeNetworkingTestContext(object):
     """
@@ -75,18 +73,16 @@ class ChromeNetworkingTestContext(object):
         # TODO(armansito): This method won't be necessary once crbug.com/251913
         # gets fixed.
         extension = self.network_test_extension
-        try:
-            def _check_chrome_testing_is_defined():
-                try:
-                    extension.EvaluateJavaScript('chromeTesting')
-                    return True
-                except exceptions.EvaluateException:
-                    return False
-            util.WaitFor(_check_chrome_testing_is_defined,
-                         self.NETWORK_TEST_EXT_READY_TIMEOUT)
-        except util.TimeoutException:
-            raise error.TestFail(
-                    'network_test_ext was not ready within timeout')
+        def _check_chrome_testing_is_defined():
+            try:
+                extension.EvaluateJavaScript('chromeTesting')
+                return True
+            except exceptions.EvaluateException:
+                return False
+        utils.poll_for_condition(
+                _check_chrome_testing_is_defined,
+                error.TestFail('network_test_ext was never ready.'),
+                self.NETWORK_TEST_EXT_READY_TIMEOUT)
 
     def _get_extension(self, path):
         if self._chrome is None:
@@ -172,12 +168,12 @@ class ChromeNetworkingTestContext(object):
         extension = self.network_test_extension
         def _evaluate_expr():
             return extension.EvaluateJavaScript(expression)
-        try:
-            util.WaitFor(lambda: condition(_evaluate_expr()), timeout)
-        except util.TimeoutException:
-            raise error.TestFail(
-                    'Timed out waiting for condition on expression: ' +
-                    expression)
+        utils.poll_for_condition(
+                lambda: condition(_evaluate_expr()),
+                error.TestFail(
+                        'Timed out waiting for condition on expression: ' +
+                        expression),
+                timeout)
         return _evaluate_expr()
 
     def call_test_function(self, timeout, function, *args):

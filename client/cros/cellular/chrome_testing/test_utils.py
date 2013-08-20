@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from telemetry.core import util
 
 """
 This module contains functions that are commonly used by tests while
@@ -76,12 +76,12 @@ def check_ui_property(chrome_networking_test_context,
                 ('"' + network_guid + '"',))
         value = get_ui_property(network, property_name, expansion_level)
         return value == expected_value
-    try:
-        util.WaitFor(_compare_props, timeout)
-    except util.TimeoutException:
-        raise error.TestFail('Property "' + property_name + '" on network "' +
-                             network_guid + '" never obtained value "' +
-                             expected_value + '"')
+    utils.poll_for_condition(
+            _compare_props,
+            error.TestFail('Property "' + property_name + '" on network "' +
+                           network_guid + '" never obtained value "' +
+                           expected_value + '"'),
+            timeout)
 
 
 def simple_network_sanity_check(
