@@ -226,8 +226,6 @@ class FirmwareSummary:
 
         # Print the metric name and the metric stats values of every firmwares
         name_format = ' ' * 6 + '{:<31}:'
-        value_format = '{:>10.2f}'
-        values_format = value_format * num_fws
         description_format = ' {:<40}'
         for validator in self.slog.validators:
             fw_stats_values = defaultdict(dict)
@@ -242,7 +240,13 @@ class FirmwareSummary:
 
             fw_stats_values_printed = False
             for metric_name, fw_values_dict in sorted(fw_stats_values.items()):
-                values = [fw_values_dict[fw] for fw in fws]
+                values = []
+                values_format = ''
+                for fw in fws:
+                    value = fw_values_dict.get(fw, '')
+                    values.append(value)
+                    values_format += '{:>10.2f}' if value else '{:>10}'
+
                 # The metrics of some special validators will not be shown
                 # unless the display_all_stats flag is True or any stats values
                 # are non-zero.
