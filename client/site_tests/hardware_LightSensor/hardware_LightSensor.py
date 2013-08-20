@@ -2,13 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging, os, glob
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
-LIGHT_SENSOR_LOCATIONS = [ "/sys/bus/iio/devices/iio:device0/",
-                           "/sys/bus/iio/devices/device0/"
-                         ]
+LIGHT_SENSOR_LOCATION = "/sys/bus/iio/devices/*/"
 LIGHT_SENSOR_FILES = [ "in_illuminance0_input",
                        "in_illuminance0_raw",
                        "illuminance0_input"
@@ -28,7 +26,7 @@ class hardware_LightSensor(test.test):
 
     def run_once(self):
         found_light_sensor = 0
-        for location in LIGHT_SENSOR_LOCATIONS:
+        for location in glob.glob(LIGHT_SENSOR_LOCATION):
             for file in LIGHT_SENSOR_FILES:
                 path = location + file
                 if os.path.exists(path):
