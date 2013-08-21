@@ -6,7 +6,10 @@
 import random
 import re
 
+import common
+
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server.cros.dynamic_suite import constants
 
 
 _CONFIG = global_config.global_config
@@ -160,3 +163,38 @@ def incorrectly_locked(host):
             True if the host is locked by the infra user.
     """
     return (host.locked and host.locked_by != infrastructure_user())
+
+
+def _testname_to_keyval_key(testname):
+    """Make a test name acceptable as a keyval key.
+
+    @param  testname Test name that must be converted.
+    @return          A string with selected bad characters replaced
+                     with allowable characters.
+    """
+    # Characters for keys in autotest keyvals are restricted; in
+    # particular, '/' isn't allowed.  Alas, in the case of an
+    # aborted job, the test name will be a path that includes '/'
+    # characters.  We want to file bugs for aborted jobs, so we
+    # apply a transform here to avoid trouble.
+    return testname.replace('/', '_') + constants.BUG_KEYVAL
+
+
+def create_bug_keyvals(testname, bug_id):
+    """Create keyvals to record a bug filed against a test failure.
+
+    @param testname Name of the test for which to record a bug.
+    @param bug_id   Id of the bug to be recorded for the test.
+    @return         Keyvals to be recorded for the given test.
+    """
+    return {_testname_to_keyval_key(testname): bug_id}
+
+
+def get_test_failure_bug_id(keyvals, testname):
+    """Extract the id for a bug filed against a test failure.
+
+    @param keyvals  Keyvals associated with a suite job.
+    @param testname Name of a test from the suite.
+    @return         Id of the bug file against the test's failure.
+    """
+    return keyvals.get(_testname_to_keyval_key(testname))

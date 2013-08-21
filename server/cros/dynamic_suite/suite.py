@@ -12,8 +12,9 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
-from autotest_lib.server.cros.dynamic_suite.job_status import Status
 from autotest_lib.server.cros.dynamic_suite import reporting
+from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.dynamic_suite.job_status import Status
 
 class Suite(object):
     """
@@ -468,19 +469,10 @@ class Suite(object):
                             result)
 
                     bug_id = bug_reporter.report(failure, bug_template)
+                    bug_keyvals = tools.create_bug_keyvals(
+                            result.test_name, bug_id)
                     try:
-                        # Attempting to use the name of a job with special
-                        # characters as a keyval will throw a ValueError. One
-                        # such case is with aborted jobs. Luckily, we don't
-                        # really care about the name, since the same name we
-                        # have here is inserted into the results database we can
-                        # use it as a key to retrieve the bug id. An example key
-                        # for an aborted job after replacing the '/' with '_':
-                        # lumpy-release_R28-3947.0.0_dummy_experimental_dummy_\
-                        # Pass-Bug_Id=xxxx, where xxxx is the id of the bug.
-                        utils.write_keyval(self._results_dir, {
-                            (result.test_name.replace('/', '_')+
-                             constants.BUG_KEYVAL): bug_id})
+                        utils.write_keyval(self._results_dir, bug_keyvals)
                     except ValueError:
                         logging.error('Unable to log keyval for test:%s '
                                       'bugid: %s', result.test_name, bug_id)

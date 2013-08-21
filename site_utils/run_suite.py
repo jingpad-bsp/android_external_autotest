@@ -24,6 +24,7 @@ from autotest_lib.client.common_lib import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
 from autotest_lib.site_utils.graphite import stats
 
@@ -634,16 +635,14 @@ def main():
                 options.name).ljust(width)
             logging.info("%s%s", test_view, get_pretty_status(view['status']))
 
-            # It's important that we:
-            # a. Use the test name in the view and not the name returned by
-            #    full_test_name, as this was the name inserted after the test
-            #    ran. Eg: for an aborted test full_test_name will return
-            #    experimental_testname but the view and the bug_id keyval will
-            #    contain /bulid/suite/experimental_testname.
-            # b. Apply the inverse function that was applied to record the bug
-            #    id as a keyval in dynamic_suite, by replacing all '/' with '_'.
-            bug_id = view['job_keyvals'].get(
-                view['test_name'].replace('/', '_')+constants.BUG_KEYVAL)
+            # It's important that we use the test name in the view
+            # and not the name returned by full_test_name, as this
+            # was the name inserted after the test ran, e.g. for an
+            # aborted test full_test_name will return
+            # 'experimental_testname' but the view and the bug_id
+            # keyval will use '/build/suite/experimental_testname'.
+            bug_id = tools.get_test_failure_bug_id(
+                    view['job_keyvals'], view['test_name'])
 
             link = LogLink(test_view, job_name, bug_id)
             web_links.append(link)
