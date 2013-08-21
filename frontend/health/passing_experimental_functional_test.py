@@ -14,9 +14,9 @@ import common
 from autotest_lib.frontend import setup_django_readonly_environment
 from autotest_lib.frontend import setup_test_environment
 from autotest_lib.frontend.health import passing_experimental
-from autotest_lib.client.common_lib import mail
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.frontend.tko import models as tko_models
+from autotest_lib.server.cros.dynamic_suite import reporting
 from django import test
 
 
@@ -40,7 +40,7 @@ class PassingExperimentalFunctionalTests(mox.MoxTestBase, test.TestCase):
     Does a functional test of the passing_experimental.py script.
 
     It uses an in-memory database, mocks out the saving and loading of the
-    storage object and mocks out the sending of the email. Everything else
+    storage object and mocks out the sending of the bugs. Everything else
     is a full run.
 
     """
@@ -53,13 +53,13 @@ class PassingExperimentalFunctionalTests(mox.MoxTestBase, test.TestCase):
         self.mox.StubOutWithMock(MockDatetime, 'today')
         self.datetime = datetime.datetime
         datetime.datetime = MockDatetime
-        # We need to mock out the send function in all tests or else the
-        # emails will be sent out during tests.
-        self.mox.StubOutWithMock(mail, 'send')
         # We really do not want a script that modifies the DB to run during
         # testing. So we will mock this out even though we will mock out the
         # function that calls it in case of refactoring.
         self.mox.StubOutWithMock(subprocess, 'call')
+        # We need to mock out this function so bugs are not filed.
+        self.mox.StubOutClassWithMocks(reporting, 'Bug')
+        self.mox.StubOutClassWithMocks(reporting, 'Reporter')
         self._orig_since_failure = passing_experimental._MIN_DAYS_SINCE_FAILURE
         self._orig_since_pass = passing_experimental._MAX_DAYS_SINCE_LAST_PASS
 
@@ -103,13 +103,17 @@ class PassingExperimentalFunctionalTests(mox.MoxTestBase, test.TestCase):
 
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
-        mail.send('chromeos-test-health@google.com',
-                  ['chromeos-lab-infrastructure@google.com'],
-                  [],
-                  'Long Passing Experimental Tests',
-                  'The following experimental tests have been passing for at '
-                  'least %i days:\n\ntest1\ntest2'
-                  % passing_experimental._MIN_DAYS_SINCE_FAILURE)
+        reporter = reporting.Reporter()
+        bug1 = reporting.Bug(
+                title=u'test1 should be promoted to non-experimental.',
+                summary=mox.IgnoreArg(),
+                search_marker=u'PassingExperimental(test1)')
+        reporter.report(bug1)
+        bug2 = reporting.Bug(
+                title=u'test2 should be promoted to non-experimental.',
+                summary=mox.IgnoreArg(),
+                search_marker=u'PassingExperimental(test2)')
+        reporter.report(bug2)
 
         self.mox.ReplayAll()
         passing_experimental.main()

@@ -8,8 +8,8 @@
 import argparse, datetime, sys
 
 import common
-from autotest_lib.client.common_lib import mail
 from autotest_lib.frontend import setup_django_readonly_environment
+from autotest_lib.server.cros.dynamic_suite import reporting
 
 # Django and the models are only setup after
 # the setup_django_readonly_environment module is imported.
@@ -21,9 +21,6 @@ from autotest_lib.frontend.health import utils
 _MIN_DAYS_SINCE_FAILURE = 30
 # Ignore any tests that have not passed in this many days.
 _MAX_DAYS_SINCE_LAST_PASS = 30
-
-_MAIL_RESULTS_FROM = 'chromeos-test-health@google.com'
-_MAIL_RESULTS_TO = 'chromeos-lab-infrastructure@google.com'
 
 
 def get_experimental_tests():
@@ -69,10 +66,36 @@ def parse_options(args):
     """Parse the command line options."""
 
     description = ('Collects information about which experimental tests '
-                   'have been passing for a long time and creates an email '
-                   'summarizing the results.')
+                   'have been passing for a long time and creates a bug '
+                   'report for each one.')
     parser = argparse.ArgumentParser(description=description)
     parser.parse_args(args)
+
+
+def submit_bug_reports(tests):
+    """
+    Submits bug reports to make the long passing tests as not experimental.
+
+    @param tests: The tests that need to be marked as not experimental.
+    """
+    reporter = reporting.Reporter()
+
+    for test in tests:
+        title = '%s should be promoted to non-experimental.' % test
+        summary = ('This bug has been automatically filed to track the '
+                   'following issue:\n\n'
+                   'Test: %s\n'
+                   'Issue: Promote to non-experimental as it has been passing '
+                   'for at least %d days.\n'
+                   'Suggested Actions: Navigate to the test\'s control file '
+                   'and remove the EXPERIMENTAL flag.\n'
+                   '\tSee http://www.chromium.org/chromium-os/testing/'
+                   'autotest-best-practices#TOC-Control-files' %
+                   (test, _MIN_DAYS_SINCE_FAILURE))
+        search_marker = 'PassingExperimental(%s)' % test
+        bug = reporting.Bug(title=title, summary=summary,
+                            search_marker=search_marker)
+        reporter.report(bug)
 
 
 def main(args=None):
@@ -95,14 +118,7 @@ def main(args=None):
     long_passers = find_long_passing_tests(pass_times, fail_times,
                                            experimental_tests)
 
-    if long_passers:
-        mail.send(_MAIL_RESULTS_FROM,
-                  [_MAIL_RESULTS_TO],
-                  [],
-                  'Long Passing Experimental Tests',
-                  'The following experimental tests have been passing for at '
-                  'least %i days:\n\n%s'
-                  % (_MIN_DAYS_SINCE_FAILURE, '\n'.join(sorted(long_passers))))
+    submit_bug_reports(long_passers)
 
     return 0
 
