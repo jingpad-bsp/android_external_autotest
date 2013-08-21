@@ -2,16 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from telemetry.core.chrome import cros_interface
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants, cros_logging
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.common_lib.cros import chrome
-
-
-FLASH_PROCESS_NAME = 'chrome/chrome --type=ppapi'
 
 
 class desktopui_FlashSanityCheck(test.test):
@@ -45,10 +41,11 @@ class desktopui_FlashSanityCheck(test.test):
         # Ensure that the swf got pulled
         latch = self._testServer.add_wait_url('/Trivial.swf')
         tab.Navigate(self._test_url)
+        tab.WaitForDocumentReadyStateToBeComplete()
         latch.wait(time_to_wait_secs)
 
-        prc = [proc for proc in cros_interface.CrOSInterface().ListProcesses()
-                if FLASH_PROCESS_NAME in proc[1]]
+        # Verify that YouTube is running in Flash mode.
+        prc = utils.get_process_list('chrome', '--type=ppapi')
         if not prc:
             raise error.TestFail('No Flash process found.')
 
@@ -58,6 +55,6 @@ class desktopui_FlashSanityCheck(test.test):
             raise error.TestFail('Browser crashed during test.')
 
 
-    def run_once(self, time_to_wait_secs=25):
+    def run_once(self, time_to_wait_secs=2):
         with chrome.Chrome() as cr:
             self.run_flash_sanity_test(cr.browser, time_to_wait_secs)
