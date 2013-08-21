@@ -616,6 +616,17 @@ class NoUniquePackageFound(Exception):
     pass
 
 
+class RPCException(Exception):
+    """Raised when an RPC encounters an error that a client might wish to
+    handle specially."""
+    pass
+
+
+class NoEligibleHostException(RPCException):
+    """Raised when no host could satisfy the requirements of a job."""
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

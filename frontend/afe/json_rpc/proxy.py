@@ -56,7 +56,8 @@ def BuildException(error):
     for cls in JSONRPCException.__subclasses__():
         if error['name'] == cls.__name__:
             return cls(error, error_message)
-    for cls in exceptions.CrosDynamicSuiteException.__subclasses__():
+    for cls in (exceptions.CrosDynamicSuiteException.__subclasses__() +
+                exceptions.RPCException.__subclasses__()):
         if error['name'] == cls.__name__:
             return cls(error_message)
     return JSONRPCException(error_message)

@@ -26,7 +26,7 @@ class FrontendTestMixin(object):
 
         self.labels = [models.Label.objects.create(name=name) for name in
                        ('label1', 'label2', 'label3', 'label4', 'label5',
-                        'label6', 'label7', 'label8')]
+                        'label6', 'label7', 'label8', 'unused')]
 
         platform = models.Label.objects.create(name='myplatform', platform=True)
         for host in self.hosts:

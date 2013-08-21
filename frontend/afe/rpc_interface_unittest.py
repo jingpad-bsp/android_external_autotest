@@ -10,6 +10,7 @@ from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils
 from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import error
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
@@ -200,6 +201,11 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_create_job_duplicate_hosts(self):
         self.assertRaises(model_logic.ValidationError, self._create_job_helper,
                           hosts=[1, 1])
+
+
+    def test_create_unrunnable_metahost_job(self):
+        self.assertRaises(error.NoEligibleHostException,
+                          self._create_job_helper, meta_hosts=['unused'])
 
 
     def test_create_hostless_job(self):

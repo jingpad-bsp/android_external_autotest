@@ -9,7 +9,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 import datetime, os, inspect
 import django.http
 from autotest_lib.frontend.afe import models, model_logic
-from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.server.cros import provision
 
 NULL_DATETIME = datetime.datetime.max
@@ -244,6 +244,24 @@ def check_job_dependencies(host_objects, job_dependencies):
                        (', '.join(job_dependencies)) + '): ' +
                        (', '.join(failing_hosts))})
 
+
+def check_job_metahost_dependencies(metahost_objects, job_dependencies):
+    """
+    Check that at least one machine within the metahost spec satisfies the job's
+    dependencies.
+
+    @param metahost_objects A list of label objects representing the metahosts.
+    @param job_dependencies A list of strings of the required label names.
+    @raises NoEligibleHostException If a metahost cannot run the job.
+    """
+    for metahost in metahost_objects:
+        hosts = models.Host.objects.filter(labels=metahost)
+        for label_name in job_dependencies:
+            if not provision.can_provision(label_name):
+                hosts = hosts.filter(labels__name=label_name)
+        if not any(hosts):
+            raise error.NoEligibleHostException("No hosts within %s satisfy %s."
+                    % (metahost.name, ', '.join(job_dependencies)))
 
 
 def _execution_key_for(host_queue_entry):
@@ -489,16 +507,16 @@ def create_new_job(owner, options, host_objects, metahost_objects,
 
     check_for_duplicate_hosts(host_objects)
 
-    check_job_dependencies(host_objects, dependencies)
-
-    # There may be provisionable labels in the dependencies list
-    # that do not yet exist in the database. If so, create them.
     for label_name in dependencies:
         if provision.can_provision(label_name):
             # TODO: We could save a few queries
             # if we had a bulk ensure-label-exists function, which used
             # a bulk .get() call. The win is probably very small.
             _ensure_label_exists(label_name)
+
+    # This only checks targeted hosts, not hosts eligible due to the metahost
+    check_job_dependencies(host_objects, dependencies)
+    check_job_metahost_dependencies(metahost_objects, dependencies)
 
     options['dependencies'] = list(
             models.Label.objects.filter(name__in=dependencies))

@@ -98,7 +98,7 @@ class AtomicGroupClassTest(AfeResourceTestCase):
 class LabelTest(AfeResourceTestCase):
     def test_collection(self):
         response = self.request('get', 'labels')
-        self.check_collection(response, 'name', ['label1', 'label2'], length=9,
+        self.check_collection(response, 'name', ['label1', 'label2'], length=10,
                               check_number=2)
         label1 = self.sorted_by(response['members'], 'name')[0]
         self.assertEquals(label1['is_platform'], False)
