@@ -17,7 +17,7 @@ import common
 
 from autotest_lib.client.common_lib import base_job, control_data
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import utils, error
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -207,7 +207,8 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def expect_job_scheduling(self, recorder, add_experimental,
-                              tests_to_skip=[], ignore_deps=False):
+                              tests_to_skip=[], ignore_deps=False,
+                              raises=False):
         """Expect jobs to be scheduled for 'tests' in |self.files|.
 
         @param add_experimental: expect jobs for experimental tests as well.
@@ -227,7 +228,7 @@ class SuiteTest(mox.MoxTestBase):
             if not ignore_deps:
                 dependencies.extend(test.dependencies)
             dependencies.append(constants.VERSION_PREFIX + self._BUILD)
-            self.afe.create_job(
+            job_mock = self.afe.create_job(
                 control_file=test.text,
                 name=mox.And(mox.StrContains(self._BUILD),
                              mox.StrContains(test.name)),
@@ -238,7 +239,17 @@ class SuiteTest(mox.MoxTestBase):
                 max_runtime_mins=24*60,
                 parent_job_id=None,
                 test_retry=0
-                ).AndReturn(FakeJob())
+                )
+            if raises:
+              job_mock.AndRaise(error.NoEligibleHostException())
+              recorder.record_entry(
+                      StatusContains.CreateFromStrings('START', test.name))
+              recorder.record_entry(
+                      StatusContains.CreateFromStrings('TEST_NA', test.name))
+              recorder.record_entry(
+                      StatusContains.CreateFromStrings('END', test.name))
+            else:
+              job_mock.AndReturn(FakeJob())
 
 
     def testScheduleTestsAndRecord(self):
@@ -286,6 +297,18 @@ class SuiteTest(mox.MoxTestBase):
                                        afe=self.afe, tko=self.tko,
                                        ignore_deps=True)
         suite.schedule(recorder.record_entry, add_experimental=False)
+
+
+    def testScheduleUnrunnableTestsTESTNA(self):
+        """Tests which fail to schedule should be TEST_NA."""
+        self.mock_control_file_parsing()
+        recorder = self.mox.CreateMock(base_job.base_job)
+        self.expect_job_scheduling(recorder, add_experimental=True, raises=True)
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+                                       self.devserver,
+                                       afe=self.afe, tko=self.tko)
+        suite.schedule(recorder.record_entry, add_experimental=True)
 
 
     def _createSuiteWithMockedTestsAndControlFiles(self, file_bugs=False):

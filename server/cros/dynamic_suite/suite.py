@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import hashlib, logging, os, re, traceback
+import datetime, hashlib, logging, os, re, traceback
 
 import common
 
 from autotest_lib.client.common_lib import control_data
-from autotest_lib.client.common_lib import site_utils, utils
+from autotest_lib.client.common_lib import site_utils, utils, error
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -388,18 +388,26 @@ class Suite(object):
                       len(self.unstable_tests()))
         n_scheduled = 0
 
+        begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
         Status('INFO', 'Start %s' % self._tag).record_result(record)
         try:
-            for test in self.stable_tests():
-                logging.debug('Scheduling %s', test.name)
-                self._jobs.append(self._create_job(test))
-                n_scheduled += 1
-
+            tests = self.stable_tests()
             if add_experimental:
                 for test in self.unstable_tests():
-                    logging.debug('Scheduling experimental %s', test.name)
                     test.name = constants.EXPERIMENTAL_PREFIX + test.name
-                    self._jobs.append(self._create_job(test))
+                    tests.append(test)
+
+            for test in tests:
+                logging.debug('Scheduling %s', test.name)
+                try:
+                    job = self._create_job(test)
+                except error.NoEligibleHostException:
+                    logging.debug('%s not applicable for this board/pool. '
+                                  'Emitting TEST_NA.', test.name)
+                    Status('TEST_NA', test.name, 'Unsatisfiable DEPENDENCIES',
+                           begin_time_str=begin_time_str).record_all(record)
+                else:
+                    self._jobs.append(job)
                     n_scheduled += 1
 
             if self._results_dir:
