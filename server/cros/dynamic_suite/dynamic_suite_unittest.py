@@ -33,7 +33,6 @@ class DynamicSuiteTest(mox.MoxTestBase):
                        'job': self.mox.CreateMock(base_job.base_job),
                        'num': 1,
                        'pool': 'pool',
-                       'skip_reimage': True,
                        'check_hosts': False,
                        'add_experimental': False,
                        'suite_dependencies': ['test_dep']}
@@ -107,7 +106,6 @@ class DynamicSuiteTest(mox.MoxTestBase):
         self.assertEquals(spec.pool, 'pool:' + self._DARGS['pool'])
         self.assertEquals(spec.num, self._DARGS['num'])
         self.assertEquals(spec.check_hosts, self._DARGS['check_hosts'])
-        self.assertEquals(spec.skip_reimage, self._DARGS['skip_reimage'])
         self.assertEquals(spec.add_experimental,
                           self._DARGS['add_experimental'])
         self.assertEquals(spec.devserver, mock_ds)
@@ -118,7 +116,6 @@ class DynamicSuiteTest(mox.MoxTestBase):
     def testDefaultOptionalReimageAndRunArgs(self):
         """Should verify that optional args get defaults."""
         del(self._DARGS['pool'])
-        del(self._DARGS['skip_reimage'])
         del(self._DARGS['check_hosts'])
         del(self._DARGS['add_experimental'])
         del(self._DARGS['num'])
@@ -130,26 +127,14 @@ class DynamicSuiteTest(mox.MoxTestBase):
         self.assertEquals(spec.pool, None)
         self.assertEquals(spec.num, None)
         self.assertEquals(spec.check_hosts, True)
-        self.assertEquals(spec.skip_reimage, False)
         self.assertEquals(spec.add_experimental, True)
         self.assertEquals(spec.devserver, mock_ds)
         self.assertEquals(spec.suite_dependencies, [])
 
 
-    def testReimageWithBadDependencies(self):
-        """Should raise if the build has bad dependency info."""
-
-        mock_ds = self._MockDevserverResolve()
-        mock_ds.get_dependencies_file(self._DARGS['build']).AndReturn('busted')
-        self.mox.ReplayAll()
-
-        self.assertRaises(error.MalformedDependenciesException,
-                          dynamic_suite.reimage_and_run, **self._DARGS)
-
-
     def testReimageAndSIGTERM(self):
         """Should reimage_and_run that causes a SIGTERM and fails cleanly."""
-        def suicide(_dontcare):
+        def suicide(*_):
             os.kill(os.getpid(), signal.SIGTERM)
 
         # Mox doesn't play well with SIGTERM, but it does play well with
@@ -163,38 +148,13 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
         signal.signal(signal.SIGTERM, handler)
         spec = self.mox.CreateMock(dynamic_suite.SuiteSpec)
-        spec.skip_reimage = True
         spec.build = ''
         spec.devserver = self.mox.CreateMock(dev_server.ImageServer)
-        spec.devserver.finish_download(spec.build).WithSideEffects(suicide)
+        spec.devserver.stage_artifacts(
+                spec.build, ['autotest']).WithSideEffects(suicide)
 
         self.mox.ReplayAll()
 
         self.assertRaises(UnhandledSIGTERM,
                           dynamic_suite._perform_reimage_and_run,
                           spec, None, None, None)
-
-
-    def testDependencies(self):
-        """Should correctly parse job and suite dependencies."""
-
-        job_name = "jobname"
-        job_deps = ['jdep1', 'jdep2']
-        suite_deps = ['sdep1', 'sdep2']
-        suite_deps_string = ', '.join(suite_deps)
-        job_depfile_string = str({self._DARGS['name']: {job_name: job_deps}})
-
-        self._DARGS['suite_dependencies'] = suite_deps_string
-
-        mock_ds = self._MockDevserverResolve()
-        mock_ds.get_dependencies_file(self._DARGS['build']).AndReturn(
-                                      job_depfile_string)
-
-        self.mox.ReplayAll()
-
-        spec = dynamic_suite.SuiteSpec(**self._DARGS)
-
-        parsed_dependencies = dynamic_suite._gatherAndParseDependencies(spec)
-
-        self.assertEqual(set(job_deps+suite_deps),
-                         set(parsed_dependencies[job_name]))

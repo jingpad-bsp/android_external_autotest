@@ -177,22 +177,6 @@ class SuiteTest(mox.MoxTestBase):
         self.assertFalse(self.files['four'] in suite.tests)
 
 
-    def testBlacklistFilter(self):
-        """Blacklist unrunnable tests."""
-        self.expect_control_file_parsing()
-        self.mox.ReplayAll()
-        suite = Suite.create_from_name_and_blacklist(
-            self._TAG, ['two'], self._BUILD, self._BOARD, self.devserver,
-            cf_getter=self.getter,
-            afe=self.afe, tko=self.tko)
-
-        self.assertFalse(self.files['two'] in suite.tests)
-        self.assertTrue(self.files['one'] in suite.tests)
-        self.assertTrue(self.files['three'] in suite.tests)
-        # Sanity check.
-        self.assertFalse(self.files['four'] in suite.tests)
-
-
     def mock_control_file_parsing(self):
         """Fake out find_and_parse_tests(), returning content from |self.files|.
         """

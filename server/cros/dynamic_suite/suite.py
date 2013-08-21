@@ -195,37 +195,6 @@ class Suite(object):
                      name, build, board, cf_getter, **dargs)
 
 
-    @staticmethod
-    def create_from_name_and_blacklist(name, blacklist, build, board, devserver,
-                                       cf_getter=None, **dargs):
-        """
-        Create a Suite using a predicate based on the SUITE control file var.
-
-        Makes a predicate based on |name| and uses it to instantiate a Suite
-        that looks for tests in |autotest_dir| and will schedule them using
-        |afe|.  Pulls control files from the default dev server.
-        Results will be pulled from |tko| upon completion.
-
-        @param name: a value of the SUITE control file variable to search for.
-        @param blacklist: iterable of control file paths to skip.
-        @param build: the build on which we're running this suite.
-        @param board: the board on which we're running this suite.
-        @param devserver: the devserver which contains the build.
-        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
-                          using DevServerGetter.
-        @param **dargs: Any other Suite constructor parameters, as described
-                        in Suite.__init__ docstring.
-        @return a Suite instance.
-        """
-        if cf_getter is None:
-            cf_getter = Suite.create_ds_getter(build, devserver)
-
-        predicates = [Suite.name_in_tag_predicate(name),
-                      Suite.not_in_blacklist_predicate(blacklist)]
-
-        return Suite(predicates, name, build, board, cf_getter, **dargs)
-
-
     def __init__(self, predicates, tag, build, board, cf_getter, afe=None,
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
                  file_bugs=False, file_experimental_bugs=False,

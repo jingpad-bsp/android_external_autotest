@@ -25,7 +25,6 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import tools
-from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
 from autotest_lib.site_utils.graphite import stats
 
 CONFIG = global_config.global_config
@@ -193,12 +192,9 @@ def get_view_info(suite_job_id, view, build, suite):
         #    that suites afe_job_id. This could lead to a view containing:
         #    SERVER_JOB, try_new_image,
         #    lumpy-release/R28-4008.0.0/bvt/experimental_pass_SERVER_JOB.
-        if view['test_name'].startswith(Reimager.JOB_NAME):
-            std_job_name = Reimager.JOB_NAME
-        else:
-            # Neither of these operations will stomp on a pristine string.
-            test_name = view['test_name'].replace('%s/%s/'% (build, suite), '')
-            std_job_name = test_name.split('.')[0]
+        # Neither of these operations will stomp on a pristine string.
+        test_name = view['test_name'].replace('%s/%s/'% (build, suite), '')
+        std_job_name = test_name.split('.')[0]
 
         if (job_status.view_is_for_infrastructure_fail(view) and
             std_job_name.startswith(constants.EXPERIMENTAL_PREFIX)):
@@ -297,8 +293,6 @@ class Timings(object):
     All timestamps are datetime.datetime objects.
 
     @var suite_start_time: the time the suite started.
-    @var reimage_start_time: the time we started reimaging devices.
-    @var reimage_end_time: the time we finished reimaging devices.
     @var tests_start_time: the time the first test started running.
     """
 
@@ -314,17 +308,6 @@ class Timings(object):
     # The test_start_time, but taken off the view that corresponds to the
     # suite instead of an individual test.
     suite_start_time = None
-
-    # reimaging_times is a dictionary mapping a host name to it's start and
-    # end reimage timings. RecordTiming is invoked with test views, that
-    # correspond to tests in a suite; these tests might've run across
-    # different hosts. Each view that RecordTiming is invoked with creates a
-    # new entry in reimaging_times; When it's time to log reimage timings we
-    # iterate over this dict and create a reimaging_info string. This is a
-    # one time operation and only happens after all the TestViews in a suite
-    # are added to the reimaging_times dictionary.
-    # reimaging_times eg: {'hostname': (start_time, end_time)}
-    reimage_times = {}
 
     # Earliest and Latest tests in the set of TestViews passed to us.
     tests_start_time = None
@@ -368,12 +351,6 @@ class Timings(object):
 
         if job_status.view_is_for_suite_prep(view):
             self.suite_start_time = start_candidate
-        elif view['test_name'].startswith(Reimager.JOB_NAME):
-            if '-' in view['test_name']:
-                hostname = view['test_name'].split('-', 1)[1]
-            else:
-                hostname = ''
-            self.reimage_times[hostname] = (start_candidate, end_candidate)
         else:
             self._UpdateFirstTestStartTime(start_candidate)
             self._UpdateLastTestEndTime(end_candidate)
@@ -411,23 +388,16 @@ class Timings(object):
 
 
     def __str__(self):
-        reimaging_info = ''
-        for host, (start, end) in self.reimage_times.iteritems():
-            reimaging_info += ('Reimaging %s started at %s\n'
-                               'Reimaging %s ended at %s\n' % (host, start,
-                                                               host, end))
         return ('\n'
                 'Suite timings:\n'
                 'Downloads started at %s\n'
                 'Payload downloads ended at %s\n'
                 'Suite started at %s\n'
-                '%s'
                 'Artifact downloads ended (at latest) at %s\n'
                 'Testing started at %s\n'
                 'Testing ended at %s\n' % (self.download_start_time,
                                            self.payload_end_time,
                                            self.suite_start_time,
-                                           reimaging_info,
                                            self.artifact_end_time,
                                            self.tests_start_time,
                                            self.tests_end_time))
@@ -480,8 +450,7 @@ class Timings(object):
         1. Makes a data_key of the form: run_suite.$board.$branch.$suite
             eg: stats/gauges/<hostname>/run_suite/<board>/<branch>/<suite>/
         2. Computes timings for several start and end event pairs.
-        3. Computes timings for reimage events for all hosts.
-        4. Sends all timing values to statsd.
+        3. Sends all timing values to statsd.
 
         @param suite: scheduled suite that we want to record the results of.
         @param build: the build that this suite ran on.
@@ -520,16 +489,6 @@ class Timings(object):
                 stats.Timer(data_key).send('tests_run_time',
                     (self.tests_end_time -
                      self.tests_start_time).total_seconds())
-
-        # The reimage times are the start and end times of the reimage
-        # job (taken directly from the view), converted to datetime objects.
-        # If the reimage job never ran we won't enter the loop and if it didn't
-        # finish for some reason the start and end times are still initialized
-        # to valid datetimes.
-        for host, (start, end) in self.reimage_times.iteritems():
-            if start and end:
-                stats.Timer(data_key).send(host.replace('.', '_'),
-                    (end - start).total_seconds())
 
 
 def _full_test_name(job_id, view, build, suite):

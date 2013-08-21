@@ -26,6 +26,18 @@ from autotest_lib.server.cros.dynamic_suite import suite
 from autotest_lib.site_utils import suite_preprocessor
 
 
+def _get_control_files_to_process(autotest_dir):
+    """Find all control files in autotest_dir that have 'SUITE='
+
+    @param autotest_dir: The directory to search for control files.
+    @return: All control files in autotest_dir that have a suite attribute.
+    """
+    fs_getter = suite.Suite.create_fs_getter(autotest_dir)
+    predicate = lambda t: hasattr(t, 'suite')
+    return suite.Suite.find_and_parse_tests(fs_getter, predicate,
+                                            add_experimental=True)
+
+
 def get_suite_control_files(autotest_dir):
     """
     Partition all control files in autotest_dir based on suite.
@@ -42,7 +54,7 @@ def get_suite_control_files(autotest_dir):
     autotest_dir = autotest_dir.rstrip('/')
     suite_control_files = collections.defaultdict(list)
 
-    for test in suite_preprocessor.get_all_suite_control_files(autotest_dir):
+    for test in _get_control_files_to_process(autotest_dir):
         for suite_name in suite.Suite.parse_tag(test.suite):
             suite_control_files[suite_name].append(
                 test.path.replace('%s/' % autotest_dir, ''))
