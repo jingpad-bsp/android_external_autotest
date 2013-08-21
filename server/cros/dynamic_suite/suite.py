@@ -228,7 +228,6 @@ class Suite(object):
 
     def __init__(self, predicates, tag, build, board, cf_getter, afe=None,
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
-                 version_prefix=constants.VERSION_PREFIX,
                  file_bugs=False, file_experimental_bugs=False,
                  suite_job_id=None, ignore_deps=False, extra_deps=[]):
         """
@@ -250,8 +249,6 @@ class Suite(object):
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
         @param max_runtime_mins: Maximum suite runtime, in minutes.
-        @param version_prefix: a string, prefix for the database label
-                               associated with the build
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
                              Default: None
         @param ignore_deps: True if jobs should ignore the DEPENDENCIES
@@ -283,7 +280,6 @@ class Suite(object):
                                                  self._tag,
                                                  add_experimental=True)
         self._max_runtime_mins = max_runtime_mins
-        self._version_prefix = version_prefix
         self._file_bugs = file_bugs
         self._file_experimental_bugs = file_experimental_bugs
         self._suite_job_id = suite_job_id
@@ -326,9 +322,6 @@ class Suite(object):
             job_deps = []
         else:
             job_deps = list(test.dependencies)
-
-        cros_label = self._version_prefix + self._build
-        job_deps.append(cros_label)
 
         if self._extra_deps:
             job_deps.extend(self._extra_deps)

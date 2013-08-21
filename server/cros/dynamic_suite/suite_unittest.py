@@ -227,7 +227,6 @@ class SuiteTest(mox.MoxTestBase):
             dependencies = []
             if not ignore_deps:
                 dependencies.extend(test.dependencies)
-            dependencies.append(constants.VERSION_PREFIX + self._BUILD)
             if suite_deps:
                 dependencies.extend(suite_deps)
             job_mock = self.afe.create_job(
