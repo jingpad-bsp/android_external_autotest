@@ -7,8 +7,6 @@ import os
 import time
 import urllib
 
-import telemetry.core.util
-
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
@@ -158,7 +156,7 @@ class power_Consumption(test.test):
         Record the waiting time as a sub-test
         """
         start_time = time.time() + self._stabilization_seconds
-        telemetry.core.util.WaitFor(predicate, timeout)
+        utils.poll_for_condition(predicate, timeout=timeout)
         self._plog.checkpoint(name, start_time)
 
 
@@ -257,7 +255,7 @@ class power_Consumption(test.test):
             # to let the V8 page load and create the 'status' div.
             is_done = lambda: tab.EvaluateJavaScript(js).startswith('Score')
             time.sleep(self._stabilization_seconds)
-            telemetry.core.util.WaitFor(is_done, 60)
+            utils.poll_for_condition(is_done, timeout=60, desc='V8 score found')
 
         self._run_func('V8', v8_func, repeat=self._repeats)
 
