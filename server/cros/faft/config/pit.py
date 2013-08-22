@@ -6,5 +6,5 @@
 
 
 class Values(object):
-    self.chrome_ec = True
-    self.ec_capability = (['battery', 'keyboard', 'arm', 'lid'])
+    chrome_ec = True
+    ec_capability = (['battery', 'keyboard', 'arm', 'lid'])
