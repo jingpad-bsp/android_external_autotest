@@ -218,11 +218,12 @@ class FirmwareSummary:
         num_fws = len(fws)
         title_str = ('Metrics statistics by gesture: ' + gesture if gesture else
                      'Metrics statistics by validator')
+        description_str = 'description (lower is better)'
         complete_title = ('{:<37}: '.format(title_str) +
                           ('{:>10}' * num_fws).format(*fws) +
-                          '  {:<40}'.format('description'))
+                          '  {:<40}'.format(description_str))
         print '\n' * 2 + complete_title
-        print '-' * (38 + 1 + 10 * num_fws + 17)
+        print '-' * len(complete_title)
 
         # Print the metric name and the metric stats values of every firmwares
         name_format = ' ' * 6 + '{:<31}:'

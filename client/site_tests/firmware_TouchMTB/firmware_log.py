@@ -223,14 +223,16 @@ class MetricNameProps:
             'COUNT_PACKETS': (
                 'pct of incorrect cases (%)--packets',
                 None,
-                'pct of incorrect cases over total cases',
+                'an incorrect case is one where a swipe has less than '
+                    '3 packets reported',
                 '(actual number of packets, expected number of packets)',
                 pct_by_cases_less),
             # Count TrackingID Validator
             'TID': (
                 'pct of incorrect cases (%)--tids',
                 None,
-                'pct of incorrect cases over total cases',
+                'an incorrect case is one where there are an incorrect number '
+                    'of fingers detected',
                 '(actual tracking IDs, expected tracking IDs)',
                 pct_by_cases_neq),
             # Drumroll Validator
