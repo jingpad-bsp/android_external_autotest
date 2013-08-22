@@ -76,6 +76,13 @@
     "group": "root",
     "mode": "0755"
   },
+  "/usr/bin/python2.7": {
+    "can_dangle": true,
+    "destination": "/usr/local/bin/python2.7",
+    "owner": "root",
+    "group": "root",
+    "mode": "0755"
+  },
   "/usr/lib/debug": {
     "can_dangle": true,
     "destination": "/usr/local/usr/lib/debug",
