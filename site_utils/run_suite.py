@@ -647,15 +647,15 @@ def main():
             link = LogLink(test_view, job_name, bug_id)
             web_links.append(link)
 
+            # Don't show links on the buildbot waterfall for tests with
+            # GOOD status.
             if view['status'] != 'GOOD':
                 logging.info("%s  %s: %s", test_view, view['status'],
                              view['reason'])
-                # Don't show links on the buildbot waterfall for tests with
-                # GOOD status.
-                buildbot_links.append(link)
                 if view['status'] == 'TEST_NA':
                     # Didn't run; nothing to do here!
                     continue
+                buildbot_links.append(link)
                 if code == RETURN_CODES.ERROR:
                     # Failed already, no need to worry further.
                     continue
