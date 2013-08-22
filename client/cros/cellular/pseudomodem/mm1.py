@@ -29,6 +29,9 @@ I_OBJECT_MANAGER = 'org.freedesktop.DBus.ObjectManager'
 # ModemManager1
 I_MODEM_MANAGER = 'org.freedesktop.ModemManager1'
 
+# ModemManager1 DBus error prefix
+MM1_ERROR_PREFIX = I_MODEM_MANAGER + '.Error'
+
 # Modems
 I_MODEM = I_MODEM_MANAGER + '.Modem'
 I_MODEM_SIMPLE = I_MODEM + '.Simple'
@@ -410,7 +413,7 @@ class MMConnectionError(MMError):
     NO_ANSWER = 4
 
     def _Setup(self):
-        self._error_name_base = I_MODEM_MANAGER + '.Connection'
+        self._error_name_base = MM1_ERROR_PREFIX + '.Connection'
         self._error_name_map = {
             self.UNKNOWN : '.Unknown',
             self.NO_CARRIER : '.NoCarrier',
@@ -442,7 +445,7 @@ class MMCoreError(MMError):
     EXISTS = 13
 
     def _Setup(self):
-        self._error_name_base = I_MODEM_MANAGER + '.Core'
+        self._error_name_base = MM1_ERROR_PREFIX + '.Core'
         self._error_name_map = {
             self.FAILED : '.Failed',
             self.CANCELLED : '.Cancelled',
@@ -492,7 +495,7 @@ class MMMessageError(MMError):
     UNKNOWN = 500
 
     def _Setup(self):
-        self._error_name_base = I_MODEM_MANAGER + '.Message'
+        self._error_name_base = MM1_ERROR_PREFIX + '.Message'
         self._error_name_map = {
             self.ME_FAILURE : '.MeFailure ',
             self.SMS_SERVICE_RESERVED : '.SmsServiceReserved',
@@ -580,7 +583,7 @@ class MMMobileEquipmentError(MMError):
     GPRS_INVALID_MOBILE_CLASS = 150
 
     def _Setup(self):
-        self._error_name_base = I_MODEM_MANAGER + '.MobileEquipment'
+        self._error_name_base = MM1_ERROR_PREFIX + '.MobileEquipment'
         self._error_name_map = {
           self.PHONE_FAILURE : '.PhoneFailure',
           self.NO_CONNECTION : '.NoConnection',
@@ -665,7 +668,7 @@ class MMSerialError(MMError):
     NOT_OPEN = 6
 
     def _Setup(self):
-        self._error_name_base = I_MODEM_MANAGER + '.Serial'
+        self._error_name_base = MM1_ERROR_PREFIX + '.Serial'
         self._error_name_map = {
             self.UNKNOWN : '.Unknown',
             self.OPEN_FAILED : '.OpenFailed',
@@ -695,7 +698,7 @@ class MMCdmaActivationError(MMError):
     START_FAILED = 9
 
     def _Setup(self):
-        self._error_name_base = I_MODEM_MANAGER + '.CdmaActivation'
+        self._error_name_base = MM1_ERROR_PREFIX + '.CdmaActivation'
         self._error_name_map = {
             self.NONE : '.None',
             self.UNKNOWN :
