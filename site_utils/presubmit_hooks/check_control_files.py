@@ -110,10 +110,13 @@ def main():
 
     for file_path in file_list.split('\n'):
         control_file = re.search(r'.*/control(?:\.\w+)?$', file_path)
+        client_side = re.search(r'/client/', file_path)
         if control_file:
-            CheckSuites(control_data.parse_control(control_file.group(0),
-                                                   raise_warnings=True),
-                        os.path.basename(os.path.split(file_path)[0]))
+            ctrl_data = control_data.parse_control(control_file.group(0),
+                                                   raise_warnings=True)
+            test_name = os.path.basename(os.path.split(file_path)[0])
+            if client_side:
+                CheckSuites(ctrl_data, test_name)
 
 
 if __name__ == '__main__':
