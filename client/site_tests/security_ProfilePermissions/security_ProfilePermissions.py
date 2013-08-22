@@ -113,8 +113,12 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             vaultpath = cryptohome.get_mounted_vault_devices(username)[0]
 
             passes.append(self.check_owner_mode(vaultpath, "root", 0700))
-            passes.append(self.check_owner_mode(vaultpath + "/../master.0",
-                                                "root", 0600))
+            # crbug.com/265725: Avoid winning a race with cryptohome/chmod.
+            # Poll for permissions on master.0 to settle.
+            check = lambda: self.check_owner_mode(vaultpath + "/../master.0",
+                                                  "root", 0600)
+            utils.poll_for_condition(check, desc="permissions to settle",
+                                     timeout=60, sleep_interval=2)
             passes.append(self.check_owner_mode(vaultpath + "/../",
                                                 "root", 0700))
             passes.append(self.check_owner_mode(vaultpath + "/../../",
