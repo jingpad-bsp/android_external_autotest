@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import re
 import socket
 import struct
 
@@ -144,3 +145,44 @@ class Interface:
         all_ones = 0xffffffff
         int_mask = ((1 << 32 - prefix_size) - 1) ^ all_ones
         return socket.inet_ntoa(struct.pack("!I", int_mask))
+
+
+    @property
+    def signal_level(self):
+        """Get the signal level for an interface.
+
+        This is currently only defined for WiFi interfaces.
+
+        localhost test # iw dev mlan0 link
+        Connected to 04:f0:21:03:7d:b2 (on mlan0)
+                SSID: Perf_slvf0_ch36
+                freq: 5180
+                RX: 699407596 bytes (8165441 packets)
+                TX: 58632580 bytes (9923989 packets)
+                signal: -54 dBm
+                tx bitrate: 130.0 MBit/s MCS 15
+
+                bss flags:
+                dtim period:    2
+                beacon int:     100
+
+        @return signal level in dBm (a negative, integral number).
+
+        """
+        if self._run('iw dev %s info' % self._name,
+                     ignore_status=True).exit_status:
+            logging.debug('%s does not seem to be a wireless device.',
+                          self._name)
+            return None
+
+        result_lines = self._run('iw dev %s link' %
+                                 self._name).stdout.splitlines()
+        signal_pattern = re.compile('signal:\s+([-0-9]+)\s+dbm')
+        for line in result_lines:
+            cleaned = line.strip().lower()
+            match = re.search(signal_pattern, cleaned)
+            if match is not None:
+                return int(match.group(1))
+
+        logging.error('Failed to find signal level for %s.', self._name)
+        return None

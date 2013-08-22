@@ -174,6 +174,16 @@ class WiFiClient(object):
         return self._interface.ipv4_address
 
 
+    @property
+    def wifi_signal_level(self):
+        """Returns the signal level of this DUT's WiFi interface.
+
+        @return int signal level of connected WiFi interface or None (e.g. -67).
+
+        """
+        return self._interface.signal_level
+
+
     def __init__(self, client_host, result_dir):
         """
         Construct a WiFiClient.
