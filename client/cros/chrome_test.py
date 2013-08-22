@@ -25,6 +25,7 @@ class _ChromeTestBase(cros_ui_test.UITest):
     """
 
     CHROME_TEST_DEP = 'chrome_test'
+    CHROME_SANDBOX = '/opt/google/chrome/chrome-sandbox'
     _MINIDUMPS_FILE = '/mnt/stateful_partition/etc/enable_chromium_minidumps'
 
 
@@ -181,9 +182,12 @@ class ChromeBinaryTest(_ChromeTestBase):
         try:
             os.chdir(self.home_dir)
             cmd = '%s/%s %s' % (self.test_binary_dir, test_to_run, extra_params)
-            cmd = 'HOME=%s CR_SOURCE_ROOT=%s %s' % (self.home_dir,
-                                                    self.cr_source_dir,
-                                                    prefix + cmd)
+            env_vars = 'HOME=%s CR_SOURCE_ROOT=%s CHROME_DEVEL_SANDBOX=%s' % (
+                    self.home_dir,
+                    self.cr_source_dir,
+                    self.CHROME_SANDBOX)
+            cmd = '%s %s' % (env_vars, prefix + cmd)
+
             if as_chronos:
                 cros_ui.xsystem_as(cmd)
             else:
