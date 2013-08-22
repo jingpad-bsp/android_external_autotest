@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import mm
@@ -41,7 +41,7 @@ class network_3GIdentifiers(test.test):
             raise error.TestFail(message)
         logging.info('    %s = %s' % (label, device_value))
 
-    def _ValidateGsmIdentifiers(self, device_props, modem_props):
+    def _ValidateGsmIdentifiers(self, device_props, service_props, modem_props):
         """Validates GSM identifiers."""
         self._ValidateIdentifier('IMEI',
                                  device_props['Cellular.IMEI'],
@@ -51,11 +51,17 @@ class network_3GIdentifiers(test.test):
                                  device_props['Cellular.IMSI'],
                                  modem_props['Imsi'],
                                  0, 15)
-        self._ValidateIdentifier('Operator Code',
-                                 device_props['Cellular.HomeProvider']['code'],
-                                 modem_props['OperatorCode'],
-                                 5, 6)
         if self.is_modemmanager:
+            operator_identifier = modem_props.get('OperatorIdentifier', '')
+            if operator_identifier != '':
+                # If modemmanager fails to expose this property, the
+                # HomeProvider information is obtained offline from
+                # mobile_provider_database. We don't check that case here.
+                self._ValidateIdentifier(
+                        'HomeProvider.code',
+                        device_props['Cellular.HomeProvider']['code'],
+                        operator_identifier,
+                        5, 6)
             self._ValidateIdentifier('Operator ID',
                                      device_props['Cellular.SIMOperatorID'],
                                      modem_props['OperatorIdentifier'],
@@ -64,6 +70,13 @@ class network_3GIdentifiers(test.test):
                                      device_props['Cellular.ICCID'],
                                      modem_props['SimIdentifier'],
                                      0, 20)
+
+        self._ValidateIdentifier(
+                'ServingOperator.code',
+                service_props['Cellular.ServingOperator']['code'],
+                modem_props['OperatorCode'],
+                5, 6)
+
 
     def _ValidateCdmaIdentifiers(self, device_props, modem_props):
         """Validates CDMA identifiers."""
@@ -91,13 +104,12 @@ class network_3GIdentifiers(test.test):
             device = flim.FindCellularDevice()
             if not device:
                 raise error.TestFail('Failed to find cellular device')
-            utils.poll_for_condition(
-                lambda: flim.FindCellularService(),
-                exception=utils.TimeoutError('Cellular device failed '
-                                             'to register with network'),
-                sleep_interval=1,
-                timeout=SERVICE_REGISTRATION_TIMEOUT)
-            device_props = device.GetProperties(utf8_strings=True);
+            service = flim.FindCellularService(SERVICE_REGISTRATION_TIMEOUT)
+            if not service:
+                raise error.TestFail('Cellular device failed to register with '
+                                     'network.')
+            device_props = device.GetProperties(utf8_strings=True)
+            service_props = service.GetProperties(utf8_strings=True)
             self.is_modemmanager = 'freedesktop' in device_props['DBus.Service']
             if self.is_modemmanager and not device_props['Cellular.SIMPresent']:
                 raise error.TestFail('Test requires a valid SIM')
@@ -106,10 +118,15 @@ class network_3GIdentifiers(test.test):
             modem = manager.GetModem(modem_path)
             modem_props = modem.GetModemProperties()
 
+            logging.debug('shill service properties: %s', service_props)
+            logging.debug('shill device_properties: %s', device_props)
+            logging.debug('mm properties: %s', modem_props)
+
             technology_family = device_props['Cellular.Family']
             if technology_family == 'GSM':
                 logging.info('Validating GSM identifiers')
-                self._ValidateGsmIdentifiers(device_props, modem_props)
+                self._ValidateGsmIdentifiers(device_props, service_props,
+                                             modem_props)
             elif technology_family == 'CDMA':
                 logging.info('Validating CDMA identifiers')
                 self._ValidateCdmaIdentifiers(device_props, modem_props)
