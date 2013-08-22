@@ -153,10 +153,18 @@ class RPMController(object):
                 logging.error('Request has timed out already. Not processing.')
                 request['result_queue'].put(False)
                 continue
-            result = self.set_power_state(request['dut'], request['new_state'])
-            if not result:
-                logging.error('Request to change %s to state %s failed.',
-                              request['dut'], request['new_state'])
+            try:
+                result = self.set_power_state(request['dut'],
+                                              request['new_state'])
+                if not result:
+                    logging.error('Request to change %s to state %s failed.',
+                                  request['dut'], request['new_state'])
+            except Exception as e:
+                logging.error('Request to change %s to state %s failed: '
+                              'Raised exception: %s', request['dut'],
+                              request['new_state'], e)
+                result = False
+
             # Put result inside the result Queue to allow the caller to resume.
             request['result_queue'].put(result)
         self._stop_processing_requests()
