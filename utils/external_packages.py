@@ -707,6 +707,24 @@ class RequestsPackage(ExternalPackage):
                         ExternalPackage._build_and_install_current_dir_setup_py)
 
 
+class JsonRPCLib(ExternalPackage):
+    """jsonrpclib package"""
+    version = '0.1.3'
+    module_name = 'jsonrpclib'
+    local_filename = '%s-%s.tar.gz' % (module_name, version)
+    urls = ('http://pypi.python.org/packages/source/j/%s/%s' %
+            (module_name, local_filename), )
+    hex_sum = '431714ed19ab677f641ce5d678a6a95016f5c452'
+
+    def _get_installed_version_from_module(self, module):
+        # jsonrpclib doesn't contain a proper version
+        return self.version
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_noegg)
+
+
 class Httplib2Package(ExternalPackage):
     """httplib2 package"""
     version = '0.6.0'

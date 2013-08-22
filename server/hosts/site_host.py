@@ -33,6 +33,10 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 GLOBAL_SSH_COMMAND_OPTIONS = ''
 
+try:
+    import jsonrpclib
+except ImportError:
+    jsonrpclib = None
 
 def _make_servo_hostname(hostname):
     host_parts = hostname.split('.')
@@ -131,6 +135,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
     _USB_POWER_TIMEOUT = 5
     _POWER_CYCLE_TIMEOUT = 10
 
+    _RPC_PROXY_URL = 'http://localhost:%d'
 
     _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
             'rpm_recovery_boards', type=str).split(',')
@@ -222,7 +227,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         # LIBC_FATAL_STDERR_ can be useful for diagnosing certain
         # errors that might happen.
         self.env['LIBC_FATAL_STDERR_'] = '1'
-        self._xmlrpc_proxy_map = {}
+        self._rpc_proxy_map = {}
         self.servo = _get_lab_servo(hostname)
         if not self.servo and servo_args is not None:
             self.servo = servo.Servo(**servo_args)
@@ -874,7 +879,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
 
     def close(self):
         super(SiteHost, self).close()
-        self.xmlrpc_disconnect_all()
+        self.rpc_disconnect_all()
 
 
     def _cleanup_poweron(self):
@@ -1002,6 +1007,67 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         return base_command % (GLOBAL_SSH_COMMAND_OPTIONS, opts, user, port)
 
 
+    def _create_ssh_tunnel(self, port, local_port):
+        """Create an ssh tunnel from local_port to port.
+
+        @param port: remote port on the host.
+        @param local_port: local forwarding port.
+
+        @return: the tunnel process.
+        """
+        # Chrome OS on the target closes down most external ports
+        # for security.  We could open the port, but doing that
+        # would conflict with security tests that check that only
+        # expected ports are open.  So, to get to the port on the
+        # target we use an ssh tunnel.
+        tunnel_options = '-n -N -q -L %d:localhost:%d' % (local_port, port)
+        ssh_cmd = self.make_ssh_command(opts=tunnel_options)
+        tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
+        logging.debug('Full tunnel command: %s', tunnel_cmd)
+        tunnel_proc = subprocess.Popen(tunnel_cmd, shell=True, close_fds=True)
+        logging.debug('Started ssh tunnel, local = %d'
+                      ' remote = %d, pid = %d',
+                      local_port, port, tunnel_proc.pid)
+        return tunnel_proc
+
+
+    def _setup_rpc(self, port, command_name):
+        """Sets up a tunnel process and performs rpc connection book keeping.
+
+        This method assumes that xmlrpc and jsonrpc never conflict, since
+        we can only either have an xmlrpc or a jsonrpc server listening on
+        a remote port. As such, it enforces a single proxy->remote port
+        policy, i.e if one starts a jsonrpc proxy/server from port A->B,
+        and then tries to start an xmlrpc proxy forwarded to the same port,
+        the xmlrpc proxy will override the jsonrpc tunnel process, however:
+
+        1. None of the methods on the xmlrpc proxy will work because
+        the server listening on B is jsonrpc.
+
+        2. The xmlrpc client cannot initiate a termination of the JsonRPC
+        server, as the only use case currently is goofy, which is tied to
+        the factory image. It is much easier to handle a failed xmlrpc
+        call on the client than it is to terminate goofy in this scenario,
+        as doing the latter might leave the DUT in a hard to recover state.
+
+        With the current implementation newer rpc proxy connections will
+        terminate the tunnel processes of older rpc connections tunneling
+        to the same remote port. If methods are invoked on the client
+        after this has happened they will fail with connection closed errors.
+
+        @param port: The remote forwarding port.
+        @param command_name: The name of the remote process, to terminate
+                              using pkill.
+
+        @return A url that we can use to initiate the rpc connection.
+        """
+        self.rpc_disconnect(port)
+        local_port = utils.get_unused_port()
+        tunnel_proc = self._create_ssh_tunnel(port, local_port)
+        self._rpc_proxy_map[port] = (command_name, tunnel_proc)
+        return self._RPC_PROXY_URL % local_port
+
+
     def xmlrpc_connect(self, command, port, command_name=None,
                        ready_test_name=None, timeout_seconds=10):
         """Connect to an XMLRPC server on the host.
@@ -1026,6 +1092,11 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         proxy is ready, and throw a TestError if the server isn't
         ready by timeout_seconds.
 
+        If a server is already running on the remote port, this
+        method will kill it and disconnect the tunnel process
+        associated with the connection before establishing a new one,
+        by consulting the rpc_proxy_map in rpc_disconnect.
+
         @param command Shell command to start the server.
         @param port Port number on which the server is expected to
                     be serving.
@@ -1038,34 +1109,21 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
             TestFail error if server is not ready in time.
 
         """
-        self.xmlrpc_disconnect(port)
-
-        # Chrome OS on the target closes down most external ports
-        # for security.  We could open the port, but doing that
-        # would conflict with security tests that check that only
-        # expected ports are open.  So, to get to the port on the
-        # target we use an ssh tunnel.
-        local_port = utils.get_unused_port()
-        tunnel_options = '-n -N -q -L %d:localhost:%d' % (local_port, port)
-        ssh_cmd = self.make_ssh_command(opts=tunnel_options)
-        tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
-        logging.debug('Full tunnel command: %s', tunnel_cmd)
-        tunnel_proc = subprocess.Popen(tunnel_cmd, shell=True, close_fds=True)
-        logging.debug('Started XMLRPC tunnel, local = %d'
-                      ' remote = %d, pid = %d',
-                      local_port, port, tunnel_proc.pid)
-
+        rpc_url = self._setup_rpc(port, command_name)
         # Start the server on the host.  Redirection in the command
         # below is necessary, because 'ssh' won't terminate until
         # background child processes close stdin, stdout, and
         # stderr.
         remote_cmd = '( %s ) </dev/null >/dev/null 2>&1 & echo $!' % command
-        remote_pid = self.run(remote_cmd).stdout.rstrip('\n')
+        try:
+            remote_pid = self.run(remote_cmd).stdout.rstrip('\n')
+        except Exception as e:
+            self.rpc_disconnect(port)
+            raise
+
         logging.debug('Started XMLRPC server on host %s, pid = %s',
                       self.hostname, remote_pid)
 
-        self._xmlrpc_proxy_map[port] = (command_name, tunnel_proc)
-        rpc_url = 'http://localhost:%d' % local_port
         proxy = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
         if ready_test_name is not None:
             # retry.retry logs each attempt; calculate delay_sec to
@@ -1087,29 +1145,62 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
             finally:
                 if not successful:
                     logging.error('Failed to start XMLRPC server.')
-                    self.xmlrpc_disconnect(port)
+                    self.rpc_disconnect(port)
         logging.info('XMLRPC server started successfully.')
         return proxy
 
-    def xmlrpc_disconnect(self, port):
-        """Disconnect from an XMLRPC server on the host.
 
-        Terminates the remote XMLRPC server previously started for
+    def jsonrpc_connect(self, port):
+        """Creates a jsonrpc proxy connection through an ssh tunnel.
+
+        This method exists to facilitate communication with goofy (which is
+        the default system manager on all factory images) and as such, leaves
+        most of the rpc server sanity checking to the caller. Unlike
+        xmlrpc_connect, this method does not facilitate the creation of a remote
+        jsonrpc server, as the only clients of this code are factory tests,
+        for which the goofy system manager is built in to the image and starts
+        when the target boots.
+
+        One can theoretically create multiple jsonrpc proxies all forwarded
+        to the same remote port, provided the remote port has an rpc server
+        listening. However, in doing so we stand the risk of leaking an
+        existing tunnel process, so we always disconnect any older tunnels
+        we might have through rpc_disconnect.
+
+        @param port: port on the remote host that is serving this proxy.
+
+        @return: The client proxy.
+        """
+        if not jsonrpclib:
+            logging.warning('Jsonrpclib could not be imported. Check that '
+                            'site-packages contains jsonrpclib.')
+            return None
+
+        proxy = jsonrpclib.jsonrpc.ServerProxy(self._setup_rpc(port, None))
+
+        logging.info('Established a jsonrpc connection through port %s.', port)
+        return proxy
+
+
+    def rpc_disconnect(self, port):
+        """Disconnect from an RPC server on the host.
+
+        Terminates the remote RPC server previously started for
         the given `port`.  Also closes the local ssh tunnel created
         for the connection to the host.  This function does not
-        directly alter the state of a previously returned XMLRPC
+        directly alter the state of a previously returned RPC
         client object; however disconnection will cause all
         subsequent calls to methods on the object to fail.
 
         This function does nothing if requested to disconnect a port
-        that was not previously connected via `self.xmlrpc_connect()`
+        that was not previously connected via _setup_rpc.
 
         @param port Port number passed to a previous call to
-                    `xmlrpc_connect()`
+                    `_setup_rpc()`.
         """
-        if port not in self._xmlrpc_proxy_map:
+        if port not in self._rpc_proxy_map:
             return
-        entry = self._xmlrpc_proxy_map[port]
+        entry = self._rpc_proxy_map[port]
         remote_name = entry[0]
         tunnel_proc = entry[1]
         if remote_name:
@@ -1130,13 +1221,13 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         else:
             logging.debug('Tunnel pid %d terminated early, status %d',
                           tunnel_proc.pid, tunnel_proc.returncode)
-        del self._xmlrpc_proxy_map[port]
+        del self._rpc_proxy_map[port]
 
 
-    def xmlrpc_disconnect_all(self):
-        """Disconnect all known XMLRPC proxy ports."""
-        for port in self._xmlrpc_proxy_map.keys():
-            self.xmlrpc_disconnect(port)
+    def rpc_disconnect_all(self):
+        """Disconnect all known RPC proxy ports."""
+        for port in self._rpc_proxy_map.keys():
+            self.rpc_disconnect(port)
 
 
     def _ping_check_status(self, status):
