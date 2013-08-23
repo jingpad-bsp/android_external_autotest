@@ -9,7 +9,6 @@ import re
 import common
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.server.cros.dynamic_suite import constants
 
 
 _CONFIG = global_config.global_config
@@ -177,24 +176,40 @@ def _testname_to_keyval_key(testname):
     # aborted job, the test name will be a path that includes '/'
     # characters.  We want to file bugs for aborted jobs, so we
     # apply a transform here to avoid trouble.
-    return testname.replace('/', '_') + constants.BUG_KEYVAL
+    return testname.replace('/', '_')
 
 
-def create_bug_keyvals(testname, bug_id):
+_BUG_ID_KEYVAL = '-Bug_Id'
+_BUG_COUNT_KEYVAL = '-Bug_Count'
+
+
+def create_bug_keyvals(testname, bug_info):
     """Create keyvals to record a bug filed against a test failure.
 
-    @param testname Name of the test for which to record a bug.
-    @param bug_id   Id of the bug to be recorded for the test.
-    @return         Keyvals to be recorded for the given test.
+    @param testname  Name of the test for which to record a bug.
+    @param bug_info  Pair with the id of the bug and the count of
+                     the number of times the bug has been seen.
+    @return          Keyvals to be recorded for the given test.
     """
-    return {_testname_to_keyval_key(testname): bug_id}
+    keyval_base = _testname_to_keyval_key(testname)
+    return {
+        keyval_base + _BUG_ID_KEYVAL: bug_info[0],
+        keyval_base + _BUG_COUNT_KEYVAL: bug_info[1]
+    }
 
 
-def get_test_failure_bug_id(keyvals, testname):
-    """Extract the id for a bug filed against a test failure.
+def get_test_failure_bug_info(keyvals, testname):
+    """Extract information about a bug filed against a test failure.
 
     @param keyvals  Keyvals associated with a suite job.
     @param testname Name of a test from the suite.
-    @return         Id of the bug file against the test's failure.
+    @return         None if there is no bug info, or a pair with the
+                    id of the bug, and the count of the number of
+                    times the bug has been seen.
     """
-    return keyvals.get(_testname_to_keyval_key(testname))
+    keyval_base = _testname_to_keyval_key(testname)
+    bug_id = keyvals.get(keyval_base + _BUG_ID_KEYVAL)
+    if bug_id is not None:
+        bug_count = keyvals.get(keyval_base + _BUG_COUNT_KEYVAL)
+        return bug_id, bug_count
+    return bug_id

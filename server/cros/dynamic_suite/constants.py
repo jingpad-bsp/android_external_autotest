@@ -14,9 +14,6 @@ JOB_REPO_URL = 'job_repo_url'
 VERSION_PREFIX = 'cros-version:'
 BOARD_PREFIX = 'board:'
 
-# Bug filing
-BUG_KEYVAL = '-Bug_Id'
-
 # Timings
 ARTIFACT_FINISHED_TIME = 'artifact_finished_time'
 DOWNLOAD_STARTED_TIME = 'download_started_time'

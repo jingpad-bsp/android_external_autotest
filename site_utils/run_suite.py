@@ -221,52 +221,64 @@ def get_view_info(suite_job_id, view, build, suite):
 
 
 class LogLink(object):
-    """
-    Link to a log. Since we create bugs for failures the
-    link text will include a link to the bug too.
+    """Information needed to record a link in the logs.
 
-    @var anchor: the link text.
-    @var url: the link url.
-    """
-    def __init__(self, anchor, job_string, bug_id=None):
-        """
-        Initialize the LogLink by generating the log URL.
+    Depending on context and the information provided at
+    construction time, the link may point to either to log files for
+    a job, or to a bug filed for a failure in the job.
 
-        @param anchor: the link text.
-        @param job_string: the job whose logs we'd like to link to.
-        @param bug_id: the bug id, if one was filed for this failure.
+    @var anchor  The link text.
+    @var url     The link url.
+    @var bug_id  Id of a bug to link to, or None.
+    """
+
+    _BUG_URL_PREFIX = CONFIG.get_config_value('BUG_REPORTING',
+                                              'tracker_url')
+    _URL_HOST = CONFIG.get_config_value('SERVER',
+                                        'hostname', type=str)
+    _URL_PATTERN = CONFIG.get_config_value('CROS',
+                                           'log_url_pattern', type=str)
+
+
+    def __init__(self, anchor, job_string, bug_info=None):
+        """Initialize the LogLink by generating the log URL.
+
+        @param anchor      The link text.
+        @param job_string  The job whose logs we'd like to link to.
+        @param bug_info    Info about the bug, if one was filed.
         """
         self.anchor = anchor
-        host = CONFIG.get_config_value('SERVER', 'hostname', type=str)
-        pattern = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
-        self.url = pattern % (host, job_string)
-        self.bug_id = bug_id
-
-
-    def GenerateBugLink(self):
-        """
-        @return: A plain text link to the bug filed, if any.
-        """
-        if self.bug_id:
-            crbug_url = CONFIG.get_config_value('BUG_REPORTING', 'tracker_url')
-            return '%s%s'% (crbug_url, self.bug_id)
-        return ''
+        self.url = self._URL_PATTERN % (self._URL_HOST, job_string)
+        if bug_info:
+            self.bug_id, self.bug_count = bug_info
+        else:
+            self.bug_id = None
+            self.bug_count = None
 
 
     def GenerateBuildbotLink(self):
-        """
-        Generate a link to the job's logs, for consumption by buildbot.
+        """Generate a link formatted to meet buildbot expectations.
+
+        If there is a bug associated with this link, report that;
+        otherwise report a link to the job logs.
 
         @return A link formatted for the buildbot log annotator.
         """
-        bug_link = self.GenerateBugLink()
-        url = bug_link if bug_link else self.url
-        return "@@@STEP_LINK@%s@%s@@@"% (self.anchor.strip(), url)
+        if self.bug_id:
+            url = '%s%s' % (self._BUG_URL_PREFIX, self.bug_id)
+            if self.bug_count == 1:
+                anchor_text = "%s (new)" % self.anchor.strip()
+            else:
+                anchor_text = "%s (%s reports)" % (
+                        self.anchor.strip(), self.bug_count)
+        else:
+            url = self.url
+            anchor_text = self.anchor.strip()
+        return "@@@STEP_LINK@%s@%s@@@"% (anchor_text, url)
 
 
     def GenerateTextLink(self):
-        """
-        Generate a link to the job's logs, for consumption by a human.
+        """Generate a link to the job's logs, for consumption by a human.
 
         @return A link formatted for human readability.
         """
@@ -641,10 +653,10 @@ def main():
             # aborted test full_test_name will return
             # 'experimental_testname' but the view and the bug_id
             # keyval will use '/build/suite/experimental_testname'.
-            bug_id = tools.get_test_failure_bug_id(
+            bug_info = tools.get_test_failure_bug_info(
                     view['job_keyvals'], view['test_name'])
 
-            link = LogLink(test_view, job_name, bug_id)
+            link = LogLink(test_view, job_name, bug_info)
             web_links.append(link)
 
             # Don't show links on the buildbot waterfall for tests with

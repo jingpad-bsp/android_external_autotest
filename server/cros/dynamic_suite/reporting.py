@@ -538,13 +538,13 @@ class Reporter(object):
 
 
     def _create_autofiled_count_update(self, issue):
-        """Return label updates for an issue's 'autofiled-count'.
+        """Calculate an 'autofiled-count' label update.
 
         Automatically filed issues have a label of the form
         `autofiled-count-<number>` that indicates about how many
         times the autofiling code has updated the issue.  This
         routine goes through the labels for the given issue to find
-        the existing count label, and calculate a new count label.
+        the existing count label, and calculates a new count label.
 
         Updates to issues aren't guaranteed to be atomic, so in
         some cases count labels may (in theory at least) be dropped
@@ -553,13 +553,15 @@ class Reporter(object):
         Old bugs may not have a count; this routine implicitly
         assigns those bugs an initial count of one.
 
-        The return value is a list of label updates:  All existing
-        count labels will be prefixed with '-' to remove them, and a
-        new label with a new count will be added to the set.  Labels
-        not related to the count aren't updated.
+        The return values are a list of label updates and the
+        count value of the new count label.  For the label updates,
+        all existing count labels will be prefixed with '-' to
+        remove them, and a new label with a new count will be added
+        to the set.  Labels not related to the count aren't updated.
 
         @param issue Issue whose 'autofiled-count' is to be updated.
-        @return      List of label updates.
+        @return      2-tuple with a list of label updates and the
+                     new count value.
         """
         counts = []
         count_max = 1
@@ -571,8 +573,9 @@ class Reporter(object):
                 continue
             count_max = max(count, count_max)
             counts.append('-%s' % label)
-        counts.append('%s%d' % (self._AUTOFILED_COUNT, count_max + 1))
-        return counts
+        new_count = count_max + 1
+        counts.append('%s%d' % (self._AUTOFILED_COUNT, new_count))
+        return counts, new_count
 
 
     def report(self, bug, bug_template={}):
@@ -587,8 +590,11 @@ class Reporter(object):
         @param bug_template A template dictionary specifying the
                             default bug filing options for failures
                             in this suite.
-        @return             The issue id of the issue that was
-                            either created or modified.
+        @return             A 2-tuple of the issue id of the issue
+                            that was either created or modified, and
+                            a count of the number of times the bug
+                            has been updated.  For a new bug, the
+                            count is 1.
         """
         if not self._check_tracker():
             logging.error("Can't file %s", bug.title())
@@ -609,9 +615,10 @@ class Reporter(object):
 
         if issue:
             comment = '%s\n\n%s' % (bug.title(), self._anchor_summary(bug))
-            count_update = self._create_autofiled_count_update(issue)
+            count_update, bug_count = (
+                    self._create_autofiled_count_update(issue))
             self._modify_bug_report(issue.id, comment, count_update)
-            return issue.id
+            return issue.id, bug_count
 
         sheriffs = []
 
@@ -627,4 +634,4 @@ class Reporter(object):
         except AttributeError:
             pass
 
-        return self.create_bug_report(bug, bug_template, sheriffs)
+        return self.create_bug_report(bug, bug_template, sheriffs), 1

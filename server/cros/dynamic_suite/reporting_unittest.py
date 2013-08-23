@@ -97,9 +97,10 @@ class ReportingTest(mox.MoxTestBase):
         reporting.TestFailure.summary().AndReturn('')
 
         self.mox.ReplayAll()
-        bug_id = reporting.Reporter().report(self._get_failure())
+        bug_id, bug_count = reporting.Reporter().report(self._get_failure())
 
         self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+        self.assertEqual(bug_count, 1)
 
 
     def testDuplicateIssue(self):
@@ -124,9 +125,10 @@ class ReportingTest(mox.MoxTestBase):
         reporting.TestFailure.summary().AndReturn('')
 
         self.mox.ReplayAll()
-        bug_id = reporting.Reporter().report(self._get_failure())
+        bug_id, bug_count = reporting.Reporter().report(self._get_failure())
 
         self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+        self.assertEqual(bug_count, 2)
 
 
     def testSuiteIssueConfig(self):
@@ -158,15 +160,15 @@ class ReportingTest(mox.MoxTestBase):
 
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                       mox.IgnoreArg())
-        bug = self.mox.CreateMockAnything()
         mock_host.create_issue(mox.IgnoreArg()).AndReturn(
             {'id': self._FAKE_ISSUE_ID})
 
         self.mox.ReplayAll()
-        bug_id = reporting.Reporter().report(self._get_failure(),
-                                             self.bug_template)
+        bug_id, bug_count = reporting.Reporter().report(self._get_failure(),
+                                                        self.bug_template)
 
         self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+        self.assertEqual(bug_count, 1)
 
 
     def testGenericBugCanBeFiled(self):
@@ -184,9 +186,10 @@ class ReportingTest(mox.MoxTestBase):
             {'id': self._FAKE_ISSUE_ID})
 
         self.mox.ReplayAll()
-        bug_id = reporting.Reporter().report(bug)
+        bug_id, bug_count = reporting.Reporter().report(bug)
 
         self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+        self.assertEqual(bug_count, 1)
 
 
     def testWithSearchMarkerSetToNoneIsNotDeduped(self):
@@ -200,9 +203,10 @@ class ReportingTest(mox.MoxTestBase):
             {'id': self._FAKE_ISSUE_ID})
 
         self.mox.ReplayAll()
-        bug_id = reporting.Reporter().report(bug)
+        bug_id, bug_count = reporting.Reporter().report(bug)
 
         self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
+        self.assertEqual(bug_count, 1)
 
 
 class FindIssueByMarkerTests(mox.MoxTestBase):
@@ -318,14 +322,14 @@ class LabelUpdateTests(mox.MoxTestBase):
         return '%s%d' % (reporting.Reporter._AUTOFILED_COUNT, n)
 
 
-    def _test_count_label_update(self, labels, remove, create):
+    def _test_count_label_update(self, labels, remove, expected_count):
         """Utility to test _create_autofiled_count_update().
 
-        @param labels    Input list of labels.
-        @param remove    List of labels expected to be removed in
-                         the result.
-        @param create    Single label expected to be created in the
-                         result.
+        @param labels         Input list of labels.
+        @param remove         List of labels expected to be removed
+                              in the result.
+        @param expected_count Count value expected to be returned
+                              from the call.
         """
         client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                    mox.IgnoreArg())
@@ -334,61 +338,55 @@ class LabelUpdateTests(mox.MoxTestBase):
         issue.labels = labels
 
         reporter = reporting.Reporter()
-        new_labels = reporter._create_autofiled_count_update(issue)
+        new_labels, count = reporter._create_autofiled_count_update(issue)
         expected = map(lambda l: '-' + l, remove)
-        expected.append(create)
+        expected.append(self._create_count_label(expected_count))
         self.assertEqual(new_labels, expected)
+        self.assertEqual(count, expected_count)
 
 
     def testCountLabelIncrement(self):
         """Test that incrementing an autofiled-count label should work."""
         n = 3
         old_label = self._create_count_label(n)
-        new_label = self._create_count_label(n + 1)
-        self._test_count_label_update([old_label], [old_label], new_label)
+        self._test_count_label_update([old_label], [old_label], n + 1)
 
 
     def testCountLabelIncrementPredefined(self):
         """Test that Reporter._PREDEFINED_LABELS has a sane autofiled-count."""
         self._test_count_label_update(
                 reporting.Reporter._PREDEFINED_LABELS,
-                [self._create_count_label(1)],
-                self._create_count_label(2))
+                [self._create_count_label(1)], 2)
 
 
     def testCountLabelCreate(self):
         """Test that old bugs should get a correct autofiled-count."""
-        self._test_count_label_update([], [],
-                                      self._create_count_label(2))
+        self._test_count_label_update([], [], 2)
 
 
     def testCountLabelIncrementMultiple(self):
         """Test that duplicate autofiled-count labels are handled."""
         old_count1 = self._create_count_label(2)
         old_count2 = self._create_count_label(3)
-        new_count = self._create_count_label(4)
         self._test_count_label_update([old_count1, old_count2],
-                                      [old_count1, old_count2],
-                                      new_count)
+                                      [old_count1, old_count2], 4)
 
 
     def testCountLabelSkipUnknown(self):
         """Test that autofiled-count increment ignores unknown labels."""
         old_count = self._create_count_label(3)
-        new_count = self._create_count_label(4)
         self._test_count_label_update(['unknown-label', old_count],
-                                      [old_count], new_count)
+                                      [old_count], 4)
 
 
     def testCountLabelSkipMalformed(self):
         """Test that autofiled-count increment ignores unusual labels."""
         old_count = self._create_count_label(3)
-        new_count = self._create_count_label(4)
         self._test_count_label_update(
                 [reporting.Reporter._AUTOFILED_COUNT + 'bogus',
                  self._create_count_label(8) + '-bogus',
                  old_count],
-                [old_count], new_count)
+                [old_count], 4)
 
 
 if __name__ == '__main__':

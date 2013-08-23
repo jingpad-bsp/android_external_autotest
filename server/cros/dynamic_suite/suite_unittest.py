@@ -11,6 +11,9 @@ import collections
 import mox
 import shutil
 import tempfile
+import unittest
+
+import common
 
 from autotest_lib.client.common_lib import base_job, control_data
 from autotest_lib.client.common_lib.cros import dev_server
@@ -468,7 +471,8 @@ class SuiteTest(mox.MoxTestBase):
                               mox.IgnoreArg(), mox.Func(check_result))
 
         self.mox.StubOutWithMock(reporting.Reporter, 'report')
-        reporting.Reporter.report(mox.IgnoreArg(), mox.IgnoreArg())
+        reporting.Reporter.report(mox.IgnoreArg(),
+                                  mox.IgnoreArg()).AndReturn((0, 0))
 
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(mox.IgnoreArg(), mox.IgnoreArg())
@@ -476,3 +480,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         self.suite.schedule_and_wait(self.recorder.record_entry, True)
+
+
+if __name__ == '__main__':
+    unittest.main()

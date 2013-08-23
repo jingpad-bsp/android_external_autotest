@@ -468,9 +468,9 @@ class Suite(object):
                             self._tag,
                             result)
 
-                    bug_id = bug_reporter.report(failure, bug_template)
+                    bug_info = bug_reporter.report(failure, bug_template)
                     bug_keyvals = tools.create_bug_keyvals(
-                            result.test_name, bug_id)
+                            result.test_name, bug_info)
                     try:
                         utils.write_keyval(self._results_dir, bug_keyvals)
                     except ValueError:
