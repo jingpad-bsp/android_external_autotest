@@ -49,6 +49,7 @@ class GraphicsStateChecker(object):
     at the beginning of each graphics_* test.
     """
     hangs = {}
+    crash_blacklist = []
 
     _BROWSER_VERSION_COMMAND = '/opt/google/chrome/chrome --version'
     _HANGCHECK = 'drm:i915_hangcheck_elapsed'
@@ -98,3 +99,6 @@ class GraphicsStateChecker(object):
           if 'llvmpipe' in result.lower() or 'soft' in result.lower():
             logging.info('Finished test on SW rasterizer.')
             raise error.TestFail('Finished test on SW rasterizer: ' + result)
+
+        # TODO(ihf): Perform crash processing (primarily for Piglit) as is done
+        # right now by ./client/cros/cros_ui_test.py and cros_logging.py.

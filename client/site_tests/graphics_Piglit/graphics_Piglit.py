@@ -32,14 +32,15 @@ class graphics_Piglit(test.test):
     # hard wiring the cros-driver.test config file until we
     # need to parameterize this test for short/extended testing
     def run_once(self):
-        self.crash_blacklist.append('glslparsertest')
-        self.crash_blacklist.append('shader_runner')
+        # TODO(ihf): Hook up crash reporting, right now it is doing nothing.
+        self.GSC.crash_blacklist.append('glslparsertest')
+        self.GSC.crash_blacklist.append('shader_runner')
 
         # SCBA Sandy Bridge crash cases
-        self.crash_blacklist.append('draw-elements-base-vertex-neg')
-        self.crash_blacklist.append('glsl-fs-raytrace-bug27060')
-        self.crash_blacklist.append('glsl-vs-raytrace-bug26691')
-        self.crash_blacklist.append('fp-long-alu')
+        self.GSC.crash_blacklist.append('draw-elements-base-vertex-neg')
+        self.GSC.crash_blacklist.append('glsl-fs-raytrace-bug27060')
+        self.GSC.crash_blacklist.append('glsl-vs-raytrace-bug26691')
+        self.GSC.crash_blacklist.append('fp-long-alu')
 
         dep = 'piglit'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
