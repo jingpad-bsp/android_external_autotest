@@ -7,6 +7,7 @@
 import urlparse
 
 import ap_configurator
+import ap_spec
 
 
 class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
@@ -52,22 +53,24 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9 , 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': ['Auto', 36, 40, 44, 48, 149, 153,
                               157, 161, 165]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]},
-                {'band': self.band_5ghz, 'modes': [self.mode_a, self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_G, ap_spec.MODE_N]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_A, ap_spec.MODE_N]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -94,14 +97,14 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_mode(self, mode, band=None):
-        if mode == self.mode_g or mode == self.mode_a:
+        if mode == ap_spec.MODE_G or mode == ap_spec.MODE_A:
             mode = 'Up to 54 Mbps'
-        elif mode == self.mode_n:
+        elif mode == ap_spec.MODE_N:
             mode = 'Up to 300 Mbps'
         else:
             raise RuntimeError('Unsupported mode passed.')
         xpath = '//select[@name="opmode"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="opmode_an"]'
         self.select_item_from_popup_by_xpath(mode, xpath)
 
@@ -117,7 +120,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_ssid(self, ssid):
         xpath = '//input[@name="ssid"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="ssid_an"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
 
@@ -131,7 +134,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
         channel_choices = ['Auto', '01', '02', '03', '04', '05', '06', '07',
                            '08', '09', '10', '11']
         xpath = '//select[@name="w_channel"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="w_channel_an"]'
             channel_choices = ['Auto', '36', '40', '44', '48', '149', '153',
                                '157', '161', '165']
@@ -141,10 +144,10 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        if band == self.band_5ghz:
-            self.current_band = self.band_5ghz
-        elif band == self.band_2ghz:
-            self.current_band = self.band_2ghz
+        if band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
+        elif band == ap_spec.BAND_2GHZ:
+            self.current_band = ap_spec.BAND_2GHZ
         else:
             raise RuntimeError('Invalid band sent %s' % band)
 
@@ -155,7 +158,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         xpath = ('//input[@name="security_type" and @value="Disable"]')
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = ('//input[@name="security_type_an" and @value="Disable"]')
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
@@ -171,7 +174,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
                  @type="radio"]'
         text_field = '//input[@name="passphraseStr"]'
         button = '//button[@name="keygen"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="security_type_an" and @value="WEP" and\
                      @type="radio"]'
             text_field = '//input[@name="passphraseStr_an"]'
@@ -197,7 +200,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
         # Update Interval is not supported.
         xpath = ('//input[@name="security_type" and @value="WPA-PSK"]')
         text = '//input[@name="passphrase"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = ('//input[@name="security_type_an" and @value="WPA-PSK"]')
             text = '//input[@name="passphrase_an"]'
         try:
@@ -218,7 +221,7 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_visibility(self, visible=True):
         xpath = '//input[@name="ssid_bc" and @type="checkbox"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="ssid_bc_an" and @type="checkbox"]'
         check_box = self.wait_for_object_by_xpath(xpath)
         # These check boxes behave different from other APs.

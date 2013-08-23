@@ -4,6 +4,7 @@
 
 import os
 import ap_configurator
+import ap_spec
 
 
 class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
@@ -32,6 +33,8 @@ class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
     def admin_login_needed(self, page_url):
         """
         Check if we are on the admin login page.
+
+        @param page_url: string, the page to open.
 
         @return True if login needed False otherwise.
         """
@@ -111,14 +114,14 @@ class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wep,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WEP,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK)
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz, 'channels': range(1, 11)}]
+        return [{'band': ap_spec.BAND_2GHZ, 'channels': range(1, 12)}]
 
 
     def set_security_disabled(self):
@@ -130,12 +133,12 @@ class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
         self.select_item_from_popup_by_id('Disable', 'security_type')
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b,
-                           self.mode_g,
-                           self.mode_n,
-                           self.mode_b | self.mode_g,
-                           self.mode_b | self.mode_g | self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B,
+                           ap_spec.MODE_G,
+                           ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]}]
 
 
     def set_mode(self, mode, band=None):
@@ -145,12 +148,12 @@ class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
     def _set_mode(self, mode, band=None):
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b | self.mode_g | self.mode_n:
+        mode_mapping = {ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N:
                         '2.4 GHz (802.11b/g/n)',
-                        self.mode_n: '2.4 GHz (802.11n)',
-                        self.mode_b: '2.4 GHz (802.11b)',
-                        self.mode_g: '2.4 GHz (802.11g)',
-                        self.mode_b | self.mode_g:
+                        ap_spec.MODE_N: '2.4 GHz (802.11n)',
+                        ap_spec.MODE_B: '2.4 GHz (802.11b)',
+                        ap_spec.MODE_G: '2.4 GHz (802.11g)',
+                        ap_spec.MODE_B | ap_spec.MODE_G:
                         '2.4 GHz (802.11b/g)'}
         mode_name = ''
         if mode in mode_mapping.keys():
@@ -162,7 +165,7 @@ class Keeboxw150nrAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz, 'channels': range(1, 11)}]
+        return [{'band': ap_spec.BAND_2GHZ, 'channels': range(1, 11)}]
 
 
     def set_channel(self, channel):

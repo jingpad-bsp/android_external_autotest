@@ -4,6 +4,7 @@
 
 """Subclass of the LinksysAPConfigurator."""
 
+import ap_spec
 import linksys_ap_configurator
 
 
@@ -12,8 +13,8 @@ class LinksysAP15Configurator(linksys_ap_configurator.LinksysAPConfigurator):
 
     def _set_mode(self, mode):
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b: 'B-Only', self.mode_g: 'G-Only',
-                        self.mode_b | self.mode_g: 'Mixed',
+        mode_mapping = {ap_spec.MODE_B: 'B-Only', ap_spec.MODE_G: 'G-Only',
+                        ap_spec.MODE_B | ap_spec.MODE_G: 'Mixed',
                         'Disabled': 'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:

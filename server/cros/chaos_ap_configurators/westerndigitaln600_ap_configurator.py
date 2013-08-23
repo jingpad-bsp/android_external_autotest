@@ -7,6 +7,7 @@ import urlparse
 import time
 
 import ap_configurator
+import ap_spec
 
 from selenium.common.exceptions import WebDriverException
 
@@ -46,27 +47,28 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_g, self.mode_b | self.mode_g,
-                           self.mode_n, self.mode_g | self.mode_n,
-                           self.mode_b | self.mode_g | self.mode_n]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_a, self.mode_n,
-                           self.mode_a | self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_G, ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_G | ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_A, ap_spec.MODE_N,
+                           ap_spec.MODE_A | ap_spec.MODE_N]}]
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': ['Auto', 36, 40, 44, 48, 149, 153, 157, 161, 165]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -130,30 +132,31 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_mode(self, mode, band=None):
-        mode_mapping = {self.mode_b | self.mode_g:'Mixed 802.11 b+g',
-                        self.mode_g:'802.11g only',
-                        self.mode_b:'802.11b only',
-                        self.mode_n:'802.11n only',
-                        self.mode_a:'802.11a only',
-                        self.mode_g | self.mode_n:'Mixed 802.11 g+n',
-                        self.mode_b | self.mode_g | self.mode_n:
+        mode_mapping = {ap_spec.MODE_B | ap_spec.MODE_G:'Mixed 802.11 b+g',
+                        ap_spec.MODE_G:'802.11g only',
+                        ap_spec.MODE_B:'802.11b only',
+                        ap_spec.MODE_N:'802.11n only',
+                        ap_spec.MODE_A:'802.11a only',
+                        ap_spec.MODE_G | ap_spec.MODE_N:'Mixed 802.11 g+n',
+                        ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N:
                         'Mixed 802.11 b+g+n',
-                        self.mode_a | self.mode_n: 'Mixed 802.11 a+n'}
+                        ap_spec.MODE_A | ap_spec.MODE_N: 'Mixed 802.11 a+n'}
         mode_id = 'wlan_mode'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             mode_id = 'wlan_mode_Aband'
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
-            if (mode & self.mode_a) and (self.current_band != self.band_5ghz):
+            if ((mode & ap_spec.MODE_A) and
+                (self.current_band != ap_spec.BAND_5GHZ)):
                 # a mode only in 5Ghz
                 logging.debug('Mode \'a\' is not supported for 2.4Ghz band.')
                 return
-            elif ((mode & (self.mode_b | self.mode_g) ==
-                  (self.mode_b | self.mode_g)) or
-                 (mode & self.mode_b == self.mode_b) or
-                 (mode & self.mode_g == self.mode_g)) and \
-                 (self.current_band != self.band_2ghz):
+            elif ((mode & (ap_spec.MODE_B | ap_spec.MODE_G) ==
+                  (ap_spec.MODE_B | ap_spec.MODE_G)) or
+                 (mode & ap_spec.MODE_B == ap_spec.MODE_B) or
+                 (mode & ap_spec.MODE_G == ap_spec.MODE_G)) and \
+                 (self.current_band != ap_spec.BAND_2GHZ):
                 # b/g, b, g mode only in 2.4Ghz
                 logging.debug('Mode \'%s\' is not available for 5Ghz band.',
                               mode_name)
@@ -171,7 +174,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
     def _set_ssid(self, ssid):
         ssid_id = 'ssid'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             ssid_id = 'ssid_Aband'
         self.wait_for_object_by_id(ssid_id)
         self.set_content_of_text_field_by_id(ssid, ssid_id, abort_check=False)
@@ -190,7 +193,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
                            '2.442 GHz - CH 7', '2.447 GHz - CH 8',
                            '2.452 GHz - CH 9', '2.457 GHz - CH 10',
                            '2.462 GHz - CH 11']
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             channel_id = 'channel_Aband'
             channel_choices = ['Auto', '5.180 GHz - CH 36', '5.200 GHz - CH 40',
                                '5.220 GHz - CH 44', '5.240 GHz - CH 48',
@@ -208,7 +211,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
     def _set_channel_width(self, channel_wid):
         channel_width_choice = ['20 MHz', '20/40 MHz(Auto)']
         width_id = 'bw'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             width_id = 'bw_Aband'
         self.select_item_from_popup_by_id(channel_width_choice[channel_wid],
                                           width_id)
@@ -220,17 +223,17 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        if band == self.band_5ghz:
-            self.current_band = self.band_5ghz
-        elif band == self.band_2ghz:
-            self.current_band = self.band_2ghz
+        if band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
+        elif band == ap_spec.BAND_2GHZ:
+            self.current_band = ap_spec.BAND_2GHZ
         else:
             raise RuntimeError('Invalid band sent %s' % band)
 
 
     def _set_security(self, security_type, wait_path=None):
         sec_id = 'security_type'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             sec_id = 'security_type_Aband'
             text = '//input[@name="wpapsk_Aband" and @type="text"]'
         self.wait_for_object_by_id(sec_id, wait_time=5)
@@ -264,7 +267,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
         # WEP is not supported for Wireless-N only and Mixed (g+n, b+g+n) mode.
         # WEP does not show up in the list, no alert is thrown.
         text = '//input[@name="wepkey_64"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             text = '//input[@name="wepkey_64_Aband"]'
         self._set_security('WEP', text)
         self.set_content_of_text_field_by_xpath(key_value, text,
@@ -280,7 +283,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_wpa2psk(self, shared_key):
         text ='wpapsk'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             text = 'wpapsk_Aband'
         self._set_security('WPA2 - Personal', '//input[@id="%s"]' % text)
         self.set_content_of_text_field_by_id(shared_key, text,

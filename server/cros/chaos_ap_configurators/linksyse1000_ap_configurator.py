@@ -4,6 +4,7 @@
 
 """Derived class to control Linksys E1000 router."""
 
+import ap_spec
 import linksyse2100_ap_configurator
 
 
@@ -12,12 +13,12 @@ class Linksyse1000APConfigurator(linksyse2100_ap_configurator.
     """Derived class to control Linksys E1000 router."""
 
     def _set_mode(self, mode, band=None):
-        mode_mapping = {self.mode_m:'Mixed',
-                        self.mode_b | self.mode_g:'Wireless-B/G Only',
-                        self.mode_g:'Wireless-G Only',
-                        self.mode_b:'Wireless-B Only',
-                        self.mode_n:'Wireless-N Only',
-                        self.mode_d:'Disabled'}
+        mode_mapping = {ap_spec.MODE_M:'Mixed',
+                        ap_spec.MODE_B | ap_spec.MODE_G:'Wireless-B/G Only',
+                        ap_spec.MODE_G:'Wireless-G Only',
+                        ap_spec.MODE_B:'Wireless-B Only',
+                        ap_spec.MODE_N:'Wireless-N Only',
+                        ap_spec.MODE_D:'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode %d not supported by router %s. ',

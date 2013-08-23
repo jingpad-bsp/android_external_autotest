@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
+import ap_spec
 import netgear_WNDR_dual_band_configurator
 from netgear_WNDR_dual_band_configurator import *
 
@@ -16,8 +16,7 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
 
-        Args:
-          alert: The modal dialog's contents.
+        @param alert: the modal dialog's contents.
         """
         text = alert.text
         #  We ignore warnings that we get when we disable visibility or security
@@ -40,23 +39,33 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def save_page(self, page_number):
+        """Save the currently opened page.
+
+        @param page_number: the page to save.
+        """
         self.click_button_by_xpath('//input[@name="Apply"]',
                                    alert_handler=self._alert_handler)
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9 , 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': [36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_5ghz, 'modes': [self.mode_a, self.mode_n]},
-                {'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]}]
+        return [{'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_A, ap_spec.MODE_N]},
+                {'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_G, ap_spec.MODE_N]}]
 
 
     def navigate_to_page(self, page_number):
+        """Navigate to the given page.
+
+        @param page_number: the page to navigate to.
+        """
         self.get_url(self.admin_interface_url, page_title='WNDR3700')
         self._get_settings_page()
 
@@ -76,7 +85,7 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
         channel_choices = ['Auto', '01', '02', '03', '04', '05', '06', '07',
                            '08', '09', '10', '11']
         xpath = '//select[@name="w_channel"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="w_channel_an"]'
             channel_choices = ['36', '40', '44', '48', '149', '153',
                                '157', '161']
@@ -94,7 +103,7 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
         xpath = ('//input[@name="security_type" and @value="WEP"]')
         text = '//input[@name="passphraseStr"]'
         button = '//input[@name="Generate"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = ('//input[@name="security_type_an" and @value="WEP"]')
             text = '//input[@name="passphraseStr_an"]'
             button = '//input[@name="Generate_an"]'

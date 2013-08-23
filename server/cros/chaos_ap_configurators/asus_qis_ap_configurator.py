@@ -4,6 +4,7 @@
 
 """Class to control the Asus QIS router."""
 
+import ap_spec
 import asus_ap_configurator
 
 
@@ -43,17 +44,17 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': ['Auto', 36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_n, self.mode_auto]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_n, self.mode_auto]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_N, ap_spec.MODE_AUTO]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_N, ap_spec.MODE_AUTO]}]
 
 
     def set_mode(self, mode, band=None):
@@ -65,9 +66,9 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
     def _set_mode(self, mode, band=None):
         if band:
             self._set_band(band)
-        if mode == self.mode_auto:
+        if mode == ap_spec.MODE_AUTO:
             mode_popup = 'auto'
-        elif mode == self.mode_n:
+        elif mode == ap_spec.MODE_N:
             mode_popup = 'N Only'
         else:
             raise RuntimeError('Invalid mode passed %x' % mode)
@@ -94,7 +95,7 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
         channel_choices = ['Auto', '1', '2', '3', '4', '5', '6',
                            '7', '8', '9', '10', '11']
         xpath = '//select[@name="wl_channel"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             channel_choices = ['Auto', '36', '40', '44', '48', '149', '153',
                                '157', '161']
         self.select_item_from_popup_by_xpath(str(channel_choices[position]),
@@ -102,10 +103,10 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
 
     def set_band(self, band):
-        if band == self.band_2ghz:
-            self.current_band = self.band_2ghz
-        elif band == self.band_5ghz:
-            self.current_band = self.band_5ghz
+        if band == ap_spec.BAND_2GHZ:
+            self.current_band = ap_spec.BAND_2GHZ
+        elif band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
         else:
             raise RuntimeError('Invalid band sent %s' % band)
         self.add_item_to_command_list(self._set_band, (band,), 1, 800)

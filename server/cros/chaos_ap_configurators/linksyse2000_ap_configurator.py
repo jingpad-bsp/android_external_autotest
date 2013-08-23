@@ -7,6 +7,8 @@
 import logging
 import urlparse
 import ap_configurator
+import ap_spec
+
 
 class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
     """Derived class to control Linksyse2000 AP"""
@@ -26,26 +28,27 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_m, self.mode_b | self.mode_g,self.mode_g,
-                           self.mode_b, self.mode_n, self.mode_d]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_m, self.mode_a, self.mode_n,
-                           self.mode_d]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_M, ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_G, ap_spec.MODE_B, ap_spec.MODE_N,
+                           ap_spec.MODE_D]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_M, ap_spec.MODE_A, ap_spec.MODE_N,
+                           ap_spec.MODE_D]}]
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': ['Auto', 36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -81,27 +84,28 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
     def _set_mode(self, mode, band=None):
         xpath = '//select[@name="wl_net_mode_24g"]'
-        mode_mapping = {self.mode_m:'Mixed',
-                        self.mode_b | self.mode_g:'BG-Mixed',
-                        self.mode_g:'Wireless-G Only',
-                        self.mode_b:'Wireless-B Only',
-                        self.mode_n:'Wireless-N Only',
-                        self.mode_d:'Disabled',
-                        self.mode_a:'Wireless-A Only'}
-        if self.current_band == self.band_5ghz or band == self.band_5ghz:
+        mode_mapping = {ap_spec.MODE_M:'Mixed',
+                        ap_spec.MODE_B | ap_spec.MODE_G:'BG-Mixed',
+                        ap_spec.MODE_G:'Wireless-G Only',
+                        ap_spec.MODE_B:'Wireless-B Only',
+                        ap_spec.MODE_N:'Wireless-N Only',
+                        ap_spec.MODE_D:'Disabled',
+                        ap_spec.MODE_A:'Wireless-A Only'}
+        if self.current_band == ap_spec.BAND_5GHZ or band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="wl_net_mode_5g"]'
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
-            if (mode & self.mode_a) and (self.current_band == self.band_2ghz):
+            if ((mode & ap_spec.MODE_A) and
+                (self.current_band == ap_spec.BAND_2GHZ)):
                #  a mode only in 5Ghz
                 logging.debug('Mode \'a\' is not available for 2.4Ghz band.')
                 return
-            elif ((mode & (self.mode_b | self.mode_g) ==
-                  (self.mode_b | self.mode_g)) or
-                  (mode & self.mode_b == self.mode_b) or
-                  (mode & self.mode_g == self.mode_g)) and \
-                  (self.current_band != self.band_2ghz):
+            elif ((mode & (ap_spec.MODE_B | ap_spec.MODE_G) ==
+                  (ap_spec.MODE_B | ap_spec.MODE_G)) or
+                  (mode & ap_spec.MODE_B == ap_spec.MODE_B) or
+                  (mode & ap_spec.MODE_G == ap_spec.MODE_G)) and \
+                  (self.current_band != ap_spec.BAND_2GHZ):
                #  b/g, b, g mode only in 2.4Ghz
                 logging.debug('Mode \'%s\' is not available for 5Ghz band.',
                                mode_name)
@@ -119,7 +123,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="wl_ssid_24g"]'
         mode = '//select[@name="wl_net_mode_24g"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@maxlength="32" and @name="wl_ssid_5g"]'
             mode = '//select[@name="wl_net_mode_5g"]'
         ssid_field = self.driver.find_element_by_xpath(xpath)
@@ -140,7 +144,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
         xpath = '//select[@name="wl_schannel"]'
         channels = ['Auto', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                     '10', '11']
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="wl_schannel"]'
             channels = ['Auto', '36', '40', '44', '48', '149', '153',
                         '157', '161']
@@ -160,7 +164,7 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
     def _set_ch_width(self, channel_wid):
         channel_width_choice = ['Auto (20MHz or 40MHz)', '20MHz only']
         xpath = '//select[@name="_wl_nbw"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             channel_width_choice = ['Auto (20MHz or 40MHz)', '20MHz only',
                                     '40MHz only']
             xpath = '//select[@name="_wl_nbw"]'
@@ -173,13 +177,13 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_band(self, band):
-        if band == self.band_2ghz:
-            self.current_band = self.band_2ghz
+        if band == ap_spec.BAND_2GHZ:
+            self.current_band = ap_spec.BAND_2GHZ
             xpath = '//input[@name="wl_sband" and @value="24g"]'
             element = self.driver.find_element_by_xpath(xpath)
             element.click()
-        elif band == self.band_5ghz:
-            self.current_band = self.band_5ghz
+        elif band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
             xpath = '//input[@name="wl_sband" and @value="5g"]'
             element = self.driver.find_element_by_xpath(xpath)
             element.click()
@@ -253,6 +257,6 @@ class Linksyse2000APConfigurator(ap_configurator.APConfigurator):
     def _set_visibility(self, visible=True):
         value = 0 if visible else 1
         xpath = '//input[@name="wl_closed_24g" and @value="%s"]' % value
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="wl_closed_5g" and @value="%s"]' % value
         self.click_button_by_xpath(xpath)

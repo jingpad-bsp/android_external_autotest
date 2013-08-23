@@ -4,8 +4,10 @@
 
 import os
 
+import ap_spec
 import netgear_WNDR_dual_band_configurator
 from netgear_WNDR_dual_band_configurator import *
+
 
 class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
                                 NetgearDualBandAPConfigurator):
@@ -16,8 +18,7 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
 
-        Args:
-          alert: The modal dialog's contents.
+        @param alert: The modal dialog's contents.
         """
         text = alert.text
         #  We ignore warnings that we get when we disable visibility or security
@@ -33,15 +34,17 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9 , 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': [36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_5ghz, 'modes': [self.mode_a, self.mode_n]},
-                {'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]}]
+        return [{'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_A, ap_spec.MODE_N]},
+                {'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_G, ap_spec.MODE_N]}]
 
 
     def logout_from_previous_netgear(self):
@@ -53,25 +56,33 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def navigate_to_page(self, page_number):
-         try:
-             self.get_url(urlparse.urljoin(self.admin_interface_url,
-                          'adv_index.htm'), page_title='WNDR4300')
-             self.click_button_by_id('setup_bt')
-             self.wait_for_object_by_id('wireless')
-             self.click_button_by_id('wireless')
-         except Exception as e:
-             if os.path.basename(self.driver.current_url) != 'adv_index.htm':
-                 raise RuntimeError('Invalid url %s' % self.driver.current_url)
-             elif os.path.basename(
-                  self.driver.current_url) == 'multi_login.html':
-                 self.logout_from_previous_netgear()
-         setframe = self.driver.find_element_by_xpath(
-                    '//iframe[@name="formframe"]')
-         settings = self.driver.switch_to_frame(setframe)
-         self.wait_for_object_by_xpath('//input[@name="ssid"]')
+        """Navigate to the given page.
+
+        @param page_number: the page to navigate to.
+        """
+        try:
+            self.get_url(urlparse.urljoin(self.admin_interface_url,
+                         'adv_index.htm'), page_title='WNDR4300')
+            self.click_button_by_id('setup_bt')
+            self.wait_for_object_by_id('wireless')
+            self.click_button_by_id('wireless')
+        except Exception as e:
+            if os.path.basename(self.driver.current_url) != 'adv_index.htm':
+                raise RuntimeError('Invalid url %s' % self.driver.current_url)
+            elif os.path.basename(
+                self.driver.current_url) == 'multi_login.html':
+                self.logout_from_previous_netgear()
+        setframe = self.driver.find_element_by_xpath(
+                   '//iframe[@name="formframe"]')
+        settings = self.driver.switch_to_frame(setframe)
+        self.wait_for_object_by_xpath('//input[@name="ssid"]')
 
 
     def save_page(self, page_number):
+        """Saves the given page.
+
+        @param page_number: the page to save.
+        """
         self.click_button_by_xpath('//input[@name="Apply"]',
                                    alert_handler=self._alert_handler)
 
@@ -85,7 +96,7 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
         channel_choices = ['Auto', '01', '02', '03', '04', '05', '06', '07',
                            '08', '09', '10', '11']
         xpath = '//select[@name="w_channel"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="w_channel_an"]'
             channel_choices = ['36', '40', '44', '48', '149', '153',
                                '157', '161']
@@ -103,7 +114,7 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
                  '@type="radio"]')
         text_field = '//input[@name="passphraseStr"]'
         button = '//input[@name="Generate"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="security_type_an" and @value="WEP" and\
                      @type="radio"]'
             text_field = '//input[@name="passphraseStr_an"]'

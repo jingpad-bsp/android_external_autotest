@@ -8,6 +8,7 @@ import logging
 import urlparse
 
 import ap_configurator
+import ap_spec
 
 
 class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
@@ -16,7 +17,7 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
     def __init__(self, ap_config=None):
         super(MediaLinkAPConfigurator, self).__init__(ap_config=ap_config)
-        self.current_mode = self.mode_b
+        self.current_mode = ap_spec.MODE_B
         self.add_item_to_command_list(self._set_mode, (self.current_mode, ),
                                       1, 500)
 
@@ -46,23 +47,23 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['AutoSelect', 1, 2, 3, 4, 5, 6, 7,
                               8, 9, 10, 11, 12, 13]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_g, self.mode_b |
-                           self.mode_g, self.mode_b | self.mode_g |
-                           self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_G, ap_spec.MODE_B |
+                           ap_spec.MODE_G, ap_spec.MODE_B | ap_spec.MODE_G |
+                           ap_spec.MODE_N]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -106,13 +107,13 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_mode(self, mode):
-        if mode == self.mode_b:
+        if mode == ap_spec.MODE_B:
             mode_popup = '11b mode'
-        elif mode == self.mode_g:
+        elif mode == ap_spec.MODE_G:
             mode_popup = '11g mode'
-        elif mode == (self.mode_b | self.mode_g):
+        elif mode == (ap_spec.MODE_B | ap_spec.MODE_G):
             mode_popup = '11b/g mixed mode'
-        elif mode == (self.mode_b | self.mode_g | self.mode_n):
+        elif mode == (ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N):
             mode_popup = '11b/g/n mixed mode'
         else:
             raise RuntimeError('Invalid mode passed: %x' % mode)
@@ -157,7 +158,7 @@ class MediaLinkAPConfigurator(ap_configurator.APConfigurator):
                            '2447MHz (Channel 8)', '2452MHz (Channel 9)',
                            '2457MHz (Channel 10)', '2462MHz (Channel 11)',
                            '2467MHz (Channel 12)', '2472MHz (Channel 13)']
-        if self.current_mode == self.mode_b:
+        if self.current_mode == ap_spec.MODE_B:
             xpath = '//select[@name="sz11bChannel"]'
         else:
             xpath = '//select[@name="sz11gChannel"]'

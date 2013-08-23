@@ -9,11 +9,9 @@ import os
 import sys
 import xmlrpclib
 
+import ap_spec
+import download_chromium_prebuilt
 import web_driver_core_helpers
-from autotest_lib.server.cros.chaos_ap_configurators import \
-        ap_spec
-from autotest_lib.server.cros.chaos_ap_configurators import \
-    download_chromium_prebuilt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
                              'chrome_test', 'test_src', 'third_party',
@@ -51,29 +49,8 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             self.host_name = ap_config.get_wan_host()
             self.config_data = ap_config
 
-        # Possible bands
-        self.band_2ghz = ap_spec.BAND_2GHZ
-        self.band_5ghz = ap_spec.BAND_5GHZ
         # Set a default band, this can be overriden by the subclasses
         self.current_band = ap_spec.BAND_2GHZ
-
-        # Possible modes
-        self.mode_a = ap_spec.MODE_A
-        self.mode_b = ap_spec.MODE_B
-        self.mode_g = ap_spec.MODE_G
-        self.mode_n = ap_spec.MODE_N
-        self.mode_auto = ap_spec.MODE_AUTO
-        self.mode_m = ap_spec.MODE_M
-        self.mode_d = ap_spec.MODE_D
-
-        # Possible security types
-        self.security_type_disabled = ap_spec.SECURITY_TYPE_DISABLED
-        self.security_type_wep = ap_spec.SECURITY_TYPE_WEP
-        self.security_type_wpapsk = ap_spec.SECURITY_TYPE_WPAPSK
-        self.security_type_wpa2psk = ap_spec.SECURITY_TYPE_WPA2PSK
-
-        self.wep_authentication_open = ap_spec.WEP_AUTHENTICATION_OPEN
-        self.wep_authentication_shared = ap_spec.WEP_AUTHENTICATION_SHARED
 
         self._command_list = []
         self._screenshot_list = []
@@ -165,7 +142,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         supported_bands = [{'band' : self.band_2GHz,
                             'channels' : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
-                           {'band' : self.band_5ghz,
+                           {'band' : ap_spec.BAND_5GHZ,
                             'channels' : [26, 40, 44, 48, 149, 153, 165]}]
 
         Note: The derived class must implement this method.
@@ -177,7 +154,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
     def get_bss(self):
         """Returns the bss of the AP."""
-        if self.current_band == self.band_2ghz:
+        if self.current_band == ap_spec.BAND_2GHZ:
             return self.config_data.get_bss()
         else:
             return self.config_data.get_bss5()
@@ -203,7 +180,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         supported_modes = [{'band' : self.band_2GHz,
                             'modes' : [mode_b, mode_b | mode_g]},
-                           {'band' : self.band_5ghz,
+                           {'band' : ap_spec.BAND_5GHZ,
                             'modes' : [mode_a, mode_n, mode_a | mode_n]}]
 
         Note: The derived class must implement this method.

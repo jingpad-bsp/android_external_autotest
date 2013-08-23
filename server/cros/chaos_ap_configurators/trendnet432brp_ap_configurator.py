@@ -4,6 +4,8 @@
 
 
 import os
+
+import ap_spec
 import trendnet_ap_configurator
 
 
@@ -33,21 +35,29 @@ class Trendnet432brpAPConfigurator(trendnet_ap_configurator.
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz, 'channels': range(1, 13)}]
+        return [{'band': ap_spec.BAND_2GHZ, 'channels': range(1, 13)}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz, 'modes': [self.mode_g]}]
+        return [{'band': ap_spec.BAND_2GHZ, 'modes': [ap_spec.MODE_G]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wep,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk)
+        """Returns in the given security mode is supported.
+
+        @param security_mode: a security mode that is define in APSpec.
+        """
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WEP,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK)
 
 
     def navigate_to_page(self, page_number):
+        """Navigates to the given pages.
+
+        @param page_number: the page to navigate to.
+        """
         if page_number == 1:
             page_url = os.path.join(self.admin_interface_url,'wlan_basic.asp')
             self.get_url(page_url, page_title='TEW-432BRP')
@@ -62,6 +72,10 @@ class Trendnet432brpAPConfigurator(trendnet_ap_configurator.
 
 
     def save_page(self, page_number):
+        """Saves the given page.
+
+        @param page_number: the page to save.
+        """
         xpath = ('//input[@name="apply" and @value="Apply"]')
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 

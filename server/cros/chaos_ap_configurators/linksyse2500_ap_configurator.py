@@ -5,7 +5,9 @@
 import logging
 import urlparse
 
+import ap_spec
 import linksyse_dual_band_configurator
+
 
 class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                                  LinksyseDualBandAPConfigurator):
@@ -28,25 +30,36 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_n, self.mode_b |
-                           self.mode_g, self.mode_g, self.mode_m]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_a, self.mode_n, self.mode_m]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_N, ap_spec.MODE_B |
+                           ap_spec.MODE_G, ap_spec.MODE_G, ap_spec.MODE_M]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_A, ap_spec.MODE_N, ap_spec.MODE_M]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        if self.current_band == self.band_5ghz:
-            return security_mode in (self.security_type_disabled,
-                                     self.security_type_wpapsk,
-                                     self.security_type_wpa2psk)
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk,
-                                 self.security_type_wep)
+        """Returns if the passed in security mode is supported.
+
+        @param security_mode: one of the supported security methods defined
+                              in APSpec.
+
+        @returns True is suppported; False otherwise.
+        """
+        if self.current_band == ap_spec.BAND_5GHZ:
+            return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                     ap_spec.SECURITY_TYPE_WPAPSK,
+                                     ap_spec.SECURITY_TYPE_WPA2PSK)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
+        """Navigate to the passed in page.
+
+        @param page_number: the page number as an integer
+        """
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'Wireless_Basic.asp')
@@ -62,28 +75,29 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
 
 
     def _set_mode(self, mode, band=None):
-        mode_mapping = {self.mode_b: 'Wireless-B Only',
-                        self.mode_g: 'Wireless-G Only',
-                        self.mode_b | self.mode_g: 'Wireless-B/G Only',
-                        self.mode_n: 'Wireless-N Only',
-                        self.mode_a: 'Wireless-A Only',
-                        self.mode_m: 'Mixed'}
+        mode_mapping = {ap_spec.MODE_B: 'Wireless-B Only',
+                        ap_spec.MODE_G: 'Wireless-G Only',
+                        ap_spec.MODE_B | ap_spec.MODE_G: 'Wireless-B/G Only',
+                        ap_spec.MODE_N: 'Wireless-N Only',
+                        ap_spec.MODE_A: 'Wireless-A Only',
+                        ap_spec.MODE_M: 'Mixed'}
         xpath = '//select[@name="net_mode_24g"]'
-        if self.current_band == self.band_5ghz or band == self.band_5ghz:
-            self.current_band = self.band_5ghz
+        if self.current_band == ap_spec.BAND_5GHZ or band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
             xpath = '//select[@name="net_mode_5g"]'
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
-            if (mode & self.mode_a) and (self.current_band != self.band_5ghz):
+            if ((mode & ap_spec.MODE_A) and
+                (self.current_band != ap_spec.BAND_5GHZ)):
                 #  a mode only in 5Ghz
                 logging.debug('Mode \'a\' is not available for 2.4Ghz band.')
                 return
-            elif ((mode & (self.mode_b | self.mode_g) ==
-                  (self.mode_b | self.mode_g)) or
-                 (mode & self.mode_b == self.mode_b) or
-                 (mode & self.mode_g == self.mode_g)) and \
-                 (self.current_band != self.band_2ghz):
+            elif ((mode & (ap_spec.MODE_B | ap_spec.MODE_G) ==
+                  (ap_spec.MODE_B | ap_spec.MODE_G)) or
+                 (mode & ap_spec.MODE_B == ap_spec.MODE_B) or
+                 (mode & ap_spec.MODE_G == ap_spec.MODE_G)) and \
+                 (self.current_band != ap_spec.BAND_2GHZ):
                 #  b/g, b, g mode only in 2.4Ghz
                 logging.debug('Mode \'%s\' is not available for 5Ghz band.',
                               mode_name)
@@ -96,7 +110,7 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
 
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="ssid_24g"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@maxlength="32" and @name="ssid_5g"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
 
@@ -109,7 +123,7 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                            '7 - 2.442GHZ', '8 - 2.447GHZ', '9 - 2.452GHZ',
                            '10 - 2.457GHZ', '11 - 2.462GHZ']
         xpath = '//select[@name="_wl0_channel"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="_wl1_channel"]'
             channel_choices = ['Auto (DFS)',
                                '36 - 5.180GHz', '40 - 5.200GHz',
@@ -136,7 +150,7 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
 
     def _set_visibility(self, visible=True):
         button = 'closed_24g'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             button = 'closed_5g'
         int_value = 0 if visible else 1
         xpath = ('//input[@value="%d" and @name="%s"]' % (int_value, button))

@@ -7,6 +7,7 @@
 import logging
 
 import ap_configurator
+import ap_spec
 import selenium.common.exceptions
 
 
@@ -22,7 +23,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
           wait_for_path: An item to wait for before returning.
         """
         auth = '//select[@name="rt_auth_mode"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             auth = '//select[@name="wl_auth_mode"]'
         self.select_item_from_popup_by_xpath(authentication, auth,
             wait_for_xpath, alert_handler=self._invalid_security_handler)
@@ -42,33 +43,33 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': [36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_n, self.mode_b |
-                           self.mode_g, self.mode_b]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_n, self.mode_a]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_N, ap_spec.MODE_B |
+                           ap_spec.MODE_G, ap_spec.MODE_B]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_N, ap_spec.MODE_A]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
         # The page is determined by what band we are using. We ignore the input.
         admin_url = self.admin_interface_url
-        if self.current_band == self.band_2ghz:
+        if self.current_band == ap_spec.BAND_2GHZ:
             self.get_url('%s/Advanced_Wireless2g_Content.asp' % admin_url,
                          page_title='2.4G')
-        elif self.current_band == self.band_5ghz:
+        elif self.current_band == ap_spec.BAND_5GHZ:
             self.get_url('%s/Advanced_Wireless_Content.asp' % admin_url,
                          page_title='5G')
         else:
@@ -98,23 +99,24 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
     def _set_mode(self, mode, band=None):
         xpath = '//select[@name="rt_gmode"]'
         #  Create the mode to popup item mapping
-        mode_mapping = {self.mode_b: 'b Only', self.mode_g: 'g Only',
-                        self.mode_b | self.mode_g: 'b/g Only',
-                        self.mode_n: 'n Only', self.mode_a: 'a Only'}
+        mode_mapping = {ap_spec.MODE_B: 'b Only', ap_spec.MODE_G: 'g Only',
+                        ap_spec.MODE_B | ap_spec.MODE_G: 'b/g Only',
+                        ap_spec.MODE_N: 'n Only', ap_spec.MODE_A: 'a Only'}
         mode_name = ''
-        if self.current_band == self.band_5ghz or band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ or band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="wl_gmode"]'
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
-            if (mode & self.mode_a) and (self.current_band == self.band_2ghz):
+            if ((mode & ap_spec.MODE_A) and
+                (self.current_band == ap_spec.BAND_2GHZ)):
                 #  a mode only in 5Ghz
                 logging.debug('Mode \'a\' is not available for 2.4Ghz band.')
                 return
-            elif ((mode & (self.mode_b | self.mode_g) ==
-                  (self.mode_b | self.mode_g)) or
-                 (mode & self.mode_b == self.mode_b) or
-                 (mode & self.mode_g == self.mode_g)) and \
-                 (self.current_band != self.band_2ghz):
+            elif ((mode & (ap_spec.MODE_B | ap_spec.MODE_G) ==
+                  (ap_spec.MODE_B | ap_spec.MODE_G)) or
+                 (mode & ap_spec.MODE_B == ap_spec.MODE_B) or
+                 (mode & ap_spec.MODE_G == ap_spec.MODE_G)) and \
+                 (self.current_band != ap_spec.BAND_2GHZ):
                 #  b/g, b, g mode only in 2.4Ghz
                 logging.debug('Mode \'%s\' is not available for 5Ghz band.',
                              mode_name)
@@ -137,7 +139,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="rt_ssid"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@maxlength="32" and @name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
 
@@ -150,7 +152,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         position = self._get_channel_popup_position(channel)
         channel_choices = range(1, 12)
         xpath = '//select[@name="rt_channel"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="wl_channel"]'
             channel_choices = ['36', '40', '44', '48', '149', '153',
                                '157', '161']
@@ -159,10 +161,10 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        if band == self.band_2ghz:
-            self.current_band = self.band_2ghz
-        elif band == self.band_5ghz:
-            self.current_band = self.band_5ghz
+        if band == ap_spec.BAND_2GHZ:
+            self.current_band = ap_spec.BAND_2GHZ
+        elif band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
         else:
             raise RuntimeError('Invalid band sent %s' % band)
 
@@ -173,7 +175,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_security_disabled(self):
         popup = '//select[@name="rt_wep_x"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             popup = '//select[@name="wl_wep_x"]'
         self._set_authentication('Open System', wait_for_xpath=popup)
         self.select_item_from_popup_by_xpath('None', popup)
@@ -187,7 +189,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
     def _set_security_wep(self, key_value, authentication):
         popup = '//select[@name="rt_wep_x"]'
         text_field = '//input[@name="rt_phrase_x"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             popup = '//select[@name="wl_wep_x"]'
             text_field = '//input[@name="wl_phrase_x"]'
         self._set_authentication('Open System', wait_for_xpath=popup)
@@ -209,7 +211,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
     def _set_security_wpapsk(self, shared_key, update_interval):
         key_field = '//input[@name="rt_wpa_psk"]'
         interval_field = '//input[@name="rt_wpa_gtk_rekey"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             key_field = '//input[@name="wl_wpa_psk"]'
             interval_field = '//input[@name="wl_wpa_gtk_rekey"]'
         self._set_authentication('WPA-Personal',
@@ -227,7 +229,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         #  value=0 is visible; value=1 is invisible
         value = 0 if visible else 1
         xpath = '//input[@name="rt_closed" and @value="%s"]' % value
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="wl_closed" and @value="%s"]' % value
         self.click_button_by_xpath(xpath,
                                    alert_handler=self._invalid_security_handler)

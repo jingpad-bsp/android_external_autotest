@@ -10,6 +10,7 @@ import time
 import urlparse
 
 import ap_configurator
+import ap_spec
 from selenium.common.exceptions import NoSuchElementException as \
     SeleniumNoSuchElementException
 
@@ -44,14 +45,14 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_g | self.mode_b, self.mode_n,
-                           self.mode_b | self.mode_g | self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_G | ap_spec.MODE_B, ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]}]
 
 
     def get_number_of_pages(self):
@@ -59,9 +60,9 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -124,9 +125,9 @@ class BelkinAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_mode(self, mode):
-        mode_mapping = {self.mode_g | self.mode_b: '802.11g&802.11b',
-                        self.mode_n: '802.11n only',
-                        self.mode_b | self.mode_g | self.mode_n:
+        mode_mapping = {ap_spec.MODE_G | ap_spec.MODE_B: '802.11g&802.11b',
+                        ap_spec.MODE_N: '802.11n only',
+                        ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N:
                         '802.11b&802.11g&802.11n'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:

@@ -4,6 +4,7 @@
 
 """Class to control the Asus66RAP router."""
 
+import ap_spec
 import asus_qis_ap_configurator
 
 
@@ -18,9 +19,9 @@ class Asus66RAPConfigurator(asus_qis_ap_configurator.AsusQISAPConfigurator):
     def _set_mode(self, mode, band=None):
         if band:
             self._set_band(band)
-        if mode == self.mode_auto:
+        if mode == ap_spec.MODE_AUTO:
             mode_popup = 'Auto'
-        elif mode == self.mode_n:
+        elif mode == ap_spec.MODE_N:
             mode_popup = 'N Only'
         else:
             raise RuntimeError('Invalid mode passed %x' % mode)
@@ -38,7 +39,7 @@ class Asus66RAPConfigurator(asus_qis_ap_configurator.AsusQISAPConfigurator):
         channel_choices = ['Auto', '1', '2', '3', '4', '5', '6',
                            '7', '8', '9', '10', '11']
         xpath = '//select[@name="wl_chanspec"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             channel_choices = ['Auto', '36', '40', '44', '48', '149', '153',
                                '157', '161']
         self.select_item_from_popup_by_xpath(str(channel_choices[position]),

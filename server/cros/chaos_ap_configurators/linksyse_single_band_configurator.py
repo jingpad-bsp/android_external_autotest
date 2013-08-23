@@ -9,6 +9,7 @@ import logging
 import urlparse
 
 import ap_configurator
+import ap_spec
 
 from selenium.common.exceptions import WebDriverException
 
@@ -42,21 +43,21 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_m, self.mode_b | self.mode_g, self.mode_g,
-                           self.mode_b, self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_M, ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_B, ap_spec.MODE_N]}]
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -86,11 +87,11 @@ class LinksyseSingleBandAPConfigurator(ap_configurator.APConfigurator):
 
 
     def _set_mode(self, mode, band=None):
-        mode_mapping = {self.mode_m:'Mixed',
-                        self.mode_b | self.mode_g:'Wireless-B/G Only',
-                        self.mode_g:'Wireless-G Only',
-                        self.mode_b:'Wireless-B Only',
-                        self.mode_n:'Wireless-N Only'}
+        mode_mapping = {ap_spec.MODE_M:'Mixed',
+                        ap_spec.MODE_B | ap_spec.MODE_G:'Wireless-B/G Only',
+                        ap_spec.MODE_G:'Wireless-G Only',
+                        ap_spec.MODE_B:'Wireless-B Only',
+                        ap_spec.MODE_N:'Wireless-N Only'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode %d not supported by router %s. ',

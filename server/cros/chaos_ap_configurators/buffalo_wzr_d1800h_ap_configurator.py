@@ -8,6 +8,7 @@ import logging
 import urlparse
 
 import ap_configurator
+import ap_spec
 
 
 class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
@@ -28,24 +29,24 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_n, self.mode_g]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_n, self.mode_a]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_N, ap_spec.MODE_G]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_N, ap_spec.MODE_A]}]
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9 , 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': ['Auto', 36, 40, 44, 48, 149, 153,
                               157, 161, 165]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -116,7 +117,7 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
     def _set_ssid(self, ssid):
         self._switch_frame()
         xpath = '//input[@type="text" and @name="ssid_11bg"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@type="text" and @name="ssid_11a"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
         default = self.driver.switch_to_default_content()
@@ -133,7 +134,7 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
                           'Channel 4', 'Channel 5', 'Channel 6', 'Channel 7',
                           'Channel 8', 'Channel 9', 'Channel 10', 'Channel 11']
         xpath = '//select[@name="channel11bg"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="channel11a"]'
             channel_choice = ['Auto', 'Channel 36', 'Channel 40', 'Channel 44',
                               'Channel 48', 'Channel 149', 'Channel 153',
@@ -159,7 +160,7 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         channel_width_choice = ['11n/g/bNormal Mode (20 MHz)',
                                 '11n/g/b450 Mbps Mode (40 MHz)']
         xpath = '//select[@name="nbw_11bg"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             channel_width_choice = ['11n/aNormal Mode (20 MHz)',
                                     '11n/a450 Mbps Mode (40 MHz)',
                                     '11ac/n/a1300 Mbps Mode (80 MHz)']
@@ -170,10 +171,10 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        if band == self.band_5ghz:
-            self.current_band = self.band_5ghz
-        elif band == self.band_2ghz:
-            self.current_band = self.band_2ghz
+        if band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
+        elif band == ap_spec.BAND_2GHZ:
+            self.current_band = ap_spec.BAND_2GHZ
         else:
             raise RuntimeError('Invalid band sent %s' % band)
 
@@ -185,7 +186,7 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
     def _set_security_disabled(self):
         self._switch_frame()
         xpath = '//span[@class="WLAN11G"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//span[@class="WLAN11A"]'
         self.driver.find_element_by_xpath(xpath)
         self.click_button_by_xpath(xpath)
@@ -203,7 +204,7 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
         self.security_wep = "Character Input : 5 characters (WEP64)"
         self._switch_frame()
         xpath = '//span[@class="WLAN11G"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//span[@class="WLAN11A"]'
         self.driver.find_element_by_xpath(xpath)
         self.click_button_by_xpath(xpath)
@@ -227,7 +228,7 @@ class BuffalowzrAPConfigurator(ap_configurator.APConfigurator):
     def _set_security_wpapsk(self, shared_key, update_interval=None):
         self._switch_frame()
         xpath = '//span[@class="WLAN11G"]'
-        if self.current_band == self.band_5ghz:
+        if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//span[@class="WLAN11A"]'
         self.driver.find_element_by_xpath(xpath)
         self.click_button_by_xpath(xpath)

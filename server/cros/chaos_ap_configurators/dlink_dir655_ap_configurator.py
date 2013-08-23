@@ -5,14 +5,13 @@
 """Class to control the Dlink Dir655 router."""
 
 import logging
-import os
 import time
 import urlparse
 
 import ap_configurator
+import ap_spec
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
-from selenium.common.exceptions import WebDriverException
 
 
 class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
@@ -66,22 +65,22 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_g, self.mode_n,
-                           self.mode_b | self.mode_g,
-                           self.mode_g | self.mode_n,
-                           self.mode_b | self.mode_g | self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_G, ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_G | ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wep,
-                                 self.security_type_wpapsk)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WEP,
+                                 ap_spec.SECURITY_TYPE_WPAPSK)
 
 
     def navigate_to_page(self, page_number):
@@ -99,6 +98,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
 
     def login_to_ap(self):
+        """Logs into the AP."""
         self.set_content_of_text_field_by_id('password', 'log_pass')
         self.click_button_by_id('login', alert_handler=self._alert_handler)
         # This will send us to the landing page and not where we want to go.
@@ -129,13 +129,13 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
     def _set_mode(self, mode, band=None):
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b: '802.11b only',
-                        self.mode_g: '802.11g only',
-                        self.mode_n: '802.11n only',
-                        self.mode_b | self.mode_g: 'Mixed 802.11g and 802.11b',
-                        self.mode_n | self.mode_g: 'Mixed 802.11n and 802.11g',
-                        self.mode_n | self.mode_g | self.mode_b:
-                        'Mixed 802.11n, 802.11g and 802.11b'}
+        mode_mapping = {ap_spec.MODE_B: '802.11b only',
+            ap_spec.MODE_G: '802.11g only',
+            ap_spec.MODE_N: '802.11n only',
+            ap_spec.MODE_B | ap_spec.MODE_G: 'Mixed 802.11g and 802.11b',
+            ap_spec.MODE_N | ap_spec.MODE_G: 'Mixed 802.11n and 802.11g',
+            ap_spec.MODE_N | ap_spec.MODE_G | ap_spec.MODE_B:
+            'Mixed 802.11n, 802.11g and 802.11b'}
         if mode in mode_mapping.keys():
             popup_value = mode_mapping[mode]
         else:
@@ -145,7 +145,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
         # When we change to an N based mode another popup is displayed.  We need
         # to wait for the before proceeding.
         wait_for_xpath = 'id("show_ssid")'
-        if mode & self.mode_n == self.mode_n:
+        if mode & ap_spec.MODE_N == ap_spec.MODE_N:
             wait_for_xpath = 'id("11n_protection")'
         self.select_item_from_popup_by_id(popup_value, 'dot11_mode',
                                           wait_for_xpath=wait_for_xpath)
@@ -209,7 +209,7 @@ class DLinkDIR655APConfigurator(ap_configurator.APConfigurator):
 
 
     def set_band(self, band):
-        logging.debug('This router (%s) does not support multiple bands.' %
+        logging.debug('This router (%s) does not support multiple bands.',
                       self.get_router_name())
         return None
 

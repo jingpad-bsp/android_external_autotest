@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 import os
+
+import ap_spec
 import trendnet_ap_configurator
 
 
@@ -28,6 +30,10 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
 
 
     def save_page(self, page_number):
+        """Save the given page.
+
+        @param page_number: the page to save.
+        """
         xpath = ('//input[@class="button_submit" and @value="Apply"]')
         element = self.wait_for_object_by_xpath(xpath)
         if element and element.is_displayed():
@@ -42,23 +48,28 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz, 'channels': range(1, 12)},
-                {'band': self.band_5ghz, 'channels':[36, 40, 44, 48, 149, 153,
-                                                     157, 161, 165]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'channels': range(1, 12)},
+                {'band': ap_spec.BAND_5GHZ,
+                 'channels':[36, 40, 44, 48, 149, 153, 157, 161, 165]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_n,
-                           self.mode_b | self.mode_g,
-                           self.mode_b | self.mode_g | self.mode_n]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_a | self.mode_n, self.mode_a]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_A | ap_spec.MODE_N, ap_spec.MODE_A]}]
 
 
     def navigate_to_page(self, page_number):
+        """Navigates to the given page.
+
+        @param page_number: the page to navigate to.
+        """
         # All settings are on the same page, so we always open the config page
-        if self.current_band == self.band_2ghz:
+        if self.current_band == ap_spec.BAND_2GHZ:
             if page_number == 1:
                 page_url = os.path.join(self.admin_interface_url ,
                                         'wireless/basic.asp')
@@ -69,7 +80,7 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
                 raise RuntimeError('Invalid page number passed. Number of pages'
                                    '%d, page value sent was %d' %
                                    (self.get_number_of_pages(), page_number))
-        elif self.current_band == self.band_5ghz:
+        elif self.current_band == ap_spec.BAND_5GHZ:
             if page_number == 1:
                 page_url = os.path.join(self.admin_interface_url ,
                                         'wireless2/basic.asp')
@@ -97,13 +108,14 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
     def _set_mode(self, mode, band=None):
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b | self.mode_g | self.mode_n:
+        mode_mapping = {ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N:
                         '2.4GHz 802.11 b/g/n mixed mode',
-                        self.mode_n: '2.4GHz 802.11 n only',
-                        self.mode_b | self.mode_g:
+                        ap_spec.MODE_N: '2.4GHz 802.11 n only',
+                        ap_spec.MODE_B | ap_spec.MODE_G:
                         '2.4GHz 802.11 b/g mixed mode',
-                        self.mode_a: '5GHz 802.11 a only',
-                        self.mode_a | self.mode_n: '5GHz 802.11 a/n mixed mode'}
+                        ap_spec.MODE_A: '5GHz 802.11 a only',
+                        ap_spec.MODE_A | ap_spec.MODE_N:
+                        '5GHz 802.11 a/n mixed mode'}
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
@@ -115,10 +127,10 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
 
 
     def set_band(self, band):
-        if band == self.band_5ghz:
-            self.current_band = self.band_5ghz
-        elif band == self.band_2ghz:
-            self.current_band = self.band_2ghz
+        if band == ap_spec.BAND_5GHZ:
+            self.current_band = ap_spec.BAND_5GHZ
+        elif band == ap_spec.BAND_2GHZ:
+            self.current_band = ap_spec.BAND_2GHZ
         else:
             raise RuntimeError('Invalid band sent %s' % band)
 
@@ -142,7 +154,7 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
                                 '5745MHz (Channel 149)','5765MHz (Channel 153)',
                                 '5785MHz (Channel 157)','5805MHz (Channel 161)',
                                 '5825MHz (Channel 165)']
-        if self.current_band == self.band_2ghz:
+        if self.current_band == ap_spec.BAND_2GHZ:
             self.select_item_from_popup_by_id(channel_choices_2GHZ[position],
                                               'sz11gChannel')
         else:

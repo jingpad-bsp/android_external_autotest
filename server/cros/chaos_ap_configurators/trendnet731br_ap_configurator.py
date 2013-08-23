@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ap_spec
 import trendnet_ap_configurator
 
 
@@ -10,7 +11,10 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
     """Derived class to control the Trendnet TEW-731BR."""
 
     def navigate_to_page(self, page_number):
-        # Navigate to login page before opening any other page
+        """Navigate to the given page.
+
+        @param page_number: the page to navigate to.
+        """
         self.navigate_to_login_page()
         if page_number == 1:
             page_url = ''.join([self.admin_interface_url,
@@ -40,6 +44,10 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
 
 
     def save_page(self, page_number):
+        """Save the settings of the passed in page.
+
+        @param page_number: the page to save.
+        """
         if page_number == 1:
             xpath = ('//input[@type="button" and @value="Apply"]')
         elif page_number == 2:
@@ -55,23 +63,23 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b,
-                           self.mode_g,
-                           self.mode_n,
-                           self.mode_b | self.mode_g,
-                           self.mode_b | self.mode_g | self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B,
+                           ap_spec.MODE_G,
+                           ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]}]
 
 
     def _set_mode(self, mode, band=None):
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b | self.mode_g | self.mode_n:
+        mode_mapping = {ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N:
                         '2.4Ghz 802.11b/g/n mixed mode',
-                        self.mode_n: '2.4Ghz 802.11n only mode',
-                        self.mode_b: '2.4Ghz 802.11b only mode',
-                        self.mode_g: '2.4Ghz 802.11g only mode',
-                        self.mode_b | self.mode_g:
+                        ap_spec.MODE_N: '2.4Ghz 802.11n only mode',
+                        ap_spec.MODE_B: '2.4Ghz 802.11b only mode',
+                        ap_spec.MODE_G: '2.4Ghz 802.11g only mode',
+                        ap_spec.MODE_B | ap_spec.MODE_G:
                         '2.4Ghz 802.11b/g mixed mode'}
         mode_name = ''
         if mode in mode_mapping.keys():
@@ -82,7 +90,7 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
         self.select_item_from_popup_by_id(mode_name, 'dot11_mode')
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz, 'channels': range(1, 12)}]
+        return [{'band': ap_spec.BAND_2GHZ, 'channels': range(1, 12)}]
 
 
     def _set_channel(self, channel):

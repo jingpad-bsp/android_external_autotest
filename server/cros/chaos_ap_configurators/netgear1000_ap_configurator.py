@@ -5,6 +5,7 @@
 import netgear_single_band_configurator
 from netgear_single_band_configurator import *
 
+import ap_spec
 
 class Netgear1000APConfigurator(netgear_single_band_configurator.
                                 NetgearSingleBandAPConfigurator):
@@ -19,9 +20,9 @@ class Netgear1000APConfigurator(netgear_single_band_configurator.
 
 
     def _set_mode(self, mode):
-        if mode == self.mode_g:
+        if mode == ap_spec.MODE_G:
             mode = 'Up to 54 Mbps'
-        elif mode == self.mode_n:
+        elif mode == ap_spec.MODE_N:
             mode = 'Up to 150 Mbps'
         else:
             raise RuntimeError('Unsupported mode passed.')

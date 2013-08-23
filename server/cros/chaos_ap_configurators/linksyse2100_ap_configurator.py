@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ap_spec
 import linksyse_single_band_configurator
 
 
@@ -11,12 +12,12 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
 
 
     def _set_mode(self, mode, band=None):
-        mode_mapping = {self.mode_m:'Mixed',
-                        self.mode_b | self.mode_g:'BG-Mixed',
-                        self.mode_g:'Wireless-G Only',
-                        self.mode_b:'Wireless-B Only',
-                        self.mode_n:'Wireless-N Only',
-                        self.mode_d:'Disabled'}
+        mode_mapping = {ap_spec.MODE_M:'Mixed',
+                        ap_spec.MODE_B | ap_spec.MODE_G:'BG-Mixed',
+                        ap_spec.MODE_G:'Wireless-G Only',
+                        ap_spec.MODE_B:'Wireless-B Only',
+                        ap_spec.MODE_N:'Wireless-N Only',
+                        ap_spec.MODE_D:'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode %d not supported by router %s. ',

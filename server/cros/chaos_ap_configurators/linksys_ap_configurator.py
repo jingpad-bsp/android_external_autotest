@@ -8,6 +8,7 @@ import logging
 import urlparse
 
 import ap_configurator
+import ap_spec
 
 
 class LinksysAPConfigurator(ap_configurator.APConfigurator):
@@ -19,21 +20,21 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_g, self.mode_b |
-                           self.mode_g]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_G, ap_spec.MODE_B |
+                           ap_spec.MODE_G]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -69,8 +70,8 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
     def _set_mode(self, mode):
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b: 'B-Only', self.mode_g: 'G-Only',
-                        self.mode_b | self.mode_g: 'Mixed',
+        mode_mapping = {ap_spec.MODE_B: 'B-Only', ap_spec.MODE_G: 'G-Only',
+                        ap_spec.MODE_B | ap_spec.MODE_G: 'Mixed',
                         'Disabled': 'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
@@ -93,7 +94,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         if not enabled:
             self._set_mode('Disabled')
         else:
-            self._set_mode(self.mode_g)
+            self._set_mode(ap_spec.MODE_G)
 
 
     def set_ssid(self, ssid):

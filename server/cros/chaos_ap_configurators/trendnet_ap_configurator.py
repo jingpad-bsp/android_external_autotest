@@ -7,6 +7,7 @@ import time
 import urlparse
 
 import ap_configurator
+import ap_spec
 
 
 class TrendnetAPConfigurator(ap_configurator.APConfigurator):
@@ -31,21 +32,21 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz, 'channels': range(1, 12)}]
+        return [{'band': ap_spec.BAND_2GHZ, 'channels': range(1, 12)}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_n,
-                           self.mode_b | self.mode_g,
-                           self.mode_b | self.mode_g | self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wep,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wpa2psk)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WEP,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK)
 
 
     def navigate_to_page(self, page_number):
@@ -96,10 +97,10 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
     def _set_mode(self, mode, band=None):
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b | self.mode_g | self.mode_n:
+        mode_mapping = {ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N:
                         '2.4GHz 802.11 b/g/n mixed mode',
-                        self.mode_n: '2.4GHz 802.11 n only',
-                        self.mode_b | self.mode_g:
+                        ap_spec.MODE_N: '2.4GHz 802.11 n only',
+                        ap_spec.MODE_B | ap_spec.MODE_G:
                         '2.4GHz 802.11 b/g mixed mode'}
         mode_name = ''
         if mode in mode_mapping.keys():

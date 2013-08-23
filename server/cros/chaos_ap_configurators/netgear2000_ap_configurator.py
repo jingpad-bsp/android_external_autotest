@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ap_spec
 import netgear_single_band_configurator
 from netgear_single_band_configurator import *
 
@@ -14,8 +15,7 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
 
-        Args:
-          alert: The modal dialog's contents.
+        @param alert: The modal dialog's contents.
         """
         text = alert.text
         if 'The WEP security can only be supported on one SSID' in text:
@@ -43,6 +43,10 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
 
 
     def navigate_to_page(self, page_number):
+        """Navigates to the given page.
+
+        @param page_number: the page to navigate to.
+        """
         try:
             self.get_url(urlparse.urljoin(self.admin_interface_url,
                          'adv_index.htm'), page_title='WNR2000v3')
@@ -62,7 +66,8 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz, 'modes': [self.mode_g, self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_G, ap_spec.MODE_N]}]
 
 
     def set_mode(self, mode):
@@ -73,9 +78,9 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
 
 
     def _set_mode(self, mode):
-        if mode == self.mode_g:
+        if mode == ap_spec.MODE_G:
             mode = 'Up to 54 Mbps'
-        elif mode == self.mode_n:
+        elif mode == ap_spec.MODE_N:
             mode = 'Up to 150 Mbps'
         else:
             raise RuntimeError('Unsupported mode passed.')

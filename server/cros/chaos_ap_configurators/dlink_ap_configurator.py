@@ -7,6 +7,7 @@
 import os
 
 import ap_configurator
+import ap_spec
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 
@@ -53,20 +54,20 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_bands(self):
-        return [{'band': self.band_2ghz,
+        return [{'band': ap_spec.BAND_2GHZ,
                  'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
-                {'band': self.band_5ghz,
+                {'band': ap_spec.BAND_5GHZ,
                  'channels': [26, 40, 44, 48, 149, 153, 157, 161, 165]}]
 
 
     def get_supported_modes(self):
-        return [{'band': self.band_2ghz,
-                 'modes': [self.mode_b, self.mode_g, self.mode_n,
-                           self.mode_b | self.mode_g,
-                           self.mode_g | self.mode_n]},
-                {'band': self.band_5ghz,
-                 'modes': [self.mode_a, self.mode_n,
-                           self.mode_a | self.mode_n]}]
+        return [{'band': ap_spec.BAND_2GHZ,
+                 'modes': [ap_spec.MODE_B, ap_spec.MODE_G, ap_spec.MODE_N,
+                           ap_spec.MODE_B | ap_spec.MODE_G,
+                           ap_spec.MODE_G | ap_spec.MODE_N]},
+                {'band': ap_spec.BAND_5GHZ,
+                 'modes': [ap_spec.MODE_A, ap_spec.MODE_N,
+                           ap_spec.MODE_A | ap_spec.MODE_N]}]
 
 
     def is_security_mode_supported(self, security_mode):
@@ -106,33 +107,34 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
 
     def _set_mode(self, mode, band=None):
         # Create the mode to popup item mapping
-        mode_mapping = {self.mode_b: '802.11b Only',
-                        self.mode_g: '802.11g Only',
-                        self.mode_n: '802.11n Only',
-                        self.mode_b | self.mode_g: 'Mixed 802.11g and 802.11b',
-                        self.mode_n | self.mode_g: 'Mixed 802.11n and 802.11g',
-                        self.mode_n | self.mode_g | self.mode_b:
-                        'Mixed 802.11n, 802.11g, and 802.11b',
-                        self.mode_n | self.mode_g | self.mode_b:
-                        'Mixed 802.11n, 802.11g, and 802.11b',
-                        self.mode_a: '802.11a Only',
-                        self.mode_n | self.mode_a: 'Mixed 802.11n and 802.11a'}
-        band_value = self.band_2ghz
+        mode_mapping = {ap_spec.MODE_B: '802.11b Only',
+            ap_spec.MODE_G: '802.11g Only',
+            ap_spec.MODE_N: '802.11n Only',
+            ap_spec.MODE_B | ap_spec.MODE_G: 'Mixed 802.11g and 802.11b',
+            ap_spec.MODE_N | ap_spec.MODE_G: 'Mixed 802.11n and 802.11g',
+            ap_spec.MODE_N | ap_spec.MODE_G | ap_spec.MODE_B:
+            'Mixed 802.11n, 802.11g, and 802.11b',
+            ap_spec.MODE_N | ap_spec.MODE_G | ap_spec.MODE_B:
+            'Mixed 802.11n, 802.11g, and 802.11b',
+            ap_spec.MODE_A: '802.11a Only',
+            ap_spec.MODE_N | ap_spec.MODE_A: 'Mixed 802.11n and 802.11a'}
+        band_value = ap_spec.BAND_2GHZ
         if mode in mode_mapping.keys():
             popup_value = mode_mapping[mode]
             # If the mode contains 802.11a we use 5Ghz
-            if mode & self.mode_a == self.mode_a:
-                band_value = self.band_5ghz
+            if mode & ap_spec.MODE_A == ap_spec.MODE_A:
+                band_value = ap_spec.BAND_5GHZ
             # If the mode is 802.11n mixed with 802.11a it must be 5Ghz
-            elif (mode & (self.mode_n | self.mode_a) ==
-                 (self.mode_n | self.mode_a)):
-                band_value = self.band_5ghz
+            elif (mode & (ap_spec.MODE_N | ap_spec.MODE_A) ==
+                 (ap_spec.MODE_N | ap_spec.MODE_A)):
+                band_value = ap_spec.BAND_5GHZ
             # If the mode is 802.11n mixed with other than 802.11a its 2Ghz
-            elif mode & self.mode_n == self.mode_n and mode ^ self.mode_n > 0:
-                band_value = self.band_2ghz
+            elif (mode & ap_spec.MODE_N == ap_spec.MODE_N and
+                  mode ^ ap_spec.MODE_N > 0):
+                band_value = ap_spec.BAND_2GHZ
             # If the mode is 802.11n then default to 5Ghz unless there is a band
-            elif mode == self.mode_n:
-                band_value = self.band_5ghz
+            elif mode == ap_spec.MODE_N:
+                band_value = ap_spec.BAND_5GHZ
             if band:
                 band_value = band
         else:
@@ -142,7 +144,7 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
         # Set the band first
         self._set_band(band_value)
         popup_id = 'mode_80211_11g'
-        if band_value == self.band_5ghz:
+        if band_value == ap_spec.BAND_5GHZ:
             popup_id = 'mode_80211_11a'
         self.select_item_from_popup_by_id(popup_value, popup_id)
 
@@ -206,22 +208,22 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
         self.wait_for_object_by_xpath(xpath)
         element = self.driver.find_element_by_xpath(xpath)
         if element.find_elements_by_tag_name('option')[0].text == '1':
-            return self.band_2ghz
-        return self.band_5ghz
+            return ap_spec.BAND_2GHZ
+        return ap_spec.BAND_5GHZ
 
 
     def set_band(self, band):
-        if band != self.band_2GHz or band != self.band_5ghz:
+        if band != ap_spec.BAND_2GHZ or band != ap_spec.BAND_5GHZ:
             raise RuntimeError('Invalid band sent %s' % band)
         self.add_item_to_command_list(self._set_band, (band,), 1, 900)
 
 
     def _set_band(self, band):
         self._set_radio(enabled=True)
-        if band == self.band_2ghz:
+        if band == ap_spec.BAND_2GHZ:
             int_value = 0
             wait_for_id = 'mode_80211_11g'
-        elif band == self.band_5ghz:
+        elif band == ap_spec.BAND_5GHZ:
             int_value = 1
             wait_for_id = 'mode_80211_11a'
             xpath = ('//*[contains(@class, "l_tb")]/input[@value="%d" '

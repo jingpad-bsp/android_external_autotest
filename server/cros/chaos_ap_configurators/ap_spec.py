@@ -39,7 +39,7 @@ VALID_SECURITIES = [SECURITY_TYPE_DISABLED,
                     SECURITY_TYPE_WPA2PSK]
 
 # List of valid channels.
-VALID_2GHZ_CHANNELS = range(1,14)
+VALID_2GHZ_CHANNELS = range(1,15)
 VALID_5GHZ_CHANNELS = [36, 40, 44, 48, 149, 153, 157, 161, 165]
 
 # Default values

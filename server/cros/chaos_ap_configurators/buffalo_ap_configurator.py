@@ -9,6 +9,7 @@ import time
 import urlparse
 
 import ap_configurator
+import ap_spec
 
 class BuffaloAPConfigurator(ap_configurator.APConfigurator):
     """Configurator for Buffalo AP."""
@@ -27,21 +28,21 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
 
     def get_supported_modes(self):
-        return [{'band':self.band_2ghz,
-                 'modes':[self.mode_b, self.mode_g, self.mode_n,
-                          self.mode_b | self.mode_g,
-                          self.mode_n | self.mode_g]}]
+        return [{'band':ap_spec.BAND_2GHZ,
+                 'modes':[ap_spec.MODE_B, ap_spec.MODE_G, ap_spec.MODE_N,
+                          ap_spec.MODE_B | ap_spec.MODE_G,
+                          ap_spec.MODE_N | ap_spec.MODE_G]}]
 
 
     def get_supported_bands(self):
-        return [{'band':self.band_2ghz,
+        return [{'band':ap_spec.BAND_2GHZ,
                  'channels':[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
 
     def is_security_mode_supported(self, security_mode):
-        return security_mode in (self.security_type_disabled,
-                                 self.security_type_wpapsk,
-                                 self.security_type_wep)
+        return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
@@ -78,10 +79,10 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
     def _set_mode(self, mode):
         # Bands are not supported, so ignore.
         # Create the mode to popup item mapping.
-        mode_mapping = {self.mode_b:'B-Only', self.mode_g: 'G-Only',
-                        self.mode_n:'N-Only (2.4 GHz)',
-                        self.mode_b | self.mode_g:'BG-Mixed',
-                        self.mode_n | self.mode_g:'NG-Mixed'}
+        mode_mapping = {ap_spec.MODE_B:'B-Only', ap_spec.MODE_G: 'G-Only',
+                        ap_spec.MODE_N:'N-Only (2.4 GHz)',
+                        ap_spec.MODE_B | ap_spec.MODE_G:'BG-Mixed',
+                        ap_spec.MODE_N | ap_spec.MODE_G:'NG-Mixed'}
         mode_name = ''
         if mode in mode_mapping:
             mode_name = mode_mapping[mode]
