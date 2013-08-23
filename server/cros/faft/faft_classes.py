@@ -437,7 +437,7 @@ class FAFTSequence(ServoTest):
           A string representing USB disk path, like '/dev/sdb', or None if
           no USB disk is found.
         """
-        cmd = 'ls /dev/sd[a-z]'
+        cmd = 'ls -d /dev/s*[a-z]'
         original_value = self.servo.get_usbkey_direction()
 
         # Make the dut unable to see the USB disk.
