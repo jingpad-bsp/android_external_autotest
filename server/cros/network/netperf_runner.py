@@ -5,6 +5,7 @@
 import collections
 import logging
 import math
+import numbers
 import time
 import os.path
 
@@ -38,7 +39,7 @@ class NetperfResult(object):
 
             87380  16384  16384    2.00      941.28
             """
-            result = NetperfResult(duration_seconds,
+            result = NetperfResult(test_type, duration_seconds,
                                    throughput=float(lines[6].split()[4]))
         elif test_type in NetperfConfig.UDP_STREAM_TESTS:
             """Parses the following and returns a tuple containing throughput
@@ -54,7 +55,7 @@ class NetperfResult(object):
             131072           2.00         3673            961.87
             """
             udp_tokens = lines[5].split()
-            result = NetperfResult(duration_seconds,
+            result = NetperfResult(test_type, duration_seconds,
                                    throughput=float(udp_tokens[5]),
                                    errors=float(udp_tokens[4]))
         elif test_type in NetperfConfig.REQUEST_RESPONSE_TESTS:
@@ -71,7 +72,7 @@ class NetperfResult(object):
             16384  87380  1        1       2.00     14118.53
             16384  87380
             """
-            result = NetperfResult(duration_seconds,
+            result = NetperfResult(test_type, duration_seconds,
                                    transaction_rate=float(lines[6].split()[5]))
         else:
             raise error.TestFail('Invalid netperf test type: %r.' % test_type)
@@ -106,7 +107,8 @@ class NetperfResult(object):
         @return NetperfResult object.
 
         """
-        if not samples:
+        if len(set([x.test_type for x in samples])) != 1:
+            # We have either no samples or multiple test types.
             return None
 
         duration_seconds, duration_seconds_dev = NetperfResult._get_stats(
@@ -117,6 +119,7 @@ class NetperfResult(object):
         transaction_rate, transaction_rate_dev = NetperfResult._get_stats(
                 samples, 'transaction_rate')
         return NetperfResult(
+                samples[0].test_type,
                 duration_seconds, duration_seconds_dev=duration_seconds_dev,
                 throughput=throughput, throughput_dev=throughput_dev,
                 errors=errors, errors_dev=errors_dev,
@@ -124,7 +127,19 @@ class NetperfResult(object):
                 transaction_rate_dev=transaction_rate_dev)
 
 
-    def __init__(self, duration_seconds, duration_seconds_dev=None,
+    @property
+    def human_readable_tag(self):
+        """@return string human readable test description."""
+        return NetperfConfig.test_type_to_human_readable_tag(self.test_type)
+
+
+    @property
+    def tag(self):
+        """@return string very short test description."""
+        return NetperfConfig.test_type_to_tag(self.test_type)
+
+
+    def __init__(self, test_type, duration_seconds, duration_seconds_dev=None,
                  throughput=None, throughput_dev=None,
                  errors=None, errors_dev=None,
                  transaction_rate=None, transaction_rate_dev=None):
@@ -136,6 +151,7 @@ class NetperfResult(object):
         @param transaction_rate float transactions per second.
 
         """
+        self.test_type = test_type
         self.duration_seconds = duration_seconds
         self.duration_seconds_dev = duration_seconds_dev
         self.throughput = throughput
@@ -149,10 +165,12 @@ class NetperfResult(object):
 
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__,
-                           ', '.join(['%s=%0.2f' % item
-                                      for item in vars(self).iteritems()
-                                      if item[1] is not None]))
+        fields = ['test_type=%s' % self.test_type]
+        fields += ['%s=%0.2f' % item
+                   for item in vars(self).iteritems()
+                   if item[1] is not None
+                   and isinstance(item[1], numbers.Number)]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(fields))
 
 
     def all_deviations_less_than_fraction(self, fraction):
@@ -328,7 +346,27 @@ class NetperfConfig(object):
     TCP_STREAM_TESTS = [ TEST_TYPE_TCP_MAERTS,
                          TEST_TYPE_TCP_SENDFILE,
                          TEST_TYPE_TCP_STREAM ]
-    UDP_STREAM_TESTS = [ TEST_TYPE_UDP_STREAM ]
+    UDP_STREAM_TESTS = [ TEST_TYPE_UDP_STREAM,
+                         TEST_TYPE_UDP_MAERTS ]
+
+    SHORT_TAGS = { NetperfConfig.TEST_TYPE_TCP_CRR: 'tcp_crr',
+                   NetperfConfig.TEST_TYPE_TCP_MAERTS: 'tcp_rx',
+                   NetperfConfig.TEST_TYPE_TCP_RR: 'tcp_rr',
+                   NetperfConfig.TEST_TYPE_TCP_SENDFILE: 'tcp_stx',
+                   NetperfConfig.TEST_TYPE_TCP_STREAM: 'tcp_tx',
+                   NetperfConfig.TEST_TYPE_UDP_RR: 'udp_rr',
+                   NetperfConfig.TEST_TYPE_UDP_STREAM: 'udp_tx',
+                   NetperfConfig.TEST_TYPE_UDP_MAERTS: 'udp_rx' }
+
+    READABLE_TAGS = {
+            NetperfConfig.TEST_TYPE_TCP_CRR: 'tcp_connect_roundtrip_rate',
+            NetperfConfig.TEST_TYPE_TCP_MAERTS: 'tcp_downstream',
+            NetperfConfig.TEST_TYPE_TCP_RR: 'tcp_roundtrip_rate',
+            NetperfConfig.TEST_TYPE_TCP_SENDFILE: 'tcp_upstream_sendfile',
+            NetperfConfig.TEST_TYPE_TCP_STREAM: 'tcp_upstream',
+            NetperfConfig.TEST_TYPE_UDP_RR: 'udp_roundtrip',
+            NetperfConfig.TEST_TYPE_UDP_STREAM: 'udp_upstream',
+            NetperfConfig.TEST_TYPE_UDP_MAERTS: 'udp_downstream' }
 
 
     @staticmethod
@@ -344,27 +382,40 @@ class NetperfConfig(object):
             raise error.TestFail('Invalid netperf test type: %r.' % test_type)
 
 
+    @staticmethod
+    def test_type_to_tag(test_type):
+        """Convert a test type to a concise unique tag.
+
+        @param test_type string, one of TEST_TYPE_* above.
+        @return string very short test description.
+
+        """
+        return self.SHORT_TAGS.get(test_type, 'unknown')
+
+
+    @staticmethod
+    def test_type_to_human_readable_tag(test_type):
+        """Convert a test type to a unique human readable tag.
+
+        @param test_type string, one of TEST_TYPE_* above.
+        @return string human readable test description.
+
+        """
+        return self.READABLE_TAGS.get(test_type, 'unknown')
+
     @property
-    def test_type(self):
+    def human_readable_tag(self):
+        """@return string human readable test description."""
+        return self.test_type_to_human_readable_tag(self.test_type)
+
+
+    @property
+    def netperf_test_type(self):
         """@return string test type suitable for passing to netperf."""
-        if self._test_type == self.TEST_TYPE_UDP_MAERTS:
+        if self.test_type == self.TEST_TYPE_UDP_MAERTS:
             return self.TEST_TYPE_UDP_STREAM
 
-        return self._test_type
-
-
-    @property
-    def meaningful_test_type(self):
-        """@return string human readable test description."""
-        return {self.TEST_TYPE_TCP_CRR: 'tcp_connect_roundtrip_rate',
-                self.TEST_TYPE_TCP_MAERTS: 'tcp_downstream',
-                self.TEST_TYPE_TCP_RR: 'tcp_roundtrip_rate',
-                self.TEST_TYPE_TCP_SENDFILE: 'tcp_upstream_sendfile',
-                self.TEST_TYPE_TCP_STREAM: 'tcp_upstream',
-                self.TEST_TYPE_UDP_RR: 'udp_roundtrip',
-                self.TEST_TYPE_UDP_STREAM: 'udp_upstream',
-                self.TEST_TYPE_UDP_MAERTS: 'udp_downstream'}.get(
-                        self._test_type, 'unknown')
+        return self.test_type
 
 
     @property
@@ -376,7 +427,13 @@ class NetperfConfig(object):
                 should be run on the server against the client.
 
         """
-        return self._test_type != self.TEST_TYPE_UDP_MAERTS
+        return self.test_type != self.TEST_TYPE_UDP_MAERTS
+
+
+    @property
+    def tag(self):
+        """@return string very short test description."""
+        return self.test_type_to_tag(self.test_type)
 
 
     def __init__(self, test_type, test_time=DEFAULT_TEST_TIME):
@@ -386,15 +443,15 @@ class NetperfConfig(object):
         @param test_time int number of seconds to run the test for.
 
         """
-        self._test_type = test_type
+        self.test_type = test_type
         self.test_time = test_time
-        self._assert_is_valid_test_type(self.test_type)
+        self._assert_is_valid_test_type(self.netperf_test_type)
 
 
     def __repr__(self):
         return '%s(test_type=%r, test_time=%r' % (
                 self.__class__.__name__,
-                self._test_type,
+                self.test_type,
                 self.test_time)
 
 
@@ -463,7 +520,7 @@ class NetperfRunner(object):
                 self._command_netperf,
                 self._target_ip,
                 self.NETPERF_PORT,
-                self._config.test_type,
+                self._config.netperf_test_type,
                 self._config.test_time,
                 self.NETPERF_DATA_PORT)
         logging.debug('Running netperf client.')

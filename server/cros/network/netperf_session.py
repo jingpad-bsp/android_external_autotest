@@ -101,7 +101,7 @@ class NetperfSession(object):
 
         """
         logging.info('Performing %s measurements in netperf session.',
-                     config.meaningful_test_type)
+                     config.human_readable_tag)
         history = []
         with netperf_runner.NetperfRunner(
                 self._client_proxy, self._server_proxy, config) as runner:
