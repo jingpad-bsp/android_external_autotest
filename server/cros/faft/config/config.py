@@ -29,6 +29,8 @@ class Config(object):
 
     Attribute requests will first be searched through the overrides (if it
     exists) and then through the defaults.
+
+    @attribute platform: string containing the platform name being tested.
     """
 
     def __init__(self, platform=None):
@@ -39,17 +41,17 @@ class Config(object):
 
         @param platform: string containing the platform name being tested.
         """
-        platform = platform.lower()
+        self.platform = platform
         # Defaults must always exist.
         self._precedence_list = [DEFAULTS.Values()]
         # Overrides are optional, and not an error.
         try:
-            overrides = __import__("%s" % platform, globals(), locals())
+            overrides = __import__("%s" % platform.lower(), globals(), locals())
             overrides = overrides.Values()
             # Add overrides to the first position in the list
             self._precedence_list.insert(0, overrides)
         except ImportError:
-            logging.debug("No config overrides found for platform: %s." %
+            logging.debug("No config overrides found for platform: %s.",
                           platform)
         logging.debug(str(self))
 
