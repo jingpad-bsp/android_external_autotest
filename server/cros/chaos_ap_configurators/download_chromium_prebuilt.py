@@ -50,8 +50,8 @@ def _webdriver_is_running():
 
     # While working on http://crbug.com/255191, we will use krisr's
     # workstation as a stop gap.
-    servers = ['127.0.0.1', 'cl12-16-410.mtv.corp.google.com',
-               'krisr.mtv.corp.google.com']
+    servers = ['127.0.0.1', 'krisr.mtv.corp.google.com',
+               'cl12-16-410.mtv.corp.google.com']
     # Perform a proper request
     for address in servers:
         url = 'http://' + address + ':9515' + '/session'
