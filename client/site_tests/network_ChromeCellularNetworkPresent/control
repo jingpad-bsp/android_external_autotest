@@ -14,7 +14,7 @@ EXPERIMENTAL = "True"
 
 DOC = """
 
-This test is meant as a simple example for client/cros/cellular/chrome_testing.
+This test is meant as a simple example of client/cros/networking/chrome_testing.
 It uses telemetry and pseudomodem to setup a fake network and verify that it
 properly propagates to Chrome.
 

@@ -5,13 +5,13 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
-from autotest_lib.client.cros.cellular.chrome_testing \
+from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 
 class network_ChromeCellularNetworkPresent(test.test):
     """
     This test is meant as a simple example using
-    client/cros/cellular/chrome_testing. It uses telemetry and pseudomodem to
+    client/cros/networking/chrome_testing. It uses telemetry and pseudomodem to
     setup a fake network and verify that it properly propagates to Chrome.
 
     """
@@ -36,5 +36,3 @@ class network_ChromeCellularNetworkPresent(test.test):
                         pseudomodem.DEFAULT_TEST_NETWORK_PREFIX):
                     raise error.TestFail('Network name is incorrect: ' +
                                          network["Name"])
-
-

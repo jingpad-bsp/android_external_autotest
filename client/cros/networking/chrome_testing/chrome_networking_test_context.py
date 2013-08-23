@@ -34,7 +34,7 @@ class ChromeNetworkingTestContext(object):
 
     """
 
-    NETWORK_TEST_EXTENSION_PATH = ('/usr/local/autotest/cros/cellular/'
+    NETWORK_TEST_EXTENSION_PATH = ('/usr/local/autotest/cros/networking/'
                                    'chrome_testing/network_test_ext')
     NETWORK_TEST_EXT_READY_TIMEOUT = 10
     FIND_NETWORKS_TIMEOUT = 5
@@ -122,7 +122,7 @@ class ChromeNetworkingTestContext(object):
     @property
     def network_test_extension(self):
         """
-        @return Handle to the cellular test Chrome extension instance.
+        @return Handle to the metworking test Chrome extension instance.
         @raises error.TestFail if the browser has not been set up or if the
                 extension cannot get acquired.
 
@@ -215,6 +215,15 @@ class ChromeNetworkingTestContext(object):
         """
         return self.find_networks(self.CHROME_NETWORK_TYPE_CELLULAR)
 
+    def find_wifi_networks(self):
+        """
+        Queries the current wifi networks.
+
+        @return A list containing the found wifi networks.
+
+        """
+        return self.find_networks(self.CHROME_NETWORK_TYPE_WIFI)
+
     def find_networks(self, network_type):
         """
         Queries the current networks of the queried type.
@@ -236,4 +245,3 @@ class ChromeNetworkingTestContext(object):
             raise error.TestFail(
                     'Expected a list, found "' + repr(networks) + '".')
         return networks
-

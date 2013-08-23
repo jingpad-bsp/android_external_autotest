@@ -8,9 +8,9 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.chrome_testing \
+from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
-from autotest_lib.client.cros.cellular.chrome_testing import test_utils
+from autotest_lib.client.cros.networking.chrome_testing import test_utils
 from autotest_lib.client.cros.cellular.pseudomodem import mm1
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
