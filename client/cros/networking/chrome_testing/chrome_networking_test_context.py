@@ -7,6 +7,7 @@ import logging
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from telemetry.core import exceptions
 
 from telemetry.core import exceptions
 

@@ -139,5 +139,5 @@ def call_test_function_check_success(
             timeout, function, *args)
     if call_status['status'] != chrome_networking_test_context.STATUS_SUCCESS:
         raise error.TestFail('Function "' + function + '" did not return with '
-                             'status SUCCESS')
+                             'status SUCCESS: ' + str(call_status))
     return call_status['result']

@@ -42,6 +42,15 @@ Networking.prototype._setResult = function(function_name, result_value) {
   }
 };
 
+Networking.prototype.createNetwork = function(shared, properties) {
+  if (!this._setupFunctionCall("createNetwork"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.createNetwork(shared, properties, function(guid) {
+    self._setResult("createNetwork", guid);
+  });
+};
+
 Networking.prototype.findNetworks = function(type) {
   if (!this._setupFunctionCall("findNetworks"))
     return;
