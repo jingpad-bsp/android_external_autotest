@@ -24,11 +24,22 @@ class hardware_LightSensor(test.test):
     """
     version = 1
 
+    def _waiver(self):
+        path = os.path.join(self.job.testdir, "hardware_LightSensor",
+                            "no_light_sensor_ok")
+        if os.path.exists(path):
+            return True
+        return False
+
+
     def run_once(self):
+        if self._waiver():
+            raise error.TestNAError("Light sensor not required for this device")
+
         found_light_sensor = 0
         for location in glob.glob(LIGHT_SENSOR_LOCATION):
-            for file in LIGHT_SENSOR_FILES:
-                path = location + file
+            for fname in LIGHT_SENSOR_FILES:
+                path = location + fname
                 if os.path.exists(path):
                     found_light_sensor = 1
                     break
@@ -43,8 +54,8 @@ class hardware_LightSensor(test.test):
         else:
             logging.info("Found light sensor at " + path)
 
-        str = utils.read_one_line(path)
-        reading = int(str)
+        val = utils.read_one_line(path)
+        reading = int(val)
         if reading < 0:
-            raise error.TestFail("Invalid light sensor reading (%s)" % str)
-        logging.debug("light sensor reading is %d", reading);
+            raise error.TestFail("Invalid light sensor reading (%s)" % val)
+        logging.debug("light sensor reading is %d", reading)
