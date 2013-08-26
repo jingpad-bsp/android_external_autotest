@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 
+import common
 import cros_gs
 import firmware_utils
 import firmware_window
@@ -28,18 +29,16 @@ from report_html import ReportHtml
 def _display_test_result(report_html_name, flag_skip_html):
     """Display the test result html doc using telemetry."""
     if not flag_skip_html and os.path.isdir('/usr/local/telemetry'):
-        from telemetry.core import browser_options, browser_finder
+        import chrome
 
         base_url = os.path.basename(report_html_name)
         url = os.path.join('file://' + conf.docroot, base_url)
         logging.info('Navigate to the URL: %s', url)
 
         # Launch a browser to display the url.
-        default_options = browser_options.BrowserOptions()
-        default_options.browser_type = 'system'
-        browser_to_create = browser_finder.FindBrowser(default_options)
-        browser = browser_to_create.Create()
-        browser.tabs[0].Navigate(url)
+        print 'Display the html test report on the browser.'
+        print 'This may take a while...\n'
+        chrome.Chrome().browser.tabs[0].Navigate(url)
     else:
         print 'You can look up the html test result in %s' % report_html_name
 
