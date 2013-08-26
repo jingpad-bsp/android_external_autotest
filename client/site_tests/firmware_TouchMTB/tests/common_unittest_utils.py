@@ -62,7 +62,7 @@ def create_mocked_devices():
             print warn_msg % description_filepath
             continue
         mocked_device[platform] = TouchDevice(
-                device_description=description_filepath)
+                device_description_file=description_filepath)
     return mocked_device
 
 

@@ -21,14 +21,16 @@ AbsAxis = collections.namedtuple('AbsAxis', ['min', 'max', 'resolution'])
 class TouchDevice:
     """A class about touch device properties."""
     def __init__(self, device_node=None, is_touchscreen=False,
-                 device_description=None):
-        """If the device_description is provided (i.e., not None), it is
-        used to create a mocked device for testing purpose or for replaying.
+                 device_description_file=None):
+        """If the device_description_file is provided (i.e., not None), it is
+        used to create a mocked device for the purpose of replaying or
+        unit tests.
         """
-        self.device_node = (device_node if device_node
-                                else self.get_device_node(is_touchscreen))
-        self.device_description = device_description
-        self.axis_x, self.axis_y = self.parse_abs_axes(device_description)
+        self.device_node = (device_node if device_node else
+                            self.get_device_node(is_touchscreen))
+        self.device_description = self._get_device_description(
+                device_description_file)
+        self.axis_x, self.axis_y = self.parse_abs_axes()
         self.axes = {AXIS.X: self.axis_x, AXIS.Y: self.axis_y}
 
     def get_device_node(self, is_touchscreen):
@@ -51,8 +53,12 @@ class TouchDevice:
                 if device_node_str else None)
 
     def exists(self):
-        """Indicate whether this device exists or not."""
-        return bool(self.device_node or self.device_description)
+        """Indicate whether this device exists or not.
+
+        Note that the device description is derived either from the provided
+        device description file or from the system device node.
+        """
+        return bool(self.device_description)
 
     def get_dimensions_in_mm(self):
         """Get the width and height in mm of the device."""
@@ -71,7 +77,48 @@ class TouchDevice:
         return (self.axis_x.min, self.axis_x.max,
                 self.axis_y.min, self.axis_y.max)
 
-    def parse_abs_axes(self, device_description):
+    def save_device_description_file(self, filepath, board):
+        """Save the device description file in the specified filepath."""
+        if self.device_description:
+            # Replace the device name with the board name to reduce the risk
+            # of leaking the touch device name which may be confidential.
+            # Take the touchpad on link as an example:
+            #   N: Atmel-maXTouch-Touchpad  would be replaced with
+            #   N: link-touch-device
+            name = 'N: %s-touch-device\n' % board
+            try:
+                with open(filepath, 'w') as fo:
+                    for line in self.device_description.splitlines():
+                        fo.write(name if line.startswith('N:') else line + '\n')
+                return True
+            except Exception as e:
+                msg = 'Error: %s in getting device description from %s'
+                print msg % (e, self.device_node)
+        return False
+
+    def _get_device_description(self, device_description_file):
+        """Get the device description either from the specified device
+        description file or from the system device node.
+        """
+        if device_description_file:
+            # Get the device description from the device description file.
+            try:
+                with open(device_description_file) as dd:
+                    return dd.read()
+            except Exception as e:
+                msg = 'Error: %s in opening the device description file: %s'
+                print msg % (e, device_description_file)
+        elif self.device_node:
+            # Get the device description from the device node.
+            cmd = 'evemu-describe %s' % self.device_node
+            try:
+                return common_util.simple_system_output(cmd)
+            except Exception as e:
+                msg = 'Error: %s in getting the device description from %s'
+                print msg % (e, self.device_node)
+        return None
+
+    def parse_abs_axes(self):
         """Prase to get information about min, max, and resolution of
            ABS_X and ABS_Y
 
@@ -83,15 +130,9 @@ class TouchDevice:
         pattern = 'A:\s*%s\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)'
         pattern_x = pattern % '00'
         pattern_y = pattern % '01'
-        if device_description:
-            with open(device_description) as dd:
-                device_description_contents = dd.read()
-        else:
-            cmd = 'evemu-describe %s' % self.device_node
-            device_description_contents = common_util.simple_system_output(cmd)
         axis_x = axis_y = None
-        if device_description_contents:
-            for line in device_description_contents.splitlines():
+        if self.device_description:
+            for line in self.device_description.splitlines():
                 if not axis_x:
                     result = re.search(pattern_x, line, re.I)
                     if result:

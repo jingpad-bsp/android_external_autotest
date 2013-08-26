@@ -54,13 +54,13 @@ class firmware_TouchMTB:
 
         # We may need to use a device description file to create a fake device
         # for replay purpose.
-        self._get_device_description()
+        self._get_device_description_file()
 
         # Create the touch device
         # If you are going to be testing a touchscreen, set it here
         self.touch_device = touch_device.TouchDevice(
             is_touchscreen=options[OPTIONS.TOUCHSCREEN],
-            device_description=self.device_description)
+            device_description_file=self.device_description_file)
         self._check_device(self.touch_device)
         validators.init_base_validator(self.touch_device)
 
@@ -105,6 +105,10 @@ class firmware_TouchMTB:
             # Use the firmware version of the real touch device for recording.
             firmware_version = self.touch_device.get_firmware_version()
             self.log_dir = firmware_utils.create_log_dir(firmware_version, mode)
+
+        # Save the device description file for future replay purpose if needed.
+        if not (self.options[OPTIONS.REPLAY] or self.options[OPTIONS.RESUME]):
+            self._save_device_description_file()
 
         # Create the HTML report object and the output object to print messages
         # on the window and to print the results in the report.
@@ -164,8 +168,15 @@ class firmware_TouchMTB:
             self.board = firmware_utils.get_board()
         print '      board: %s' % self.board
 
-    def _get_device_description(self):
-        """Get the device description files for replay purpose.
+    def _get_device_ext(self):
+        """Set the file extension of the device description filename to
+        'touchscreen' if it is a touchscreen; otherwise, set it to 'touchpad'.
+        """
+        return ('touchscreen' if self.options[OPTIONS.TOUCHSCREEN] else
+                'touchpad')
+
+    def _get_device_description_file(self):
+        """Get the device description file for replay purpose.
 
         Get the device description file only when it is in replay mode and
         the system DEVICE option is not specified.
@@ -176,11 +187,10 @@ class firmware_TouchMTB:
 
         A device description file name looks like "link.touchpad"
         """
-        self.device_description = None
+        self.device_description_file = None
         # Replay without using the system device. So use a mocked device.
         if self.options[OPTIONS.REPLAY] and not self.options[OPTIONS.DEVICE]:
-            device_ext = ('touchscreen' if self.options[OPTIONS.TOUCHSCREEN]
-                          else 'touchpad')
+            device_ext = self._get_device_ext()
             board = self.board
             descriptions = [
                 # (1) Try to find the device description in REPLAY directory.
@@ -193,12 +203,21 @@ class firmware_TouchMTB:
                 files = glob.glob(os.path.join(description_dir,
                                                description_pattern))
                 if files:
-                    self.device_description = files[0]
+                    self.device_description_file = files[0]
                     break
             else:
                 msg = 'Error: cannot find the device description file.'
                 print_and_exit(msg)
-        print '      device description file: %s' % self.device_description
+        print '      device description file: %s' % self.device_description_file
+
+    def _save_device_description_file(self):
+        """Save the device description file for future replay."""
+        filename = '%s.%s' % (self.board, self._get_device_ext())
+        filepath = os.path.join(self.log_dir, filename)
+        if not self.touch_device.save_device_description_file(
+                filepath, self.board):
+            msg = 'Error: fail to save the device description file: %s'
+            print_and_exit(msg % filepath)
 
     def _create_report_name(self, mode, firmware_version):
         """Create the report names for both plain-text and html files.
