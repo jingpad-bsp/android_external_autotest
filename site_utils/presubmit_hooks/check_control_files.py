@@ -89,7 +89,11 @@ def CheckSuites(ctrl_data, test_name):
         for equery in GetEqueryWrappers():
             cmd_args = (CommandPrefix() + [equery, '-qC', 'uses'] +
                         GetAutotestTestPackages())
-            useflags = subprocess.check_output(cmd_args).splitlines()
+            child = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+            useflags = child.communicate()[0].splitlines()
+            if child.returncode != 0:
+                continue
             for flag in useflags:
                 if flag.startswith('-') or flag.startswith('+'):
                     flag = flag[1:]
