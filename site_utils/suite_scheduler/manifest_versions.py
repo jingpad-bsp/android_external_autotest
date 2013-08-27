@@ -83,7 +83,7 @@ class ManifestVersions(object):
 
     _CLONE_RETRY_SECONDS = 5 * 60
     _CLONE_MAX_RETRIES = 60 * 60 / _CLONE_RETRY_SECONDS
-    _MANIFEST_VERSIONS_URL = ('ssh://gerrit-int.chromium.org:29419/'
+    _MANIFEST_VERSIONS_URL = ('https://chrome-internal-review.googlesource.com/'
                               'chromeos/manifest-versions.git')
     _ANY_MANIFEST_GLOB_PATTERN = 'build-name/*/pass/'
     _BOARD_MANIFEST_GLOB_PATTERN = 'build-name/%s-*/pass/'
