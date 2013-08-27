@@ -9,6 +9,7 @@
 import logging
 import os
 
+from autotest_lib.client.common_lib import error
 
 class ScriptNotFound(Exception):
     """Raised when attenuator scripts cannot be found."""
@@ -30,9 +31,10 @@ class Attenuator(object):
     attenuator over SSH in control network.
     """
 
+    LAB_DOMAIN = '.cros'
     # Host names in RvR test cells.
-    HOST1 = 'chromeos3-grover-host1.cros'
-    HOST2 = 'chromeos3-grover-host2.cros'
+    HOST1 = 'chromeos3-grover-host1'
+    HOST2 = 'chromeos3-grover-host2'
     VALID_HOSTS = [HOST1, HOST2]
     # Look up fixed path loss by AP frequency, host name and port number.
     FREQ_LOSS_MAP = {2437: {HOST1: [44, 44], HOST2: [43, 43]},
@@ -187,9 +189,12 @@ class Attenuator(object):
         @param hostname a string, DUT host name.
         @param freq an integer, frequency in MHz.
         @raises TestError if DUT hostname is unexpected.
+
         """
+        if hostname.endswith(self.LAB_DOMAIN):
+            hostname = hostname[:-len(self.LAB_DOMAIN)]
         if hostname not in self.VALID_HOSTS:
-            raise error.TestError('Unexpected RvR host name %r.', hostname)
+            raise error.TestError('Unexpected RvR host name %r.' % hostname)
 
         # Look up path loss by frequency. Approximate if needed.
         freq_used = freq
