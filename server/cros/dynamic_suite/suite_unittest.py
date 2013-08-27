@@ -208,7 +208,7 @@ class SuiteTest(mox.MoxTestBase):
 
     def expect_job_scheduling(self, recorder, add_experimental,
                               tests_to_skip=[], ignore_deps=False,
-                              raises=False):
+                              raises=False, suite_deps=[]):
         """Expect jobs to be scheduled for 'tests' in |self.files|.
 
         @param add_experimental: expect jobs for experimental tests as well.
@@ -228,6 +228,8 @@ class SuiteTest(mox.MoxTestBase):
             if not ignore_deps:
                 dependencies.extend(test.dependencies)
             dependencies.append(constants.VERSION_PREFIX + self._BUILD)
+            if suite_deps:
+                dependencies.extend(suite_deps)
             job_mock = self.afe.create_job(
                 control_file=test.text,
                 name=mox.And(mox.StrContains(self._BUILD),
@@ -309,6 +311,20 @@ class SuiteTest(mox.MoxTestBase):
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
         suite.schedule(recorder.record_entry, add_experimental=True)
+
+
+    def testSuiteDependencies(self):
+        """Should add suite dependencies to tests scheduled."""
+        self.mock_control_file_parsing()
+        recorder = self.mox.CreateMock(base_job.base_job)
+        self.expect_job_scheduling(recorder, add_experimental=False,
+                                   suite_deps=['extra'])
+
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+                                       self.devserver, extra_deps=['extra'],
+                                       afe=self.afe, tko=self.tko)
+        suite.schedule(recorder.record_entry, add_experimental=False)
 
 
     def _createSuiteWithMockedTestsAndControlFiles(self, file_bugs=False):

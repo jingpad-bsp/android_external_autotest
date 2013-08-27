@@ -325,7 +325,7 @@ class SuiteSpec(object):
                  file_experimental_bugs=False, max_runtime_mins=24*60,
                  firmware_reimage=False,
                  try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
-                 suite_dependencies=None,
+                 suite_dependencies=[],
                  reimage_type=constants.REIMAGE_TYPE_OS,
                  bug_template={}, devserver_url=None, **dargs):
         """
@@ -363,10 +363,12 @@ class SuiteSpec(object):
                                   reimage_type.)
         @param try_job_timeout_mins: Max time in mins we allow a try job to run
                                      before timing out.
-        @param suite_dependencies: A string with a comma separated list of suite
-                                   level dependencies, which act just like test
+        @param suite_dependencies: A list of strings of suite level
+                                   dependencies, which act just like test
                                    dependencies and are appended to each test's
                                    set of dependencies at job creation time.
+                                   A string of comma seperated labels is
+                                   accepted for backwards compatibility.
         @param reimage_type: A string identifying the type of reimaging that
                              should be done before running tests.
         @param bug_template: A template dictionary specifying the default bug
@@ -407,8 +409,12 @@ class SuiteSpec(object):
         self.max_runtime_mins = max_runtime_mins
         self.firmware_reimage = firmware_reimage
         self.try_job_timeout_mins = try_job_timeout_mins
-        self.suite_dependencies = suite_dependencies
         self.reimage_type = reimage_type
+        if isinstance(suite_dependencies, str):
+            self.suite_dependencies = [dep.strip(' ') for dep
+                                       in suite_dependencies.split(',')]
+        else:
+            self.suite_dependencies = suite_dependencies
         self.bug_template = bug_template
 
 
@@ -554,14 +560,9 @@ def _gatherAndParseDependencies(suite_spec):
 
     dep_dict = all_dependencies.get(suite_spec.name, {'': []})
 
-    # Parse the suite_dependency string into a list of dependency labels,
-    # then append this list of suite dependencies to all individual job
-    # dependency lists.
     if suite_spec.suite_dependencies:
-        suite_deplist = [deplabel.strip(' ') for deplabel in
-                         suite_spec.suite_dependencies.split(',')]
         for deplist in dep_dict.values():
-            deplist.extend(suite_deplist)
+            deplist.extend(suite_spec.suite_dependencies)
 
     return dep_dict
 
@@ -612,7 +613,7 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, suite_job_id=None):
         version_prefix=reimager.version_prefix,
         file_bugs=spec.file_bugs,
         file_experimental_bugs=spec.file_experimental_bugs,
-        suite_job_id=suite_job_id)
+        suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)

@@ -230,7 +230,7 @@ class Suite(object):
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
                  version_prefix=constants.VERSION_PREFIX,
                  file_bugs=False, file_experimental_bugs=False,
-                 suite_job_id=None, ignore_deps=False):
+                 suite_job_id=None, ignore_deps=False, extra_deps=[]):
         """
         Constructor
 
@@ -257,6 +257,8 @@ class Suite(object):
         @param ignore_deps: True if jobs should ignore the DEPENDENCIES
                             attribute and skip applying of dependency labels.
                             (Default:False)
+        @param extra_deps: A list of strings which are the extra DEPENDENCIES
+                           to add to each test being scheduled.
         """
         def combined_predicate(test):
             #pylint: disable-msg=C0111
@@ -286,6 +288,7 @@ class Suite(object):
         self._file_experimental_bugs = file_experimental_bugs
         self._suite_job_id = suite_job_id
         self._ignore_deps = ignore_deps
+        self._extra_deps = extra_deps
 
 
     @property
@@ -327,6 +330,8 @@ class Suite(object):
         cros_label = self._version_prefix + self._build
         job_deps.append(cros_label)
 
+        if self._extra_deps:
+            job_deps.extend(self._extra_deps)
         if self._pool:
             job_deps.append(self._pool)
 

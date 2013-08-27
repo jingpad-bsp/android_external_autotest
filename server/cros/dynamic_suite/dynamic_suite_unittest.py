@@ -36,7 +36,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
                        'skip_reimage': True,
                        'check_hosts': False,
                        'add_experimental': False,
-                       'suite_dependencies': 'test_dep'}
+                       'suite_dependencies': ['test_dep']}
 
 
 
@@ -133,7 +133,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         self.assertEquals(spec.skip_reimage, False)
         self.assertEquals(spec.add_experimental, True)
         self.assertEquals(spec.devserver, mock_ds)
-        self.assertEquals(spec.suite_dependencies, None)
+        self.assertEquals(spec.suite_dependencies, [])
 
 
     def testReimageWithBadDependencies(self):
