@@ -14,7 +14,7 @@ from autotest_lib.server.cros.dynamic_suite import reporting
 # Django and the models are only setup after
 # the setup_django_readonly_environment module is imported.
 from autotest_lib.frontend.afe import models as afe_models
-from autotest_lib.frontend.health import utils
+from autotest_lib.frontend.health import utils as test_health_utils
 
 
 # Keep tests that have not failed for at least this many days.
@@ -78,7 +78,6 @@ def submit_bug_reports(tests):
 
     @param tests: The tests that need to be marked as not experimental.
     """
-    reporter = reporting.Reporter()
 
     for test in tests:
         title = '%s should be promoted to non-experimental.' % test
@@ -93,9 +92,8 @@ def submit_bug_reports(tests):
                    'autotest-best-practices#TOC-Control-files' %
                    (test, _MIN_DAYS_SINCE_FAILURE))
         search_marker = 'PassingExperimental(%s)' % test
-        bug = reporting.Bug(title=title, summary=summary,
-                            search_marker=search_marker)
-        reporter.report(bug)
+        reporting.submit_generic_bug_report(title=title, summary=summary,
+                                            search_marker=search_marker)
 
 
 def main(args=None):
@@ -112,8 +110,8 @@ def main(args=None):
     parse_options(args)
 
     experimental_tests = get_experimental_tests()
-    pass_times = utils.get_last_pass_times()
-    fail_times = utils.get_last_fail_times()
+    pass_times = test_health_utils.get_last_pass_times()
+    fail_times = test_health_utils.get_last_fail_times()
 
     long_passers = find_long_passing_tests(pass_times, fail_times,
                                            experimental_tests)

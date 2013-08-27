@@ -103,17 +103,18 @@ class PassingExperimentalFunctionalTests(mox.MoxTestBase, test.TestCase):
 
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
         MockDatetime.today().AndReturn(self.datetime(2012, 1, 21))
-        reporter = reporting.Reporter()
+        reporter1 = reporting.Reporter()
         bug1 = reporting.Bug(
                 title=u'test1 should be promoted to non-experimental.',
                 summary=mox.IgnoreArg(),
                 search_marker=u'PassingExperimental(test1)')
-        reporter.report(bug1)
+        reporter1.report(bug1).AndReturn((11, 1))
+        reporter2 = reporting.Reporter()
         bug2 = reporting.Bug(
                 title=u'test2 should be promoted to non-experimental.',
                 summary=mox.IgnoreArg(),
                 search_marker=u'PassingExperimental(test2)')
-        reporter.report(bug2)
+        reporter2.report(bug2).AndReturn((11, 1))
 
         self.mox.ReplayAll()
         passing_experimental.main()

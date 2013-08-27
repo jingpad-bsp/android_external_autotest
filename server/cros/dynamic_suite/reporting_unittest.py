@@ -389,5 +389,55 @@ class LabelUpdateTests(mox.MoxTestBase):
                 [old_count], 4)
 
 
+class TestSubmitGenericBugReport(mox.MoxTestBase, unittest.TestCase):
+    """Test the submit_generic_bug_report function."""
+
+    def setUp(self):
+        super(TestSubmitGenericBugReport, self).setUp()
+        self.mox.StubOutClassWithMocks(reporting, 'Reporter')
+
+
+    def test_accepts_required_arguments(self):
+        """
+        Test that the function accepts the required arguments.
+
+        This basically tests that no exceptions are thrown.
+
+        """
+        reporter = reporting.Reporter()
+        reporter.report(mox.IgnoreArg()).AndReturn((11,1))
+
+        self.mox.ReplayAll()
+        reporting.submit_generic_bug_report('title', 'summary')
+
+
+    def test_rejects_too_few_required_arguments(self):
+        """Test that the function rejects too few required arguments."""
+        self.mox.ReplayAll()
+        self.assertRaises(TypeError,
+                          reporting.submit_generic_bug_report, 'too_few')
+
+
+    def test_accepts_key_word_arguments(self):
+        """
+        Test that the functions accepts the key_word arguments.
+
+        This basically tests that no exceptions are thrown.
+
+        """
+        reporter = reporting.Reporter()
+        reporter.report(mox.IgnoreArg()).AndReturn((11,1))
+
+        self.mox.ReplayAll()
+        reporting.submit_generic_bug_report('test', 'summary', labels=[])
+
+
+    def test_rejects_invalid_keyword_arguments(self):
+        """Test that the function rejects invalid keyword arguments."""
+        self.mox.ReplayAll()
+        self.assertRaises(TypeError, reporting.submit_generic_bug_report,
+                          'title', 'summary', wrong='wrong')
+
+
 if __name__ == '__main__':
     unittest.main()

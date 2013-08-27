@@ -7,8 +7,7 @@ import logging
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_utils
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import reporting
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
 
 class DedupingSchedulerException(Exception):
     """Base class for exceptions from this module."""
@@ -67,8 +66,8 @@ class DedupingScheduler(object):
             raise DedupException(e)
 
 
-    # TODO(fdeng): After crbug.com/254256 is fixed, we
-    # should modify this method accordingly.
+    # TODO(fdeng): Add status='Available' back into the bug submittal;
+    # right now it will be marked as Unconfirmed.
     def _ReportBug(self, title, description):
         """File a bug using bug reporter.
 
@@ -79,18 +78,14 @@ class DedupingScheduler(object):
         """
         if not self._file_bug:
             return None
-        bug_reporter = reporting.Reporter()
-        template = {'labels': ['Suite-Scheduler-Bug'],
-                    'status': 'Available'}
         sheriffs = site_utils.get_sheriffs(lab_only=True)
         owner = sheriffs[0] if sheriffs else ''
         logging.info('Filing a bug: %s', title)
-        bug = reporting.Bug(title=title,
-                            summary=description,
-                            owner=owner)
-        return bug_reporter.create_bug_report(bug,
-                                              bug_template=template,
-                                              sheriffs=[])
+        return reporting.submit_generic_bug_report(
+            title=title,
+            summary=description,
+            owner=owner,
+            labels=['Suite-Scheduler-Bug'])
 
 
     def _Schedule(self, suite, board, build, pool, num):

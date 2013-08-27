@@ -158,9 +158,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     def testScheduleReportsBug(self):
         """Test that the scheduler file a bug for ControlFileNotFound."""
         self.mox.StubOutWithMock(reporting.Reporter, '__init__')
-        self.mox.StubOutWithMock(reporting.Reporter, 'create_bug_report')
+        self.mox.StubOutWithMock(reporting.Reporter, '_create_bug_report')
+        self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
         self.mox.StubOutWithMock(site_utils, 'get_sheriffs')
-        self.mox.StubOutClassWithMocks(reporting, 'Bug')
         self.scheduler._file_bug = True
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
@@ -174,21 +174,29 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      check_hosts=False,
                      pool=self._POOL,
                      num=self._NUM).AndRaise(exception)
-        reporting.Reporter.__init__()
+        site_utils.get_sheriffs(
+                lab_only=True).AndReturn(['dummy@chromium.org'])
+        # mox does not raise an AttributeError when a nonexistent attribute
+        # is accessed. Doing this odd mocking out allows us to both have a
+        # real Bug instance (so AttributeError is raised) while also letting
+        # check for the arguments being passed into _create_bug_report work.
         title = ('Exception "%s" occurs when scheduling %s on '
                  '%s against %s (pool: %s)' %
                  (exception.__class__.__name__,
                   self._SUITE, self._BUILD, self._BOARD, self._POOL))
-        site_utils.get_sheriffs(
-                lab_only=True).AndReturn(['dummy@chromium.org'])
         bug = reporting.Bug(title=title,
-                            summary=mox.IgnoreArg(),
-                            owner='dummy@chromium.org')
-        reporting.Reporter.create_bug_report(
-                bug,
-                bug_template = {'labels': ['Suite-Scheduler-Bug'],
-                                'status': 'Available'},
-                sheriffs=[]).AndReturn(1158)
+                            summary='IGNORED',
+                            owner='dummy@chromium.org',
+                            labels=['Suite-Scheduler-Bug'])
+        self.mox.StubOutWithMock(reporting, 'Bug')
+        reporting.Bug(title=title,
+                      summary=mox.IgnoreArg(),
+                      owner='dummy@chromium.org',
+                      labels=['Suite-Scheduler-Bug']).AndReturn(bug)
+
+        reporting.Reporter.__init__()
+        reporting.Reporter._check_tracker().AndReturn(True)
+        reporting.Reporter._create_bug_report(bug, {}, []).AndReturn(1158)
         self.mox.ReplayAll()
         self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,

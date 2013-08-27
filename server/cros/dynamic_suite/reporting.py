@@ -379,7 +379,7 @@ class Reporter(object):
                                      bug.search_marker())
 
 
-    def create_bug_report(self, bug, bug_template={}, sheriffs=[]):
+    def _create_bug_report(self, bug, bug_template={}, sheriffs=[]):
         """
         Creates a new bug report.
 
@@ -394,10 +394,6 @@ class Reporter(object):
                  Note that if either the description or title fields are missing
                  we won't be able to create a bug.
         """
-        if not self._check_tracker():
-            logging.error("Can't file: %s", title)
-            return None
-
         anchored_summary = self._anchor_summary(bug)
 
         issue = self._format_issue_options(bug_template, title=bug.title(),
@@ -634,4 +630,21 @@ class Reporter(object):
         except AttributeError:
             pass
 
-        return self.create_bug_report(bug, bug_template, sheriffs), 1
+        return self._create_bug_report(bug, bug_template, sheriffs), 1
+
+
+# TODO(beeps): Move this to server/site_utils after crbug.com/281906 is fixed.
+def submit_generic_bug_report(*args, **kwargs):
+    """
+    Submit a generic bug report.
+
+    See server.cros.dynamic_suite.reporting.Bug for valid arguments.
+
+    @params args: List of arguments to pass to the Bug creation.
+    @params kwargs: Keyword arguments to pass to Bug creation.
+
+    @returns the filed bug's id.
+    """
+    bug = Bug(*args, **kwargs)
+    reporter = Reporter()
+    return reporter.report(bug)[0]
