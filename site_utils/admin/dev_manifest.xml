@@ -2,10 +2,10 @@
 <manifest>
   <remote  name="cros"
            fetch="http://git.chromium.org/git"
-           review="gerrit.chromium.org/gerrit" />
+           review="chromium-review.googlesource.com" />
   <remote  name="cros-internal"
-           fetch="ssh://gerrit-int.chromium.org:29419"
-           review="gerrit-int.chromium.org" />
+           fetch="https://chrome-internal-review.googlesource.com"
+           review="chrome-internal-review.googlesource.com" />
   <default revision="refs/heads/master"
            remote="cros" />
 
