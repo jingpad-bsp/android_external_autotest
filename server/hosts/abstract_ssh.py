@@ -588,11 +588,13 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         # If a master SSH connection is running, kill it.
         if self.master_ssh_job is not None:
+            logging.debug('Nuking master_ssh_job.')
             utils.nuke_subprocess(self.master_ssh_job.sp)
             self.master_ssh_job = None
 
         # Remove the temporary directory for the master SSH socket.
         if self.master_ssh_tempdir is not None:
+            logging.debug('Cleaning master_ssh_tempdir.')
             self.master_ssh_tempdir.clean()
             self.master_ssh_tempdir = None
             self.master_ssh_option = ''
@@ -626,9 +628,10 @@ class AbstractSSHHost(remote.RemoteHost):
 
             # Start the master SSH connection in the background.
             master_cmd = self.ssh_command(options="-N -o ControlMaster=yes")
-            logging.info("Starting master ssh connection '%s'" % master_cmd)
+            logging.info("Starting master ssh connection '%s'", master_cmd)
             self.master_ssh_job = utils.BgJob(master_cmd,
-                                              nickname='master-ssh')
+                                              nickname='master-ssh',
+                                              no_pipes=True)
 
 
     def clear_known_hosts(self):

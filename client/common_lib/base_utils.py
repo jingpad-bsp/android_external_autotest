@@ -64,13 +64,17 @@ def get_stream_tee_file(stream, level, prefix=''):
 
 def _join_with_nickname(base_string, nickname):
     if nickname:
-        return '%s BgJob "%s"' %(base_string, nickname)
+        return '%s BgJob "%s" ' % (base_string, nickname)
     return base_string
 
 
+# TODO: Cleanup and possibly eliminate no_pipes, which is only used
+# in our master-ssh connection process, while fixing underlying
+# semantics problem in BgJob. See crbug.com/279312
 class BgJob(object):
     def __init__(self, command, stdout_tee=None, stderr_tee=None, verbose=True,
-                 stdin=None, stderr_level=DEFAULT_STDERR_LEVEL, nickname=None):
+                 stdin=None, stderr_level=DEFAULT_STDERR_LEVEL, nickname=None,
+                 no_pipes=False):
         """Create and start a new BgJob.
 
         This constructor creates a new BgJob, and uses Popen to start a new
@@ -99,8 +103,25 @@ class BgJob(object):
                              stderr output will be logged at. Ignored
                              otherwise.
         @param nickname: Optional string, to be included in logging messages
+        @param no_pipes: Boolean, default False. If True, this subprocess
+                         created by this BgJob does NOT use subprocess.PIPE
+                         for its stdin or stderr streams. Instead, these
+                         streams are connected to the logging manager
+                         (regardless of the values of stdout_tee and
+                         stderr_tee).
+                         If no_pipes is True, then calls to output_prepare,
+                         process_output, and cleanup will result in an
+                         InvalidBgJobCall exception. no_pipes should be
+                         True for BgJobs that do not interact via stdout/stderr
+                         with other BgJobs, or long runing background jobs that
+                         will never be joined with join_bg_jobs, such as the
+                         master-ssh connection BgJob.
         """
         self.command = command
+        self._no_pipes = no_pipes
+        if no_pipes:
+            stdout_tee = TEE_TO_LOGS
+            stderr_tee = TEE_TO_LOGS
         self.stdout_tee = get_stream_tee_file(stdout_tee, DEFAULT_STDOUT_LEVEL,
                 prefix=_join_with_nickname(STDOUT_PREFIX, nickname))
         self.stderr_tee = get_stream_tee_file(stderr_tee, stderr_level,
@@ -115,17 +136,25 @@ class BgJob(object):
         else:
             self.string_stdin = None
 
+
+        if no_pipes:
+            stdout_param = self.stdout_tee
+            stderr_param = self.stderr_tee
+        else:
+            stdout_param = subprocess.PIPE
+            stderr_param = subprocess.PIPE
+
         if verbose:
             logging.debug("Running '%s'", command)
         if type(command) == list:
             self.sp = subprocess.Popen(command,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE,
+                                       stdout=stdout_param,
+                                       stderr=stderr_param,
                                        preexec_fn=self._reset_sigpipe,
                                        stdin=stdin)
         else:
-            self.sp = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE,
+            self.sp = subprocess.Popen(command, stdout=stdout_param,
+                                       stderr=stderr_param,
                                        preexec_fn=self._reset_sigpipe, shell=True,
                                        executable="/bin/bash",
                                        stdin=stdin)
@@ -150,6 +179,9 @@ class BgJob(object):
         @param stderr_file: Stream that output from the process's stdout pipe
                             will be written to. Default: a null stream.
         """
+        if self._no_pipes:
+            raise error.InvalidBgJobCall('Cannot call output_prepare on a '
+                                         'job with no_pipes=True.')
         if self._output_prepare_called:
             logging.warn('BgJob [%s] received a duplicate call to '
                          'output prepare. Allowing, but this may result '
@@ -177,6 +209,9 @@ class BgJob(object):
                            read and process all data until end of the stream.
 
         """
+        if self._no_pipes:
+            raise error.InvalidBgJobCall('Cannot call process_output on '
+                                         'a job with no_pipes=True')
         if not self._output_prepare_called and not self._process_output_warned:
             logging.warn('BgJob with command [%s] handled a process_output '
                          'call before output_prepare was called. Some output '
@@ -211,6 +246,9 @@ class BgJob(object):
         the configured stdout and stderr destination streams to
         self.result. Duplicate calls ignored with a warning.
         """
+        if self._no_pipes:
+            raise error.InvalidBgJobCall('Cannot call cleanup on '
+                                         'a job with no_pipes=True')
         if self._cleanup_called:
             logging.warn('BgJob [%s] received a duplicate call to '
                          'cleanup. Ignoring.', self.command)
