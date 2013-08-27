@@ -20,7 +20,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.faft.config import Config as ClientConfig
 from autotest_lib.server import autotest
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.config.config import Config as faft_config
+from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.servo import chrome_ec
 from autotest_lib.server.cros.servo_test import ServoTest
@@ -397,7 +397,7 @@ class FAFTSequence(FAFTBase):
 
         super(FAFTSequence, self).initialize(host)
 
-        self.faft_config = faft_config(
+        self.faft_config = FAFTConfig(
                 self.faft_client.system.get_platform_name())
         self.checkers = FAFTCheckers(self, self.faft_client)
 
@@ -667,8 +667,8 @@ class FAFTSequence(FAFTBase):
         elif host is False:
             self.servo.switch_usbkey('dut')
 
-    def get_dut_usb_dev(self):
-        """Get the USB disk device plugged-in the servo from the dut side.
+    def get_usbdisk_path_on_dut(self):
+        """Get the path of the USB disk device plugged-in the servo on DUT.
 
         Returns:
           A string representing USB disk path, like '/dev/sdb', or None if

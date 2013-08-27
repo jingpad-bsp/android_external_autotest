@@ -6,7 +6,7 @@ import logging, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
-from autotest_lib.server.cros.faft.config.config import Config as faft_config
+from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 
 BATTERY_MARGIN = -1.0
 BATTERY_MARGIN_PREF = '0.0'
@@ -65,7 +65,7 @@ class power_DarkResumeShutdownServer(test.test):
 
         @param platform_name: the name of the given platform
         """
-        client_attr = faft_config(platform_name)
+        client_attr = FAFTConfig(platform_name)
         return client_attr.dark_resume_capable
 
 

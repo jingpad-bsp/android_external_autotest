@@ -32,7 +32,7 @@ class firmware_SelfSignedBoot(FAFTSequence):
         logging.info('Original dev_boot_usb value: %s',
                      str(self.original_dev_boot_usb))
 
-        self.usb_dev = self.get_dut_usb_dev()
+        self.usb_dev = self.get_usbdisk_path_on_dut()
         if not self.usb_dev:
             raise error.TestError("Unable to find USB disk")
 

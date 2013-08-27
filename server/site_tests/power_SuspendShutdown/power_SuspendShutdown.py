@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import threading, time, logging, sys
+import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
-from autotest_lib.server.cros.faft.config.config import Config as faft_config
+from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros import pyauto_proxy
 
 _RETRY_SUSPEND_ATTEMPTS = 1
@@ -52,7 +52,7 @@ class power_SuspendShutdown(test.test):
 
 
     def platform_check(self, platform_name):
-        client_attr = faft_config(platform_name)
+        client_attr = FAFTConfig(platform_name)
 
         if not client_attr.has_lid:
             raise error.TestError(
