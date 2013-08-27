@@ -43,6 +43,7 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     BLUEZ_MANAGER_PATH = '/'
     BLUEZ_MANAGER_IFACE = 'org.freedesktop.DBus.ObjectManager'
     BLUEZ_ADAPTER_IFACE = 'org.bluez.Adapter1'
+    BLUEZ_DEVICE_IFACE = 'org.bluez.Device1'
 
     BLUETOOTH_LIBDIR = '/var/lib/bluetooth'
 
@@ -296,6 +297,48 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         return json.dumps(self._control.read_info(0))
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def get_devices(self):
+        """Read information about remote devices known to the adapter.
+
+        @return the properties of each device as a JSON-encoded array of
+            dictionaries on success, the value False otherwise.
+
+        """
+        objects = self._bluez.GetManagedObjects(
+                dbus_interface=self.BLUEZ_MANAGER_IFACE)
+        devices = []
+        for path, ifaces in objects.iteritems():
+            if self.BLUEZ_DEVICE_IFACE in ifaces:
+                devices.append(objects[path][self.BLUEZ_DEVICE_IFACE])
+        return json.dumps(devices)
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def start_discovery(self):
+        """Start discovery of remote devices.
+
+        Obtain the discovered device information using get_devices(), called
+        stop_discovery() when done.
+
+        @return True on success, False otherwise.
+
+        """
+        self._adapter.StartDiscovery(dbus_interface=self.BLUEZ_ADAPTER_IFACE)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def stop_discovery(self):
+        """Stop discovery of remote devices.
+
+        @return True on success, False otherwise.
+
+        """
+        self._adapter.StopDiscovery(dbus_interface=self.BLUEZ_ADAPTER_IFACE)
+        return True
 
 
 if __name__ == '__main__':

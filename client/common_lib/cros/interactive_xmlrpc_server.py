@@ -132,6 +132,83 @@ class InteractiveXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return result
 
 
+    def check_for_button(self):
+        """Check whether a button has been clicked.
+
+        Call append_buttons() before this to add buttons to the document.
+
+        @return index of button that was clicked or -1 if no button
+            has been clicked.
+
+        """
+        if not self._tab.EvaluateJavaScript('window.__ready'):
+            return -1
+        # Fetch the result.
+        result = self._tab.EvaluateJavaScript('window.__result')
+        # Reset for the next button.
+        self._tab.ExecuteJavaScript(
+                'window.__ready = 0; '
+                'window.__result = null;')
+        return result
+
+
+    def append_list(self, name):
+        """Append a results list to the contents of the tab.
+
+        @param name: Name to use for making modifications to the list.
+
+        @return True.
+
+        """
+        html = '<div id="%s"></div>' % cgi.escape(name)
+        return self.append_output(html)
+
+
+    def append_list_item(self, list_name, item_name, html):
+        """Append an item to a results list.
+
+        @param list_name: Name of list provided to append_list().
+        @param item_name: Name to use for making modifications to the item.
+        @param html: HTML to place in the list item.
+
+        @return True.
+
+        """
+        # JSON does a better job of escaping HTML for JavaScript than we could
+        # with string.replace().
+        item_html = '"<div id=\\"%s\\"></div>"' % cgi.escape(item_name)
+        # Use JavaScript to append the output.
+        self._tab.ExecuteJavaScript(
+                'document.getElementById("%s").innerHTML += %s; ' % (
+                        cgi.escape(list_name),
+                        item_html))
+        self._tab.Activate()
+        self._tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
+        return self.replace_list_item(item_name, html)
+
+
+    def replace_list_item(self, item_name, html):
+        """Replace an item in a results list.
+
+        @param item_name: Name of item provided to append_list_item().
+        @param html: HTML to place in the list item.
+
+        @return True.
+
+        """
+        # JSON does a better job of escaping HTML for JavaScript than we could
+        # with string.replace().
+        html_escaped = json.dumps(html)
+        # Use JavaScript to append the output.
+        self._tab.ExecuteJavaScript(
+                'document.getElementById("%s").innerHTML = %s; ' % (
+                        cgi.escape(item_name),
+                        html_escaped))
+        self._tab.Activate()
+        self._tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
+        return True
+
+
     def close(self):
         """Close the browser.
 

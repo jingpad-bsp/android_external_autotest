@@ -54,6 +54,32 @@ class BluetoothTester(object):
         return self._proxy.setup(profile)
 
 
+    def set_discoverable(self, discoverable, timeout=0):
+        """Set the discoverable state of the controller.
+
+        @param discoverable: Whether controller should be discoverable.
+        @param timeout: Timeout in seconds before disabling discovery again,
+                ignored when discoverable is False, must not be zero when
+                discoverable is True.
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.set_discoverable(discoverable, timeout)
+
+
+    def read_info(self):
+        """Read the adapter information from the Kernel.
+
+        @return the information as a JSON-encoded tuple of:
+          ( address, bluetooth_version, manufacturer_id,
+            supported_settings, current_settings, class_of_device,
+            name, short_name )
+
+        """
+        return json.loads(self._proxy.read_info())
+
+
     def discover_devices(self, br_edr=True, le_public=True, le_random=True):
         """Discover remote devices.
 

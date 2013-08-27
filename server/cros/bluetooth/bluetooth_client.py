@@ -99,7 +99,7 @@ class BluetoothClient(object):
     def get_adapter_properties(self):
         """Read the adapter properties from the Bluetooth Daemon.
 
-        @return the properties as a JSON-encoded dictionary on success,
+        @return the properties as a dictionary on success,
             the value False otherwise.
 
         """
@@ -109,13 +109,44 @@ class BluetoothClient(object):
     def read_info(self):
         """Read the adapter information from the Kernel.
 
-        @return the information as a JSON-encoded tuple of:
+        @return the information as a tuple of:
           ( address, bluetooth_version, manufacturer_id,
             supported_settings, current_settings, class_of_device,
             name, short_name )
 
         """
         return json.loads(self._proxy.read_info())
+
+
+    def get_devices(self):
+        """Read information about remote devices known to the adapter.
+
+        @return the properties of each device as a JSON-encoded array of
+            dictionaries on success, the value False otherwise.
+
+        """
+        return json.loads(self._proxy.get_devices())
+
+
+    def start_discovery(self):
+        """Start discovery of remote devices.
+
+        Obtain the discovered device information using get_devices(), called
+        stop_discovery() when done.
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.start_discovery()
+
+
+    def stop_discovery(self):
+        """Stop discovery of remote devices.
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.stop_discovery()
 
 
     def close(self):

@@ -20,7 +20,7 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     All instance methods of this object without a preceding '_' are exposed via
     an XML-RPC server. This is not a stateless handler object, which means that
-    if you store state inside the delegate, that state will remain aroun dfor
+    if you store state inside the delegate, that state will remain around for
     future calls.
     """
 
@@ -218,6 +218,34 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             return False
 
         return True
+
+
+    def set_discoverable(self, discoverable, timeout=0):
+        """Set the discoverable state of the controller.
+
+        @param discoverable: Whether controller should be discoverable.
+        @param timeout: Timeout in seconds before disabling discovery again,
+                ignored when discoverable is False, must not be zero when
+                discoverable is True.
+
+        @return True on success, False otherwise.
+
+        """
+        settings = self._control.set_discoverable(self.index,
+                                                  discoverable, timeout)
+        return settings & bluetooth_socket.MGMT_SETTING_DISCOVERABLE
+
+
+    def read_info(self):
+        """Read the adapter information from the Kernel.
+
+        @return the information as a JSON-encoded tuple of:
+          ( address, bluetooth_version, manufacturer_id,
+            supported_settings, current_settings, class_of_device,
+            name, short_name )
+
+        """
+        return json.dumps(self._control.read_info(self.index))
 
 
     def discover_devices(self, br_edr=True, le_public=True, le_random=True):

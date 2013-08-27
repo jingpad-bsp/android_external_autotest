@@ -99,6 +99,54 @@ class InteractiveClient(object):
         return self._proxy.wait_for_button(timeout)
 
 
+    def check_for_button(self):
+        """Check whether a button has been clicked.
+
+        Call append_buttons() before this to add buttons to the document.
+
+        @return index of button that was clicked or -1 if no button
+            has been clicked.
+
+        """
+        return self._proxy.check_for_button()
+
+
+    def append_list(self, name):
+        """Append a results list to the contents of the tab.
+
+        @param name: Name to use for making modifications to the list.
+
+        @return True.
+
+        """
+        return self._proxy.append_list(name)
+
+
+    def append_list_item(self, list_name, item_name, html):
+        """Append an item to a results list.
+
+        @param list_name: Name of list provided to append_list().
+        @param item_name: Name to use for making modifications to the item.
+        @param html: HTML to place in the list item.
+
+        @return True.
+
+        """
+        return self._proxy.append_list_item(list_name, item_name, html)
+
+
+    def replace_list_item(self, item_name, html):
+        """Replace an item in a results list.
+
+        @param item_name: Name of item provided to append_list_item().
+        @param html: HTML to place in the list item.
+
+        @return True.
+
+        """
+        return self._proxy.replace_list_item(item_name, html)
+
+
     def close(self):
         """Tear down state associated with the client."""
         # Log out the browser.
