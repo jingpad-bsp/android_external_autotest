@@ -1,6 +1,8 @@
 #
 # Copyright 2008 Google Inc. Released under the GPL v2
 
+# pylint: disable-msg=C0111
+
 import os, pickle, random, re, resource, select, shutil, signal, StringIO
 import socket, struct, subprocess, time, textwrap, urlparse
 import warnings, smtplib, logging, urllib2
@@ -62,6 +64,34 @@ def get_stream_tee_file(stream, level, prefix=''):
 class BgJob(object):
     def __init__(self, command, stdout_tee=None, stderr_tee=None, verbose=True,
                  stdin=None, stderr_level=DEFAULT_STDERR_LEVEL):
+        """Create and start a new BgJob.
+
+        This constructor creates a new BgJob, and uses Popen to start a new
+        subprocess with given command. It returns without blocking on execution
+        of the subprocess.
+
+        After starting a new BgJob, use output_prepare to connect the process's
+        stdout and stderr pipes to the stream of your choice.
+
+        When the job is running, the jobs's output streams are only read from
+        when process_output is called.
+
+        @param command: command to be executed in new subprocess. May be either
+                        a list, or a string (in which case Popen will be called
+                        with shell=True)
+        @param stdout_tee: Optional additional stream that the process's stdout
+                           stream output will be written to. Or, specify
+                           base_utils.TEE_TO_LOGS and the output will handled by
+                           the standard logging_manager.
+        @param stderr_tee: Same as stdout_tee, but for stderr.
+        @param verbose: Boolean, make BgJob logging more verbose.
+        @param stdin: Stream object, will be passed to Popen as the new
+                      process's stdin.
+        @param stderr_level: A logging level value. If stderr_tee was set to
+                             base_utils.TEE_TO_LOGS, sets the level that tee'd
+                             stderr output will be logged at. Ignored
+                             otherwise.
+        """
         self.command = command
         self.stdout_tee = get_stream_tee_file(stdout_tee, DEFAULT_STDOUT_LEVEL,
                                               prefix=STDOUT_PREFIX)
@@ -78,7 +108,7 @@ class BgJob(object):
             self.string_stdin = None
 
         if verbose:
-            logging.debug("Running '%s'" % command)
+            logging.debug("Running '%s'", command)
         if type(command) == list:
             self.sp = subprocess.Popen(command,
                                        stdout=subprocess.PIPE,
@@ -92,13 +122,59 @@ class BgJob(object):
                                        executable="/bin/bash",
                                        stdin=stdin)
 
-    def output_prepare(self, stdout_file=None, stderr_file=None):
+        self._output_prepare_called = False
+        self._process_output_warned = False
+        self._cleanup_called = False
+        self.stdout_file = _the_null_stream
+        self.stderr_file = _the_null_stream
+
+    def output_prepare(self, stdout_file=_the_null_stream,
+                       stderr_file=_the_null_stream):
+        """Connect the subprocess's stdout and stderr to streams.
+
+        Subsequent calls to output_prepare are permitted, and will reassign
+        the streams. However, this will have the side effect that the ultimate
+        call to cleanup() will only remember the stdout and stderr data up to
+        the last output_prepare call when saving this data to BgJob.result.
+
+        @param stdout_file: Stream that output from the process's stdout pipe
+                            will be written to. Default: a null stream.
+        @param stderr_file: Stream that output from the process's stdout pipe
+                            will be written to. Default: a null stream.
+        """
+        if self._output_prepare_called:
+            logging.warn('BgJob [%s] received a duplicate call to '
+                         'output prepare. Allowing, but this may result '
+                         'in data missing from BgJob.result.')
         self.stdout_file = stdout_file
         self.stderr_file = stderr_file
+        self._output_prepare_called = True
 
 
     def process_output(self, stdout=True, final_read=False):
-        """output_prepare must be called prior to calling this"""
+        """Read from process's output stream, and write data to destinations.
+
+        This function reads up to 1024 bytes from the background job's
+        stdout or stderr stream, and writes the resulting data to the BgJob's
+        output tee and to the stream set up in output_prepare.
+
+        Warning: Calls to process_output will block on reads from the
+        subprocess stream, and will block on writes to the configured
+        destination stream.
+
+        @param stdout: True = read and process data from job's stdout.
+                       False = from stderr.
+                       Default: True
+        @param final_read: Do not read only 1024 bytes from stream. Instead,
+                           read and process all data until end of the stream.
+
+        """
+        if not self._output_prepare_called and not self._process_output_warned:
+            logging.warn('BgJob with command [%s] handled a process_output '
+                         'call before output_prepare was called. Some output '
+                         'data discarded. Future warnings suppressed.',
+                         self.command)
+            self._process_output_warned = True
         if stdout:
             pipe, buf, tee = self.sp.stdout, self.stdout_file, self.stdout_tee
         else:
@@ -120,12 +196,26 @@ class BgJob(object):
 
 
     def cleanup(self):
-        self.stdout_tee.flush()
-        self.stderr_tee.flush()
-        self.sp.stdout.close()
-        self.sp.stderr.close()
-        self.result.stdout = self.stdout_file.getvalue()
-        self.result.stderr = self.stderr_file.getvalue()
+        """Clean up after BgJob.
+
+        Flush the stdout_tee and stderr_tee buffers, close the
+        subprocess stdout and stderr buffers, and saves data from
+        the configured stdout and stderr destination streams to
+        self.result. Duplicate calls ignored with a warning.
+        """
+        if self._cleanup_called:
+            logging.warn('BgJob [%s] received a duplicate call to '
+                         'cleanup. Ignoring.', self.command)
+            return
+        try:
+            self.stdout_tee.flush()
+            self.stderr_tee.flush()
+            self.sp.stdout.close()
+            self.sp.stderr.close()
+            self.result.stdout = self.stdout_file.getvalue()
+            self.result.stderr = self.stderr_file.getvalue()
+        finally:
+            self._cleanup_called = True
 
 
     def _reset_sigpipe(self):
@@ -1772,7 +1862,7 @@ def args_to_dict(args):
             dict[match.group(1).lower()] = match.group(2)
         else:
             logging.warning("args_to_dict: argument '%s' doesn't match "
-                            "'%s' pattern. Ignored." % (arg, arg_re.pattern))
+                            "'%s' pattern. Ignored.", arg, arg_re.pattern)
     return dict
 
 
@@ -1816,7 +1906,7 @@ def ask(question, auto=False):
     @param auto: Whether to return "y" instead of asking the question
     """
     if auto:
-        logging.info("%s (y/n) y" % question)
+        logging.info("%s (y/n) y", question)
         return "y"
     return raw_input("%s INFO | %s (y/n) " %
                      (time.strftime("%H:%M:%S", time.localtime()), question))
