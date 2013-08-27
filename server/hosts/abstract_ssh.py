@@ -1,9 +1,10 @@
-import os, time, types, socket, shutil, glob, logging, traceback, tempfile
-from autotest_lib.client.common_lib import autotemp, error, logging_manager
+import os, time, socket, shutil, glob, logging, traceback, tempfile
+from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.server import utils, autotest
 from autotest_lib.server.hosts import remote
 from autotest_lib.client.common_lib.global_config import global_config
 
+# pylint: disable-msg=C0111
 
 get_value = global_config.get_config_value
 enable_master_ssh = get_value('AUTOSERV', 'enable_master_ssh', type=bool,
@@ -275,7 +276,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
-                logging.warn("trying scp, rsync failed: %s" % e)
+                logging.warn("trying scp, rsync failed: %s", e)
 
         if try_scp:
             # scp has no equivalent to --delete, just drop the entire dest dir
@@ -350,7 +351,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
-                logging.warn("trying scp, rsync failed: %s" % e)
+                logging.warn("trying scp, rsync failed: %s", e)
 
         if try_scp:
             # scp has no equivalent to --delete, just drop the entire dest dir
@@ -626,7 +627,8 @@ class AbstractSSHHost(remote.RemoteHost):
             # Start the master SSH connection in the background.
             master_cmd = self.ssh_command(options="-N -o ControlMaster=yes")
             logging.info("Starting master ssh connection '%s'" % master_cmd)
-            self.master_ssh_job = utils.BgJob(master_cmd)
+            self.master_ssh_job = utils.BgJob(master_cmd,
+                                              nickname='master-ssh')
 
 
     def clear_known_hosts(self):

@@ -6,6 +6,7 @@
 import os, pickle, random, re, resource, select, shutil, signal, StringIO
 import socket, struct, subprocess, time, textwrap, urlparse
 import warnings, smtplib, logging, urllib2
+import itertools
 from threading import Thread, Event
 try:
     import hashlib
@@ -61,9 +62,15 @@ def get_stream_tee_file(stream, level, prefix=''):
     return stream
 
 
+def _join_with_nickname(base_string, nickname):
+    if nickname:
+        return '%s BgJob "%s"' %(base_string, nickname)
+    return base_string
+
+
 class BgJob(object):
     def __init__(self, command, stdout_tee=None, stderr_tee=None, verbose=True,
-                 stdin=None, stderr_level=DEFAULT_STDERR_LEVEL):
+                 stdin=None, stderr_level=DEFAULT_STDERR_LEVEL, nickname=None):
         """Create and start a new BgJob.
 
         This constructor creates a new BgJob, and uses Popen to start a new
@@ -91,12 +98,13 @@ class BgJob(object):
                              base_utils.TEE_TO_LOGS, sets the level that tee'd
                              stderr output will be logged at. Ignored
                              otherwise.
+        @param nickname: Optional string, to be included in logging messages
         """
         self.command = command
         self.stdout_tee = get_stream_tee_file(stdout_tee, DEFAULT_STDOUT_LEVEL,
-                                              prefix=STDOUT_PREFIX)
+                prefix=_join_with_nickname(STDOUT_PREFIX, nickname))
         self.stderr_tee = get_stream_tee_file(stderr_tee, stderr_level,
-                                              prefix=STDERR_PREFIX)
+                prefix=_join_with_nickname(STDERR_PREFIX, nickname))
         self.result = CmdResult(command)
 
         # allow for easy stdin input by string, we'll let subprocess create
@@ -767,7 +775,7 @@ def get_stderr_level(stderr_is_expected):
 
 def run(command, timeout=None, ignore_status=False,
         stdout_tee=None, stderr_tee=None, verbose=True, stdin=None,
-        stderr_is_expected=None, args=()):
+        stderr_is_expected=None, args=(), nickname=None):
     """
     Run a command on the host.
 
@@ -788,6 +796,8 @@ def run(command, timeout=None, ignore_status=False,
             inside " quotes after they have been escaped for that; each
             element in the sequence will be given as a separate command
             argument
+    @param nickname: Short string that will appear in logging messages
+                     associated with this command.
 
     @return a CmdResult object
 
@@ -804,8 +814,8 @@ def run(command, timeout=None, ignore_status=False,
 
     bg_job = join_bg_jobs(
         (BgJob(command, stdout_tee, stderr_tee, verbose, stdin=stdin,
-               stderr_level=get_stderr_level(stderr_is_expected)),),
-        timeout)[0]
+               stderr_level=get_stderr_level(stderr_is_expected),
+               nickname=nickname),), timeout)[0]
     if not ignore_status and bg_job.result.exit_status:
         raise error.CmdError(command, bg_job.result,
                              "Command returned non-zero exit status")
@@ -814,7 +824,8 @@ def run(command, timeout=None, ignore_status=False,
 
 
 def run_parallel(commands, timeout=None, ignore_status=False,
-                 stdout_tee=None, stderr_tee=None):
+                 stdout_tee=None, stderr_tee=None,
+                 nicknames=[]):
     """
     Behaves the same as run() with the following exceptions:
 
@@ -825,9 +836,10 @@ def run_parallel(commands, timeout=None, ignore_status=False,
     @return: a list of CmdResult objects
     """
     bg_jobs = []
-    for command in commands:
+    for (command, nickname) in itertools.izip_longest(commands, nicknames):
         bg_jobs.append(BgJob(command, stdout_tee, stderr_tee,
-                             stderr_level=get_stderr_level(ignore_status)))
+                             stderr_level=get_stderr_level(ignore_status),
+                             nickname=nickname))
 
     # Updates objects in bg_jobs list with their process information
     join_bg_jobs(bg_jobs, timeout)
