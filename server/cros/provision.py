@@ -117,10 +117,24 @@ def split_labels(labels):
     return configurations
 
 
-# This has been copied out of dynamic_suite's reimager.py, which will be killed
-# off in a future CL.  I'd prefer if this would go away by doing
-# http://crbug.com/249424, so that labels are just automatically made when we
-# try to add them to a host.
+def join(provision_type, provision_value):
+    """
+    Combine the provision type and value into the label name.
+
+    @param provision_type: One of the constants that are the label prefixes.
+    @param provision_value: A string of the value for this provision type.
+    @returns: A string that is the label name for this (type, value) pair.
+
+    >>> join(CROS_VERSION_PREFIX, 'lumpy-release/R27-3773.0.0')
+    'cros-version:lumpy-release/R27-3773.0.0'
+
+    """
+    return '%s:%s' % (provision_type, provision_value)
+
+
+# This has been copied out of dynamic_suite's reimager.py, which no longer
+# exists.  I'd prefer if this would go away by doing http://crbug.com/249424,
+# so that labels are just automatically made when we try to add them to a host.
 def ensure_label_exists(name):
     """
     Ensure that a label called |name| exists in the autotest DB.

@@ -9,6 +9,7 @@ import common
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -325,8 +326,7 @@ class SuiteSpec(object):
                  file_experimental_bugs=False, max_runtime_mins=24*60,
                  firmware_reimage=False,
                  try_job_timeout_mins=DEFAULT_TRY_JOB_TIMEOUT_MINS,
-                 suite_dependencies=[],
-                 reimage_type=constants.REIMAGE_TYPE_OS,
+                 suite_dependencies=[], version_prefix=None,
                  bug_template={}, devserver_url=None, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
@@ -357,10 +357,12 @@ class SuiteSpec(object):
                                        Default: False
         @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
                                  this suite will run.
-        @param firmware_reimage: True if we should use the FwReimager,
-                                 False if we should use OsReimager.
+        @param firmware_reimage: True if we should use FW_VERSION_PREFIX as
+                                 the version_prefix.
+                                 False if we should use CROS_VERSION_PREFIX as
+                                 the version_prefix.
                                  (This flag has now been deprecated in favor of
-                                  reimage_type.)
+                                  version_prefix.)
         @param try_job_timeout_mins: Max time in mins we allow a try job to run
                                      before timing out.
         @param suite_dependencies: A list of strings of suite level
@@ -369,11 +371,11 @@ class SuiteSpec(object):
                                    set of dependencies at job creation time.
                                    A string of comma seperated labels is
                                    accepted for backwards compatibility.
-        @param reimage_type: A string identifying the type of reimaging that
-                             should be done before running tests.
         @param bug_template: A template dictionary specifying the default bug
                              filing options for failures in this suite.
         @param devserver_url: url to the selected devserver.
+        @param version_prefix: A version prefix from provision.py that the
+                               tests should be scheduled with.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -409,13 +411,13 @@ class SuiteSpec(object):
         self.max_runtime_mins = max_runtime_mins
         self.firmware_reimage = firmware_reimage
         self.try_job_timeout_mins = try_job_timeout_mins
-        self.reimage_type = reimage_type
         if isinstance(suite_dependencies, str):
             self.suite_dependencies = [dep.strip(' ') for dep
                                        in suite_dependencies.split(',')]
         else:
             self.suite_dependencies = suite_dependencies
         self.bug_template = bug_template
+        self.version_prefix = version_prefix
 
 
 def skip_reimage(g):
@@ -461,10 +463,6 @@ def reimage_and_run(**dargs):
                                level dependencies, which act just like test
                                dependencies and are appended to each test's
                                set of dependencies at job creation time.
-    @param reimage_type: A string indicating what type of reimaging that the
-                         suite wishes to have done to the machines it will
-                         run on. Valid arguments are given as constants in this
-                         file.
     @param devserver_url: url to the selected devserver.
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
@@ -474,22 +472,28 @@ def reimage_and_run(**dargs):
     suite_spec = SuiteSpec(**dargs)
 
     # Horrible hacks to handle backwards compatibility, overall goal here is
-    #   reimage_firmware == True -> Firmware
-    #   reimage_firmware == False AND reimage_type == None -> OS
-    #   reimage_firmware == False AND reimage_type != None -> reimage_type
-    # and once we've set reimage_type right, ignore that reimage_firmware
+    # reimage_firmware == True -> Firmware
+    # reimage_firmware == False AND version_prefix == None -> OS
+    # reimage_firmware == False AND version_prefix != None -> version_prefix
+    # and once we've set version_prefix right, ignore that reimage_firmware
     # has ever existed...
-    # Remove all this code and reimage_firmware once R26 falls off stable.
+    # Remove all this code and reimage_firmware once R31 falls off stable.
     if suite_spec.firmware_reimage:
-        suite_spec.reimage_type = constants.REIMAGE_TYPE_FIRMWARE
+        suite_spec.version_prefix = provision.FW_VERSION_PREFIX
         logging.warning("reimage_and_run |firmware_reimage=True| argument "
-                "has been deprecated. Please use |reimage_type='firmware'| "
-                "instead.")
-    elif suite_spec.reimage_type is None:
-        suite_spec.reimage_type = constants.REIMAGE_TYPE_OS
+                "has been deprecated. Please use "
+                "|version_prefix=provision.FW_VERSION_PREFIX| instead.")
+    elif not suite_spec.version_prefix:
+        suite_spec.version_prefix = provision.CROS_VERSION_PREFIX
 
     suite_spec.firmware_reimage = False
     # </backwards_compatibility_hacks>
+
+    # version_prefix+build should make it into each test as a DEPENDENCY.  The
+    # easiest way to do this is to tack it onto the suite_dependencies.
+    if suite_spec.version_prefix:
+        dependency = provision.join(suite_spec.version_prefix, suite_spec.build)
+        suite_spec.suite_dependencies.append(dependency)
 
     suite_spec.dependencies = _gatherAndParseDependencies(suite_spec)
     logging.debug('Full dependency dictionary: %s', suite_spec.dependencies)
@@ -498,11 +502,13 @@ def reimage_and_run(**dargs):
                                         user=suite_spec.job.user, debug=False)
     tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
-    try:
-        reimager_class = reimager.reimager_for(suite_spec.reimage_type)
-    except KeyError:
-        raise error.UnknownReimageType("%s not recognized reimage_type" %
-                                       suite_spec.reimage_type)
+
+    # Temporary uglyness until all of reimager.py is removed.
+    if suite_spec.version_prefix == provision.FW_VERSION_PREFIX:
+        reimage_type = constants.REIMAGE_TYPE_FIRMWARE
+    else:
+        reimage_type = constants.REIMAGE_TYPE_OS
+    reimager_class = reimager.reimager_for(reimage_type)
 
     imager = reimager_class(suite_spec.job.autodir, suite_spec.board, afe,
                             tko, results_dir=suite_spec.job.resultdir)
