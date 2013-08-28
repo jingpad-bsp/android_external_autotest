@@ -30,10 +30,18 @@ class NetperfWiFiPerfLogger(object):
         self.write_perf_keyval = keyval_recorder
 
 
-    def record_signal_keyval(self):
-        """Records the current WiFi signal level as a keyval."""
-        signal_level_key = '_'.join(
-                [self._wifi_client.machine_id, 'signal', self.channel_label])
+    def record_signal_keyval(self, descriptive_tag=None):
+        """Records the current WiFi signal level as a keyval.
+
+        @param descriptive_tag string concise whitespace free string to be
+                embedded in keyval keys.
+
+        """
+        tag_pieces = [self._wifi_client.machine_id, 'signal',
+                      self.channel_label]
+        if descriptive_tag:
+            tag_pieces.append(descriptive_tag)
+        signal_level_key = '_'.join(tag_pieces)
         signal_level = self._wifi_client.wifi_signal_level
         self.write_perf_keyval({signal_level_key: signal_level})
         logging.debug('Signal level for channel %d is %d dBm',
