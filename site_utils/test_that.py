@@ -25,7 +25,7 @@ import common
 from autotest_lib.client.common_lib.cros import dev_server, retry
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.server.cros.dynamic_suite import suite
-from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.server.cros import provision
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import server_logging_config
 
@@ -229,9 +229,11 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       'to continue without running ssh-add, but ssh commands '
                       'may fail.')
 
-    afe.create_label(constants.VERSION_PREFIX + build)
-    afe.create_label(board)
-    afe.create_host(remote)
+    build_label = afe.create_label(provision.cros_version_to_label(build))
+    board_label = afe.create_label(board)
+    new_host = afe.create_host(remote)
+    new_host.add_labels([build_label.name, board_label.name])
+
 
     # Schedule tests / suites in local afe
     for test in tests:
