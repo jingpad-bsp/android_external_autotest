@@ -349,24 +349,23 @@ class NetperfConfig(object):
     UDP_STREAM_TESTS = [ TEST_TYPE_UDP_STREAM,
                          TEST_TYPE_UDP_MAERTS ]
 
-    SHORT_TAGS = { NetperfConfig.TEST_TYPE_TCP_CRR: 'tcp_crr',
-                   NetperfConfig.TEST_TYPE_TCP_MAERTS: 'tcp_rx',
-                   NetperfConfig.TEST_TYPE_TCP_RR: 'tcp_rr',
-                   NetperfConfig.TEST_TYPE_TCP_SENDFILE: 'tcp_stx',
-                   NetperfConfig.TEST_TYPE_TCP_STREAM: 'tcp_tx',
-                   NetperfConfig.TEST_TYPE_UDP_RR: 'udp_rr',
-                   NetperfConfig.TEST_TYPE_UDP_STREAM: 'udp_tx',
-                   NetperfConfig.TEST_TYPE_UDP_MAERTS: 'udp_rx' }
+    SHORT_TAGS = { TEST_TYPE_TCP_CRR: 'tcp_crr',
+                   TEST_TYPE_TCP_MAERTS: 'tcp_rx',
+                   TEST_TYPE_TCP_RR: 'tcp_rr',
+                   TEST_TYPE_TCP_SENDFILE: 'tcp_stx',
+                   TEST_TYPE_TCP_STREAM: 'tcp_tx',
+                   TEST_TYPE_UDP_RR: 'udp_rr',
+                   TEST_TYPE_UDP_STREAM: 'udp_tx',
+                   TEST_TYPE_UDP_MAERTS: 'udp_rx' }
 
-    READABLE_TAGS = {
-            NetperfConfig.TEST_TYPE_TCP_CRR: 'tcp_connect_roundtrip_rate',
-            NetperfConfig.TEST_TYPE_TCP_MAERTS: 'tcp_downstream',
-            NetperfConfig.TEST_TYPE_TCP_RR: 'tcp_roundtrip_rate',
-            NetperfConfig.TEST_TYPE_TCP_SENDFILE: 'tcp_upstream_sendfile',
-            NetperfConfig.TEST_TYPE_TCP_STREAM: 'tcp_upstream',
-            NetperfConfig.TEST_TYPE_UDP_RR: 'udp_roundtrip',
-            NetperfConfig.TEST_TYPE_UDP_STREAM: 'udp_upstream',
-            NetperfConfig.TEST_TYPE_UDP_MAERTS: 'udp_downstream' }
+    READABLE_TAGS = { TEST_TYPE_TCP_CRR: 'tcp_connect_roundtrip_rate',
+                      TEST_TYPE_TCP_MAERTS: 'tcp_downstream',
+                      TEST_TYPE_TCP_RR: 'tcp_roundtrip_rate',
+                      TEST_TYPE_TCP_SENDFILE: 'tcp_upstream_sendfile',
+                      TEST_TYPE_TCP_STREAM: 'tcp_upstream',
+                      TEST_TYPE_UDP_RR: 'udp_roundtrip',
+                      TEST_TYPE_UDP_STREAM: 'udp_upstream',
+                      TEST_TYPE_UDP_MAERTS: 'udp_downstream' }
 
 
     @staticmethod
@@ -390,7 +389,7 @@ class NetperfConfig(object):
         @return string very short test description.
 
         """
-        return self.SHORT_TAGS.get(test_type, 'unknown')
+        return NetperfConfig.SHORT_TAGS.get(test_type, 'unknown')
 
 
     @staticmethod
@@ -401,7 +400,7 @@ class NetperfConfig(object):
         @return string human readable test description.
 
         """
-        return self.READABLE_TAGS.get(test_type, 'unknown')
+        return NetperfConfig.READABLE_TAGS.get(test_type, 'unknown')
 
     @property
     def human_readable_tag(self):

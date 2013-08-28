@@ -48,9 +48,11 @@ class NetperfWiFiPerfLogger(object):
                 embedded in keyval keys.
 
         """
+        mode = self._ap_config.printable_mode
+        mode = mode.replace('+', 'p').replace('-', 'm')
         suffix = '%s_mode%s_%s_%s' % (
                 self.channel_label,
-                self._ap_config.printable_mode,
+                mode,
                 self._ap_config.security_config.security,
                 descriptive_tag or result.tag)
         keyvals = result.get_keyval(prefix=self._wifi_client.machine_id,
