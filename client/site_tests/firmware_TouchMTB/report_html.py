@@ -176,7 +176,8 @@ class ReportHtml:
         validator logs.
         """
         content = self._get_content()
-        if all(content):
+        # It is ok to flush the gesture log even when there are no mtplot images
+        if self.glog:
             # Write the content to the html file.
             self.doc.insert_gesture(*content)
             # Write the logs to the round log.
