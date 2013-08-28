@@ -1642,6 +1642,68 @@ class TaskWithJobKeyvals(object):
         self._write_keyvals_before_job_helper(keyval_dict, keyval_path)
 
 
+class SelfThrottledTask(AgentTask):
+    """
+    Special AgentTask subclass that maintains its own global process limit.
+    """
+    _num_running_processes = 0
+
+
+    @classmethod
+    def _increment_running_processes(cls):
+        cls._num_running_processes += 1
+
+
+    @classmethod
+    def _decrement_running_processes(cls):
+        cls._num_running_processes -= 1
+
+
+    @classmethod
+    def _max_processes(cls):
+        raise NotImplementedError
+
+
+    @classmethod
+    def _can_run_new_process(cls):
+        return cls._num_running_processes < cls._max_processes()
+
+
+    def _process_started(self):
+        return bool(self.monitor)
+
+
+    def tick(self):
+        # override tick to keep trying to start until the process count goes
+        # down and we can, at which point we revert to default behavior
+        if self._process_started():
+            super(SelfThrottledTask, self).tick()
+        else:
+            self._try_starting_process()
+
+
+    def run(self):
+        # override run() to not actually run unless we can
+        self._try_starting_process()
+
+
+    def _try_starting_process(self):
+        if not self._can_run_new_process():
+            return
+
+        # actually run the command
+        super(SelfThrottledTask, self).run()
+        if self._process_started():
+            self._increment_running_processes()
+
+
+    def finished(self, success):
+        super(SelfThrottledTask, self).finished(success)
+        if self._process_started():
+            self._decrement_running_processes()
+
+
+
 class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
     """
     Subclass for AgentTasks that correspond to a SpecialTask entry in the DB.
@@ -2288,7 +2350,7 @@ class QueueTask(AbstractQueueTask):
          return invocation + ['--verify_job_repo_url']
 
 
-class HostlessQueueTask(AbstractQueueTask):
+class HostlessQueueTask(SelfThrottledTask, AbstractQueueTask):
     def __init__(self, queue_entry):
         super(HostlessQueueTask, self).__init__([queue_entry])
         self.queue_entry_ids = [queue_entry.id]
@@ -2302,6 +2364,11 @@ class HostlessQueueTask(AbstractQueueTask):
     def _finish_task(self):
         super(HostlessQueueTask, self)._finish_task()
         self.queue_entries[0].set_status(models.HostQueueEntry.Status.PARSING)
+
+
+    @classmethod
+    def _max_processes(cls):
+        return scheduler_config.config.max_hostless_processes
 
 
 class PostJobTask(AgentTask):
@@ -2471,68 +2538,7 @@ class GatherLogsTask(PostJobTask):
             self.finished(True)
 
 
-class SelfThrottledPostJobTask(PostJobTask):
-    """
-    Special AgentTask subclass that maintains its own global process limit.
-    """
-    _num_running_processes = 0
-
-
-    @classmethod
-    def _increment_running_processes(cls):
-        cls._num_running_processes += 1
-
-
-    @classmethod
-    def _decrement_running_processes(cls):
-        cls._num_running_processes -= 1
-
-
-    @classmethod
-    def _max_processes(cls):
-        raise NotImplementedError
-
-
-    @classmethod
-    def _can_run_new_process(cls):
-        return cls._num_running_processes < cls._max_processes()
-
-
-    def _process_started(self):
-        return bool(self.monitor)
-
-
-    def tick(self):
-        # override tick to keep trying to start until the process count goes
-        # down and we can, at which point we revert to default behavior
-        if self._process_started():
-            super(SelfThrottledPostJobTask, self).tick()
-        else:
-            self._try_starting_process()
-
-
-    def run(self):
-        # override run() to not actually run unless we can
-        self._try_starting_process()
-
-
-    def _try_starting_process(self):
-        if not self._can_run_new_process():
-            return
-
-        # actually run the command
-        super(SelfThrottledPostJobTask, self).run()
-        if self._process_started():
-            self._increment_running_processes()
-
-
-    def finished(self, success):
-        super(SelfThrottledPostJobTask, self).finished(success)
-        if self._process_started():
-            self._decrement_running_processes()
-
-
-class FinalReparseTask(SelfThrottledPostJobTask):
+class FinalReparseTask(SelfThrottledTask, PostJobTask):
     def __init__(self, queue_entries):
         super(FinalReparseTask, self).__init__(queue_entries,
                                                log_file_name='.parse.log')
@@ -2572,7 +2578,7 @@ class FinalReparseTask(SelfThrottledPostJobTask):
         self._archive_results(self.queue_entries)
 
 
-class ArchiveResultsTask(SelfThrottledPostJobTask):
+class ArchiveResultsTask(SelfThrottledTask, PostJobTask):
     _ARCHIVING_FAILED_FILE = '.archiver_failed'
 
     def __init__(self, queue_entries):
