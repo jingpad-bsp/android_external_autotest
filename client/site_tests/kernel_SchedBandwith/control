@@ -4,17 +4,12 @@
 
 AUTHOR = "The Chromium OS Authors"
 DOC = """
-Runs a C program that puts itself into the Chrome renderer background
-group, which is CPU bandwidth limited, and starts a secondary worker
-thread to consume all available CPU time, up to the bandwidth limit,
-and then terminates the thread after a set period of time (default 30
-seconds).
-Checks that the CPU consumption is as expected, rather than 100% of
-the total CPU.
+Runs a cpu-hogging process in the Chrome renderer background cgroup, which is
+CPU bandwidth limited and verifies that 90% of the time slices were throttled.
 """
 NAME = "kernel_SchedBandwith"
 PURPOSE = """
-Checks that /tmp/cgroup/cpu/chrome_renderers/background/cpu.cfs_quota_us
+Checks that /sys/fs/cgroup/cpu/chrome_renderers/background/cpu.cfs_quota_us
 is enforced.
 """
 CRITERIA = """
