@@ -114,7 +114,8 @@ def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
 
 
 def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
-            id_digits=1, ssh_verbosity=0, args=None, pretend=False):
+            id_digits=1, ssh_verbosity=0, args=None, pretend=False,
+            autoserv_verbose=False):
     """
     Shell out to autoserv to run an individual test job.
 
@@ -133,6 +134,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
                  and then ultimitely to test itself.
     @param pretend: If True, will print out autoserv commands rather than
                     running them.
+    @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
     @returns: Absolute path of directory where results were stored.
     """
     with tempfile.NamedTemporaryFile() as temp_file:
@@ -148,7 +150,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
 
         command = autoserv_utils.autoserv_run_job_command(
                 os.path.join(sysroot_autotest_path, 'server'),
-                machines=host, job=job, verbose=False,
+                machines=host, job=job, verbose=autoserv_verbose,
                 results_directory=results_directory,
                 fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
                 extra_args=extra_args,
@@ -191,7 +193,8 @@ def setup_local_afe():
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
                       pretend=False, no_experimental=False,
-                      results_directory=None, ssh_verbosity=0):
+                      results_directory=None, ssh_verbosity=0,
+                      autoserv_verbose=False):
     """
     @param afe: A direct_afe object used to interact with local afe database.
     @param autotest_path: Absolute path of sysroot installed autotest.
@@ -211,6 +214,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                               subdirectory of /tmp
     @param ssh_verbosity: SSH verbosity level, passed through to
                           autoserv_utils.
+    @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
     """
     # Add the testing key to the current ssh agent.
     if os.environ.has_key('SSH_AGENT_PID'):
@@ -259,7 +263,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     job_id_digits=len(str(last_job_id))
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory, fast_mode,
-                job_id_digits, ssh_verbosity, args, pretend)
+                job_id_digits, ssh_verbosity, args, pretend, autoserv_verbose)
 
 
 def validate_arguments(arguments):
@@ -354,7 +358,8 @@ def parse_arguments(argv):
     parser.add_argument('--debug', action='store_true',
                         help='Include DEBUG level messages in stdout. Note: '
                              'these messages will be included in output log '
-                             'file regardless.')
+                             'file regardless. In addition, turn on autoserv '
+                             'verbosity.')
     return parser.parse_args(argv)
 
 
@@ -499,7 +504,8 @@ def main(argv):
                           pretend=arguments.pretend,
                           no_experimental=arguments.no_experimental,
                           results_directory=results_directory,
-                          ssh_verbosity=arguments.ssh_verbosity)
+                          ssh_verbosity=arguments.ssh_verbosity,
+                          autoserv_verbose=arguments.debug)
         if arguments.pretend:
             logging.info('Finished pretend run. Exiting.')
             return 0
