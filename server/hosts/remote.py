@@ -1,5 +1,4 @@
-"""This class defines the Remote host class, mixing in the SiteHost class
-if it is available."""
+"""This class defines the Remote host class."""
 
 import os, logging, urllib
 from autotest_lib.client.common_lib import error

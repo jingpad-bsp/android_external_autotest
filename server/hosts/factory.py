@@ -3,7 +3,7 @@
 
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import autotest, utils as server_utils
-from autotest_lib.server.hosts import site_factory, site_host, ssh_host, serial
+from autotest_lib.server.hosts import site_factory, cros_host, ssh_host, serial
 from autotest_lib.server.hosts import logfile_monitor
 
 
@@ -45,7 +45,7 @@ def create_host(
 
     # TODO(fdeng): this method should should dynamically discover
     # and allocate host types, crbug.com/273843
-    classes = [site_host.SiteHost]
+    classes = [cros_host.CrosHost]
     # by default assume we're using SSH support
     if SSH_ENGINE == 'paramiko':
         from autotest_lib.server.hosts import paramiko_host

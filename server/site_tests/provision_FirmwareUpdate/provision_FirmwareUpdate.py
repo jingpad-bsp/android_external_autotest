@@ -39,7 +39,7 @@ class provision_FirmwareUpdate(test.test):
     def initialize(self, host, value):
         """Initialize the test.
 
-        @param host:  a SiteHost object of the machine to update.
+        @param host:  a CrosHost object of the machine to update.
         @param value: the provisioning value, which is the build version
                       to which we want to provision the machine,
                       e.g. 'link-firmware/R22-2695.1.144'.

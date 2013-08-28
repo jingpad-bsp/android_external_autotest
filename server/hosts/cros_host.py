@@ -87,7 +87,7 @@ def add_label_detector(label_function_list, label_list=None, label=None):
     return add_func
 
 
-class SiteHost(abstract_ssh.AbstractSSHHost):
+class CrosHost(abstract_ssh.AbstractSSHHost):
     """Chromium OS specific subclass of Host."""
 
     _parser = autoserv_parser.autoserv_parser
@@ -193,7 +193,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         Recommended usage:
         ~~~~~~~~
             args_dict = utils.args_to_dict(args)
-            servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+            servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
             host = hosts.create_host(machine, servo_args=servo_args)
         ~~~~~~~~
 
@@ -221,7 +221,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         cases apply, `self.servo` will be `None`.
 
         """
-        super(SiteHost, self)._initialize(hostname=hostname,
+        super(CrosHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
         # self.env is a dictionary of environment variable settings
         # to be exported for commands run on the host.
@@ -885,7 +885,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
 
     def close(self):
         self.rpc_disconnect_all()
-        super(SiteHost, self).close()
+        super(CrosHost, self).close()
 
 
     def _cleanup_poweron(self):
@@ -921,7 +921,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
             logging.warn('Unable to restart ui, rebooting device.')
             # Since restarting the UI fails fall back to normal Autotest
             # cleanup routines, i.e. reboot the machine.
-            super(SiteHost, self).cleanup()
+            super(CrosHost, self).cleanup()
         # Check if the rpm outlet was manipulated.
         if self.has_power():
             self._cleanup_poweron()
@@ -941,7 +941,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         # Enable fastsync to avoid running extra sync commands before reboot.
         if 'fastsync' not in dargs:
             dargs['fastsync'] = True
-        super(SiteHost, self).reboot(**dargs)
+        super(CrosHost, self).reboot(**dargs)
 
 
     def verify_software(self):
@@ -955,7 +955,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
          4. update_engine answers a simple status request over DBus.
 
         """
-        super(SiteHost, self).verify_software()
+        super(CrosHost, self).verify_software()
         self.check_diskspace(
             '/mnt/stateful_partition',
             global_config.global_config.get_config_value(
@@ -1436,7 +1436,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
                 for RPM powered DUT's in the lab. If it does follow the format,
                 it returns a regular expression MatchObject instead.
         """
-        return re.match(SiteHost._RPM_HOSTNAME_REGEX, hostname)
+        return re.match(CrosHost._RPM_HOSTNAME_REGEX, hostname)
 
 
     def has_power(self):
@@ -1445,7 +1445,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         @return True if this host is in the CROS lab and follows the defined
                 naming format.
         """
-        return SiteHost.check_for_rpm_support(self.hostname)
+        return CrosHost.check_for_rpm_support(self.hostname)
 
 
     def _set_power(self, state, power_method):

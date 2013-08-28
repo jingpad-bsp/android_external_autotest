@@ -100,7 +100,7 @@ class FactoryInstallTest(test.test):
     @abstractmethod
     def get_dut_client(self):
         """
-        Returns a client (subclass of SiteHost) to control the DUT.
+        Returns a client (subclass of CrosHost) to control the DUT.
         """
         pass
 

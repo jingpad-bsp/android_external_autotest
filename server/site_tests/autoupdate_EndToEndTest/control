@@ -64,7 +64,7 @@ args_dict = utils.args_to_dict(args)
 use_servo = args_dict.get('servo_host', False)
 servo_args = None
 if use_servo:
-    servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+    servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 # Create test configuration based on command-line arguments (higher precedence,
 # for run_remote_tests.sh invocation) and local variables (lower precedence,

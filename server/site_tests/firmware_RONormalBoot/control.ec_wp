@@ -19,7 +19,7 @@ This test disables the RO normal boot flag and checks the next boot result.
 """
 
 args_dict = utils.args_to_dict(args)
-servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run_ronormalboot(machine):
     host = hosts.create_host(machine, servo_args=servo_args)

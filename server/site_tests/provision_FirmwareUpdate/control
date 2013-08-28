@@ -22,7 +22,7 @@ from autotest_lib.client.common_lib import error, utils
 
 
 args_dict = utils.args_to_dict(args)
-servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 
 if not locals().get('value'):

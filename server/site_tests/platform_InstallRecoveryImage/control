@@ -24,7 +24,7 @@ run_remote_tests --args='image=<recovery_image_path_on_host>'
 
 args_dict = utils.args_to_dict(args)
 image = args_dict.get('image', None)
-servo_args = hosts.SiteHost.get_servo_arguments(args_dict)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     # Setup the client machine.

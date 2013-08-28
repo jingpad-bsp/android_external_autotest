@@ -2,6 +2,7 @@ import os, sys, subprocess, logging
 
 from autotest_lib.client.common_lib import global_config, utils, error
 from autotest_lib.server import utils as server_utils
+from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import remote
 
 
@@ -9,13 +10,8 @@ RPM_FRONTEND_URI = global_config.global_config.get_config_value('CROS',
         'rpm_frontend_uri', type=str, default='')
 
 
-SiteHost = utils.import_site_class(
-    __file__, "autotest_lib.server.hosts.site_host", "SiteHost",
-    remote.RemoteHost)
-
-
-class SerialHost(SiteHost):
-    DEFAULT_REBOOT_TIMEOUT = SiteHost.DEFAULT_REBOOT_TIMEOUT
+class SerialHost(remote.RemoteHost):
+    DEFAULT_REBOOT_TIMEOUT = remote.RemoteHost.DEFAULT_REBOOT_TIMEOUT
     HARD_RESET_CMD = 'hardreset'
 
 
@@ -70,7 +66,8 @@ class SerialHost(SiteHost):
             logging.warning("Timed out while trying to attach to conmux")
             return_value = False
 
-        return return_value or SiteHost.check_for_rpm_support(hostname)
+        return (return_value or
+                cros_host.CrosHost.check_for_rpm_support(hostname))
 
 
     def start_loggers(self):

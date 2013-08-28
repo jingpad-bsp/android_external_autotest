@@ -11,15 +11,12 @@ You should 'import hosts' instead of importing every available host module.
 # host abstract classes
 from base_classes import Host
 from remote import RemoteHost
-try:
-    from site_host import SiteHost
-except ImportError, e:
-    pass
 
 # host implementation classes
 from ssh_host import SSHHost
 from guest import Guest
 from kvm_guest import KVMGuest
+from cros_host import CrosHost
 
 # extra logger classes
 from serial import SerialHost
