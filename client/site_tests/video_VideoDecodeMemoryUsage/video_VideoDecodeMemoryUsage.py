@@ -8,11 +8,9 @@ import time
 
 from math import sqrt
 
-from telemetry.core import browser_options, browser_finder
-
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import httpd
+from autotest_lib.client.common_lib.cros import chrome
 
 TEST_PAGE = 'content.html'
 
@@ -147,6 +145,12 @@ def _assert_no_memory_leak(name, mem_usage, threshold = MEMORY_LEAK_THRESHOLD):
 class MemoryTest(object):
     """The base class of all memory tests"""
 
+    def _open_new_tab(self, page_to_open):
+        tab = self.browser.tabs.New()
+        tab.Navigate(self.browser.http_server.UrlOf(page_to_open))
+        return tab
+
+
     def _get_memory_usage(self):
         """Helper function to get the memory usage.
 
@@ -234,26 +238,16 @@ class MemoryTest(object):
 def _change_source_and_play(tab, video):
     tab.EvaluateJavaScript('changeSourceAndPlay("%s")' % video)
 
-def _preload_videos(tab, videos):
-    # The python's SimpleHTTPServer doesn't support range-related response
-    # headers. That causes the video gets stucked at the end.
-    # See http://crbug.com/241722 for more details.
-    #
-    # A workaround is to preload the videos. Thereafter, the video can play
-    # from the cache directly.
-    for v in videos:
-        _change_source_and_play(tab, v)
-        time.sleep(SLEEP_TIME)
 
 def _assert_video_is_playing(tab):
     if not tab.EvaluateJavaScript('isVideoPlaying()'):
         raise error.TestError('video is stopped')
     startTime = tab.EvaluateJavaScript('getVideoCurrentTime()')
-    for i in xrange(5):
-        time.sleep(0.5)
-        now = tab.EvaluateJavaScript('getVideoCurrentTime()')
-        if now != startTime: return
-    raise error.TestError('video is stuck')
+
+    utils.poll_for_condition(
+        lambda: tab.EvaluateJavaScript('getVideoCurrentTime()') != startTime,
+        exception=error.TestError('video is stuck'),
+        timeout=20)
 
 
 class OpenTabPlayVideo(MemoryTest):
@@ -262,9 +256,7 @@ class OpenTabPlayVideo(MemoryTest):
     """
 
     def loop(self):
-        browser = self.browser
-        tab = browser.tabs.New()
-        tab.Navigate('http://localhost:8000/%s' % TEST_PAGE)
+        tab = self._open_new_tab(TEST_PAGE)
         _change_source_and_play(tab, self.args['video'])
         _assert_video_is_playing(tab);
         time.sleep(SLEEP_TIME)
@@ -279,13 +271,8 @@ class PlayVideo(MemoryTest):
 
     def initialize(self, browser, args):
         super(PlayVideo, self).initialize(browser, args)
-        tab = browser.tabs.New()
-        video = self.args['video']
-
-        tab.Navigate('http://localhost:8000/%s' % TEST_PAGE)
-        _preload_videos(tab, [video])
-        _change_source_and_play(tab, video)
-        self.activeTab = tab
+        self.activeTab = self._open_new_tab(TEST_PAGE)
+        _change_source_and_play(self.activeTab, self.args['video'])
 
 
     def loop(self):
@@ -301,15 +288,9 @@ class ChangeVideoSource(MemoryTest):
     """A memory test case: change the "src" property of <video> object to
     load different video sources."""
 
-
     def initialize(self, browser, args):
         super(ChangeVideoSource, self).initialize(browser, args)
-        tab = browser.tabs.New()
-        videos = self.args['videos']
-
-        tab.Navigate('http://localhost:8000/%s' % TEST_PAGE)
-        _preload_videos(tab, self.args['videos'])
-        self.activeTab = tab
+        self.activeTab = self._open_new_tab(TEST_PAGE)
 
 
     def loop(self):
@@ -327,25 +308,11 @@ class video_VideoDecodeMemoryUsage(test.test):
     """This is a memory leak test for video playback."""
     version = 1
 
-    def initialize(self):
-        self._listener = httpd.HTTPListener(8000, docroot = self.bindir)
-        self._listener.run()
-
-
-    def cleanup(self):
-        self._listener.stop()
-
-
     def run_once(self, testcase, **args):
         """
         This test run one of the memory test case defined above.
         """
-
-        default_options = browser_options.BrowserOptions()
-        default_options.browser_type = 'system'
-        browser_to_create = browser_finder.FindBrowser(default_options)
-        logging.debug('Browser Found: %s', browser_to_create)
-
-        test_case_class = globals()[testcase]
-        with browser_to_create.Create() as browser:
-            test_case_class().run(browser, args)
+        with chrome.Chrome() as cr:
+            cr.browser.SetHTTPServerDirectories(self.bindir)
+            test_case_class = globals()[testcase]
+            test_case_class().run(cr.browser, args)
