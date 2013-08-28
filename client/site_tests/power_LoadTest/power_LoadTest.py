@@ -317,8 +317,8 @@ class power_LoadTest(cros_ui_test.UITest):
         voltage_np = numpy.array(self._stats['v_voltage_now'])
         voltage_mean = voltage_np.mean()
         keyvals['v_voltage_mean'] = voltage_mean
-        bat_life_scale = (keyvals['wh_energy_full_design'] /
-                          (keyvals['ah_charge_used'] * voltage_mean)) * \
+        bat_life_scale = (keyvals['ah_charge_full_design'] /
+                          keyvals['ah_charge_used']) * \
                           ((100 - keyvals['percent_sys_low_battery']) / 100)
 
         keyvals['minutes_battery_life'] = bat_life_scale * \
