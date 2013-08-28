@@ -18,14 +18,13 @@ class APConfiguratorConfig(object):
     MODE_M = 0x0111  # Used for standard maintenance
     MODE_D = 0x1011  # International roaming extensions
 
-    SECURITY_TYPE_DISABLED = 0
-    SECURITY_TYPE_WEP = 1
-    SECURITY_TYPE_WPAPSK = 2
-    SECURITY_TYPE_WPA2PSK = 3
+    SECURITY_TYPE_DISABLED = 'disabled'
+    SECURITY_TYPE_WEP = 'wep'
+    SECURITY_TYPE_WPAPSK = 'wpa-psk'
+    SECURITY_TYPE_WPA2PSK = 'wpa2-psk'
 
-    WEP_AUTHENTICATION_OPEN = 0x00011
-    WEP_AUTHENTICATION_SHARED = 0x00012
-
+    WEP_AUTHENTICATION_OPEN = 'open'
+    WEP_AUTHENTICATION_SHARED = 'shared'
     # List of valid bands.
     VALID_BANDS = [BAND_2GHZ, BAND_5GHZ]
 
