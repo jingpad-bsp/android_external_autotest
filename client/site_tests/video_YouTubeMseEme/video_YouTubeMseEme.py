@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import logging, os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -61,10 +61,10 @@ class video_YouTubeMseEme(test.test):
             return self.tab.EvaluateJavaScript(
                     'window.__eventReporter["%s"] === true;' % event_name)
 
-        start_time = time.time()
         return utils.poll_for_condition(
                 lambda: _event_reported_condition(event_name),
-                timeout=delay_time_sec)
+                timeout=delay_time_sec,
+                desc=event_name)
 
 
     def load_javascript(self, sub_path):
@@ -101,11 +101,10 @@ class video_YouTubeMseEme(test.test):
             return self.tab.EvaluateJavaScript(
                     'window.__testState["%s"];' % test_name)
 
-        start_time = time.time()
-        test_result = ''
         return utils.poll_for_condition(
                 lambda: _test_passed_condition(test_name),
-                timeout=delay_time_sec)
+                timeout=delay_time_sec,
+                desc=test_name)
 
 
     def test_media_source_presence(self):

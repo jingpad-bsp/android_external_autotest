@@ -58,7 +58,10 @@
   }
 
   function createMediaSource() {
-    return new WebKitMediaSource();
+    if (typeof MediaSource !== 'undefined')
+      return new MediaSource();
+    else
+      return new WebKitMediaSource();
   }
 
   function createVideo() {
