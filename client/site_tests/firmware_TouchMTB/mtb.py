@@ -86,34 +86,44 @@ def convert_to_evemu_format(packets):
     return evemu_output
 
 
-def convert_mtplot_file_to_evemu_file(mtplot_filename, evemu_ext='.evemu',
-                                      force=False):
+def convert_mtplot_file_to_evemu_file(mtplot_file, evemu_dir=None,
+                                      evemu_ext='.evemu', force=False):
     """Convert a mtplot event file to an evemu event file.
 
     Example:
        'one_finger_swipe.dat' is converted to 'one_finger_swipe.evemu.dat'
     """
-    if not os.path.isfile(mtplot_filename):
-        print 'Error: there is no such file: "%s".' % mtplot_filename
-        return
+    if not os.path.isfile(mtplot_file):
+        print 'Error: there is no such file: "%s".' % mtplot_file
+        return None
 
     # Convert mtplot event format to evemu event format.
-    mtplot_packets = MtbParser().parse_file(mtplot_filename)
+    mtplot_packets = MtbParser().parse_file(mtplot_file)
     evemu_packets = convert_to_evemu_format(mtplot_packets)
 
-    # Create the evemu filename from the mtplot filename.
-    mtplot_root, mtplot_ext = os.path.splitext(mtplot_filename)
-    evemu_filename = mtplot_root + evemu_ext + mtplot_ext
+    # Create the evemu file from the mtplot file.
+    mtplot_dir, mtplot_filename = os.path.split(mtplot_file)
+    mtplot_basename, mtplot_ext = os.path.splitext(mtplot_filename)
+
+    evemu_dir = evemu_dir if evemu_dir else mtplot_dir
+    evemu_file = (os.path.join(evemu_dir, mtplot_basename) + evemu_ext +
+                  mtplot_ext)
 
     # Make sure that the file to be created does not exist yet unless force flag
     # is set to be True.
-    if os.path.isfile(evemu_filename) and not force:
-        print 'Warning: the "%s" already exists.' % evemu_filename
-        return
+    if os.path.isfile(evemu_file) and not force:
+        print 'Warning: the "%s" already exists. Quit.' % evemu_file
+        return None
 
     # Write the converted evemu events to the evemu file.
-    with open(evemu_filename, 'w') as evemu_f:
-        evemu_f.write('\n'.join(evemu_packets))
+    try:
+        with open(evemu_file, 'w') as evemu_f:
+            evemu_f.write('\n'.join(evemu_packets))
+    except Exception as e:
+        print 'Error: cannot write data to %s' % evemu_file
+        return None
+
+    return evemu_file
 
 
 class MtbEvent:

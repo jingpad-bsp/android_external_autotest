@@ -27,13 +27,14 @@ class TouchDevice:
         unit tests.
         """
         self.device_node = (device_node if device_node else
-                            self.get_device_node(is_touchscreen))
+                            self.get_device_node(is_touchscreen=is_touchscreen))
         self.device_description = self._get_device_description(
                 device_description_file)
         self.axis_x, self.axis_y = self.parse_abs_axes()
         self.axes = {AXIS.X: self.axis_x, AXIS.Y: self.axis_y}
 
-    def get_device_node(self, is_touchscreen):
+    @staticmethod
+    def get_device_node(is_touchscreen=False):
         """Get the touch device node through xinput
            Touchscreens have a different device name, so this
            chooses between them.  Otherwise they are the same.
