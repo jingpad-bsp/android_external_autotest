@@ -112,6 +112,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run("%s reg set US" % self.cmd_iw)
 
 
+    def close(self):
+        """Close global resources held by this system."""
+        self.destroy()
+        super(LinuxRouter, self).close()
+
+
     def create(self, params):
         """Create a wifi device of the specified type.
 

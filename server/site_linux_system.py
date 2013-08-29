@@ -151,6 +151,13 @@ class LinuxSystem(object):
                 self._remove_interface(m.group(1), False)
 
 
+    def close(self):
+        """Close global resources held by this system."""
+        logging.debug('Cleaning up host object for %s', self.role)
+        self.host.close()
+        self.host = None
+
+
     def get_capabilities(self):
         caps = set()
         phymap = self.phys_for_frequency

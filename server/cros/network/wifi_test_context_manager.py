@@ -217,11 +217,9 @@ class WiFiTestContextManager(object):
     def teardown(self):
         """Teardown the state used in a WiFi test."""
         logging.debug('Tearing down the test context.')
-        if self.client is not None:
-            self.client.shill.clean_profiles()
-            self.client.close()
-        if self._router is not None:
-            self._router.destroy()
+        for system in [self.client, self._router, self._server]:
+            if system is not None:
+                system.close()
 
 
     def assert_connect_wifi(self, wifi_params):

@@ -266,7 +266,9 @@ class WiFiClient(object):
             self.ping_bg_stop()
         self.stop_capture()
         self.powersave_switch(False)
+        self.shill.clean_profiles()
         # This kills the RPC server.
+        logging.debug('Cleaning up host object for client')
         self._host.close()
 
 
