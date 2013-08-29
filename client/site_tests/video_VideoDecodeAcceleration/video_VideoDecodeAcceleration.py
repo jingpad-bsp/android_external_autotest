@@ -2,27 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
-
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd
+from autotest_lib.client.common_lib.cros import chrome
 
-WAIT_TIMEOUT_S = 10
 
-class video_VideoDecodeAcceleration(cros_ui_test.UITest):
+MEDIA_GVD_INIT_STATUS = 'Media.GpuVideoDecoderInitializeStatus'
+
+
+class video_VideoDecodeAcceleration(test.test):
     """This test verifies VDA works in Chrome."""
     version = 1
-
-    def initialize(self):
-        super(video_VideoDecodeAcceleration, self).initialize('$default')
-        self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
-        self._testServer.run()
-
-
-    def cleanup(self):
-        if self._testServer:
-            self._testServer.stop()
-        super(video_VideoDecodeAcceleration, self).cleanup()
 
 
     def run_once(self, video_file):
@@ -30,22 +20,26 @@ class video_VideoDecodeAcceleration(cros_ui_test.UITest):
 
         @param video_file: Sample video file to be loaded in Chrome.
         """
-        import pyauto
+        with chrome.Chrome() as cr:
+            cr.browser.SetHTTPServerDirectories(self.bindir)
+            video_url = cr.browser.http_server.UrlOf(video_file)
+            tab1 = cr.browser.tabs[0]
+            tab1.Navigate(video_url)
+            tab1.WaitForDocumentReadyStateToBeComplete()
+            tab2 = cr.browser.tabs.New()
 
-        self.pyauto.NavigateToURL('chrome://histograms')
-        self.pyauto.AppendTab(pyauto.GURL('http://localhost:8000/%s' %
-                                          video_file))
+            # Waiting for histogram updated for the test video.
+            def gpu_histogram_loaded():
+                tab2.Navigate('chrome://histograms/%s' % MEDIA_GVD_INIT_STATUS)
+                return tab2.EvaluateJavaScript(
+                        'document.documentElement.innerText.search('
+                        '\'%s\') != -1' % MEDIA_GVD_INIT_STATUS)
 
-        # Waiting for histogram updated for the test video.
-        wait_time = 0 # seconds
-        tab_contents = ''
-        while 'Media.GpuVideoDecoderInitializeStatus' not in tab_contents:
-            time.sleep(1)
-            wait_time = wait_time + 1
-            if wait_time > WAIT_TIMEOUT_S:
-                raise error.TestError('Histogram gpu status failed to load.')
-            self.pyauto.ReloadTab()
-            tab_contents = self.pyauto.GetTabContents()
-
-        self.pyauto.assertTrue('average = 0.0' in tab_contents,
-                               msg='Video decode acceleration not working.')
+            utils.poll_for_condition(gpu_histogram_loaded,
+                    exception=error.TestError(
+                            'Histogram gpu status failed to load.'),
+                            sleep_interval=1)
+            if tab2.EvaluateJavaScript(
+                    'document.documentElement.innerText.search('
+                    '\'average = 0.0\') == -1'):
+                raise error.TestError('Video decode acceleration not working.')
