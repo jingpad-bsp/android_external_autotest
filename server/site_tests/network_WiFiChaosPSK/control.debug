@@ -21,7 +21,7 @@ from autotest_lib.server.cros.chaos_lib import chaos_interop_test
 def run_chaos_psk(machine):
     host = hosts.create_host(machine)
     # List of specific APs to debug. Please verify the APs indeed support PSK.
-    debug_aps = ['chromeos3-row1-rack1-host6', 'chromeos3-row1-rack1-host7']
+    debug_aps = ['chromeos3-row2-rack1-host2', 'chromeos3-row2-rack1-host3']
     helper = chaos_interop_test.WifiChaosTest('network_WiFiChaosPSK', host)
     # capture_host: string hostname or IP of packet_capturer not managed in AFE
     #   NOTE: if capture_host is specified, it will not be locked in AFE
