@@ -4,6 +4,7 @@
 
 AUTHOR = 'wiley@chromium.com'
 NAME = 'network_WiFi_AttenuatedPerf.ht40_ch153'
+SUITE = 'wifi_atten_perf'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
