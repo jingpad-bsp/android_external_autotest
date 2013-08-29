@@ -36,18 +36,20 @@ class telemetry_UnitTests(test.test):
         run_tests.Main(['--browser=' + browser_type], UNIT_TEST_SUBDIR,
                        TELEMETRY_BASE_DIR, runner)
 
+        if runner.result:
+            # The PrintSummary() below is captured in the test debug log file.
+            runner.result.PrintSummary()
+
         sys.stdout = sys.__stdout__  # Restore sys.stdout.
         logging.info(capturer.getvalue())  # Log the Telemetry output.
         capturer.close()
 
         if runner.result:
-            # The PrintSummary() below is captured in the test debug log file.
-            runner.result.PrintSummary()
             if runner.result.num_errors:
                 raise error.TestFail(
                         '%d unit tests failed.' % runner.result.num_errors)
             else:
                 logging.info('All %d unit tests passed.',
-                             runner.result.num_successes)
+                             len(runner.result.successes))
         else:
             raise error.TestFail('No results found.')
