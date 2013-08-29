@@ -21,19 +21,19 @@ class Chrome(object):
 
 
     def __init__(self, logged_in=True, extension_paths=[]):
-        options = browser_options.BrowserOptions()
+        finder_options = browser_options.BrowserFinderOptions()
         self._browser_type = (self.BROWSER_TYPE_LOGIN
                 if logged_in else self.BROWSER_TYPE_GUEST)
-        options.browser_type = self._browser_type
+        finder_options.browser_type = self._browser_type
 
         if logged_in:
             for path in extension_paths:
                 extension = extension_to_load.ExtensionToLoad(
                         path, self._browser_type, is_component=True)
-                options.extensions_to_load.append(extension)
-            self._extensions_to_load = options.extensions_to_load
+                finder_options.extensions_to_load.append(extension)
+            self._extensions_to_load = finder_options.extensions_to_load
 
-        browser_to_create = browser_finder.FindBrowser(options)
+        browser_to_create = browser_finder.FindBrowser(finder_options)
         self._browser = browser_to_create.Create()
         self._browser.Start()
 
@@ -80,7 +80,11 @@ class Chrome(object):
 
 
     def did_browser_crash(self, func):
-        """Runs func, returns True if the browser crashed, False otherwise."""
+        """Runs func, returns True if the browser crashed, False otherwise.
+
+        @param func: function to run.
+
+        """
         try:
             func()
         except (exceptions.BrowserGoneException,
