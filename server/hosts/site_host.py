@@ -878,8 +878,8 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
 
 
     def close(self):
-        super(SiteHost, self).close()
         self.rpc_disconnect_all()
+        super(SiteHost, self).close()
 
 
     def _cleanup_poweron(self):
