@@ -338,6 +338,8 @@ class ChromiumOSUpdater():
                     UPDATER_LOGS, self.host.job.sysinfo.sysinfodir,
                     preserve_perm=False)
             raise
+        finally:
+            self.host.show_update_engine_log()
 
 
     def check_version(self):

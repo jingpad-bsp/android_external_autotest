@@ -657,9 +657,6 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
                         ' partition is less than that of the active kernel'
                         ' partition.')
 
-                update_engine_log = '/var/log/update_engine.log'
-                logging.info('Dumping %s', update_engine_log)
-                self.run('cat %s' % update_engine_log)
                 # Updater has returned successfully; reboot the host.
                 self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
 
@@ -672,6 +669,12 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         for path in global_config.global_config.get_config_value(
                 'AUTOSERV', 'client_autodir_paths', type=list):
             self.run('rm -rf ' + path)
+
+
+    def show_update_engine_log(self):
+        """Output update engine log."""
+        logging.debug('Dumping %s', constants.UPDATE_ENGINE_LOG)
+        self.run('cat %s' % constants.UPDATE_ENGINE_LOG)
 
 
     def _get_board_from_afe(self):
