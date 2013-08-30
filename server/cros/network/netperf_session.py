@@ -30,7 +30,7 @@ class NetperfSession(object):
         return netperf_runner.NetperfResult.from_samples(samples)
 
 
-    def __init__(self, client_proxy, server_proxy):
+    def __init__(self, client_proxy, server_proxy, ignore_failures=False):
         """Construct a NetperfSession.
 
         @param client_proxy: WiFiClient object.
@@ -39,6 +39,7 @@ class NetperfSession(object):
         """
         self._client_proxy = client_proxy
         self._server_proxy = server_proxy
+        self._ignore_failures = ignore_failures
 
 
     def warmup_wifi_part(self, warmup_client=True):
@@ -103,10 +104,17 @@ class NetperfSession(object):
         logging.info('Performing %s measurements in netperf session.',
                      config.human_readable_tag)
         history = []
+        none_count = 0
+        final_result = None
         with netperf_runner.NetperfRunner(
                 self._client_proxy, self._server_proxy, config) as runner:
-            while len(history) < self.MEASUREMENT_MAX_SAMPLES:
-                history.append(runner.run())
+            while len(history) + none_count < self.MEASUREMENT_MAX_SAMPLES:
+                result = runner.run(ignore_status=self._ignore_failures)
+                if result is None:
+                    none_count += 1
+                    continue
+
+                history.append(result)
                 if len(history) < self.MEASUREMENT_MIN_SAMPLES:
                     continue
 
@@ -115,5 +123,7 @@ class NetperfSession(object):
                         self.MAX_DEVIATION_FRACTION):
                     break
 
+        if final_result is None:
+            final_result = self._from_samples(history)
         logging.info('Took averaged measurement %r.', final_result)
         return final_result

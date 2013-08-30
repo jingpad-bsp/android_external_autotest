@@ -513,8 +513,15 @@ class NetperfRunner(object):
                               ignore_status=True)
 
 
-    def run(self):
-        """@return NetperfResult summarizing a netperf run."""
+    def run(self, ignore_status=False):
+        """Run netperf and take a performance measurement.
+
+        @param ignore_status bool True iff netperf runs that failed should be
+                ignored.  If this happens, run will return a None value rather
+                than a NetperfResult.
+        @return NetperfResult summarizing a netperf run.
+
+        """
         netperf = '%s -H %s -p %s -t %s -l %d -- -P 0,%d' % (
                 self._command_netperf,
                 self._target_ip,
@@ -526,7 +533,11 @@ class NetperfRunner(object):
         start_time = time.time()
         logging.info('Running netperf for %d seconds.', self._config.test_time)
         timeout = self._config.test_time + self.NETPERF_COMMAND_TIMEOUT_MARGIN
-        result = self._client_host.run(netperf, timeout=timeout)
+        result = self._client_host.run(netperf, ignore_status=ignore_status,
+                                       timeout=timeout)
         duration = time.time() - start_time
+        if result.exit_status:
+            return None
+
         return NetperfResult.from_netperf_results(
                 self._config.test_type, result.stdout, duration)
