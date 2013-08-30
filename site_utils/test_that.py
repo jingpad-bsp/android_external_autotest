@@ -509,6 +509,9 @@ def main(argv):
             test_report_command.append('--whitelist_chrome_crashes')
         test_report_command.append(results_directory)
         final_result = subprocess.call(test_report_command)
+        with open(os.path.join(results_directory, 'test_report.log'),
+                  'w') as report_log:
+            subprocess.call(test_report_command, stdout=report_log)
         logging.info('Finished running tests. Results can be found in %s',
                      results_directory)
         try:
