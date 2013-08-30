@@ -20,7 +20,7 @@ var tasks = [
     duration: minutes(70),
     focus: false,
     tabs: [
-     'http://www.cnn.com',
+     'http://www.google.com',
      'http://news.google.com',
      'http://finance.yahoo.com',
      'http://clothing.shop.ebay.com/Womens-Shoes-/63889/i.html',
