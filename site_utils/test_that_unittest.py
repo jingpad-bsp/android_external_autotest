@@ -63,9 +63,6 @@ class TestThatUnittests(unittest.TestCase):
         # Deferred until schedule_local_suite knows about non-local builds.
         pass
 
-    def test_schedule_local_test(self):
-        # Deferred until schedule_local_test knows about non-local builds.
-        pass
 
     def test_run_job(self):
         class Object():
@@ -173,7 +170,7 @@ class TestThatUnittests(unittest.TestCase):
         os.environ.has_key('SSH_AGENT_PID').AndReturn(False)
 
         self.mox.StubOutWithMock(test_that, 'schedule_local_suite')
-        test_that.schedule_local_suite(autotest_path, suite_name,
+        test_that.schedule_local_suite(autotest_path, mox.IgnoreArg(),
                 afe, build=build,
                 board=board, results_directory=results_dir,
                 no_experimental=False

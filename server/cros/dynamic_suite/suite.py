@@ -112,6 +112,39 @@ class Suite(object):
 
 
     @staticmethod
+    def test_name_matches_pattern_predicate(test_name_pattern):
+        """Returns predicate that matches based on a test's name pattern.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        and returns True if the test name matches the given regular expression.
+
+        @param test_name_pattern: regular expression (string) to match against
+                                  test names.
+        @return a callable that takes a ControlData and returns
+                True if the name fields matches the pattern.
+        """
+        return lambda t: hasattr(t, 'name') and re.match(test_name_pattern,
+                                                         t.name)
+
+
+    @staticmethod
+    def test_file_matches_pattern_predicate(test_file_pattern):
+        """Returns predicate that matches based on a test's file name pattern.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        and returns True if the test's control file name matches the given
+        regular expression.
+
+        @param test_file_pattern: regular expression (string) to match against
+                                  control file names.
+        @return a callable that takes a ControlData and and returns
+                True if control file name matches the pattern.
+        """
+        return lambda t: hasattr(t, 'path') and re.match(test_file_pattern,
+                                                         t.path)
+
+
+    @staticmethod
     def list_all_suites(build, devserver, cf_getter=None):
         """
         Parses all ControlData objects with a SUITE tag and extracts all

@@ -143,9 +143,9 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
         @throws NoControlFileList if we find no files.
         """
         if suite_name:
-            logging.warning('Getting control files for a specific suite has '
-                            'not been implemented for FileSystemGetter. '
-                            'Getting all control files instead.')
+            logging.debug('Getting control files for a specific suite has '
+                          'not been implemented for FileSystemGetter. '
+                          'Getting all control files instead.')
 
 
         regexp = re.compile(self._CONTROL_PATTERN)

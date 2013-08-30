@@ -56,13 +56,14 @@ _TEST_REPORT_SCRIPTNAME = '/usr/bin/generate_test_report'
 _LATEST_RESULTS_DIRECTORY = '/tmp/test_that_latest'
 
 
-def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
+def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
                          board=_NO_BOARD, results_directory=None,
                          no_experimental=False):
     """
     Schedule a suite against a mock afe object, for a local suite run.
     @param autotest_path: Absolute path to autotest (in sysroot).
-    @param suite_name: Name of suite to schedule.
+    @param suite_predicate: callable that takes ControlData objects, and
+                            returns True on those that should be in suite
     @param afe: afe object to schedule against (typically a directAFE)
     @param build: Build to schedule suite for.
     @param board: Board to schedule suite for.
@@ -73,44 +74,14 @@ def schedule_local_suite(autotest_path, suite_name, afe, build=_NO_BUILD,
     """
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
     devserver = dev_server.ImageServer('')
-    my_suite = suite.Suite.create_from_name(suite_name, build, board,
-            devserver, fs_getter, afe=afe, ignore_deps=True,
+    my_suite = suite.Suite.create_from_predicates([suite_predicate],
+            build, board, devserver, fs_getter, afe=afe, ignore_deps=True,
             results_dir=results_directory)
     if len(my_suite.tests) == 0:
-        raise ValueError('Suite named %s does not exist, or contains no '
-                         'tests.' % suite_name)
+        raise ValueError('Suite contained no tests.')
     # Schedule tests, discard record calls.
     return my_suite.schedule(lambda x: None,
                              add_experimental=not no_experimental)
-
-
-def schedule_local_test(autotest_path, test_name, afe, build=_NO_BUILD,
-                        board=_NO_BOARD, results_directory=None):
-    #temporarily disabling pylint
-    #pylint: disable-msg=C0111
-    """
-    Schedule an individual test against a mock afe object, for a local run.
-    @param autotest_path: Absolute path to autotest (in sysroot).
-    @param test_name: Name of test to schedule.
-    @param afe: afe object to schedule against (typically a directAFE)
-    @param build: Build to schedule suite for.
-    @param board: Board to schedule suite for.
-    @param results_directory: Absolute path of directory to store results in.
-                              (results will be stored in subdirectory of this).
-    @returns: The number of tests scheduled (may be >1 if there are
-              multiple tests with the same name).
-    """
-    fs_getter = suite.Suite.create_fs_getter(autotest_path)
-    devserver = dev_server.ImageServer('')
-    predicates = [suite.Suite.test_name_equals_predicate(test_name)]
-    suite_name = 'suite_' + test_name
-    my_suite = suite.Suite.create_from_predicates(predicates, build, board,
-            devserver, fs_getter, afe=afe, name=suite_name, ignore_deps=True,
-            results_dir=results_directory)
-    if len(my_suite.tests) == 0:
-        raise ValueError('No tests named %s.' % test_name)
-    # Schedule tests, discard record calls.
-    return my_suite.schedule(lambda x: None)
 
 
 def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
@@ -190,6 +161,35 @@ def setup_local_afe():
     return direct_afe.directAFE()
 
 
+def get_predicate_for_test_arg(test):
+    """
+    Gets a suite predicte function for a given command-line argument.
+
+    @param test: String. An individual TEST command line argument, e.g.
+                         'login_CryptohomeMounted' or 'suite:smoke'
+    @returns: A (predicate, string) tuple with the necessary suite
+              predicate, and a description string of the suite that
+              this predicate will produce.
+    """
+    suitematch = re.match(r'suite:(.*)', test)
+    name_pattern_match = re.match(r'e:(.*)', test)
+    file_pattern_match = re.match(r'f:(.*)', test)
+    if suitematch:
+        suitename = suitematch.group(1)
+        return (suite.Suite.name_in_tag_predicate(suitename),
+                'suite named %s' % suitename)
+    if name_pattern_match:
+        pattern = '^%s$' % name_pattern_match.group(1)
+        return (suite.Suite.test_name_matches_pattern_predicate(pattern),
+                'suite to match name pattern %s' % pattern)
+    if file_pattern_match:
+        pattern = '^%s$' % file_pattern_match.group(1)
+        return (suite.Suite.test_file_matches_pattern_predicate(pattern),
+                'suite to match file name pattern %s' % pattern)
+    return (suite.Suite.test_name_equals_predicate(test),
+            'job named %s' % test)
+
+
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
                       pretend=False, no_experimental=False,
@@ -218,16 +218,16 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     """
     # Add the testing key to the current ssh agent.
     if os.environ.has_key('SSH_AGENT_PID'):
-      # Copy the testing key to the results directory and make it NOT
-      # world-readable. Otherwise, ssh-add complains.
-      shutil.copy(_TEST_KEY_PATH, results_directory)
-      key_copy_path = os.path.join(results_directory, _TEST_KEY_FILENAME)
-      os.chmod(key_copy_path, stat.S_IRUSR | stat.S_IWUSR)
-      p = subprocess.Popen(['ssh-add', key_copy_path],
-                           stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-      p_out, _ = p.communicate()
-      for line in p_out.splitlines():
-        logging.info(line)
+        # Copy the testing key to the results directory and make it NOT
+        # world-readable. Otherwise, ssh-add complains.
+        shutil.copy(_TEST_KEY_PATH, results_directory)
+        key_copy_path = os.path.join(results_directory, _TEST_KEY_FILENAME)
+        os.chmod(key_copy_path, stat.S_IRUSR | stat.S_IWUSR)
+        p = subprocess.Popen(['ssh-add', key_copy_path],
+                             stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p_out, _ = p.communicate()
+        for line in p_out.splitlines():
+           logging.info(line)
     else:
       logging.warning('There appears to be no running ssh-agent. Attempting '
                       'to continue without running ssh-add, but ssh commands '
@@ -241,20 +241,13 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
 
     # Schedule tests / suites in local afe
     for test in tests:
-        suitematch = re.match(r'suite:(.*)', test)
-        if suitematch:
-            suitename = suitematch.group(1)
-            logging.info('Scheduling suite %s...', suitename)
-            ntests = schedule_local_suite(autotest_path, suitename, afe,
-                                          build=build, board=board,
-                                          results_directory=results_directory,
-                                          no_experimental=no_experimental)
-        else:
-            logging.info('Scheduling test %s...', test)
-            ntests = schedule_local_test(autotest_path, test, afe,
-                                         build=build, board=board,
-                                         results_directory=results_directory)
-        logging.info('... scheduled %s tests.', ntests)
+        (predicate, description) = get_predicate_for_test_arg(test)
+        logging.info('Scheduling %s...', description)
+        ntests = schedule_local_suite(autotest_path, predicate, afe,
+                                      build=build, board=board,
+                                      results_directory=results_directory,
+                                      no_experimental=no_experimental)
+        logging.info('... scheduled %s job(s).', ntests)
 
     if not afe.get_jobs():
         logging.info('No jobs scheduled. End of local run.')
@@ -309,7 +302,12 @@ def parse_arguments(argv):
                              'run in vm.')
     parser.add_argument('tests', nargs='+', metavar='TEST',
                         help='Run given test(s). Use suite:SUITE to specify '
-                             'test suite.')
+                             'test suite. Use e:[NAME_PATTERN] to specify a '
+                             'NAME-matching regular expression. Use '
+                             'f:[FILE_PATTERN] to specify a filename matching '
+                             'regular expression. Specified regular '
+                             'expressiosn will be implicitly wrapped in '
+                             '^ and $.')
     default_board = cros_build_lib.GetDefaultBoard()
     parser.add_argument('-b', '--board', metavar='BOARD', default=default_board,
                         action='store',
