@@ -918,8 +918,7 @@ class Mtb:
         segment_y = self._get_segments_by_length(ay, segment_flag, ratio)
         return (segment_x, segment_y)
 
-    def _get_segments_by_distance(self, list_t, list_coord, segment_flag,
-                                  ratio):
+    def get_segments_by_distance(self, list_t, list_coord, segment_flag, ratio):
         """Partition list_coord into the begin, the middle, and the end
         segments based on segment_flag and the ratio. And then use the
         derived indexes to partition list_t.
@@ -992,8 +991,8 @@ class Mtb:
         """
         MIN_STRAIGHT_LINE_DIST = 20
         if (max(list_coord) - min(list_coord)) > MIN_STRAIGHT_LINE_DIST:
-            return self._get_segments_by_distance(list_t, list_coord,
-                                                  segment_flag, ratio)
+            return self.get_segments_by_distance(list_t, list_coord,
+                                                 segment_flag, ratio)
         else:
             return (self._get_segments_by_length(list_t, segment_flag, ratio),
                     self._get_segments_by_length(list_coord, segment_flag,

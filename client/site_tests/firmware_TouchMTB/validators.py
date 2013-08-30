@@ -251,6 +251,17 @@ class BaseValidator(object):
         result = re.search(pattern, criteria_str)
         return int(result.group(1)) if result else None
 
+    def _get_axes_by_finger(self, finger):
+        """Get list_x, list_y, and list_t for the specified finger.
+
+        @param finger: the finger contact
+        """
+        points = self.packets.get_ordered_finger_path(self.finger, 'point')
+        list_x = [p.x for p in points]
+        list_y = [p.y for p in points]
+        list_t = self.packets.get_ordered_finger_path(self.finger, 'syn_time')
+        return (list_x, list_y, list_t)
+
 
 class LinearityValidator1(BaseValidator):
     """Validator to verify linearity.
@@ -500,11 +511,7 @@ class LinearityValidator2(BaseValidator):
 
         @param variation: the gesture variation
         """
-        points = self.packets.get_ordered_finger_path(self.finger, 'point')
-        list_x = [p.x for p in points]
-        list_y = [p.y for p in points]
-        list_t = self.packets.get_ordered_finger_path(self.finger, 'syn_time')
-
+        list_x, list_y, list_t = self._get_axes_by_finger(self.finger)
         X, Y = AXIS.LIST
         # For horizontal lines, only consider x axis
         if self.is_horizontal(variation):
@@ -827,7 +834,7 @@ class PhysicalClickValidator(BaseValidator):
             expected_count = int(self.criteria_str.split('==')[-1].strip())
         except Exception, e:
             print 'Error: %s in the criteria string of %s' % (e, self.name)
-            exit(-1)
+            exit(1)
         return expected_count
 
     def _add_metrics(self):
@@ -960,7 +967,8 @@ class ReportRateValidator(BaseValidator):
           ReportRateValidator('== 80 ~ -20')
     """
 
-    def __init__(self, criteria_str, finger=None, mf=None, device=None):
+    def __init__(self, criteria_str, finger=None, mf=None, device=None,
+                 chop_off_pauses=True):
         """Initialize ReportRateValidator
 
         @param criteria_str: the criteria string
@@ -969,15 +977,66 @@ class ReportRateValidator(BaseValidator):
         @param mf: the fuzzy member function to use
         @param device: the touch device
         """
-        name = self.__class__.__name__
+        self.name = self.__class__.__name__
         self.criteria_str = criteria_str
-        if finger is not None:
-            assert finger >= 0, '%s: it is required that finger >= 0' % name
         self.finger = finger
+        if finger is not None:
+            msg = '%s: finger = %d (It is required that finger >= 0.)'
+            assert finger >= 0, msg % (self.name, finger)
+        self.chop_off_pauses = chop_off_pauses
         super(ReportRateValidator, self).__init__(criteria_str, mf, device,
-                                                  name)
+                                                  self.name)
 
-    def _add_report_rate_metrics(self, list_syn_time):
+    def _chop_off_both_ends(self, points, distance):
+        """Chop off both ends of segments such that the points in the remaining
+        middle segment are distant from both ends by more than the specified
+        distance.
+
+        When performing a gesture such as finger tracking, it is possible
+        that the finger will stay stationary for a while before it actually
+        starts moving. Likewise, it is also possible that the finger may stay
+        stationary before the finger leaves the touch surface. We would like
+        to chop off the stationary segments.
+
+        Note: if distance is 0, the effect is equivalent to keep all points.
+
+        @param points: a list of Points
+        @param distance: the distance within which the points are chopped off
+        """
+        def _find_index(points, distance, reversed_flag=False):
+            """Find the first index of the point whose distance with the
+            first point is larger than the specified distance.
+
+            @param points: a list of Points
+            @param distance: the distance
+            @param reversed_flag: indicates if the points needs to be reversed
+            """
+            points_len = len(points)
+            if reversed_flag:
+                points = reversed(points)
+
+            ref_point = None
+            for i, p in enumerate(points):
+                if ref_point is None:
+                    ref_point = p
+                if ref_point.distance(p) >= distance:
+                    return (points_len - i - 1) if reversed_flag else i
+
+            return None
+
+        # There must be extra points in addition to the first and the last point
+        if len(points) <= 2:
+            return None
+
+        begin_moving_index = _find_index(points, distance, reversed_flag=False)
+        end_moving_index = _find_index(points, distance, reversed_flag=True)
+
+        if (begin_moving_index is None or end_moving_index is None or
+                begin_moving_index > end_moving_index):
+            return None
+        return [begin_moving_index, end_moving_index]
+
+    def _add_report_rate_metrics2(self):
         """Calculate and add the metrics about report rate.
 
         Three metrics are required.
@@ -985,22 +1044,48 @@ class ReportRateValidator(BaseValidator):
         - average time interval
         - max time interval
 
-        @param list_syn_time: a list of SYN_REPORT event time instants
         """
         import test_conf as conf
 
-        # If there are no packets at all due to a missing finger, calculating
-        # the metrics will result in division-by-0 error. So we just return.
-        # The missing finger problem will be captured by another validator,
-        # i.e., CountTrackingIDValidator. Besides, the current UI would show a
-        # warning message in red on the window about the missing finger problem,
-        # and ask the user to record the gesture again.
-        if len(list_syn_time) == 0:
+        if self.finger:
+            finger_list = [self.finger]
+        else:
+            ordered_finger_paths_dict = self.packets.get_ordered_finger_paths()
+            finger_list = range(len(ordered_finger_paths_dict))
+
+        # distance: the minimal moving distance within which the points
+        #           at both ends will be chopped off
+        distance = conf.MIN_MOVING_DISTANCE if self.chop_off_pauses else 0
+
+        # Derive the middle moving segment in which the finger(s)
+        # moves significantly.
+        begin_time = float('infinity')
+        end_time = float('-infinity')
+        for finger in finger_list:
+            list_t = self.packets.get_ordered_finger_path(finger, 'syn_time')
+            points = self.packets.get_ordered_finger_path(finger, 'point')
+            middle = self._chop_off_both_ends(points, distance)
+            if middle:
+                this_begin_index, this_end_index = middle
+                this_begin_time = list_t[this_begin_index]
+                this_end_time = list_t[this_end_index]
+                begin_time = min(begin_time, this_begin_time)
+                end_time = max(end_time, this_end_time)
+
+        if (begin_time == float('infinity') or end_time == float('-infinity')
+                or end_time <= begin_time):
+            print 'Warning: %s: cannot derive a moving segment.' % self.name
+            print 'begin_time: ', begin_time
+            print 'end_time: ', end_time
             return
+
+        # Get the list of SYN_REPORT time in the middle moving segment.
+        list_syn_time = filter(lambda t: t >= begin_time and t <= end_time,
+                               self.packets.get_list_syn_time(self.finger))
 
         # Each packet consists of a list of events of which The last one is
         # the sync event.
-        sync_intervals = [list_syn_time[i+1] - list_syn_time[i]
+        sync_intervals = [list_syn_time[i + 1] - list_syn_time[i]
                           for i in range(len(list_syn_time) - 1)]
 
         min_report_rate = conf.min_report_rate
@@ -1044,6 +1129,6 @@ class ReportRateValidator(BaseValidator):
         self.report_rate = self._get_report_rate(list_syn_time)
         msg = 'Report rate: %.2f Hz'
         self.log_details(msg % self.report_rate)
-        self._add_report_rate_metrics(list_syn_time)
+        self._add_report_rate_metrics2()
         self.vlog.score = self.fc.mf.grade(self.report_rate)
         return self.vlog

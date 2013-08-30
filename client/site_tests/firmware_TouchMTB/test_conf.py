@@ -54,6 +54,8 @@ stationary_finger_criteria = (lambda: '<= 1.25, ~ +1.25'
                               if validators.show_spec_v2 else '<= 20, ~ +20')
 relaxed_stationary_finger_criteria = '<= 100, ~ +100'
 
+MIN_MOVING_DISTANCE = 20
+
 
 # Define filenames and paths
 docroot = '/tmp'

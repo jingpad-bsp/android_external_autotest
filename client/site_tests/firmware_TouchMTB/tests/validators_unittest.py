@@ -17,6 +17,7 @@ import validators
 from common_unittest_utils import create_mocked_devices, parse_tests_data
 from firmware_constants import AXIS, GV, PLATFORM, VAL
 from firmware_log import MetricNameProps
+from geometry.elements import Point
 from touch_device import TouchDevice
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
@@ -745,7 +746,8 @@ class ReportRateValidatorTest(BaseValidatorTest):
         self.criteria = '>= 60'
 
     def _get_score(self, filename, device):
-        validator = ReportRateValidator(self.criteria, device=device)
+        validator = ReportRateValidator(self.criteria, device=device,
+                                        chop_off_pauses=False)
         packets = parse_tests_data(filename)
         vlog = validator.check(packets)
         score = vlog.score
@@ -770,7 +772,8 @@ class ReportRateValidatorTest(BaseValidatorTest):
             ('two_close_fingers_merging_changed_ids_gaps.dat', 53.12),
         ]
         for filename, expected_report_rate in filename_report_rate_pair:
-            validator = ReportRateValidator(self.criteria, device=dontcare)
+            validator = ReportRateValidator(self.criteria, device=dontcare,
+                                            chop_off_pauses=False)
             validator.check(parse_tests_data(filename))
             actual_report_rate = round(validator.report_rate, 2)
             self.assertAlmostEqual(actual_report_rate, expected_report_rate)
@@ -781,7 +784,7 @@ class ReportRateValidatorTest(BaseValidatorTest):
         filename = ('stationary_finger_strongly_affected_by_2nd_moving_finger_'
                     'with_gaps.dat')
         validator = ReportRateValidator(self.criteria, device=dontcare,
-                                        finger=1)
+                                        finger=1, chop_off_pauses=False)
         validator.check(parse_tests_data(filename))
         actual_report_rate = validator.report_rate
         # Compute expected_report_rate
@@ -793,7 +796,8 @@ class ReportRateValidatorTest(BaseValidatorTest):
 
     def _test_report_rate_metrics(self, filename, expected_values):
         packets = parse_tests_data(filename)
-        validator = ReportRateValidator(self.criteria, device=lumpy)
+        validator = ReportRateValidator(self.criteria, device=lumpy,
+                                        chop_off_pauses=False)
         vlog = validator.check(packets)
 
         # Verify that there are 3 metrics
@@ -802,7 +806,11 @@ class ReportRateValidatorTest(BaseValidatorTest):
 
         # Verify the values of the 3 metrics.
         for i in range(number_metrics):
-            self.assertAlmostEqual(vlog.metrics[i].value, expected_values[i])
+            actual_value = vlog.metrics[i].value
+            if isinstance(actual_value, tuple):
+                self.assertEqual(actual_value, expected_values[i])
+            else:
+                self.assertAlmostEqual(actual_value, expected_values[i])
 
     def test_report_rate_metrics(self):
         """Test the metrics of the report rates."""
@@ -820,6 +828,53 @@ class ReportRateValidatorTest(BaseValidatorTest):
 
         for filename, values in files.items():
             self._test_report_rate_metrics(filename, values)
+
+    def _test_chop_off_both_ends(self, xy_pairs, distance, expected_middle):
+        """Verify if the actual middle is equal to the expected middle."""
+        points = [Point(*xy) for xy in xy_pairs]
+        validator = ReportRateValidator(self.criteria, device=dontcare)
+        actual_middle = validator._chop_off_both_ends(points, distance)
+        self.assertEqual(actual_middle, expected_middle)
+
+    def test_chop_off_both_ends0(self):
+        """Test chop_off_both_ends() with distinct distances."""
+        xy_pairs = [
+                # pauses
+                (100, 20), (100, 21), (101, 22), (102, 24), (103, 26),
+                # moving segment
+                (120, 30), (122, 29), (123, 32), (123, 33), (126, 35),
+                (126, 32), (142, 29), (148, 30), (159, 31), (162, 30),
+                (170, 32), (183, 32), (194, 32), (205, 32), (208, 32),
+                # pauses
+                (230, 30), (231, 31), (232, 30), (231, 30), (230, 30),
+        ]
+
+        distance = 20
+        expected_begin_index = 5
+        expected_end_index = 19
+        expected_middle = [expected_begin_index, expected_end_index]
+        self._test_chop_off_both_ends(xy_pairs, distance, expected_middle)
+
+        distance = 0
+        expected_begin_index = 0
+        expected_end_index = len(xy_pairs) - 1
+        expected_middle = [expected_begin_index, expected_end_index]
+        self._test_chop_off_both_ends(xy_pairs, distance, expected_middle)
+
+    def test_chop_off_both_ends1(self):
+        """Test chop_off_both_ends() with some corner cases"""
+        distance = 20
+        xy_pairs = [(120, 50), (120, 50)]
+        expected_middle = None
+        self._test_chop_off_both_ends(xy_pairs, distance, expected_middle)
+
+        xy_pairs = [(120, 50), (150, 52), (200, 51)]
+        expected_middle = [1, 1]
+        self._test_chop_off_both_ends(xy_pairs, distance, expected_middle)
+
+        xy_pairs = [(120, 50), (120, 51), (200, 52), (200, 51)]
+        expected_middle = None
+        self._test_chop_off_both_ends(xy_pairs, distance, expected_middle)
 
 
 if __name__ == '__main__':
