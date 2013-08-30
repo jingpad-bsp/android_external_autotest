@@ -171,6 +171,15 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
         self.select_item_from_popup_by_id('Disable', 'security_mode')
 
 
+    def _set_security_wpapsk(self, shared_key, update_interval=1800):
+        self.wait_for_object_by_id('security_mode')
+        self.select_item_from_popup_by_id('WPA2-PSK', 'security_mode',
+                                          wait_for_xpath='id("passphrase")')
+        self.set_content_of_text_field_by_id(shared_key, 'passphrase')
+        self.set_content_of_text_field_by_id(update_interval,
+                                             'keyRenewalInterval')
+
+
     def set_security_wep(self, key_value, authentication):
         self.add_item_to_command_list(self._set_security_wep,
                                       (key_value, authentication), 2, 900)
