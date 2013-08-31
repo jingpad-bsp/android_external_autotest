@@ -53,6 +53,50 @@ if you are running this locally and intend to use a local devserver, you will
 need to setup your ssh keys for public key authentication e.g. create keys,
 ssh-add the private key, add the public key to your authorized keys and finally
 enable public key authentication in your sshd config.
+
+To run locally:
+  Create src/third_party/autotest/files/shadow_config.ini:
+    [CROS]
+    devserver_dir = <full repo path>/src/platform/dev
+    dev_server = http://<hostname>:8080
+
+  Configure SSH for passwordless loopback access to your account.
+    ssh-keygen (If you don't already have SSH keys setup)
+    cp ~/.ssh/id_rsa chroot/home/<user>/.ssh/
+    sudo sed -i 's/PubkeyAuthentication no/PubkeyAuthentication yes/' \
+        /etc/ssh/sshd_config
+    sudo /etc/init.d/ssh restart
+
+    Enter a chroot, and ssh to <hostname>. If it doesn't work, fix that.
+
+  Make sure you have your gsutil permissions (your .boto file).
+    Your .boto file must be available inside the chroot.
+    cp ~/.boto chroot/home/<user>/
+
+  Start a devserver (outside the chroot):
+    ./start_devserver
+
+  To make sure your test edits are used:
+    cros_sdk
+    cros_workon start autotest
+
+  Example:
+    cros_sdk
+    ./run_remote_tests.sh --fast --build --remote <dut_ip> \
+      --ssh_connect_timeout 2 --ssh_connection_attempts 2 \
+      autoupdate_EndToEndTest \
+      --args="image_type=test update_type=delta \
+                source_image_uri=<Full Payload URI> \
+                target_payload_uri=<Delta Payload URI>"
+
+  Sample Full URL:
+    gs://chromeos-image-archive/lumpy-release/R30-4462.0.0/
+    chromeos_R30-4462.0.0_lumpy_full_dev.bin
+
+  Sample Delta URL:
+    gs://chromeos-image-archive/lumpy-release/R30-4463.0.0/
+    chromeos_R30-4462.0.0_R30-4463.0.0_lumpy_delta_dev.bin
+
 """
 
 TEST_CONF_KEYS = (
