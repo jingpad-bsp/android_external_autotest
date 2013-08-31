@@ -6,6 +6,9 @@ import dbus
 import dbus_std_ifaces
 import mm1
 
+import common
+from autotest_lib.client.cros.cellular import net_interface
+
 class Bearer(dbus_std_ifaces.DBusProperties):
     """
     Fake implementation of the org.freedesktop.ModemManager1.Bearer
@@ -25,7 +28,6 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         dbus_std_ifaces.DBusProperties.__init__(self, path, bus, config)
 
     def _InitializeProperties(self):
-        import net_interface
         props = {
             'Interface': net_interface.PseudoNetInterface.IFACE_NAME,
             'Connected': dbus.types.Boolean(False),

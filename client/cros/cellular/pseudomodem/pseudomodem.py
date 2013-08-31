@@ -18,13 +18,13 @@ import client
 import mm1
 import modem_3gpp
 import modemmanager
-import net_interface
 import sim
 import testing
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.cellular import net_interface
 
 
 DEFAULT_TEST_NETWORK_PREFIX = 'Test Network'
