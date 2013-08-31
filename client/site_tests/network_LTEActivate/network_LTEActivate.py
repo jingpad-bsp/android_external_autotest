@@ -377,6 +377,8 @@ class network_LTEActivate(test.test):
         @param expected_state: The expected service activation state.
 
         """
+        logging.info('Checking for service activation state: %s',
+                     expected_state)
         service = self.FindCellularService()
         success, state, duration = self.shill.wait_for_property_in(
             service,
@@ -396,7 +398,17 @@ class network_LTEActivate(test.test):
                 was found.
 
         """
+        if check_not_none:
+            utils.poll_for_condition(
+                    lambda: (self.shill.find_cellular_service_object() is
+                             not None),
+                    exception=error.TestError(
+                            'Could not find cellular service within timeout.'),
+                    timeout=LONG_TIMEOUT);
+
         service = self.shill.find_cellular_service_object()
+
+        # Check once more, to make sure it's valid.
         if check_not_none and not service:
             raise error.TestError('Could not find cellular service.')
         return service
