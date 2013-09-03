@@ -179,10 +179,6 @@ def process_all_packages(pkgmgr, client_dir, remove=False):
                                          temp_dir))
         all_packages.extend(tar_packages(pkgmgr, 'client', 'autotest',
                                          client_dir, temp_dir))
-        cwd = os.getcwd()
-        os.chdir(temp_dir)
-        client_utils.system('md5sum * > packages.checksum')
-        os.chdir(cwd)
         for package in all_packages:
             pkgmgr.upload_pkg(package, update_checksum=True)
         client_utils.run('rm -rf ' + temp_dir)
