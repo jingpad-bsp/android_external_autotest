@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, StringIO, sys
+import logging, os, StringIO, sys
 
 from telemetry.unittest import gtest_testrunner, run_tests
 
@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import error
 
 
 TELEMETRY_BASE_DIR = '/usr/local/telemetry/src/tools/telemetry'
-UNIT_TEST_SUBDIR = 'telemetry'
+UNIT_TEST_SUBDIR = os.path.join(TELEMETRY_BASE_DIR, 'telemetry/unittest')
 
 
 class telemetry_UnitTests(test.test):
