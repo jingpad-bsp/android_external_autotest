@@ -70,12 +70,14 @@ class hardware_SAT(test.test):
         utils.make()
 
 
-    def run_once(self, seconds=60, free_memory_fraction=0.95, wait_secs=0):
+    def run_once(self, seconds=60, free_memory_fraction=0.95, wait_secs=0,
+                 disk_thread=True):
         '''
         Args:
           free_memory_fraction: Fraction of free memory (as determined by
             utils.freememtotal()) to use.
           wait_secs: time to wait in seconds before executing stressapptest.
+          disk_thread: also stress disk using -f argument of stressapptest.
         '''
         assert free_memory_fraction > 0
         assert free_memory_fraction < 1
@@ -116,8 +118,9 @@ class hardware_SAT(test.test):
         # south bridge and SATA, as well as potentially finding SSD
         # or disk cache problems. Two threads ensure multiple
         # outstanding transactions to the disk, if supported.
-        args += ' -f sat.diskthread.a'  # disk thread
-        args += ' -f sat.diskthread.b'
+        if disk_thread:
+            args += ' -f sat.diskthread.a'  # disk thread
+            args += ' -f sat.diskthread.b'
 
         if utils.get_board() == 'link':
             args += memory_channel_args_sandybridge([
