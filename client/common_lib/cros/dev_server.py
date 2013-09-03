@@ -76,6 +76,20 @@ def _get_canary_channel_server():
     return CONFIG.get_config_value('CROS', 'canary_channel_server', type=str)
 
 
+def _get_storage_server_for_artifacts(artifacts=None):
+    """Gets the appropriate storage server for the given artifacts.
+
+    @param artifacts: A list of artifacts we need to stage.
+    @return: The address of the storage server that has these artifacts.
+             The default image storage server if no artifacts are specified.
+    """
+    factory_artifact = global_config.global_config.get_config_value(
+            'CROS', 'factory_artifact', type=str, default='')
+    if artifacts and factory_artifact and factory_artifact in artifacts:
+        return _get_canary_channel_server()
+    return _get_image_storage_server()
+
+
 def _get_dev_server_list():
     return CONFIG.get_config_value('CROS', 'dev_server', type=list, default=[])
 
@@ -466,7 +480,8 @@ class ImageServer(DevServer):
         """
         assert artifacts or files, 'Must specify something to stage.'
         if not archive_url:
-            archive_url = _get_image_storage_server() + image
+            archive_url = (_get_storage_server_for_artifacts(artifacts) +
+                           image)
 
         artifacts_arg = ','.join(artifacts) if artifacts else ''
         files_arg = ','.join(files) if files else ''

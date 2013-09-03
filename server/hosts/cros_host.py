@@ -541,20 +541,32 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """Stage a build on a devserver and return the update_url.
 
         @param image_name: a name like <baord>/4262.204.0
+
         @return: An update URL, eg:
             http://<devserver>/static/canary-channel/\
             <board>/4262.204.0/factory_test/chromiumos_factory_image.bin
+
+        @raises: ValueError if the factory artifact name is missing from
+                 the config.
+
         """
         if not image_name:
             logging.error('Need an image_name to stage a factory image.')
             return
 
+        factory_artifact = global_config.global_config.get_config_value(
+                'CROS', 'factory_artifact', type=str, default='')
+        if not factory_artifact:
+            raise ValueError('Cannot retrieve the factory artifact name from '
+                             'autotest config, and hence cannot stage factory '
+                             'artifacts.')
+
         logging.info('Staging build for servo install: %s', image_name)
         devserver = dev_server.ImageServer.resolve(image_name)
         devserver.stage_artifacts(
                 image_name,
-                ['factory_image'],
-                archive_url=dev_server._get_canary_channel_server())
+                [factory_artifact],
+                archive_url=None)
 
         return tools.factory_image_url_pattern() % (devserver.url(), image_name)
 
