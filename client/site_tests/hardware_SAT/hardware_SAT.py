@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, struct, sys
+import logging, os, re, struct, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -72,14 +72,20 @@ class hardware_SAT(test.test):
         utils.make()
 
 
-    def run_once(self, seconds=60, free_memory_fraction=0.95):
+    def run_once(self, seconds=60, free_memory_fraction=0.95, wait_secs=0):
         '''
         Args:
           free_memory_fraction: Fraction of free memory (as determined by
             utils.freememtotal()) to use.
+          wait_secs: time to wait in seconds before executing stressapptest.
         '''
         assert free_memory_fraction > 0
         assert free_memory_fraction < 1
+
+        # Wait other parallel tests memory usage to settle to a stable value, so
+        # stressapptest will not claim too much memory.
+        if wait_secs:
+            time.sleep(wait_secs)
 
         # Allow shmem access to all of memory. This is used for 32 bit
         # access to > 1.4G. Virtual address space limitation prevents
