@@ -3,7 +3,7 @@ bin::1:root,bin,daemon
 daemon::2:root,bin,daemon
 sys::3:root,bin,adm
 adm::4:root,adm,daemon
-tty::5:power
+tty::5:power,brltty
 disk::6:root,adm
 lp::7:lp
 mem::8:
@@ -18,7 +18,7 @@ cdrom::19:
 tape::26:root
 video::27:root,chronos,xorg
 cdrw::80:
-usb::85:mtp
+usb::85:mtp,brltty
 users::100:games
 portage::250:portage
 utmp:x:406:
@@ -62,6 +62,7 @@ debugfs-access:x:236:
 shill-crypto:x:237:
 avahi:x:238:
 p2p:x:239:
+brltty:x:240:chronos
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
