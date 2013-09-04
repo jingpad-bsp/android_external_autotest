@@ -34,6 +34,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         # This tweaks encryption but is more of a warning, so we can dismiss.
         if text.find('will change WEP or TKIP encryption to AES') != -1:
             alert.accept()
+        else:
             raise RuntimeError('You have entered an invalid configuration: '
                                '%s' % text)
 
@@ -214,7 +215,7 @@ class AsusAPConfigurator(ap_configurator.APConfigurator):
         if self.current_band == ap_spec.BAND_5GHZ:
             key_field = '//input[@name="wl_wpa_psk"]'
             interval_field = '//input[@name="wl_wpa_gtk_rekey"]'
-        self._set_authentication('WPA-Personal',
+        self._set_authentication('WPA2-Personal',
                                  wait_for_xpath=key_field)
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         self.set_content_of_text_field_by_xpath(str(update_interval),
