@@ -20,7 +20,7 @@ from datetime import datetime
 import common
 
 from autotest_lib.client.common_lib import global_config, error, utils, enum
-from autotest_lib.client.common_lib import site_utils
+from autotest_lib.client.common_lib import site_utils, priorities
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -80,6 +80,12 @@ def parse_options():
                            '"False" if used.')
     parser.add_option("-l", "--bypass_labstatus", dest="bypass_labstatus",
                       action="store_true", help='Bypass lab status check.')
+    # We allow either a number or a string for the priority.  This way, if you
+    # know what you're doing, one can specify a custom priority level between
+    # other levels.
+    parser.add_option("-r", "--priority", dest="priority",
+                      default=priorities.Priority.DEFAULT,
+                      action="store", help="Priority of suite")
 
     options, args = parser.parse_args()
     return parser, options, args
@@ -551,6 +557,16 @@ def main():
         print 'Please specify "True" or "False" for --file_bugs.'
         parser.print_help()
         return
+
+    try:
+        priority = int(options.priority)
+    except ValueError:
+        try:
+            priority = priorities.Priority.get_value(options.priority)
+        except AttributeError:
+            print 'Unknown priority level %s.  Try one of %s.' % (
+                  options.priority, ', '.join(priorities.Priority.names))
+
     setup_logging(logfile=log_name)
 
     try:
@@ -572,7 +588,7 @@ def main():
         job_id = afe.run('create_suite_job', suite_name=options.name,
                          board=options.board, build=options.build,
                          check_hosts=wait, pool=options.pool, num=options.num,
-                         file_bugs=file_bugs)
+                         file_bugs=file_bugs, priority=priority)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)
