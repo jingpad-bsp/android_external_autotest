@@ -8,6 +8,8 @@ class SchedulerConfig(object):
     Contains configuration that can be changed during scheduler execution.
     """
     FIELDS = {'max_processes_per_drone': 'max_processes_per_drone',
+              'max_processes_warning_threshold':
+                  'max_processes_warning_threshold',
               'max_processes_started_per_cycle': 'max_jobs_started_per_cycle',
               'clean_interval': 'clean_interval_minutes',
               'max_parse_processes': 'max_parse_processes',
@@ -31,9 +33,13 @@ class SchedulerConfig(object):
         config = global_config.global_config
         config.parse_config_file()
         for field, config_option in self.FIELDS.iteritems():
+            if field == 'max_processes_warning_threshold':
+                data_type = float
+            else:
+                data_type = int
             setattr(self, field, config.get_config_value(CONFIG_SECTION,
                                                          config_option,
-                                                         type=int))
+                                                         type=data_type))
 
 
 config = SchedulerConfig()

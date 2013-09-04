@@ -137,6 +137,13 @@ class BaseDroneManager(object):
     All paths going into and out of this class are relative to the full results
     directory, except for those returns by absolute_path().
     """
+
+
+    # Minimum time to wait before next email
+    # about a drone hitting process limit is sent.
+    NOTIFY_INTERVAL = 60 * 60 * 24 # one day
+
+
     def __init__(self):
         # absolute path of base results dir
         self._results_dir = None
@@ -159,6 +166,9 @@ class BaseDroneManager(object):
         self._attached_files = {}
         # heapq of _DroneHeapWrappers
         self._drone_queue = []
+        # map drone hostname to time stamp of email that
+        # has been sent about the drone hitting process limit.
+        self._notify_record = {}
 
 
     def initialize(self, base_results_dir, drone_hostnames,
@@ -243,6 +253,8 @@ class BaseDroneManager(object):
             drone.allowed_users = allowed_users
 
         self._reorder_drone_queue() # max_processes may have changed
+        # Clear notification record about reaching max_processes limit.
+        self._notify_record = {}
 
 
     def get_drones(self):
@@ -348,6 +360,28 @@ class BaseDroneManager(object):
                     drone.active_processes += info.num_processes
 
 
+    def _check_drone_process_limit(self, drone):
+        """
+        Notify if the number of processes on |drone| is approaching limit.
+
+        @param drone: A Drone object.
+        """
+        percent = float(drone.active_processes) / drone.max_processes
+        max_percent = scheduler_config.config.max_processes_warning_threshold
+        if percent >= max_percent:
+            message = ('Drone %s is hitting %s of process limit.' %
+                       (drone.hostname, format(percent, '.2%')))
+            logging.warning(message)
+            last_notified = self._notify_record.get(drone.hostname, 0)
+            now = time.time()
+            if last_notified + BaseDroneManager.NOTIFY_INTERVAL < now:
+                body = ('Active processes/Process limit: %d/%d (%s)' %
+                        (drone.active_processes, drone.max_processes,
+                         format(percent, '.2%')))
+                email_manager.manager.enqueue_notify_email(message, body)
+                self._notify_record[drone.hostname] = now
+
+
     def refresh(self):
         """
         Called at the beginning of a scheduler cycle to refresh all process
@@ -377,6 +411,7 @@ class BaseDroneManager(object):
             self._compute_active_processes(drone)
             if drone.enabled:
                 self._enqueue_drone(drone)
+                self._check_drone_process_limit(drone)
 
 
     def execute_actions(self):
