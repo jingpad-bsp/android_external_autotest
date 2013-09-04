@@ -141,10 +141,12 @@ class base_server_job(base_job.base_job):
 
     _STATUS_VERSION = 1
 
+    # TODO crbug.com/285395 eliminate ssh_verbosity_flag
     def __init__(self, control, args, resultdir, label, user, machines,
                  client=False, parse_job='',
                  ssh_user='root', ssh_port=22, ssh_pass='',
-                 ssh_verbosity_flag='', test_retry=0, group_name='',
+                 ssh_verbosity_flag='', ssh_options='',
+                 test_retry=0, group_name='',
                  tag='', disable_sysinfo=False,
                  control_filename=SERVER_CONTROL_FILENAME):
         """
@@ -163,6 +165,8 @@ class base_server_job(base_job.base_job):
         @param ssh_pass: The SSH passphrase, if needed.
         @param ssh_verbosity_flag: The SSH verbosity flag, '-v', '-vv',
                 '-vvv', or an empty string if not needed.
+        @param ssh_options: A string giving additional options that will be
+                            included in ssh commands.
         @param test_retry: The number of times to retry a test if the test did
                 not complete successfully.
         @param group_name: If supplied, this will be written out as
@@ -199,6 +203,7 @@ class base_server_job(base_job.base_job):
         self._ssh_port = ssh_port
         self._ssh_pass = ssh_pass
         self._ssh_verbosity_flag = ssh_verbosity_flag
+        self._ssh_options = ssh_options
         self.tag = tag
         self.last_boot_tag = None
         self.hosts = set()
@@ -346,6 +351,23 @@ class base_server_job(base_job.base_job):
             self.__insert_test(test)
         self._using_parser = False
 
+    # TODO crbug.com/285395 add a kwargs parameter.
+    def _make_namespace(self):
+        """Create a namespace dictionary to be passed along to control file.
+
+        Creates a namespace argument populated with standard values:
+        machines, job, ssh_user, ssh_port, ssh_pass, ssh_verbosity_flag,
+        and ssh_options.
+        """
+        namespace = {'machines' : self.machines,
+                     'job' : self,
+                     'ssh_user' : self._ssh_user,
+                     'ssh_port' : self._ssh_port,
+                     'ssh_pass' : self._ssh_pass,
+                     'ssh_verbosity_flag' : self._ssh_verbosity_flag,
+                     'ssh_options' : self._ssh_options}
+        return namespace
+
 
     def verify(self):
         """Verify machines are all ssh-able."""
@@ -354,11 +376,7 @@ class base_server_job(base_job.base_job):
         if self.resultdir:
             os.chdir(self.resultdir)
         try:
-            namespace = {'machines' : self.machines, 'job' : self,
-                         'ssh_user' : self._ssh_user,
-                         'ssh_port' : self._ssh_port,
-                         'ssh_pass' : self._ssh_pass,
-                         'ssh_verbosity_flag' : self._ssh_verbosity_flag}
+            namespace = self._make_namespace()
             self._execute_code(VERIFY_CONTROL_FILE, namespace, protect=False)
         except Exception, e:
             msg = ('Verify failed\n' + str(e) + '\n' + traceback.format_exc())
@@ -374,11 +392,7 @@ class base_server_job(base_job.base_job):
             os.chdir(self.resultdir)
 
         try:
-            namespace = {'machines' : self.machines, 'job' : self,
-                         'ssh_user' : self._ssh_user,
-                         'ssh_port' : self._ssh_port,
-                         'ssh_pass' : self._ssh_pass,
-                         'ssh_verbosity_flag' : self._ssh_verbosity_flag}
+            namespace = self._make_namespace()
             self._execute_code(RESET_CONTROL_FILE, namespace, protect=False)
         except Exception as e:
             msg = ('Reset failed\n' + str(e) + '\n' +
@@ -392,11 +406,9 @@ class base_server_job(base_job.base_job):
             raise error.AutoservError('No machines specified to repair')
         if self.resultdir:
             os.chdir(self.resultdir)
-        namespace = {'machines': self.machines, 'job': self,
-                     'ssh_user': self._ssh_user, 'ssh_port': self._ssh_port,
-                     'ssh_pass': self._ssh_pass,
-                     'ssh_verbosity_flag' : self._ssh_verbosity_flag,
-                     'protection_level': host_protection}
+
+        namespace = self._make_namespace()
+        namespace.update({'protection_level' : host_protection})
 
         self._execute_code(REPAIR_CONTROL_FILE, namespace, protect=False)
 
@@ -548,13 +560,8 @@ class base_server_job(base_job.base_job):
             control_file_dir = self.resultdir
 
         self.aborted = False
-        namespace['machines'] = machines
-        namespace['args'] = self.args
-        namespace['job'] = self
-        namespace['ssh_user'] = self._ssh_user
-        namespace['ssh_port'] = self._ssh_port
-        namespace['ssh_pass'] = self._ssh_pass
-        namespace['ssh_verbosity_flag'] = self._ssh_verbosity_flag
+        namespace.update(self._make_namespace())
+        namespace.update({'args' : self.args})
         test_start_time = int(time.time())
 
         if self.resultdir:
@@ -1067,6 +1074,7 @@ class base_server_job(base_job.base_job):
         namespace['hosts'].factory.ssh_pass = self._ssh_pass
         namespace['hosts'].factory.ssh_verbosity_flag = (
                 self._ssh_verbosity_flag)
+        namespace['hosts'].factory.ssh_options = self._ssh_options
 
 
     def _execute_code(self, code_file, namespace, protect=True):

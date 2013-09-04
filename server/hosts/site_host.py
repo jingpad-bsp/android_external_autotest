@@ -208,6 +208,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
 
 
     def _initialize(self, hostname, servo_args=None, ssh_verbosity_flag='',
+                    ssh_options='',
                     *args, **dargs):
         """Initialize superclasses, and |self.servo|.
 
@@ -229,6 +230,7 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         self.env['LIBC_FATAL_STDERR_'] = '1'
         self._rpc_proxy_map = {}
         self._ssh_verbosity_flag = ssh_verbosity_flag
+        self._ssh_options = ssh_options
         self.servo = _get_lab_servo(hostname)
         if not self.servo and servo_args is not None:
             self.servo = servo.Servo(**servo_args)
@@ -1003,12 +1005,14 @@ class SiteHost(abstract_ssh.AbstractSSHHost):
         @param connect_timeout Ignored.
         @param alive_interval Ignored.
         """
-        base_command = ('/usr/bin/ssh -a -x %s %s -o StrictHostKeyChecking=no'
+        base_command = ('/usr/bin/ssh -a -x %s %s %s'
+                        ' -o StrictHostKeyChecking=no'
                         ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
                         ' -o ConnectTimeout=30 -o ServerAliveInterval=180'
                         ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
                         ' -o Protocol=2 -l %s -p %d')
-        return base_command % (self._ssh_verbosity_flag, opts, user, port)
+        return base_command % (self._ssh_verbosity_flag, self._ssh_options,
+                               opts, user, port)
 
 
     def _create_ssh_tunnel(self, port, local_port):

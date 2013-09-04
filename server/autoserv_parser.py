@@ -161,6 +161,10 @@ class base_autoserv_parser(object):
                                type="choice", choices=["0", "1", "2", "3"],
                                help=("Verbosity level for ssh, between 0 "
                                      "and 3 inclusive. [default: 0]"))
+        self.parser.add_option("--ssh_options", action="store",
+                               dest="ssh_options", default=None,
+                               help=("A string giving command line flags "
+                                     "that will be included in ssh commands"))
 
 
     def parse_args(self):

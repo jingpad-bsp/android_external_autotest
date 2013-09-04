@@ -1,7 +1,7 @@
 """Provides a factory method to create a host object."""
 
 
-from autotest_lib.client.common_lib import utils, error, global_config
+from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import autotest, utils as server_utils
 from autotest_lib.server.hosts import site_factory, site_host, ssh_host, serial
 from autotest_lib.server.hosts import logfile_monitor
@@ -102,6 +102,8 @@ def create_host(
     hostname, args['user'], args['password'], args['port'] = \
             server_utils.parse_machine(hostname, ssh_user, ssh_pass, ssh_port)
     args['ssh_verbosity_flag'] = ssh_verbosity_flag
+    args['ssh_options'] = ssh_options
+
 
     # create a custom host class for this machine and return an instance of it
     host_class = type("%s_host" % hostname, tuple(classes), {})

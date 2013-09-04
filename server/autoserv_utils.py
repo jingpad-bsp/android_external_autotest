@@ -14,7 +14,8 @@ def autoserv_run_job_command(autoserv_directory, machines,
                              queue_entry=None, verbose=True,
                              write_pidfile=True, fast_mode=False,
                              ssh_verbosity=0,
-                             no_console_prefix=False):
+                             no_console_prefix=False,
+                             ssh_options=None,):
     """
     Construct an autoserv command from a job or host queue entry.
 
@@ -39,6 +40,8 @@ def autoserv_run_job_command(autoserv_directory, machines,
                           verbosity level of ssh. Default: 0.
     @param no_console_prefix: If true, supress timestamps and other prefix info
                               in autoserv console logs.
+    @param ssh_options: A string giving extra arguments to be tacked on to
+                        ssh commands.
     @returns The autoserv command line as a list of executable + parameters.
     """
     command = [os.path.join(autoserv_directory, 'autoserv')]
@@ -54,6 +57,9 @@ def autoserv_run_job_command(autoserv_directory, machines,
 
     if ssh_verbosity:
         command += ['--ssh_verbosity', str(ssh_verbosity)]
+
+    if ssh_options:
+        command += ['--ssh_options', ssh_options]
 
     if no_console_prefix:
         command += ['--no_console_prefix']
