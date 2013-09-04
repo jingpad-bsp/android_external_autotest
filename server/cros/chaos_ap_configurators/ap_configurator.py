@@ -98,7 +98,11 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     def screenshot_list(self):
         """Returns the file as a base 64 encoded string for screenshot."""
         if self.driver_connection_established:
-            screenshot = self.driver.get_screenshot_as_base64()
+            try:
+                screenshot = self.driver.get_screenshot_as_base64()
+            except:
+                logging.error('Getting the screenshot failed.')
+                screenshot = None
             if screenshot:
                 self._screenshot_list.append(screenshot)
         return self._screenshot_list
