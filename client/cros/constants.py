@@ -158,5 +158,12 @@ BLUETOOTH_TESTER_XMLRPC_SERVER_CLEANUP_PATTERN = (
         'bluetooth_tester_xmlrpc_server')
 BLUETOOTH_TESTER_XMLRPC_SERVER_READY_METHOD = 'ready'
 
+DISPLAY_TESTING_XMLRPC_SERVER_PORT = 9991
+DISPLAY_TESTING_XMLRPC_SERVER_COMMAND = (
+        'cd /usr/local/autotest/cros/display; '
+        './display_xmlrpc_server.py')
+DISPLAY_TESTING_XMLRPC_SERVER_CLEANUP_PATTERN = 'display_xmlrpc_server'
+DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD = 'ready'
+
 # Bug filing
 CHROME_VERSION = 'CHROME_VERSION'
