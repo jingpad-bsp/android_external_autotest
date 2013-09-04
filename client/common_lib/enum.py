@@ -33,13 +33,14 @@ class Enum(object):
     def __init__(self, *names, **kwargs):
         self.string_values = kwargs.get('string_values')
         start_value = kwargs.get('start_value', 0)
+        step = kwargs.get('step', 1)
         self.names = names
         self.values = []
         for i, name in enumerate(names):
             if self.string_values:
                 value = name
             else:
-                value = i + start_value
+                value = i * step + start_value
             self.values.append(value)
             setattr(self, self.get_attr_name(name), value)
 
