@@ -52,6 +52,11 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
     def ssh_command(self, connect_timeout=30, options='', alive_interval=300):
         """
         Construct an ssh command with proper args for this host.
+
+        @param connect_timeout: connection timeout (in seconds)
+        @param options: SSH options
+        @param alive_interval: SSH Alive interval.
+
         """
         options = "%s %s" % (options, self.master_ssh_option)
         base_cmd = self.make_ssh_command(user=self.user, port=self.port,
@@ -62,8 +67,9 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         return "%s %s" % (base_cmd, self.hostname)
 
 
-    def _run(self, command, timeout, ignore_status, stdout, stderr,
-             connect_timeout, env, options, stdin, args):
+    def _run(self, command, timeout, ignore_status,
+             stdout, stderr, connect_timeout, env, options, stdin, args,
+             ignore_timeout):
         """Helper function for run()."""
         ssh_cmd = self.ssh_command(connect_timeout, options)
         if not env.strip():
@@ -75,7 +81,11 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         full_cmd = '%s "%s %s"' % (ssh_cmd, env, utils.sh_escape(command))
         result = utils.run(full_cmd, timeout, True, stdout, stderr,
                            verbose=False, stdin=stdin,
-                           stderr_is_expected=ignore_status)
+                           stderr_is_expected=ignore_status,
+                           ignore_timeout=ignore_timeout)
+
+        if ignore_timeout and not result:
+            return None
 
         # The error messages will show up in band (indistinguishable
         # from stuff sent through the SSH connection), so we have the
@@ -114,20 +124,17 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: ssh connection has timed out
         """
         if verbose:
-            logging.debug("Running (ssh) '%s'" % command)
+            logging.debug("Running (ssh) '%s'", command)
 
         # Start a master SSH connection if necessary.
         self.start_master_ssh()
 
         env = " ".join("=".join(pair) for pair in self.env.iteritems())
         try:
-            return self._run(command, timeout, ignore_status, stdout_tee,
-                             stderr_tee, connect_timeout, env, options,
-                             stdin, args)
-        except error.CmdTimeoutError, cmderr:
-            if ignore_timeout:
-                logging.debug('SSH command timed out, but was ignored.')
-                return None
+            return self._run(command, timeout, ignore_status,
+                             stdout_tee, stderr_tee, connect_timeout, env,
+                             options, stdin, args, ignore_timeout)
+        except error.CmdError, cmderr:
             # We get a CmdError here only if there is timeout of that command.
             # Catch that and stuff it into AutoservRunError and raise it.
             raise error.AutoservRunError(cmderr.args[0], cmderr.args[1])
@@ -137,40 +144,43 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         """
         Calls the run() command with a short default timeout.
 
-        Args:
-                Takes the same arguments as does run(),
-                with the exception of the timeout argument which
-                here is fixed at 60 seconds.
-                It returns the result of run.
+        Takes the same arguments as does run(),
+        with the exception of the timeout argument which
+        here is fixed at 60 seconds.
+        It returns the result of run.
+
+        @param command: the command line string
+
         """
         return self.run(command, timeout=60, **kwargs)
 
 
     def run_grep(self, command, timeout=30, ignore_status=False,
-                             stdout_ok_regexp=None, stdout_err_regexp=None,
-                             stderr_ok_regexp=None, stderr_err_regexp=None,
-                             connect_timeout=30):
+                 stdout_ok_regexp=None, stdout_err_regexp=None,
+                 stderr_ok_regexp=None, stderr_err_regexp=None,
+                 connect_timeout=30):
         """
         Run a command on the remote host and look for regexp
         in stdout or stderr to determine if the command was
         successul or not.
 
-        Args:
-                command: the command line string
-                timeout: time limit in seconds before attempting to
+
+        @param command: the command line string
+        @param timeout: time limit in seconds before attempting to
                         kill the running process. The run() function
                         will take a few seconds longer than 'timeout'
                         to complete if it has to kill the process.
-                ignore_status: do not raise an exception, no matter
-                        what the exit code of the command is.
-                stdout_ok_regexp: regexp that should be in stdout
-                        if the command was successul.
-                stdout_err_regexp: regexp that should be in stdout
-                        if the command failed.
-                stderr_ok_regexp: regexp that should be in stderr
-                        if the command was successul.
-                stderr_err_regexp: regexp that should be in stderr
-                        if the command failed.
+        @param ignore_status: do not raise an exception, no matter
+                              what the exit code of the command is.
+        @param stdout_ok_regexp: regexp that should be in stdout
+                                 if the command was successul.
+        @param stdout_err_regexp: regexp that should be in stdout
+                                  if the command failed.
+        @param stderr_ok_regexp: regexp that should be in stderr
+                                 if the command was successul.
+        @param stderr_err_regexp: regexp that should be in stderr
+                                 if the command failed.
+        @param connect_timeout: connection timeout (in seconds)
 
         Returns:
                 if the command was successul, raises an exception
@@ -212,8 +222,9 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
 
 
     def setup_ssh_key(self):
-        logging.debug('Performing SSH key setup on %s:%d as %s.' %
-                      (self.hostname, self.port, self.user))
+        """Setup SSH Key"""
+        logging.debug('Performing SSH key setup on %s:%d as %s.',
+                      self.hostname, self.port, self.user)
 
         try:
             host = pxssh.pxssh()
@@ -243,6 +254,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
 
 
     def setup_ssh(self):
+        """Setup SSH"""
         if self.password:
             try:
                 self.ssh_ping()

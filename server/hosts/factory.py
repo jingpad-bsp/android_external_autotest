@@ -4,7 +4,8 @@
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import autotest, utils as server_utils
 from autotest_lib.server.hosts import site_factory, cros_host, ssh_host, serial
-from autotest_lib.server.hosts import logfile_monitor
+from autotest_lib.server.hosts import adb_host, logfile_monitor
+
 
 
 DEFAULT_FOLLOW_PATH = '/var/log/kern.log'
@@ -47,7 +48,7 @@ def _get_host_arguments():
 
 def create_host(
     hostname, auto_monitor=False, follow_paths=None, pattern_paths=None,
-    netconsole=False, **args):
+    netconsole=False, adb=False, **args):
     """Create a host object.
 
     This method mixes host classes that are needed into a new subclass
@@ -67,14 +68,20 @@ def create_host(
     @param netconsole: A boolean value, if True, will mix NetconsoleHost in.
     @param args: Args that will be passed to the constructor of
                  the new host class.
+    @param adb: If True creates an instance of adb_host not cros_host.
 
     @returns: A host object which is an instance of the newly created
               host class.
     """
 
-    # TODO(fdeng): this method should should dynamically discover
-    # and allocate host types, crbug.com/273843
-    classes = [cros_host.CrosHost]
+    # TODO (sbasi) crbug.com/294328 - Find a better way to specify host type.
+    if adb:
+        classes = [adb_host.ADBHost]
+    else:
+        # TODO(fdeng): this method should should dynamically discover
+        # and allocate host types, crbug.com/273843
+        classes = [cros_host.CrosHost]
+
     # by default assume we're using SSH support
     if SSH_ENGINE == 'paramiko':
         from autotest_lib.server.hosts import paramiko_host

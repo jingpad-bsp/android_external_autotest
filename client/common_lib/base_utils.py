@@ -813,7 +813,7 @@ def get_stderr_level(stderr_is_expected):
 
 def run(command, timeout=None, ignore_status=False,
         stdout_tee=None, stderr_tee=None, verbose=True, stdin=None,
-        stderr_is_expected=None, args=(), nickname=None):
+        stderr_is_expected=None, args=(), nickname=None, ignore_timeout=False):
     """
     Run a command on the host.
 
@@ -823,6 +823,8 @@ def run(command, timeout=None, ignore_status=False,
             longer than 'timeout' to complete if it has to kill the process.
     @param ignore_status: do not raise an exception, no matter what the exit
             code of the command is.
+    @param ignore_timeout: If True, timeouts are ignored otherwise if a
+            timeout occurs it will raise CmdTimeoutError.
     @param stdout_tee: optional file-like object to which stdout data
             will be written as it is generated (data will still be stored
             in result.stdout).
@@ -837,9 +839,11 @@ def run(command, timeout=None, ignore_status=False,
     @param nickname: Short string that will appear in logging messages
                      associated with this command.
 
-    @return a CmdResult object
+    @return a CmdResult object or None if the command timed out and
+            ignore_timeout is True
 
     @raise CmdError: the exit code of the command execution was not 0
+    @raise CmdTimeoutError: the command timed out and ignore_timeout is False.
     """
     if isinstance(args, basestring):
         raise TypeError('Got a string for the "args" keyword argument, '
@@ -850,10 +854,16 @@ def run(command, timeout=None, ignore_status=False,
     if stderr_is_expected is None:
         stderr_is_expected = ignore_status
 
-    bg_job = join_bg_jobs(
-        (BgJob(command, stdout_tee, stderr_tee, verbose, stdin=stdin,
-               stderr_level=get_stderr_level(stderr_is_expected),
-               nickname=nickname),), timeout)[0]
+    try:
+        bg_job = join_bg_jobs(
+            (BgJob(command, stdout_tee, stderr_tee, verbose, stdin=stdin,
+                   stderr_level=get_stderr_level(stderr_is_expected),
+                   nickname=nickname),), timeout)[0]
+    except error.CmdTimeoutError:
+        if not ignore_timeout:
+            raise
+        return None
+
     if not ignore_status and bg_job.result.exit_status:
         raise error.CmdError(command, bg_job.result,
                              "Command returned non-zero exit status")

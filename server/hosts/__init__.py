@@ -13,6 +13,7 @@ from base_classes import Host
 from remote import RemoteHost
 
 # host implementation classes
+from adb_host import ADBHost
 from ssh_host import SSHHost
 from guest import Guest
 from kvm_guest import KVMGuest
