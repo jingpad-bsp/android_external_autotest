@@ -85,7 +85,8 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
 
 
 def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
-            id_digits=1, ssh_verbosity=0, args=None, pretend=False,
+            id_digits=1, ssh_verbosity=0, ssh_options=None,
+            args=None, pretend=False,
             autoserv_verbose=False):
     """
     Shell out to autoserv to run an individual test job.
@@ -101,6 +102,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
                       0-padded to when formatting as a string for results
                       directory.
     @param ssh_verbosity: SSH verbosity level, passed along to autoserv_utils
+    @param ssh_options: Additional ssh options to be passed to autoserv_utils
     @param args: String that should be passed as args parameter to autoserv,
                  and then ultimitely to test itself.
     @param pretend: If True, will print out autoserv commands rather than
@@ -124,11 +126,12 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
                 machines=host, job=job, verbose=autoserv_verbose,
                 results_directory=results_directory,
                 fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
+                ssh_options=ssh_options,
                 extra_args=extra_args,
                 no_console_prefix=True)
 
         if not pretend:
-            logging.debug('Running autoserv command: %s', ' '.join(command))
+            logging.debug('Running autoserv command: %s', command)
             global _autoserv_proc
             _autoserv_proc = subprocess.Popen(command,
                                               stdout=subprocess.PIPE,
@@ -144,7 +147,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
             return results_directory
         else:
             logging.info('Pretend mode. Would run autoserv command: %s',
-                         ' '.join(command))
+                         command)
 
 
 def setup_local_afe():
@@ -194,6 +197,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
                       pretend=False, no_experimental=False,
                       results_directory=None, ssh_verbosity=0,
+                      ssh_options=None,
                       autoserv_verbose=False):
     """
     @param afe: A direct_afe object used to interact with local afe database.
@@ -214,6 +218,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                               subdirectory of /tmp
     @param ssh_verbosity: SSH verbosity level, passed through to
                           autoserv_utils.
+    @param ssh_options: Additional ssh options to be passed to autoserv_utils
     @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
     """
     # Add the testing key to the current ssh agent.
@@ -256,7 +261,8 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     job_id_digits=len(str(last_job_id))
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory, fast_mode,
-                job_id_digits, ssh_verbosity, args, pretend, autoserv_verbose)
+                job_id_digits, ssh_verbosity, ssh_options, args, pretend,
+                autoserv_verbose)
 
 
 def validate_arguments(arguments):
@@ -353,6 +359,9 @@ def parse_arguments(argv):
                         choices=[0, 1, 2, 3], default=0,
                         help='Verbosity level for ssh, between 0 and 3 '
                              'inclusive.')
+    parser.add_argument('--ssh_options', action='store', default=None,
+                        help='A string giving additional options to be '
+                        'added to ssh commands.')
     parser.add_argument('--debug', action='store_true',
                         help='Include DEBUG level messages in stdout. Note: '
                              'these messages will be included in output log '
@@ -503,6 +512,7 @@ def main(argv):
                           no_experimental=arguments.no_experimental,
                           results_directory=results_directory,
                           ssh_verbosity=arguments.ssh_verbosity,
+                          ssh_options=arguments.ssh_options,
                           autoserv_verbose=arguments.debug)
         if arguments.pretend:
             logging.info('Finished pretend run. Exiting.')
