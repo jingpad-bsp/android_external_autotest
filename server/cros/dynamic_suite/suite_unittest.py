@@ -16,8 +16,9 @@ import unittest
 import common
 
 from autotest_lib.client.common_lib import base_job, control_data
-from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import utils, error
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -223,7 +224,8 @@ class SuiteTest(mox.MoxTestBase):
                 keyvals={'build': self._BUILD, 'suite': self._TAG},
                 max_runtime_mins=24*60,
                 parent_job_id=None,
-                test_retry=0
+                test_retry=0,
+                priority=priorities.Priority.DEFAULT
                 )
             if raises:
               job_mock.AndRaise(error.NoEligibleHostException())

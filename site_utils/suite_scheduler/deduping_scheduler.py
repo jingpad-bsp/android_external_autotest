@@ -6,6 +6,7 @@ import logging
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
 
@@ -106,13 +107,10 @@ class DedupingScheduler(object):
         try:
             logging.info('Scheduling %s on %s against %s (pool: %s)',
                          suite, build, board, pool)
-            if self._afe.run('create_suite_job',
-                             suite_name=suite,
-                             board=board,
-                             build=build,
-                             check_hosts=False,
-                             num=num,
-                             pool=pool) is not None:
+            if self._afe.run(
+                        'create_suite_job', suite_name=suite, board=board,
+                        build=build, check_hosts=False, num=num, pool=pool,
+                        priority=priorities.Priority.POSTBUILD) is not None:
                 return True
             else:
                 raise ScheduleException(

@@ -17,7 +17,7 @@ from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.frontend import settings, thread_local
 from autotest_lib.client.common_lib import enum, host_protections, global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
-from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import control_data, priorities
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
@@ -995,7 +995,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     """\
     owner: username of job owner
     name: job name (does not have to be unique)
-    priority: Low, Medium, High, Urgent (or 0-3)
+    priority: Integer priority value.  Higher is more important.
     control_file: contents of control file
     control_type: Client or Server
     created_on: date of job creation
@@ -1032,13 +1032,9 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool,
         default=False)
 
-    Priority = enum.Enum('Low', 'Medium', 'High', 'Urgent')
-
     owner = dbmodels.CharField(max_length=255)
     name = dbmodels.CharField(max_length=255)
-    priority = dbmodels.SmallIntegerField(choices=Priority.choices(),
-                                          blank=True, # to allow 0
-                                          default=Priority.MEDIUM)
+    priority = dbmodels.SmallIntegerField(default=priorities.Priority.DEFAULT)
     control_file = dbmodels.TextField(null=True, blank=True)
     control_type = dbmodels.SmallIntegerField(
         choices=control_data.CONTROL_TYPE.choices(),

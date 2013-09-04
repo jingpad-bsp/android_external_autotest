@@ -9,6 +9,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 import datetime, os, inspect
 import django.http
 from autotest_lib.frontend.afe import models, model_logic
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.server.cros import provision
 
@@ -685,6 +686,11 @@ def get_create_job_common_args(local_args):
     Returns a subset of local_args, which contains only the arguments that can
     be passed in to create_job_common().
     """
+    # This code is only here to not kill suites scheduling tests when priority
+    # becomes an int instead of a string.
+    if isinstance(local_args['priority'], str):
+        local_args['priority'] = priorities.Priority.DEFAULT
+    # </migration hack>
     arg_names, _, _, _ = inspect.getargspec(create_job_common)
     return dict(item for item in local_args.iteritems() if item[0] in arg_names)
 

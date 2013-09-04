@@ -196,7 +196,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         return parseFailedRepair;
     }
 
-    public SimplifiedList getPriorityList() {
+    public ExtendedListBox getPriorityList() {
         return priorityList;
     }
 

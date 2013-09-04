@@ -33,7 +33,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime
 import common
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, priorities
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.site_utils.graphite import stats
@@ -508,7 +508,7 @@ def create_job(name, priority, control_file, control_type,
     Create and enqueue a job.
 
     @param name name of this job
-    @param priority Low, Medium, High, Urgent
+    @param priority Integer priority of this job.  Higher is more important.
     @param control_file String contents of the control file.
     @param control_type Type of control file, Client or Server.
     @param synch_count How many machines the job uses per autoserv execution.
@@ -886,10 +886,10 @@ def get_static_data():
                                  name=default_drone_set_name)))
 
     result = {}
-    result['priorities'] = models.Job.Priority.choices()
-    default_priority = job_fields['priority'].default
-    default_string = models.Job.Priority.get_string(default_priority)
-    result['default_priority'] = default_string
+    result['priorities'] = priorities.Priority.choices()
+    default_priority = priorities.Priority.DEFAULT
+    result['default_priority'] = 'Default'
+    result['max_schedulable_priority'] = priorities.Priority.DEFAULT
     result['users'] = get_users(sort_by=['login'])
     result['labels'] = get_labels(sort_by=['-platform', 'name'])
     result['atomic_groups'] = get_atomic_groups(sort_by=['name'])

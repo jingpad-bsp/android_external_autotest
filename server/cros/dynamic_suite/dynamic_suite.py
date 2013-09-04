@@ -7,6 +7,7 @@ import ast, datetime, logging
 import common
 
 from autotest_lib.client.common_lib import base_job
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
@@ -229,7 +230,8 @@ class SuiteSpec(object):
                  file_experimental_bugs=False, max_runtime_mins=24*60,
                  firmware_reimage=False,
                  suite_dependencies=[], version_prefix=None,
-                 bug_template={}, devserver_url=None, **dargs):
+                 bug_template={}, devserver_url=None,
+                 priority=priorities.Priority.DEFAULT, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -274,6 +276,7 @@ class SuiteSpec(object):
         @param devserver_url: url to the selected devserver.
         @param version_prefix: A version prefix from provision.py that the
                                tests should be scheduled with.
+        @param priority: Integer priority level.  Higher is more important.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -315,6 +318,7 @@ class SuiteSpec(object):
             self.suite_dependencies = suite_dependencies
         self.bug_template = bug_template
         self.version_prefix = version_prefix
+        self.priority = priority
 
 
 def skip_reimage(g):
@@ -438,7 +442,8 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
         max_runtime_mins=spec.max_runtime_mins,
         file_bugs=spec.file_bugs,
         file_experimental_bugs=spec.file_experimental_bugs,
-        suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies)
+        suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,
+        priority=spec.priority)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)

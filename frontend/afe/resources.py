@@ -5,6 +5,7 @@ from autotest_lib.frontend.afe import model_attributes
 from autotest_lib.frontend import thread_local
 from autotest_lib.client.common_lib import host_protections
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import priorities
 
 
 class EntryWithInvalid(resource_lib.InstanceEntry):
@@ -633,11 +634,15 @@ class Job(resource_lib.InstanceEntry):
 
     def short_representation(self):
         rep = super(Job, self).short_representation()
+        try:
+            string_priority = priorities.Priority.get_string(
+                    self.instance.priority)
+        except ValueError:
+            string_priority = str(self.instance.priority)
         rep.update({'id': self.instance.id,
                     'owner': self.instance.owner,
                     'name': self.instance.name,
-                    'priority':
-                        models.Job.Priority.get_string(self.instance.priority),
+                    'priority': string_priority,
                     'created_on':
                         self._format_datetime(self.instance.created_on),
                     })

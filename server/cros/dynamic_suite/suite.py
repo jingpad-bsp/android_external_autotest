@@ -7,6 +7,7 @@ import datetime, hashlib, logging, os, re, traceback
 import common
 
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import site_utils, utils, error
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -231,7 +232,8 @@ class Suite(object):
     def __init__(self, predicates, tag, build, board, cf_getter, afe=None,
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
                  file_bugs=False, file_experimental_bugs=False,
-                 suite_job_id=None, ignore_deps=False, extra_deps=[]):
+                 suite_job_id=None, ignore_deps=False, extra_deps=[],
+                 priority=priorities.Priority.DEFAULT):
         """
         Constructor
 
@@ -258,6 +260,8 @@ class Suite(object):
                             (Default:False)
         @param extra_deps: A list of strings which are the extra DEPENDENCIES
                            to add to each test being scheduled.
+        @param priority: Integer priority level.  Higher is more important.
+
         """
         def combined_predicate(test):
             #pylint: disable-msg=C0111
@@ -287,6 +291,7 @@ class Suite(object):
         self._suite_job_id = suite_job_id
         self._ignore_deps = ignore_deps
         self._extra_deps = extra_deps
+        self._priority = priority
 
 
     @property
@@ -340,7 +345,8 @@ class Suite(object):
                      constants.JOB_SUITE_KEY: self._tag},
             max_runtime_mins=self._max_runtime_mins,
             parent_job_id=self._suite_job_id,
-            test_retry=test.retries)
+            test_retry=test.retries,
+            priority=self._priority)
 
         setattr(test_obj, 'test_name', test.name)
 

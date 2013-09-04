@@ -13,6 +13,7 @@ import common
 import deduping_scheduler
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import frontend, site_utils
 from autotest_lib.server.cros.dynamic_suite import reporting
 
@@ -31,6 +32,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     _SUITE = 'suite'
     _POOL = 'pool'
     _NUM = 2
+    _PRIORITY = priorities.Priority.POSTBUILD
 
 
     def setUp(self):
@@ -51,7 +53,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      build=self._BUILD,
                      check_hosts=False,
                      pool=self._POOL,
-                     num=self._NUM).AndReturn(7)
+                     num=self._NUM,
+                     priority=self._PRIORITY).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
@@ -83,7 +86,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      build=self._BUILD,
                      check_hosts=False,
                      num=None,
-                     pool=self._POOL).AndReturn(7)
+                     pool=self._POOL,
+                     priority=self._PRIORITY).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
@@ -121,7 +125,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      build=self._BUILD,
                      check_hosts=False,
                      num=None,
-                     pool=None).AndReturn(None)
+                     pool=None,
+                     priority=self._PRIORITY).AndReturn(None)
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
                           self.scheduler.ScheduleSuite,
@@ -144,7 +149,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      build=self._BUILD,
                      check_hosts=False,
                      num=None,
-                     pool=None).AndRaise(Exception())
+                     pool=None,
+                     priority=self._PRIORITY).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
                           self.scheduler.ScheduleSuite,
@@ -173,7 +179,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      build=self._BUILD,
                      check_hosts=False,
                      pool=self._POOL,
-                     num=self._NUM).AndRaise(exception)
+                     num=self._NUM,
+                     priority=self._PRIORITY).AndRaise(exception)
         site_utils.get_sheriffs(
                 lab_only=True).AndReturn(['dummy@chromium.org'])
         # mox does not raise an AttributeError when a nonexistent attribute

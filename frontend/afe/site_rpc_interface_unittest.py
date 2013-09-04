@@ -13,6 +13,7 @@ import unittest
 import common
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import site_rpc_interface
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -25,10 +26,12 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     @var _NAME: fake suite name.
     @var _BOARD: fake board to reimage.
     @var _BUILD: fake build with which to reimage.
+    @var _PRIORITY: fake priority with which to reimage.
     """
     _NAME = 'name'
     _BOARD = 'board'
     _BUILD = 'build'
+    _PRIORITY = priorities.Priority.DEFAULT
 
 
     class rpc_utils(object):
@@ -77,7 +80,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         r = self.mox.CreateMock(SiteRpcInterfaceTest.rpc_utils)
         r.create_job_common(mox.And(mox.StrContains(self._NAME),
                                     mox.StrContains(self._BUILD)),
-                            priority='Medium',
+                            priority=self._PRIORITY,
                             control_type='Server',
                             control_file=mox.And(mox.StrContains(self._BOARD),
                                                  mox.StrContains(self._BUILD),

@@ -11,6 +11,7 @@ from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import priorities
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
@@ -365,7 +366,7 @@ class RpcInterfaceTest(unittest.TestCase,
         job_parameters = {'key': ('value', string_type)}
 
         job_id = rpc_interface.create_parameterized_job(
-                name='job', priority=models.Job.Priority.MEDIUM, test='test',
+                name='job', priority=priorities.Priority.DEFAULT, test='test',
                 parameters=job_parameters, kernel=kernels, label='label1',
                 profilers=profilers, profiler_parameters=profiler_parameters,
                 profile_only=False, hosts=('host1',))

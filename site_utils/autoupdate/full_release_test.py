@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 import common
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import frontend
 from autotest_lib.site_utils.autoupdate import board as board_util
 from autotest_lib.site_utils.autoupdate import release as release_util
@@ -532,7 +533,8 @@ def run_test_afe(test, env, control_code, afe, dry_run):
     if not dry_run:
         job = afe.create_job(
                 parametrized_control_code,
-                name=test.get_autotest_name(), priority='Medium',
+                name=test.get_autotest_name(),
+                priority=priorities.Priority.DEFAULT,
                 control_type='Server', meta_hosts=meta_hosts,
                 dependencies=dependencies)
         return job.id

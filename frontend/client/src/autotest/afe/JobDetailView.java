@@ -130,7 +130,9 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
                 showField(jobObject, "parent_job", "view_parent");
                 getElementById("view_parent").setAttribute("href", parent_job_url);
                 showField(jobObject, "test_retry", "view_test_retry");
-                showField(jobObject, "priority", "view_priority");
+                double priorityValue = jobObject.get("priority").isNumber().getValue();
+                String priorityName = staticData.getPriorityName(priorityValue);
+                showText(priorityName, "view_priority");
                 showField(jobObject, "created_on", "view_created");
                 showField(jobObject, "timeout", "view_timeout");
                 String imageUrlString = "";
@@ -251,7 +253,6 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
             AfeUtils.removeElement("view_drone_set_wrapper");
         }
     }
-
 
     protected void addTableFilters() {
         hostsTable.addFilter(jobFilter);

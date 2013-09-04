@@ -495,7 +495,7 @@ def step0():
 
 # create a job to run on host1, host2, and any two machines in my_label
 >>> rpc_interface.create_job(name='my_job',
-...                          priority='Low',
+...                          priority=10,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Client',
 ...                          hosts=['host1', 'host2'],
@@ -506,7 +506,7 @@ def step0():
 >>> data = rpc_interface.get_jobs()
 >>> data = data[0]
 >>> data['id'], data['owner'], data['name'], data['priority']
-(1, u'debug_user', u'my_job', 'Low')
+(1, u'debug_user', u'my_job', 10)
 >>> data['control_file'] == cf_info['control_file']
 True
 >>> data['control_type']
@@ -537,7 +537,7 @@ True
 ...         'id': 1,
 ...         'name': 'my_job',
 ...         'owner': 'debug_user',
-...         'priority': 'Low',
+...         'priority': 10,
 ...         'synch_count': 1,
 ...         'timeout': 24,
 ...         'max_runtime_mins': 1440,
@@ -638,7 +638,7 @@ True
 # #############
 
 >>> job_id = rpc_interface.create_job(name='my_job_to_clone',
-...                                   priority='High',
+...                                   priority=50,
 ...                                   control_file=cf_info['control_file'],
 ...                                   control_type='Client',
 ...                                   hosts=['host2'],
@@ -650,7 +650,7 @@ True
 >>> info['job']['dependencies']
 []
 >>> info['job']['priority']
-'High'
+50
 
 
 # advanced usage
@@ -658,7 +658,7 @@ True
 
 # synch_count
 >>> job_id = rpc_interface.create_job(name='my_job',
-...                          priority='Low',
+...                          priority=10,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Server',
 ...                          synch_count=2,
@@ -778,7 +778,7 @@ u'mini rack'
 ...         tests=['sleeptest'],  kernel=[{'version': '2.6.18'}],
 ...         label='two-label')
 >>> job_id = rpc_interface.create_job(
-...         name='atomic_sleeptest', priority='Medium',
+...         name='atomic_sleeptest', priority=30,
 ...         control_file=sleep_cf_info['control_file'],
 ...         control_type='Server', synch_count=1,
 ...         atomic_group_name='mini rack')
@@ -788,12 +788,12 @@ u'mini rack'
 ## parameter.
 
 >>> job_id = rpc_interface.create_job(
-...         name='atomic_sleeptest', priority='Medium',
+...         name='atomic_sleeptest', priority=30,
 ...         control_file=sleep_cf_info['control_file'],
 ...         control_type='Server', synch_count=1,
 ...         meta_hosts=['mini rack'])
 >>> job_id = rpc_interface.create_job(
-...         name='atomic_sleeptest', priority='Medium',
+...         name='atomic_sleeptest', priority=30,
 ...         control_file=sleep_cf_info['control_file'],
 ...         control_type='Server', synch_count=1,
 ...         meta_hosts=['mini rack'],
@@ -805,7 +805,7 @@ ValidationError: {'meta_hosts': 'Label "mini rack" not found.  If assumed to be 
 
 # fail to create a job in an atomic group.  one_time_hosts not allowed.
 >>> rpc_interface.create_job(name='my_atomic_job',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Server',
 ...                          one_time_hosts=['hostX', 'hostY'],
@@ -816,7 +816,7 @@ ValidationError: {'one_time_hosts': 'One time hosts cannot be used with an Atomi
 
 # fail to create a job in an atomic group.  Synch count larger than max
 >>> rpc_interface.create_job(name='my_atomic_job',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Server',
 ...                          synch_count=25,
@@ -826,7 +826,7 @@ ValidationError: {'atomic_group_name': 'You have requested a synch_count (25) gr
 
 # fail to create a job in an atomic group.  not enough hosts due to host list.
 >>> rpc_interface.create_job(name='my_atomic_job',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Server',
 ...                          hosts=['ahost1', 'ahost2'],
@@ -837,7 +837,7 @@ ValidationError: {'hosts': 'only 2 hosts provided for job with synch_count = 3'}
 
 # fail to create a job in an atomic group.  hosts not in atomic group.
 >>> rpc_interface.create_job(name='my_atomic_job',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Server',
 ...                          hosts=['host1', 'host2'],
@@ -848,7 +848,7 @@ ValidationError: {'hosts': u'Hosts "host1, host2" are not in Atomic Group "mini 
 
 # fail to create a job in an atomic group.  not enough hosts due to meta_hosts.
 >>> rpc_interface.create_job(name='my_atomic_job',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Server',
 ...                          meta_hosts=['blue-label'],
@@ -859,7 +859,7 @@ ValidationError: {'atomic_group_name': u'Insufficient hosts in Atomic Group "min
 
 # fail to create a job in an atomic group.  not enough hosts.
 >>> rpc_interface.create_job(name='my_atomic_job',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Server',
 ...                          synch_count=5,
@@ -869,7 +869,7 @@ ValidationError: {'atomic_group_name': u'Insufficient hosts in Atomic Group "min
 
 # create a job in an atomic group.
 >>> job_id = rpc_interface.create_job(name='my_atomic_job',
-...                                   priority='High',
+...                                   priority=50,
 ...                                   control_file=cf_info['control_file'],
 ...                                   control_type='Server',
 ...                                   hosts=['ahost1', 'ahost2'],
@@ -883,7 +883,7 @@ ValidationError: {'atomic_group_name': u'Insufficient hosts in Atomic Group "min
 
 # create a job using hosts in an atomic group but forget to specify the group.
 >>> rpc_interface.create_job(name='poke_foo',
-...                          priority='Low',
+...                          priority=10,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Client',
 ...                          hosts=['ahost1', 'ahost2'])
@@ -893,13 +893,13 @@ ValidationError: {'hosts': u'Host(s) "ahost1, ahost2" are atomic group hosts but
 # Create a job using a label in an atomic group as the meta-host but forget
 # to specify the group.  The frontend should figure this out for us.
 >>> job_id = rpc_interface.create_job(name='created_without_explicit_ag',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Client',
 ...                          meta_hosts=['two-label'])
 
 >>> job_id = rpc_interface.create_job(
-...         name='atomic_sleeptest', priority='Medium',
+...         name='atomic_sleeptest', priority=30,
 ...         control_file=sleep_cf_info['control_file'],
 ...         control_type='Server', synch_count=1,
 ...         meta_hosts=['two-label'],
@@ -917,7 +917,7 @@ AclAccessViolation: You cannot abort the following job entries: 8-debug_user/two
 >>> god.unstub_all()
 
 >>> rpc_interface.create_job(name='never_run2',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Client',
 ...                          meta_hosts=['blue-label'],
@@ -932,7 +932,7 @@ ValidationError: {'atomic_group_name': "Dependency u'two-label' requires an atom
 >>> rpc_interface.atomic_group_add_labels(invisible_group_id,
 ...                                       ['blue-label'])
 >>> rpc_interface.create_job(name='never_run3',
-...                          priority='High',
+...                          priority=50,
 ...                          control_file=cf_info['control_file'],
 ...                          control_type='Client',
 ...                          meta_hosts=['two-label'],

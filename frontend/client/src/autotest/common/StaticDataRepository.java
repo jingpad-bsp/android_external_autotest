@@ -3,6 +3,9 @@ package autotest.common;
 
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONValue;
+import com.google.gwt.json.client.JSONArray;
+
+import java.util.HashMap;
 
 /**
  * A singleton class to manage a set of static data, such as the list of users.
@@ -18,6 +21,7 @@ public class StaticDataRepository {
     public static final StaticDataRepository theInstance = new StaticDataRepository();
     
     protected JSONObject dataObject = null;
+    protected HashMap<Double, String> priorityMap = null;
     
     private StaticDataRepository() {}
     
@@ -35,11 +39,22 @@ public class StaticDataRepository {
             @Override
             public void onSuccess(JSONValue result) {
                 dataObject = result.isObject();
+                priorityMap = new HashMap<Double, String>();
+                populatePriorities(dataObject.get("priorities").isArray());
                 finished.onFinished();
             }
         });
     }
     
+    private void populatePriorities(JSONArray priorities) {
+        for(int i = 0; i < priorities.size(); i++) {
+            JSONArray priorityData = priorities.get(i).isArray();
+            String priority = priorityData.get(1).isString().stringValue();
+            Double priority_value = priorityData.get(0).isNumber().getValue();
+            priorityMap.put(priority_value, priority);
+        }
+    }
+
     /**
      * Get a value from the static data object.
      */
@@ -56,5 +71,18 @@ public class StaticDataRepository {
     
     public String getCurrentUserLogin() {
         return Utils.jsonToString(dataObject.get("current_user").isObject().get("login"));
+    }
+
+    public String getPriorityName(Double value) {
+        if (priorityMap == null) {
+            return "Unknown";
+        }
+
+        String priorityName = priorityMap.get(value);
+        if (priorityName == null) {
+            priorityName = value.toString();
+        }
+
+        return priorityName;
     }
 }

@@ -19,6 +19,7 @@ import autotest.common.Utils;
 import autotest.common.ui.NotifyManager;
 import autotest.common.ui.RadioChooser;
 import autotest.common.ui.SimplifiedList;
+import autotest.common.ui.ExtendedListBox;
 
 import com.google.gwt.event.dom.client.BlurEvent;
 import com.google.gwt.event.dom.client.BlurHandler;
@@ -63,7 +64,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public TestSelector.Display getTestSelectorDisplay();
         public IButton getEditControlButton();
         public HasText getJobName();
-        public SimplifiedList getPriorityList();
+        public ExtendedListBox getPriorityList();
         public HasText getTimeout();
         public HasText getMaxRuntime();
         public HasText getTestRetry();
@@ -227,10 +228,16 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     }
 
     private void populatePriorities(JSONArray priorities) {
+        JSONValue maxSchedulableValue = staticData.getData("max_schedulable_priority");
+        double maxPriority = maxSchedulableValue.isNumber().getValue();
         for(int i = 0; i < priorities.size(); i++) {
             JSONArray priorityData = priorities.get(i).isArray();
             String priority = priorityData.get(1).isString().stringValue();
-            display.getPriorityList().addItem(priority, priority);
+            double priorityValue = priorityData.get(0).isNumber().getValue();
+            String strPriorityValue = Double.toString(priorityValue);
+            if (priorityValue <= maxPriority) {
+                display.getPriorityList().addItem(priority, strPriorityValue);
+            }
         }
 
         resetPriorityToDefault();
@@ -634,8 +641,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             public void doCallback(Object source) {
                 JSONObject args = new JSONObject();
                 args.put("name", new JSONString(display.getJobName().getText()));
-                String priority = display.getPriorityList().getSelectedName();
-                args.put("priority", new JSONString(priority));
+                String priority = display.getPriorityList().getSelectedValue();
+                args.put("priority", new JSONNumber(Double.parseDouble(priority)));
                 args.put("control_file", new JSONString(display.getControlFile().getText()));
                 args.put("control_type",
                          new JSONString(controlTypeSelect.getControlType()));
