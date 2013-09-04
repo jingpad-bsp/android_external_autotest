@@ -313,6 +313,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['fragm_threshold'] = configuration.frag_threshold
         if configuration.pmf_support:
             conf['ieee80211w'] = configuration.pmf_support
+        if configuration.obss_interval:
+            conf['obss_interval'] = configuration.obss_interval
         conf.update(configuration.get_security_hostapd_conf())
 
         self.start_hostapd(conf, {})
@@ -803,6 +805,24 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         deauth_msg = "%s: deauthentication: STA=%s" % (interface, client_mac)
         log_file = self.hostapd_instances[instance]['log_file']
         result = self.router.run("grep -qi '%s' %s" % (deauth_msg, log_file),
+                                 ignore_status=True)
+        return result.exit_status == 0
+
+
+    def detect_client_coexistence_report(self, client_mac, instance=0):
+        """Detects whether hostapd has logged an action frame from
+        |client_mac| indicating information about 20/40MHz BSS coexistence.
+
+        @param client_mac string the MAC address of the client to detect.
+        @param instance int indicating which hostapd instance to query.
+
+        """
+        coex_msg = ('nl80211: MLME event frame - hexdump(len=.*): '
+                    '.. .. .. .. .. .. .. .. .. .. %s '
+                    '.. .. .. .. .. .. .. .. 04 00.*48 01 ..' %
+                    ' '.join(client_mac.split(':')))
+        log_file = self.hostapd_instances[instance]['log_file']
+        result = self.router.run("grep -qi '%s' %s" % (coex_msg, log_file),
                                  ignore_status=True)
         return result.exit_status == 0
 

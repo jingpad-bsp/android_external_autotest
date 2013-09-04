@@ -223,7 +223,8 @@ class HostapConfig(object):
                  n_capabilities=[], hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
                  force_wmm=None, security_config=None,
-                 pmf_support=PMF_SUPPORT_DISABLED):
+                 pmf_support=PMF_SUPPORT_DISABLED,
+                 obss_interval=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -245,6 +246,8 @@ class HostapConfig(object):
         @param security_config SecurityConfig object.
         @param pmf_support one of PMF_SUPPORT_* above.  Controls whether the
             client supports/must support 802.11w.
+        @param obss_interval int interval in seconds that client should be
+            required to do background scans for overlapping BSSes.
 
         """
         super(HostapConfig, self).__init__()
@@ -312,6 +315,7 @@ class HostapConfig(object):
         self.pmf_support = pmf_support
         self.security_config = (copy.copy(security_config) or
                                 xmlrpc_security_types.SecurityConfig())
+        self.obss_interval = obss_interval
 
 
     def __repr__(self):
