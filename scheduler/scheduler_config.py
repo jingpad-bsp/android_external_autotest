@@ -18,6 +18,8 @@ class SchedulerConfig(object):
                   'secs_to_wait_for_atomic_group_hosts',
               'reverify_period_minutes': 'reverify_period_minutes',
               'reverify_max_hosts_at_once': 'reverify_max_hosts_at_once',
+              'max_repair_limit': 'max_repair_limit',
+              'max_provision_retries': 'max_provision_retries',
              }
 
 

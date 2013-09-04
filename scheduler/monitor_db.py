@@ -1898,15 +1898,12 @@ class PreJobTask(SpecialAgentTask):
         if self.success:
             return
 
-        self._copy_to_results_repository()
-
         if self.host.protection == host_protections.Protection.DO_NOT_VERIFY:
             # effectively ignore failure for these hosts
             self.success = True
             return
 
         if self.queue_entry:
-            self.queue_entry.requeue()
             # If we requeue a HQE, we should cancel any remaining pre-job
             # tasks against this host, otherwise we'll be left in a state
             # where a queued HQE has special tasks to run against a host.
@@ -1915,9 +1912,35 @@ class PreJobTask(SpecialAgentTask):
                     host__id=self.host.id,
                     is_complete=0).update(is_complete=1, success=0)
 
-            if models.SpecialTask.objects.filter(
+            previous_provisions = models.SpecialTask.objects.filter(
+                    task=models.SpecialTask.Task.PROVISION,
+                    queue_entry_id=self.queue_entry.id).count()
+            if (previous_provisions >=
+                scheduler_config.config.max_provision_retries):
+                self._actually_fail_queue_entry()
+                # This abort will mark the aborted bit on the HQE itself, to
+                # signify that we're killing it.  Technically it also will do
+                # the recursive aborting of all child jobs, but that shouldn't
+                # matter here, as only suites have children, and those are
+                # hostless and thus don't have provisioning.
+                # TODO(milleral) http://crbug.com/188217
+                # However, we can't actually do this yet, as if we set the
+                # abort bit the FinalReparseTask will set the status of the HQE
+                # to ABORTED, which then means that we don't show the status in
+                # run_suite.  So in the meantime, don't mark the HQE as
+                # aborted.
+                # queue_entry.abort()
+            else:
+                # requeue() must come after handling provision retries, since
+                # _actually_fail_queue_entry needs an execution subdir.
+                # We also don't want to requeue if we hit the provision retry
+                # limit, since then we overwrite the PARSING state of the HQE.
+                self.queue_entry.requeue()
+
+            previous_repairs = models.SpecialTask.objects.filter(
                     task=models.SpecialTask.Task.REPAIR,
-                    queue_entry__id=self.queue_entry.id):
+                    queue_entry_id=self.queue_entry.id).count()
+            if previous_repairs >= scheduler_config.config.max_repair_limit:
                 self.host.set_status(models.Host.Status.REPAIR_FAILED)
                 self._fail_queue_entry()
                 return
@@ -2129,53 +2152,9 @@ class ProvisionTask(PreJobTask):
 
 
     def epilog(self):
-        # TODO(milleral) Here, we override the PreJobTask's epilog, because
-        # it's written with the idea that pre-job special task failures are a
-        # problem with the host and not with something about the HQE.
-        # In our case, the HQE's DEPENDENCIES specify what the provision task
-        # does, so if the provision fails, it can be the fault of the HQE, and
-        # thus we fail the HQE.  This difference is handled only here for now,
-        # but some refactoring of PreJobTask should likely happen sometime in
-        # the future?
-        # This call is needed to log the status and call into self.cleanup(),
-        # which is PreJobTasks's cleanup, which marks is_complete=1.
-        AgentTask.epilog(self)
+        super(ProvisionTask, self).epilog()
 
-        if not self.success:
-            # TODO(milleral) http://crbug.com/231452
-            # In our own setup, we don't really use the results
-            # repository, so I *think* this call can be elided.  However, I'd
-            # like to limit what I can possibly break for now, and it would be
-            # called if I called PreJobTask's epilog, so I'm keeping the call
-            # to it for now.
-            self._copy_to_results_repository()
-            # _actually_fail_queue_entry() is a hack around the fact that we do
-            # indeed want to abort the queue entry here, but the rest of the
-            # scheduler code expects that we will reschedule onto some other
-            # host.
-            self._actually_fail_queue_entry()
-            # This abort will mark the aborted bit on the HQE itself, to
-            # signify that we're killing it.  Technically it also will do
-            # the recursive aborting of all child jobs, but that shouldn't
-            # matter here, as only suites have children, and those
-            # are hostless and thus don't have provisioning.
-            # TODO(milleral) http://crbug.com/188217
-            # However, we can't actually do this yet, as if we set the abort bit
-            # the FinalReparseTask will set the status of the HQE to ABORTED,
-            # which then means that we don't show the status in run_suite.
-            # So in the meantime, don't mark the HQE as aborted.
-            queue_entry = models.HostQueueEntry.objects.get(
-                    id=self.queue_entry.id)
-            # queue_entry.abort()
-
-            # The machine is in some totally unknown state, so let's kick off
-            # a repair task to get it back to some known sane state.
-            models.SpecialTask.objects.create(
-                    host=models.Host.objects.get(id=self.host.id),
-                    task=models.SpecialTask.Task.REPAIR,
-                    queue_entry=queue_entry,
-                    requested_by=self.task.requested_by)
-        elif self._should_pending():
+        if self._should_pending():
             self.queue_entry.on_pending()
         else:
             self.host.set_status(models.Host.Status.READY)
