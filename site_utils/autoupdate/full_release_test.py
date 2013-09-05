@@ -696,11 +696,20 @@ def main():
                 afe = frontend.AFE(debug=(args.log_level == _log_debug))
                 for test in test_list:
                     logging.info('scheduling test %s', test)
-                    job_id = run_test_afe(test, env, control_code,
-                                          afe, args.dry_run)
-                    if job_id:
-                        # Explicitly print as this is what a caller looks for.
-                        print get_job_url(afe.server, job_id)
+                    try:
+                        job_id = run_test_afe(test, env, control_code,
+                                              afe, args.dry_run)
+                        if job_id:
+                            # Explicitly print as this is what a caller looks
+                            # for.
+                            print get_job_url(afe.server, job_id)
+                    except Exception:
+                        # Note we don't print the exception here as the afe
+                        # will print it out already.
+                        logging.error('Failed to schedule test %s. '
+                                      'Please check exception and re-run this '
+                                      'board manually if needed.', test)
+
 
     except FullReleaseTestError, e:
         logging.fatal(str(e))
