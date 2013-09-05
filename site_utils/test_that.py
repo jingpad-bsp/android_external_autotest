@@ -496,6 +496,8 @@ def main(argv):
             debug_log_name='test_that')
     logging.info('Began logging to %s', results_directory)
 
+    logging.debug('test_that command line was: %s', argv)
+
     # Hard coded to True temporarily. This will eventually be parsed to false
     # if we are doing a run in the test lab.
     local_run = True
