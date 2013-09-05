@@ -32,20 +32,26 @@ class WiFiClient(object):
 
 
     @property
+    def board(self):
+        """@return string self reported board of this device."""
+        if not self._board:
+            lsb_release = self.host.run('cat /etc/lsb-release').stdout
+            BOARD_PREFIX = 'CHROMEOS_RELEASE_BOARD='
+            for line in lsb_release.splitlines():
+                if line.startswith(BOARD_PREFIX):
+                    self._board = line[len(BOARD_PREFIX):]
+                    break
+            else:
+                raise error.TestError('Unable to detect board of test host.')
+
+        return self._board
+
+
+    @property
     def machine_id(self):
         """@return string unique to a particular board/cpu configuration."""
         if self._machine_id:
             return self._machine_id
-
-        lsb_release = self.host.run('cat /etc/lsb-release').stdout.splitlines()
-        BOARD_PREFIX = 'CHROMEOS_RELEASE_BOARD='
-        for line in lsb_release:
-            if line.startswith(BOARD_PREFIX):
-                board = line[len(BOARD_PREFIX):]
-                break
-
-        else:
-            raise error.TestError('Unable to detect board of test host.')
 
         kernel_arch = self.host.run('uname -m').stdout.strip()
         cpu_info = self.host.run('cat /proc/cpuinfo').stdout.splitlines()
@@ -62,7 +68,7 @@ class WiFiClient(object):
                 ghz_value = '_' + match.group(1)
                 break
 
-        return '%s_%s%s%s' % (board, kernel_arch, ghz_value, cpu_count_str)
+        return '%s_%s%s%s' % (self.board, kernel_arch, ghz_value, cpu_count_str)
 
 
     @property
@@ -193,6 +199,7 @@ class WiFiClient(object):
 
         """
         super(WiFiClient, self).__init__()
+        self._board = None
         self._machine_id = None
         self._ping_thread = None
         self._host = client_host
