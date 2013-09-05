@@ -5,12 +5,12 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_ChromeCellularNetworkProperties"
 PURPOSE = "Verify that Chrome sees the correct cellular service properties."
-SUITE = "network_ui"
+SUITE = "network_ui, smoke, bvt"
+EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 DOC = """
 
 This test configures the cellular pseudomodem in various ways and makes sure

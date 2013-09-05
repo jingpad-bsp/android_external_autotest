@@ -10,12 +10,12 @@ This test will fail if SIM locking/unlocking/changing operations are not
 handled as expected by shill / modemmanager.
 """
 
-SUITE = "network3g_pseudomodem"
+SUITE = "network3g_pseudomodem, smoke, bvt"
+EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = True
 
 DOC = """
 Test the SIM locking functionality of shill.
