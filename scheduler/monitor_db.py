@@ -1647,6 +1647,15 @@ class SelfThrottledTask(AgentTask):
     Special AgentTask subclass that maintains its own global process limit.
     """
     _num_running_processes = 0
+    # Last known limit of max processes, used to check whether
+    # max processes config has been changed.
+    _last_known_max_processes = 0
+    # Whether an email should be sent to notifiy process limit being hit.
+    _notification_on = True
+    # Once process limit is hit, an email will be sent.
+    # To prevent spams, do not send another email until
+    # it drops to lower than the following level.
+    REVIVE_NOTIFICATION_THRESHOLD = 0.80
 
 
     @classmethod
@@ -1687,8 +1696,41 @@ class SelfThrottledTask(AgentTask):
         self._try_starting_process()
 
 
+    @classmethod
+    def _notify_process_limit_hit(cls):
+        """Send an email to notify that process limit is hit."""
+        if cls._notification_on:
+            subject = '%s: hitting max process limit.' % cls.__name__
+            message = ('Running processes/Max processes: %d/%d'
+                       % (cls._num_running_processes, cls._max_processes()))
+            email_manager.manager.enqueue_notify_email(
+                    subject, message)
+            cls._notification_on = False
+
+
+    @classmethod
+    def _reset_notification_switch_if_necessary(cls):
+        """Reset _notification_on if necessary.
+
+        Set _notification_on to True on the following cases:
+        1) If the limit of max processes configuration changes;
+        2) If _notification_on is False and the number of running processes
+           drops to lower than a level defined in REVIVE_NOTIFICATION_THRESHOLD.
+
+        """
+        if cls._last_known_max_processes != cls._max_processes():
+            cls._notification_on = True
+            cls._last_known_max_processes = cls._max_processes()
+            return
+        percentage = float(cls._num_running_processes) / cls._max_processes()
+        if (not cls._notification_on and
+            percentage < cls.REVIVE_NOTIFICATION_THRESHOLD):
+            cls._notification_on = True
+
     def _try_starting_process(self):
+        self._reset_notification_switch_if_necessary()
         if not self._can_run_new_process():
+            self._notify_process_limit_hit()
             return
 
         # actually run the command
