@@ -614,7 +614,9 @@ class AbstractSSHHost(remote.RemoteHost):
         # If a previously started master SSH connection is not running
         # anymore, it needs to be cleaned up and then restarted.
         if self.master_ssh_job is not None:
-            if self.master_ssh_job.sp.poll() is not None:
+            socket_path = os.path.join(self.master_ssh_tempdir.name, 'socket')
+            if (not os.path.exists(socket_path) or
+                self.master_ssh_job.sp.poll() is not None):
                 logging.info("Master ssh connection to %s is down.",
                              self.hostname)
                 self._cleanup_master_ssh()
