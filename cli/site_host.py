@@ -15,6 +15,8 @@ from autotest_lib.client.common_lib import error
 hosts.factory.ssh_user = 'root'
 hosts.factory.ssh_pass = ''
 hosts.factory.ssh_port = 22
+hosts.factory.ssh_verbosity_flag = ''
+hosts.factory.ssh_options = ''
 
 
 class site_host(host.host):
