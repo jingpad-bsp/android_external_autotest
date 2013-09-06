@@ -39,7 +39,7 @@ class power_AudioDetector(cros_ui_test.UITest):
         self.login()
 
         # Set a low audio volume to avoid annoying people during tests.
-        audio_helper.AudioHelper(None).set_volume_levels(10, 100)
+        audio_helper.set_volume_levels(10, 100)
 
         # Start playing audio file.
         self._enable_audio_playback = True
@@ -82,7 +82,6 @@ class power_AudioDetector(cros_ui_test.UITest):
         """
         # TODO(crosbug.com/33988): Allow for pauses in audio playback to
         # simulate delays in loading the next song.
-        audio = audio_helper.AudioHelper(None)
         while self._enable_audio_playback:
-            audio.play_sound(duration_seconds=loop_time)
+            audio_helper.play_sound(duration_seconds=loop_time)
         logging.info('Done playing audio.')

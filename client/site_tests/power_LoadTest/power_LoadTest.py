@@ -130,8 +130,6 @@ class power_LoadTest(cros_ui_test.UITest):
                     raise error.TestError('Ethernet interface is active. ' +
                                           'Please remove Ethernet cable')
 
-        self._audio_helper = audio_helper.AudioHelper(None)
-
         # record the max backlight level
         self._backlight = power_utils.Backlight()
         self._tmp_keyvals['level_backlight_max'] = \
@@ -218,8 +216,8 @@ class power_LoadTest(cros_ui_test.UITest):
             self._set_lightbar_level()
             if kblight:
                 kblight.set(self._kblight_percent)
-            self._audio_helper.set_volume_levels(self._volume_level,
-                                                 self._mic_gain)
+            audio_helper.set_volume_levels(self._volume_level,
+                                           self._mic_gain)
 
             low_battery = self._do_wait(self._verbose, self._loop_time,
                                         latch)

@@ -75,7 +75,7 @@ class desktopui_AudioFeedback(test.test):
 
     def run_once(self):
         """Entry point of this test."""
-        if not self._ah.check_loopback_dongle():
+        if not audio_helper.check_loopback_dongle():
             raise error.TestError('Audio loopback dongle is in bad state.')
 
         # Record a sample of "silence" to use as a noise profile.
@@ -94,7 +94,7 @@ class desktopui_AudioFeedback(test.test):
 
             # Set volume and capture gain after Chrome is up, or those value
             # will be overriden by Chrome.
-            self._ah.set_volume_levels(self._volume_level, self._capture_gain)
+            audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
 
             # Play the same video to test all channels.
             self.play_video(lambda: self._ah.loopback_test_channels(

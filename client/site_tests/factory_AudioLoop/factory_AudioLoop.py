@@ -70,9 +70,9 @@ class factory_AudioLoop(test.test):
                         if self.in_blacklist_combinations(channel, idev):
                             continue
 
-                        self._ah.set_mixer_controls(settings)
+                        audio_helper.set_mixer_controls(settings)
                         if self._mute_device_mixer_settings:
-                            self._ah.set_mixer_controls(
+                            audio_helper.set_mixer_controls(
                                     self._mute_device_mixer_settings)
                         self.run_audiofuntest(idev, odev,
                                               self._audiofuntest_duration)
@@ -119,7 +119,7 @@ class factory_AudioLoop(test.test):
                      break
 
         # Unmute channels
-        self._ah.set_mixer_controls(self._unmute_mixer_settings)
+        audio_helper.set_mixer_controls(self._unmute_mixer_settings)
 
         # Show instant message and wait for a while
         if self._test_result:
@@ -149,8 +149,9 @@ class factory_AudioLoop(test.test):
 
                     # Playback sine tone and check the recorded audio frequency.
                     self._ah.loopback_test_channels(noise_file.name,
-                            lambda ch: self._ah.play_sine(ch, output_device, self._freq,
-                                                          self._duration),
+                            lambda ch: audio_helper.play_sine(ch, output_device,
+                                                              self._freq,
+                                                              self._duration),
                             self.check_recorded_audio)
 
         if self._test_result:
@@ -196,10 +197,8 @@ class factory_AudioLoop(test.test):
         # Used in run_audiofuntest() and audio_loop() for test result.
         self._test_result = False
 
-        # Create a default audio helper to do the setup jobs.
-        self._ah = audio_helper.AudioHelper(self)
         if mixer_controls is not None:
-            self._ah.set_mixer_controls(mixer_controls)
+            audio_helper.set_mixer_controls(mixer_controls)
 
         # Setup HTML UI, and event handler
         self.ui = UI()

@@ -106,7 +106,7 @@ class audiovideo_CRASFormatConversion(test.test):
         record_config = _DEFAULT_RECORD_CONFIG.copy()
         record_config['file'] = '/tmp/cras_record.wav'
 
-        self._ah.set_volume_levels(_TEST_VOLUME_LEVEL, _TEST_CAPTURE_GAIN)
+        audio_helper.set_volume_levels(_TEST_VOLUME_LEVEL, _TEST_CAPTURE_GAIN)
 
         # Record silence to use as the noise profile.
         noise_file = tempfile.NamedTemporaryFile(mode='w+t');

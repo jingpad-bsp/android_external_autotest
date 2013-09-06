@@ -221,7 +221,7 @@ class factory_AudioQuality(test.test):
             self._loop_process.kill()
             self._loop_process = None
             logging.info("Stopped audio loop process")
-        self._ah.set_mixer_controls(self._init_mixer_settings)
+        audio_helper.set_mixer_controls(self._init_mixer_settings)
 
     def send_response(self, response, args):
         """Sends response to DUT for each command.
@@ -448,7 +448,7 @@ class factory_AudioQuality(test.test):
         self.handle_loop()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_DMIC_ON)
-        self._ah.set_mixer_controls(self._dmic_switch_mixer_settings)
+        audio_helper.set_mixer_controls(self._dmic_switch_mixer_settings)
         self.send_response(None, args)
 
     def handle_loop_speaker_unmute(self, *args):
@@ -459,15 +459,15 @@ class factory_AudioQuality(test.test):
             self.handle_loop()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_SPEAKER_MUTE_OFF)
-        self._ah.set_mixer_controls(self._unmute_speaker_mixer_settings)
+        audio_helper.set_mixer_controls(self._unmute_speaker_mixer_settings)
         self.send_response(None, args)
 
     def handle_xtalk_left(self, *args):
         """Cross talk left."""
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_LEFT)
-        self._ah.set_mixer_controls(self._mute_left_mixer_settings)
-        cmdargs = self._ah.get_play_sine_args(1, self._output_dev)
+        audio_helper.set_mixer_controls(self._mute_left_mixer_settings)
+        cmdargs = audio_helper.get_play_sine_args(1, self._output_dev)
         self._tone_job = utils.BgJob(' '.join(cmdargs))
         self.send_response(None, args)
 
@@ -475,8 +475,8 @@ class factory_AudioQuality(test.test):
         """Cross talk right."""
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_RIGHT)
-        self._ah.set_mixer_controls(self._mute_right_mixer_settings)
-        cmdargs = self._ah.get_play_sine_args(0, self._output_dev)
+        audio_helper.set_mixer_controls(self._mute_right_mixer_settings)
+        cmdargs = audio_helper.get_play_sine_args(0, self._output_dev)
         self._tone_job = utils.BgJob(' '.join(cmdargs))
         self.send_response(None, args)
 
@@ -692,7 +692,6 @@ class factory_AudioQuality(test.test):
             parameters=_FIXTURE_PARAMETERS, use_shopfloor=True):
         logging.info('%s run_once', self.__class__)
 
-        self._ah = audio_helper.AudioHelper(self)
         self._input_dev = input_dev
         self._output_dev = output_dev
         self._eth = None

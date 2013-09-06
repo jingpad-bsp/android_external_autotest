@@ -480,7 +480,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
         '''
         factory.log('Start audioloop')
         errors = []
-        self._ah.set_mixer_controls(
+        audio_helper.set_mixer_controls(
                 [{'name': '"Digital-Mic Capture Switch"',
                   'value': 'on'},
                  {'name': '"Digital-Mic Capture Volume"',

@@ -33,20 +33,18 @@ class audiovideo_LoopbackLatency(test.test):
         self._volume_level = default_volume_level
         self._capture_gain = default_capture_gain
 
-        self._ah = audio_helper.AudioHelper(self)
-
         super(audiovideo_LoopbackLatency, self).initialize()
 
     def run_once(self):
         """Entry point of this test"""
-        self._ah.set_volume_levels(self._volume_level, self._capture_gain)
+        audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
         success = False
 
         # Run loopback latency check once, which takes at most 1 sec to
         # complete and parse the latency values measured in loopback path
         # and reported by system.  Assert the difference is within
         # acceptable range.
-        result = self._ah.loopback_latency_check(n=_NOISE_THRESHOLD)
+        result = audio_helper.loopback_latency_check(n=_NOISE_THRESHOLD)
         if result:
             diff = abs(result[0] - result[1])
             logging.info('Tested latency with threshold %d.\nMeasured %d,'

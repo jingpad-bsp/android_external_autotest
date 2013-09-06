@@ -47,8 +47,8 @@ class audiovideo_LineOutToMicInLoopback(test.test):
 
     def run_once(self):
         """Entry point of this test."""
-        self._ah.set_volume_levels(self._volume_level, self._capture_gain)
-        if not self._ah.check_loopback_dongle():
+        audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
+        if not audio_helper.check_loopback_dongle():
             raise error.TestError('Audio loopback dongle is in bad state.')
 
         self.loopback_test_hw()
