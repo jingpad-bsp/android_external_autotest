@@ -985,7 +985,7 @@ class HdctoolsRepo(_ExternalGitRepo):
 
     module_name = 'servo'
     temp_hdctools_dir = tempfile.mktemp(suffix='hdctools')
-    _GIT_URL = ('https://git.chromium.org/git/'
+    _GIT_URL = ('https://chromium.googlesource.com/'
                 'chromiumos/third_party/hdctools')
 
     def fetch(self, unused_dest_dir):
@@ -1030,8 +1030,7 @@ class HdctoolsRepo(_ExternalGitRepo):
 class ChromiteRepo(_ExternalGitRepo):
     """Clones or updates the chromite repo."""
 
-    _GIT_URL = ('https://git.chromium.org/git/'
-                'chromiumos/chromite')
+    _GIT_URL = ('https://chromium.googlesource.com/chromiumos/chromite')
 
     def build_and_install(self, install_dir):
         """
@@ -1056,7 +1055,7 @@ class ChromiteRepo(_ExternalGitRepo):
 class DevServerRepo(_ExternalGitRepo):
     """Clones or updates the chromite repo."""
 
-    _GIT_URL = ('https://git.chromium.org/git/'
+    _GIT_URL = ('https://chromium.googlesource.com/'
                 'chromiumos/platform/dev-util')
 
     def build_and_install(self, install_dir):
