@@ -43,6 +43,10 @@ class Attenuator(object):
     # We only use 2 ports out of the 4 available.
     PORTS = [0, 1]
 
+    # The scripts that run on the attenuator limit the attenuation to this
+    # plus the fixed attenuation for the specific port.
+    MAX_VARIABLE_ATTENUATION = 95
+
 
     # TODO(tgao): refactor & merge this w/ site_wifitest.install_script()
     def _copy_script(self, script_name, *support_scripts):
@@ -53,6 +57,7 @@ class Attenuator(object):
         @return a string, script_name if it's copied successfully.
 
         @raises ScriptNotFound if any source script is not found.
+
         """
         if script_name in self._installed_scripts:
             return self._installed_scripts[script_name]
@@ -88,6 +93,7 @@ class Attenuator(object):
 
         @param port: an integer, Beaglebone I/O port number (0 or 1).
         @param cleanup: a boolean, True == unexport GPIO pins/reset port.
+
         """
         # TODO(tgao): bundle these scripts as part of a test image?
         flag = '-c' if cleanup else ''
@@ -105,6 +111,7 @@ class Attenuator(object):
         """Initialize.
 
         @param host: an Autotest host object, representing the attenuator.
+
         """
         self._host = host
         self._installed_scripts = dict()
@@ -130,33 +137,54 @@ class Attenuator(object):
         """Reads current attenuation level in dB.
 
         @param port: an integer, Beaglebone I/O port number (0 or 1).
+
         """
         self._host.run('python "%s" -p %d 2>&1' % (self._config_script, port))
 
 
-    def _set_variable_attenuation(self, variable_db):
+    def set_variable_attenuation_on_port(self, port, variable_db):
+        """Sets desired variable attenuation in dB.
+
+        @param port: port to attenuate.
+        @param variable_db: an integer, variable attenuation in dB.
+
+        """
+        fixed_db = self.fixed_loss[port]
+        total_db = fixed_db + variable_db
+        self._host.run('python "%s" -p %d -f %d -t %d 2>&1' %
+                       (self._config_script, port, fixed_db, total_db))
+
+
+    def set_variable_attenuation(self, variable_db):
         """Sets desired variable attenuation in dB.
 
         @param variable_db: an integer, variable attenuation in dB.
-        @returns an integer, total attenuation in dB.
+
         """
         for port in self.PORTS:
-            fixed_db = self.fixed_loss[port]
-            total_db = fixed_db + variable_db
-            self._host.run('python "%s" -p %d -f %d -t %d 2>&1' %
-                           (self._config_script, port, fixed_db, total_db))
-        return total_db
+            self.set_variable_attenuation_on_port(port, variable_db)
+
+
+    def set_total_attenuation_on_port(self, port, total_db):
+        """Sets desired total attenuation in dB.
+
+        @param port: port to attenuate.
+        @param total_db: an integer, total attenuation in dB.
+
+        """
+        self._host.run('python "%s" -p %d -f %d -t %d 2>&1' %
+                       (self._config_script, port, self.fixed_loss[port],
+                        total_db))
 
 
     def set_total_attenuation(self, total_db):
         """Sets desired total attenuation in dB.
 
         @param total_db: an integer, total attenuation in dB.
+
         """
         for port in self.PORTS:
-            self._host.run('python "%s" -p %d -f %d -t %d 2>&1' %
-                           (self._config_script, port, self.fixed_loss[port],
-                            total_db))
+            self.set_total_attenuation_on_port(port, total_db)
 
 
     @staticmethod
@@ -168,6 +196,7 @@ class Attenuator(object):
 
         @param freq an integer, frequency in MHz.
         @returns an integer, approximate frequency from FREQ_LOSS_MAP.
+
         """
         old_offset = None
         approx_freq = None
@@ -203,6 +232,6 @@ class Attenuator(object):
         logging.info('Looking up fixed path loss on freq %d', freq_used)
 
         self.fixed_loss = self.FREQ_LOSS_MAP[freq_used][hostname]
-        self._set_variable_attenuation(0)
+        self.set_variable_attenuation(0)
 
 

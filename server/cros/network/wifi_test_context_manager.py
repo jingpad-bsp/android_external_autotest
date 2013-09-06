@@ -295,11 +295,12 @@ class WiFiTestContextManager(object):
         self.server.ping(ping_config)
 
 
-    def wait_for_connection(self, ssid, freq=None):
+    def wait_for_connection(self, ssid, freq=None, ap_num=None):
         """Verifies a connection to network ssid on frequency freq.
 
         @param ssid string ssid of the network to check.
         @param freq int frequency of network to check.
+        @param ap_num int AP to which to connect
 
         """
         success, state, elapsed_seconds = self.client.wait_for_service_states(
@@ -309,7 +310,7 @@ class WiFiTestContextManager(object):
                     'Failed to connect to "%s" in %f seconds (state=%s)' %
                     (ssid, elapsed_seconds, state))
 
-        self.assert_ping_from_dut()
+        self.assert_ping_from_dut(ap_num=ap_num)
         if freq:
             self.client.check_iw_link_value(
                     wifi_client.WiFiClient.IW_LINK_KEY_FREQUENCY, freq)

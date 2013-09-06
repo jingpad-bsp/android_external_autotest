@@ -70,7 +70,16 @@ class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):
         self._attenuator.cleanup()
 
 
-    def configure(self, ap_config):
-        """Configures AP and variable attenuators for a WiFi RvR test."""
-        super(RvRTestContextManager, self).configure(ap_config)
+    def configure(self, ap_config, multi_interface=None, is_ibss=None):
+        """Configures AP and variable attenuators for a WiFi RvR test.
+
+        @param ap_config: parameters for access-point
+        @param multi_interface: bool indicates whether AP's second radio
+               is being configured by this command
+        @is_ibss: bool indicates whether this is an IBSS endpoint
+
+        """
+        super(RvRTestContextManager, self).configure(
+                configuration_parameters=ap_config,
+                multi_interface=multi_interface, is_ibss=is_ibss)
         self._attenuator.config(self.client.host.hostname, ap_config.frequency)

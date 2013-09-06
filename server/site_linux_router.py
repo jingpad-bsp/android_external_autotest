@@ -357,14 +357,17 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['obss_interval'] = configuration.obss_interval
         conf.update(configuration.get_security_hostapd_conf())
 
-        self.start_hostapd(conf, {})
+        # TODO(wiley): Remove this multi_interface flag when the bridge router
+        # class is gone.
+        params = {'multi_interface': 1} if multi_interface else {}
+        self.start_hostapd(conf, params)
         # Configure transmit power
         tx_power_params = {'interface': conf['interface']}
         # TODO(wiley) support for setting transmit power
         self.set_txpower(tx_power_params)
         if self.force_local_server:
             self.start_local_server(conf['interface'])
-        self._post_start_hook({})
+        self._post_start_hook(params)
         logging.info('AP configured.')
         self.hostapd['configured'] = True
 
