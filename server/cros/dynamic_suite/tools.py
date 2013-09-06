@@ -217,5 +217,5 @@ def get_test_failure_bug_info(keyvals, testname):
     bug_id = keyvals.get(keyval_base + _BUG_ID_KEYVAL)
     if bug_id is not None:
         bug_count = keyvals.get(keyval_base + _BUG_COUNT_KEYVAL)
-        return bug_id, bug_count
+        return int(bug_id), int(bug_count)
     return bug_id
