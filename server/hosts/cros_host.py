@@ -1432,6 +1432,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def check_for_rpm_support(hostname):
         """For a given hostname, return whether or not it is powered by an RPM.
 
+        @param hostname: hostname to check for rpm support.
+
         @return None if this host does not follows the defined naming format
                 for RPM powered DUT's in the lab. If it does follow the format,
                 it returns a regular expression MatchObject instead.
@@ -1477,7 +1479,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
             afe.set_host_attribute(self._RPM_OUTLET_CHANGED, True,
                                    hostname=self.hostname)
-            rpm_client.set_power(self.hostname, state.upper())
+            rpm_client.set_power(self.hostname, state.upper(), timeout_mins=5)
 
 
     def power_off(self, power_method=POWER_CONTROL_RPM):

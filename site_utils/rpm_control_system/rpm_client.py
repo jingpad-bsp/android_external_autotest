@@ -26,7 +26,7 @@ class RemotePowerException(Exception):
     pass
 
 
-def set_power(hostname, new_state):
+def set_power(hostname, new_state, timeout_mins=RPM_CALL_TIMEOUT_MINS):
     """Sends the power state change request to the RPM Infrastructure.
 
     @param hostname: host who's power outlet we want to change.
@@ -35,7 +35,7 @@ def set_power(hostname, new_state):
     client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI, verbose=False)
     timeout, result = retry.timeout(client.queue_request,
                                     args=(hostname, new_state),
-                                    timeout_sec=RPM_CALL_TIMEOUT_MINS * 60,
+                                    timeout_sec=timeout_mins * 60,
                                     default_result=False)
     if timeout:
         raise RemotePowerException('Call to RPM Infrastructure timed out.')
