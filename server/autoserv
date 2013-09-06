@@ -105,7 +105,7 @@ def run_autoserv(pid_file_manager, results, parser):
     verify_job_repo_url = parser.options.verify_job_repo_url
     skip_crash_collection = parser.options.skip_crash_collection
     ssh_verbosity = int(parser.options.ssh_verbosity)
-    ssh_options = parser.options.ssh_options or ''
+    ssh_options = parser.options.ssh_options
 
     # can't be both a client and a server side test
     if client and server:
