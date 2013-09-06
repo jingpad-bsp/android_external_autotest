@@ -35,6 +35,10 @@ class TestImageError(BaseException):
     pass
 
 
+class NotSingleItem(Exception):
+    """Raised when we want a single item but got multiple."""
+
+
 def get_default_archive_url(board, build_version):
     """Returns the default archive_url for the given board and build_version .
 
@@ -81,11 +85,13 @@ def gs_ls(pattern, archive_url, single):
         logging.debug('Searching for pattern %s from url %s', pattern,
                       archive_url)
         uri_list = gsutil_util.GetGSNamesWithWait(
-                pattern, archive_url, err_str=__name__, single_item=single,
-                timeout=1)
+                pattern, archive_url, err_str=__name__, timeout=1)
         # Convert to the format our clients expect (full archive path).
         if uri_list:
-            return ['/'.join([archive_url, u]) for u in uri_list]
+            if not single or (single and len(uri_list) == 1):
+                return ['/'.join([archive_url, u]) for u in uri_list]
+            else:
+                raise NotSingleItem()
 
         return []
     except gsutil_util.PatternNotSpecific as e:
@@ -109,9 +115,9 @@ def find_payload_uri(archive_url, delta=False, single=False):
 
     """
     if delta:
-        pattern = '.*_delta_.*'
+        pattern = '*_delta_*'
     else:
-        pattern = '.*_full_.*'
+        pattern = '*_full_*'
 
     payload_uri_list = gs_ls(pattern, archive_url, single)
     if not payload_uri_list:
