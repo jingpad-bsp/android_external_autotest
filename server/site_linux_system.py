@@ -154,6 +154,7 @@ class LinuxSystem(object):
     def close(self):
         """Close global resources held by this system."""
         logging.debug('Cleaning up host object for %s', self.role)
+        self._packet_capturer.stop()
         self.host.close()
         self.host = None
 
