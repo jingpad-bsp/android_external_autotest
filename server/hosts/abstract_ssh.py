@@ -1,4 +1,4 @@
-import os, time, socket, shutil, glob, logging, traceback, tempfile
+import os, time, socket, shutil, glob, logging, subprocess, traceback, tempfile
 from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.server import utils, autotest
 from autotest_lib.server.hosts import remote
@@ -621,6 +621,18 @@ class AbstractSSHHost(remote.RemoteHost):
                     logging.warning('Master ssh connection socket file '
                                     'was missing while its subprocess was '
                                     'still running. Calling it dead.')
+                    master_pid = str(self.master_ssh_job.sp.pid)
+                    try:
+                        ps_output = subprocess.check_output(
+                                ['ps', '-Fww', master_pid])
+                        logging.debug('Master ssh connection ps info: %s, ',
+                                    ps_output)
+                    except subprocess.CalledProcessError as e:
+                        logging.warning('Unexpected error running ps on '
+                                        'master ssh connection with pid %s. '
+                                        'Output was: %s', master_pid, e.output)
+
+
                 logging.info("Master ssh connection to %s is down.",
                              self.hostname)
                 self._cleanup_master_ssh()
