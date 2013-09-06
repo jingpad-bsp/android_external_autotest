@@ -617,6 +617,10 @@ class AbstractSSHHost(remote.RemoteHost):
             socket_path = os.path.join(self.master_ssh_tempdir.name, 'socket')
             if (not os.path.exists(socket_path) or
                 self.master_ssh_job.sp.poll() is not None):
+                if self.master_ssh_job.sp.poll() is None:
+                    logging.warning('Master ssh connection socket file '
+                                    'was missing while its subprocess was '
+                                    'still running. Calling it dead.')
                 logging.info("Master ssh connection to %s is down.",
                              self.hostname)
                 self._cleanup_master_ssh()
