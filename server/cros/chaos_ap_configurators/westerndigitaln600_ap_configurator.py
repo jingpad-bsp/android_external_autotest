@@ -79,9 +79,11 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
             self._login_to_router()
         elif 'ssid' not in xpath_found:
             raise Exception('The page %s did not load' % page_url)
-        switch_xpath = '//input[@id="en_wifi"]/../span[@class="checkbox"]'
+        switch = '//input[@id="en_wifi"]/../span[@class="checkbox"]'
+        if self.current_band == ap_spec.BAND_5GHZ:
+            switch = '//input[@id="en_wifi_Aband"]/../span[@class="checkbox"]'
         for timer in range(30):   # Waiting for the page to reload
-            on_off_switch = self.driver.find_element_by_xpath(switch_xpath)
+            on_off_switch = self.driver.find_element_by_xpath(switch)
             try:
                 if ('checkbox.png' in
                     on_off_switch.value_of_css_property('background-image')):
