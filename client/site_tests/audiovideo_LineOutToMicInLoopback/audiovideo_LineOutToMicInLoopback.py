@@ -40,9 +40,6 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         # Multitone wav file lasts 10 seconds
         self._wav_path = os.path.join(self.srcdir, '10SEC.wav')
 
-        self._ah = audio_helper.AudioHelper(self,
-                num_channels=self._num_channels)
-
         super(audiovideo_LineOutToMicInLoopback, self).initialize()
 
     def run_once(self):
@@ -57,13 +54,12 @@ class audiovideo_LineOutToMicInLoopback(test.test):
     def loopback_test_hw(self):
         """Uses aplay and arecord to test audio on internal card"""
         # TODO(hychao): update device parameter for internal card
-        self._ah._rec_cmd = ('arecord -f dat -d %d -D plughw' %
-                             self._record_duration)
+        rec_cmd = ('arecord -f dat -d %d -D plughw' % self._record_duration)
 
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s', noise_file.name)
-            self._ah.record_sample(noise_file.name)
+            audio_helper.record_sample(noise_file.name, rec_cmd)
 
             def play_wav(channel):
                 """Plays multitone wav using aplay
@@ -74,17 +70,21 @@ class audiovideo_LineOutToMicInLoopback(test.test):
                        (self._record_duration, self._wav_path))
                 utils.system(cmd)
 
-            self._ah.loopback_test_channels(noise_file.name, play_wav)
+            audio_helper.loopback_test_channels(noise_file.name,
+                                                self.resultsdir,
+                                                play_wav,
+                                                num_channels=self._num_channels,
+                                                record_command=rec_cmd)
 
     def loopback_test_cras(self):
         """Uses cras_test_client to test audio on CRAS."""
-        self._ah._rec_cmd = ('cras_test_client --duration_seconds %d '
-                             '--capture_file' % self._record_duration)
+        rec_cmd = ('cras_test_client --duration_seconds %d '
+                   '--capture_file' % self._record_duration)
 
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s', noise_file.name)
-            self._ah.record_sample(noise_file.name)
+            audio_helper.record_sample(noise_file.name, rec_cmd)
 
             def play_wav(channel):
                 """Plays multitone wav using cras_test_client
@@ -96,4 +96,8 @@ class audiovideo_LineOutToMicInLoopback(test.test):
                        (self._record_duration, self._wav_path))
                 utils.system(cmd)
 
-            self._ah.loopback_test_channels(noise_file.name, play_wav)
+            audio_helper.loopback_test_channels(noise_file.name,
+                                                self.resultsdir,
+                                                play_wav,
+                                                num_channels=self._num_channels,
+                                                record_command=rec_cmd)

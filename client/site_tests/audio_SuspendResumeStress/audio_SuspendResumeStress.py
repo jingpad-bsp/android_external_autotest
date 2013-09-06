@@ -36,11 +36,8 @@ class audio_SuspendResumeStress(cros_ui_test.UITest):
         """
         self._volume_level = volume_level
         self._capture_gain = capture_gain
-
-        cmd_rec = 'arecord -d %f -f dat' % record_duration
-        self._ah = audio_helper.AudioHelper(self,
-                record_command=cmd_rec,
-                num_channels=num_channels)
+        self._num_channels = num_channels
+        self._cmd_rec = 'arecord -d %f -f dat' % record_duration
         self._suspender = power_suspend.Suspender(self.resultsdir,
                                                   method=sys_power.do_suspend)
 
@@ -56,25 +53,33 @@ class audio_SuspendResumeStress(cros_ui_test.UITest):
             raise error.TestError('Audio loopback dongle is in bad state.')
 
         # Record a sample of "silence" to use as a noise profile.
-        noise_file_name = self._ah.create_wav_file("noise")
-        self._ah.record_sample(noise_file_name)
+        noise_file_name = audio_helper.create_wav_file(self.resultsdir, "noise")
+        audio_helper.record_sample(noise_file_name, self._cmd_rec)
 
         # Play the same video to test all channels.
         for _ in xrange(_DEFAULT_ITERATIONS):
             logging.info('Start %s audio verification before suspend.' % _)
             self.play_media()
-            self._ah.loopback_test_channels(noise_file_name, None,
-                                            lambda x:self.check_recorded(x, _),
-                                            preserve_test_file=False)
+            audio_helper.loopback_test_channels(noise_file_name,
+                    self.resultsdir,
+                    None,
+                    lambda x:self.check_recorded(x, _),
+                    preserve_test_file=False,
+                    num_channels=self._num_channels,
+                    record_command=self._cmd_rec)
             logging.info('End %s audio verification before suspend.' % _)
             logging.info('Start %s suspend/resume.' % _)
             self._suspender.suspend(_DEFAULT_SUSPEND_DURATION)
             logging.info('End %s suspend/resume.' % _)
             logging.info('Start %s audio verification after suspend.' % _)
             self.play_media()
-            self._ah.loopback_test_channels(noise_file_name, None,
-                                            lambda x:self.check_recorded(x, _),
-                                            preserve_test_file=False)
+            audio_helper.loopback_test_channels(noise_file_name,
+                    self.resultsdir,
+                    None,
+                    lambda x:self.check_recorded(x, _),
+                    preserve_test_file=False,
+                    num_channels=self._num_channels,
+                    record_command=self._cmd_rec)
             logging.info('End %s audio verification after suspend.' % _)
 
     def play_media(self):

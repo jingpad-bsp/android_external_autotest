@@ -371,16 +371,24 @@ def noise_reduce_file(in_file, noise_file, out_file,
             (SOX_PATH, sox_format, in_file, sox_format, out_file))
     utils.system('%s | %s' % (prof_cmd, reduce_cmd))
 
+def record_sample(tmpfile, record_command=_DEFAULT_REC_COMMAND):
+    '''Records a sample from the default input device.
+
+    @param tmpfile: The file to record to.
+    @param record_command: The command to record audio.
+    '''
+    utils.system('%s %s' % (record_command, tmpfile))
+
 
 class RecordSampleThread(threading.Thread):
     '''Wraps the execution of arecord in a thread.'''
-    def __init__(self, audio, recordfile):
+    def __init__(self, recordfile, record_command=_DEFAULT_REC_COMMAND):
         threading.Thread.__init__(self)
-        self._audio = audio
         self._recordfile = recordfile
+        self._record_command = record_command
 
     def run(self):
-        self._audio.record_sample(self._recordfile)
+        record_sample(self._recordfile, self._record_command)
 
 
 class RecordMixThread(threading.Thread):
@@ -388,104 +396,80 @@ class RecordMixThread(threading.Thread):
     Wraps the execution of recording the mixed loopback stream in
     cras_test_client in a thread.
     '''
-    def __init__(self, audio, recordfile):
+    def __init__(self, recordfile, mix_command):
         threading.Thread.__init__(self)
-        self._audio = audio
+        self._mix_command = mix_command
         self._recordfile = recordfile
 
     def run(self):
-        self._audio.record_mix(self._recordfile)
+        utils.system('%s %s' % (self._mix_command, self._recordfile))
 
+def create_wav_file(wav_dir, prefix=""):
+    '''Creates a unique name for wav file.
 
-class AudioHelper(object):
+    The created file name will be preserved in autotest result directory
+    for future analysis.
+
+    @param prefix: specified file name prefix.
     '''
-    A helper class contains audio related utility functions.
+    filename = "%s-%s.wav" % (prefix, time.time())
+    return os.path.join(wav_dir, filename)
+
+def loopback_test_channels(noise_file_name, wav_dir,
+                           loopback_callback=None,
+                           check_recorded_callback=check_audio_rms,
+                           preserve_test_file=True,
+                           num_channels = _DEFAULT_NUM_CHANNELS,
+                           record_command=_DEFAULT_REC_COMMAND,
+                           mix_command=None):
+    '''Tests loopback on all channels.
+
+    @param noise_file_name: Name of the file contains pre-recorded noise.
+    @param loopback_callback: The callback to do the loopback for
+        one channel.
+    @param check_recorded_callback: The callback to check recorded file.
+    @param preserve_test_file: Retain the recorded files for future debugging.
     '''
-    def __init__(self, test,
-                 record_command = _DEFAULT_REC_COMMAND,
-                 num_channels = _DEFAULT_NUM_CHANNELS,
-                 mix_command = None):
-        self._test = test
-        self._rec_cmd = record_command
-        self._num_channels = num_channels
-        self._mix_cmd = mix_command
+    for channel in xrange(num_channels):
+        reduced_file_name = create_wav_file(wav_dir,
+                                            "reduced-%d" % channel)
+        record_file_name = create_wav_file(wav_dir,
+                                           "record-%d" % channel)
+        record_thread = RecordSampleThread(record_file_name,
+                                           record_command)
+        record_thread.start()
 
-    def record_sample(self, tmpfile):
-        '''Records a sample from the default input device.
+        if mix_command:
+            mix_file_name = create_wav_file(wav_dir,
+                                            "mix-%d" % channel)
+            mix_thread = RecordMixThread(mix_file_name, mix_command)
+            mix_thread.start()
 
-        @param tmpfile: The file to record to.
-        '''
-        cmd_rec = self._rec_cmd + ' %s' % tmpfile
-        logging.info('Command %s recording now', cmd_rec)
-        utils.system(cmd_rec)
+        if loopback_callback:
+            loopback_callback(channel)
 
-    def record_mix(self, tmpfile):
-        '''Records a sample from the mixed loopback stream in cras_test_client.
+        if mix_command:
+            mix_thread.join()
+            sox_output_mix = sox_stat_output(mix_file_name, channel)
+            rms_val_mix = get_audio_rms(sox_output_mix)
+            logging.info('Got mixed audio RMS value of %f.', rms_val_mix)
 
-        @param tmpfile: The file to record to.
-        '''
-        cmd_mix = self._mix_cmd + ' %s' % tmpfile
-        logging.info('Command %s recording now', cmd_mix)
-        utils.system(cmd_mix)
+        record_thread.join()
+        sox_output_record = sox_stat_output(record_file_name, channel)
+        rms_val_record = get_audio_rms(sox_output_record)
+        logging.info('Got recorded audio RMS value of %f.', rms_val_record)
 
-    def loopback_test_channels(self, noise_file_name,
-                               loopback_callback=None,
-                               check_recorded_callback=check_audio_rms,
-                               preserve_test_file=True):
-        '''Tests loopback on all channels.
+        noise_reduce_file(record_file_name, noise_file_name,
+                          reduced_file_name)
 
-        @param noise_file_name: Name of the file contains pre-recorded noise.
-        @param loopback_callback: The callback to do the loopback for
-            one channel.
-        @param check_recorded_callback: The callback to check recorded file.
-        @param preserve_test_file: Retain the recorded files for future debugging.
-        '''
-        for channel in xrange(self._num_channels):
-            reduced_file_name = self.create_wav_file("reduced-%d" % channel)
-            record_file_name = self.create_wav_file("record-%d" % channel)
-            record_thread = RecordSampleThread(self, record_file_name)
-            record_thread.start()
+        sox_output_reduced = sox_stat_output(reduced_file_name,
+                                             channel)
 
-            if self._mix_cmd != None:
-                mix_file_name = self.create_wav_file("mix-%d" % channel)
-                mix_thread = RecordMixThread(self, mix_file_name)
-                mix_thread.start()
+        if not preserve_test_file:
+            os.unlink(reduced_file_name)
+            os.unlink(record_file_name)
+            if mix_command:
+                os.unlink(mix_file_name)
 
-            if loopback_callback:
-                loopback_callback(channel)
+        check_recorded_callback(sox_output_reduced)
 
-            if self._mix_cmd != None:
-                mix_thread.join()
-                sox_output_mix = sox_stat_output(mix_file_name, channel)
-                rms_val_mix = get_audio_rms(sox_output_mix)
-                logging.info('Got mixed audio RMS value of %f.', rms_val_mix)
-
-            record_thread.join()
-            sox_output_record = sox_stat_output(record_file_name, channel)
-            rms_val_record = get_audio_rms(sox_output_record)
-            logging.info('Got recorded audio RMS value of %f.', rms_val_record)
-
-            noise_reduce_file(record_file_name, noise_file_name,
-                              reduced_file_name)
-
-            sox_output_reduced = sox_stat_output(reduced_file_name,
-                                                 channel)
-
-            if not preserve_test_file:
-                os.unlink(reduced_file_name)
-                os.unlink(record_file_name)
-                if self._mix_cmd != None:
-                    os.unlink(mix_file_name)
-
-            check_recorded_callback(sox_output_reduced)
-
-    def create_wav_file(self, prefix=""):
-        '''Creates a unique name for wav file.
-
-        The created file name will be preserved in autotest result directory
-        for future analysis.
-
-        @param prefix: specified file name prefix.
-        '''
-        filename = "%s-%s.wav" % (prefix, time.time())
-        return os.path.join(self._test.resultsdir, filename)

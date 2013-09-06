@@ -37,15 +37,11 @@ class desktopui_AudioFeedback(test.test):
         """
         self._volume_level = volume_level
         self._capture_gain = capture_gain
-
-        cmd_rec = 'arecord -d %f -f dat' % record_duration
-        cmd_mix = '/usr/bin/cras_test_client --show_total_rms ' \
-                  '--duration_seconds %f --num_channels 2 ' \
-                  '--rate 48000 --loopback_file' % record_duration
-        self._ah = audio_helper.AudioHelper(self,
-                                            record_command=cmd_rec,
-                                            num_channels=num_channels,
-                                            mix_command=cmd_mix)
+        self._rec_cmd = 'arecord -d %f -f dat' % record_duration
+        self._mix_cmd = '/usr/bin/cras_test_client --show_total_rms ' \
+                        '--duration_seconds %f --num_channels 2 ' \
+                        '--rate 48000 --loopback_file' % record_duration
+        self._num_channels = num_channels
 
         super(desktopui_AudioFeedback, self).initialize()
 
@@ -79,8 +75,8 @@ class desktopui_AudioFeedback(test.test):
             raise error.TestError('Audio loopback dongle is in bad state.')
 
         # Record a sample of "silence" to use as a noise profile.
-        noise_file_name = self._ah.create_wav_file("noise")
-        self._ah.record_sample(noise_file_name)
+        noise_file_name = audio_helper.create_wav_file(self.resultsdir, "noise")
+        audio_helper.record_sample(noise_file_name, self._rec_cmd)
 
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
@@ -97,5 +93,10 @@ class desktopui_AudioFeedback(test.test):
             audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
 
             # Play the same video to test all channels.
-            self.play_video(lambda: self._ah.loopback_test_channels(
-                    noise_file_name), cr.browser.tabs.New())
+            self.play_video(lambda: audio_helper.loopback_test_channels(
+                                            noise_file_name,
+                                            self.resultsdir,
+                                            num_channels=self._num_channels,
+                                            record_command=self._rec_cmd,
+                                            mix_command=self._mix_cmd),
+                            cr.browser.tabs.New())

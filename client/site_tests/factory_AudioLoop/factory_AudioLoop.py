@@ -135,9 +135,8 @@ class factory_AudioLoop(test.test):
 
     def audio_loopback(self):
         for input_device in self._input_devices:
-            self._ah = audio_helper.AudioHelper(self,
-                    record_command='arecord -D %s -f dat -d %f' %
-                                   (input_device, self._duration))
+            rec_cmd = 'arecord -D %s -f dat -d %f' % (input_device,
+                                                      self._duration)
 
             # TODO(hychao): split deps and I/O devices to different
             # utils so we can setup deps only once.
@@ -145,14 +144,16 @@ class factory_AudioLoop(test.test):
                 # Record a sample of "silence" to use as a noise profile.
                 with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
                     factory.console.info('Noise file: %s' % noise_file.name)
-                    self._ah.record_sample(noise_file.name)
+                    audio_helper.record_sample(noise_file.name, rec_cmd)
 
                     # Playback sine tone and check the recorded audio frequency.
-                    self._ah.loopback_test_channels(noise_file.name,
+                    audio_helper.loopback_test_channels(noise_file.name,
+                            self.resultsdir,
                             lambda ch: audio_helper.play_sine(ch, output_device,
                                                               self._freq,
                                                               self._duration),
-                            self.check_recorded_audio)
+                            self.check_recorded_audio,
+                            record_command=rec_cmd)
 
         if self._test_result:
             self.ui.CallJSFunction('testPassResult')

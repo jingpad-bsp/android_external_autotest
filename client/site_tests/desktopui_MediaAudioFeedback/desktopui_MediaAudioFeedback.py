@@ -55,15 +55,11 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         """
         self._volume_level = volume_level
         self._capture_gain = capture_gain
-
-        cmd_rec = 'arecord -d %f -f dat' % record_duration
-        cmd_mix = '/usr/bin/cras_test_client --show_total_rms ' \
-                  '--duration_seconds %f --num_channels 2 ' \
-                  '--rate 48000 --loopback_file' % record_duration
-        self._ah = audio_helper.AudioHelper(self,
-                                            record_command=cmd_rec,
-                                            num_channels=num_channels,
-                                            mix_command=cmd_mix)
+        self._rec_cmd = 'arecord -d %f -f dat' % record_duration
+        self._mix_cmd = '/usr/bin/cras_test_client --show_total_rms ' \
+                        '--duration_seconds %f --num_channels 2 ' \
+                        '--rate 48000 --loopback_file' % record_duration
+        self._num_channels = num_channels
 
         super(desktopui_MediaAudioFeedback, self).initialize()
         self._test_url = 'http://localhost:8000/play.html'
@@ -78,12 +74,16 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s', noise_file.name)
-            self._ah.record_sample(noise_file.name)
+            audio_helper.record_sample(noise_file.name, self._rec_cmd)
             # Test each media file for all channels.
             for media_file in _MEDIA_FORMATS:
-                self._ah.loopback_test_channels(noise_file.name,
+                audio_helper.loopback_test_channels(noise_file.name,
+                        self.resultsdir,
                         lambda channel: self.play_media(media_file),
-                        self.wait_player_end_then_check_recorded)
+                        self.wait_player_end_then_check_recorded,
+                        num_channels=self._num_channels,
+                        record_command=self._rec_cmd,
+                        mix_command=self._mix_cmd)
 
     def wait_player_end_then_check_recorded(self, sox_output):
         """Wait for player ends playing and then check for recorded result.
