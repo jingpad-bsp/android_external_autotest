@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections, ctypes, fcntl, glob, logging, math, numpy, os, struct
+import collections, ctypes, fcntl, glob, logging, math, numpy, os, re, struct
 import threading, time
 
-import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, enum
+from autotest_lib.client.cros import kernel_trace
 
 BatteryDataReportType = enum.Enum('CHARGE', 'ENERGY')
 
@@ -627,6 +627,91 @@ class CPUPackageStats(AbstractStats):
                 stats[state] += ticks
                 stats['C0_C1'] -= ticks
 
+        return stats
+
+
+class GPUFreqStats(AbstractStats):
+    """GPU Frequency statistics class.
+
+    TODO(tbroch): add stats for other GPUs
+    """
+
+    _MALI_CLK = '/sys/devices/platform/mali.0/clock'
+    _MALI_EVENTS = ['mali_dvfs:mali_dvfs_set_clock']
+    _MALI_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)'
+
+    _gpu_type = None
+
+
+    def __init__(self):
+
+        if os.path.exists(self._MALI_CLK):
+            self._set_gpu_type('mali')
+
+        if self._gpu_type is 'mali':
+            self._trace = kernel_trace.KernelTrace(events=self._MALI_EVENTS)
+            with open(self._MALI_CLK) as fd:
+                for ln in fd.readlines():
+                    result = re.findall(r'Current.* = (\d+)Mhz', ln)
+                    if result:
+                        self._prev_sample = (result[0],
+                                             self._trace.uptime_secs())
+                        logging.debug("Current GPU freq: %s", result[0])
+                        continue
+                    self._freqs = re.findall(r'(\d+)[,M]', ln)
+                    logging.debug("All GPU freqs: %s", self._freqs)
+                    break
+
+        super(GPUFreqStats, self).__init__()
+
+
+    @classmethod
+    def _set_gpu_type(cls, gpu_type):
+        cls._gpu_type = gpu_type
+
+
+    def _read_stats(self):
+        if self._gpu_type:
+            return getattr(self, "_%s_read_stats" % self._gpu_type)()
+        return {}
+
+
+    def _mali_read_stats(self):
+        """Read Mali GPU stats
+
+        Output in trace looks like this:
+
+            kworker/u:24-5220  [000] .... 81060.329232: mali_dvfs_set_clock: frequency=400
+            kworker/u:24-5220  [000] .... 81061.830128: mali_dvfs_set_clock: frequency=350
+
+        Returns:
+            Dict with frequency in mhz as key and float in seconds for time
+              spent at that frequency.
+        """
+        stats = dict((k, 0.0) for k in self._freqs)
+        results = self._trace.read(regexp=self._MALI_TRACE_CLK_RE)
+        for (tstamp_str, freq) in results:
+            tstamp = float(tstamp_str)
+
+            # do not reparse lines in trace buffer
+            if tstamp <= self._prev_sample[1]:
+                continue
+            delta = tstamp - self._prev_sample[1]
+            logging.debug("freq:%s tstamp:%f - %f delta:%f",
+                          self._prev_sample[0],
+                          tstamp, self._prev_sample[1],
+                          delta)
+            stats[self._prev_sample[0]] += delta
+            self._prev_sample = (freq, tstamp)
+
+        # Do last record
+        delta = self._trace.uptime_secs() - self._prev_sample[1]
+        logging.debug("freq:%s tstamp:uptime - %f delta:%f",
+                      self._prev_sample[0],
+                      self._prev_sample[1], delta)
+        stats[self._prev_sample[0]] += delta
+
+        logging.debug("mali gpu freq percents:%s", stats)
         return stats
 
 

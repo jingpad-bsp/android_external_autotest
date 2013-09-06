@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
+import logging, time
 from autotest_lib.client.cros import cros_ui_test
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
@@ -29,6 +29,7 @@ class power_Idle(cros_ui_test.UITest):
 
     def run_once(self, idle_time=120, sleep=10):
 
+        self._idle_time = idle_time
         self._services = service_stopper.ServiceStopper(
             service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._services.stop_services()
@@ -42,6 +43,7 @@ class power_Idle(cros_ui_test.UITest):
         # initialize various interesting power related stats
         self._usb_stats = power_status.USBSuspendStats()
         self._cpufreq_stats = power_status.CPUFreqStats()
+        self._gpufreq_stats = power_status.GPUFreqStats()
         self._cpuidle_stats = power_status.CPUIdleStats()
 
         measurements = []
@@ -67,6 +69,7 @@ class power_Idle(cros_ui_test.UITest):
         # refresh power related statistics
         usb_stats = self._usb_stats.refresh()
         cpufreq_stats = self._cpufreq_stats.refresh()
+        gpufreq_stats = self._gpufreq_stats.refresh(incremental=False)
         cpuidle_stats = self._cpuidle_stats.refresh()
 
         # record percent time USB devices were not in suspended state
@@ -79,6 +82,15 @@ class power_Idle(cros_ui_test.UITest):
         # record percent time spent at each CPU frequency
         for freq in cpufreq_stats:
             keyvals['percent_cpufreq_%s_time' % freq] = cpufreq_stats[freq]
+
+        # make sure gpu secs is w/in 10%
+        gpu_stats_secs = sum(self._gpufreq_stats._stats.itervalues())
+        if gpu_stats_secs < (self._idle_time * 0.9) or \
+                gpu_stats_secs > (self._idle_time * 1.1):
+            logging.warn('GPU stats dont look right.  Not publishing')
+        else:
+            for freq in gpufreq_stats:
+                keyvals['percent_gpufreq_%s_time' % freq] = gpufreq_stats[freq]
 
         # record the current and max backlight levels
         self._backlight = power_utils.Backlight()
