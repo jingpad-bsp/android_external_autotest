@@ -160,7 +160,7 @@ class factory_AudioLoop(test.test):
             self.ui.Pass()
 
     def check_recorded_audio(self, sox_output):
-        freq = self._ah.get_rough_freq(sox_output)
+        freq = audio_helper.get_rough_freq(sox_output)
         if abs(freq - self._freq) > _DEFAULT_FREQ_THRESHOLD_HZ:
             self._test_result = False
             self.ui.Fail('Test Fail at frequency %d' % freq)

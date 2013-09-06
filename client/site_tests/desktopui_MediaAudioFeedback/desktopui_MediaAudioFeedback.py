@@ -95,7 +95,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
                     window.domAutomationController.send(player_status.innerHTML);
                 """), expect_retval='Ended'):
             raise error.TestError('Player never end until timeout.');
-        self._ah.check_recorded(sox_output)
+        audio_helper.check_audio_rms(sox_output)
 
     def play_media(self, media_file):
         """Plays a media file in Chromium.

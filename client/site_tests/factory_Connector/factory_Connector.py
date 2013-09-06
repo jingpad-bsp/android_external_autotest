@@ -495,7 +495,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
             utils.system(cmd)
 
         def check_loop_output(sox_output):
-            freq = self._ah.get_rough_freq(sox_output)
+            freq = audio_helper.get_rough_freq(sox_output)
             factory.log('Got freq %d' % freq)
             if abs(freq - test_freq) > tolerance:
                 errors.append('Frequency not match, expect %d but got %d' %

@@ -92,7 +92,7 @@ class audio_SuspendResumeStress(cros_ui_test.UITest):
         @raises error.TestError if RMS amplitude can't be parsed.
                 the threshold.
         """
-        rms_val = self._ah.get_audio_rms(sox_output)
+        rms_val = audio_helper.get_audio_rms(sox_output)
 
         # In case we don't get a valid RMS value.
         if rms_val is None:

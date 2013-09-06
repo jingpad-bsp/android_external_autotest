@@ -30,7 +30,6 @@ _MIC_JACK_CONTROL_RE = re.compile('numid=(\d+).*Mic\sJack')
 
 _SOX_RMS_AMPLITUDE_RE = re.compile('RMS\s+amplitude:\s+(.+)')
 _SOX_ROUGH_FREQ_RE = re.compile('Rough\s+frequency:\s+(.+)')
-_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
 _AUDIO_NOT_FOUND_RE = r'Audio\snot\sdetected'
 _MEASURED_LATENCY_RE = r'Measured\sLatency:\s(\d+)\suS'
@@ -263,6 +262,115 @@ def play_sine(channel, odev='default', freq=1000, duration=10,
     cmdargs = get_play_sine_args(channel, odev, freq, duration, sample_size)
     utils.system(' '.join(cmdargs))
 
+# Functions to compose customized sox command, execute it and process the
+# output of sox command.
+def get_sox_mixer_cmd(infile, channel,
+                      num_channels=_DEFAULT_NUM_CHANNELS,
+                      sox_format=_DEFAULT_SOX_FORMAT):
+    '''Gets sox mixer command to reduce channel.
+
+    @param infile: Input file name.
+    @param channel: The selected channel to take effect.
+    @param num_channels: The number of total channels to test.
+    @param sox_format: Format to generate sox command.
+    '''
+    # Build up a pan value string for the sox command.
+    if channel == 0:
+        pan_values = '1'
+    else:
+        pan_values = '0'
+    for pan_index in range(1, num_channels):
+        if channel == pan_index:
+            pan_values = '%s%s' % (pan_values, ',1')
+        else:
+            pan_values = '%s%s' % (pan_values, ',0')
+
+    return '%s -c 2 %s %s -c 1 %s - mixer %s' % (SOX_PATH,
+            sox_format, infile, sox_format, pan_values)
+
+def sox_stat_output(infile, channel,
+                    num_channels=_DEFAULT_NUM_CHANNELS,
+                    sox_format=_DEFAULT_SOX_FORMAT):
+    '''Executes sox stat command.
+
+    @param infile: Input file name.
+    @param channel: The selected channel.
+    @param num_channels: The number of total channels to test.
+    @param sox_format: Format to generate sox command.
+
+    @return The output of sox stat command
+    '''
+    sox_mixer_cmd = get_sox_mixer_cmd(infile, channel,
+                                      num_channels, sox_format)
+    stat_cmd = '%s -c 1 %s - -n stat 2>&1' % (SOX_PATH, sox_format)
+    sox_cmd = '%s | %s' % (sox_mixer_cmd, stat_cmd)
+    return utils.system_output(sox_cmd, retain_output=True)
+
+def get_audio_rms(sox_output):
+    '''Gets the audio RMS value from sox stat output
+
+    @param sox_output: Output of sox stat command.
+
+    @return The RMS value parsed from sox stat output.
+    '''
+    for rms_line in sox_output.split('\n'):
+        m = _SOX_RMS_AMPLITUDE_RE.match(rms_line)
+        if m is not None:
+            return float(m.group(1))
+
+def get_rough_freq(sox_output):
+    '''Gets the rough audio frequency from sox stat output
+
+    @param sox_output: Output of sox stat command.
+
+    @return The rough frequency value parsed from sox stat output.
+    '''
+    for rms_line in sox_output.split('\n'):
+        m = _SOX_ROUGH_FREQ_RE.match(rms_line)
+        if m is not None:
+            return int(m.group(1))
+
+def check_audio_rms(sox_output, sox_threshold=_DEFAULT_SOX_RMS_THRESHOLD):
+    """Checks if the calculated RMS value is expected.
+
+    @param sox_output: The output from sox stat command.
+    @param sox_threshold: The threshold to test RMS value against.
+
+    @raises error.TestError if RMS amplitude can't be parsed.
+    @raises error.TestFail if the RMS amplitude of the recording isn't above
+            the threshold.
+    """
+    rms_val = get_audio_rms(sox_output)
+
+    # In case we don't get a valid RMS value.
+    if rms_val is None:
+        raise error.TestError(
+            'Failed to generate an audio RMS value from playback.')
+
+    logging.info('Got audio RMS value of %f. Minimum pass is %f.',
+                 rms_val, sox_threshold)
+    if rms_val < sox_threshold:
+        raise error.TestFail(
+            'Audio RMS value %f too low. Minimum pass is %f.' %
+            (rms_val, sox_threshold))
+
+def noise_reduce_file(in_file, noise_file, out_file,
+                      sox_format=_DEFAULT_SOX_FORMAT):
+    '''Runs the sox command to noise-reduce in_file using
+       the noise profile from noise_file.
+
+    @param in_file: The file to noise reduce.
+    @param noise_file: The file containing the noise profile.
+        This can be created by recording silence.
+    @param out_file: The file contains the noise reduced sound.
+    @param sox_format: The  sox format to generate sox command.
+    '''
+    prof_cmd = '%s -c 2 %s %s -n noiseprof' % (SOX_PATH,
+               sox_format, noise_file)
+    reduce_cmd = ('%s -c 2 %s %s -c 2 %s %s noisered' %
+            (SOX_PATH, sox_format, in_file, sox_format, out_file))
+    utils.system('%s | %s' % (prof_cmd, reduce_cmd))
+
 
 class RecordSampleThread(threading.Thread):
     '''Wraps the execution of arecord in a thread.'''
@@ -294,93 +402,13 @@ class AudioHelper(object):
     A helper class contains audio related utility functions.
     '''
     def __init__(self, test,
-                 sox_format = _DEFAULT_SOX_FORMAT,
-                 sox_threshold = _DEFAULT_SOX_RMS_THRESHOLD,
                  record_command = _DEFAULT_REC_COMMAND,
                  num_channels = _DEFAULT_NUM_CHANNELS,
                  mix_command = None):
         self._test = test
-        self._sox_threshold = sox_threshold
-        self._sox_format = sox_format
         self._rec_cmd = record_command
         self._num_channels = num_channels
         self._mix_cmd = mix_command
-
-    def sox_stat_output(self, infile, channel):
-        '''Executes sox stat command.
-
-        @param infile: Input file name.
-        @param channel: The selected channel.
-
-        @return The output of sox stat command
-        '''
-        sox_mixer_cmd = self.get_sox_mixer_cmd(infile, channel)
-        stat_cmd = '%s -c 1 %s - -n stat 2>&1' % (SOX_PATH,
-                self._sox_format)
-        sox_cmd = '%s | %s' % (sox_mixer_cmd, stat_cmd)
-        return utils.system_output(sox_cmd, retain_output=True)
-
-    def get_audio_rms(self, sox_output):
-        '''Gets the audio RMS value from sox stat output
-
-        @param sox_output: Output of sox stat command.
-
-        @return The RMS value parsed from sox stat output.
-        '''
-        for rms_line in sox_output.split('\n'):
-            m = _SOX_RMS_AMPLITUDE_RE.match(rms_line)
-            if m is not None:
-                return float(m.group(1))
-
-    def get_rough_freq(self, sox_output):
-        '''Gets the rough audio frequency from sox stat output
-
-        @param sox_output: Output of sox stat command.
-
-        @return The rough frequency value parsed from sox stat output.
-        '''
-
-        for rms_line in sox_output.split('\n'):
-            m = _SOX_ROUGH_FREQ_RE.match(rms_line)
-            if m is not None:
-                return int(m.group(1))
-
-    def get_sox_mixer_cmd(self, infile, channel):
-        '''Gets sox mixer command to reduce channel.
-
-        @param infile: Input file name.
-        @param channel: The selected channel to take effect.
-        '''
-        # Build up a pan value string for the sox command.
-        if channel == 0:
-            pan_values = '1'
-        else:
-            pan_values = '0'
-        for pan_index in range(1, self._num_channels):
-            if channel == pan_index:
-                pan_values = '%s%s' % (pan_values, ',1')
-            else:
-                pan_values = '%s%s' % (pan_values, ',0')
-
-        return '%s -c 2 %s %s -c 1 %s - mixer %s' % (SOX_PATH,
-                self._sox_format, infile, self._sox_format, pan_values)
-
-    def noise_reduce_file(self, in_file, noise_file, out_file):
-        '''Runs the sox command to noise-reduce in_file using
-           the noise profile from noise_file.
-
-        @param in_file: The file to noise reduce.
-        @param noise_file: The file containing the noise profile.
-            This can be created by recording silence.
-        @param out_file: The file contains the noise reduced sound.
-
-        @return The name of the file containing the noise-reduced data.
-        '''
-        prof_cmd = '%s -c 2 %s %s -n noiseprof' % (SOX_PATH,
-                _SOX_FORMAT, noise_file)
-        reduce_cmd = ('%s -c 2 %s %s -c 2 %s %s noisered' %
-                (SOX_PATH, _SOX_FORMAT, in_file, _SOX_FORMAT, out_file))
-        utils.system('%s | %s' % (prof_cmd, reduce_cmd))
 
     def record_sample(self, tmpfile):
         '''Records a sample from the default input device.
@@ -402,7 +430,7 @@ class AudioHelper(object):
 
     def loopback_test_channels(self, noise_file_name,
                                loopback_callback=None,
-                               check_recorded_callback=None,
+                               check_recorded_callback=check_audio_rms,
                                preserve_test_file=True):
         '''Tests loopback on all channels.
 
@@ -428,54 +456,28 @@ class AudioHelper(object):
 
             if self._mix_cmd != None:
                 mix_thread.join()
-                sox_output_mix = self.sox_stat_output(mix_file_name, channel)
-                rms_val_mix = self.get_audio_rms(sox_output_mix)
+                sox_output_mix = sox_stat_output(mix_file_name, channel)
+                rms_val_mix = get_audio_rms(sox_output_mix)
                 logging.info('Got mixed audio RMS value of %f.', rms_val_mix)
 
             record_thread.join()
-            sox_output_record = self.sox_stat_output(record_file_name, channel)
-            rms_val_record = self.get_audio_rms(sox_output_record)
+            sox_output_record = sox_stat_output(record_file_name, channel)
+            rms_val_record = get_audio_rms(sox_output_record)
             logging.info('Got recorded audio RMS value of %f.', rms_val_record)
 
-            self.noise_reduce_file(record_file_name, noise_file_name,
-                                   reduced_file_name)
+            noise_reduce_file(record_file_name, noise_file_name,
+                              reduced_file_name)
 
-            sox_output_reduced = self.sox_stat_output(reduced_file_name,
-                                                      channel)
+            sox_output_reduced = sox_stat_output(reduced_file_name,
+                                                 channel)
 
             if not preserve_test_file:
                 os.unlink(reduced_file_name)
                 os.unlink(record_file_name)
                 if self._mix_cmd != None:
                     os.unlink(mix_file_name)
-            # Use injected check recorded callback if any.
-            if check_recorded_callback:
-                check_recorded_callback(sox_output_reduced)
-            else:
-                self.check_recorded(sox_output_reduced)
 
-    def check_recorded(self, sox_output):
-        """Checks if the calculated RMS value is expected.
-
-        @param sox_output: The output from sox stat command.
-
-        @raises error.TestError if RMS amplitude can't be parsed.
-        @raises error.TestFail if the RMS amplitude of the recording isn't above
-                the threshold.
-        """
-        rms_val = self.get_audio_rms(sox_output)
-
-        # In case we don't get a valid RMS value.
-        if rms_val is None:
-            raise error.TestError(
-                'Failed to generate an audio RMS value from playback.')
-
-        logging.info('Got audio RMS value of %f. Minimum pass is %f.',
-                     rms_val, self._sox_threshold)
-        if rms_val < self._sox_threshold:
-            raise error.TestFail(
-                'Audio RMS value %f too low. Minimum pass is %f.' %
-                (rms_val, self._sox_threshold))
+            check_recorded_callback(sox_output_reduced)
 
     def create_wav_file(self, prefix=""):
         '''Creates a unique name for wav file.

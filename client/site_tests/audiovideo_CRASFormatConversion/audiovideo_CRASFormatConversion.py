@@ -42,8 +42,7 @@ class audiovideo_CRASFormatConversion(test.test):
         cmd_rec = ('%s --buffer_frames 441 --duration 2'
                    ' --rate 44100 --capture_file ' % _TEST_CLIENT)
         self._ah = audio_helper.AudioHelper(self,
-                                            record_command = cmd_rec,
-                                            sox_threshold = _MIN_SOX_RMS_VALUE)
+                                            record_command = cmd_rec)
         self._sox_min_rms = _MIN_SOX_RMS_VALUE
         super(audiovideo_CRASFormatConversion, self).initialize()
 
@@ -122,7 +121,10 @@ class audiovideo_CRASFormatConversion(test.test):
             for secondary in _TEST_SAMPLE_RATES:
                 self._ah.loopback_test_channels(
                     noise_file.name,
-                    lambda channel: self.play_two_freqs(playback_config, primary, secondary))
+                    lambda channel: self.play_two_freqs(playback_config,
+                                                        primary, secondary),
+                    lambda out: audio_helper.check_audio_rms(
+                            out, sox_threshold=_MIN_SOX_RMS_VALUE))
 
         # Record at all sample rates
         for rate in _TEST_SAMPLE_RATES:
