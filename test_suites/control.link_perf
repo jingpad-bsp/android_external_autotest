@@ -20,4 +20,5 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='link_perf', job=job, pool=pool, num=num,
     add_experimental=True, file_bugs=file_bugs, priority=priority,
-    devserver_url=devserver_url, version_prefix=provision.CROS_VERSION_PREFIX)
+    devserver_url=devserver_url, timeout=timeout,
+    version_prefix=provision.CROS_VERSION_PREFIX)
