@@ -32,6 +32,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     _BOARD = 'board'
     _BUILD = 'build'
     _PRIORITY = priorities.Priority.DEFAULT
+    _TIMEOUT = 24
 
 
     class rpc_utils(object):
@@ -81,6 +82,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         r.create_job_common(mox.And(mox.StrContains(self._NAME),
                                     mox.StrContains(self._BUILD)),
                             priority=self._PRIORITY,
+                            timeout=self._TIMEOUT,
+                            max_runtime_mins=self._TIMEOUT*60,
                             control_type='Server',
                             control_file=mox.And(mox.StrContains(self._BOARD),
                                                  mox.StrContains(self._BUILD),

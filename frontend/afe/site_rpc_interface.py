@@ -80,7 +80,7 @@ def get_control_file_contents_by_name(build, board, ds, suite_name):
 
 
 def create_suite_job(suite_name, board, build, pool, check_hosts=True,
-                     num=None, file_bugs=False,
+                     num=None, file_bugs=False, timeout=24,
                      priority=priorities.Priority.DEFAULT):
     """
     Create a job to run a test suite on the given device with the given image.
@@ -97,6 +97,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     @param num: Specify the number of machines to schedule across (integer).
                 Leave unspecified or use None to use default sharding factor.
     @param file_bugs: File a bug on each test failure in this suite.
+    @param timeout: The max lifetime of this suite, in hours.
+    @param priority: Integer denoting priority. Higher is more important.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
     @raises NoControlFileList: if we can't list the control files at all.
@@ -140,12 +142,15 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'pool': pool,
                    'num': num,
                    'file_bugs': file_bugs,
+                   'timeout': timeout,
                    'devserver_url': ds.url(),
                    'priority': priority}
     control_file = tools.inject_vars(inject_dict, control_file_in)
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),
                                           priority=priority,
+                                          timeout=timeout,
+                                          max_runtime_mins=timeout*60,
                                           control_type='Server',
                                           control_file=control_file,
                                           hostless=True,
