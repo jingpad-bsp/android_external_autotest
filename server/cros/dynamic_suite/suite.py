@@ -231,7 +231,7 @@ class Suite(object):
 
     def __init__(self, predicates, tag, build, board, cf_getter, afe=None,
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
-                 file_bugs=False, file_experimental_bugs=False,
+                 timeout=24, file_bugs=False, file_experimental_bugs=False,
                  suite_job_id=None, ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT):
         """
@@ -253,6 +253,7 @@ class Suite(object):
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
         @param max_runtime_mins: Maximum suite runtime, in minutes.
+        @param timeout: Maximum job lifetime, in hours.
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
                              Default: None
         @param ignore_deps: True if jobs should ignore the DEPENDENCIES
@@ -286,6 +287,7 @@ class Suite(object):
                                                  self._tag,
                                                  add_experimental=True)
         self._max_runtime_mins = max_runtime_mins
+        self._timeout = timeout
         self._file_bugs = file_bugs
         self._file_experimental_bugs = file_experimental_bugs
         self._suite_job_id = suite_job_id
@@ -344,6 +346,7 @@ class Suite(object):
             keyvals={constants.JOB_BUILD_KEY: self._build,
                      constants.JOB_SUITE_KEY: self._tag},
             max_runtime_mins=self._max_runtime_mins,
+            timeout=self._timeout,
             parent_job_id=self._suite_job_id,
             test_retry=test.retries,
             priority=self._priority)

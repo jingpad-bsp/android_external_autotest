@@ -228,7 +228,7 @@ class SuiteSpec(object):
                  pool=None, num=None, check_hosts=True,
                  add_experimental=True, file_bugs=False,
                  file_experimental_bugs=False, max_runtime_mins=24*60,
-                 firmware_reimage=False,
+                 timeout=24, firmware_reimage=False,
                  suite_dependencies=[], version_prefix=None,
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, **dargs):
@@ -259,6 +259,8 @@ class SuiteSpec(object):
                                        Default: False
         @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
                                  this suite will run.
+        @param timeout: Max lifetime in hours for each of the sub-jobs that
+                        this suite run.
         @param firmware_reimage: True if we should use FW_VERSION_PREFIX as
                                  the version_prefix.
                                  False if we should use CROS_VERSION_PREFIX as
@@ -310,6 +312,7 @@ class SuiteSpec(object):
         self.file_experimental_bugs = file_experimental_bugs
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
+        self.timeout = timeout
         self.firmware_reimage = firmware_reimage
         if isinstance(suite_dependencies, str):
             self.suite_dependencies = [dep.strip(' ') for dep
@@ -439,7 +442,7 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
         spec.name, spec.build, spec.board, spec.devserver,
         afe=afe, tko=tko, pool=spec.pool,
         results_dir=spec.job.resultdir,
-        max_runtime_mins=spec.max_runtime_mins,
+        max_runtime_mins=spec.max_runtime_mins, timeout=spec.timeout,
         file_bugs=spec.file_bugs,
         file_experimental_bugs=spec.file_experimental_bugs,
         suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,
