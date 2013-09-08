@@ -8,7 +8,9 @@
 
 import mox, unittest
 
-import base_event, board_enumerator, build_event, deduping_scheduler, driver
+# driver must be imported first due to circular imports in base_event and task
+import driver  # pylint: disable-msg=W0611
+import base_event, board_enumerator, build_event, deduping_scheduler
 import forgiving_config_parser, manifest_versions, task, timed_event
 
 import common

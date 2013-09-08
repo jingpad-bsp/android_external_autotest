@@ -5,6 +5,7 @@
 
 import logging, re
 import deduping_scheduler
+import driver
 from distutils import version
 from constants import Labels
 
@@ -81,6 +82,14 @@ class Task(object):
         branches = config.getstring(section, 'branch_specs')
         pool = config.getstring(section, 'pool')
         boards = config.getstring(section, 'boards')
+        for klass in driver.Driver.EVENT_CLASSES:
+            if klass.KEYWORD == keyword:
+                priority = klass.PRIORITY
+                timeout = klass.TIMEOUT
+                break
+        else:
+            priority = None
+            timeout = None
         try:
             num = config.getint(section, 'num')
         except ValueError as e:
@@ -93,7 +102,8 @@ class Task(object):
         if branches:
             specs = re.split('\s*,\s*', branches)
             Task.CheckBranchSpecs(specs)
-        return keyword, Task(section, suite, specs, pool, num, boards)
+        return keyword, Task(section, suite, specs, pool, num, boards,
+                             priority, timeout)
 
 
     @staticmethod
@@ -119,7 +129,7 @@ class Task(object):
 
 
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
-                 boards=None):
+                 boards=None, priority=None, timeout=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -157,12 +167,17 @@ class Task(object):
                     Default: None
         @param boards: A comma seperated list of boards to run this task on.
                        Default: Run on all boards.
+        @param priority: The string name of a priority from
+                         client.common_lib.priorities.Priority.
+        @param timeout: The max lifetime of the suite in hours.
         """
         self._name = name
         self._suite = suite
         self._branch_specs = branch_specs
         self._pool = pool
         self._num = num
+        self._priority = priority
+        self._timeout = timeout
 
         self._bare_branches = []
         self._version_equal_constraint = False
@@ -262,6 +277,18 @@ class Task(object):
         return self._boards
 
 
+    @property
+    def priority(self):
+        """The priority of the suite"""
+        return self._priority
+
+
+    @property
+    def timeout(self):
+        """The maximum lifetime of the suite in hours."""
+        return self._timeout
+
+
     def __str__(self):
         return self._str
 
@@ -356,7 +383,9 @@ class Task(object):
         for build in builds:
             try:
                 if not scheduler.ScheduleSuite(self._suite, board, build,
-                                               self._pool, self._num, force):
+                                               self._pool, self._num,
+                                               self._priority, self._timeout,
+                                               force):
                     logging.info('Skipping scheduling %s on %s for %s',
                                  self._suite, build, board)
             except deduping_scheduler.DedupingSchedulerException as e:

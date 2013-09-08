@@ -10,6 +10,8 @@ import logging
 import mox
 import unittest
 
+# driver must be imported first due to circular imports in base_event and task
+import driver  # pylint: disable-msg=W0611
 import base_event
 import deduping_scheduler
 import task

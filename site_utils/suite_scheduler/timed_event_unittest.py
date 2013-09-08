@@ -8,6 +8,8 @@
 
 import datetime, logging, mox, unittest
 
+# driver must be imported first due to circular imports in base_event and task
+import driver  # pylint: disable-msg=W0611
 import base_event, deduping_scheduler, forgiving_config_parser
 import manifest_versions, task, timed_event
 

@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import common
+from autotest_lib.client.common_lib import priorities
+
 import base_event, forgiving_config_parser, manifest_versions, task
 
 class BuildEvent(base_event.BaseEvent):
@@ -78,6 +81,8 @@ class BuildEvent(base_event.BaseEvent):
 
 class NewBuild(BuildEvent):
     KEYWORD = 'new_build'
+    PRIORITY = priorities.Priority.POSTBUILD
+    TIMEOUT = 12  # 12 hours, and builds come out every 6
 
 
     def __init__(self, mv, always_handle):

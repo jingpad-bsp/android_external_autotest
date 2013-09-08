@@ -3,6 +3,10 @@
 # found in the LICENSE file.
 
 import datetime, logging
+
+import common
+from autotest_lib.client.common_lib import priorities
+
 import base_event, forgiving_config_parser, task
 
 
@@ -80,6 +84,8 @@ class Nightly(TimedEvent):
 
     KEYWORD = 'nightly'
     _DEFAULT_HOUR = 21
+    PRIORITY = priorities.Priority.DAILY
+    TIMEOUT = 24  # Kicked off once a day, so they get the full day to run
 
 
     @classmethod
@@ -127,7 +133,7 @@ class Nightly(TimedEvent):
 
         @param to_merge: A TimedEvent instance to merge into this isntance.
         """
-        super(TimedEvent, self).Merge(to_merge)
+        super(Nightly, self).Merge(to_merge)
         if self._deadline.time() != to_merge._deadline.time():
             self._deadline = to_merge._deadline
 
@@ -152,6 +158,8 @@ class Weekly(TimedEvent):
     KEYWORD = 'weekly'
     _DEFAULT_DAY = 5  # Saturday
     _DEFAULT_HOUR = 23
+    PRIORITY = priorities.Priority.WEEKLY
+    TIMEOUT = 7 * 24  # 7 days
 
 
     @classmethod
@@ -206,7 +214,7 @@ class Weekly(TimedEvent):
 
         @param to_merge: A TimedEvent instance to merge into this isntance.
         """
-        super(TimedEvent, self).Merge(to_merge)
+        super(Weekly, self).Merge(to_merge)
         if (self._deadline.time() != to_merge._deadline.time() or
             self._deadline.weekday() != to_merge._deadline.weekday()):
             self._deadline = to_merge._deadline

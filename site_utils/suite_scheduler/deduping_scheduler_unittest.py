@@ -9,9 +9,11 @@
 import mox
 import unittest
 
-import common
+# driver must be imported first due to circular imports in base_event and task
+import driver  # pylint: disable-msg=W0611
 import deduping_scheduler
 
+import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import frontend, site_utils
@@ -33,6 +35,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     _POOL = 'pool'
     _NUM = 2
     _PRIORITY = priorities.Priority.POSTBUILD
+    _TIMEOUT = 24
 
 
     def setUp(self):
@@ -54,13 +57,16 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      check_hosts=False,
                      pool=self._POOL,
                      num=self._NUM,
-                     priority=self._PRIORITY).AndReturn(7)
+                     priority=self._PRIORITY,
+                     timeout=self._TIMEOUT).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
                                                      self._BUILD,
                                                      self._POOL,
-                                                     self._NUM))
+                                                     self._NUM,
+                                                     self._PRIORITY,
+                                                     self._TIMEOUT))
 
 
     def testShouldNotScheduleSuite(self):
@@ -74,7 +80,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                                                       self._BOARD,
                                                       self._BUILD,
                                                       self._POOL,
-                                                      None))
+                                                      None,
+                                                      self._PRIORITY,
+                                                      self._TIMEOUT))
 
 
     def testForceScheduleSuite(self):
@@ -87,13 +95,16 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      check_hosts=False,
                      num=None,
                      pool=self._POOL,
-                     priority=self._PRIORITY).AndReturn(7)
+                     priority=self._PRIORITY,
+                     timeout=self._TIMEOUT).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
                                                      self._BUILD,
                                                      self._POOL,
                                                      None,
+                                                     self._PRIORITY,
+                                                     self._TIMEOUT,
                                                      force=True))
 
 
@@ -110,7 +121,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._BOARD,
                           self._BUILD,
                           self._POOL,
-                          self._NUM)
+                          self._NUM,
+                          self._PRIORITY,
+                          self._TIMEOUT)
 
 
     def testScheduleFail(self):
@@ -126,7 +139,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      check_hosts=False,
                      num=None,
                      pool=None,
-                     priority=self._PRIORITY).AndReturn(None)
+                     priority=self._PRIORITY,
+                     timeout=self._TIMEOUT).AndReturn(None)
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
                           self.scheduler.ScheduleSuite,
@@ -134,7 +148,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._BOARD,
                           self._BUILD,
                           None,
-                          None)
+                          None,
+                          self._PRIORITY,
+                          self._TIMEOUT)
 
 
     def testScheduleExplodes(self):
@@ -150,7 +166,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      check_hosts=False,
                      num=None,
                      pool=None,
-                     priority=self._PRIORITY).AndRaise(Exception())
+                     priority=self._PRIORITY,
+                     timeout=self._TIMEOUT).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
                           self.scheduler.ScheduleSuite,
@@ -158,7 +175,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._BOARD,
                           self._BUILD,
                           None,
-                          None)
+                          None,
+                          self._PRIORITY,
+                          self._TIMEOUT)
 
 
     def testScheduleReportsBug(self):
@@ -180,7 +199,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      check_hosts=False,
                      pool=self._POOL,
                      num=self._NUM,
-                     priority=self._PRIORITY).AndRaise(exception)
+                     priority=self._PRIORITY,
+                     timeout=self._TIMEOUT).AndRaise(exception)
         site_utils.get_sheriffs(
                 lab_only=True).AndReturn(['dummy@chromium.org'])
         # mox does not raise an AttributeError when a nonexistent attribute
@@ -209,7 +229,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                                                      self._BOARD,
                                                      self._BUILD,
                                                      self._POOL,
-                                                     self._NUM))
+                                                     self._NUM,
+                                                     self._PRIORITY,
+                                                     self._TIMEOUT))
         self.mox.VerifyAll()
 
 

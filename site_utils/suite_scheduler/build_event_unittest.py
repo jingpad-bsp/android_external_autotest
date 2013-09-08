@@ -7,6 +7,8 @@
 """Unit tests for site_utils/build_event.py."""
 
 import datetime, logging, mox, unittest
+# driver must be imported first due to circular imports in base_event and task
+import driver  # pylint: disable-msg=W0611
 import base_event, build_event, forgiving_config_parser, manifest_versions, task
 
 

@@ -3,6 +3,10 @@
 # found in the LICENSE file.
 
 import logging
+
+import common
+from autotest_lib.client.common_lib import priorities
+
 import task
 
 """Module containing base class and methods for working with scheduler events.
@@ -40,6 +44,9 @@ def BuildName(board, type, milestone, manifest):
 class BaseEvent(object):
     """Represents a supported scheduler event.
 
+    @var PRIORITY: The priority of suites kicked off by this event.
+    @var TIMEOUT: The max lifetime of suites kicked off by this event.
+
     @var _keyword: the keyword/name of this event, e.g. new_build, nightly.
     @var _mv: ManifestVersions instance used to query for new builds, etc.
     @var _always_handle: whether to make ShouldHandle always return True.
@@ -47,6 +54,10 @@ class BaseEvent(object):
                  Use a set so that instances that encode logically equivalent
                  Tasks get de-duped before we even try to schedule them.
     """
+
+
+    PRIORITY = priorities.Priority.DEFAULT
+    TIMEOUT = 24  # Hours
 
 
     @classmethod
