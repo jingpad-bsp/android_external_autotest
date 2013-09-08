@@ -167,8 +167,13 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             display.getImageUrl().setText(jobObject.get("image").isString().stringValue());
         }
 
-        String priority = jobObject.get("priority").isString().stringValue();
-        display.getPriorityList().selectByName(priority);
+        Double priorityValue = jobObject.get("priority").isNumber().getValue();
+        Double maxPriority = staticData.getData("max_schedulable_priority").isNumber().getValue();
+        if (priorityValue > maxPriority) {
+            priorityValue = maxPriority;
+        }
+        String priorityName = staticData.getPriorityName(priorityValue);
+        display.getPriorityList().selectByName(priorityName);
 
         display.getTimeout().setText(Utils.jsonToString(jobObject.get("timeout")));
         display.getMaxRuntime().setText(Utils.jsonToString(jobObject.get("max_runtime_mins")));
