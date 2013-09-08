@@ -52,6 +52,7 @@ class Task(object):
         branch_specs: factory,firmware,>=R12 or ==R12 # Optional
         pool: pool_of_devices  # Optional
         num: sharding_factor  # int, Optional
+        boards: board1, board2  # comma seperated string, Optional
 
         By default, Tasks run on all release branches, not factory or firmware.
 
@@ -63,7 +64,8 @@ class Task(object):
         if not config.has_section(section):
             raise MalformedConfigEntry('unknown section %s' % section)
 
-        allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num'])
+        allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
+                       'boards'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -78,6 +80,7 @@ class Task(object):
         suite = config.getstring(section, 'suite')
         branches = config.getstring(section, 'branch_specs')
         pool = config.getstring(section, 'pool')
+        boards = config.getstring(section, 'boards')
         try:
             num = config.getint(section, 'num')
         except ValueError as e:
@@ -90,7 +93,7 @@ class Task(object):
         if branches:
             specs = re.split('\s*,\s*', branches)
             Task.CheckBranchSpecs(specs)
-        return keyword, Task(section, suite, specs, pool, num)
+        return keyword, Task(section, suite, specs, pool, num, boards)
 
 
     @staticmethod
@@ -115,7 +118,8 @@ class Task(object):
             raise MalformedConfigEntry("%s isn't a valid branch spec." % branch)
 
 
-    def __init__(self, name, suite, branch_specs, pool=None, num=None):
+    def __init__(self, name, suite, branch_specs, pool=None, num=None,
+                 boards=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -151,6 +155,8 @@ class Task(object):
         @param num: the number of devices across which to shard the test suite.
                     Type: integer or None
                     Default: None
+        @param boards: A comma seperated list of boards to run this task on.
+                       Default: Run on all boards.
         """
         self._name = name
         self._suite = suite
@@ -175,6 +181,7 @@ class Task(object):
                         spec.lstrip('==R'))
                 else:
                     self._bare_branches.append(spec)
+
         # Since we expect __hash__() and other comparitor methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
         # the string representation of this object.
@@ -182,8 +189,17 @@ class Task(object):
             numStr = '[Default num]'
         else:
             numStr = '%d' % num
-        self._str = '%s: %s on %s with pool %s, across %s machines' % (
-            self.__class__.__name__, suite, branch_specs, pool, numStr)
+
+        if boards is None:
+            self._boards = set()
+            boardsStr = '[All boards]'
+        else:
+            self._boards = set([x.strip() for x in boards.split(',')])
+            boardsStr = boards
+
+        self._str = ('%s: %s on %s with pool %s, boards [%s], '
+                     'across %s machines' % (self.__class__.__name__,
+                     suite, branch_specs, pool, boardsStr, numStr))
 
 
     def _FitsSpec(self, branch):
@@ -239,6 +255,13 @@ class Task(object):
         return self._num
 
 
+    @property
+    def boards(self):
+        """The boards on which to run this suite.
+        Type: Iterable of strings"""
+        return self._boards
+
+
     def __str__(self):
         return self._str
 
@@ -285,6 +308,9 @@ class Task(object):
         @param board: the board against which one wants to run the test.
         @return The list of hosts meeting the board and pool requirements,
                 or None if no hosts were found."""
+        if self._boards and board not in self._boards:
+            return []
+
         labels = [Labels.BOARD_PREFIX + board]
         if self._pool:
             labels.append(Labels.POOL_PREFIX + self._pool)

@@ -59,6 +59,7 @@ class TaskCreateTest(TaskTestBase):
         self.config.set(self._TASK_NAME, 'run_on', self._EVENT_KEY)
         self.config.set(self._TASK_NAME, 'pool', self._POOL)
         self.config.set(self._TASK_NAME, 'num', '%d' % self._NUM)
+        self.config.set(self._TASK_NAME, 'boards', self._BOARD)
 
 
     def testCreateFromConfig(self):
@@ -68,7 +69,7 @@ class TaskCreateTest(TaskTestBase):
         self.assertEquals(keyword, self._EVENT_KEY)
         self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
                                               [self._BRANCH_SPEC], self._POOL,
-                                              self._NUM))
+                                              self._NUM, self._BOARD))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
         self.assertFalse(new_task._FitsSpec('12'))
 
@@ -84,7 +85,8 @@ class TaskCreateTest(TaskTestBase):
         self.assertEquals(keyword, self._EVENT_KEY)
         self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
                                               [self._BRANCH_SPEC_EQUAL],
-                                              self._POOL, self._NUM))
+                                              self._POOL, self._NUM,
+                                              self._BOARD))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
         self.assertFalse(new_task._FitsSpec('12'))
         self.assertFalse(new_task._FitsSpec('21'))
@@ -99,7 +101,8 @@ class TaskCreateTest(TaskTestBase):
                                                               self._TASK_NAME)
         self.assertEquals(keyword, self._EVENT_KEY)
         self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
-                                              [], self._POOL, self._NUM))
+                                              [], self._POOL, self._NUM,
+                                              self._BOARD))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
 
 
@@ -111,7 +114,8 @@ class TaskCreateTest(TaskTestBase):
                                                               self._TASK_NAME)
         self.assertEquals(keyword, self._EVENT_KEY)
         self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
-                                              specs, self._POOL, self._NUM))
+                                              specs,  self._POOL, self._NUM,
+                                              self._BOARD))
         for spec in [specs[0], self._BRANCH]:
             self.assertTrue(new_task._FitsSpec(spec))
 
@@ -123,7 +127,8 @@ class TaskCreateTest(TaskTestBase):
                                                               self._TASK_NAME)
         self.assertEquals(keyword, self._EVENT_KEY)
         self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
-                                              [self._BRANCH_SPEC], self._POOL))
+                                              [self._BRANCH_SPEC], self._POOL,
+                                              boards=self._BOARD))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
         self.assertFalse(new_task._FitsSpec('12'))
 
@@ -160,7 +165,8 @@ class TaskTest(TaskTestBase):
 
     def setUp(self):
         super(TaskTest, self).setUp()
-        self.task = task.Task(self._TASK_NAME, self._SUITE, [self._BRANCH_SPEC])
+        self.task = task.Task(self._TASK_NAME, self._SUITE, [self._BRANCH_SPEC],
+                              boards=self._BOARD)
 
 
     def testRun(self):
@@ -191,12 +197,20 @@ class TaskTest(TaskTestBase):
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
 
-    def testRunUnrunnable(self):
-        """Test running a task that cannot run on this board/pool."""
+    def testRunUnrunnablePool(self):
+        """Test running a task that cannot run on this pool."""
         self.sched.GetHosts(multiple_labels=mox.IgnoreArg()).AndReturn(None)
         self.mox.ReplayAll()
         t = task.Task(self._TASK_NAME, self._SUITE,
                       [self._BRANCH_SPEC], "BadPool")
+        self.assertTrue(not t.AvailableHosts(self.sched, self._BOARD))
+
+
+    def testRunUnrunnableBoard(self):
+        """Test running a task that cannot run on this board."""
+        self.mox.ReplayAll()
+        t = task.Task(self._TASK_NAME, self._SUITE,
+                      [self._BRANCH_SPEC], self._POOL, boards="BadBoard")
         self.assertTrue(not t.AvailableHosts(self.sched, self._BOARD))
 
 
@@ -243,7 +257,8 @@ class TaskTest(TaskTestBase):
 
     def testHash(self):
         """Test hash function for Task classes."""
-        same_task = task.Task(self._TASK_NAME, self._SUITE, [self._BRANCH_SPEC])
+        same_task = task.Task(self._TASK_NAME, self._SUITE, [self._BRANCH_SPEC],
+                              boards=self._BOARD)
         other_task = task.Task(self._TASK_NAME, self._SUITE,
                                [self._BRANCH_SPEC, '>=RX1'], 'pool')
         self.assertEquals(hash(self.task), hash(same_task))
