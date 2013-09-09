@@ -45,7 +45,7 @@ ds.stage_artifacts(build, artifacts=['paygen_au_stable_suite'])
 # TODO(sosa): Really should skip_reimage but suite logic does not currently
 # work without reimaging.
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='paygen_au', job=job, pool=pool,
+    build=build, board=board, name=NAME, job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
     file_bugs=file_bugs, priority=priority,
     max_runtime_mins=60, devserver_url=devserver_url,
