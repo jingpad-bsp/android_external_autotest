@@ -925,9 +925,9 @@ def join_bg_jobs(bg_jobs, timeout=None):
         # TODO: This needs to be fixed to better represent what happens when
         # running in parallel. However this is backwards compatable, so it will
         # do for the time being.
-        raise error.CmdError(bg_jobs[0].command, bg_jobs[0].result,
-                             "Command(s) did not complete within %d seconds"
-                             % timeout)
+        raise error.CmdTimeoutError(
+                bg_jobs[0].command, bg_jobs[0].result,
+                "Command(s) did not complete within %d seconds" % timeout)
 
 
     return bg_jobs

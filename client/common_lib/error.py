@@ -274,9 +274,7 @@ class UnhandledTestFail(TestFail):
 
 
 class CmdError(TestError):
-    """\
-    Indicates that a command failed, is fatal to the test unless caught.
-    """
+    """Indicates that a command failed, is fatal to the test unless caught."""
     def __init__(self, command, result_obj, additional_text=None):
         TestError.__init__(self, command, result_obj, additional_text)
         self.command = command
@@ -296,6 +294,11 @@ class CmdError(TestError):
         msg += _context_message(self)
         msg += '\n' + repr(self.result_obj)
         return msg
+
+
+class CmdTimeoutError(CmdError):
+    """Indicates that a command timed out."""
+    pass
 
 
 class PackageError(TestError):

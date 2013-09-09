@@ -98,7 +98,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
 
     def run(self, command, timeout=3600, ignore_status=False,
             stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
-            connect_timeout=30, options='', stdin=None, verbose=True, args=()):
+            connect_timeout=30, options='', stdin=None, verbose=True, args=(),
+            ignore_timeout=False):
         """
         Run a command on the remote host.
         @see common_lib.hosts.host.run()
@@ -106,6 +107,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @param connect_timeout: connection timeout (in seconds)
         @param options: string with additional ssh command options
         @param verbose: log the commands
+        @param ignore_timeout: bool True if SSH command timeouts should be
+                ignored.  Will return None on command timeout.
 
         @raises AutoservRunError: if the command failed
         @raises AutoservSSHTimeout: ssh connection has timed out
@@ -121,7 +124,10 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
             return self._run(command, timeout, ignore_status, stdout_tee,
                              stderr_tee, connect_timeout, env, options,
                              stdin, args)
-        except error.CmdError, cmderr:
+        except error.CmdTimeoutError, cmderr:
+            if ignore_timeout:
+                logging.debug('SSH command timed out, but was ignored.')
+                return None
             # We get a CmdError here only if there is timeout of that command.
             # Catch that and stuff it into AutoservRunError and raise it.
             raise error.AutoservRunError(cmderr.args[0], cmderr.args[1])
