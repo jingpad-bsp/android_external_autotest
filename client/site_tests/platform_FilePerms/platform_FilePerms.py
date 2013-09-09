@@ -216,68 +216,6 @@ class platform_FilePerms(test.test):
         return errors
 
 
-    def check_mount_setup(self):
-        """
-        Check to make sure that mount shows the same mount points and
-        options as /etc/mtab, and that /etc/mtab is a symlink to
-        /proc/mount.
-
-        Args:
-            (none)
-        Returns:
-            int, Number of errors encountered.
-        """
-
-        # Call mount, and compare output to /etc/mtab entries.
-        mount_call = subprocess.Popen([self.mount_path],
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE)
-        (out, err) = mount_call.communicate();
-        mount_lines = out.split("\n");
-        mounts = {}
-        for line in mount_lines:
-            fields = line.split()
-            # Skip empty/non-conforming lines.
-            if (len(fields) >= 6):
-                mounts[fields[2]] = {
-                    'device': fields[0],
-                    'type': fields[4],
-                    'options': fields[5].strip("()").split(','),
-                    }
-        # Compare the filesystems to make sure that what mount
-        # reports, and what's in the config file are identical in both
-        # the mounts that exist, and the options that are set.  Note
-        # that this test allows there to be listings in mtab that are
-        # not currently mounted.
-        errors = 0
-        mtab = self.read_mtab()
-        for filesystem in mounts.keys():
-            if not (filesystem in mtab.keys()):
-                logging.warn('Mounted filesystem %s not found in mtab.' %
-                             filesystem)
-                errors += 1
-            for option in mounts[filesystem]['options']:
-                if not (option in mtab[filesystem]['options']):
-                    logging.warn('Mounted filesystem %s has option %s '
-                                 'that is not listed in mtab.' %
-                                 (filesystem, option))
-                    errors +=1
-            for option in mtab[filesystem]['options']:
-                if not (option in mounts[filesystem]['options']):
-                    logging.warn('Mounted filesystem %s does not have '
-                                 'option %s that is listed in mtab.' %
-                                 (filesystem, option))
-                    errors +=1
-
-        # Now we just make sure that /etc/mtab is a symlink to /proc/mounts
-        mtab_link = os.readlink("/etc/mtab")
-        if mtab_link != "/proc/mounts":
-            logging.warn('Symbolic link /etc/mtab points to "%s" instead of '
-                         '/proc/mounts.' % mtab_link)
-            errors += 1
-        return errors
-
-
     def check_mount_options(self):
         """
         Check the permissions of all non-rootfs filesystems to make
@@ -403,10 +341,6 @@ class platform_FilePerms(test.test):
 
         # Check mount options on mount points.
         errors += self.check_mount_options()
-
-        # Check that /bin/mount output and mtab jive,
-        # and that mtab is a symbolic link to /proc/mounts.
-        errors += self.check_mount_setup()
 
         # If errors is not zero, there were errors.
         if errors > 0:
