@@ -20,6 +20,8 @@ class firmware_FwScreenCloseLid(FAFTSequence):
     """
     version = 1
 
+    SHORT_SHUTDOWN_CONFIRMATION_PERIOD = 0.1
+
 
     def wait_second_screen_and_close_lid(self):
         """Wait and trigger TO_NORM or RECOVERY INSERT screen and close lid."""
@@ -90,7 +92,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                                     (self.wait_second_screen_and_close_lid,
                                      self.servo.lid_open,
                                      self.wait_fw_screen_and_ctrl_d,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 3, request recovery boot. When the RECOVERY INSERT
                 # screen shows, close lid to make DUT shutdown.
@@ -104,7 +106,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                                     (self.wait_longer_fw_screen_and_close_lid,
                                      self.servo.lid_open,
                                      self.wait_fw_screen_and_ctrl_d,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 4, request recovery boot again. When the recovery
                 # insert screen shows, insert a corrupted USB and trigger
@@ -119,7 +121,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                                     (self.wait_yuck_screen_and_close_lid,
                                      self.servo.lid_open,
                                      self.wait_fw_screen_and_ctrl_d,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 5, switch back to normal mode.
                 'state_checker': (self.checkers.crossystem_checker, {
@@ -142,7 +144,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                                     (self.wait_longer_fw_screen_and_close_lid,
                                      self.servo.lid_open,
                                      None,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 7, done.
                 'state_checker': (self.checkers.crossystem_checker, {

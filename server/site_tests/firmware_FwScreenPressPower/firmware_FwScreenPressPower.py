@@ -18,6 +18,8 @@ class firmware_FwScreenPressPower(FAFTSequence):
     """
     version = 1
 
+    SHORT_SHUTDOWN_CONFIRMATION_PERIOD = 0.1
+
 
     def wait_second_screen_and_press_power(self):
         """Wait and trigger a second screen and press power button."""
@@ -79,7 +81,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                                     (self.wait_second_screen_and_press_power,
                                      None,
                                      self.wait_fw_screen_and_ctrl_d,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 3, request recovery boot. When the RECOVERY INSERT
                 # screen shows, press power button to make DUT shutdown.
@@ -93,7 +95,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                                     (self.wait_longer_fw_screen_and_press_power,
                                      None,
                                      self.wait_fw_screen_and_ctrl_d,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 4, request recovery boot again. When the recovery
                 # insert screen shows, insert a corrupted USB and trigger
@@ -108,7 +110,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                                     (self.wait_yuck_screen_and_press_power,
                                      None,
                                      self.wait_fw_screen_and_ctrl_d,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 5, switch back to normal mode.
                 'state_checker': (self.checkers.crossystem_checker, {
@@ -131,7 +133,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                                     (self.wait_longer_fw_screen_and_press_power,
                                      None,
                                      None,
-                                     0)),
+                                     self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)),
             },
             {   # Step 7, done.
                 'state_checker': (self.checkers.crossystem_checker, {
