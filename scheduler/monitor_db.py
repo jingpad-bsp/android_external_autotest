@@ -1374,7 +1374,6 @@ class BaseAgentTask(object):
                      self.success)
 
 
-
     def start(self):
         if not self.started:
             self.prolog()
@@ -1389,6 +1388,8 @@ class BaseAgentTask(object):
         self.done = True
         self.aborted = True
         self.cleanup()
+        if self.started:
+            self.finished(success=False)
 
 
     def _get_consistent_execution_path(self, execution_entries):
@@ -1677,11 +1678,15 @@ class SelfThrottledTask(AgentTask):
     @classmethod
     def _increment_running_processes(cls):
         cls._num_running_processes += 1
+        stats.Gauge('scheduler').send('%s.num_running_processes' % cls.__name__,
+                                      cls._num_running_processes)
 
 
     @classmethod
     def _decrement_running_processes(cls):
         cls._num_running_processes -= 1
+        stats.Gauge('scheduler').send('%s.num_running_processes' % cls.__name__,
+                                      cls._num_running_processes)
 
 
     @classmethod
@@ -1759,7 +1764,6 @@ class SelfThrottledTask(AgentTask):
         super(SelfThrottledTask, self).finished(success)
         if self._process_started():
             self._decrement_running_processes()
-
 
 
 class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):

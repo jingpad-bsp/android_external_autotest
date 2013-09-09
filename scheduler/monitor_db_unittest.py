@@ -1,6 +1,7 @@
 #!/usr/bin/python
+#pylint: disable-msg=C0111
 
-import gc, logging, time
+import gc, time
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
