@@ -460,7 +460,7 @@ class NetperfRunner(object):
     NETPERF_DATA_PORT = 12866
     NETPERF_PORT = 12865
     NETSERV_STARTUP_WAIT_TIME = 3
-    NETPERF_COMMAND_TIMEOUT_MARGIN = 5
+    NETPERF_COMMAND_TIMEOUT_MARGIN = 10
 
 
     def __init__(self, client_proxy, server_proxy, config):
@@ -513,10 +513,10 @@ class NetperfRunner(object):
                               ignore_status=True)
 
 
-    def run(self, ignore_status=False):
+    def run(self, ignore_failures=False):
         """Run netperf and take a performance measurement.
 
-        @param ignore_status bool True iff netperf runs that failed should be
+        @param ignore_failures bool True iff netperf runs that fail should be
                 ignored.  If this happens, run will return a None value rather
                 than a NetperfResult.
         @return NetperfResult summarizing a netperf run.
@@ -533,10 +533,11 @@ class NetperfRunner(object):
         start_time = time.time()
         logging.info('Running netperf for %d seconds.', self._config.test_time)
         timeout = self._config.test_time + self.NETPERF_COMMAND_TIMEOUT_MARGIN
-        result = self._client_host.run(netperf, ignore_status=ignore_status,
+        result = self._client_host.run(netperf, ignore_status=ignore_failures,
+                                       ignore_timeout=ignore_failures,
                                        timeout=timeout)
         duration = time.time() - start_time
-        if result.exit_status:
+        if result is None or result.exit_status:
             return None
 
         return NetperfResult.from_netperf_results(

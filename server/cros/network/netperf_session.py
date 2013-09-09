@@ -109,7 +109,7 @@ class NetperfSession(object):
         with netperf_runner.NetperfRunner(
                 self._client_proxy, self._server_proxy, config) as runner:
             while len(history) + none_count < self.MEASUREMENT_MAX_SAMPLES:
-                result = runner.run(ignore_status=self._ignore_failures)
+                result = runner.run(ignore_failures=self._ignore_failures)
                 if result is None:
                     none_count += 1
                     continue
