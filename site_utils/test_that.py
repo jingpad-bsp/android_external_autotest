@@ -404,78 +404,73 @@ def sigint_handler(signum, stack_frame):
         sys.exit(1)
 
 
-def main(argv):
+def _perform_bootstrap_into_sysroot(arguments, sysroot_autotest_path, argv):
     """
-    Entry point for test_that script.
-    @param argv: arguments list
+    Perfoms a bootstrap to run test_that from the sysroot location.
+
+    This function is to be called from test_that's main() script, when
+    test_that is executed from the source tree location. It runs
+    autotest_quickmerge if necessary to update the sysroot, and then executes
+    and waits on the sysroot version of test_that.py
+
+    @param arguments: A parsed arguments object, as returned from
+                      parse_arguments(...).
+    @param sysroot_autotest_path: Full absolute path to the board-specific
+                                  sysroot location of autotest.
+    @param argv: The arguments list, as passed to main(...)
+
+    @returns: The return code of the test_that script that was executed
+              in the sysroot.
     """
+    logging_manager.configure_logging(
+            server_logging_config.ServerLoggingConfig(),
+            use_console=True,
+            verbose=arguments.debug)
+    if arguments.no_quickmerge:
+        logging.info('Skipping quickmerge step as requested.')
+    else:
+        logging.info('Running autotest_quickmerge step.')
+        s = subprocess.Popen([_QUICKMERGE_SCRIPTNAME,
+                              '--board='+arguments.board],
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT)
+        for message in iter(s.stdout.readline, b''):
+            logging.debug('quickmerge| %s', message.strip())
+        s.wait()
 
-    if not cros_build_lib.IsInsideChroot():
-        print >> sys.stderr, 'Script must be invoked inside the chroot.'
-        return 1
+    logging.info('Re-running test_that script in sysroot.')
+    script_command = os.path.join(sysroot_autotest_path, 'site_utils',
+                                  os.path.basename(__file__))
+    proc = None
+    def resend_sig(signum, stack_frame):
+        #pylint: disable-msg=C0111
+        if proc:
+            proc.send_signal(signum)
+    signal.signal(signal.SIGINT, resend_sig)
+    signal.signal(signal.SIGTERM, resend_sig)
 
-    arguments = parse_arguments(argv)
-    try:
-        validate_arguments(arguments)
-    except ValueError as err:
-        print >> sys.stderr, ('Invalid arguments. %s' % err.message)
-        return 1
+    proc = subprocess.Popen([script_command] + argv)
 
-    sysroot_path = os.path.join('/build', arguments.board, '')
-    sysroot_autotest_path = os.path.join(sysroot_path, 'usr', 'local',
-                                         'autotest', '')
-    sysroot_site_utils_path = os.path.join(sysroot_autotest_path,
-                                            'site_utils')
+    return proc.wait()
 
-    if not os.path.exists(sysroot_path):
-        print >> sys.stderr, ('%s does not exist. Have you run '
-                              'setup_board?' % sysroot_path)
-        return 1
-    if not os.path.exists(sysroot_autotest_path):
-        print >> sys.stderr, ('%s does not exist. Have you run '
-                              'build_packages?' % sysroot_autotest_path)
-        return 1
 
-    # If we are not running the sysroot version of script, perform
-    # a quickmerge if necessary and then re-execute
-    # the sysroot version of script with the same arguments.
-    realpath = os.path.realpath(__file__)
-    if os.path.dirname(realpath) != sysroot_site_utils_path:
-        logging_manager.configure_logging(
-                server_logging_config.ServerLoggingConfig(),
-                use_console=True,
-                verbose=arguments.debug)
-        if arguments.no_quickmerge:
-            logging.info('Skipping quickmerge step as requested.')
-        else:
-            logging.info('Running autotest_quickmerge step.')
-            s = subprocess.Popen([_QUICKMERGE_SCRIPTNAME,
-                                  '--board='+arguments.board],
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.STDOUT)
-            for message in iter(s.stdout.readline, b''):
-                logging.debug('quickmerge| %s', message.strip())
-            s.wait()
+def _perform_run_from_sysroot(arguments, sysroot_autotest_path, argv):
+    """
+    Perform a test_that run, from the sysroot.
 
-        logging.info('Re-running test_that script in sysroot.')
-        script_command = os.path.join(sysroot_site_utils_path,
-                                      os.path.basename(realpath))
-        proc = None
-        def resend_sig(signum, stack_frame):
-            #pylint: disable-msg=C0111
-            if proc:
-                proc.send_signal(signum)
-        signal.signal(signal.SIGINT, resend_sig)
-        signal.signal(signal.SIGTERM, resend_sig)
+    This function is to be called from test_that's main() script, when
+    test_that is executed from the sysroot location. It handles all stages
+    of a test_that run that come after the autotest_quickmerge sysroot
+    bootstrap.
 
-        proc = subprocess.Popen([script_command] + argv)
+    @param arguments: A parsed arguments object, as returned from
+                      parse_arguments(...).
+    @param sysroot_autotest_path: Full absolute path to the board-specific
+                                  sysroot location of autotest.
+    @param argv: The arguments list, as passed to main(...)
 
-        return proc.wait()
-
-    # We are running the sysroot version of the script.
-    # No further levels of bootstrapping that will occur, so
-    # create a results directory and start sending our logging messages
-    # to it.
+    @returns: A return code that test_that should exit with.
+    """
     results_directory = arguments.results_dir
     if results_directory is None:
         # Create a results_directory as subdir of /tmp
@@ -536,6 +531,56 @@ def main(argv):
             pass
         os.symlink(results_directory, _LATEST_RESULTS_DIRECTORY)
         return final_result
+    else:
+        logging.error('Lab runs not yet supported.')
+        return 1
+
+
+def main(argv):
+    """
+    Entry point for test_that script.
+    @param argv: arguments list
+    """
+
+    if not cros_build_lib.IsInsideChroot():
+        print >> sys.stderr, 'Script must be invoked inside the chroot.'
+        return 1
+
+    arguments = parse_arguments(argv)
+    try:
+        validate_arguments(arguments)
+    except ValueError as err:
+        print >> sys.stderr, ('Invalid arguments. %s' % err.message)
+        return 1
+
+    sysroot_path = os.path.join('/build', arguments.board, '')
+    sysroot_autotest_path = os.path.join(sysroot_path, 'usr', 'local',
+                                         'autotest', '')
+    sysroot_site_utils_path = os.path.join(sysroot_autotest_path,
+                                            'site_utils')
+
+    if not os.path.exists(sysroot_path):
+        print >> sys.stderr, ('%s does not exist. Have you run '
+                              'setup_board?' % sysroot_path)
+        return 1
+    if not os.path.exists(sysroot_autotest_path):
+        print >> sys.stderr, ('%s does not exist. Have you run '
+                              'build_packages?' % sysroot_autotest_path)
+        return 1
+
+    realpath = os.path.realpath(__file__)
+
+    # If we are not running the sysroot version of script, perform
+    # a quickmerge if necessary and then re-execute
+    # the sysroot version of script with the same arguments.
+    if os.path.dirname(realpath) != sysroot_site_utils_path:
+        return _perform_bootstrap_into_sysroot(arguments,
+                                               sysroot_autotest_path,
+                                               argv)
+    else:
+        return _perform_run_from_sysroot(arguments,
+                                         sysroot_autotest_path,
+                                         argv)
 
 
 if __name__ == '__main__':
