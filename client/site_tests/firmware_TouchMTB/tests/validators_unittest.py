@@ -786,8 +786,8 @@ class ReportRateValidatorTest(BaseValidatorTest):
         actual_report_rate = validator.report_rate
         # Compute expected_report_rate
         first_syn_time = 2597.682925
-        last_syn_time = 2604.534425
-        num_packets = 591 - 1
+        last_syn_time = 2604.543335
+        num_packets = 592 - 1
         expected_report_rate = num_packets / (last_syn_time - first_syn_time)
         self.assertAlmostEqual(actual_report_rate, expected_report_rate)
 

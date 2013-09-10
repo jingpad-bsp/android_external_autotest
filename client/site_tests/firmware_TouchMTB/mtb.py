@@ -289,6 +289,14 @@ class MtbStateMachine:
         self.syn_time = None
         self.new_tid = False
         self.number_fingers = 0
+        self.leaving_slots = []
+
+    def _del_leaving_slots(self):
+        """Delete the leaving slots. Remove the slots and their tracking IDs."""
+        for slot in self.leaving_slots:
+            del self.slot_to_tid[slot]
+            self.number_fingers -= 1
+        self.leaving_slots = []
 
     def add_event(self, event):
         """Update the internal states with the event.
@@ -309,10 +317,10 @@ class MtbStateMachine:
             self.point[self.tid] = Point()
             self.number_fingers += 1
 
-        # A slot is leaving. Remove the slot and its tracking ID.
+        # A slot is leaving.
+        # Do not delete this slot until this last packet is reported.
         elif MtbEvent.is_finger_leaving(event):
-            del self.slot_to_tid[self.slot]
-            self.number_fingers -= 1
+            self.leaving_slots.append(self.slot)
 
         # Update x value.
         elif MtbEvent.is_ABS_MT_POSITION_X(event):
@@ -359,6 +367,9 @@ class MtbStateMachine:
             # its client function get_ordered_finger_paths() could construct
             # an ordered dictionary correctly based on the tracking ID.
             current_tid_data.append((tid, slot, tid_packet))
+
+        self._del_leaving_slots()
+
         return sorted(current_tid_data)
 
 
@@ -1210,6 +1221,7 @@ class Mtb:
                     btn_left_was_pressed = True
                 elif MtbEvent.is_BTN_LEFT_value(event, 0):
                     btn_left_was_released = True
+            sm.get_current_tid_data_for_all_tids()
 
             # Check the number of fingers only after all events in this packet
             # have been processed.

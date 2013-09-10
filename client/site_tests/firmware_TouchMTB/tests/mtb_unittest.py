@@ -157,9 +157,9 @@ class MtbTest(unittest.TestCase):
 
     def test_get_ordered_finger_paths_about_number_of_packets(self):
         self._test_get_all_finger_paths_about_numbers_of_packets(
-                'two_finger_with_slot_0.dat', {2101: 121, 2102: 59})
+                'two_finger_with_slot_0.dat', {2101: 122, 2102: 60})
         self._test_get_all_finger_paths_about_numbers_of_packets(
-                'two_finger_without_slot_0.dat', {2097: 104, 2098: 10})
+                'two_finger_without_slot_0.dat', {2097: 105, 2098: 11})
 
     def test_data_ready(self):
         """Test data_ready flag when point.x could be 0."""
@@ -172,8 +172,8 @@ class MtbTest(unittest.TestCase):
         # Note:
         # 1. In the first packet, there exists the event ABS_PRESSURE
         #    but no ABS_MT_PRESSURE.
-        # 2. The last packet with ABS_MT_TRACKING_ID = -1 is not counted.
-        self.assertEqual(len(points), 77)
+        # 2. The last packet with ABS_MT_TRACKING_ID = -1 is also counted.
+        self.assertEqual(len(points), 78)
 
     def _test_drumroll(self, filename, expected_max_distance):
         """expected_max_distance: unit in pixel"""
@@ -262,14 +262,8 @@ class MtbTest(unittest.TestCase):
                          (238154.818573, (490, 893), 46),
                          (238154.824066, (491, 893), 36),
                          (238154.829525, (492, 893), 22),
+                         (238154.849958, (492, 893), 22),
         ]
-
-        list_95 = [(789, 358), (789, 358), (789, 358), (789, 358), (789, 358),
-                   (789, 359), (789, 359), (789, 359), (788, 359), (788, 360),
-                   (788, 360), (787, 360), (787, 361), (490, 903), (486, 892),
-                   (484, 895), (493, 890), (488, 893), (488, 893), (489, 893),
-                   (490, 893), (490, 893), (491, 893), (492, 893)]
-
         self._test_finger_path(filename, tid, expected_slot, expected_data)
 
     def test_get_ordered_finger_paths2(self):
@@ -291,6 +285,7 @@ class MtbTest(unittest.TestCase):
                          (238158.018112, (780, 373), 69),
                          (238158.023600, (780, 373), 68),
                          (238158.029542, (781, 373), 51),
+                         (238158.049605, (781, 373), 51),
         ]
         self._test_finger_path(filename, tid, expected_slot, expected_data)
 
@@ -333,7 +328,7 @@ class MtbTest(unittest.TestCase):
                          (238158.012617, (534, 892), 34),
                          (238158.018112, (534, 892), 34),
                          (238158.023600, (534, 892), 34),
-
+                         (238158.029542, (534, 892), 34),
         ]
         self._test_finger_path(filename, tid, expected_slot, expected_data)
 
@@ -364,7 +359,8 @@ class MtbTest(unittest.TestCase):
                          (6411.465843, (693, 172), 5),
                          (6411.474749, (469, 381), 6),
                          (6411.483702, (471, 395), 26),
-                         (6411.492369, (471, 396), 13)
+                         (6411.492369, (471, 396), 13),
+                         (6411.499916, (471, 396), 13),
         ]
         self._test_finger_path(filename, tid, expected_slot, expected_data,
                                request_data_ready=False)
@@ -389,9 +385,9 @@ class MtbTest(unittest.TestCase):
 
         number_packets = {
             # Slot 0
-            0: 189,
+            0: 190,
             # Slot 1
-            1: 188,
+            1: 189,
         }
 
         slots = [0, 1]
