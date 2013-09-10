@@ -557,3 +557,24 @@ class WiFiClient(object):
         logging.info('wpa_cli blacklist clear: out:%r err:%r', stdoutdata,
                      stderrdata)
         return stdoutdata, stderrdata
+
+
+    def get_roam_threshold(self, wifi_interace):
+        """Get wpa_supplicant's roaming theshold for the specified interface.
+
+        @param wifi_interface: string name of the wifi_interface.
+        @return integer roam threshold or False if something went wrong.
+
+        """
+        return self._shill_proxy.get_roam_threshold(wifi_interace)
+
+
+    def set_roam_threshold(self, wifi_interace, value):
+        """Set wpa_supplicant's roaming theshold for the specified interface.
+
+        @param wifi_interace: string name of the wifi_interface.
+        @param value: integer to which to set the roam_threshold
+        @return True if it worked; False, otherwise
+
+        """
+        return self._shill_proxy.set_roam_threshold(wifi_interace, value)

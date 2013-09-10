@@ -20,6 +20,7 @@ from autotest_lib.client.cros import tpm_store
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 # pylint: enable=W0611
+import shill_proxy
 import wifi_proxy
 
 
@@ -34,7 +35,8 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """
 
     DEFAULT_TEST_PROFILE_NAME = 'test'
-
+    ROAM_THRESHOLD = 'RoamThreshold'
+    DBUS_DEVICE = 'Device'
 
     def __init__(self):
         self._wifi_proxy = wifi_proxy.WifiProxy()
@@ -286,6 +288,49 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         return wifi_proxy.WifiProxy.clear_supplicant_blacklist()
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def get_roam_threshold(self, wifi_interface):
+        """Get roam threshold for a specified wifi interface.
+
+        @param wifi_interface: string name of interface being queried.
+        @return integer value of the roam threshold.
+
+        """
+        interface = {'Name': wifi_interface}
+        dbus_object = self._wifi_proxy.find_object(self.DBUS_DEVICE,
+                                                   interface)
+        if dbus_object is None:
+            return False
+
+        object_properties = dbus_object.GetProperties(utf8_strings=True)
+        if self.ROAM_THRESHOLD not in object_properties:
+            return False
+
+        return self._wifi_proxy.dbus2primitive(
+                object_properties[self.ROAM_THRESHOLD])
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def set_roam_threshold(self, wifi_interface, value):
+        """Set roam threshold for a specified wifi interface.
+
+        @param wifi_interface: string name of interface being modified
+        @param value: integer value of the roam threshold
+
+        @return True if it worked; false, otherwise
+        """
+        interface = {'Name': wifi_interface}
+        dbus_object = self._wifi_proxy.find_object(self.DBUS_DEVICE,
+                                                   interface)
+        if dbus_object is None:
+            return False
+
+        shill_proxy.ShillProxy.set_dbus_property(dbus_object,
+                                                 self.ROAM_THRESHOLD,
+                                                 value)
+        return True
 
 
 if __name__ == '__main__':
