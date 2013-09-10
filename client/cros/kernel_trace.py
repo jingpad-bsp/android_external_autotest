@@ -17,6 +17,9 @@ class KernelTrace(object):
     Public methods:
         on          : Enables tracing
         off         : Disables tracing
+        is_tracing  : Returns Boolean of tracing status.
+        event_on    : Turns event on.  Returns boolean of success
+        event_off   : Turns event off.  Returns boolean of success
         flush       : Flushes trace buffer
         read        : Reads trace buffer returns list of
                       - tuples if regexp provided
@@ -41,13 +44,14 @@ class KernelTrace(object):
         """Constructor for KernelTrace class"""
         self._buffer = []
         self._buffer_ptr = 0
-        self._events = events
+        self._events = []
         self._on = on
 
         if flush:
             self.flush()
         for event in events:
-            self.event_on(event)
+            if self.event_on(event):
+                self._events.append(event)
         if on:
             self.on()
 
@@ -68,7 +72,7 @@ class KernelTrace(object):
 
         Raises:
             error.TestFail: If unable to enable/disable tracing
-           boolean of tracing on/off status
+              boolean of tracing on/off status
         """
         utils.write_one_line(self._TRACE_EN_PATH, val)
         fname = os.path.join(self._TRACE_ROOT, 'tracing_on')
@@ -88,6 +92,19 @@ class KernelTrace(object):
         self._onoff(0)
 
 
+    def is_tracing(self):
+        """Is tracing on?
+
+        Returns:
+            True if tracing enabled and at least one event is enabled.
+        """
+        fname = os.path.join(self._TRACE_ROOT, 'tracing_on')
+        result = int(utils.read_one_line(fname).strip())
+        if result == 1 and len(self._events) > 0:
+            return True
+        return False
+
+
     def _event_onoff(self, event, val):
         """Enable/Disable tracing event.
 
@@ -100,15 +117,16 @@ class KernelTrace(object):
                    See kernel(Documentation/trace/events.txt) for formatting.
             val: integer, 1 for on, 0 for off
 
-        Raises:
-            error.TestFail: If unable to enable/disable event
+         Returns:
+            True if success, false otherwise
         """
         logging.debug("event_onoff: event:%s val:%d", event, val)
         event_path = event.replace(':', '/')
         fname = os.path.join(self._TRACE_ROOT, 'events', event_path, 'enable')
 
         if not os.path.exists(fname):
-            raise error.TestFail("Unable to locate tracing event %s" % fname)
+            logging.warn("Unable to locate tracing event %s", fname)
+            return False
         utils.write_one_line(fname, val)
 
         fname = os.path.join(self._TRACE_ROOT, "set_event")
@@ -121,17 +139,22 @@ class KernelTrace(object):
                     break
 
         if val == 1 and not found:
-            raise error.TestFail("Event %s not enabled" % event)
+            logging.warn("Event %s not enabled", event)
+            return False
+
         if val == 0 and found:
-            raise error.TestFail("Event %s not disabled" % event)
+            logging.warn("Event %s not disabled", event)
+            return False
+
+        return True
 
 
     def event_on(self, event):
-        self._event_onoff(event, 1)
+        return self._event_onoff(event, 1)
 
 
     def event_off(self, event):
-        self._event_onoff(event, 0)
+        return self._event_onoff(event, 0)
 
 
     def flush(self):
@@ -140,7 +163,6 @@ class KernelTrace(object):
         Raises:
             error.TestFail: If unable to flush
         """
-
         self.off()
         fname = os.path.join(self._TRACE_ROOT, 'free_buffer')
         utils.write_one_line(fname, 1)

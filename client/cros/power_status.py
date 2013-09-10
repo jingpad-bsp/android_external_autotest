@@ -640,27 +640,69 @@ class GPUFreqStats(AbstractStats):
     _MALI_EVENTS = ['mali_dvfs:mali_dvfs_set_clock']
     _MALI_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)'
 
+    _I915_ROOT = '/sys/kernel/debug/dri/0'
+    _I915_EVENTS = ['i915:intel_gpu_freq_change']
+    _I915_CLK_TABLE = os.path.join(_I915_ROOT, 'i915_ring_freq_table')
+    _I915_CLK = os.path.join(_I915_ROOT, 'i915_cur_delayinfo')
+    _I915_TRACE_CLK_RE = r'(\d+.\d+): intel_gpu_freq_change: new_freq=(\d+)'
+
     _gpu_type = None
 
 
     def __init__(self):
+        cur_mhz = None
+        events = None
+        self._freqs = []
+        self._prev_sample = None
 
         if os.path.exists(self._MALI_CLK):
             self._set_gpu_type('mali')
+        elif os.path.exists(self._I915_CLK_TABLE):
+            self._set_gpu_type('i915')
+
+        logging.debug("gpu_type is %s", self._gpu_type)
 
         if self._gpu_type is 'mali':
-            self._trace = kernel_trace.KernelTrace(events=self._MALI_EVENTS)
+            events = self._MALI_EVENTS
             with open(self._MALI_CLK) as fd:
                 for ln in fd.readlines():
                     result = re.findall(r'Current.* = (\d+)Mhz', ln)
                     if result:
-                        self._prev_sample = (result[0],
-                                             self._trace.uptime_secs())
-                        logging.debug("Current GPU freq: %s", result[0])
+                        cur_mhz = result[0]
                         continue
-                    self._freqs = re.findall(r'(\d+)[,M]', ln)
-                    logging.debug("All GPU freqs: %s", self._freqs)
-                    break
+                    result = re.findall(r'(\d+)[,M]', ln)
+                    if result:
+                        self._freqs = result
+                        fd.close()
+
+        elif self._gpu_type is 'i915':
+            events = self._I915_EVENTS
+            with open(self._I915_CLK) as fd:
+                for ln in fd.readlines():
+                    logging.debug("ln = %s", ln)
+                    result = re.findall(r'CAGF:\s+(\d+)MHz', ln)
+                    if result:
+                        cur_mhz = result[0]
+                        break
+            with open(self._I915_CLK_TABLE) as fd:
+                for ln in fd.readlines():
+                    logging.debug("ln = %s", ln)
+                    result = re.findall(r'(\d+)\t\t', ln)
+                    if result:
+                        self._freqs.append(result[0])
+
+        logging.debug("cur_mhz = %s", cur_mhz)
+
+        if cur_mhz:
+            self._trace = kernel_trace.KernelTrace(events=events)
+
+        # Not all platforms or kernel versions support tracing.
+        if not self._trace.is_tracing():
+            logging.warn("GPU frequency tracing not enabled.")
+        else:
+            self._prev_sample = (cur_mhz, self._trace.uptime_secs())
+            logging.debug("Current GPU freq: %s", cur_mhz)
+            logging.debug("All GPU freqs: %s", self._freqs)
 
         super(GPUFreqStats, self).__init__()
 
@@ -676,20 +718,20 @@ class GPUFreqStats(AbstractStats):
         return {}
 
 
-    def _mali_read_stats(self):
-        """Read Mali GPU stats
+    def _trace_read_stats(self, regexp):
+        """Read GPU stats from kernel trace outputs.
 
-        Output in trace looks like this:
-
-            kworker/u:24-5220  [000] .... 81060.329232: mali_dvfs_set_clock: frequency=400
-            kworker/u:24-5220  [000] .... 81061.830128: mali_dvfs_set_clock: frequency=350
+        Args:
+            regexp: regular expression to match trace output for frequency
 
         Returns:
-            Dict with frequency in mhz as key and float in seconds for time
-              spent at that frequency.
+            Dict with key string in mhz and val float in seconds.
         """
+        if not self._prev_sample:
+            return {}
+
         stats = dict((k, 0.0) for k in self._freqs)
-        results = self._trace.read(regexp=self._MALI_TRACE_CLK_RE)
+        results = self._trace.read(regexp=regexp)
         for (tstamp_str, freq) in results:
             tstamp = float(tstamp_str)
 
@@ -711,8 +753,39 @@ class GPUFreqStats(AbstractStats):
                       self._prev_sample[1], delta)
         stats[self._prev_sample[0]] += delta
 
-        logging.debug("mali gpu freq percents:%s", stats)
+        logging.debug("GPU freq percents:%s", stats)
         return stats
+
+
+
+    def _mali_read_stats(self):
+        """Read Mali GPU stats
+
+        Output in trace looks like this:
+
+            kworker/u:24-5220  [000] .... 81060.329232: mali_dvfs_set_clock: frequency=400
+            kworker/u:24-5220  [000] .... 81061.830128: mali_dvfs_set_clock: frequency=350
+
+        Returns:
+            Dict with frequency in mhz as key and float in seconds for time
+              spent at that frequency.
+        """
+        return self._trace_read_stats(self._MALI_TRACE_CLK_RE)
+
+
+    def _i915_read_stats(self):
+        """Read i915 GPU stats.
+
+        Output looks like this (kernel >= 3.8):
+
+          kworker/u:0-28247 [000] .... 259391.579610: intel_gpu_freq_change: new_freq=400
+          kworker/u:0-28247 [000] .... 259391.581797: intel_gpu_freq_change: new_freq=350
+
+        Returns:
+            Dict with frequency in mhz as key and float in seconds for time
+              spent at that frequency.
+        """
+        return self._trace_read_stats(self._I915_TRACE_CLK_RE)
 
 
 class USBSuspendStats(AbstractStats):
