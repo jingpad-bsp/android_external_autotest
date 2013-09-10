@@ -149,13 +149,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._testServer.run()
 
         # initialize various interesting power related stats
-        self._usb_stats = power_status.USBSuspendStats()
-        self._cpufreq_stats = power_status.CPUFreqStats()
-        self._cpuidle_stats = power_status.CPUIdleStats()
-        self._cpupkg_stats = power_status.CPUPackageStats()
-        self._disk_logger = power_status.DiskStateLogger()
-        if os.path.exists('/dev/sda'):
-            self._disk_logger.start()
+        self._statomatic = power_status.StatoMatic()
 
         self._power_status.refresh()
         (self._sys_low_batt_p, self._sys_low_batt_s) = \
@@ -241,11 +235,6 @@ class power_LoadTest(cros_ui_test.UITest):
 
 
     def postprocess_iteration(self):
-        def _format_stats(keyvals, stats, name):
-            for state in stats:
-                keyvals['percent_%s_%s_time' % (name, state)] = stats[state]
-
-
         def _log_stats(prefix, stats):
             if not len(stats):
                 return
@@ -276,18 +265,10 @@ class power_LoadTest(cros_ui_test.UITest):
 
 
         keyvals = self._plog.calc()
-
-        _format_stats(keyvals, self._usb_stats.refresh(), 'usb')
-        _format_stats(keyvals, self._cpufreq_stats.refresh(), 'cpufreq')
-        _format_stats(keyvals, self._cpupkg_stats.refresh(), 'cpupkg')
-        _format_stats(keyvals, self._cpuidle_stats.refresh(), 'cpuidle')
+        keyvals.update(self._statomatic.publish())
 
         _log_all_stats()
         _log_per_loop_stats()
-        if (self._disk_logger.get_error()):
-            keyvals['disk_logging_error'] = str(self._disk_logger.get_error())
-        else:
-            _format_stats(keyvals, self._disk_logger.result(), 'disk')
 
         # record battery stats
         keyvals['a_current_now'] = self._power_status.battery[0].current_now

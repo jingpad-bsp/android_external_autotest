@@ -850,6 +850,8 @@ class StatoMatic(object):
                         CPUFreqStats(),
                         GPUFreqStats(incremental=False),
                         CPUIdleStats()]
+        self._disk = DiskStateLogger()
+        self._disk.start()
 
 
     def publish(self):
@@ -875,9 +877,18 @@ class StatoMatic(object):
                                  stat_obj.name)
                     continue
             new_res = {}
-            stat_obj.format_results_percent(new_res, stat_obj.name,
-                                            percent_stats)
+            AbstractStats.format_results_percent(new_res, stat_obj.name,
+                                                 percent_stats)
             results.update(new_res)
+
+        new_res = {}
+        if self._disk.get_error():
+            new_res['disk_logging_error'] = str(self._disk.get_error())
+        else:
+            AbstractStats.format_results_percent(new_res, 'disk',
+                                                 self._disk.result())
+        results.update(new_res)
+
         return results
 
 
@@ -1135,7 +1146,7 @@ class DiskStateLogger(threading.Thread):
         _device_path: The file system path of the disk's device node.
         _error: Contains a TestError exception if an unexpected error occured
     """
-    def __init__(self, seconds_period = 5.0, device_path = '/dev/sda'):
+    def __init__(self, seconds_period = 5.0, device_path = None):
         """Initializes a logger.
 
         Args:
@@ -1148,6 +1159,22 @@ class DiskStateLogger(threading.Thread):
         self._stats = {}
         self._running = False
         self._error = None
+
+        result = utils.system_output('rootdev -s')
+        # TODO(tbroch) Won't work for emmc storage and will throw this error in
+        # keyvals : 'ioctl(SG_IO) error: [Errno 22] Invalid argument'
+        # Lets implement something complimentary for emmc
+        if not device_path:
+            self._device_path = \
+                re.sub('(sd[a-z]|mmcblk[0-9]+)p?[0-9]+', '\\1', result)
+        logging.debug("device_path = %s", self._device_path)
+
+
+    def start(self):
+        logging.debug("inside DiskStateLogger.start")
+        if os.path.exists(self._device_path):
+            logging.debug("DiskStateLogger started")
+            super(DiskStateLogger, self).start()
 
 
     def _get_disk_state(self):
