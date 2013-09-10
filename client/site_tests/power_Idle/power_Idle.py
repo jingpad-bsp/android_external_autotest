@@ -39,12 +39,7 @@ class power_Idle(cros_ui_test.UITest):
 
         self._start_time = time.time()
         self.status = power_status.get_status()
-
-        # initialize various interesting power related stats
-        self._usb_stats = power_status.USBSuspendStats()
-        self._cpufreq_stats = power_status.CPUFreqStats()
-        self._gpufreq_stats = power_status.GPUFreqStats()
-        self._cpuidle_stats = power_status.CPUIdleStats()
+        self._stats = power_status.StatoMatic()
 
         measurements = []
         if not self.status.linepower[0].online:
@@ -64,33 +59,8 @@ class power_Idle(cros_ui_test.UITest):
 
 
     def postprocess_iteration(self):
-        keyvals = {}
-
-        # refresh power related statistics
-        usb_stats = self._usb_stats.refresh()
-        cpufreq_stats = self._cpufreq_stats.refresh()
-        gpufreq_stats = self._gpufreq_stats.refresh(incremental=False)
-        cpuidle_stats = self._cpuidle_stats.refresh()
-
-        # record percent time USB devices were not in suspended state
-        keyvals['percent_usb_active'] = usb_stats['active']
-
-        # record percent time spent in each CPU C-state
-        for state in cpuidle_stats:
-            keyvals['percent_cpuidle_%s_time' % state] = cpuidle_stats[state]
-
-        # record percent time spent at each CPU frequency
-        for freq in cpufreq_stats:
-            keyvals['percent_cpufreq_%s_time' % freq] = cpufreq_stats[freq]
-
-        # make sure gpu secs is w/in 10%
-        gpu_stats_secs = sum(self._gpufreq_stats._stats.itervalues())
-        if gpu_stats_secs < (self._idle_time * 0.9) or \
-                gpu_stats_secs > (self._idle_time * 1.1):
-            logging.warn('GPU stats dont look right.  Not publishing')
-        else:
-            for freq in gpufreq_stats:
-                keyvals['percent_gpufreq_%s_time' % freq] = gpufreq_stats[freq]
+        keyvals = self._stats.publish()
+        logging.debug("keyvals = %s", keyvals)
 
         # record the current and max backlight levels
         self._backlight = power_utils.Backlight()

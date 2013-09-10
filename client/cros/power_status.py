@@ -460,11 +460,25 @@ class AbstractStats(object):
         return dict((k, new[k] - old.get(k, 0)) for k in new.iterkeys())
 
 
-    def __init__(self):
+    @staticmethod
+    def format_results_percent(results, name, percent_stats):
+        """
+        Formats autotest result keys to format:
+          percent_<name>_<key>_time
+        """
+        for key in percent_stats:
+            results['percent_%s_%s_time' % (name, key)] = percent_stats[key]
+
+
+    def __init__(self, name=None, incremental=True):
+        if not name:
+            error.TestFail("Need to name AbstractStats instance please.")
+        self.name = name
+        self._incremental = incremental
         self._stats = self._read_stats()
 
 
-    def refresh(self, incremental=True):
+    def refresh(self):
         """
         Returns dict mapping state names to percentage of time spent in them.
 
@@ -473,7 +487,7 @@ class AbstractStats(object):
                       current and last refresh.
         """
         raw_stats = result = self._read_stats()
-        if incremental:
+        if self._incremental:
             result = self.do_diff(result, self._stats)
         self._stats = raw_stats
         return self.to_percent(result)
@@ -497,7 +511,7 @@ class CPUFreqStats(AbstractStats):
         self._file_paths = glob.glob(cpufreq_stats_path)
         if not self._file_paths:
             logging.debug('time_in_state file not found')
-        super(CPUFreqStats, self).__init__()
+        super(CPUFreqStats, self).__init__(name='cpufreq')
 
 
     def _read_stats(self):
@@ -527,6 +541,9 @@ class CPUIdleStats(AbstractStats):
     # as ac <-> battery transitions.
     # TODO (snanda): Handle non-S0 states. Time spent in suspend states is
     # currently not factored out.
+    def __init__(self):
+        super(CPUIdleStats, self).__init__(name='cpuidle')
+
 
     def _read_stats(self):
         cpuidle_stats = collections.defaultdict(int)
@@ -605,7 +622,7 @@ class CPUPackageStats(AbstractStats):
                 }.get(values[6], None)
 
         self._platform_states = _get_platform_states()
-        super(CPUPackageStats, self).__init__()
+        super(CPUPackageStats, self).__init__(name='cpupkg')
 
 
     def _read_stats(self):
@@ -649,7 +666,7 @@ class GPUFreqStats(AbstractStats):
     _gpu_type = None
 
 
-    def __init__(self):
+    def __init__(self, incremental=False):
         cur_mhz = None
         events = None
         self._freqs = []
@@ -704,7 +721,7 @@ class GPUFreqStats(AbstractStats):
             logging.debug("Current GPU freq: %s", cur_mhz)
             logging.debug("All GPU freqs: %s", self._freqs)
 
-        super(GPUFreqStats, self).__init__()
+        super(GPUFreqStats, self).__init__(name='gpu', incremental=incremental)
 
 
     @classmethod
@@ -757,7 +774,6 @@ class GPUFreqStats(AbstractStats):
         return stats
 
 
-
     def _mali_read_stats(self):
         """Read Mali GPU stats
 
@@ -800,7 +816,7 @@ class USBSuspendStats(AbstractStats):
         self._file_paths = glob.glob(usb_stats_path)
         if not self._file_paths:
             logging.debug('USB stats path not found')
-        super(USBSuspendStats, self).__init__()
+        super(USBSuspendStats, self).__init__(name='usb')
 
 
     def _read_stats(self):
@@ -824,6 +840,45 @@ class USBSuspendStats(AbstractStats):
             usb_stats['suspended'] += total - active
 
         return usb_stats
+
+
+class StatoMatic(object):
+    """Class to aggregate and monitor a bunch of power related statistics."""
+    def __init__(self):
+        self._start_uptime_secs = kernel_trace.KernelTrace.uptime_secs()
+        self._astats = [USBSuspendStats(),
+                        CPUFreqStats(),
+                        GPUFreqStats(incremental=False),
+                        CPUIdleStats()]
+
+
+    def publish(self):
+        """Publishes results of various statistics gathered.
+
+        Returns:
+            dict with
+              key = string 'percent_<name>_<key>_time'
+              value = float in percent
+        """
+        results = {}
+        tot_secs = kernel_trace.KernelTrace.uptime_secs() - \
+            self._start_uptime_secs
+        for stat_obj in self._astats:
+            percent_stats = stat_obj.refresh()
+            logging.debug("pstats = %s", percent_stats)
+            if stat_obj.name is 'gpu':
+                # TODO(tbroch) remove this once GPU freq stats have proved reliable
+                stats_secs = sum(stat_obj._stats.itervalues())
+                if stats_secs < (tot_secs * 0.9) or \
+                        stats_secs > (tot_secs * 1.1):
+                    logging.warn('%s stats dont look right.  Not publishing.',
+                                 stat_obj.name)
+                    continue
+            new_res = {}
+            stat_obj.format_results_percent(new_res, stat_obj.name,
+                                            percent_stats)
+            results.update(new_res)
+        return results
 
 
 class PowerMeasurement(object):
