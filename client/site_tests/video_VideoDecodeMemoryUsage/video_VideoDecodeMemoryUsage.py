@@ -78,7 +78,7 @@ GEM_OBJECTS_PATH = {'x86_64': X86_GEM_OBJECTS_PATH,
 GEM_OBJECTS_RE = re.compile('(\d+)\s+objects,\s+(\d+)\s+bytes')
 
 # The default sleep time, in seconds.
-SLEEP_TIME = 3
+SLEEP_TIME = 1.5
 
 def _get_kernel_memory_usage():
     """Gets the kernel memory usage."""
@@ -184,14 +184,14 @@ class MemoryTest(object):
         return result
 
 
-    def initialize(self, browser, args):
+    def initialize(self, browser, videos):
         """A callback function, executed before loop().
 
         @param browser: the telemetry entry for the browser under test
-        @param args: extra arguments for the test
+        @param videos: the videos used for the test
         """
         self.browser = browser
-        self.args = args
+        self.videos = videos
 
 
     def loop(self):
@@ -203,11 +203,13 @@ class MemoryTest(object):
         pass
 
 
-    def run(self, browser, args,
+    def run(self, browser, videos,
             warmup_count = WARMUP_COUNT,
             eval_count = EVALUATION_COUNT):
         """Runs this memory test case.
-        @param browser: the telemetry entry of the browser under test
+        @param browser: the telemetry entry of the browser under test.
+
+        @param videos: the videos to be used in the test.
 
         @param warmup_count: run loop() for warmup_count times to make sure the
                memory usage has been stabalize.
@@ -215,7 +217,7 @@ class MemoryTest(object):
         @param eval_count: run loop() for eval_count times to measure the memory
                usage.
         """
-        self.initialize(browser, args)
+        self.initialize(browser, videos)
         try:
             for i in xrange(warmup_count):
                 self.loop()
@@ -242,12 +244,15 @@ def _change_source_and_play(tab, video):
 def _assert_video_is_playing(tab):
     if not tab.EvaluateJavaScript('isVideoPlaying()'):
         raise error.TestError('video is stopped')
+
+    # The above check may fail. Be sure the video time is advancing.
     startTime = tab.EvaluateJavaScript('getVideoCurrentTime()')
 
+    def _is_video_playing():
+        return startTime != tab.EvaluateJavaScript('getVideoCurrentTime()')
+
     utils.poll_for_condition(
-        lambda: tab.EvaluateJavaScript('getVideoCurrentTime()') != startTime,
-        exception=error.TestError('video is stuck'),
-        timeout=20)
+            _is_video_playing, exception=error.TestError('video is stuck'))
 
 
 class OpenTabPlayVideo(MemoryTest):
@@ -257,7 +262,7 @@ class OpenTabPlayVideo(MemoryTest):
 
     def loop(self):
         tab = self._open_new_tab(TEST_PAGE)
-        _change_source_and_play(tab, self.args['video'])
+        _change_source_and_play(tab, self.videos[0])
         _assert_video_is_playing(tab);
         time.sleep(SLEEP_TIME)
         tab.Close()
@@ -269,10 +274,10 @@ class OpenTabPlayVideo(MemoryTest):
 class PlayVideo(MemoryTest):
     """A memory test case: keep playing a video."""
 
-    def initialize(self, browser, args):
-        super(PlayVideo, self).initialize(browser, args)
+    def initialize(self, browser, videos):
+        super(PlayVideo, self).initialize(browser, videos)
         self.activeTab = self._open_new_tab(TEST_PAGE)
-        _change_source_and_play(self.activeTab, self.args['video'])
+        _change_source_and_play(self.activeTab, videos[0])
 
 
     def loop(self):
@@ -288,13 +293,13 @@ class ChangeVideoSource(MemoryTest):
     """A memory test case: change the "src" property of <video> object to
     load different video sources."""
 
-    def initialize(self, browser, args):
-        super(ChangeVideoSource, self).initialize(browser, args)
+    def initialize(self, browser, videos):
+        super(ChangeVideoSource, self).initialize(browser, videos)
         self.activeTab = self._open_new_tab(TEST_PAGE)
 
 
     def loop(self):
-        for video in self.args['videos']:
+        for video in self.videos:
             _change_source_and_play(self.activeTab, video);
             time.sleep(SLEEP_TIME)
             _assert_video_is_playing(self.activeTab);
@@ -308,11 +313,18 @@ class video_VideoDecodeMemoryUsage(test.test):
     """This is a memory leak test for video playback."""
     version = 1
 
-    def run_once(self, testcase, **args):
-        """
-        This test run one of the memory test case defined above.
-        """
+    def run_once(self, testcases):
+        last_error = None
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
-            test_case_class = globals()[testcase]
-            test_case_class().run(cr.browser, args)
+            for name, videos in testcases:
+                logging.info('%s: %s', name, videos)
+                try :
+                    test_case_class = globals()[name]
+                    test_case_class().run(cr.browser, videos)
+                except Exception as last_error:
+                    logging.exception('%s fail', name)
+                    # continue to next test case
+
+        if last_error:
+            raise  # the last_error
