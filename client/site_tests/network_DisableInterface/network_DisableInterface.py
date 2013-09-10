@@ -26,7 +26,8 @@ class network_DisableInterface(test.test):
             ifaces = [ iface_name ]
 
         for nic in ifaces:
-            if nic != 'lo' and not nic.startswith('sit'):
+            if (nic != 'lo' and not nic.startswith('sit') and not
+                nic.startswith('p2p') and not nic.startswith('uap')):
                 self.test_one_nic(nic)
 
 
