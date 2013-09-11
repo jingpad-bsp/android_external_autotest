@@ -24,12 +24,15 @@ class Chrome(object):
         finder_options = browser_options.BrowserFinderOptions()
         self._browser_type = (self.BROWSER_TYPE_LOGIN
                 if logged_in else self.BROWSER_TYPE_GUEST)
-        finder_options.browser_type = self._browser_type
+        finder_options.browser_type = self.browser_type
+
+        b_options = finder_options.browser_options
+        b_options.disable_component_extensions_with_background_pages = False
 
         if logged_in:
             for path in extension_paths:
                 extension = extension_to_load.ExtensionToLoad(
-                        path, self._browser_type, is_component=True)
+                        path, self.browser_type, is_component=True)
                 finder_options.extensions_to_load.append(extension)
             self._extensions_to_load = finder_options.extensions_to_load
 
