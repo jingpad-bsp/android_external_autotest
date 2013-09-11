@@ -106,11 +106,8 @@ def fetch_orphaned_crashdumps(host, host_resultdir):
     minidumps = []
     for file in host.list_files_glob(os.path.join(constants.CRASH_DIR, '*')):
         logging.info('Collecting %s...', file)
-        try:
-            host.get_file(file, host_resultdir, preserve_perm=False)
-            minidumps.append(file)
-        except Exception as e:
-            logging.warning('Collection of %s failed:\n%s', file, e)
+        host.get_file(file, host_resultdir, preserve_perm=False)
+        minidumps.append(file)
     return minidumps
 
 
@@ -128,7 +125,12 @@ def get_site_crashdumps(host, test_start_time):
         os.mkdir(infodir)
 
     # TODO(milleral): handle orphans differently. crosbug.com/38202
-    orphans = fetch_orphaned_crashdumps(host, infodir)
+    try:
+        orphans = fetch_orphaned_crashdumps(host, infodir)
+    except Exception as e:
+        orphans = []
+        logging.warning('Collection of orphaned crash dumps failed %s', e)
+
     minidumps = find_and_generate_minidump_stacktraces(host_resultdir)
     orphans.extend(minidumps)
 
