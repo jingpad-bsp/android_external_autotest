@@ -1,4 +1,4 @@
-NAME = "Platform_CompressedSwapPerf"
+NAME = "platform_CompressedSwapPerf"
 PURPOSE = "Measure performance of compressed swap."
 CRITERIA = """
 This test will fail if:

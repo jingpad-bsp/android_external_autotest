@@ -1,4 +1,4 @@
-NAME = "Platform_CompressedSwap"
+NAME = "platform_CompressedSwap"
 PURPOSE = "Verify compressed swap is configured and basically works."
 CRITERIA = """
 This test will fail if:
