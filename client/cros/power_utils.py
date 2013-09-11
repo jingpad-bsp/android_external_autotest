@@ -72,16 +72,27 @@ class Backlight(object):
     # Default brightness is based on expected average use case.
     # See http://www.chromium.org/chromium-os/testing/power-testing for more
     # details.
-    default_brightness_percent = 40
-
-
-    def __init__(self):
+    def __init__(self, default_brightness_percent=None):
         """Constructor.
 
         attributes:
         _init_level: integer of backlight level when object instantiated.
         """
         self._init_level = self.get_level()
+        self.default_brightness_percent = default_brightness_percent
+        if not self.default_brightness_percent:
+            cmd = "get_powerd_initial_backlight_level 2>/dev/null"
+            try:
+                level = int(utils.system_output(cmd).rstrip())
+                max_level = float(self.get_max_level())
+                self.default_brightness_percent = (level / max_level) * 100
+                logging.info("Default backlight brightness percent = %f",
+                             self.default_brightness_percent)
+            except error.CmdError:
+                self.default_brightness_percent = 40.0
+                logging.warn("Unable to determine default backlight "
+                             "brightness percent.  Setting to %s",
+                             self.default_brightness_percent)
 
 
     def set_level(self, level):
