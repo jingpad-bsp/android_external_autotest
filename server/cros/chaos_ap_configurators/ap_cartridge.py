@@ -44,7 +44,7 @@ class APCartridge(object):
                 logging.error('Configuration failed for AP: %s\n%s',
                               configurator.get_router_name(),
                               ''.join(traceback.format_exc()))
-                configurator.screenshot_list
+                configurator.save_screenshot()
                 configurator.reset_command_list()
             logging.info('Configuration of AP %s complete.',
                          configurator.get_router_name())

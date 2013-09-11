@@ -150,13 +150,12 @@ class WiFiChaosConnectionTest(object):
                  'try': 0})
             self.error_list.append(ap_info)
             # Capture screenshot when configuration fails
-            for image in ap_info['configurator'].screenshot_list:
-                error = os.path.join(log_dir,
-                        'config_error_screenshot_%d.png' %
-                        ap_info['configurator'].screenshot_list.index(image))
-                f = open(error, 'wb')
-                f.write(image.decode('base64'))
-                f.close()
+            screenshots = ap_info['configurator'].get_all_screenshots()
+            for (i, image) in enumerate(screenshots):
+                screenshot_path = os.path.join(log_dir,
+                    'config_error_screenshot_%d.png' % i)
+                with open(screenshot_path, 'wb') as f:
+                    f.write(image.decode('base64'))
             return
 
         # Make iteration 1-indexed

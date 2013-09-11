@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
+
 # Supported bands
 BAND_2GHZ = '2.4GHz'
 BAND_5GHZ = '5GHz'
@@ -197,6 +200,23 @@ class APSpec(object):
     def unique_id(self):
         """Return the unique id."""
         return self._unique_id
+
+
+    @property
+    def association_parameters(self):
+        """Returns the AssociationParameters equivalent for the APSpec."""
+        security_config = None
+        if self._security == SECURITY_TYPE_WPAPSK:
+            # Not all of this is required but doing it just in case.
+            security_config = xmlrpc_security_types.WPAConfig(
+                psk=self._password,
+                wpa_mode=xmlrpc_security_types.WPAConfig.MODE_MIXED_WPA,
+                wpa_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP,
+                             xmlrpc_security_types.WPAConfig.CIPHER_TKIP],
+                wpa2_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
+        return xmlrpc_datatypes.AssociationParameters(
+                ssid=self._ssid, security_config=security_config,
+                is_hidden=not self._visible)
 
 
     def _validate_channel_and_mode(self):

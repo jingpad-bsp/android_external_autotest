@@ -52,8 +52,10 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         # Set a default band, this can be overriden by the subclasses
         self.current_band = ap_spec.BAND_2GHZ
 
+        # Diagnostic members
         self._command_list = []
         self._screenshot_list = []
+        self._traceback = None
 
         self.driver_connection_established = False
         self.router_on = False
@@ -94,9 +96,12 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.destroy_driver_connection()
 
 
-    @property
-    def screenshot_list(self):
-        """Returns the file as a base 64 encoded string for screenshot."""
+    def save_screenshot(self):
+        """Stores and returns the screenshot as a base 64 encoded string.
+
+        @returns the screenshot as a base 64 encoded string; if there was
+        an error saving the screenshot None is returned.
+        """
         if self.driver_connection_established:
             try:
                 screenshot = self.driver.get_screenshot_as_base64()
@@ -105,8 +110,39 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 screenshot = None
             if screenshot:
                 self._screenshot_list.append(screenshot)
+        return screenshot
+
+
+    def get_all_screenshots(self):
+        """Returns a list of screenshots."""
         return self._screenshot_list
+
+
+    def clear_screenshot_list(self):
+        """Clear the list of currently stored screenshots."""
         self._screenshot_list = []
+
+
+    @property
+    def traceback(self):
+        """Returns the traceback of a configuration error as a string.
+
+        Note that if get_configuration_success returns True this will
+        be none.
+        """
+        return self._traceback
+
+
+    @traceback.setter
+    def traceback(self, value):
+        """Set the traceback.
+
+        If the APConfigurator crashes use this to store what the traceback
+        was as a string.  It can be used later to debug configurator errors.
+
+        @param value: a string representation of the exception traceback
+        """
+        self._traceback = value
 
 
     def get_router_name(self):
@@ -322,12 +358,14 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         raise NotImplementedError
 
 
-    def set_using_ap_spec(self, set_ap_spec):
+    def set_using_ap_spec(self, set_ap_spec, power_up=True):
         """
         Sets all configurator options.
 
         @param set_ap_spec: APSpec object
         """
+        if power_up:
+            self.power_up_router()
         self.set_ssid(set_ap_spec.ssid)
         if self.is_visibility_supported():
             self.set_visibility(set_ap_spec.visible)
@@ -533,4 +571,5 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 self.save_page(i)
         self._command_list = []
         self.configuration_success = True
+        self._traceback = None
         self.destroy_driver_connection()
