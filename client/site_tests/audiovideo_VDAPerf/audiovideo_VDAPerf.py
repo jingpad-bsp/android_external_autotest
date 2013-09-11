@@ -85,15 +85,6 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
         self._perf_keyval['%s.%s' % (name, key)] = value
 
 
-    def _verify_frame_delivery_times(self, frame_delivery_times):
-        count = sum([len(x) for x in frame_delivery_times])
-        # This could be happened if the video is not supported on the platform.
-        if count == 0:
-            logging.info("there is no frames in the log, bypass")
-            return False
-        return True
-
-
     def _analyze_frame_delivery_times(self, name, frame_delivery_times):
 
         # The average of the first frame delivery time.
@@ -199,8 +190,7 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
         self.run_chrome_binary_test(BINARY, cmd_line)
 
         frame_delivery_times = self._load_frame_delivery_times()
-        if self._verify_frame_delivery_times(frame_delivery_times):
-            self._analyze_frame_delivery_times(name, frame_delivery_times)
+        self._analyze_frame_delivery_times(name, frame_delivery_times)
 
         # Get frame drop rate & CPU usage, decode at the specified fps
         _remove_if_exists(FRAME_DELIVERY_LOG)
@@ -214,9 +204,8 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
 
         #Ignore if no log was generated, see comment above.
         frame_delivery_times = self._load_frame_delivery_times()
-        if self._verify_frame_delivery_times(frame_delivery_times):
-            self._analyze_frame_drop_rate(name, frame_num, frame_delivery_times)
-            self._analyze_cpu_usage(name, TIME_LOG)
+        self._analyze_frame_drop_rate(name, frame_num, frame_delivery_times)
+        self._analyze_cpu_usage(name, TIME_LOG)
 
 
     def run_once(self, test_cases):

@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -23,7 +23,6 @@ performance of the Chromium hardware Video Decode Accelerator.
 # A list of test cases. Each entry consists of the following parts:
 #   [download_path, width, height, frame_num, fragment_num, profile, fps]
 test_cases = [
-    ['crowd/crowd2160-4271c26c5a9215b310e834b42165ad96.vp8', 3840, 2160, 500, 533, 11, 50],
     ['crowd/crowd1080-1edaaca36b67e549c51e5fea4ed545c3.vp8', 1920, 1080, 500, 539, 11, 50],
     ['crowd/crowd720-41e9a3e6a6b1644ebdb3f5723fce96e5.vp8', 1280, 720, 500, 534, 11, 50],
     ['crowd/crowd360-20dab55f01a63b8a0d12272c01bd6a97.vp8', 640, 360, 500, 532, 11, 50],
