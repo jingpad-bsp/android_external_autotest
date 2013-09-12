@@ -64,6 +64,7 @@ class network_WiFi_AttenuatedPerf(rvr_test_base.RvRTestBase):
     def run_once(self):
         start_time = time.time()
         throughput_data = []
+        self.context.client.host.get_file('/etc/lsb-release', self.resultsdir)
         keyval_logger = netperf_wifi_perf_logger.NetperfWiFiPerfLogger(
                 self._ap_config, self.context.client, self.write_perf_keyval)
         # Set up the router and associate the client with it.
