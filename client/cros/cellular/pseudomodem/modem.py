@@ -17,6 +17,9 @@ import mm1
 import modem_simple
 import sms_handler
 
+import common
+from autotest_lib.client.cros.cellular import net_interface
+
 ALLOWED_BEARER_PROPERTIES = [
     'apn',
     'operator-id',
@@ -45,6 +48,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
     def __init__(self, bus=None,
                  device='pseudomodem0',
+                 device_port_type=mm1.MM_MODEM_PORT_TYPE_AT,
                  index=0,
                  roaming_networks=None,
                  config=None):
@@ -59,6 +63,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
 
         self.device = device
+        self.device_port_type = device_port_type
         self.index = index
         self.sim = None
 
@@ -94,6 +99,14 @@ class Modem(dbus_std_ifaces.DBusProperties,
             'Revision' : '1.0',
             'DeviceIdentifier' : 'Banana1234567890',
             'Device' : self.device,
+            'Ports': [dbus.types.Struct(
+                              [self.device,
+                               dbus.types.UInt32(self.device_port_type)],
+                              signature='su'),
+                      dbus.types.Struct(
+                              [net_interface.PseudoNetInterface.IFACE_NAME,
+                               dbus.types.UInt32(mm1.MM_MODEM_PORT_TYPE_NET)],
+                              signature='su')],
             'Drivers' : ['FakeDriver'],
             'Plugin' : 'Banana Plugin',
             'UnlockRequired' : dbus.types.UInt32(mm1.MM_MODEM_LOCK_NONE),
