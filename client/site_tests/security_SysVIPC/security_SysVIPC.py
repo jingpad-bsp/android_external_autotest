@@ -15,10 +15,10 @@ ShmRecord = namedtuple('ShmRecord', ['owner', 'perms', 'attached'])
 SemaphoreRecord = namedtuple('SemaphoreRecord', ['owner', 'perms'])
 
 class security_SysVIPC(test.test):
+    """Detect emergence of new attack surfaces in SysV IPC."""
     version = 1
     expected_shm = set([ShmRecord(owner='cras', perms='640',
-                                  attached=('/usr/bin/cras',
-                                            '/usr/bin/powerd',))])
+                                  attached=('/usr/bin/cras',))])
     expected_sem = set([SemaphoreRecord(owner='root', perms='600')])
 
     def dump_ipcs_to_results(self):
@@ -32,7 +32,7 @@ class security_SysVIPC(test.test):
         Returns full paths to each program identified.
 
         Args:
-          shmid - the id as shown in ipcs and related utilities.
+          @param shmid: the id as shown in ipcs and related utilities.
         """
         # This finds /proc/*/exe entries where maps shows they have
         # attached to the specified shm segment.
