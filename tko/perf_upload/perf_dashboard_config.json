@@ -2,5 +2,9 @@
   {
     "autotest_name": "platform_GesturesRegressionTest",
     "master_name": "ChromeOSTouchpad"
+  },
+  {
+    "autotest_name": "video_VideoDecodeMemeoryUsage",
+    "master_name": "ChromeOSVideo"
   }
 ]

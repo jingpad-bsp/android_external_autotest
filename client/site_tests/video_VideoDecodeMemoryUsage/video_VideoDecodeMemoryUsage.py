@@ -139,7 +139,7 @@ def _assert_no_memory_leak(name, mem_usage, threshold = MEMORY_LEAK_THRESHOLD):
                  name, slope - delta, slope + delta)
     if (slope - delta > threshold):
         logging.debug('memory usage for %s - %s', name, mem_usage);
-        raise error.TestFail('leak detected: %s - %s' % (name, slope - delta))
+        raise error.TestError('leak detected: %s - %s' % (name, slope - delta))
 
 
 class MemoryTest(object):
@@ -184,40 +184,41 @@ class MemoryTest(object):
         return result
 
 
-    def initialize(self, browser, videos):
-        """A callback function, executed before loop().
-
-        @param browser: the telemetry entry for the browser under test
-        @param videos: the videos used for the test
-        """
-        self.browser = browser
-        self.videos = videos
+    def initialize(self):
+        """A callback function. It is just called before the main loops."""
+        pass
 
 
     def loop(self):
         """A callback function. It is the main memory test function."""
         pass
 
+
     def cleanup(self):
         """A callback function, executed after loop()."""
         pass
 
 
-    def run(self, browser, videos,
-            warmup_count = WARMUP_COUNT,
-            eval_count = EVALUATION_COUNT):
+    def run(self, name, browser, videos, test,
+            warmup_count=WARMUP_COUNT,
+            eval_count=EVALUATION_COUNT):
         """Runs this memory test case.
+
+        @param name: the name of the test.
         @param browser: the telemetry entry of the browser under test.
-
         @param videos: the videos to be used in the test.
-
+        @param test: the autotest itself, used to output performance values.
         @param warmup_count: run loop() for warmup_count times to make sure the
                memory usage has been stabalize.
-
         @param eval_count: run loop() for eval_count times to measure the memory
                usage.
         """
-        self.initialize(browser, videos)
+
+        self.browser = browser
+        self.videos = videos
+        self.name = name
+
+        self.initialize()
         try:
             for i in xrange(warmup_count):
                 self.loop()
@@ -231,8 +232,14 @@ class MemoryTest(object):
                     m.append(r)
                     if len(m) >= MIN_SAMPLE_SIZE:
                         _assert_no_memory_leak(n, m)
+
             for n, m in zip(names, metrics):
-                logging.info('memory usage for %s - %s', n, m)
+                logging.info('memory usage for %s.%s - %s', self.name, n, m)
+                test.output_perf_value(
+                        description='%s.%s' % (self.name, n),
+                        value=m,
+                        units='bytes',
+                        higher_is_better=False)
         finally:
             self.cleanup()
 
@@ -274,10 +281,10 @@ class OpenTabPlayVideo(MemoryTest):
 class PlayVideo(MemoryTest):
     """A memory test case: keep playing a video."""
 
-    def initialize(self, browser, videos):
-        super(PlayVideo, self).initialize(browser, videos)
+    def initialize(self):
+        super(PlayVideo, self).initialize()
         self.activeTab = self._open_new_tab(TEST_PAGE)
-        _change_source_and_play(self.activeTab, videos[0])
+        _change_source_and_play(self.activeTab, self.videos[0])
 
 
     def loop(self):
@@ -293,8 +300,8 @@ class ChangeVideoSource(MemoryTest):
     """A memory test case: change the "src" property of <video> object to
     load different video sources."""
 
-    def initialize(self, browser, videos):
-        super(ChangeVideoSource, self).initialize(browser, videos)
+    def initialize(self):
+        super(ChangeVideoSource, self).initialize()
         self.activeTab = self._open_new_tab(TEST_PAGE)
 
 
@@ -309,19 +316,33 @@ class ChangeVideoSource(MemoryTest):
         self.activeTab.Close()
 
 
+def _get_testcase_name(class_name, videos):
+    # Convert from Camel to underscrore.
+    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', class_name)
+    s = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
+
+    # Get a shorter name from the first video's URL.
+    # For example, get 'tp101.mp4' from the URL:
+    # 'http://host/path/tpe101-1024x768-9123456780123456.mp4'
+    m = re.match('.*/(\w+)-.*\.(\w+)', videos[0])
+
+    return '%s.%s.%s' % (m.group(1), m.group(2), s)
+
+
 class video_VideoDecodeMemoryUsage(test.test):
-    """This is a memory leak test for video playback."""
+    """This is a memory usage test for video playback."""
     version = 1
 
     def run_once(self, testcases):
         last_error = None
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
-            for name, videos in testcases:
-                logging.info('%s: %s', name, videos)
+            for class_name, videos in testcases:
+                name = _get_testcase_name(class_name, videos)
+                logging.info('run: %s - %s', name, videos)
                 try :
-                    test_case_class = globals()[name]
-                    test_case_class().run(cr.browser, videos)
+                    test_case_class = globals()[class_name]
+                    test_case_class().run(name, cr.browser, videos, self)
                 except Exception as last_error:
                     logging.exception('%s fail', name)
                     # continue to next test case
