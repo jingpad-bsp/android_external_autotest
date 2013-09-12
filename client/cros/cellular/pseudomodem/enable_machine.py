@@ -74,6 +74,9 @@ class EnableMachine(state_machine.StateMachine):
         state = self._modem.Get(mm1.I_MODEM, 'State')
         if self._modem.enable_step and self._modem.enable_step != self:
             # There is already an enable operation in progress.
+            # Note: ModemManager currently returns "WrongState" for this case.
+            # The API suggests that "InProgress" should be returned, so that's
+            # what we do here.
             logging.error('There is already an ongoing enable operation')
             if state == mm1.MM_MODEM_STATE_ENABLING:
                 message = 'Modem enable already in progress.'
@@ -83,6 +86,9 @@ class EnableMachine(state_machine.StateMachine):
             raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS, message)
         elif self._modem.enable_step is None:
             # There is no enable operation going on, cancelled or otherwise.
+            if state >= mm1.MM_MODEM_STATE_ENABLED:
+                logging.info('Modem is already enabled. Nothing to do.')
+                return False
             if state != mm1.MM_MODEM_STATE_DISABLED:
                 message = 'Modem cannot be enabled if not in the DISABLED' \
                           ' state.'
