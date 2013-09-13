@@ -40,7 +40,6 @@ class LinuxSystem(object):
         # Command locations.
         self.cmd_iw = params.get('cmd_iw', '/usr/sbin/iw')
         self.cmd_ip = params.get('cmd_ip', '/usr/sbin/ip')
-        self.cmd_dhcpd = params.get('cmd_dhcpd', '/usr/sbin/dhcpd')
         self.cmd_readlink = params.get('cmd_readlink', '/bin/ls -l')
         self.cmd_tcpdump = params.get('cmd_tcpdump', '/usr/sbin/tcpdump')
 

@@ -66,6 +66,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Router host.
         self.router = host
 
+        self.cmd_dhcpd = params.get('cmd_dhcpd', '/usr/sbin/dhcpd')
         self.cmd_hostapd = wifi_test_utils.must_be_installed(
                 host, params.get('cmd_hostapd', '/usr/sbin/hostapd'))
         self.cmd_hostapd_cli = params.get('cmd_hostapd_cli',
