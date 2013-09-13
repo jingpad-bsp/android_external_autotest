@@ -133,12 +133,6 @@ class WiFiClient(object):
 
 
     @property
-    def command_netdump(self):
-        """@return string path to netdump command."""
-        return self._command_netdump
-
-
-    @property
     def command_netperf(self):
         """@return string path to netperf command."""
         return self._command_netperf
@@ -241,10 +235,8 @@ class WiFiClient(object):
         self._wifi_if = devs[0]
         self._interface = interface.Interface(self._wifi_if, host=self.host)
         # Used for packet captures.
-        self._packet_capturer = packet_capturer.PacketCapturer(
-                self.host, host_description='client',
-                cmd_ifconfig=self.command_ifconfig, cmd_ip=self.command_ip,
-                cmd_iw=self.command_iw, cmd_netdump=self.command_netdump)
+        self._packet_capturer = packet_capturer.get_packet_capturer(
+                self.host, host_description='client', ignore_failures=True)
         self._result_dir = result_dir
 
         self._firewall_rules = []
@@ -371,7 +363,6 @@ class WiFiClient(object):
     def stop_capture(self):
         """Stop a packet capture and copy over the results."""
         self._packet_capturer.stop()
-        self._packet_capturer.destroy_netdump_devices()
 
 
     def check_iw_link_value(self, iw_link_key, desired_value):

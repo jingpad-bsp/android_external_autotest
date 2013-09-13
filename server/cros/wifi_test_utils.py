@@ -82,27 +82,24 @@ def is_installed(host, filename):
     return m is not None
 
 
-def get_install_path(host, filename, paths):
+def get_install_path(host, filename):
     """
     Checks if a file exists on a remote machine in one of several paths.
 
     @param host Host object representing the remote machine.
     @param filename String name of the file to check for existence.
-    @param paths List of paths to check for filename in.
     @return String full path of installed file, or None if not found.
 
     """
-    if not paths:
-        return None
-
-    # A single path entry is the same as testing is_installed().
-    if len(paths) == 1:
-        install_path = os.path.join(paths, filename)
-        if is_installed(host, install_path):
-            return install_path
-        return None
-
-    result = host.run('ls {%s}/%s' % (','.join(paths), filename),
+    PATHS = ['/bin',
+             '/sbin',
+             '/system/bin',
+             '/usr/bin',
+             '/usr/sbin',
+             '/usr/local/bin',
+             '/usr/local/sbin']
+    # Some hosts have poor support for which.  Sometimes none.
+    result = host.run('ls {%s}/%s' % (','.join(PATHS), filename),
                       ignore_status=True)
     found_path = result.stdout.split('\n')[0]
     return found_path or None
@@ -123,13 +120,7 @@ def must_be_installed(host, cmd):
 
     # Hunt for the equivalent file in a bunch of places.
     cmd_base = os.path.basename(cmd)
-    local_paths = ['/bin',
-                   '/sbin',
-                   '/usr/bin',
-                   '/usr/sbin',
-                   '/usr/local/bin',
-                   '/usr/local/sbin']
-    alternate_path = get_install_path(host, cmd_base, local_paths)
+    alternate_path = get_install_path(host, cmd_base)
     if alternate_path:
         return alternate_path
 

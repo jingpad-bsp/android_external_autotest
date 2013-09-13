@@ -41,7 +41,6 @@ class LinuxSystem(object):
         self.cmd_iw = params.get('cmd_iw', '/usr/sbin/iw')
         self.cmd_ip = params.get('cmd_ip', '/usr/sbin/ip')
         self.cmd_readlink = params.get('cmd_readlink', '/bin/ls -l')
-        self.cmd_tcpdump = params.get('cmd_tcpdump', '/usr/sbin/tcpdump')
 
         self.phy_bus_preference = params.get('phy_bus_preference', {})
         self.phydev2 = params.get('phydev2', None)
@@ -52,9 +51,10 @@ class LinuxSystem(object):
 
         self.capture_channel = None
         self.capture_ht_type = None
-        self._packet_capturer = packet_capturer.PacketCapturer(
+        self._packet_capturer = packet_capturer.get_packet_capturer(
                 self.host, host_description=role, cmd_ip=self.cmd_ip,
-                cmd_iw=self.cmd_iw, cmd_netdump=self.cmd_tcpdump)
+                cmd_iw=self.cmd_iw,
+                cmd_netdump=params.get('cmd_tcpdump', '/usr/sbin/tcpdump'))
 
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []

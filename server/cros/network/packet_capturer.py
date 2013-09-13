@@ -7,16 +7,124 @@ import os.path
 import uuid
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import wifi_test_utils
+
+
+class PacketCapturesDisabledError(Exception):
+    """Signifies that this remote host does not support packet captures."""
+    pass
+
+
+def get_packet_capturer(host, host_description=None, cmd_ifconfig=None,
+                        cmd_ip=None, cmd_iw=None, cmd_netdump=None,
+                        ignore_failures=False):
+    cmd_ifconfig = cmd_ifconfig or wifi_test_utils.get_install_path(
+            host, 'ifconfig')
+    cmd_iw = cmd_iw or wifi_test_utils.get_install_path(
+            host, 'iw')
+    cmd_ip = cmd_ip or wifi_test_utils.get_install_path(
+            host, 'ip')
+    cmd_netdump = cmd_netdump or wifi_test_utils.get_install_path(
+            host, 'tcpdump')
+    host_description = host_description or 'cap_%s' % uuid.uuid4().hex
+    if None in [cmd_ifconfig, cmd_iw, cmd_ip, cmd_netdump, host_description]:
+        if ignore_failures:
+            logging.warning('Creating a disabled packet capturer for %s.',
+                            host_description)
+            return DisabledPacketCapturer()
+        else:
+            raise error.TestFail('Missing commands needed for'
+                                 'capturing packets')
+
+    return PacketCapturer(host, host_description, cmd_ifconfig, cmd_ip, cmd_iw,
+                          cmd_netdump)
+
+
+class DisabledPacketCapturer(object):
+    """Delegate meant to look like it could take packet captures."""
+
+    @property
+    def capture_running(self):
+        """@return False"""
+        return False
+
+
+    def __init__(self):
+        pass
+
+
+    def  __enter__(self):
+        return self
+
+
+    def __exit__(self):
+        pass
+
+
+    def stop(self):
+        """No-op"""
+
+
+    def create_raw_monitor(self, phy, frequency, ht_type=None,
+                           monitor_device=None):
+        """Appears to fail while creating a raw monitor device.
+
+        @param phy string ignored.
+        @param frequency int ignored.
+        @param ht_type string ignored.
+        @param monitor_device string ignored.
+        @return None.
+
+        """
+        return None
+
+
+    def configure_raw_monitor(self, monitor_device, frequency, ht_type=None):
+        """Fails to configure a raw monitor.
+
+        @param monitor_device string ignored.
+        @param frequency int ignored.
+        @param ht_type string ignored.
+
+        """
+
+
+    def create_managed_monitor(self, existing_dev, monitor_device=None):
+        """Fails to create a managed monitor device.
+
+        @param existing_device string ignored.
+        @param monitor_device string ignored.
+        @return None
+
+        """
+        return None
+
+
+    def start_capture(self, interface, local_save_dir,
+                      remote_file=None, snaplen=None):
+        """Fails to start a packet capture.
+
+        @param interface string ignored.
+        @param local_save_dir string ignored.
+        @param remote_file string ignored.
+        @param snaplen int ignored.
+
+        @raises PacketCapturesDisabledError.
+
+        """
+        raise PacketCapturesDisabledError()
+
+
+    def stop_capture(self, capture_pid=None):
+        """Stops all ongoing packet captures.
+
+        @param capture_pid int ignored.
+
+        """
 
 
 class PacketCapturer(object):
     """Delegate with capability to initiate packet captures on a remote host."""
-
-    DEFAULT_COMMAND_IFCONFIG = 'ifconfig'
-    DEFAULT_COMMAND_IP = 'ip'
-    DEFAULT_COMMAND_IW = 'iw'
-    DEFAULT_COMMAND_NETDUMP = 'tcpdump'
-
 
     @property
     def capture_running(self):
@@ -27,19 +135,19 @@ class PacketCapturer(object):
         return False
 
 
-    def __init__(self, host, host_description=None, cmd_ifconfig=None,
-                 cmd_ip=None, cmd_iw=None, cmd_netdump=None):
-        self._cmd_netdump = cmd_netdump or self.DEFAULT_COMMAND_NETDUMP
-        self._cmd_iw = cmd_iw or self.DEFAULT_COMMAND_IW
-        self._cmd_ip = cmd_ip or self.DEFAULT_COMMAND_IP
-        self._cmd_ifconfig = cmd_ifconfig or self.DEFAULT_COMMAND_IFCONFIG
+    def __init__(self, host, host_description, cmd_ifconfig, cmd_ip,
+                 cmd_iw, cmd_netdump, disable_captures=False):
+        self._cmd_netdump = cmd_netdump
+        self._cmd_iw = cmd_iw
+        self._cmd_ip = cmd_ip
+        self._cmd_ifconfig = cmd_ifconfig
         self._host = host
         self._ongoing_captures = {}
         self._cap_num = 0
         self._if_num = 0
         self._created_managed_devices = []
         self._created_raw_devices = []
-        self._host_description = host_description or 'cap_%s' % uuid.uuid4().hex
+        self._host_description = host_description
 
 
     def __enter__(self):
@@ -53,7 +161,13 @@ class PacketCapturer(object):
     def stop(self):
         """Stop ongoing captures and destroy all created devices."""
         self.stop_capture()
-        self.destroy_netdump_devices()
+        for device in self._created_managed_devices:
+            self._host.run("%s dev %s del" % (self._cmd_iw, device))
+        self._created_managed_devices = []
+        for device in self._created_raw_devices:
+            self._host.run("%s link set %s down" % (self._cmd_ip, device))
+            self._host.run("%s dev %s del" % (self._cmd_iw, device))
+        self._created_raw_devices = []
 
 
     def create_raw_monitor(self, phy, frequency, ht_type=None,
@@ -112,15 +226,6 @@ class PacketCapturer(object):
         self._host.run("%s link set %s up" % (self._cmd_ip, monitor_device))
 
 
-    def deconfigure_raw_monitor(self, monitor_device):
-        """Deconfigure a previously configured monitor device.
-
-        @param monitor_device string name of previously configured device.
-
-        """
-        self.host.run("%s link set %s down" % (self._cmd_ip, monitor_device))
-
-
     def create_managed_monitor(self, existing_dev, monitor_device=None):
         """Create a monitor type WiFi interface next to a managed interface.
 
@@ -148,17 +253,6 @@ class PacketCapturer(object):
         self._host.run('%s %s up' % (self._cmd_ifconfig, monitor_device))
         self._created_managed_devices.append(monitor_device)
         return monitor_device
-
-
-    def destroy_netdump_devices(self):
-        """Destory all devices created by create_netdump_device."""
-        for device in self._created_managed_devices:
-            self._host.run("%s dev %s del" % (self._cmd_iw, device))
-        self._created_managed_devices = []
-        for device in self._created_raw_devices:
-            self._host.run("%s link set %s down" % (self._cmd_ip, device))
-            self._host.run("%s dev %s del" % (self._cmd_iw, device))
-        self._created_raw_devices = []
 
 
     def start_capture(self, interface, local_save_dir,
