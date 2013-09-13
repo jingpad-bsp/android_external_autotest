@@ -334,9 +334,7 @@ def parse_arguments(argv):
     parser.add_argument('--results_dir', metavar='RESULTS_DIR',
                         help='Instead of storing results in a new subdirectory'
                              ' of /tmp , store results in RESULTS_DIR. If '
-                             'RESULTS_DIR already exists, will attempt to '
-                             'continue using this directory, which may result '
-                             'in test failures due to file collisions.')
+                             'RESULTS_DIR already exists, it will be deleted.')
     parser.add_argument('--pretend', action='store_true', default=False,
                         help='Print autoserv commands that would be run, '
                              'rather than running them.')
@@ -476,6 +474,13 @@ def _perform_run_from_sysroot(arguments, sysroot_autotest_path, argv):
         # Create a results_directory as subdir of /tmp
         results_directory = tempfile.mkdtemp(prefix='test_that_results_')
     else:
+        # Delete results_directory if it already exists.
+        try:
+            shutil.rmtree(results_directory)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+
         # Create results_directory if it does not exist
         try:
             os.makedirs(results_directory)
