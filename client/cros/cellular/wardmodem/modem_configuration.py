@@ -12,6 +12,7 @@ import wardmodem_exceptions as wme
 CONF_DIR_NAME = 'configurations'
 DEFAULT_CONF_FILE = 'base.conf'
 MODEM_CONF_FILE = {
+        'e362': 'e362.conf',
 }
 
 class ModemConfiguration(object):

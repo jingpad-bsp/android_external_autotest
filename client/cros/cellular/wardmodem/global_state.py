@@ -282,3 +282,9 @@ class GlobalState(GlobalStateSkeleton):
         # The actual call on a registered network
         # Write: call_machine
         self._add_state_component('call_status', ['CONNECTED', 'DISCONNECTED'])
+
+        # Call end reason. Used by E362.
+        # For details, see E362 linux integraion guide.
+        # TODO(pprabhu): Document what the codes mean in E362 specific code.
+        # Write: call_machine
+        self._add_state_component('call_end_reason', [0, 9])
