@@ -141,10 +141,10 @@ class GlobalStateSkeleton(collections.MutableMapping):
                               self.INVALID_VALUE)
         for allowed_value in allowed_values:
             if isinstance(allowed_value, str):
-                if not re.match('[_A-Z0-9]*$', allowed_value) or \
+                if not re.match('[A-Z][_A-Z0-9]*$', allowed_value) or \
                         keyword.iskeyword(component_name):
                     self._setup_error('Allowed value ill-formed: |%s|' %
-                                     allowed_value)
+                                      allowed_value)
         self._allowed_values[component_name] = set(allowed_values)
 
 
@@ -186,3 +186,99 @@ class GlobalState(GlobalStateSkeleton):
         # If enabled, the machine responds to requests, otherwise reports error.
         # Write: request_response
         self._add_state_component('request_response_enabled', ['TRUE', 'FALSE'])
+
+        # Used by the state machine power_level_machine.
+        # Store the current power level of the modem. Various operations are
+        # enabled/disabled depending on the power level.
+        # Not all the power level are valid for all modems.
+        # Write: power_level_machine
+        self._add_state_component(
+                'power_level',
+                ['MINIMUM',  # Only simple information queries work.
+                 'FULL',  # All systems up
+                 'LOW',  # Radio down. Other systems up.
+                 'FACTORY_TEST',  # Not implemented yet.
+                 'OFFLINE',  # Not implemented yet.
+                 'RESET'])  # This state is not actually reached. It causes a
+                            # soft reset.
+
+        # The format in which currently selected network operator is displayed.
+        # Write: network_operator_machine
+        self._add_state_component(
+                'operator_format',
+                ['LONG_ALPHANUMERIC', 'SHORT_ALPHANUMERIC', 'NUMERIC'])
+
+
+        # The selected operator.
+        # We allow a modem configuration to supply up to 5 different operators.
+        # Here we try to remember which one is the selected operator currently.
+        # An INVALID_VALUE means that no operator is selected.
+        # Write: network_operator_machine
+        self._add_state_component('operator_index',
+                                  [0, 1, 2, 3, 4])
+
+        # The selected network technology.
+        # Write: network_operator_machine
+        self._add_state_component(
+                'access_technology',
+                ['GSM', 'GSM_COMPACT', 'UTRAN', 'GSM_EGPRS', 'UTRAN_HSDPA',
+                 'UTRAN_HSUPA', 'UTRAN_HSDPA_HSUPA', 'E_UTRAN'])
+
+        # Select whether a network operator is chosen automatically, and
+        # registration initiated automatically.
+        # Write: network_operator_machine
+        self._add_state_component('automatic_registration', ['TRUE', 'FALSE'])
+
+        # The verbosity level of network registration status unsolicited events.
+        # Write: network_registration_machine
+        self._add_state_component(
+                'unsolicited_registration_status_verbosity',
+                ['SHORT', 'LONG', 'VERY_LONG'])
+
+        # The network registration status.
+        # Write: network_registration_machine
+        self._add_state_component(
+                'registration_status',
+                ['NOT_REGISTERED', 'HOME', 'SEARCHING', 'DENIED', 'UNKNOWN',
+                 'ROAMING', 'SMS_ONLY_HOME', 'SMS_ONLY_ROAMING', 'EMERGENCY',
+                 'NO_CSFB_HOME', 'NO_CSFB_ROAMING'])
+
+        # The verbosity level of messages sent when network registration status
+        # changes.
+        # Write: network_registration_machine
+        self._add_state_component(
+                'registration_change_message_verbosity',
+                [0, 1, 2,])
+
+        # These components are level indicators usually used by the phone UI.
+        # Write: level_indicators_machine
+        self._add_state_component('level_battchg',  # Battery charge level.
+                                  [0, 1, 2, 3, 4, 5])
+        self._add_state_component('level_signal',  # Signal quality.
+                                  [0, 1, 2, 3, 4, 5])
+        self._add_state_component('level_service',  # Service availability.
+                                  [0, 1])
+        self._add_state_component('level_sounder',  # Sounder activity.
+                                  [0, 1])
+        self._add_state_component('level_message',  # Message received.
+                                  [0, 1])
+        self._add_state_component('level_call',  # Call in progress.
+                                  [0, 1])
+        self._add_state_component('level_vox',  # Transmit activated by voice.
+                                  [0, 1])
+        self._add_state_component('level_roam',  # Roaming indicator.
+                                  [0, 1])
+        self._add_state_component('level_smsfull',  # Is the SMS memory full.
+                                  [0,  # Nope, you're fine.
+                                   1,  # Yes, can't receive any more.
+                                   2])  # Yes, and had to drop some SMSs.
+        self._add_state_component('level_inputstatus',  # keypad status.
+                                  [0, 1])
+        self._add_state_component('level_gprs_coverage',  # Used by Novatel.
+                                   [0, 1])
+        self._add_state_component('level_call_setup',  # Used by Novatel.
+                                  [0, 1, 2, 3])
+
+        # The actual call on a registered network
+        # Write: call_machine
+        self._add_state_component('call_status', ['CONNECTED', 'DISCONNECTED'])

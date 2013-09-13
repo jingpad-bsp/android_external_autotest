@@ -10,6 +10,7 @@ import unittest
 
 import at_transceiver
 import global_state
+import modem_configuration
 import task_loop
 import wardmodem_exceptions as wme
 
@@ -30,10 +31,12 @@ class StateMachineBadTestCase(unittest.TestCase):
         self._transceiver = self._mox.CreateMock(at_transceiver.ATTransceiver)
         self._state = self._mox.CreateMock(global_state.GlobalState)
         self._task_loop = self._mox.CreateMock(task_loop.TaskLoop)
+        self._modem_conf = self._mox.CreateMock(
+                modem_configuration.ModemConfiguration)
 
         self.assertRaises(wme.WardModemSetupException,
                           state_machine.StateMachine, self._state,
-                          self._transceiver)
+                          self._transceiver, self._modem_conf)
 
 class StateMachineTestCase(unittest.TestCase):
     """
@@ -56,9 +59,11 @@ class StateMachineTestCase(unittest.TestCase):
         self._transceiver = self._mox.CreateMock(at_transceiver.ATTransceiver)
         self._state = self._mox.CreateMock(global_state.GlobalState)
         self._task_loop = self._mox.CreateMock(task_loop.TaskLoop)
+        self._modem_conf = self._mox.CreateMock(
+                modem_configuration.ModemConfiguration)
 
         self._state_machine = StateMachineTestCase.TestStateMachine(
-                self._state, self._transceiver)
+                self._state, self._transceiver, self._modem_conf)
         # Replace some internal objects with mocks.
         self._state_machine._task_loop = self._task_loop
 
@@ -109,21 +114,11 @@ class StateMachineTestCase(unittest.TestCase):
         self._task_loop.post_task_after_delay(
                 self._state_machine._update_state_callback,
                 state_update_delay_ms, state_update, mox.IgnoreArg())
-        self._task_loop.post_task_after_delay(
-                self._transceiver.process_wardmodem_response, response_delay_ms,
-                response, response_arg1, response_arg2).InAnyOrder()
-        self._task_loop.post_task_after_delay(
-                self._state_machine._update_state_callback,
-                state_update_delay_ms, state_update,
-                mox.IgnoreArg()).InAnyOrder()
 
         self._mox.ReplayAll()
         self._state_machine._respond(response, response_delay_ms, response_arg1,
                                      response_arg2)
         self._state_machine._update_state(state_update, state_update_delay_ms)
-        self._state_machine._update_state_and_respond(
-                state_update, state_update_delay_ms, response,
-                response_delay_ms, response_arg1, response_arg2)
         self._mox.VerifyAll()
 
 

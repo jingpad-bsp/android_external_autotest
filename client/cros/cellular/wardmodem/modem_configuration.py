@@ -122,10 +122,10 @@ class ModemConfiguration(object):
         self._load_variable('modem_power_level_initial_level')
         self._load_variable('modem_power_level_reset_by_default')
 
-        self._load_variable('network_identity_mcc')
-        self._load_variable('network_identity_mnc')
-        self._load_variable('network_identity_msin')
-        self._load_variable('network_identity_mdn')
+        self._load_variable('network_identity_default_mcc')
+        self._load_variable('network_identity_default_mnc')
+        self._load_variable('network_identity_default_msin')
+        self._load_variable('network_identity_default_mdn')
 
         self._load_variable('network_operators')
         self._load_variable('network_operator_default_index')

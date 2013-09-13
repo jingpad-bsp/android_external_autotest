@@ -64,7 +64,8 @@ class StateMachine(object):
         as a string.
 
         """
-        # Do not use self._setup_error because it causes infinite recursion.
+        # Do not use self._raise_setup_error because it causes infinite
+        # recursion.
         raise wme.WardModemSetupException(
                 'Attempted to get well known name for a state machine that is '
                 'not completely specified.')
@@ -169,17 +170,18 @@ class StateMachine(object):
         """
         if not re.match('wm_response_([a-z0-9]*[_]?)*', function) or \
            keyword.iskeyword(function):
-            self._setup_error('Response function name ill-formed: |%s|' %
-                              function)
+            self._raise_setup_error('Response function name ill-formed: |%s|' %
+                                    function)
         try:
             getattr(self, function)
-            self._setup_error('Attempted to add response function %s which '
-                              'already exists.' % function)
+            self._raise_setup_error(
+                    'Attempted to add response function %s which already '
+                    'exists.' % function)
         except AttributeError:  # OK, This is the good case.
             setattr(self, function, function)
 
 
-    def _setup_error(self, errstring):
+    def _raise_setup_error(self, errstring):
         """
         Log the error and raise WardModemSetupException.
 
@@ -191,7 +193,7 @@ class StateMachine(object):
         raise wme.WardModemSetupException(errstring)
 
 
-    def _runtime_error(self, errstring):
+    def _raise_runtime_error(self, errstring):
         """
         Log the error and raise StateMachineException.
 
