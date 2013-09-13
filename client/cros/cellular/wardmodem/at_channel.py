@@ -152,12 +152,13 @@ class ATChannel(object):
             os.write(self._channel, at_command)
         except OSError as write_error:
             if write_error.args[0] == self.IO_ERROR_CHANNEL_FULL:
-                self._logger.warning('%sSend Failed: |%s|',
+                self._logger.warning('%s Send Failed: |%s|',
                                      self._channel_name, repr(at_command))
                 return False
             raise write_error
 
-        self._logger.debug('%sSent: |%s|', self._channel_name, repr(at_command))
+        self._logger.debug('%s Sent: |%s|',
+                           self._channel_name, repr(at_command))
         return True
 
 
@@ -166,7 +167,7 @@ class ATChannel(object):
         Process a command from the channel once it has been fully received.
 
         """
-        self._logger.debug('%sReceived: |%s|',
+        self._logger.debug('%s Received: |%s|',
                            self._channel_name, repr(self._received_command))
         self._task_loop.post_task(self._receiver_callback,
                                   self._received_command)
@@ -185,14 +186,14 @@ class ATChannel(object):
 
         """
         if channel != self._channel:
-            self._logger.warning('%sSignal received on unknown channel. '
+            self._logger.warning('%s Signal received on unknown channel. '
                                  'Expected: |%d|, obtained |%d|. Ignoring.',
                                  self._channel_name, self._channel, channel)
             return True
         if cb_condition == glib.IO_IN or cb_condition == glib.IO_PRI:
             self._read_channel()
             return True
-        self._logger.warning('%sUnexpected cb condition %s received. Ignoring.',
+        self._logger.warning('%s Unexpected cb condition %s received. Ignored.',
                              self._channel_name,
                              self.GLIB_CB_CONDITION_STR[cb_condition])
         return True
@@ -223,7 +224,26 @@ class ATChannel(object):
         # '\n'. It may be that some modems that expect the terminator sequence
         # to be '\r\n' send spurious '\r's on the channel. If so, we must ignore
         # spurious '\r' or '\n'.
-        parts = re.split('\r|\n', incoming)
+
+        # (1) replace ; by \rAT.
+        # ';' can be used to string together AT commands.
+        # So
+        #  AT1;2
+        # is the same as sending two commands:
+        #  AT1
+        #  AT2
+        incoming = re.sub(';', '\rAT', incoming)
+
+        # (2) Replace any occurence of a terminator with '\r\r'.
+        # This ensures that splitting at the terminator actually gives us an
+        # empty part. viz --
+        #  'some_string\nother_string' --> 'some_string\r\rother_string'
+        #  --> ['some_string', '', 'other_string']
+        # We use the empty string generated to detect completed commands.
+        incoming = re.sub('\r|\n|;', '\r\r', incoming)
+
+        # (3) Split into AT commands.
+        parts = re.split('\r', incoming)
         for part in parts:
             if (not part) and self._received_command:
                 self._process_received_command()

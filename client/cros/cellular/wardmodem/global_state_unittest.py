@@ -61,8 +61,24 @@ class GlobalStateSkeletonBadTestCase(unittest.TestCase):
                           [''])
         self.assertRaises(wme.WardModemSetupException,
                           state._add_state_component,
+                          'use_int_when_you_want_numbers',
+                          ['2'])
+        self.assertRaises(wme.WardModemSetupException,
+                          state._add_state_component,
                           'must_be_uppercase',
                           ['ill_formed'])
+
+
+    def test_valid_names(self):
+        """
+        Some examples of correct component additions.
+
+        """
+        state = global_state.GlobalStateSkeleton()
+
+        state._add_state_component('this_is_fine', ['A', 'B', 'C'])
+        state._add_state_component('so_is_this', [1, 1, 2, 3, 5, 8, 13])
+        state._add_state_component('and_even_this_guy', ['A', 'B3B_CC', 34])
 
 
 class GlobalStateSkeletonTestCase(unittest.TestCase):

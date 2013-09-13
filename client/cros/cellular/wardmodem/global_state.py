@@ -24,7 +24,9 @@ class GlobalStateSkeleton(collections.MutableMapping):
     Then any state machine that has the global state object, say gstate, can
     use the state component, viz,
       To read: my_state_has_val = gstate['dummy_var']
+               my_state_has_val = gstate[gstate.dummy_var]  # preferred
       To write: gstate['dummy_var'] = 'DUMMY_VAR_WOOF'
+                gstate[gstate.dummy_var] = gstate.DUMMY_VAR_WOOF  # preferred
 
     """
 
@@ -112,7 +114,7 @@ class GlobalStateSkeleton(collections.MutableMapping):
             Component names must be unique. Use lower case names.
 
         @param allowed_values: The list of string values that component_name can
-                take. Use all caps names.
+                take. Use all-caps names / numbers.
 
         @raises: WardModemSetupException if the component_name exists or if an
                 invalid value is requested to be allowed.
@@ -134,14 +136,15 @@ class GlobalStateSkeleton(collections.MutableMapping):
         self._values[component_name] = self.INVALID_VALUE
 
         # Record allowed values.
-        for allowed_value in allowed_values:
-            if not re.match('[A-Z][_A-Z0-9]*$', allowed_value) or \
-               keyword.iskeyword(component_name):
-                self._setup_error('Allowed value ill-formed: |%s|' %
-                                 allowed_value)
         if self.INVALID_VALUE in allowed_values:
             self._setup_error('%s can not be an allowed value.' %
                               self.INVALID_VALUE)
+        for allowed_value in allowed_values:
+            if isinstance(allowed_value, str):
+                if not re.match('[_A-Z0-9]*$', allowed_value) or \
+                        keyword.iskeyword(component_name):
+                    self._setup_error('Allowed value ill-formed: |%s|' %
+                                     allowed_value)
         self._allowed_values[component_name] = set(allowed_values)
 
 
@@ -171,8 +174,7 @@ class GlobalState(GlobalStateSkeleton):
     """
     All global state is stored in this object.
 
-    This class simply fills-in state components in the GlobalStateSkeleton.
-    This should *only* implement __init__.
+    This class fills-in state components in the GlobalStateSkeleton.
 
     @see GlobalStateSkeleton
 

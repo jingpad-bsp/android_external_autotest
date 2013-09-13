@@ -87,34 +87,64 @@ class ModemConfiguration(object):
         self.plugin_state_machines =  self.plugin_conf.get('state_machines', [])
 
 
-        # The modemmanager plugin to be used for the modem.
-        self.mm_plugin = (
-                self.plugin_conf.get('mm_plugin', self.base_conf['mm_plugin']))
 
+        # The modemmanager plugin to be used for the modem.
+        self._load_variable('mm_plugin')
 
         # The string to be prepended to all AT commands from modemmanager to
         # modem.
-        self.mm_to_modem_at_prefix = (
-                self.plugin_conf.get('mm_to_modem_at_prefix',
-                                     self.base_conf['mm_to_modem_at_prefix']))
+        self._load_variable('mm_to_modem_at_prefix')
 
         # The string to be appended to all AT commands from modemmanager to
         # modem.
-        self.mm_to_modem_at_suffix = (
-                self.plugin_conf.get('mm_to_modem_at_suffix',
-                                     self.base_conf['mm_to_modem_at_suffix']))
+        self._load_variable('mm_to_modem_at_suffix')
 
         # The string to be prepended to all AT commands from modem to
         # modemmanager.
-        self.modem_to_mm_at_prefix = (
-                self.plugin_conf.get('modem_to_mm_at_prefix',
-                                     self.base_conf['modem_to_mm_at_prefix']))
+        self._load_variable('modem_to_mm_at_prefix')
 
         # The string to be appended to all AT commands from modem to
         # modemmanager.
-        self.modem_to_mm_at_suffix = (
-                self.plugin_conf.get('modem_to_mm_at_suffix',
-                                     self.base_conf['modem_to_mm_at_suffix']))
+        self._load_variable('modem_to_mm_at_suffix')
+
+        # ######################################################################
+        # Configuration data for various state machines.
+        self._load_variable('modem_power_level_allowed_levels')
+        self._load_variable('modem_power_level_initial_level')
+        self._load_variable('modem_power_level_reset_by_default')
+
+        self._load_variable('network_identity_mcc')
+        self._load_variable('network_identity_mnc')
+        self._load_variable('network_identity_msin')
+        self._load_variable('network_identity_mdn')
+
+        self._load_variable('network_operators')
+        self._load_variable('network_operator_default_index')
+
+        self._load_variable('level_indicators_items')
+        self._load_variable('level_indicators_defaults')
+
+
+    def _load_variable(self, varname, strict=True, default=None):
+        """
+        Load a variable from the configuration files.
+
+        Implement the most common way of loading variables from configuration.
+
+        @param varname: The name of the variable to load.
+
+        @param strict: If True, we expect some value to be available.
+
+        @param default: Value to assign if none can be loaded. Only makes sense
+                when |strint| is False.
+
+        """
+        if strict:
+            value = self.plugin_conf.get(varname, self.base_conf[varname])
+        else:
+            value = self.plugin_conf.get(varname,
+                                         self.base_conf.get(varname, default))
+        setattr(self, varname, value)
 
 
     def _load_conf(self, conf_file):

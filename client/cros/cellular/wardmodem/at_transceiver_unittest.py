@@ -21,6 +21,25 @@ class ATTransceiverTestCase(unittest.TestCase):
     Base test fixture for ATTransceiver class.
 
     """
+    class TestMachine(object):
+        """ Stub test machine used by tests below. """
+        def test_function(self, _):
+            """
+            A stub StateMachine API function.
+
+            wardmodem calls will be placed to this function.
+
+            @param _: Ignored.
+
+            """
+            pass
+
+
+        # Needed in a test machine.
+        def get_well_known_name(self):
+            """ Get the well known name of this machine as str. """
+            return "test_machine"
+
 
     def setUp(self):
         self._mox = mox.Mox()
@@ -41,6 +60,11 @@ class ATTransceiverTestCase(unittest.TestCase):
         self._at_transceiver._mm_channel = self._mock_mm_channel
         self._mock_task_loop = self._mox.CreateMock(task_loop.TaskLoop)
         self._at_transceiver._task_loop = self._mock_task_loop
+
+        # Also empty out the internal maps, so that actual loaded configuration
+        # does not interfere with the test.
+        self._at_transceiver._at_to_wm_action_map = {}
+        self._at_transceiver._wm_response_to_at_map = {}
 
 
 class ATTransceiverCommonTestCase(ATTransceiverTestCase):
@@ -178,21 +202,13 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
         raw_map = {'AT=*': ('TestMachine', 'test_function', 0)}
         arg = 'fake_arg'
         command = 'AT=' + arg
-        class TestMachine(object):
-            #pylint: disable=C0111
-            def test_function(self, arg):
-                pass
-            # Needed in a test machine.
-            def get_well_known_name(self):
-                pass
-
-        mock_test_machine = self._mox.CreateMock(TestMachine)
+        mock_test_machine = self._mox.CreateMock(self.TestMachine)
         self._at_transceiver._update_at_to_wm_action_map(raw_map)
         mock_test_machine.get_well_known_name().AndReturn('TestMachine')
         self._mock_task_loop.post_task(
                 self._at_transceiver._execute_state_machine_function,
                 command, mox.IgnoreArg(), mock_test_machine.test_function,
-                (arg,))
+                arg)
 
         self._mox.ReplayAll()
         self._at_transceiver.register_state_machine(mock_test_machine)
@@ -229,24 +245,24 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
         self.assertEqual(
                 'AT=arg1,some,arg2',
                 self._at_transceiver._construct_at_response(
-                    'AT=*,some,*', 'arg1','arg2'))
+                        'AT=*,some,*', 'arg1','arg2'))
         self.assertEqual(
                 'AT=1,some,thing',
                 self._at_transceiver._construct_at_response(
-                    'AT=*,some,thing', 1))
+                        'AT=*,some,thing', 1))
         self.assertEqual(
                 'AT=some,other,thing',
                 self._at_transceiver._construct_at_response(
-                    'AT=some,other,thing'))
+                        'AT=some,other,thing'))
+        self.assertEqual(
+                'AT=needsnone',
+                self._at_transceiver._construct_at_response(
+                        'AT=needsnone', 'butonegiven'))
         # Unsuccessful cases
         self.assertRaises(
                 wme.ATTransceiverException,
                 self._at_transceiver._construct_at_response,
                 'AT=*,needstwo,*', 'onlyonegiven')
-        self.assertRaises(
-                wme.ATTransceiverException,
-                self._at_transceiver._construct_at_response,
-                'AT=needsnone', 'butonegiven')
 
 
     def test_process_wardmodem_response(self):

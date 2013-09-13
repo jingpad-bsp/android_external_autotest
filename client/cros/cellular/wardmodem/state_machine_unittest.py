@@ -103,18 +103,19 @@ class StateMachineTestCase(unittest.TestCase):
         state_update = {'comp1': 'VAL1', 'comp2': 'VAL2'}
         state_update_delay_ms = 20
 
-        self._task_loop.post_task(self._transceiver.process_wardmodem_response,
-                                  response_delay_ms, response, response_arg1,
-                                  response_arg2)
-        self._task_loop.post_task(self._state_machine._update_state_callback,
-                                  state_update_delay_ms, state_update,
-                                  mox.IgnoreArg())
-        self._task_loop.post_task(self._transceiver.process_wardmodem_response,
-                                  response_delay_ms, response, response_arg1,
-                                  response_arg2).InAnyOrder()
-        self._task_loop.post_task(self._state_machine._update_state_callback,
-                                  state_update_delay_ms, state_update,
-                                  mox.IgnoreArg()).InAnyOrder()
+        self._task_loop.post_task_after_delay(
+                self._transceiver.process_wardmodem_response, response_delay_ms,
+                response, response_arg1, response_arg2)
+        self._task_loop.post_task_after_delay(
+                self._state_machine._update_state_callback,
+                state_update_delay_ms, state_update, mox.IgnoreArg())
+        self._task_loop.post_task_after_delay(
+                self._transceiver.process_wardmodem_response, response_delay_ms,
+                response, response_arg1, response_arg2).InAnyOrder()
+        self._task_loop.post_task_after_delay(
+                self._state_machine._update_state_callback,
+                state_update_delay_ms, state_update,
+                mox.IgnoreArg()).InAnyOrder()
 
         self._mox.ReplayAll()
         self._state_machine._respond(response, response_delay_ms, response_arg1,

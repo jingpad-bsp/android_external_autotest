@@ -95,6 +95,30 @@ class ATChannelTestCase(unittest.TestCase):
         self.mox.VerifyAll()
 
 
+    def test_receive_at_commands_differet_terminators(self):
+        """
+        Test that AT commands are recieved correctly when different supported
+        termination strings are being used.
+
+        """
+        # ; is a continuation marker. AT1;2 == AT1\r\nAT2
+        payloads = ['AT1\r\nA', 'T2\rA', 'T3\nA', 'T4;', '5\r\n']
+        callback = lambda channel, payload: None
+        self._at_channel._receiver_callback = callback
+        self._mox_task_loop.post_task(callback, 'AT1')
+        self._mox_task_loop.post_task(callback, 'AT2')
+        self._mox_task_loop.post_task(callback, 'AT3')
+        self._mox_task_loop.post_task(callback, 'AT4')
+        self._mox_task_loop.post_task(callback, 'AT5')
+
+        self.mox.ReplayAll()
+        for payload in payloads:
+            self._send_command_remote(payload)
+            self._at_channel._handle_channel_cb(self._channel_file.fileno(),
+                                                glib.IO_IN)
+        self.mox.VerifyAll()
+
+
     def test_recieve_at_commands_in_parts(self):
         """
         Test that a multiple AT commands can be received in parts on the

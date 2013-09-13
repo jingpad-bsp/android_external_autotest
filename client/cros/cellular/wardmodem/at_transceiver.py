@@ -167,6 +167,18 @@ class ATTransceiver(object):
         self._mode = value
 
 
+    def get_state_machine(self, well_known_name):
+        """
+        Get the registered state machine for the given well known name.
+
+        @param well_known_name: The name of the desired machine.
+
+        @return: The machine. None if not found.
+
+        """
+        return self._state_machines.get(well_known_name, None)
+
+
     def register_state_machine(self, state_machine):
         """
         Register a new state machine.
@@ -195,6 +207,8 @@ class ATTransceiver(object):
                 an AT command.
 
         """
+        self._logger.debug('Processing wardmodem response %s%s',
+                           response, str(args) if args else '')
         if response not in self._wm_response_to_at_map:
             self._runtime_error('Unknown wardmodem response |%s|' % response)
         at_response = self._construct_at_response(
@@ -295,13 +309,13 @@ class ATTransceiver(object):
 
         self._task_loop.post_task(
                 self._execute_state_machine_function, command, action, function,
-                args)
+                *args)
 
     # ##########################################################################
     # Helper functions
 
     def _execute_state_machine_function(self, at_command, action, function,
-                                        args):
+                                        *args):
         """
         A thin wrapper to execute state_machine.function(args). Instead of
         posting the call directly, this method is posted for better error
@@ -314,17 +328,20 @@ class ATTransceiver(object):
 
         @param function: The function to call.
 
-        @param args: The arguments to be passed to function.
+        @param *args: Arguments to be passed to function.
 
         """
         try:
-            function(args)
-        except TypeError:
-            self._runtime_error(
-                    'Malformed action registered for AT command -- Incorrect '
-                    'arguments. AT command: |%s|. Action: |%s|. Expected '
-                    'function signature: %s' % (at_command, action,
-                                                inspect.getargspec(function)))
+            function(*args)
+        except TypeError as e:
+            self._logger.error(
+                    'Possible malformed action registered for AT command -- '
+                    'Incorrect arguments. AT command: |%s|. Action: |%s|. '
+                    'Expected function signature: %s. '
+                    'Original error raised: |%s|',
+                    at_command, action, inspect.getargspec(function), str(e))
+            # use 'raise' here to preserve the original backtrace.
+            raise
 
 
     def _update_at_to_wm_action_map(self, raw_map):
@@ -490,15 +507,17 @@ class ATTransceiver(object):
     def _find_wardmodem_action_for_at(self, atcom):
         """
         For the given AT command, find the appropriate action from wardmodem.
+        This will attempt to find a rule matching |atcom|. If that fails, and if
+        |_fallback_state_machine| exists, the default action from this machine
+        is returned.
 
-        @param atcom: [string] The AT command to find action for.
+        @param atcom: The AT command to find action for. Type: str.
 
-        @return: [(string, string, (string))] Returns the tuple of
-                (state_machine_name, function, (arguments)) for the
-                corresponding action. The action to be taken is roughly --
-
-                state_machine.function(arguments)
-
+        @return: Returns the tuple of (state_machine_name, function,
+                (arguments,)) for the corresponding action. The action to be
+                taken is roughly
+                    state_machine.function(arguments)
+                Type: (string, string, (string,))
 
         @raises: ATTransceiverException if the at command is ill-formed or we
                 don't have a corresponding action.
@@ -564,13 +583,19 @@ class ATTransceiver(object):
 
         """
         parts = raw_at.split(ARG_PLACEHOLDER)
-        if len(args) != (len(parts) - 1):
+        if len(args) < (len(parts) - 1):
             self._runtime_error(
                     'Failed to construct AT response from |%s|. Expected %d '
                     'arguments, found %d.' %
                     (raw_at, len(parts) - 1, len(args)))
+        if len(args) > (len(parts) - 1):
+            self._logger.warning(
+                    'Number of arguments in wardmodem response greater than '
+                    'expected. Some of the arguments from %s will not be used '
+                    'in the reconstruction of %s', str(args), raw_at)
+
         ret = []
-        for i in range(len(args)):
+        for i in range(len(parts) - 1):
             ret += parts[i]
             ret += str(args[i])
         ret += parts[len(parts) - 1]
