@@ -1,4 +1,5 @@
 # Copyright 2007 Google Inc. Released under the GPL v2
+#pylint: disable-msg=C0111
 
 import re, os, sys, traceback, time, glob, tempfile
 import logging
@@ -157,8 +158,8 @@ class BaseAutotest(installable_object.InstallableObject):
         return repos
 
 
-    def install(self, host=None, autodir=None):
-        self._install(host=host, autodir=autodir)
+    def install(self, host=None, autodir=None, use_packaging=True):
+        self._install(host=host, autodir=autodir, use_packaging=use_packaging)
 
 
     def install_full_client(self, host=None, autodir=None):
@@ -250,6 +251,8 @@ class BaseAutotest(installable_object.InstallableObject):
         if use_packaging:
             try:
                 self._install_using_packaging(host, autodir)
+                logging.info("Installation of autotest completed using the "
+                             "packaging system.")
                 return
             except (error.PackageInstallError, error.AutoservRunError,
                     global_config.ConfigError), e:
@@ -266,7 +269,8 @@ class BaseAutotest(installable_object.InstallableObject):
                 self._install_using_send_file(host, autodir)
             else:
                 host.send_file(self.source_material, autodir, delete_dest=True)
-            logging.info("Installation of autotest completed")
+            logging.info("Installation of autotest completed from %s",
+                         self.source_material)
             self.installed = True
             return
 
@@ -278,7 +282,7 @@ class BaseAutotest(installable_object.InstallableObject):
             host.run('svn checkout %s %s' % (AUTOTEST_SVN, autodir))
         except error.AutoservRunError, e:
             host.run('svn checkout %s %s' % (AUTOTEST_HTTP, autodir))
-        logging.info("Installation of autotest completed")
+        logging.info("Installation of autotest completed using SVN.")
         self.installed = True
 
 
@@ -321,7 +325,7 @@ class BaseAutotest(installable_object.InstallableObject):
 
     def run(self, control_file, results_dir='.', host=None, timeout=None,
             tag=None, parallel_flag=False, background=False,
-            client_disconnect_timeout=None):
+            client_disconnect_timeout=None, use_packaging=True):
         """
         Run an autotest job on the remote machine.
 
@@ -344,7 +348,7 @@ class BaseAutotest(installable_object.InstallableObject):
         @raises AutotestRunError: If there is a problem executing
                 the control file.
         """
-        host = self._get_host_and_setup(host)
+        host = self._get_host_and_setup(host, use_packaging=use_packaging)
         results_dir = os.path.abspath(results_dir)
 
         if client_disconnect_timeout is None:
@@ -355,21 +359,21 @@ class BaseAutotest(installable_object.InstallableObject):
 
         atrun = _Run(host, results_dir, tag, parallel_flag, background)
         self._do_run(control_file, results_dir, host, atrun, timeout,
-                     client_disconnect_timeout)
+                     client_disconnect_timeout, use_packaging=use_packaging)
 
 
-    def _get_host_and_setup(self, host):
+    def _get_host_and_setup(self, host, use_packaging=True):
         if not host:
             host = self.host
         if not self.installed:
-            self.install(host)
+            self.install(host, use_packaging=use_packaging)
 
         host.wait_up(timeout=30)
         return host
 
 
     def _do_run(self, control_file, results_dir, host, atrun, timeout,
-                client_disconnect_timeout):
+                client_disconnect_timeout, use_packaging=True):
         try:
             atrun.verify_machine()
         except:
@@ -401,10 +405,12 @@ class BaseAutotest(installable_object.InstallableObject):
         # If the packaging system is being used, add the repository list.
         repos = None
         try:
-            repos = self.get_fetch_location()
-            pkgmgr = packages.PackageManager('autotest', hostname=host.hostname,
-                                             repo_urls=repos)
-            prologue_lines.append('job.add_repository(%s)\n' % repos)
+            if use_packaging:
+                repos = self.get_fetch_location()
+                prologue_lines.append('job.add_repository(%s)\n' % repos)
+            else:
+                logging.debug('use_packaging is set to False, do not add any '
+                              'repository.')
         except global_config.ConfigError, e:
             # If repos is defined packaging is enabled so log the error
             if repos:

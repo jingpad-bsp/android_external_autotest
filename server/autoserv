@@ -293,6 +293,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url):
     skip_crash_collection = parser.options.skip_crash_collection
     ssh_verbosity = int(parser.options.ssh_verbosity)
     ssh_options = parser.options.ssh_options
+    no_use_packaging = parser.options.no_use_packaging
 
     # can't be both a client and a server side test
     if client and server:
@@ -372,7 +373,8 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url):
                             verify_job_repo_url=verify_job_repo_url,
                             only_collect_crashinfo=collect_crashinfo,
                             skip_crash_collection=skip_crash_collection,
-                            job_labels=job_labels)
+                            job_labels=job_labels,
+                            use_packaging=(not no_use_packaging))
         finally:
             while job.hosts:
                 host = job.hosts.pop()

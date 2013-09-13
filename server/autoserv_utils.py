@@ -27,7 +27,8 @@ def autoserv_run_job_command(autoserv_directory, machines,
                              write_pidfile=True, fast_mode=False,
                              ssh_verbosity=0,
                              no_console_prefix=False,
-                             ssh_options=None,):
+                             ssh_options=None,
+                             use_packaging=True):
     """
     Construct an autoserv command from a job or host queue entry.
 
@@ -54,7 +55,10 @@ def autoserv_run_job_command(autoserv_directory, machines,
                               in autoserv console logs.
     @param ssh_options: A string giving extra arguments to be tacked on to
                         ssh commands.
+    @param use_packaging Enable install modes that use the packaging system.
+
     @returns The autoserv command line as a list of executable + parameters.
+
     """
     command = [os.path.join(autoserv_directory, 'autoserv')]
 
@@ -106,6 +110,9 @@ def autoserv_run_job_command(autoserv_directory, machines,
     if fast_mode:
         command.append('--disable_sysinfo')
         command.append('--no_collect_crashinfo')
+
+    if not use_packaging:
+        command.append('--no_use_packaging')
 
     return command + extra_args
 

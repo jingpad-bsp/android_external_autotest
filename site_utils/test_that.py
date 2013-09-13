@@ -253,7 +253,8 @@ def run_job(job, host, autotest_path, results_directory, fast_mode,
                 fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
                 ssh_options=ssh_options,
                 extra_args=extra_args,
-                no_console_prefix=True)
+                no_console_prefix=True,
+                use_packaging=False)
 
         _run_autoserv(command, pretend)
         return results_directory

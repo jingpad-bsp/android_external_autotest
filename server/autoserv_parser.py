@@ -178,6 +178,10 @@ class base_autoserv_parser(object):
                                      "process runs in a drone without server-"
                                      "side packaging support, even though the "
                                      "job requires server-side packaging"))
+        self.parser.add_option("--no_use_packaging", action="store_true",
+                               dest="no_use_packaging", default=False,
+                               help=("Disable install modes that use the "
+                                     "packaging system."))
 
 
     def parse_args(self):

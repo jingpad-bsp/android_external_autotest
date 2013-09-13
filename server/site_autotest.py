@@ -19,6 +19,7 @@ _PARSER = autoserv_parser.autoserv_parser
 
 
 class SiteAutotest(installable_object.InstallableObject):
+    """Site implementation of Autotest."""
 
     def get(self, location=None):
         if not location:
@@ -98,16 +99,19 @@ class SiteAutotest(installable_object.InstallableObject):
         return repos
 
 
-    def install(self, host=None, autodir=None):
+    def install(self, host=None, autodir=None, use_packaging=True):
         """Install autotest.  If |host| is not None, stores it in |self.host|.
 
         @param host A Host instance on which autotest will be installed
         @param autodir Location on the remote host to install to
+        @param use_packaging Enable install modes that use the packaging system.
+
         """
         if host:
             self.host = host
 
-        super(SiteAutotest, self).install(host=host, autodir=autodir)
+        super(SiteAutotest, self).install(host=host, autodir=autodir,
+                                          use_packaging=use_packaging)
 
 
     def _install(self, host=None, autodir=None, use_autoserv=True,

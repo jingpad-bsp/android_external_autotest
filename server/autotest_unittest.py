@@ -175,10 +175,9 @@ class TestBaseAutotest(unittest.TestCase):
 
         # stub out install
         self.god.stub_function(self.base_autotest, "install")
-        self.god.stub_class(packages, "PackageManager")
 
         # record
-        self.base_autotest.install.expect_call(self.host)
+        self.base_autotest.install.expect_call(self.host, use_packaging=True)
         self.host.wait_up.expect_call(timeout=30)
         os.path.abspath.expect_call('.').and_return('.')
         run_obj = autotest._Run.expect_new(self.host, '.', None, False, False)
@@ -205,9 +204,6 @@ class TestBaseAutotest(unittest.TestCase):
         c = autotest.global_config.global_config
         c.get_config_value.expect_call("PACKAGES",
             'fetch_location', type=list, default=[]).and_return(['repo'])
-        pkgmgr = packages.PackageManager.expect_new('autotest',
-                                                     repo_urls=['repo'],
-                                                     hostname='hostname')
 
         cfile = self.god.create_mock_class(file, "file")
         cfile_orig = "original control file"

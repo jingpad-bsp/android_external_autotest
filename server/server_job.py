@@ -558,7 +558,7 @@ class base_server_job(base_job.base_job):
             collect_crashdumps=True, namespace={}, control=None,
             control_file_dir=None, verify_job_repo_url=False,
             only_collect_crashinfo=False, skip_crash_collection=False,
-            job_labels=''):
+            job_labels='', use_packaging=True):
         # for a normal job, make sure the uncollected logs file exists
         # for a crashinfo-only run it should already exist, bail out otherwise
         created_uncollected_logs = False
@@ -641,6 +641,7 @@ class base_server_job(base_job.base_job):
                     utils.open_write_close(server_control_file, control)
 
                 logging.info("Processing control file")
+                namespace['use_packaging'] = use_packaging
                 self._execute_code(server_control_file, namespace)
                 logging.info("Finished processing control file")
 
