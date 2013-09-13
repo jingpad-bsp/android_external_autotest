@@ -20,6 +20,7 @@ from autotest_lib.client.cros.cellular import cell_tools, mm
 # TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
 # cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.wardmodem import wardmodem
 
 
 # Default timeouts in seconds
@@ -151,7 +152,12 @@ class network_3GSmokeTest(test.test):
 
 
     def run_once(self, connect_count=5, use_pseudomodem=False,
-                 pseudomodem_family='3GPP', sleep_kludge=5, fetch_timeout=120):
+                 pseudomodem_family='3GPP', use_wardmodem=False,
+                 wardmodem_modem=None, sleep_kludge=5, fetch_timeout=120):
+        if use_pseudomodem and use_wardmodem:
+            raise error.TestFail('Can not run with Pseudomodem and Wardmodem '
+                                 'at the same time.')
+
         self.connect_count = connect_count
         self.use_pseudomodem = use_pseudomodem
         self.sleep_kludge = sleep_kludge
@@ -159,9 +165,12 @@ class network_3GSmokeTest(test.test):
 
         with backchannel.Backchannel():
             with pseudomodem.TestModemManagerContext(
-                use_pseudomodem,family=pseudomodem_family):
-                with cell_tools.OtherDeviceShutdownContext('cellular'):
-                    time.sleep(3)
-                    self.flim = flimflam.FlimFlam()
-                    self.flim.SetDebugTags(SHILL_LOG_SCOPES)
-                    self.run_once_internal()
+                    use_pseudomodem,family=pseudomodem_family):
+                with wardmodem.WardModemContext(use_wardmodem,
+                                                args=['--modem',
+                                                      wardmodem_modem]):
+                    with cell_tools.OtherDeviceShutdownContext('cellular'):
+                        time.sleep(3)
+                        self.flim = flimflam.FlimFlam()
+                        self.flim.SetDebugTags(SHILL_LOG_SCOPES)
+                        self.run_once_internal()
