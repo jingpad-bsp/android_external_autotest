@@ -13,11 +13,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_test
 
 from contextlib import closing
-from math import ceil, floor, sqrt
+from math import ceil, floor
 
+KEY_DELIVERY_TIME = 'delivery_time'
 KEY_DELIVERY_TIME_FIRST = 'delivery_time.first'
-KEY_DELIVERY_TIME_AVG = 'delivery_time.avg'
-KEY_DELIVERY_TIME_STDEV = 'delivery_time.stdev'
 KEY_DELIVERY_TIME_75 = 'delivery_time.percentile_0.75'
 KEY_DELIVERY_TIME_50 = 'delivery_time.percentile_0.50'
 KEY_DELIVERY_TIME_25 = 'delivery_time.percentile_0.25'
@@ -35,16 +34,13 @@ TIME_BINARY = '/usr/local/bin/time'
 
 TIME_LOG = 'time.log'
 
+UNIT_MICROSECOND = 'microsecond'
+UNIT_PERCENT = 'percent'
+
 # The format used for 'time': <real time>, <kernel time>, <user time>
 TIME_OUTPUT_FORMAT = '%e %S %U'
 
 RE_FRAME_DELIVERY_TIME = re.compile('frame \d+: (\d+) us')
-
-def _get_statistics(values):
-    n = float(len(values))
-    u = sum(values) / n
-    u2 = sum([x * x for x in values]) / n
-    return u, sqrt(u2 - u * u)
 
 
 def _percentile(values, k):
@@ -71,7 +67,6 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
     """
 
     version = 1
-    _perf_keyval = {}
 
 
     def initialize(self, arguments=[]):
@@ -81,29 +76,34 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
             skip_deps=False)
 
 
-    def _logperf(self, name, key, value):
-        self._perf_keyval['%s.%s' % (name, key)] = value
+    def _logperf(self, name, key, value, units, higher_is_better=False):
+        description = '%s.%s' % (name, key)
+        self.output_perf_value(
+                description=description, value=value, units=units,
+                higher_is_better=higher_is_better)
 
 
     def _analyze_frame_delivery_times(self, name, frame_delivery_times):
-
         # The average of the first frame delivery time.
         t = [x[0] for x in frame_delivery_times]
-        self._logperf(name, KEY_DELIVERY_TIME_FIRST, sum(t) / len(t))
+        self._logperf(name, KEY_DELIVERY_TIME_FIRST, sum(t) / len(t),
+                      UNIT_MICROSECOND)
 
-        # Flatten and sort the frame_delivery_times.
-        t = sorted(sum(frame_delivery_times, []))
+        # Flatten the frame_delivery_times.
+        t = sum(frame_delivery_times, [])
 
-        # The average and standard deviation of frame delivery times.
-        mean, stdev = _get_statistics(t)
+        self._logperf(name, KEY_DELIVERY_TIME, t, UNIT_MICROSECOND)
 
-        self._logperf(name, KEY_DELIVERY_TIME_AVG, mean)
-        self._logperf(name, KEY_DELIVERY_TIME_STDEV, stdev)
+        # Sort the frame delivery times.
+        t.sort()
 
         # The 25%, 50%, and 75% percentile of the frame delivery times.
-        self._logperf(name, KEY_DELIVERY_TIME_75, _percentile(t, 0.75))
-        self._logperf(name, KEY_DELIVERY_TIME_50, _percentile(t, 0.50))
-        self._logperf(name, KEY_DELIVERY_TIME_25, _percentile(t, 0.25))
+        self._logperf(name, KEY_DELIVERY_TIME_75, _percentile(t, 0.75),
+                      UNIT_MICROSECOND)
+        self._logperf(name, KEY_DELIVERY_TIME_50, _percentile(t, 0.50),
+                      UNIT_MICROSECOND)
+        self._logperf(name, KEY_DELIVERY_TIME_25, _percentile(t, 0.25),
+                      UNIT_MICROSECOND)
 
 
     def _analyze_frame_drop_rate(self, name, frame_num, frame_delivery_times):
@@ -111,15 +111,16 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
         decoded = sum([len(x) for x in frame_delivery_times])
 
         drop_rate = float(total - decoded) / total
-        self._logperf(name, KEY_FRAME_DROP_RATE, drop_rate)
+        self._logperf(name, KEY_FRAME_DROP_RATE, drop_rate, UNIT_PERCENT)
 
 
     def _analyze_cpu_usage(self, name, time_log_file):
         with open(time_log_file) as f:
             content = f.read()
-        r, s, u = content.split()
-        self._logperf(name, KEY_CPU_USER_USAGE, float(u) / float(r))
-        self._logperf(name, KEY_CPU_KERNEL_USAGE, float(s) / float(r))
+        r, s, u = (float(x) for x in content.split())
+
+        self._logperf(name, KEY_CPU_USER_USAGE, u / r, UNIT_PERCENT)
+        self._logperf(name, KEY_CPU_KERNEL_USAGE, s / r, UNIT_PERCENT)
 
 
     def _load_frame_delivery_times(self):
@@ -225,8 +226,6 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
                 logging.exception(last_error)
             finally:
                 _remove_if_exists(video_path)
-
-        self.write_perf_keyval(self._perf_keyval)
 
         if last_error:
             raise # the last error

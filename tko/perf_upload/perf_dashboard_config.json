@@ -1,5 +1,9 @@
 [
   {
+    "autotest_name": "audiovideo_VDAPerf",
+    "master_name": "ChromeOSVideo"
+  },
+  {
     "autotest_name": "platform_GesturesRegressionTest",
     "master_name": "ChromeOSTouchpad"
   },
