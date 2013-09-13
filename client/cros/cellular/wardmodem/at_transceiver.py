@@ -96,6 +96,11 @@ class ATTransceiver(object):
         # alternative implementations of any state machine to wardmodem.
         self._state_machines = {}
 
+        # If registered with a non-None machine, the fallback machine is used to
+        # service all AT commands that are not matched with any other machine.
+        self._fallback_state_machine = None
+        self._fallback_machine_function = None
+
         # Maps an incoming AT command from modemmanager to an internal wardmodem
         # action.
         self._at_to_wm_action_map = {}
@@ -192,6 +197,28 @@ class ATTransceiver(object):
         """
         state_machine_name = state_machine.get_well_known_name()
         self._state_machines[state_machine_name] = state_machine
+
+
+    def register_fallback_state_machine(self, state_machine_name, function):
+        """
+        Register the fallback state machine to forward AT commands to.
+
+        If this machine is registered, all AT commands for which no matching
+        rule is found will result in the call |state_machine|.|function|(at).
+        where |at| is the actual AT command that could not be matched.
+
+        @param state_machine_name: Well known name of the machine to fallback on
+                if no machine matches an incoming AT command.
+
+        @param function: The function in |state_machine| to call.
+
+        """
+        if state_machine_name not in self._state_machines:
+            self._setup_error('Machine %s, set as fallback, has not been '
+                              'registered. ' % state_machine_name)
+        self._fallback_state_machine = state_machine_name
+        self._fallback_machine_function = function
+
 
     def process_wardmodem_response(self, response, *args):
         """
@@ -529,6 +556,10 @@ class ATTransceiver(object):
             self._runtime_error(
                     'Ill formed AT command received. %s' % str(e.args))
         if at not in self._at_to_wm_action_map:
+            if self._fallback_state_machine:
+                return (self._fallback_state_machine,
+                        self._fallback_machine_function,
+                        (atcom,))
             self._runtime_error('Unknown AT command: |%s|' % atcom)
 
         for candidate_args in self._at_to_wm_action_map[at]:
@@ -542,6 +573,10 @@ class ATTransceiver(object):
                     fargs.append(args[idx])
                 return machine, function, tuple(fargs)
 
+        if self._fallback_state_machine:
+            return (self._fallback_state_machine,
+                    self._fallback_machine_function,
+                    (atcom,))
         self._runtime_error('Unhandled arguments: |%s|' % atcom)
 
 

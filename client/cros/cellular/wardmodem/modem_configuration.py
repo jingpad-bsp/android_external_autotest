@@ -80,12 +80,21 @@ class ModemConfiguration(object):
         self.plugin_wm_response_to_at_map = (
                 self.plugin_conf.get('wm_response_to_at_map', {}))
 
+        # State-less request response map.
+        self.base_wm_request_response_map = (
+                self.base_conf.get('wm_request_response_map', {}))
+        self.plugin_wm_request_response_map = (
+                self.plugin_conf.get('wm_request_response_map', {}))
+
         # The state machines loaded by all modems.
         self.base_state_machines = self.base_conf['state_machines']
 
         # The state machines specific to the current modem.
         self.plugin_state_machines =  self.plugin_conf.get('state_machines', [])
 
+        # The fallback state machine for unmatched AT commands.
+        self._load_variable('fallback_machine', strict=False, default='')
+        self._load_variable('fallback_function', strict=False, default='')
 
 
         # The modemmanager plugin to be used for the modem.

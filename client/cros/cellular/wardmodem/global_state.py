@@ -182,4 +182,7 @@ class GlobalState(GlobalStateSkeleton):
 
     def __init__(self):
         super(GlobalState, self).__init__()
-        # TODO(pprabhu) Now, add all state components.
+        # Used by the state machine request_response.
+        # If enabled, the machine responds to requests, otherwise reports error.
+        # Write: request_response
+        self._add_state_component('request_response_enabled', ['TRUE', 'FALSE'])

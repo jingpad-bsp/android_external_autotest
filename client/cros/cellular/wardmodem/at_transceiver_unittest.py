@@ -194,6 +194,27 @@ class ATTransceiverCommonTestCase(ATTransceiverTestCase):
                 'DOESNOTEXIST')
 
 
+    def test_find_wardmodem_action_for_at_returns_fallback(self):
+        """
+        Test that when a fallback machine is setup, and unmatched AT command is
+        forwarded to this machine.
+
+        """
+        mock_test_machine = self._mox.CreateMock(self.TestMachine)
+        mock_test_machine.get_well_known_name().MultipleTimes().AndReturn(
+                'FALLBACK_MACHINE')
+        self._mox.ReplayAll()
+        self._at_transceiver.register_state_machine(mock_test_machine)
+        self._at_transceiver.register_fallback_state_machine(
+                mock_test_machine.get_well_known_name(),
+                'act_on')
+        self.assertEqual(
+                ('FALLBACK_MACHINE', 'act_on', ('DOESNOTEXIST',)),
+                self._at_transceiver._find_wardmodem_action_for_at(
+                        'DOESNOTEXIST'))
+        self._mox.VerifyAll()
+
+
     def test_post_wardmodem_request(self):
         """
         Test that a wardmodem request can be posted successfully end-to-end.
