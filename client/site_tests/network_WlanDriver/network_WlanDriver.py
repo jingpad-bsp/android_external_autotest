@@ -93,7 +93,7 @@ class network_WlanDriver(test.test):
         logging.info('Device is %s',  device_name)
 
         module_name = os.path.basename(os.readlink(os.path.join(
-                device_path, 'driver')))
+                device_path, 'driver', 'module')))
         module_path = utils.system_output('modprobe -l %s' % module_name)
         return (device_name, module_path)
 
