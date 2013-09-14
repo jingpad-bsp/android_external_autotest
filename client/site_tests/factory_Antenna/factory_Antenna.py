@@ -1180,7 +1180,7 @@ class factory_Antenna(test.test):
 
         # Setup the usb monitor,
         monitor = MediaMonitor()
-        monitor.start(on_insert=self.on_usb_insert,
+        monitor.Start(on_insert=self.on_usb_insert,
                       on_remove=self.on_usb_remove)
         # Setup the initial display.
         self.test_widget = gtk.VBox()

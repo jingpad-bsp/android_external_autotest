@@ -538,6 +538,6 @@ class factory_Connector(state_machine.FactoryStateMachine):
             self.prepare_panel_widget, None)
         # Setup the usb monitor.
         monitor = MediaMonitor()
-        monitor.start(on_insert=self.on_usb_insert,
+        monitor.Start(on_insert=self.on_usb_insert,
                       on_remove=self.on_usb_remove)
         self.start_state_machine(self._STATE_WAIT_USB)
