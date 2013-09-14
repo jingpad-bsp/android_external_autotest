@@ -1,6 +1,6 @@
 # pylint: disable-msg=C0111
 
-import os, sys, optparse
+import os, shlex, sys, optparse
 
 from autotest_lib.client.common_lib import host_protections, utils
 
@@ -170,7 +170,7 @@ class base_autoserv_parser(object):
     def parse_args(self):
         self.options, self.args = self.parser.parse_args()
         if self.options.args:
-            self.args += self.options.args.split()
+            self.args += shlex.split(self.options.args)
 
 
 site_autoserv_parser = utils.import_site_class(
