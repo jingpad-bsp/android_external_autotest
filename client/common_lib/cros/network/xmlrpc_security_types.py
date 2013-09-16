@@ -248,6 +248,21 @@ class WPAConfig(SecurityConfig):
         return {self.SERVICE_PROPERTY_PASSPHRASE: self.psk}
 
 
+    def get_wpa_cli_properties(self):
+        properties = super(WPAConfig, self).get_wpa_cli_properties()
+        # TODO(wiley) This probably doesn't work for psks with spaces.
+        # TODO(wiley) This probably doesn't work for raw PMK.
+        protos = []
+        if self.wpa_mode & self.MODE_PURE_WPA:
+            protos.append('WPA')
+        if self.wpa_mode & self.MODE_PURE_WPA2:
+            protos.append('RSN')
+        properties.update({'psk': '"%s"' % self.psk,
+                           'key_mgmt': 'WPA-PSK',
+                           'proto': ' '.join(protos)})
+        return properties
+
+
 class EAPConfig(SecurityConfig):
     """Abstract superclass that implements certificate/key installation."""
 
