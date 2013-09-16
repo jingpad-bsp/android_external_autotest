@@ -21,10 +21,11 @@ class network_WlanDriver(test.test):
     DeviceInfo = collections.namedtuple('DeviceInfo', ['vendor', 'device'])
     DEVICE_NAME_LOOKUP = {
         DeviceInfo('0x02df', '0x9129'): 'Marvell 88W8797 SDIO',
+        DeviceInfo('0x11ab', '0x2b38'): 'Marvell 88W8897 PCIE',
         DeviceInfo('0x168c', '0x002a'): 'Atheros AR9280',
         DeviceInfo('0x168c', '0x0030'): 'Atheros AR9382',
         DeviceInfo('0x168c', '0x0034'): 'Atheros AR9462',
-        DeviceInfo('0x11ab', '0x2b38'): 'Marvell 88W8897 PCIE'
+        DeviceInfo('0x8086', '0x08b1'): 'Intel 7260',
     }
     EXPECTED_DRIVER = {
             'Atheros AR9280': {
@@ -34,6 +35,10 @@ class network_WlanDriver(test.test):
             'Atheros AR9382': {
                     '3.4': 'kernel/drivers/net/wireless/ath/ath9k/ath9k.ko',
                     '3.8': 'kernel/drivers/net/wireless-3.4/ath/ath9k/ath9k.ko'
+            },
+            'Intel 7260': {
+                    '3.8': 'kernel/drivers/net/wireless/iwl7000/iwlwifi/'
+                           'iwlwifi.ko'
             },
             'Atheros AR9462': {
                     '3.4': 'kernel/drivers/net/wireless/ath/ath9k_btcoex/'
