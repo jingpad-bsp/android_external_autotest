@@ -41,9 +41,11 @@ Criteria = namedtuple('Criteria',
 _PASS_CRITERIA = OrderedDict([
     ('MedianMTF', Criteria('Median MTF', 0.240, None)),
     ('LowestMTF', Criteria('Lowest MTF', 0.145, None)),
-    ('Shift', Criteria('Shift', None, 0.045)),
-    ('Tilt', Criteria('Tilt', None, 1.0)),
-    ('LenShading', Criteria('Lens Shading', 0.60, None))])
+    ('Shift', Criteria('Shift Ratio', None, 0.045)),
+    ('Shift_X', Criteria('X Shift (pixels)', None, None)),
+    ('Shift_Y', Criteria('Y Shift (pixels)', None, None)),
+    ('Tilt', Criteria('Tilt (degrees)', None, 1.0)),
+    ('LenShading', Criteria('Lens Shading Ratio', 0.60, None))])
 
 # Format to parsing the text file. List of (field-name, regexp-match-pattern).
 _TEXT_FILE_FORMAT = [
@@ -116,6 +118,9 @@ def AnalyzeData(data_list):
   """
   numeric_pattern = re.compile(r'^[+\-]?[0-9.]+$')
   data_count = len(data_list)
+  if data_count == 0:
+    print("No test data is found")
+    return
 
   values = defaultdict(list)
   for row in data_list:
