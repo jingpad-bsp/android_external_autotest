@@ -68,10 +68,14 @@ class XmlRpcStruct(object):
         self.arg1 = arg1
         self.arg2 = arg2
 
-    Serialization happens automatically, since Python's XMLRPC framework
-    will take all fields from your object and drop them into a dict
-    to go over the wire.  To deserialize your object on the other side,
-    call deserialize() and pass in the module defining the requisite class.
+    Serialization happens automatically when using XMLRPC proxies, since
+    Python's XMLRPC framework will take all fields from your object and drop
+    them into a dict to go over the wire.  To deserialize your object on the
+    other side, call deserialize() and pass in the module defining the
+    requisite class.
+
+    serialize() is provided to allow objects to fake that they are XMLRPC
+    proxies.
 
     """
 
@@ -79,3 +83,7 @@ class XmlRpcStruct(object):
         super(XmlRpcStruct, self).__init__()
         setattr(self, TYPE_KEY, self.__class__.__name__)
 
+
+    def serialize(self):
+        """@return dict of object fields."""
+        return self.__dict__
