@@ -16,6 +16,8 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import packet_capturer
+from autotest_lib.server.cros.network import wpa_cli_proxy
+from autotest_lib.server.hosts import adb_host
 
 
 class WiFiClient(object):
@@ -194,35 +196,16 @@ class WiFiClient(object):
         """
         super(WiFiClient, self).__init__()
         self._board = None
-        self._machine_id = None
-        self._ping_thread = None
-        self._host = client_host
-        # Make sure the client library is on the device so that the proxy code
-        # is there when we try to call it.
-        client_at = autotest.Autotest(self.host)
-        client_at.install()
-        # Start up the XMLRPC proxy on the client
-        self._shill_proxy = self.host.xmlrpc_connect(
-                constants.SHILL_XMLRPC_SERVER_COMMAND,
-                constants.SHILL_XMLRPC_SERVER_PORT,
-                command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
-                ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
-                timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
-        # Look up or hardcode command paths.
-        self._command_ifconfig = 'ifconfig'
-        self._command_ip = wifi_test_utils.must_be_installed(
-                self.host, '/usr/local/sbin/ip')
-        self._command_iperf = wifi_test_utils.must_be_installed(
-                self.host, '/usr/local/bin/iperf')
-        self._command_iptables = '/sbin/iptables'
+        self._command_ip = 'ip'
+        self._command_iptables = 'iptables'
         self._command_iw = 'iw'
-        self._command_netdump = 'tcpdump'
-        self._command_netperf = wifi_test_utils.must_be_installed(
-                self.host, '/usr/local/bin/netperf')
-        self._command_netserv = wifi_test_utils.must_be_installed(
-                self.host, '/usr/local/sbin/netserver')
         self._command_ping6 = 'ping6'
         self._command_wpa_cli = 'wpa_cli'
+        self._host = client_host
+        self._machine_id = None
+        self._ping_runner = ping_runner.PingRunner(host=self.host)
+        self._ping_thread = None
+        self._result_dir = result_dir
         # Look up the WiFi device (and its MAC) on the client.
         devs = wifi_test_utils.get_wlan_devs(self.host, self.command_iw)
         if not devs:
@@ -234,6 +217,30 @@ class WiFiClient(object):
                             self.host.hostname, devs)
         self._wifi_if = devs[0]
         self._interface = interface.Interface(self._wifi_if, host=self.host)
+        if isinstance(self.host, adb_host.ADBHost):
+            self._shill_proxy = wpa_cli_proxy.WpaCliProxy(
+                    self.host, self._wifi_if)
+        else:
+            # Make sure the client library is on the device so that the proxy
+            # code is there when we try to call it.
+            client_at = autotest.Autotest(self.host)
+            client_at.install()
+            # Start up the XMLRPC proxy on the client
+            self._shill_proxy = self.host.xmlrpc_connect(
+                    constants.SHILL_XMLRPC_SERVER_COMMAND,
+                    constants.SHILL_XMLRPC_SERVER_PORT,
+                    command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
+                    ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
+                    timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
+            # These commands aren't known to work with ADB hosts.
+            self._command_ifconfig = 'ifconfig'
+            self._command_iperf = wifi_test_utils.must_be_installed(
+                    self.host, '/usr/local/bin/iperf')
+            self._command_netperf = wifi_test_utils.must_be_installed(
+                    self.host, '/usr/local/bin/netperf')
+            self._command_netserv = wifi_test_utils.must_be_installed(
+                    self.host, '/usr/local/sbin/netserver')
+            self._raise_logging_level()
         # Used for packet captures.
         self._packet_capturer = packet_capturer.get_packet_capturer(
                 self.host, host_description='client', ignore_failures=True)
@@ -248,8 +255,6 @@ class WiFiClient(object):
         # does that work.
         system = site_linux_system.LinuxSystem(self.host, {}, 'client')
         self._capabilities = system.capabilities
-        self._raise_logging_level()
-        self._ping_runner = ping_runner.PingRunner(host=self.host)
 
 
     def _raise_logging_level(self):

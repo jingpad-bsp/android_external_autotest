@@ -50,6 +50,11 @@ class SecurityConfig(xmlrpc_types.XmlRpcStruct):
         return {}
 
 
+    def get_wpa_cli_properties(self):
+        """@return dict values to be set with wpa_cli set_network."""
+        return {'key_mgmt': 'NONE'}
+
+
     def install_router_credentials(self, host):
         """Install the necessary credentials on the router.
 
