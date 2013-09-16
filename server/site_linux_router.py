@@ -39,6 +39,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     STARTUP_POLLING_INTERVAL_SECONDS = 0.5
     STARTUP_TIMEOUT_SECONDS = 10
     SUFFIX_LETTERS = string.ascii_lowercase + string.digits
+    SUBNET_PREFIX_OCTETS = (192, 168)
 
     def get_capabilities(self):
         """@return iterable object of AP capabilities for this system."""
@@ -573,12 +574,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """Get the local server address for an interface.
 
         When we multiple local servers, we give them static IP addresses
-        like 192.158.*.254.
+        like 192.168.*.254.
 
         @param index int describing which local server this is for.
 
         """
-        return '%d.%d.%d.%d' % (192, 168, index, 254)
+        return '%d.%d.%d.%d' % (self.SUBNET_PREFIX_OCTETS + (index, 254))
 
 
     def start_local_server(self, interface):
