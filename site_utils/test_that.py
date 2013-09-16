@@ -277,7 +277,7 @@ def validate_arguments(arguments):
 
     if not arguments.board:
         raise ValueError('Board autodetection not yet supported. '
-                         '--board required.')
+                         '--board or a default board required.')
 
     if arguments.remote == ':lab:':
         raise ValueError('Running tests in test lab not yet supported.')
