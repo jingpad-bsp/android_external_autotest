@@ -72,6 +72,12 @@ class EnableMachine(state_machine.StateMachine):
 
     def _ShouldStartStateMachine(self):
         state = self._modem.Get(mm1.I_MODEM, 'State')
+        # Return success if already enabled.
+        if state >= mm1.MM_MODEM_STATE_ENABLED:
+            logging.info('Modem is already enabled. Nothing to do.')
+            if self.return_cb:
+                self.return_cb()
+            return False
         if self._modem.enable_step and self._modem.enable_step != self:
             # There is already an enable operation in progress.
             # Note: ModemManager currently returns "WrongState" for this case.
@@ -86,9 +92,6 @@ class EnableMachine(state_machine.StateMachine):
             raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS, message)
         elif self._modem.enable_step is None:
             # There is no enable operation going on, cancelled or otherwise.
-            if state >= mm1.MM_MODEM_STATE_ENABLED:
-                logging.info('Modem is already enabled. Nothing to do.')
-                return False
             if state != mm1.MM_MODEM_STATE_DISABLED:
                 message = 'Modem cannot be enabled if not in the DISABLED' \
                           ' state.'
