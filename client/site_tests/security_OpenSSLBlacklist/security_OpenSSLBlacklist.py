@@ -4,7 +4,6 @@
 
 import os
 import subprocess
-import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -50,8 +49,9 @@ class security_OpenSSLBlacklist(test.test):
                                    '-key', self.key, '-port', '4433'])
         try:
             # Need to wait for openssl to be ready to talk to us
-            if not utils.poll_for_condition(self.fetch):
-                raise error.TestFail('Fetch without blacklist fails.')
+            utils.poll_for_condition(
+                self.fetch,
+                error.TestFail('Fetch without blacklist fails.'))
             for b in self.blacklists:
                 if self.fetch(b):
                     raise error.TestFail('Fetched with %s' % b)
