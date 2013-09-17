@@ -109,8 +109,8 @@ class ThermalStatACPI(DevStat):
         for field in self.thermal_fields:
             if field.find('trip_point_') != -1 and field.find('_temp') != -1 \
                     and self.temp > self.read_val(field, int):
-               self.num_points_tripped += 1
-               logging.info('Temperature trip point #' + \
+                self.num_points_tripped += 1
+                logging.info('Temperature trip point #' + \
                             field[len('trip_point_'):field.rfind('_temp')] + \
                             ' tripped.')
 
@@ -653,7 +653,7 @@ class GPUFreqStats(AbstractStats):
     TODO(tbroch): add stats for other GPUs
     """
 
-    _MALI_CLK = '/sys/devices/platform/mali.0/clock'
+    _MALI_DEV = '/sys/class/misc/mali0/device'
     _MALI_EVENTS = ['mali_dvfs:mali_dvfs_set_clock']
     _MALI_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)'
 
@@ -666,13 +666,67 @@ class GPUFreqStats(AbstractStats):
     _gpu_type = None
 
 
+    def _get_mali_freqs(self):
+        """Get mali clocks based on kernel version.
+
+        For 3.4:
+            # cat /sys/class/misc/mali0/device/clock
+            Current sclk_g3d[G3D_BLK] = 100Mhz
+            Possible settings : 533, 450, 400, 350, 266, 160, 100Mhz
+
+        For 3.8 (and beyond):
+            # cat /sys/class/misc/mali0/device/clock
+            100000000
+            # cat /sys/class/misc/mali0/device/available_frequencies
+            100000000
+            160000000
+            266000000
+            350000000
+            400000000
+            450000000
+            533000000
+            533000000
+
+        Returns:
+          cur_mhz: integer of current GPU clock in mhz
+        """
+        cur_mhz = None
+        fqs = []
+
+        fname = os.path.join(self._MALI_DEV, 'clock')
+        if os.uname()[2].startswith('3.4'):
+            with open(fname) as fd:
+                for ln in fd.readlines():
+                    result = re.findall(r'Current.* = (\d+)Mhz', ln)
+                    if result:
+                        cur_mhz = result[0]
+                        continue
+                    result = re.findall(r'(\d+)[,M]', ln)
+                    if result:
+                        fqs = result
+                        fd.close()
+        else:
+            cur_mhz = int(int(utils.read_one_line(fname)) / 1e6)
+            fname = os.path.join(self._MALI_DEV, 'available_frequencies')
+            with open(fname) as fd:
+                lns = fd.readlines()
+                # TODO(tbroch): remove set/sort once crbug.com/293679 resolved
+                fqs = list(int(int(ln.strip()) / 1e6) for ln in set(lns))
+                fqs.sort()
+
+        self._freqs = fqs
+        return cur_mhz
+
+
     def __init__(self, incremental=False):
+
+
         cur_mhz = None
         events = None
         self._freqs = []
         self._prev_sample = None
 
-        if os.path.exists(self._MALI_CLK):
+        if os.path.exists(self._MALI_DEV):
             self._set_gpu_type('mali')
         elif os.path.exists(self._I915_CLK_TABLE):
             self._set_gpu_type('i915')
@@ -681,16 +735,7 @@ class GPUFreqStats(AbstractStats):
 
         if self._gpu_type is 'mali':
             events = self._MALI_EVENTS
-            with open(self._MALI_CLK) as fd:
-                for ln in fd.readlines():
-                    result = re.findall(r'Current.* = (\d+)Mhz', ln)
-                    if result:
-                        cur_mhz = result[0]
-                        continue
-                    result = re.findall(r'(\d+)[,M]', ln)
-                    if result:
-                        self._freqs = result
-                        fd.close()
+            cur_mhz = self._get_mali_freqs()
 
         elif self._gpu_type is 'i915':
             events = self._I915_EVENTS
@@ -869,7 +914,8 @@ class StatoMatic(object):
             percent_stats = stat_obj.refresh()
             logging.debug("pstats = %s", percent_stats)
             if stat_obj.name is 'gpu':
-                # TODO(tbroch) remove this once GPU freq stats have proved reliable
+                # TODO(tbroch) remove this once GPU freq stats have proved 
+                # reliable
                 stats_secs = sum(stat_obj._stats.itervalues())
                 if stats_secs < (tot_secs * 0.9) or \
                         stats_secs > (tot_secs * 1.1):
