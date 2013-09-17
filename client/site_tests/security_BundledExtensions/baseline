@@ -125,6 +125,7 @@
                             "app.runtime",
                             "app.currentWindowInternal",
                             "app.window",
+                            "identity",
                             "storage",
                             "unlimitedStorage",
                             "notifications",
@@ -227,6 +228,9 @@
         "name": "crosh_builtin",
         "effective_host_permissions": [],
         "api_permissions": ["terminalPrivate",
+                            "storage",
+                            "clipboardWrite",
+                            "clipboardRead",
                             "unlimitedStorage"]
       },
       { "id": "kddnkjkcjddckihglkfcickdhbmaodcn",
@@ -276,9 +280,24 @@
       },
       { "id": "plamffmopddapimaopfdbibfkjpbojbf",
         "name": "Registration",
-        "boards": ["butterfly"],
+        "boards": ["butterfly", "falco"],
         "effective_host_permissions": [],
         "api_permissions": []
+      },
+      { "id": "ljoammodoonkhnehlncldjelhidljdpi",
+        "name": "Guide to Chrome",
+        "effective_host_permissions": [
+          "https://commondatastorage.googleapis.com/*",
+          "https://storage.googleapis.com/*",
+          "https://www-googleapis-test.sandbox.google.com/*",
+          "https://www.googleapis.com/*"],
+        "api_permissions": ["app.currentWindowInternal",
+                            "app.runtime",
+                            "app.window",
+                            "chromeosInfoPrivate",
+                            "unlimitedStorage",
+                            "webRequestInternal",
+                            "webview"]
       }
   ],
   "official_components": [
@@ -287,7 +306,9 @@
         "effective_host_permissions": [
             "https://gweb-gettingstartedguide.appspot.com/*",
             "http://support.google.com/chromeos/*",
+            "http://support.google.com/chromebook/*",
             "https://support.google.com/*",
+            "https://support.google.com/chromebook/*",
             "https://support.google.com/chromeos/*"],
         "api_permissions": ["chromeosInfoPrivate",
                             "tabs"]
