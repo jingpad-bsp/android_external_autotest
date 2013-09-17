@@ -22,7 +22,7 @@ class StartsWithList(mox.Comparator):
     def equals(self, rhs):
         if len(rhs)<len(self._lhs):
             return False
-        for (x,y) in zip(self._lhs, rhs):
+        for (x, y) in zip(self._lhs, rhs):
             if x != y:
                 return False
         return True
@@ -101,8 +101,11 @@ class TestThatUnittests(unittest.TestCase):
         mock_process_1 = self.mox.CreateMock(subprocess.Popen)
         mock_process_2 = self.mox.CreateMock(subprocess.Popen)
         fake_stdout = self.mox.CreateMock(file)
+        fake_returncode = 0
         mock_process_1.stdout = fake_stdout
+        mock_process_1.returncode = fake_returncode
         mock_process_2.stdout = fake_stdout
+        mock_process_2.returncode = fake_returncode
 
         self.mox.StubOutWithMock(subprocess, 'Popen')
 
@@ -150,10 +153,10 @@ class TestThatUnittests(unittest.TestCase):
         build = 'bild'
         board = 'bored'
         fast_mode = False
-        suite_control_files=['c1', 'c2', 'c3', 'c4']
+        suite_control_files = ['c1', 'c2', 'c3', 'c4']
         results_dir = '/tmp/test_that_results_fake'
         id_digits = 1
-        ssh_verbosity=2
+        ssh_verbosity = 2
         ssh_options = '-F /dev/null -i /dev/null'
         args = 'matey'
 
@@ -171,8 +174,16 @@ class TestThatUnittests(unittest.TestCase):
                 no_experimental=False
                 ).WithSideEffects(fake_suite_callback)
         self.mox.StubOutWithMock(test_that, 'run_job')
+        self.mox.StubOutWithMock(test_that, 'run_provisioning_job')
 
-        # Test perform_local_run. Enforce that run_job is called correctly.
+        # Test perform_local_run. Enforce that run_provisioning_job
+        # and run_job are called correctly.
+        test_that.run_provisioning_job(
+                'cros-version:' + build, remote, autotest_path,
+                 results_dir, fast_mode,
+                 ssh_verbosity, ssh_options,
+                 False, False)
+
         for control_file in suite_control_files:
             test_that.run_job(mox.ContainsAttributeValue('control_file',
                                                          control_file),

@@ -61,6 +61,10 @@ class TestThatRunError(Exception):
     """Raised if test_that encounters something unexpected while running."""
 
 
+class TestThatProvisioningError(Exception):
+    """Raised when it fails to provision the DUT to the requested build."""
+
+
 def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
                          board=_NO_BOARD, results_directory=None,
                          no_experimental=False):
@@ -88,6 +92,78 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
     # Schedule tests, discard record calls.
     return my_suite.schedule(lambda x: None,
                              add_experimental=not no_experimental)
+
+
+def _run_autoserv(command, pretend=False):
+    """Run autoserv command.
+
+    Run the autoserv command and wait on it. Log the stdout.
+    Ensure that SIGINT signals are passed along to autoserv.
+
+    @param command: the autoserv command to run.
+    @returns: exit code of the command.
+
+    """
+    if not pretend:
+        logging.debug('Running autoserv command: %s', command)
+        global _autoserv_proc
+        _autoserv_proc = subprocess.Popen(command,
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.STDOUT)
+        # This incantation forces unbuffered reading from stdout,
+        # so that autoserv output can be displayed to the user
+        # immediately.
+        for message in iter(_autoserv_proc.stdout.readline, b''):
+            logging.info('autoserv| %s', message.strip())
+
+        _autoserv_proc.wait()
+        returncode = _autoserv_proc.returncode
+        _autoserv_proc = None
+    else:
+        logging.info('Pretend mode. Would run autoserv command: %s',
+                     command)
+        returncode = 0
+    return returncode
+
+
+def run_provisioning_job(provision_label, host, autotest_path,
+                         results_directory, fast_mode,
+                         ssh_verbosity=0, ssh_options=None,
+                         pretend=False, autoserv_verbose=False):
+    """Shell out to autoserv to run provisioning job.
+
+    @param provision_label: Label to provision the machine to.
+    @param host: Hostname of DUT.
+    @param autotest_path: Absolute path of autotest directory.
+    @param results_directory: Absolute path of directory to store results in.
+                              (results will be stored in subdirectory of this).
+    @param fast_mode: bool to use fast mode (disables slow autotest features).
+    @param ssh_verbosity: SSH verbosity level, passed along to autoserv_utils
+    @param ssh_options: Additional ssh options to be passed to autoserv_utils
+    @param pretend: If True, will print out autoserv commands rather than
+                    running them.
+    @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
+
+    @returns: Absolute path of directory where results were stored.
+
+    """
+    # TODO(fdeng): When running against a local DUT, autoserv
+    # is still hitting the AFE in the lab.
+    # provision_AutoUpdate checks the current build of DUT by
+    # retrieving build info from AFE. crosbug.com/295178
+    results_directory = os.path.join(results_directory, 'results-provision')
+    provision_arg = '='.join(['--provision', provision_label])
+    command = autoserv_utils.autoserv_run_job_command(
+            os.path.join(autotest_path, 'server'),
+            machines=host, job=None, verbose=autoserv_verbose,
+            results_directory=results_directory,
+            fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
+            ssh_options=ssh_options, extra_args=[provision_arg],
+            no_console_prefix=True)
+    if _run_autoserv(command, pretend) != 0:
+        raise TestThatProvisioningError('Command returns non-zero code: %s ' %
+                                        command)
+    return results_directory
 
 
 def run_job(job, host, autotest_path, results_directory, fast_mode,
@@ -136,24 +212,8 @@ def run_job(job, host, autotest_path, results_directory, fast_mode,
                 extra_args=extra_args,
                 no_console_prefix=True)
 
-        if not pretend:
-            logging.debug('Running autoserv command: %s', command)
-            global _autoserv_proc
-            _autoserv_proc = subprocess.Popen(command,
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.STDOUT)
-            # This incantation forces unbuffered reading from stdout,
-            # so that autoserv output can be displayed to the user
-            # immediately.
-            for message in iter(_autoserv_proc.stdout.readline, b''):
-                logging.info('autoserv| %s', message.strip())
-
-            _autoserv_proc.wait()
-            _autoserv_proc = None
-            return results_directory
-        else:
-            logging.info('Pretend mode. Would run autoserv command: %s',
-                         command)
+        _run_autoserv(command, pretend)
+        return results_directory
 
 
 def setup_local_afe():
@@ -269,11 +329,25 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param ssh_options: Additional ssh options to be passed to autoserv_utils
     @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
     """
-    build_label = afe.create_label(provision.cros_version_to_label(build))
+    cros_version_label = provision.cros_version_to_label(build)
+    build_label = afe.create_label(cros_version_label)
     board_label = afe.create_label(board)
     new_host = afe.create_host(remote)
     new_host.add_labels([build_label.name, board_label.name])
 
+    # Provision the host to |build|.
+    if build != _NO_BUILD:
+        logging.info('Provisioning %s...', cros_version_label)
+        try:
+            run_provisioning_job(cros_version_label, remote, autotest_path,
+                                 results_directory, fast_mode,
+                                 ssh_verbosity, ssh_options,
+                                 pretend, autoserv_verbose)
+        except TestThatProvisioningError as e:
+            logging.error('Provisioning %s to %s failed, tests are aborted, '
+                          'failure reason: %s',
+                          remote, cros_version_label, e)
+            return
 
     # Schedule tests / suites in local afe
     for test in tests:
@@ -303,9 +377,6 @@ def validate_arguments(arguments):
     @param arguments: arguments object, as parsed by ParseArguments
     @raises: ValueError if arguments were invalid.
     """
-    if arguments.build:
-        raise ValueError('-i/--build flag not yet supported.')
-
     if arguments.remote == ':lab:':
         raise ValueError('Running tests in test lab not yet supported.')
         if arguments.args:
@@ -346,7 +417,7 @@ def parse_arguments(argv):
                         action='store',
                         help='Board for which the test will run. Default: %s' %
                              (default_board or 'Not configured'))
-    parser.add_argument('-i', '--build', metavar='BUILD',
+    parser.add_argument('-i', '--build', metavar='BUILD', default=_NO_BUILD,
                         help='Build to test. Device will be reimaged if '
                              'necessary. Omit flag to skip reimage and test '
                              'against already installed DUT image.')
@@ -558,6 +629,7 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
         afe = setup_local_afe()
         perform_local_run(afe, autotest_path, arguments.tests,
                           arguments.remote, arguments.fast_mode,
+                          arguments.build,
                           args=arguments.args,
                           pretend=arguments.pretend,
                           no_experimental=arguments.no_experimental,
