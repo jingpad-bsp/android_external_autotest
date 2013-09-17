@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error, utils, packages
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.server import test, subcommand, profilers
-from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import abstract_ssh, factory as host_factory
 from autotest_lib.tko import db as tko_db, status_lib, utils as tko_utils
 
 
@@ -42,7 +42,6 @@ REPAIR_CONTROL_FILE = _control_segment_path('repair')
 PROVISION_CONTROL_FILE = _control_segment_path('provision')
 VERIFY_JOB_REPO_URL_CONTROL_FILE = _control_segment_path('verify_job_repo_url')
 RESET_CONTROL_FILE = _control_segment_path('reset')
-
 
 # by default provide a stub that generates no site data
 def _get_site_job_data_dummy(job):
@@ -144,8 +143,11 @@ class base_server_job(base_job.base_job):
     # TODO crbug.com/285395 eliminate ssh_verbosity_flag
     def __init__(self, control, args, resultdir, label, user, machines,
                  client=False, parse_job='',
-                 ssh_user='root', ssh_port=22, ssh_pass='',
-                 ssh_verbosity_flag='', ssh_options='',
+                 ssh_user=host_factory.DEFAULT_SSH_USER,
+                 ssh_port=host_factory.DEFAULT_SSH_PORT,
+                 ssh_pass=host_factory.DEFAULT_SSH_PASS,
+                 ssh_verbosity_flag=host_factory.DEFAULT_SSH_VERBOSITY,
+                 ssh_options=host_factory.DEFAULT_SSH_OPTIONS,
                  test_retry=0, group_name='',
                  tag='', disable_sysinfo=False,
                  control_filename=SERVER_CONTROL_FILENAME):

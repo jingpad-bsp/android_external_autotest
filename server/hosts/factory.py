@@ -12,8 +12,37 @@ DEFAULT_PATTERNS_PATH = 'console_patterns'
 SSH_ENGINE = global_config.global_config.get_config_value('AUTOSERV',
                                                           'ssh_engine',
                                                           type=str)
+
+# Default ssh options used in creating a host.
+DEFAULT_SSH_USER = 'root'
+DEFAULT_SSH_PASS = ''
+DEFAULT_SSH_PORT = 22
+DEFAULT_SSH_VERBOSITY = ''
+DEFAULT_SSH_OPTIONS = ''
+
 # for tracking which hostnames have already had job_start called
 _started_hostnames = set()
+
+
+def _get_host_arguments():
+    """Returns parameters needed to ssh into a host.
+
+    There are currently 2 use cases for creating a host.
+    1. Through the server_job, in which case the server_job injects
+       the appropriate ssh parameters into our name space and they
+       are available as the variables ssh_user, ssh_pass etc.
+    2. Directly through factory.create_host, in which case we use
+       the same defaults as used in the server job to create a host.
+
+    @returns: A tuple of parameters needed to create an ssh connection, ordered
+              as: ssh_user, ssh_pass, ssh_port, ssh_verbosity, ssh_options.
+    """
+    g = globals()
+    return (g.get('ssh_user', DEFAULT_SSH_USER),
+            g.get('ssh_pass', DEFAULT_SSH_PASS),
+            g.get('ssh_port', DEFAULT_SSH_PORT),
+            g.get('ssh_verbosity_flag', DEFAULT_SSH_VERBOSITY),
+            g.get('ssh_options', DEFAULT_SSH_OPTIONS))
 
 
 def create_host(
@@ -98,6 +127,9 @@ def create_host(
     # do any site-specific processing of the classes list
     site_factory.postprocess_classes(classes, hostname,
                                      auto_monitor=auto_monitor, **args)
+
+    ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
+            _get_host_arguments()
 
     hostname, args['user'], args['password'], args['port'] = \
             server_utils.parse_machine(hostname, ssh_user, ssh_pass, ssh_port)
