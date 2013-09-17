@@ -61,7 +61,8 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
                          no_experimental=False):
     """
     Schedule a suite against a mock afe object, for a local suite run.
-    @param autotest_path: Absolute path to autotest (in sysroot).
+    @param autotest_path: Absolute path to autotest (in sysroot or
+                          custom autotest directory set by --autotest_dir).
     @param suite_predicate: callable that takes ControlData objects, and
                             returns True on those that should be in suite
     @param afe: afe object to schedule against (typically a directAFE)
@@ -84,7 +85,7 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
                              add_experimental=not no_experimental)
 
 
-def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
+def run_job(job, host, autotest_path, results_directory, fast_mode,
             id_digits=1, ssh_verbosity=0, ssh_options=None,
             args=None, pretend=False,
             autoserv_verbose=False):
@@ -94,7 +95,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
     @param job: A Job object containing the control file contents and other
                 relevent metadata for this test.
     @param host: Hostname of DUT to run test against.
-    @param sysroot_autotest_path: Absolute path of autotest directory.
+    @param autotest_path: Absolute path of autotest directory.
     @param results_directory: Absolute path of directory to store results in.
                               (results will be stored in subdirectory of this).
     @param fast_mode: bool to use fast mode (disables slow autotest features).
@@ -122,7 +123,7 @@ def run_job(job, host, sysroot_autotest_path, results_directory, fast_mode,
             extra_args.extend(['--args', args])
 
         command = autoserv_utils.autoserv_run_job_command(
-                os.path.join(sysroot_autotest_path, 'server'),
+                os.path.join(autotest_path, 'server'),
                 machines=host, job=job, verbose=autoserv_verbose,
                 results_directory=results_directory,
                 fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
@@ -201,7 +202,8 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       autoserv_verbose=False):
     """
     @param afe: A direct_afe object used to interact with local afe database.
-    @param autotest_path: Absolute path of sysroot installed autotest.
+    @param autotest_path: Absolute path of autotest installed in sysroot or
+                          custom autotest path set by --autotest_dir.
     @param tests: List of strings naming tests and suites to run. Suite strings
                   should be formed like "suite:smoke".
     @param remote: Remote hostname.
@@ -232,11 +234,11 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                              stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
         p_out, _ = p.communicate()
         for line in p_out.splitlines():
-           logging.info(line)
+            logging.info(line)
     else:
-      logging.warning('There appears to be no running ssh-agent. Attempting '
-                      'to continue without running ssh-add, but ssh commands '
-                      'may fail.')
+        logging.warning('There appears to be no running ssh-agent. Attempting '
+                        'to continue without running ssh-add, but ssh commands '
+                        'may fail.')
 
     build_label = afe.create_label(provision.cros_version_to_label(build))
     board_label = afe.create_label(board)
@@ -258,7 +260,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
         logging.info('No jobs scheduled. End of local run.')
 
     last_job_id = afe.get_jobs()[-1].id
-    job_id_digits=len(str(last_job_id))
+    job_id_digits = len(str(last_job_id))
     for job in afe.get_jobs():
         run_job(job, remote, autotest_path, results_directory, fast_mode,
                 job_id_digits, ssh_verbosity, ssh_options, args, pretend,
@@ -275,7 +277,7 @@ def validate_arguments(arguments):
     if arguments.build:
         raise ValueError('-i/--build flag not yet supported.')
 
-    if not arguments.board:
+    if not arguments.board and not arguments.autotest_dir:
         raise ValueError('Board autodetection not yet supported. '
                          '--board or a default board required.')
 
@@ -331,6 +333,9 @@ def parse_arguments(argv):
     parser.add_argument('--args', metavar='ARGS',
                         help='Argument string to pass through to test. Only '
                              'supported for runs against a local DUT.')
+    parser.add_argument('--autotest_dir', metavar='AUTOTEST_DIR',
+                        help='Use AUTOTEST_DIR instead of normal board sysroot '
+                             'copy of autotest, and skip the quickmerge step.')
     parser.add_argument('--results_dir', metavar='RESULTS_DIR',
                         help='Instead of storing results in a new subdirectory'
                              ' of /tmp , store results in RESULTS_DIR. If '
@@ -342,7 +347,9 @@ def parse_arguments(argv):
                         dest='no_quickmerge',
                         help='Skip the quickmerge step and use the sysroot '
                              'as it currently is. May result in un-merged '
-                             'source tree changes not being reflected in run.')
+                             'source tree changes not being reflected in run.'
+                             'If using --autotest_dir, this flag is '
+                             'automatically applied.')
     parser.add_argument('--no-experimental', action='store_true',
                         default=False, dest='no_experimental',
                         help='When scheduling a suite, skip any tests marked '
@@ -402,30 +409,30 @@ def sigint_handler(signum, stack_frame):
         sys.exit(1)
 
 
-def _perform_bootstrap_into_sysroot(arguments, sysroot_autotest_path, argv):
+def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv):
     """
-    Perfoms a bootstrap to run test_that from the sysroot location.
+    Perfoms a bootstrap to run test_that from the |autotest_path|.
 
     This function is to be called from test_that's main() script, when
     test_that is executed from the source tree location. It runs
-    autotest_quickmerge if necessary to update the sysroot, and then executes
-    and waits on the sysroot version of test_that.py
+    autotest_quickmerge to update the sysroot unless arguments.no_quickmerge
+    is set. It then executes and waits on the version of test_that.py
+    in |autotest_path|.
 
     @param arguments: A parsed arguments object, as returned from
                       parse_arguments(...).
-    @param sysroot_autotest_path: Full absolute path to the board-specific
-                                  sysroot location of autotest.
+    @param autotest_path: Full absolute path to the autotest root directory.
     @param argv: The arguments list, as passed to main(...)
 
-    @returns: The return code of the test_that script that was executed
-              in the sysroot.
+    @returns: The return code of the test_that script that was executed in
+              |autotest_path|.
     """
     logging_manager.configure_logging(
             server_logging_config.ServerLoggingConfig(),
             use_console=True,
             verbose=arguments.debug)
     if arguments.no_quickmerge:
-        logging.info('Skipping quickmerge step as requested.')
+        logging.info('Skipping quickmerge step.')
     else:
         logging.info('Running autotest_quickmerge step.')
         s = subprocess.Popen([_QUICKMERGE_SCRIPTNAME,
@@ -436,8 +443,9 @@ def _perform_bootstrap_into_sysroot(arguments, sysroot_autotest_path, argv):
             logging.debug('quickmerge| %s', message.strip())
         s.wait()
 
-    logging.info('Re-running test_that script in sysroot.')
-    script_command = os.path.join(sysroot_autotest_path, 'site_utils',
+    logging.info('Re-running test_that script in %s copy of autotest.',
+                 autotest_path)
+    script_command = os.path.join(autotest_path, 'site_utils',
                                   os.path.basename(__file__))
     proc = None
     def resend_sig(signum, stack_frame):
@@ -452,19 +460,17 @@ def _perform_bootstrap_into_sysroot(arguments, sysroot_autotest_path, argv):
     return proc.wait()
 
 
-def _perform_run_from_sysroot(arguments, sysroot_autotest_path, argv):
+def _perform_run_from_autotest_root(arguments, autotest_path, argv):
     """
-    Perform a test_that run, from the sysroot.
+    Perform a test_that run, from the |autotest_path|.
 
     This function is to be called from test_that's main() script, when
-    test_that is executed from the sysroot location. It handles all stages
-    of a test_that run that come after the autotest_quickmerge sysroot
-    bootstrap.
+    test_that is executed from the |autotest_path|. It handles all stages
+    of a test_that run that come after the bootstrap into |autotest_path|.
 
     @param arguments: A parsed arguments object, as returned from
                       parse_arguments(...).
-    @param sysroot_autotest_path: Full absolute path to the board-specific
-                                  sysroot location of autotest.
+    @param autotest_path: Full absolute path to the autotest root directory.
     @param argv: The arguments list, as passed to main(...)
 
     @returns: A return code that test_that should exit with.
@@ -507,7 +513,7 @@ def _perform_run_from_sysroot(arguments, sysroot_autotest_path, argv):
 
     if local_run:
         afe = setup_local_afe()
-        perform_local_run(afe, sysroot_autotest_path, arguments.tests,
+        perform_local_run(afe, autotest_path, arguments.tests,
                           arguments.remote, arguments.fast_mode,
                           args=arguments.args,
                           pretend=arguments.pretend,
@@ -558,19 +564,25 @@ def main(argv):
         print >> sys.stderr, ('Invalid arguments. %s' % err.message)
         return 1
 
-    sysroot_path = os.path.join('/build', arguments.board, '')
-    sysroot_autotest_path = os.path.join(sysroot_path, 'usr', 'local',
-                                         'autotest', '')
-    sysroot_site_utils_path = os.path.join(sysroot_autotest_path,
-                                            'site_utils')
+    if arguments.autotest_dir:
+        autotest_path = arguments.autotest_dir
+        arguments.no_quickmerge = True
+    else:
+        sysroot_path = os.path.join('/build', arguments.board, '')
+        autotest_path = os.path.join(sysroot_path, 'usr', 'local',
+                                     'autotest', '')
+        if not os.path.exists(sysroot_path):
+            print >> sys.stderr, ('%s does not exist. Have you run '
+                                  'setup_board?' % sysroot_path)
+            return 1
 
-    if not os.path.exists(sysroot_path):
+    site_utils_path = os.path.join(autotest_path, 'site_utils')
+
+    if not os.path.exists(autotest_path):
         print >> sys.stderr, ('%s does not exist. Have you run '
-                              'setup_board?' % sysroot_path)
-        return 1
-    if not os.path.exists(sysroot_autotest_path):
-        print >> sys.stderr, ('%s does not exist. Have you run '
-                              'build_packages?' % sysroot_autotest_path)
+                              'build_packages? Or if you are using '
+                              '--autotest-dir, make sure it points to'
+                              'a valid autotest directory.' % autotest_path)
         return 1
 
     realpath = os.path.realpath(__file__)
@@ -578,14 +590,12 @@ def main(argv):
     # If we are not running the sysroot version of script, perform
     # a quickmerge if necessary and then re-execute
     # the sysroot version of script with the same arguments.
-    if os.path.dirname(realpath) != sysroot_site_utils_path:
-        return _perform_bootstrap_into_sysroot(arguments,
-                                               sysroot_autotest_path,
-                                               argv)
+    if os.path.dirname(realpath) != site_utils_path:
+        return _perform_bootstrap_into_autotest_root(
+                arguments, autotest_path, argv)
     else:
-        return _perform_run_from_sysroot(arguments,
-                                         sysroot_autotest_path,
-                                         argv)
+        return _perform_run_from_autotest_root(
+                arguments, autotest_path, argv)
 
 
 if __name__ == '__main__':
