@@ -114,8 +114,6 @@ class TestFailure(Bug):
     _build_prefix = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'build_prefix', default='')
 
-    OWNER = global_config.global_config.get_config_value(
-            BUG_CONFIG_SECTION, 'test_failure_owner', default='')
     # Number of times to retry if a gs command fails. Defaults to 10,
     # which is far too long given that we already wait on these files
     # before starting HWTests.
@@ -152,7 +150,7 @@ class TestFailure(Bug):
 
         # The owner is who the bug is assigned to.
         self.owner = ''
-        self.cc = [self.OWNER]
+        self.cc = []
         self.labels = []
 
     def title(self):
@@ -282,11 +280,10 @@ class Reporter(object):
                           'OS-Chrome', 'Type-Bug',
                           'Restrict-View-Google']
 
+    _LAB_SHERIFF = site_utils.get_sheriffs(lab_only=True)
     _LAB_ERROR_TEMPLATE = {
         'labels': ['Bug-Filer-Bug'],
-        'owner': TestFailure.OWNER,
-        # Set the status to Invalid so we don't dedupe against these bugs.
-        'status': 'Invalid',
+        'owner': _LAB_SHERIFF[0] if _LAB_SHERIFF else '',
     }
 
     _SEARCH_MARKER = 'ANCHOR  '
@@ -310,26 +307,6 @@ class Reporter(object):
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
         return fundamental_libs and self._phapi_client
-
-
-    def _get_owner(self, bug):
-        """
-        Returns an owner for the given bug.
-
-        @param bug: A Bug object for which a bug is about to get filed.
-        @return: A string with the email address of the owner of this bug.
-                 The issue associated with the bug will get assigned to the
-                 owner and they will receive an email from the bug tracker. If
-                 there is no obvious owner for the bug an empty string is
-                 returned.
-        """
-        try:
-            if bug.lab_error:
-                return TestFailure.OWNER
-        except AttributeError:
-            pass
-
-        return bug.owner
 
 
     def _format_issue_options(self, override, **kwargs):
@@ -399,15 +376,17 @@ class Reporter(object):
 
         issue = self._format_issue_options(bug_template, title=bug.title(),
             description=anchored_summary, labels=bug.labels,
-            status='Untriaged', owner=self._get_owner(bug), cc=bug.cc,
+            status='Untriaged', owner=bug.owner, cc=bug.cc,
             sheriffs=sheriffs)
 
         try:
             filed_bug = self._phapi_client.create_issue(issue)
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create a bug for issue with title: %s and '
-                          'description %s', bug.title(),
-                          anchored_summary)
+                          'description %s. To file a new bug you need both a '
+                          'description and a title, and to assign it to an '
+                          'owner, that person must be known to the bug '
+                          'tracker', bug.title(), anchored_summary)
         else:
             logging.info('Filing new bug %s, with description %s',
                          filed_bug.get('id'), anchored_summary)
