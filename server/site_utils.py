@@ -87,13 +87,13 @@ def get_sheriffs(lab_only=False):
             url_content = base_utils.urlopen('%s%s'% (
                 _CHROMIUM_BUILD_URL, sheriff_js)).read()
         except (ValueError, IOError) as e:
-            logging.error('could not parse sheriff from url %s%s: %s',
-                           _CHROMIUM_BUILD_URL, sheriff_js, str(e))
+            logging.warning('could not parse sheriff from url %s%s: %s',
+                             _CHROMIUM_BUILD_URL, sheriff_js, str(e))
         else:
             ldaps = re.search(r"document.write\('(.*)'\)", url_content)
             if not ldaps:
-                logging.error('Could not retrieve sheriff ldaps for: %s',
-                               url_content)
+                logging.warning('Could not retrieve sheriff ldaps for: %s',
+                                 url_content)
                 continue
             sheriff_ids += ['%s@chromium.org' % alias.replace(' ', '')
                             for alias in ldaps.group(1).split(',')]

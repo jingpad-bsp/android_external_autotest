@@ -23,9 +23,10 @@ logging.basicConfig(level=logging.INFO)
 
 import common
 from autotest_lib.client.common_lib.cros import dev_server, retry
-from autotest_lib.client.common_lib import logging_manager
-from autotest_lib.server.cros.dynamic_suite import suite
+from autotest_lib.client.common_lib import error, logging_manager
+from autotest_lib.server.cros.dynamic_suite import suite, constants
 from autotest_lib.server.cros import provision
+from autotest_lib.server.hosts import factory
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import server_logging_config
 
@@ -54,6 +55,10 @@ _TEST_KEY_PATH = ('/mnt/host/source/src/scripts/mod_for_test_scripts/'
 _TEST_REPORT_SCRIPTNAME = '/usr/bin/generate_test_report'
 
 _LATEST_RESULTS_DIRECTORY = '/tmp/test_that_latest'
+
+
+class TestThatRunError(Exception):
+    """Raised if test_that encounters something unexpected while running."""
 
 
 def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
@@ -194,6 +199,47 @@ def get_predicate_for_test_arg(test):
             'job named %s' % test)
 
 
+def _add_ssh_identity(temp_directory):
+    """Add an ssh identity to the agent.
+
+    @param temp_directory: A directory to copy the testing_rsa into.
+    """
+    # Add the testing key to the current ssh agent.
+    if os.environ.has_key('SSH_AGENT_PID'):
+        # Copy the testing key to the temp directory and make it NOT
+        # world-readable. Otherwise, ssh-add complains.
+        shutil.copy(_TEST_KEY_PATH, temp_directory)
+        key_copy_path = os.path.join(temp_directory, _TEST_KEY_FILENAME)
+        os.chmod(key_copy_path, stat.S_IRUSR | stat.S_IWUSR)
+        p = subprocess.Popen(['ssh-add', key_copy_path],
+                             stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p_out, _ = p.communicate()
+        for line in p_out.splitlines():
+           logging.info(line)
+    else:
+      logging.warning('There appears to be no running ssh-agent. Attempting '
+                      'to continue without running ssh-add, but ssh commands '
+                      'may fail.')
+
+
+def _get_board_from_host(remote):
+    """Get the board of the remote host.
+
+    @param remote: string representing the IP of the remote host.
+
+    @return: A string representing the board of the remote host.
+    """
+    logging.info('Board unspecified, attempting to determine board from host.')
+    host = factory.create_host(remote)
+    try:
+        board = host.get_board().replace(constants.BOARD_PREFIX, '')
+    except error.AutoservRunError:
+        raise TestThatRunError('Cannot determine board, please specify '
+                               'a --board option.')
+    logging.info('Detected host board: %s', board)
+    return board
+
+
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
                       pretend=False, no_experimental=False,
@@ -223,23 +269,6 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param ssh_options: Additional ssh options to be passed to autoserv_utils
     @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
     """
-    # Add the testing key to the current ssh agent.
-    if os.environ.has_key('SSH_AGENT_PID'):
-        # Copy the testing key to the results directory and make it NOT
-        # world-readable. Otherwise, ssh-add complains.
-        shutil.copy(_TEST_KEY_PATH, results_directory)
-        key_copy_path = os.path.join(results_directory, _TEST_KEY_FILENAME)
-        os.chmod(key_copy_path, stat.S_IRUSR | stat.S_IWUSR)
-        p = subprocess.Popen(['ssh-add', key_copy_path],
-                             stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-        p_out, _ = p.communicate()
-        for line in p_out.splitlines():
-            logging.info(line)
-    else:
-        logging.warning('There appears to be no running ssh-agent. Attempting '
-                        'to continue without running ssh-add, but ssh commands '
-                        'may fail.')
-
     build_label = afe.create_label(provision.cros_version_to_label(build))
     board_label = afe.create_label(board)
     new_host = afe.create_host(remote)
@@ -276,10 +305,6 @@ def validate_arguments(arguments):
     """
     if arguments.build:
         raise ValueError('-i/--build flag not yet supported.')
-
-    if not arguments.board and not arguments.autotest_dir:
-        raise ValueError('Board autodetection not yet supported. '
-                         '--board or a default board required.')
 
     if arguments.remote == ':lab:':
         raise ValueError('Running tests in test lab not yet supported.')
@@ -336,7 +361,7 @@ def parse_arguments(argv):
     parser.add_argument('--autotest_dir', metavar='AUTOTEST_DIR',
                         help='Use AUTOTEST_DIR instead of normal board sysroot '
                              'copy of autotest, and skip the quickmerge step.')
-    parser.add_argument('--results_dir', metavar='RESULTS_DIR',
+    parser.add_argument('--results_dir', metavar='RESULTS_DIR', default=None,
                         help='Instead of storing results in a new subdirectory'
                              ' of /tmp , store results in RESULTS_DIR. If '
                              'RESULTS_DIR already exists, it will be deleted.')
@@ -409,6 +434,38 @@ def sigint_handler(signum, stack_frame):
         sys.exit(1)
 
 
+def _create_results_directory(results_directory=None):
+    """Create a results directory.
+
+    If no directory is specified this method will create and return a
+    temp directory to hold results. If a directory name is specified this
+    method will create a directory at the given path, provided it doesn't
+    already exist.
+
+    @param results_directory: The path to the results_directory to create.
+
+    @return results_directory: A path to the results_directory, ready for use.
+    """
+    if results_directory is None:
+        # Create a results_directory as subdir of /tmp
+        results_directory = tempfile.mkdtemp(prefix='test_that_results_')
+    else:
+        # Delete results_directory if it already exists.
+        try:
+            shutil.rmtree(results_directory)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+
+        # Create results_directory if it does not exist
+        try:
+            os.makedirs(results_directory)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+    return results_directory
+
+
 def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv):
     """
     Perfoms a bootstrap to run test_that from the |autotest_path|.
@@ -476,23 +533,9 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
     @returns: A return code that test_that should exit with.
     """
     results_directory = arguments.results_dir
-    if results_directory is None:
-        # Create a results_directory as subdir of /tmp
-        results_directory = tempfile.mkdtemp(prefix='test_that_results_')
-    else:
-        # Delete results_directory if it already exists.
-        try:
-            shutil.rmtree(results_directory)
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
-
-        # Create results_directory if it does not exist
-        try:
-            os.makedirs(results_directory)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+    if results_directory is None or not os.path.exists(results_directory):
+        raise ValueError('Expected valid results directory, got %s' %
+                          results_directory)
 
     logging_manager.configure_logging(
             server_logging_config.ServerLoggingConfig(),
@@ -563,6 +606,18 @@ def main(argv):
     except ValueError as err:
         print >> sys.stderr, ('Invalid arguments. %s' % err.message)
         return 1
+
+    results_directory = _create_results_directory(arguments.results_dir)
+    _add_ssh_identity(results_directory)
+    arguments.results_dir = results_directory
+
+    # If the board has not been specified through --board, and is not set in the
+    # default_board file, determine the board by ssh-ing into the host. Also
+    # prepend it to argv so we can re-use it when we run test_that from the
+    # sysroot.
+    if arguments.board is None:
+        arguments.board = _get_board_from_host(arguments.remote)
+        argv = ['--board', arguments.board] + argv
 
     if arguments.autotest_dir:
         autotest_path = arguments.autotest_dir

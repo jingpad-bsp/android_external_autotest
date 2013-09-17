@@ -164,12 +164,6 @@ class TestThatUnittests(unittest.TestCase):
         # Mock out scheduling of suite and running of jobs.
         self.mox = mox.Mox()
 
-        # Mock out environment variable so that it seems like no
-        # ssh-agent is running. This short circuits some ssh-add
-        # code that we don't want to run within the unit test.
-        self.mox.StubOutWithMock(os, 'environ')
-        os.environ.has_key('SSH_AGENT_PID').AndReturn(False)
-
         self.mox.StubOutWithMock(test_that, 'schedule_local_suite')
         test_that.schedule_local_suite(autotest_path, mox.IgnoreArg(),
                 afe, build=build,
