@@ -6,6 +6,7 @@ import logging
 import random
 import re
 import string
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
@@ -35,6 +36,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     """
 
     KNOWN_TEST_PREFIX = 'network_WiFi'
+    STARTUP_POLLING_INTERVAL_SECONDS = 0.5
+    STARTUP_TIMEOUT_SECONDS = 10
     SUFFIX_LETTERS = string.ascii_lowercase + string.digits
 
     def get_capabilities(self):
@@ -90,6 +93,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             'configured': False,
             'config_file': "/tmp/hostapd-test-%s.conf",
             'log_file': "/tmp/hostapd-test-%s.log",
+            'pid_file': "/tmp/hostapd-test-%s.pid",
             'log_count': 0,
             'driver': "nl80211",
             'conf': self.default_config.copy()
@@ -196,6 +200,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         conf_file = self.hostapd['config_file'] % interface
         log_file = self.hostapd['log_file'] % interface
+        pid_file = self.hostapd['pid_file'] % interface
         conf['interface'] = interface
 
         # Generate hostapd.conf.
@@ -206,14 +211,47 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Run hostapd.
         logging.info("Starting hostapd...")
+        self.router.run('rm %s' % log_file, ignore_status=True)
+        self.router.run('rm %s' % pid_file, ignore_status=True)
         self._pre_start_hook(params)
-        self.router.run("%s -dd %s &> %s &" %
-            (self.cmd_hostapd, conf_file, log_file))
+        self.router.run("%s -dd -B -t -f %s -P %s %s" %
+            (self.cmd_hostapd, log_file, pid_file, conf_file))
+        pid = int(self.router.run('cat %s' % pid_file).stdout)
+
+        # Wait for confirmation that the router came up.
+        logging.info('Waiting for hostapd to startup.')
+        start_time = time.time()
+        while time.time() - start_time < self.STARTUP_TIMEOUT_SECONDS:
+            success = self.router.run(
+                    'grep "Completing interface initialization" %s' % log_file,
+                    ignore_status=True).exit_status == 0
+            if success:
+                break
+
+            # A common failure is to request an invalid router configuration.
+            # Detect this and exit early if we see it.
+            bad_config = self.router.run(
+                    'grep "Interface initialization failed" %s' % log_file,
+                    ignore_status=True).exit_status == 0
+            if bad_config:
+                raise error.TestFail('hostapd failed to initialize AP '
+                                     'interface.')
+
+            early_exit = self.router.run('kill -0 %d' % pid,
+                                         ignore_status=True).exit_status
+            if early_exit:
+                raise error.TestFail('hostapd process terminated.')
+
+            time.sleep(self.STARTUP_POLLING_INTERVAL_SECONDS)
+        else:
+            raise error.TestFail('Timed out while waiting for hostapd '
+                                 'to start.')
 
         self.hostapd_instances.append({
             'conf_file': conf_file,
             'log_file': log_file,
-            'interface': interface
+            'interface': interface,
+            'pid_file': pid_file
         })
 
 
