@@ -45,6 +45,7 @@ import trendnet731br_ap_configurator
 import trendnet432brp_ap_configurator
 import trendnet692gr_ap_configurator
 import trendnet654tr_ap_configurator
+import trendnet812dru_ap_configurator
 import westerndigitaln600_ap_configurator
 
 
@@ -80,6 +81,8 @@ class APConfiguratorFactory(object):
             trendnet692gr_ap_configurator.Trendnet692grAPConfigurator,
         'Trendnet654trAPConfigurator':
             trendnet654tr_ap_configurator.Trendnet654trAPConfigurator,
+        'Trendnet812druAPConfigurator':
+            trendnet812dru_ap_configurator.Trendnet812druAPConfigurator,
         'DLinkDIR655APConfigurator':
             dlink_dir655_ap_configurator.DLinkDIR655APConfigurator,
         'BuffaloAPConfigurator':
