@@ -338,7 +338,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             conf['ignore_broadcast_ssid'] = 1
         if configuration.is_11n:
             conf['ieee80211n'] = 1
-            conf['ht_capab'] = ''.join(configuration.n_capabilities)
+            conf['ht_capab'] = configuration.hostapd_ht_capabilities
         if configuration.wmm_enabled:
             conf['wmm_enabled'] = 1
         if configuration.require_ht:

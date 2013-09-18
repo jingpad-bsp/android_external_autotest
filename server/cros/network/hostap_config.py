@@ -68,7 +68,6 @@ class HostapConfig(object):
     MODE_11N_MIXED = 'n-mixed'
     MODE_11N_PURE = 'n-only'
 
-    N_CAPABILITY_WMM = object()
     N_CAPABILITY_HT20 = object()
     N_CAPABILITY_HT40 = object()
     N_CAPABILITY_HT40_PLUS = object()
@@ -76,6 +75,27 @@ class HostapConfig(object):
     N_CAPABILITY_GREENFIELD = object()
     N_CAPABILITY_SGI20 = object()
     N_CAPABILITY_SGI40 = object()
+    ALL_N_CAPABILITIES = [N_CAPABILITY_HT20,
+                          N_CAPABILITY_HT40,
+                          N_CAPABILITY_HT40_PLUS,
+                          N_CAPABILITY_HT40_MINUS,
+                          N_CAPABILITY_GREENFIELD,
+                          N_CAPABILITY_SGI20,
+                          N_CAPABILITY_SGI40]
+
+    # This is a loose merging of the rules for US and EU regulatory
+    # domains as taken from IEEE Std 802.11-2012 Appendix E.  For instance,
+    # we tolerate HT40 in channels 149-161 (not allowed in EU), but also
+    # tolerate HT40+ on channel 7 (not allowed in the US).  We take the loose
+    # definition so that we don't prohibit testing in either domain.
+    HT40_ALLOW_MAP = {N_CAPABILITY_HT40_MINUS: range(6, 14) +
+                                               range(40, 65, 8) +
+                                               range(104, 137, 8) +
+                                               [153, 161],
+                      N_CAPABILITY_HT40_PLUS: range(1, 8) +
+                                              range(36, 61, 8) +
+                                              range(100, 133, 8) +
+                                              [149, 157]}
 
     PMF_SUPPORT_DISABLED = 0
     PMF_SUPPORT_ENABLED = 1
@@ -121,15 +141,48 @@ class HostapConfig(object):
         @param value: int frequency in MHz.
 
         """
-        if value not in self.CHANNEL_MAP:
+        if value not in self.CHANNEL_MAP or not self.supports_frequency(value):
             raise error.TestFail('Tried to set an invalid frequency: %r.' %
                                  value)
 
-        if not self.supports_frequency(value):
-            raise error.TestFail('Invalid frequency %d for configuration %r' %
-                                 (value, self))
-
         self._frequency = value
+
+
+    @property
+    def hostapd_ht_capabilities(self):
+        """@return string suitable for the ht_capab= line in a hostapd config"""
+        ret = []
+        if self.ht40_plus_allowed:
+            ret.append('[HT40+]')
+        elif self.ht40_minus_allowed:
+            ret.append('[HT40-]')
+        if self.N_CAPABILITY_GREENFIELD in self._n_capabilities:
+            logging.warning('Greenfield flag is ignored for hostap...')
+        if self.N_CAPABILITY_SGI20 in self._n_capabilities:
+            ret.append('[SHORT-GI-20]')
+        if self.N_CAPABILITY_SGI40 in self._n_capabilities:
+            ret.append('[SHORT-GI-40]')
+        return ''.join(ret)
+
+
+    @property
+    def ht40_plus_allowed(self):
+        """@return True iff HT40+ is enabled for this configuration."""
+        channel_supported = (self.channel in
+                             self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_PLUS])
+        return ((self.N_CAPABILITY_HT40_PLUS in self._n_capabilities or
+                 self.N_CAPABILITY_HT40 in self._n_capabilities) and
+                channel_supported)
+
+
+    @property
+    def ht40_minus_allowed(self):
+        """@return True iff HT40- is enabled for this configuration."""
+        channel_supported = (self.channel in
+                             self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_MINUS])
+        return ((self.N_CAPABILITY_HT40_MINUS in self._n_capabilities and
+                 self.N_CAPABILITY_HT40 in self._n_capabilities) and
+                channel_supported)
 
 
     @property
@@ -149,22 +202,10 @@ class HostapConfig(object):
         if not self.is_11n:
             return None
 
-        is_plus = '[HT40+]' in self.n_capabilities
-        is_minus = '[HT40-]' in self.n_capabilities
-        if is_plus and is_minus:
-            # TODO(wiley) Apparently, for some channels, there are regulatory
-            #             rules for which side of the channel you may use with
-            #             HT40 mode.  For some channels, HT40 is disabled
-            #             altogether.
-            logging.warning('Packet capture may fail because both HT40+ and '
-                            'HT40- enabled.  hostap will choose one or the '
-                            'other, but we do not know that decision.')
-            return 'HT40-'
-
-        if is_plus:
+        if self.ht40_plus_allowed:
             return 'HT40+'
 
-        if is_minus:
+        if self.ht40_minus_allowed:
             return 'HT40-'
 
         return 'HT20'
@@ -255,10 +296,20 @@ class HostapConfig(object):
             raise error.TestError('Specify either frequency or channel '
                                   'but not both.')
 
-        if n_capabilities and mode is None:
+        self.wmm_enabled = False
+        unknown_caps = [cap for cap in n_capabilities
+                        if cap not in self.ALL_N_CAPABILITIES]
+        if unknown_caps:
+            raise error.TestError('Unknown capabilities: %r' % unknown_caps)
+
+        self._n_capabilities = set(n_capabilities)
+        if self._n_capabilities:
+            self.wmm_enabled = True
+        if self._n_capabilities and mode is None:
             mode = self.MODE_11N_PURE
         self._mode = mode
 
+        self._frequency = None
         if channel:
             self.channel = channel
         elif frequency:
@@ -269,33 +320,6 @@ class HostapConfig(object):
         if not self.supports_frequency(self.frequency):
             raise error.TestFail('Configured a mode %s that does not support '
                                  'frequency %d' % (self._mode, self.frequency))
-
-        self.wmm_enabled = False
-        self.n_capabilities = set()
-        for cap in n_capabilities:
-            self.wmm_enabled = True
-            if cap == self.N_CAPABILITY_HT40:
-                self.n_capabilities.add('[HT40-]')
-                self.n_capabilities.add('[HT40+]')
-            elif cap == self.N_CAPABILITY_HT40_PLUS:
-                self.n_capabilities.add('[HT40+]')
-            elif cap == self.N_CAPABILITY_HT40_MINUS:
-                self.n_capabilities.add('[HT40-]')
-            elif cap == self.N_CAPABILITY_GREENFIELD:
-                logging.warning('Greenfield flag is ignored for hostap...')
-                #TODO(wiley) Why does this not work?
-                #self.n_capabilities.add('[GF]')
-            elif cap == self.N_CAPABILITY_SGI20:
-                self.n_capabilities.add('[SHORT-GI-20]')
-            elif cap == self.N_CAPABILITY_SGI40:
-                self.n_capabilities.add('[SHORT-GI-40]')
-            elif cap == self.N_CAPABILITY_HT20:
-                # This isn't a real thing.  HT mode implies 20 supported.
-                pass
-            elif cap == self.N_CAPABILITY_WMM:
-                pass
-            else:
-                raise error.TestError('Unknown capability: %r' % cap)
 
         self.hide_ssid = hide_ssid
         self.beacon_interval = beacon_interval
@@ -327,7 +351,7 @@ class HostapConfig(object):
                         self._mode,
                         self.channel,
                         self.frequency,
-                        self.n_capabilities,
+                        self._n_capabilities,
                         self.hide_ssid,
                         self.beacon_interval,
                         self.dtim_period,
@@ -368,6 +392,26 @@ class HostapConfig(object):
             return False
 
         if self._mode in (self.MODE_11B, self.MODE_11G) and frequency > 5000:
+            return False
+
+        if frequency not in self.CHANNEL_MAP:
+            return False
+
+        channel = self.CHANNEL_MAP[frequency]
+        supports_plus = (channel in
+                         self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_PLUS])
+        supports_minus = (channel in
+                          self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_MINUS])
+        if (self.N_CAPABILITY_HT40_PLUS in self._n_capabilities and
+                not supports_plus):
+            return False
+
+        if (self.N_CAPABILITY_HT40_MINUS in self._n_capabilities and
+                not supports_minus):
+            return False
+
+        if (self.N_CAPABILITY_HT40 in self._n_capabilities and
+                not supports_plus and not supports_minus):
             return False
 
         return True
