@@ -1,0 +1,123 @@
+From d400b387e0b613e650658136fd18c457820c7999 Mon Sep 17 00:00:00 2001
+From: Juan Casse <jcasse@chromium.org>
+Date: Mon, 26 Aug 2013 13:53:36 -0700
+Subject: [PATCH] Adds check for numberio during verify phase.
+
+Currently, fio checks the block offset number in a block's header during
+the verify phase.
+We add a check for the io number (numberio) to detect stale blocks. This
+check is performed only on workloads that write data, as those workloads
+know what numberio was written to each block.
+td->io_issues[ddir] = 0; was removed so that numberio does not get reset
+at each iteration; we want numberio to keep incrementing to reflect
+how many times the same data was written.
+
+Signed-off-by: Juan Casse <jcasse@chromium.org>
+Reviewed-by: Grant Grundler <grundler@chromium.org>
+
+Fixed typo.
+---
+ ioengine.h |  1 +
+ iolog.c    |  1 +
+ iolog.h    |  1 +
+ libfio.c   |  1 -
+ verify.c   | 14 +++++++++++++-
+ 5 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/ioengine.h b/ioengine.h
+index 31662eb..812febd 100644
+--- a/ioengine.h
++++ b/ioengine.h
+@@ -50,6 +50,7 @@ struct io_u {
+ 	 */
+ 	unsigned long buflen;
+ 	unsigned long long offset;
++	unsigned short numberio;
+ 	void *buf;
+ 
+ 	/*
+diff --git a/iolog.c b/iolog.c
+index 9bcf0d8..6459d3b 100644
+--- a/iolog.c
++++ b/iolog.c
+@@ -188,6 +188,7 @@ void log_io_piece(struct thread_data *td, struct io_u *io_u)
+ 	ipo->file = io_u->file;
+ 	ipo->offset = io_u->offset;
+ 	ipo->len = io_u->buflen;
++	ipo->numberio = io_u->numberio;
+ 
+ 	if (io_u_should_trim(td, io_u)) {
+ 		flist_add_tail(&ipo->trim_list, &td->trim_list);
+diff --git a/iolog.h b/iolog.h
+index 8fedc19..94e0fc1 100644
+--- a/iolog.h
++++ b/iolog.h
+@@ -78,6 +78,7 @@ struct io_piece {
+ 		struct fio_file *file;
+ 	};
+ 	unsigned long long offset;
++	unsigned short numberio;
+ 	unsigned long len;
+ 	unsigned int flags;
+ 	enum fio_ddir ddir;
+diff --git a/libfio.c b/libfio.c
+index c26d6a3..6e290f4 100644
+--- a/libfio.c
++++ b/libfio.c
+@@ -83,7 +83,6 @@ static void reset_io_counters(struct thread_data *td)
+ 		td->this_io_blocks[ddir] = 0;
+ 		td->rate_bytes[ddir] = 0;
+ 		td->rate_blocks[ddir] = 0;
+-		td->io_issues[ddir] = 0;
+ 	}
+ 	td->zone_bytes = 0;
+ 
+diff --git a/verify.c b/verify.c
+index 9e88d61..63def12 100644
+--- a/verify.c
++++ b/verify.c
+@@ -369,6 +369,15 @@ static int verify_io_u_meta(struct verify_header *hdr, struct vcont *vc)
+ 	if (td->o.verify_pattern_bytes)
+ 		ret |= verify_io_u_pattern(hdr, vc);
+ 
++	/*
++	 * For read-only workloads, the program cannot be certain of the
++	 * last numberio written to a block. Checking of numberio will be done
++	 * only for workloads that write data.
++	 */
++	if (td_write(td) || td_rw(td))
++		if (vh->numberio != io_u->numberio)
++			ret = EILSEQ;
++
+ 	if (!ret)
+ 		return 0;
+ 
+@@ -768,7 +777,7 @@ static void fill_meta(struct verify_header *hdr, struct thread_data *td,
+ 	vh->time_sec = io_u->start_time.tv_sec;
+ 	vh->time_usec = io_u->start_time.tv_usec;
+ 
+-	vh->numberio = td->io_issues[DDIR_WRITE];
++	vh->numberio = io_u->numberio;
+ 
+ 	vh->offset = io_u->offset + header_num * td->o.verify_interval;
+ }
+@@ -942,6 +951,8 @@ void populate_verify_io_u(struct thread_data *td, struct io_u *io_u)
+ 	if (td->o.verify == VERIFY_NULL)
+ 		return;
+ 
++	io_u->numberio = td->io_issues[io_u->ddir];
++
+ 	fill_pattern_headers(td, io_u, 0, 0);
+ }
+ 
+@@ -974,6 +985,7 @@ int get_next_verify(struct thread_data *td, struct io_u *io_u)
+ 
+ 		io_u->offset = ipo->offset;
+ 		io_u->buflen = ipo->len;
++		io_u->numberio = ipo->numberio;
+ 		io_u->file = ipo->file;
+ 		io_u->flags |= IO_U_F_VER_LIST;
+ 
+-- 
+1.7.12.4
+

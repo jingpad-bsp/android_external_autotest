@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
+import logging, os, re, time
 from fio_parser import fio_job_output
 
 from autotest_lib.client.bin import test, utils
@@ -18,13 +18,16 @@ class hardware_StorageFio(test.test):
 
     """
 
-    version = 5
+    version = 6
 
     # Version information for the fio parser object.
     _fio_version = '2.1'
 
+    # Initialize fail counter used to determine test pass/fail.
+    _fail_count = 0
+
     # http://brick.kernel.dk/snaps/
-    def setup(self, tarball = 'fio-2.1.tar.bz2'):
+    def setup(self, tarball = 'fio-2.1.2.tar.bz2'):
         # clean
         if os.path.exists(self.srcdir):
             utils.system('rm -rf %s' % self.srcdir)
@@ -39,6 +42,10 @@ class hardware_StorageFio(test.test):
         var_cflags  = 'CFLAGS="' + cflags + '"'
 
         os.chdir(self.srcdir)
+        utils.system('patch -p1 < ../add-condition-to-stop-issuing-io.patch')
+        utils.system('patch -p1 < ../add-check-for-rand_seed.patch')
+        utils.system('patch -p1 < ../add-check-for-numberio.patch')
+        utils.system('patch -p1 < ../add-verifyonly-option.patch')
         utils.system('patch -p1 < ../Makefile.patch')
         utils.make(make='%s %s make' % (var_ldflags, var_cflags))
 
@@ -135,7 +142,7 @@ class hardware_StorageFio(test.test):
         return results
 
 
-    def __RunFio(self, test):
+    def __RunFio(self, job, options):
         """
         Runs fio.
 
@@ -147,6 +154,7 @@ class hardware_StorageFio(test.test):
         vars = 'LD_LIBRARY_PATH="' + self.autodir + '/deps/libaio/lib"'
         os.putenv('FILENAME', self.__filename)
         os.putenv('FILESIZE', str(self.__filesize))
+
         # running fio with ionice -c 3 so it doesn't lock out other
         # processes from the disk while it is running.
         # If you want to run the fio test for performance purposes,
@@ -155,12 +163,16 @@ class hardware_StorageFio(test.test):
         # -c 3 = Idle
         # Tried lowest priority for "best effort" but still failed
         ionice = ' ionice -c 3'
+
         # Using the --minimal flag for easier results parsing
         # Newest fio doesn't omit any information in --minimal
-        fio = utils.run(vars + ionice + ' ./fio --minimal "%s"' %
-            os.path.join(self.bindir, test))
+        fio = utils.run(vars + ionice + ' ./fio --minimal %s "%s"' %
+                        (' '.join(options), os.path.join(self.bindir, job)))
+
         logging.debug(fio.stdout)
-        return self.__parse_fio(fio.stdout)
+        output =  self.__parse_fio(fio.stdout)
+        self._fail_count += int(output[job + '_error'])
+        return output
 
 
     def initialize(self, dev='', filesize=1024*1024*1024):
@@ -179,9 +191,16 @@ class hardware_StorageFio(test.test):
         self.__filesize = min(self.__filesize, filesize)
 
 
-    def run_once(self, dev='', quicktest=False, requirements=None):
+    def run_once(self, dev='', quicktest=False, requirements=None,
+                 integrity=False, wait=60 * 60 * 72):
         """
         Runs several fio jobs and reports resutls.
+
+        @param dev: block device to test
+        @param quicktest: short test
+        @param requirements: list of jobs for fio to run
+        @param integrity: test to check data integrity
+        @param wait: seconds to wait between a write and subsequent verify
 
         """
 
@@ -195,41 +214,51 @@ class hardware_StorageFio(test.test):
         if requirements is not None:
             pass
         elif quicktest:
-            requirements = [ 'quick_write', 'quick_read' ]
+            requirements = [
+                ('8k_write', []),
+                ('8k_read', [])
+            ]
+        elif integrity:
+            requirements = [
+                ('8k_async_randwrite', []),
+                ('8k_async_randwrite', ['--verifyonly'])
+            ]
         elif dev in ['', utils.system_output('rootdev -s -d')]:
             requirements = [
-                'surfing',
-                'boot',
-                'login',
-                'seq_read',
-                'seq_write',
-                '16k_read',
-                '16k_write',
-                '8k_read',
-                '8k_write',
-                '4k_read',
-                '4k_write'
+                ('surfing', []),
+                ('boot', []),
+                ('login', []),
+                ('seq_read', []),
+                ('seq_write', []),
+                ('16k_read', []),
+                ('16k_write', []),
+                ('8k_read', []),
+                ('8k_write', []),
+                ('4k_read', []),
+                ('4k_write', [])
             ]
         else:
             # TODO(waihong@): Add more test cases for external storage
             requirements = [
-                'seq_read',
-                'seq_write',
-                '16k_read',
-                '16k_write',
-                '8k_read',
-                '8k_write',
-                '4k_read',
-                '4k_write'
+                ('seq_read', []),
+                ('seq_write', []),
+                ('16k_read', []),
+                ('16k_write', []),
+                ('8k_read', []),
+                ('8k_write', []),
+                ('4k_read', []),
+                ('4k_write', [])
             ]
 
         results = {}
-        for test in requirements:
+        for job, options in requirements:
             # Keys are labeled according to the test case name, which is
             # unique per run, so they cannot clash
-            results.update(self.__RunFio(test))
+            if '--verifyonly' in options:
+                time.sleep(wait)
+            results.update(self.__RunFio(job, options))
 
-        # Output keys relevent to the performance, larger filesize will run
+        # Output keys relevant to the performance, larger filesize will run
         # slower, and sda5 should be slightly slower than sda3 on a rotational
         # disk
         self.write_test_keyval({'filesize': self.__filesize,
@@ -237,3 +266,6 @@ class hardware_StorageFio(test.test):
                                 'device': self.__description})
         logging.info('Device Description: %s', self.__description)
         self.write_perf_keyval(results)
+        if self._fail_count > 0:
+            raise error.TestFail('%s failed verifications' %
+                                 str(self._fail_count))
