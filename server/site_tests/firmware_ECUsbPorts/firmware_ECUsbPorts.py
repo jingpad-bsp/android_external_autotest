@@ -64,7 +64,7 @@ class firmware_ECUsbPorts(FAFTSequence):
                  self.REBOOT_DELAY,
                  ports_on_cmd))
         self.faft_client.system.run_shell_command(cmd)
-        self.kill_remote()
+        self.faft_client.disconnect()
 
 
     def get_port_count(self):

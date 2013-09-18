@@ -47,7 +47,7 @@ class firmware_DevModeStress(FAFTSequence):
         """
         cmd = '(sleep %d; powerd_dbus_suspend) &' % self.EC_SUSPEND_DELAY
         self.faft_client.system.run_shell_command(cmd)
-        self.kill_remote()
+        self.faft_client.disconnect()
         time.sleep(self.EC_SUSPEND_DELAY)
         wake_func()
 
