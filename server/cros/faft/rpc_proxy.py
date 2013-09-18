@@ -88,5 +88,5 @@ class RPCProxy(object):
 
     def disconnect(self):
         """Disconnect the RPC server."""
-        self._client.xmlrpc_disconnect(self._client_config.rpc_port)
+        self._client.rpc_disconnect(self._client_config.rpc_port)
         self._faft_client = None
