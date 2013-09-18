@@ -87,7 +87,7 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, build=_NO_BUILD,
     devserver = dev_server.ImageServer('')
     my_suite = suite.Suite.create_from_predicates([suite_predicate],
             build, board, devserver, fs_getter, afe=afe, ignore_deps=True,
-            results_dir=results_directory)
+            results_dir=results_directory, forgiving_parser=False)
     if len(my_suite.tests) == 0:
         raise ValueError('Suite contained no tests.')
     # Schedule tests, discard record calls.

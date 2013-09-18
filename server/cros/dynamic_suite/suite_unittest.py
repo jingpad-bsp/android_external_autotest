@@ -9,6 +9,7 @@
 
 import collections
 import mox
+import os
 import shutil
 import tempfile
 import unittest
@@ -19,7 +20,6 @@ from autotest_lib.client.common_lib import base_job, control_data
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import utils, error
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting
@@ -120,6 +120,21 @@ class SuiteTest(mox.MoxTestBase):
         self.assertEquals(tests[0], self.files['two'])
 
 
+    def testFindSuiteSyntaxErrors(self):
+        """Check all control files for syntax errors.
+
+        This test actually parses all control files in the autotest directory
+        for syntax errors, by using the un-forgiving parser and pretending to
+        look for all control files with the suite attribute.
+        """
+        autodir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+        fs_getter = Suite.create_fs_getter(autodir)
+        predicate = lambda t: hasattr(t, 'suite')
+        Suite.find_and_parse_tests(fs_getter, predicate, add_experimental=True,
+                                   forgiving_parser=False)
+
+
     def testFindAndParseTests(self):
         """Should find all tests that match a predicate."""
         self.expect_control_file_parsing()
@@ -188,7 +203,8 @@ class SuiteTest(mox.MoxTestBase):
             mox.IgnoreArg(),
             mox.IgnoreArg(),
             mox.IgnoreArg(),
-            add_experimental=True).AndReturn(self.files.values())
+            add_experimental=True,
+            forgiving_parser=True).AndReturn(self.files.values())
 
 
     def expect_job_scheduling(self, recorder, add_experimental,
@@ -201,6 +217,8 @@ class SuiteTest(mox.MoxTestBase):
                          results.
         @param tests_to_skip: [list, of, test, names] that we expect to skip.
         @param ignore_deps: If true, ignore tests' dependencies.
+        @param raises: If True, expect exceptions.
+        @param suite_deps: If True, add suite level dependencies.
         """
         recorder.record_entry(
             StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))

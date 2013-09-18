@@ -233,7 +233,7 @@ class Suite(object):
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
                  timeout=24, file_bugs=False, file_experimental_bugs=False,
                  suite_job_id=None, ignore_deps=False, extra_deps=[],
-                 priority=priorities.Priority.DEFAULT):
+                 priority=priorities.Priority.DEFAULT, forgiving_parser=True):
         """
         Constructor
 
@@ -283,9 +283,9 @@ class Suite(object):
         self._pool = pool
         self._jobs = []
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
-                                                 self._predicate,
-                                                 self._tag,
-                                                 add_experimental=True)
+                        self._predicate, self._tag, add_experimental=True,
+                        forgiving_parser=forgiving_parser)
+
         self._max_runtime_mins = max_runtime_mins
         self._timeout = timeout
         self._file_bugs = file_bugs
@@ -551,7 +551,7 @@ class Suite(object):
 
     @staticmethod
     def find_and_parse_tests(cf_getter, predicate, suite_name='',
-                             add_experimental=False):
+                             add_experimental=False, forgiving_parser=True):
         """
         Function to scan through all tests and find eligible tests.
 
@@ -573,6 +573,14 @@ class Suite(object):
         @param suite_name: If specified, this method will attempt to restrain
                            the search space to just this suite's control files.
         @param add_experimental: add tests with experimental attribute set.
+        @param forgiving_parser: If False, will raise ControlVariableExceptions
+                                 if any are encountered when parsing control
+                                 files. Note that this can raise an exception
+                                 for syntax errors in unrelated files, because
+                                 we parse them before applying the predicate.
+
+        @raises ControlVariableException: If forgiving_parser is False and there
+                                          is a syntax error in a control file.
 
         @return list of ControlData objects that should be run, with control
                 file text added in |text| attribute. Results are sorted based
@@ -595,6 +603,8 @@ class Suite(object):
                 found_test.path = file
                 tests[file] = found_test
             except control_data.ControlVariableException, e:
+                if not forgiving_parser:
+                    raise
                 logging.warn("Skipping %s\n%s", file, e)
             except Exception, e:
                 logging.error("Bad %s\n%s", file, e)
