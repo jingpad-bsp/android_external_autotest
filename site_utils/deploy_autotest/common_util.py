@@ -23,7 +23,8 @@ def setup_logging():
 
 SYNC = 'sync'
 RESTART = 'restart'
-VALID_COMMANDS = [SYNC, RESTART]
+PRINT = 'print'
+VALID_COMMANDS = [SYNC, RESTART, PRINT]
 
 DEVS = 'devservers'
 DRONES = 'drones'

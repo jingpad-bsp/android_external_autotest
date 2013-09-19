@@ -10,7 +10,7 @@ This is the main utility for syncing and deploying changes to the autotest
 infrastructure defined by the autotest config.
 
 Usage:
-  lab_deploy.py (sync,restart) (devservers, drones, scheduler)+.
+  lab_deploy.py (sync,restart,print) (devservers, drones, scheduler)+.
 """
 import logging
 import os

@@ -11,7 +11,7 @@ once a user has logged into the main autotest server. This can be called
 directly if already on the autotest server.
 
 Usage:
-  lab_deploy_helper.py  (sync,restart) (devservers, drones, scheduler)+.
+  lab_deploy_helper.py  (sync,restart,print) (devservers, drones, scheduler)+.
 """
 import logging
 import sys
@@ -109,6 +109,18 @@ def main(argv):
 
         if common_util.SCHEDULER in requested_server_set:
             autotest_restart(master)
+
+    elif args.operation == common_util.PRINT:
+        if common_util.DEVS in requested_server_set:
+            for server in devservers:
+                print server
+
+        if common_util.DRONES in requested_server_set:
+            for server in drones:
+                print server
+
+        if common_util.SCHEDULER in requested_server_set:
+            print master
 
     return 0
 
