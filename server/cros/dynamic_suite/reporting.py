@@ -280,12 +280,6 @@ class Reporter(object):
                           'OS-Chrome', 'Type-Bug',
                           'Restrict-View-Google']
 
-    _LAB_SHERIFF = site_utils.get_sheriffs(lab_only=True)
-    _LAB_ERROR_TEMPLATE = {
-        'labels': ['Bug-Filer-Bug'],
-        'owner': _LAB_SHERIFF[0] if _LAB_SHERIFF else '',
-    }
-
     _SEARCH_MARKER = 'ANCHOR  '
 
 
@@ -307,6 +301,17 @@ class Reporter(object):
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
         return fundamental_libs and self._phapi_client
+
+
+    def _get_lab_error_template(self):
+        """Return the lab error template.
+
+        @return: A dictionary representing the bug options for a failure that
+                 requires investigation from the lab team.
+        """
+        lab_sheriff = site_utils.get_sheriffs(lab_only=True)
+        return {'lables': 'Lab-inspect',
+                'owner': lab_sheriff[0] if lab_sheriff else '',}
 
 
     def _format_issue_options(self, override, **kwargs):
@@ -633,13 +638,13 @@ class Reporter(object):
 
         sheriffs = []
 
-        # TODO(beeps): move this to classify_bug
+        # TODO(beeps): crbug.com/254256
         try:
-            if bug.lab_error:
+            if bug.lab_error and bug.suite == 'bvt':
+                lab_error_template = self._get_lab_error_template()
                 if bug_template.get('labels'):
-                    self._LAB_ERROR_TEMPLATE['labels'] += bug_template.get(
-                                                            'labels')
-                bug_template = self._LAB_ERROR_TEMPLATE
+                    lab_error_template['labels'] += bug_template.get('labels')
+                bug_template = lab_error_template
             elif bug.suite == 'bvt':
                 sheriffs = site_utils.get_sheriffs()
         except AttributeError:
