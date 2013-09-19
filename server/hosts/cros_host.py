@@ -91,7 +91,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     #   network.
     # SHUTDOWN_TIMEOUT: Time to allow for shut down.
     # REBOOT_TIMEOUT: How long to wait for a reboot.
-    # _INSTALL_TIMEOUT: Time to allow for chromeos-install.
+    # INSTALL_TIMEOUT: Time to allow for chromeos-install.
 
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 10
@@ -102,7 +102,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     # issues. Shorter timeouts are vetted in platform_RebootAfterUpdate.
     REBOOT_TIMEOUT = 300
 
-    _INSTALL_TIMEOUT = 240
+    INSTALL_TIMEOUT = 240
 
     # _USB_POWER_TIMEOUT: Time to allow for USB to power toggle ON and OFF.
     # _POWER_CYCLE_TIMEOUT: Time to allow for manual power cycle.
@@ -763,7 +763,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise
 
 
-    def servo_install(self, image_url=None):
+    def servo_install(self, image_url=None, usb_boot_timeout=USB_BOOT_TIMEOUT,
+                      install_timeout=INSTALL_TIMEOUT):
         """
         Re-install the OS on the DUT by:
         1) installing a test image on a USB storage device attached to the Servo
@@ -773,21 +774,44 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @param image_url: If specified use as the url to install on the DUT.
                 otherwise boot the currently staged image on the USB stick.
+        @param usb_boot_timeout: The usb_boot_timeout to use during reimage.
+                Factory images need a longer usb_boot_timeout than regular
+                cros images.
+        @param install_timeout: The timeout to use when installing the chromeos
+                image. Factory images need a longer install_timeout.
 
         @raises AutoservError if the image fails to boot.
         """
+
+        usb_boot_timer_key = ('servo_install.usb_boot_timeout_%s'
+                              % usb_boot_timeout)
+        logging.info('Downloading image to USB, then booting from it. Usb boot '
+                     'timeout = %s', usb_boot_timeout)
+        timer = stats.Timer(usb_boot_timer_key)
+        timer.start()
         self.servo.install_recovery_image(image_url)
-        if not self.wait_up(timeout=self.USB_BOOT_TIMEOUT):
+        if not self.wait_up(timeout=usb_boot_timeout):
             raise error.AutoservRepairFailure(
                     'DUT failed to boot from USB after %d seconds' %
-                    self.USB_BOOT_TIMEOUT)
+                    usb_boot_timeout)
+        timer.stop()
 
-        self.run('chromeos-install --yes', timeout=self._INSTALL_TIMEOUT)
+        install_timer_key = ('servo_install.install_timeout_%s'
+                             % install_timeout)
+        timer = stats.Timer(install_timer_key)
+        timer.start()
+        logging.info('Installing image through chromeos-install.')
+        self.run('chromeos-install --yes', timeout=install_timeout)
+        timer.stop()
+
+        logging.info('Power cycling DUT through servo.')
         self.servo.power_long_press()
         self.servo.switch_usbkey('off')
         # We *must* use power_on() here; on Parrot it's how we get
         # out of recovery mode.
         self.servo.get_power_state_controller().power_on()
+
+        logging.info('Waiting for DUT to come back up.')
         if not self.wait_up(timeout=self.BOOT_TIMEOUT):
             raise error.AutoservError('DUT failed to reboot installed '
                                       'test image after %d seconds' %
