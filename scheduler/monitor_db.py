@@ -1957,7 +1957,7 @@ class PreJobTask(SpecialAgentTask):
             previous_provisions = models.SpecialTask.objects.filter(
                     task=models.SpecialTask.Task.PROVISION,
                     queue_entry_id=self.queue_entry.id).count()
-            if (previous_provisions >=
+            if (previous_provisions >
                 scheduler_config.config.max_provision_retries):
                 self._actually_fail_queue_entry()
                 # This abort will mark the aborted bit on the HQE itself, to
