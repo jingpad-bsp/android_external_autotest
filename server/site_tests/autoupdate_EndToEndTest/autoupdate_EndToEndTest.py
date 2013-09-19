@@ -690,9 +690,6 @@ class autoupdate_EndToEndTest(test.test):
     def _trigger_test_update(self, omaha_devserver):
         """Trigger an update check on a test image.
 
-        Uses update_engine_client via SSH. This is an async call, hence a very
-        short timeout.
-
         @param omaha_devserver: Instance of OmahaDevserver that will serve the
                                 update.
         @raise RootFSUpdateError if anything went wrong.
@@ -711,8 +708,7 @@ class autoupdate_EndToEndTest(test.test):
         @raise AutotestHostRunError if command failed to run on host.
 
         """
-        # This command should return immediately, hence the short timeout.
-        return self._host.run('rootdev -s', timeout=10).stdout.strip()
+        return self._host.run('rootdev -s').stdout.strip()
 
 
     def _stage_image(self, autotest_devserver, image_uri):

@@ -196,8 +196,7 @@ class ChromiumOSUpdater():
         """Clear any pending stateful update request."""
         statefuldev_cmd = [self.get_stateful_update_script()]
         statefuldev_cmd += ['--stateful_change=reset', '2>&1']
-        # This shouldn't take any time at all.
-        self._run(' '.join(statefuldev_cmd), timeout=10)
+        self._run(' '.join(statefuldev_cmd))
 
 
     def revert_boot_partition(self):
@@ -217,8 +216,7 @@ class ChromiumOSUpdater():
             UPDATER_BIN, self.update_url)
         logging.info('triggering update via: %s', autoupdate_cmd)
         try:
-            # This should return immediately, hence the short timeout.
-            self._run(autoupdate_cmd, timeout=10)
+            self._run(autoupdate_cmd)
         except error.AutoservRunError, e:
             raise RootFSUpdateError('update triggering failed on %s: %s' %
                                     (self.host.hostname, str(e)))
