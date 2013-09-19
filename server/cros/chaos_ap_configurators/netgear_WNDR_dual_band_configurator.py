@@ -80,7 +80,13 @@ class NetgearDualBandAPConfigurator(ap_configurator.APConfigurator):
                                (self.get_number_of_pages(), page_number))
         page_url = urlparse.urljoin(self.admin_interface_url,
                                     'WLG_wireless_dual_band.htm')
-        self.get_url(page_url, page_title='NETGEAR Router')
+        try:
+            self.get_url(page_url, page_title='NETGEAR Router')
+        except:
+            xpath = '//button[@name="yes" and @class="purpleBtn"]'
+            element = self.wait_for_object_by_xpath(xpath)
+            if element and element.is_displayed():
+                self.click_button_by_xpath(xpath)
         self.wait_for_object_by_xpath('//input[@name="ssid" and @type="text"]')
 
 
