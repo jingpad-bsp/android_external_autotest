@@ -662,7 +662,7 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
         return final_result
     else:
         flattened_argv = ' '.join([pipes.quote(item) for item in argv])
-        command = [os.path.join(sysroot_autotest_path, 'site_utils',
+        command = [os.path.join(autotest_path, 'site_utils',
                                 'run_suite.py'),
                    '--board', arguments.board,
                    '--build', arguments.build,
