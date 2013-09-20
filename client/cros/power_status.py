@@ -35,7 +35,9 @@ class DevStat(object):
 
     def read_val(self,  file_name, field_type):
         try:
-            path = os.path.join(self.path, file_name)
+            path = file_name
+            if not file_name.startswith('/'):
+                path = os.path.join(self.path, file_name)
             f = open(path, 'r')
             out = f.readline()
             val = field_type(out)
@@ -120,14 +122,28 @@ class ThermalStatHwmon(DevStat):
     hwmon-based thermal status.
 
     Fields:
-    int   temperature:        Current temperature in degrees Celsius
-    """
+    int   <tname>_temp<num>_input: Current temperature in millidegrees Celsius
+      where:
+          <tname> : name of hwmon device in sysfs
+          <num>   : number of temp as some hwmon devices have multiple
 
-    thermal_fields = {
-        'temp':                 ['temperature', int],
-        }
-    def __init__(self, path=None):
-        super(ThermalStatHwmon, self).__init__(self.thermal_fields, path)
+    """
+    thermal_fields = {}
+    def __init__(self, rootpath=None):
+        for subpath1 in glob.glob('%s/hwmon*' % rootpath):
+            for subpath2 in ['','device/']:
+                gpaths = glob.glob("%s/%stemp*_input" % (subpath1, subpath2))
+                for gpath in gpaths:
+                    bname = os.path.basename(gpath)
+                    field_path = os.path.join(subpath1, subpath2, bname)
+
+                    tname_path = os.path.join(os.path.dirname(gpath), "name")
+                    tname = utils.read_one_line(tname_path)
+
+                    field_key = "%s_%s" % (tname, bname)
+                    self.thermal_fields[field_key] = [field_path, int]
+
+        super(ThermalStatHwmon, self).__init__(self.thermal_fields, rootpath)
         self.update()
 
     def update(self):
@@ -141,13 +157,7 @@ class ThermalStatHwmon(DevStat):
             path = os.path.join(self.path, file_name)
             f = open(path, 'r')
             out = f.readline()
-            val = field_type(out)
-
-            # Convert degrees Celcius to millidegrees Celcius.
-            if file_name == 'temperature':
-                val = val * 1000
-            return val
-
+            return field_type(out)
         except:
             return field_type(0)
 
@@ -323,10 +333,11 @@ class SysStat(object):
         self.battery_path = None
         self.linepower_path = None
         thermal_path_acpi = '/sys/class/thermal/thermal_zone*'
-        thermal_path_hwmon = '/sys/class/hwmon/hwmon*/device'
+        thermal_path_hwmon = '/sys/class/hwmon'
         # Look for these types of thermal sysfs paths, in the listed order.
-        thermal_stat_types = { thermal_path_acpi:     ThermalStatACPI,
-                               thermal_path_hwmon:    ThermalStatHwmon }
+        thermal_stat_types = [(thermal_path_hwmon, ThermalStatHwmon),
+                              (thermal_path_acpi, ThermalStatACPI)]
+
 
         power_supplies = glob.glob(power_supply_path)
         for path in power_supplies:
@@ -342,11 +353,14 @@ class SysStat(object):
         if not self.battery_path or not self.linepower_path:
             logging.warn("System does not provide power sysfs interface")
 
-        for thermal_path, thermal_type in thermal_stat_types.items():
+        for thermal_path, thermal_type in thermal_stat_types:
+            logging.debug("thermal_path = %s", thermal_path)
             try:
                 self.thermal_path = glob.glob(thermal_path)[0]
                 self.thermal_type = thermal_type
                 logging.debug('Using %s for thermal info.' % self.thermal_path)
+                # TODO(tbroch) remove break and track all temperatures that
+                # system can provide.
                 break
             except:
                 logging.debug('Could not find thermal path %s, skipping.' %
@@ -370,13 +384,22 @@ class SysStat(object):
         if self.thermal_path:
             self.thermal = [ self.thermal_type(self.thermal_path) ]
 
-        try:
-            if self.thermal[0].temp < self.min_temp:
-                self.min_temp = self.thermal[0].temp
-            if self.thermal[0].temp > self.max_temp:
-                self.max_temp = self.thermal[0].temp
-            logging.info('Temperature reading: ' + str(self.thermal[0].temp))
-        except:
+        temp_str = ''
+        for kname in self.thermal[0].fields:
+            if not kname.count('temp'):
+                continue
+            val = getattr(self.thermal[0], kname)
+            # TODO(tbroch) track min/max for each sensor not just
+            # highest/loweset across the set.
+            if val < self.min_temp:
+                self.min_temp = val
+            if val > self.max_temp:
+                self.max_temp = val
+            temp_str += '%s:%d ' % (kname, val)
+
+        if temp_str:
+            logging.info('Temperature reading: ' + temp_str)
+        else:
             logging.error('Could not read temperature, skipping.')
 
 
