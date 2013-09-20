@@ -33,20 +33,21 @@ class WiFiClient(object):
     DEFAULT_PING_COUNT = 10
     COMMAND_PING = 'ping'
 
+    UNKNOWN_BOARD_TYPE = 'unknown'
+
 
     @property
     def board(self):
         """@return string self reported board of this device."""
         if not self._board:
-            lsb_release = self.host.run('cat /etc/lsb-release').stdout
-            BOARD_PREFIX = 'CHROMEOS_RELEASE_BOARD='
-            for line in lsb_release.splitlines():
-                if line.startswith(BOARD_PREFIX):
-                    self._board = line[len(BOARD_PREFIX):]
-                    break
-            else:
-                raise error.TestError('Unable to detect board of test host.')
-
+            self._board = self.UNKNOWN_BOARD_TYPE
+            result = self.host.run('cat /etc/lsb-release', ignore_status=True)
+            if not result.exit_status:
+                BOARD_PREFIX = 'CHROMEOS_RELEASE_BOARD='
+                for line in result.stdout.splitlines():
+                    if line.startswith(BOARD_PREFIX):
+                        self._board = line[len(BOARD_PREFIX):]
+                        break
         return self._board
 
 
@@ -56,7 +57,10 @@ class WiFiClient(object):
         if self._machine_id:
             return self._machine_id
 
-        kernel_arch = self.host.run('uname -m').stdout.strip()
+        uname_result = self.host.run('uname -m', ignore_status=True)
+        kernel_arch = ''
+        if not uname_result.exit_status and uname_result.stdout.find(' ') < 0:
+            kernel_arch = uname_result.stdout.strip()
         cpu_info = self.host.run('cat /proc/cpuinfo').stdout.splitlines()
         cpu_count = len(filter(lambda x: x.lower().startswith('bogomips'),
                                cpu_info))
@@ -227,6 +231,8 @@ class WiFiClient(object):
         self._command_ip = 'ip'
         self._command_iptables = 'iptables'
         self._command_iw = 'iw'
+        self._command_netperf = 'netperf'
+        self._command_netserv = 'netserver'
         self._command_ping6 = 'ping6'
         self._command_wpa_cli = 'wpa_cli'
         self._host = client_host
@@ -264,10 +270,6 @@ class WiFiClient(object):
             self._command_ifconfig = 'ifconfig'
             self._command_iperf = wifi_test_utils.must_be_installed(
                     self.host, '/usr/local/bin/iperf')
-            self._command_netperf = wifi_test_utils.must_be_installed(
-                    self.host, '/usr/local/bin/netperf')
-            self._command_netserv = wifi_test_utils.must_be_installed(
-                    self.host, '/usr/local/sbin/netserver')
             self._raise_logging_level()
         # Used for packet captures.
         self._packet_capturer = packet_capturer.get_packet_capturer(
@@ -373,7 +375,7 @@ class WiFiClient(object):
         """Cleans up firewall rules."""
         for rule in self._firewall_rules:
             self.host.run('%s -D %s' % (self._command_iptables, rule))
-            self._firewall_rules.remove(rule)
+        self._firewall_rules = []
 
 
     def start_capture(self):
