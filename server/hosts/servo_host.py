@@ -20,6 +20,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import ssh_host
+from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 
 class ServoHostException(error.AutoservError):
@@ -29,6 +30,11 @@ class ServoHostException(error.AutoservError):
 
 class ServoHostVerifyFailure(ServoHostException):
     """Raised when servo verification fails."""
+    pass
+
+
+class ServoHostRepairFailure(ServoHostException):
+    """Raised when a repair method fails to repair a servo host."""
     pass
 
 
@@ -62,6 +68,8 @@ class ServoHost(ssh_host.SSHHost):
     REBOOT_DELAY_SECS = 20
     # Servod process name.
     SERVOD_PROCESS = 'servod'
+
+    _MAX_POWER_CYCLE_ATTEMPTS = 3
 
 
     def _initialize(self, servo_host='localhost', servo_port=9999,
@@ -308,10 +316,55 @@ class ServoHost(ssh_host.SSHHost):
         time.sleep(self.REBOOT_DELAY_SECS)
 
 
+    def has_power(self):
+        """Return whether or not the servo host is powered by PoE."""
+        # TODO(fdeng): See crbug.com/302791
+        # For now, assume all servo hosts in the lab have power.
+        return self.is_in_lab()
+
+
+    def power_cycle(self):
+        """Cycle power to this host via PoE if it is a lab device.
+
+        @raises ServoHostRepairFailure if it fails to power cycle the
+                servo host.
+
+        """
+        if self.has_power():
+            try:
+                rpm_client.set_power(self.hostname, 'CYCLE')
+            except (socket.error, xmlrpclib.Error,
+                    httplib.BadStatusLine,
+                    rpm_client.RemotePowerException) as e:
+                raise ServoHostRepairFailure(
+                        'Power cycling %s failed: %s' % (self.hostname, e))
+        else:
+            logging.info('Skipping power cycling, not a lab device.')
+
+
     def _powercycle_to_repair(self):
-        """Power cycle the servo host using POE."""
-        logging.info('powercycle_to_repair has not been implemented yet.')
-        # TODO(fdeng): implement this method. crbug.com/278602
+        """Power cycle the servo host using PoE.
+
+        @raises ServoHostRepairFailure if it fails to fix the servo host.
+
+        """
+        if not self.has_power():
+            raise ServoHostRepairFailure('%s does not support power.' %
+                                         self.hostname)
+        logging.info('Attempting repair via PoE powercycle.')
+        failed_cycles = 0
+        self.power_cycle()
+        while not self.wait_up(timeout=self.REBOOT_TIMEOUT_SECS):
+            failed_cycles += 1
+            if failed_cycles >= self._MAX_POWER_CYCLE_ATTEMPTS:
+                raise ServoHostRepairFailure(
+                        'Powercycled host %s %d times; device did not come back'
+                        ' online.' % (self.hostname, failed_cycles))
+            self.power_cycle()
+        logging.info('Powercycling was successful after %d failures.',
+                     failed_cycles)
+        # Allow some time for servod to get started.
+        time.sleep(self.REBOOT_DELAY_SECS)
 
 
     def repair_full(self):
@@ -329,7 +382,8 @@ class ServoHost(ssh_host.SSHHost):
                          self.hostname)
             return
         logging.info('Attempting to repair servo host %s.', self.hostname)
-        repair_funcs = [self._repair_with_sysrq_reboot]
+        repair_funcs = [self._repair_with_sysrq_reboot,
+                        self._powercycle_to_repair]
         errors = []
         for repair_func in repair_funcs:
             try:
