@@ -4,7 +4,8 @@
 
 AUTHOR = "chromeos-perf"
 NAME = "Telemetry Smoothness Measurement"
-SUITE = "perf_v2"
+# TODO(sbasi) - Uncomment below when crbug.com/294923 is fixed.
+#SUITE = "perf_v2"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "performance"
