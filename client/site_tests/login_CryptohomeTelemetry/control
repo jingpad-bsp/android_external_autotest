@@ -13,11 +13,9 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-RETRIES = 5
 EXPERIMENTAL = "True"
-# TODO(achuith, dennisjeffrey): Remove login_CryptohomeMounted and
-# login_CryptohomeUnmounted tests when this test is promoted to smoke/bvt
-# non-experimental.
+# TODO(achuith): Remove login_CryptohomeMounted and login_CryptohomeUnmounted
+# tests when this test is promoted to smoke/bvt non-experimental.
 
 DOC = """
 This test checks that a cryptohome was mounted only after logging in.
