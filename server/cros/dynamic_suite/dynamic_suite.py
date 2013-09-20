@@ -429,7 +429,7 @@ def reimage_and_run(**dargs):
         logging.warning('Could not determine own job id.')
 
     if suite_spec.predicate is None:
-        predicate = Suite.name_in_tag_predicate(name)
+        predicate = Suite.name_in_tag_predicate(suite_spec.name)
     else:
         predicate = suite_spec.predicate
 
