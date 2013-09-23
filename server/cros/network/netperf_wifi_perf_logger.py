@@ -43,6 +43,10 @@ class NetperfWiFiPerfLogger(object):
             tag_pieces.append(descriptive_tag)
         signal_level_key = '_'.join(tag_pieces)
         signal_level = self._wifi_client.wifi_signal_level
+        if signal_level is None:
+            logging.warning('Could not obtain signal level for logging.')
+            return
+
         self.write_perf_keyval({signal_level_key: signal_level})
         logging.debug('Signal level for channel %d is %d dBm',
                       self._ap_config.channel, signal_level)
