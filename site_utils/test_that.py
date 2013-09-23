@@ -385,7 +385,6 @@ def validate_arguments(arguments):
         if arguments.pretend:
             raise ValueError('--pretend flag not supported when running '
                              'against :lab:')
-
         if arguments.ssh_verbosity:
             raise ValueError('--ssh_verbosity flag not supported when running '
                              'against :lab:')
@@ -620,74 +619,51 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
 
     logging.debug('test_that command line was: %s', argv)
 
-    if arguments.remote == ':lab:':
-      local_run = False
-    else:
-      local_run = True
-
     signal.signal(signal.SIGINT, sigint_handler)
     signal.signal(signal.SIGTERM, sigint_handler)
 
-    if local_run:
-        afe = setup_local_afe()
-        perform_local_run(afe, autotest_path, arguments.tests,
-                          arguments.remote, arguments.fast_mode,
-                          arguments.build,
-                          args=arguments.args,
-                          pretend=arguments.pretend,
-                          no_experimental=arguments.no_experimental,
-                          results_directory=results_directory,
-                          ssh_verbosity=arguments.ssh_verbosity,
-                          ssh_options=arguments.ssh_options,
-                          autoserv_verbose=arguments.debug)
-        if arguments.pretend:
-            logging.info('Finished pretend run. Exiting.')
-            return 0
+    afe = setup_local_afe()
+    perform_local_run(afe, autotest_path, arguments.tests,
+                      arguments.remote, arguments.fast_mode,
+                      arguments.build,
+                      args=arguments.args,
+                      pretend=arguments.pretend,
+                      no_experimental=arguments.no_experimental,
+                      results_directory=results_directory,
+                      ssh_verbosity=arguments.ssh_verbosity,
+                      ssh_options=arguments.ssh_options,
+                      autoserv_verbose=arguments.debug)
+    if arguments.pretend:
+        logging.info('Finished pretend run. Exiting.')
+        return 0
 
-        test_report_command = [_TEST_REPORT_SCRIPTNAME]
-        if arguments.whitelist_chrome_crashes:
-            test_report_command.append('--whitelist_chrome_crashes')
-        test_report_command.append(results_directory)
-        final_result = subprocess.call(test_report_command)
-        with open(os.path.join(results_directory, 'test_report.log'),
-                  'w') as report_log:
-            subprocess.call(test_report_command, stdout=report_log)
-        logging.info('Finished running tests. Results can be found in %s',
-                     results_directory)
-        try:
-            os.unlink(_LATEST_RESULTS_DIRECTORY)
-        except OSError:
-            pass
-        os.symlink(results_directory, _LATEST_RESULTS_DIRECTORY)
-        return final_result
-    else:
-        flattened_argv = ' '.join([pipes.quote(item) for item in argv])
-        command = [os.path.join(autotest_path, 'site_utils',
-                                'run_suite.py'),
-                   '--board', arguments.board,
-                   '--build', arguments.build,
-                   '--suite_name', 'test_that_wrapper',
-                   '--pool', 'try-bot',
-                   '--suite_args', flattened_argv]
-        logging.info('About to start lab suite with command %s.', command)
-        return subprocess.call(command)
-
-
-def main(argv):
-    """
-    Entry point for test_that script.
-    @param argv: arguments list
-    """
-
-    if not cros_build_lib.IsInsideChroot():
-        print >> sys.stderr, 'Script must be invoked inside the chroot.'
-        return 1
-
-    arguments = parse_arguments(argv)
+    test_report_command = [_TEST_REPORT_SCRIPTNAME]
+    if arguments.whitelist_chrome_crashes:
+        test_report_command.append('--whitelist_chrome_crashes')
+    test_report_command.append(results_directory)
+    final_result = subprocess.call(test_report_command)
+    with open(os.path.join(results_directory, 'test_report.log'),
+              'w') as report_log:
+        subprocess.call(test_report_command, stdout=report_log)
+    logging.info('Finished running tests. Results can be found in %s',
+                 results_directory)
     try:
-        validate_arguments(arguments)
-    except ValueError as err:
-        print >> sys.stderr, ('Invalid arguments. %s' % err.message)
+        os.unlink(_LATEST_RESULTS_DIRECTORY)
+    except OSError:
+        pass
+    os.symlink(results_directory, _LATEST_RESULTS_DIRECTORY)
+    return final_result
+
+
+def _main_for_local_run(argv, arguments):
+    """
+    Effective entry point for local test_that runs.
+
+    @param argv: Script command line arguments.
+    @param arguments: Parsed command line arguments.
+    """
+    if not cros_build_lib.IsInsideChroot():
+        print >> sys.stderr, 'For local runs, script must be run inside chroot.'
         return 1
 
     results_directory = _create_results_directory(arguments.results_dir)
@@ -734,6 +710,46 @@ def main(argv):
     else:
         return _perform_run_from_autotest_root(
                 arguments, autotest_path, argv)
+
+
+def _main_for_lab_run(argv, arguments):
+    """
+    Effective entry point for lab test_that runs.
+
+    @param argv: Script command line arguments.
+    @param arguments: Parsed command line arguments.
+    """
+    autotest_path = os.path.realpath(os.path.join(os.path.dirname(__file__),
+                                                  '..'))
+    flattened_argv = ' '.join([pipes.quote(item) for item in argv])
+    command = [os.path.join(autotest_path, 'site_utils',
+                            'run_suite.py'),
+               '--board', arguments.board,
+               '--build', arguments.build,
+               '--suite_name', 'test_that_wrapper',
+               '--pool', 'try-bot',
+               '--suite_args', flattened_argv]
+    logging.info('About to start lab suite with command %s.', command)
+    return subprocess.call(command)
+
+
+def main(argv):
+    """
+    Entry point for test_that script.
+
+    @param argv: arguments list
+    """
+    arguments = parse_arguments(argv)
+    try:
+        validate_arguments(arguments)
+    except ValueError as err:
+        print >> sys.stderr, ('Invalid arguments. %s' % err.message)
+        return 1
+
+    if arguments.remote == ':lab:':
+        return _main_for_lab_run(argv, arguments)
+    else:
+        return _main_for_local_run(argv, arguments)
 
 
 if __name__ == '__main__':
