@@ -24,10 +24,11 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import factory_setup_modules
+from autotest_lib.client.cros.audio import audio_helper
 from cros.factory.test import factory
 from cros.factory.test import ui as ful
-
 from gtk import gdk
+
 
 _MESSAGE_STR = ('Audio is now looping back.\n' +
                 'Press Return if test passed.\n' +
@@ -36,12 +37,8 @@ _MESSAGE_STR = ('Audio is now looping back.\n' +
 class factory_AudioInternalLoopback(test.test):
     version = 1
 
-    def setup(self):
-        self.job.setup_dep(['audioloop'])
-
     def start_audioloop(self, indev, outdev):
-        cmdargs = ['/usr/local/autotest/deps/audioloop/src/looptest',
-                   '-i', indev, '-o', outdev]
+        cmdargs = [audio_helper.AUDIOLOOP_PATH, '-i', indev, '-o', outdev]
         self._process = subprocess.Popen(cmdargs)
 
     def stop_audioloop(self):
