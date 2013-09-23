@@ -310,7 +310,7 @@ class Reporter(object):
                  requires investigation from the lab team.
         """
         lab_sheriff = site_utils.get_sheriffs(lab_only=True)
-        return {'lables': 'Lab-inspect',
+        return {'labels': 'Lab-inspect',
                 'owner': lab_sheriff[0] if lab_sheriff else '',}
 
 
