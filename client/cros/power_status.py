@@ -991,6 +991,39 @@ class PowerMeasurement(object):
                                   "subclass.")
 
 
+def parse_power_supply_info():
+    """Parses power_supply_info command output.
+
+    Command output from power_manager ( tools/power_supply_info.cc ) looks like
+    this:
+
+        Device: Line Power
+          path:               /sys/class/power_supply/cros_ec-charger
+          ...
+        Device: Battery
+          path:               /sys/class/power_supply/sbs-9-000b
+          ...
+
+    """
+    rv = collections.defaultdict(dict)
+    dev = None
+    for ln in utils.system_output('power_supply_info').splitlines():
+        logging.debug("psu: %s", ln)
+        result = re.findall(r'^Device:\s+(.*)', ln)
+        if result:
+            dev = result[0]
+            continue
+        result = re.findall(r'\s+(.+):\s+(.+)', ln)
+        if result and dev:
+            kname = re.findall(r'(.*)\s+\(\w+\)', result[0][0])
+            if kname:
+                rv[dev][kname[0]] = result[0][1]
+            else:
+                rv[dev][result[0][0]] = result[0][1]
+
+    return rv
+
+
 class SystemPower(PowerMeasurement):
     """Class to measure system power.
 
@@ -1021,14 +1054,8 @@ class SystemPower(PowerMeasurement):
 
         See superclass PowerMeasurement for details.
         """
-
-        voltage_str = utils.read_one_line(self._voltage_file)
-        current_str = utils.read_one_line(self._current_file)
-
-        # Values in sysfs are in microamps and microvolts
-        # multiply and convert to Watts
-        power = float(voltage_str) * float(current_str) / 10**12
-        return power
+        keyvals = parse_power_supply_info()
+        return float(keyvals['Battery']['energy rate'])
 
 
 class PowerLogger(threading.Thread):
@@ -1103,7 +1130,7 @@ class PowerLogger(threading.Thread):
             time.sleep(self.seconds_period)
 
 
-    def checkpoint(self, tname, tstart, tend=None):
+    def checkpoint(self, tname='', tstart=None, tend=None):
         """Check point the times in seconds associated with test tname.
 
         Args:
@@ -1113,6 +1140,8 @@ class PowerLogger(threading.Thread):
            tend: Float in seconds of when tname test ended.  Should be based
                 off time.time().  If None, then value computed in the method.
         """
+        if not tstart and self.times:
+            tstart = self.times[0]
         if not tend:
             tend = time.time()
         self._checkpoint_data.append((tname, tstart, tend))
@@ -1142,12 +1171,18 @@ class PowerLogger(threading.Thread):
         # times 2 the sleep time in order to allow for readings as well.
         self.join(timeout=self.seconds_period * 2)
 
+        if not self._checkpoint_data:
+            self.checkpoint()
+
         for i, domain_readings in enumerate(zip(*self.readings)):
             power = numpy.array(domain_readings)
             domain = self.domains[i]
 
             for tname, tstart, tend in self._checkpoint_data:
-                prefix = '%s_%s' % (tname, domain)
+                if tname:
+                    prefix = '%s_%s' % (tname, domain)
+                else:
+                    prefix = domain
                 keyvals[prefix+'_duration'] = tend - tstart
                 # Select all readings taken between tstart and tend timestamps
                 pwr_array = power[numpy.bitwise_and(tstart < t, t < tend)]
