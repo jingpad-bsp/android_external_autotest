@@ -39,6 +39,9 @@ class NetperfResult(object):
 
             87380  16384  16384    2.00      941.28
             """
+            if len(lines) < 7:
+                return None
+
             result = NetperfResult(test_type, duration_seconds,
                                    throughput=float(lines[6].split()[4]))
         elif test_type in NetperfConfig.UDP_STREAM_TESTS:
@@ -54,6 +57,9 @@ class NetperfResult(object):
             129024   65507   2.00         3673      0     961.87
             131072           2.00         3673            961.87
             """
+            if len(lines) < 6:
+                return None
+
             udp_tokens = lines[5].split()
             result = NetperfResult(test_type, duration_seconds,
                                    throughput=float(udp_tokens[5]),
@@ -72,6 +78,9 @@ class NetperfResult(object):
             16384  87380  1        1       2.00     14118.53
             16384  87380
             """
+            if len(lines) < 7:
+                return None
+
             result = NetperfResult(test_type, duration_seconds,
                                    transaction_rate=float(lines[6].split()[5]))
         else:
