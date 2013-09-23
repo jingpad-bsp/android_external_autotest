@@ -38,9 +38,22 @@ Values pertaining to the test case include:
   target_release=REL      target image release version (e.g. 2673.0.0)
   source_image_uri=URI    URI of the source image / payload. Image must be used
                           if use_servo specified.
-  source_archive_uri=URI  URI of where the artifacts for the source image are
-                          e.g. stateful.tgz.
+  source_archive_uri=URI  (optional) URI of where the artifacts for the source
+                          image (e.g.  stateful update) are located. If not
+                          provided, the test will attempt using the same
+                          location as source_image_uri.  This is required for
+                          any test where the location of the full (source)
+                          payload is separate from that of its build artifacts
+                          (e.g. it is in gs://chromeos-releases/).
   target_payload_uri=URI  URI of the target payload
+  target_archive_uri=URI  (optional) URI of where the artifacts for the target
+                          image (e.g. stateful update) are located. If not
+                          provided, the test will attempt using the test job's
+                          repo ID (if present), otherwise default to the same
+                          location as target_payload_uri.  Normally, this is
+                          only needed for local (non-AFE) runs where the
+                          payload location is separate from that of the build
+                          artifacts (e.g. it is in gs://chromeos-releases).
 
 Other values pertaining to the test environment include:
 
@@ -74,7 +87,11 @@ To run locally:
     cp ~/.boto chroot/home/<user>/
 
   Start a devserver (outside the chroot):
-    ./start_devserver
+    src/platform/dev/devserver.py
+
+  (Note: DO NOT use start_devserver! Even though it gives the impression of
+  running the server outside the chroot, it actually starts a chroot and runs
+  the server inside of it.)
 
   To make sure your test edits are used:
     cros_sdk
@@ -101,7 +118,8 @@ To run locally:
 
 TEST_CONF_KEYS = (
     'name', 'image_type', 'update_type', 'source_release', 'target_release',
-    'source_image_uri', 'source_archive_uri', 'target_payload_uri')
+    'source_image_uri', 'source_archive_uri', 'target_payload_uri',
+    'target_archive_uri')
 
 
 args_dict = utils.args_to_dict(args)

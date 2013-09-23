@@ -5,8 +5,8 @@
 import collections
 import json
 import logging
-import time
 import os
+import time
 import urllib2
 import urlparse
 
@@ -587,6 +587,8 @@ class autoupdate_EndToEndTest(test.test):
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
     _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
 
+    _STATEFUL_UPDATE_FILENAME = 'stateful.tgz'
+
     # Named tuple containing urls for staged urls needed for test.
     # source_url: url to find the update payload for the source image.
     # source_stateful_url: url to find the stateful payload for the source
@@ -740,8 +742,8 @@ class autoupdate_EndToEndTest(test.test):
             raise NotImplementedError()
 
 
-    def _stage_payload(self, autotest_devserver, payload_uri=None,
-                       devserver_label=None, filename=None):
+    def _stage_payload(self, autotest_devserver, devserver_label, filename,
+                       archive_url=None):
         """Stage the given payload onto the devserver.
 
         Works for either a stateful or full/delta test payload. Expects the
@@ -750,36 +752,50 @@ class autoupdate_EndToEndTest(test.test):
         @param autotest_devserver: instance of client.common_lib.dev_server to
                                    use to reach the devserver instance for this
                                    build.
-        @param payload_uri: The full uri of the payload
         @param devserver_label: The build name e.g. x86-mario-release/<version>.
                                 If set, assumes default gs archive bucket and
                                 requires filename to be specified.
         @param filename: In conjunction with devserver_label, if just specifying
                          the devserver label name, this is which file are you
                          downloading.
+        @param archive_url: An optional GS archive location, if not using the
+                            devserver's default.
 
         @return URL of the staged payload on the server.
 
         @raise error.TestError if there's a problem with staging.
 
         """
-        if not ((devserver_label and filename) or payload_uri):
-            raise error.TestError(
-                    'failed to stage payload: insufficent arguments.')
-
-        payload_archive_url = None
-        if not (devserver_label and filename):
-            payload_archive_url, _, filename = payload_uri.rpartition('/')
-            devserver_label = urlparse.urlsplit(
-                    payload_archive_url).path.strip('/')
         try:
             autotest_devserver.stage_artifacts(
                     image=devserver_label, artifacts=None, files=[filename],
-                    archive_url=payload_archive_url)
+                    archive_url=archive_url)
             return autotest_devserver.get_staged_file_url(filename,
                                                           devserver_label)
         except dev_server.DevServerException, e:
             raise error.TestError('failed to stage payload: %s' % e)
+
+
+    def _stage_payload_by_uri(self, autotest_devserver, payload_uri):
+        """Stage a payload based on its GS URI.
+
+        This infers the build's label, filename and GS archive from the
+        provided GS URI.
+
+        @param autotest_devserver: instance of client.common_lib.dev_server to
+                                   use to reach the devserver instance for this
+                                   build.
+        @param payload_uri: The full GS URI of the payload.
+
+        @return URL of the staged payload on the server.
+
+        @raise error.TestError if there's a problem with staging.
+
+        """
+        archive_url, _, filename = payload_uri.rpartition('/')
+        devserver_label = urlparse.urlsplit(archive_url).path.strip('/')
+        return self._stage_payload(autotest_devserver, devserver_label,
+                                   filename, archive_url=archive_url)
 
 
     def _payload_to_update_url(self, payload_url):
@@ -790,10 +806,15 @@ class autoupdate_EndToEndTest(test.test):
         return base_url.replace('/static/', '/update/')
 
 
-    def _payload_to_stateful_url(self, payload_url):
-        """Given a payload url, returns the stateful url."""
-        base_url = payload_url.rpartition('/')[0]
-        return '/'.join([base_url, 'stateful.tgz'])
+    def _get_stateful_uri(self, build_uri):
+        """Returns a complete GS URI of a stateful update given a build path."""
+        return '/'.join([build_uri.rstrip('/'), self._STATEFUL_UPDATE_FILENAME])
+
+
+    def _payload_to_stateful_uri(self, payload_uri):
+        """Given a payload GS URI, returns the corresponding stateful URI."""
+        build_uri = payload_uri.rpartition('/')[0]
+        return self._get_stateful_uri(build_uri)
 
 
     def update_via_test_payloads(self, omaha_host, payload_url, stateful_url,
@@ -886,57 +907,73 @@ class autoupdate_EndToEndTest(test.test):
         logging.info('staging images onto autotest devserver (%s)',
                      autotest_devserver.url())
 
-        source_url = None
+        source_image_uri = test_conf['source_image_uri']
+
+        staged_source_url = None
+        source_stateful_uri = None
+        staged_source_stateful_url = None
         if self._use_servo:
-            source_url = self._stage_image(
-                    autotest_devserver, test_conf['source_image_uri'])
-            # Test image already has stateful payload.
-            source_stateful_url = None
-            logging.info('test image for source image staged at %s', source_url)
+            staged_source_url = self._stage_image(
+                    autotest_devserver, source_image_uri)
+            # Test image already contains a stateful update, leave
+            # staged_source_stateful_url untouhced.
         else:
-            source_url = self._stage_payload(
-                    autotest_devserver, test_conf['source_image_uri'])
+            staged_source_url = self._stage_payload_by_uri(
+                    autotest_devserver, source_image_uri)
 
-            # Tests may have their source artifacts in a different location than
-            # their payloads. If so, this is set. If not set, use the same path
-            # to the source image minus the name of the payload.
+            # In order to properly install the source image using a full
+            # payload we'll also need the stateful update that comes with it.
+            # In general, tests may have their source artifacts in a different
+            # location than their payloads. This is determined by whether or
+            # not the source_archive_uri attribute is set; if it isn't set,
+            # then we derive it from the dirname of the source payload.
             source_archive_uri = test_conf.get('source_archive_uri')
-            if not source_archive_uri:
-                source_archive_uri = self._payload_to_stateful_url(
-                        test_conf['source_image_uri'])
+            if source_archive_uri:
+                source_stateful_uri = self._get_stateful_uri(source_archive_uri)
             else:
-                source_archive_uri = '/'.join([source_archive_uri,
-                                               'stateful.tgz'])
+                source_stateful_uri = self._payload_to_stateful_uri(
+                        source_image_uri)
 
-            source_stateful_url = self._stage_payload(autotest_devserver,
-                                                      source_archive_uri)
+            staged_source_stateful_url = self._stage_payload_by_uri(
+                    autotest_devserver, source_stateful_uri)
 
-        target_url = self._stage_payload(
-                autotest_devserver, test_conf['target_payload_uri'])
-        if self._job_repo_url:
+        target_payload_uri = test_conf['target_payload_uri']
+        staged_target_url = self._stage_payload_by_uri(
+                autotest_devserver, target_payload_uri)
+        target_stateful_uri = None
+        target_archive_uri = test_conf.get('target_archive_uri')
+        if not target_archive_uri and self._job_repo_url:
             _, devserver_label = tools.get_devserver_build_from_package_url(
                     self._job_repo_url)
-            target_stateful_url = self._stage_payload(
-                    autotest_devserver, None, devserver_label, 'stateful.tgz')
+            staged_target_stateful_url = self._stage_payload(
+                    autotest_devserver, devserver_label,
+                    self._STATEFUL_UPDATE_FILENAME)
         else:
-            target_archive_uri = self._payload_to_stateful_url(
-                    test_conf['source_image_uri'])
-            target_stateful_url = self._stage_payload(
-                    autotest_devserver, target_archive_uri)
+            if target_archive_uri:
+                target_stateful_uri = self._get_stateful_uri(target_archive_uri)
+            else:
+                target_stateful_uri = self._payload_to_stateful_uri(
+                    target_payload_uri)
+
+            staged_target_stateful_url = self._stage_payload_by_uri(
+                    autotest_devserver, target_stateful_uri)
 
         # Log all the urls.
-        logging.info('%s payload for update test staged at %s',
-                     test_conf['update_type'], target_url)
-        logging.info('stateful payload for target image staged at %s',
-                     target_stateful_url)
-        if source_url:
-            logging.info('full payload for source image staged at %s',
-                         source_url)
-            logging.info('stateful payload for source image staged at %s',
-                         source_stateful_url)
+        logging.info('source %s from %s staged at %s',
+                     'image' if self._use_servo else 'full payload',
+                     source_image_uri, staged_source_url)
+        if staged_source_stateful_url:
+            logging.info('source stateful update from %s staged at %s',
+                         source_stateful_uri, staged_source_stateful_url)
+        logging.info('%s test payload from %s staged at %s',
+                     test_conf['update_type'], target_payload_uri,
+                     staged_target_url)
+        logging.info('target stateful update from %s staged at %s',
+                     target_stateful_uri or 'standard location',
+                     staged_target_stateful_url)
 
-        return self._STAGED_URLS(source_url, source_stateful_url,
-                                 target_url, target_stateful_url)
+        return self._STAGED_URLS(staged_source_url, staged_source_stateful_url,
+                                 staged_target_url, staged_target_stateful_url)
 
 
     def initialize(self):
@@ -1027,7 +1064,7 @@ class autoupdate_EndToEndTest(test.test):
                 (self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS,
                  ExpectedUpdateEvent(
                      version=test_conf['source_release'],
-                     error_message=('Failed to receive initial update check.'
+                     error_message=('Failed to receive initial update check. '
                                     'Check Omaha devserver log in this '
                                     'output.'))),
                 (self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
