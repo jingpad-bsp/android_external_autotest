@@ -33,6 +33,7 @@ class Chrome(object):
                 finder_options.extensions_to_load.append(extension)
             self._extensions_to_load = finder_options.extensions_to_load
 
+        finder_options.CreateParser().parse_args(args=[])
         browser_to_create = browser_finder.FindBrowser(finder_options)
         self._browser = browser_to_create.Create()
         self._browser.Start()
