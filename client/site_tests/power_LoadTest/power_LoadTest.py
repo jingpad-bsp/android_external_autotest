@@ -74,6 +74,7 @@ class power_LoadTest(cros_ui_test.UITest):
             shut-down the device
         """
         self._backlight = None
+        self._services = None
         self._loop_time = loop_time
         self._loop_count = loop_count
         self._mseconds = self._loop_time * 1000
