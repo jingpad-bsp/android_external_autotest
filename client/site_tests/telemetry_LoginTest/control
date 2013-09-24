@@ -5,14 +5,21 @@
 AUTHOR = "Chrome OS Lab Infrastructure Team"
 NAME = "telemetry_LoginTest"
 PURPOSE = "Login through telemetry."
-SUITE = ""
+CRITERIA = """
+This test will fail if telemetry login is broken, or if
+chrome.autotestPrivate.loginStatus doesn't work.
+"""
+SUITE = "bvt"
 TIME = "SHORT"
-TEST_CATEGORY = "General"
+TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+RETRIES = 5
+EXPERIMENTAL = "True"
 
 DOC = """
-This is a test that checks that login completed successfully through telemetry.
+This is a test that checks that login completed successfully through telemetry,
+and exercises the extension api chrome.autotestPrivate.
 """
 
 job.run_test('telemetry_LoginTest')
