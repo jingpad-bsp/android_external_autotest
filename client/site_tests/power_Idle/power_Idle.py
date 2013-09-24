@@ -49,18 +49,20 @@ class power_Idle(cros_ui_test.UITest):
             measurements += power_rapl.create_rapl()
         self._plog = power_status.PowerLogger(measurements,
                                               seconds_period=sleep)
+        self._tlog = power_status.TempLogger([], seconds_period=sleep)
         self._plog.start()
+        self._tlog.start()
 
         for _ in xrange(0, idle_time, sleep):
             time.sleep(sleep)
             self.status.refresh()
         self.status.refresh()
-        self._plog.checkpoint('power_Idle', self._start_time)
+        self._plog.checkpoint('', self._start_time)
+        self._tlog.checkpoint('', self._start_time)
 
 
     def postprocess_iteration(self):
         keyvals = self._stats.publish()
-        logging.debug("keyvals = %s", keyvals)
 
         # record the current and max backlight levels
         self._backlight = power_utils.Backlight()
@@ -83,9 +85,10 @@ class power_Idle(cros_ui_test.UITest):
             keyvals['v_voltage_min_design'] = \
                                 self.status.battery[0].voltage_min_design
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
-            keyvals['mc_min_temp'] = self.status.min_temp
-            keyvals['mc_max_temp'] = self.status.max_temp
-        keyvals.update(self._plog.calc())
+            keyvals.update(self._plog.calc())
+
+        keyvals.update(self._tlog.calc())
+        logging.debug("keyvals = %s", keyvals)
 
         self.write_perf_keyval(keyvals)
 

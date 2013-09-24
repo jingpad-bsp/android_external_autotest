@@ -28,6 +28,8 @@ class power_Draw(test.test):
             powerd_running = False
 
         start_energy = status.battery[0].energy
+        self._tlog = power_status.TempLogger([], seconds_period=sleep)
+        self._tlog.start()
 
         # Let the test run
         for i in range(0, seconds, sleep):
@@ -40,15 +42,13 @@ class power_Draw(test.test):
         consumed_energy = start_energy - end_energy
         energy_rate = consumed_energy * 60 * 60 / seconds
 
-        keyvals = {}
+        keyvals = self._tlog.calc()
         keyvals['wh_energy_full'] = status.battery[0].energy_full
         keyvals['wh_start_energy'] = start_energy
         keyvals['wh_end_energy'] = end_energy
         keyvals['wh_consumed_energy'] = consumed_energy
         keyvals['w_average_energy_rate'] = energy_rate
         keyvals['w_end_energy_rate'] = status.battery[0].energy_rate
-        keyvals['mc_min_temp'] = status.min_temp
-        keyvals['mc_max_temp'] = status.max_temp
 
         self.write_perf_keyval(keyvals)
 

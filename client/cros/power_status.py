@@ -80,6 +80,8 @@ class ThermalStatACPI(DevStat):
         'type':                 ['type', str],
         'num_points_tripped':   ['', '']
         }
+    path = '/sys/class/thermal/thermal_zone*'
+
     def __init__(self, path=None):
         # Browse the thermal folder for trip point fields.
         self.num_trip_points = 0
@@ -128,8 +130,12 @@ class ThermalStatHwmon(DevStat):
           <num>   : number of temp as some hwmon devices have multiple
 
     """
+    path = '/sys/class/hwmon'
+
     thermal_fields = {}
     def __init__(self, rootpath=None):
+        if not rootpath:
+            rootpath = self.path
         for subpath1 in glob.glob('%s/hwmon*' % rootpath):
             for subpath2 in ['','device/']:
                 gpaths = glob.glob("%s/%stemp*_input" % (subpath1, subpath2))
@@ -160,6 +166,48 @@ class ThermalStatHwmon(DevStat):
             return field_type(out)
         except:
             return field_type(0)
+
+
+class ThermalStat(object):
+    """helper class to instantiate various thermal devices."""
+    def __init__(self):
+        self._thermals = []
+        self.min_temp = 999999999
+        self.max_temp = -999999999
+
+        thermal_stat_types = [(ThermalStatHwmon.path, ThermalStatHwmon),
+                              (ThermalStatACPI.path, ThermalStatACPI)]
+        for thermal_glob_path, thermal_type in thermal_stat_types:
+            try:
+                thermal_path = glob.glob(thermal_glob_path)[0]
+                logging.debug('Using %s for thermal info.' % thermal_path)
+                self._thermals.append(thermal_type(thermal_path))
+            except:
+                logging.debug('Could not find thermal path %s, skipping.' %
+                              thermal_glob_path)
+
+
+    def get_temps(self):
+        """Get temperature readings.
+
+        Returns:
+            string of temperature readings.
+        """
+        temp_str = ''
+        for thermal in self._thermals:
+            thermal.update()
+            for kname in thermal.fields:
+                if kname is 'temp' or kname.endswith('_input'):
+                    val = getattr(thermal, kname)
+                    temp_str += '%s:%d ' % (kname, val)
+                    if val > self.max_temp:
+                        self.max_temp = val
+                    if val < self.min_temp:
+                        self.min_temp = val
+
+
+        return temp_str
+
 
 class BatteryStat(DevStat):
     """
@@ -329,15 +377,8 @@ class SysStat(object):
         self.battery = None
         self.linepower = None
         self.thermal = None
-        self.thermal_path = None
         self.battery_path = None
         self.linepower_path = None
-        thermal_path_acpi = '/sys/class/thermal/thermal_zone*'
-        thermal_path_hwmon = '/sys/class/hwmon'
-        # Look for these types of thermal sysfs paths, in the listed order.
-        thermal_stat_types = [(thermal_path_hwmon, ThermalStatHwmon),
-                              (thermal_path_acpi, ThermalStatACPI)]
-
 
         power_supplies = glob.glob(power_supply_path)
         for path in power_supplies:
@@ -353,23 +394,8 @@ class SysStat(object):
         if not self.battery_path or not self.linepower_path:
             logging.warn("System does not provide power sysfs interface")
 
-        for thermal_path, thermal_type in thermal_stat_types:
-            logging.debug("thermal_path = %s", thermal_path)
-            try:
-                self.thermal_path = glob.glob(thermal_path)[0]
-                self.thermal_type = thermal_type
-                logging.debug('Using %s for thermal info.' % self.thermal_path)
-                # TODO(tbroch) remove break and track all temperatures that
-                # system can provide.
-                break
-            except:
-                logging.debug('Could not find thermal path %s, skipping.' %
-                              thermal_path)
-                continue
+        self.thermal = ThermalStat()
 
-        self.min_temp = 999999999
-        self.max_temp = -999999999
-        self.temp_log = {}
 
     def refresh(self):
         """
@@ -381,22 +407,8 @@ class SysStat(object):
             self.linepower = [ LineStat(self.linepower_path) ]
         else:
             self.linepower = [ LineStatDummy() ]
-        if self.thermal_path:
-            self.thermal = [ self.thermal_type(self.thermal_path) ]
 
-        temp_str = ''
-        for kname in self.thermal[0].fields:
-            if not kname.count('temp'):
-                continue
-            val = getattr(self.thermal[0], kname)
-            # TODO(tbroch) track min/max for each sensor not just
-            # highest/loweset across the set.
-            if val < self.min_temp:
-                self.min_temp = val
-            if val > self.max_temp:
-                self.max_temp = val
-            temp_str += '%s:%d ' % (kname, val)
-
+        temp_str = self.thermal.get_temps()
         if temp_str:
             logging.info('Temperature reading: ' + temp_str)
         else:
@@ -471,7 +483,8 @@ class AbstractStats(object):
         Turns a dict with absolute time values into a dict with percentages.
         """
         total = sum(stats.itervalues())
-        if total == 0: return {}
+        if total == 0:
+            return {}
         return dict((k, v * 100.0 / total) for (k, v) in stats.iteritems())
 
 
@@ -621,11 +634,13 @@ class CPUPackageStats(AbstractStats):
             Returns: dict that maps C-state name to MSR address, or None.
             """
             modalias = '/sys/devices/system/cpu/modalias'
-            if not os.path.exists(modalias): return None
+            if not os.path.exists(modalias):
+                return None
 
             values = utils.read_one_line(modalias).split(':')
             # values[2]: vendor, values[4]: family, values[6]: model (CPUID)
-            if values[2] != '0000' or values[4] != '0006': return None
+            if values[2] != '0000' or values[4] != '0006':
+                return None
 
             return {
                 # model groups pulled from Intel manual, volume 3 chapter 35
@@ -651,14 +666,17 @@ class CPUPackageStats(AbstractStats):
     def _read_stats(self):
         packages = set()
         template = '/sys/devices/system/cpu/cpu%s/topology/physical_package_id'
-        if not self._platform_states: return {}
+        if not self._platform_states:
+            return {}
         stats = dict((state, 0) for state in self._platform_states)
         stats['C0_C1'] = 0
 
         for cpu in os.listdir('/dev/cpu'):
-            if not os.path.exists(template % cpu): continue
+            if not os.path.exists(template % cpu):
+                continue
             package = utils.read_one_line(template % cpu)
-            if package in packages: continue
+            if package in packages:
+                continue
             packages.add(package)
 
             stats['C0_C1'] += utils.rdmsr(0x10, cpu) # TSC
@@ -938,7 +956,7 @@ class StatoMatic(object):
             percent_stats = stat_obj.refresh()
             logging.debug("pstats = %s", percent_stats)
             if stat_obj.name is 'gpu':
-                # TODO(tbroch) remove this once GPU freq stats have proved 
+                # TODO(tbroch) remove this once GPU freq stats have proved
                 # reliable
                 stats_secs = sum(stat_obj._stats.itervalues())
                 if stats_secs < (tot_secs * 0.9) or \
@@ -1059,49 +1077,49 @@ class SystemPower(PowerMeasurement):
         return float(keyvals['Battery']['energy rate'])
 
 
-class PowerLogger(threading.Thread):
-    """A thread that logs power draw readings in watts.
+class MeasurementLogger(threading.Thread):
+    """A thread that logs measurement readings.
 
     Example code snippet:
-         mylogger = PowerLogger([PowerMeasurent1, PowerMeasurent2])
+         mylogger = MeasurementLogger([Measurent1, Measurent2])
          mylogger.run()
          for testname in tests:
              start_time = time.time()
              #run the test method for testname
-             mlogger.checkpoint(tetname, start_time)
+             mlogger.checkpoint(testname, start_time)
          keyvals = mylogger.calc()
 
     Public attributes:
         seconds_period: float, probing interval in seconds.
-        readings: list of lists of floats of power measurements in watts.
-        times: list of floats of time (since Epoch) of when power measurements
+        readings: list of lists of floats of measurements.
+        times: list of floats of time (since Epoch) of when measurements
             occurred.  len(time) == len(readings).
         done: flag to stop the logger.
-        domains: list of power domain strings being measured
+        domains: list of  domain strings being measured
 
     Public methods:
-        run: launches the thread to gather power measuremnts
+        run: launches the thread to gather measuremnts
         calc: calculates
         save_results:
 
     Private attributes:
-       _power_measurements: list of PowerMeasurement objects to be sampled.
+       _measurements: list of Measurement objects to be sampled.
        _checkpoint_data: list of tuples.  Tuple contains:
            tname: String of testname associated with this time interval
            tstart: Float of time when subtest started
            tend: Float of time when subtest ended
        _results: list of results tuples.  Tuple contains:
            prefix: String of subtest
-           mean: Flost of mean power in watts
-           std: Float of standard deviation of power measurements
+           mean: Float of mean  in watts
+           std: Float of standard deviation of measurements
            tstart: Float of time when subtest started
            tend: Float of time when subtest ended
     """
-    def __init__(self, power_measurements, seconds_period=1.0):
+    def __init__(self, measurements, seconds_period=1.0):
         """Initialize a logger.
 
         Args:
-            power_measurements: list of PowerMeasurement objects to be sampled.
+            _measurements: list of Measurement objects to be sampled.
             seconds_period: float, probing interval in seconds.  Default 1.0
         """
         threading.Thread.__init__(self)
@@ -1113,8 +1131,8 @@ class PowerLogger(threading.Thread):
         self._checkpoint_data = []
 
         self.domains = []
-        self._power_measurements = power_measurements
-        for meas in self._power_measurements:
+        self._measurements = measurements
+        for meas in self._measurements:
             self.domains.append(meas.domain)
 
         self.done = False
@@ -1125,7 +1143,7 @@ class PowerLogger(threading.Thread):
         while(not self.done):
             self.times.append(time.time())
             readings = []
-            for meas in self._power_measurements:
+            for meas in self._measurements:
                 readings.append(meas.refresh())
             self.readings.append(readings)
             time.sleep(self.seconds_period)
@@ -1150,8 +1168,8 @@ class PowerLogger(threading.Thread):
                      tname, tstart, tend)
 
 
-    def calc(self):
-        """Calculate average power consumption during each of the sub-tests.
+    def calc(self, mtype=None):
+        """Calculate average measurement during each of the sub-tests.
 
         Method performs the following steps:
             1. Signals the thread to stop running.
@@ -1160,9 +1178,17 @@ class PowerLogger(threading.Thread):
             3. Stores results to be written later.
             4. Creates keyvals for autotest publishing.
 
+        Args:
+            mtype: string of measurement type.  For example:
+                   pwr == power
+                   temp == temperature
+
         Returns:
             dict of keyvals suitable for autotest results.
         """
+        if not mtype:
+            mtype = 'meas'
+
         t = numpy.array(self.times)
         keyvals = {}
         results  = []
@@ -1176,7 +1202,7 @@ class PowerLogger(threading.Thread):
             self.checkpoint()
 
         for i, domain_readings in enumerate(zip(*self.readings)):
-            power = numpy.array(domain_readings)
+            meas = numpy.array(domain_readings)
             domain = self.domains[i]
 
             for tname, tstart, tend in self._checkpoint_data:
@@ -1186,23 +1212,23 @@ class PowerLogger(threading.Thread):
                     prefix = domain
                 keyvals[prefix+'_duration'] = tend - tstart
                 # Select all readings taken between tstart and tend timestamps
-                pwr_array = power[numpy.bitwise_and(tstart < t, t < tend)]
+                meas_array = meas[numpy.bitwise_and(tstart < t, t < tend)]
                 # If sub-test terminated early, avoid calculating avg, std and
                 # min
-                if not pwr_array.size:
+                if not meas_array.size:
                     continue
-                pwr_mean = pwr_array.mean()
-                pwr_std = pwr_array.std()
+                meas_mean = meas_array.mean()
+                meas_std = meas_array.std()
 
                 # Results list can be used for pretty printing and saving as csv
-                results.append((prefix, pwr_mean, pwr_std,
+                results.append((prefix, meas_mean, meas_std,
                                 tend - tstart, tstart, tend))
 
-                keyvals[prefix+'_pwr'] = pwr_mean
-                keyvals[prefix+'_pwr_cnt'] = pwr_array.size
-                keyvals[prefix+'_pwr_max'] = pwr_array.max()
-                keyvals[prefix+'_pwr_min'] = pwr_array.min()
-                keyvals[prefix+'_pwr_std'] = pwr_std
+                keyvals[prefix + '_' + mtype] = meas_mean
+                keyvals[prefix + '_' + mtype + '_cnt'] = meas_array.size
+                keyvals[prefix + '_' + mtype + '_max'] = meas_array.max()
+                keyvals[prefix + '_' + mtype + '_min'] = meas_array.min()
+                keyvals[prefix + '_' + mtype + '_std'] = meas_std
 
         self._results = results
         return keyvals
@@ -1217,7 +1243,7 @@ class PowerLogger(threading.Thread):
             fname: String name of file to write results to
         """
         if not fname:
-            fname = 'power_results_%.0f.txt' % time.time()
+            fname = 'meas_results_%.0f.txt' % time.time()
         fname = os.path.join(resultsdir, fname)
         with file(fname, 'wt') as f:
             for row in self._results:
@@ -1225,6 +1251,73 @@ class PowerLogger(threading.Thread):
                 fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
                 line = '\t'.join(fmt_row)
                 f.write(line + '\n')
+
+
+class PowerLogger(MeasurementLogger):
+    def save_results(self, resultsdir, fname=None):
+        if not fname:
+            fname = 'power_results_%.0f.txt' % time.time()
+        super(PowerLogger, self).save_results(resultsdir, fname)
+
+
+    def calc(self, mtype='pwr'):
+        return super(PowerLogger, self).calc(mtype)
+
+
+class TempMeasurement(object):
+    """Class to measure temperature.
+
+    Public attributes:
+        domain: String name of the temperature domain being measured.  Example is
+          'cpu' for cpu temperature
+
+    Private attributes:
+        _path: Path to temperature file to read ( in millidegrees Celsius )
+
+    Public methods:
+        refresh: Performs any temperature sampling and calculation and returns
+            temperature as float in degrees Celsius.
+    """
+    def __init__(self, domain, path):
+        """Constructor."""
+        self.domain = domain
+        self._path = path
+
+
+    def refresh(self):
+        """Performs temperature
+
+        Returns:
+            float, temperature in degrees Celsius
+        """
+        return int(utils.read_one_line(self._path)) / 1000.
+
+
+class TempLogger(MeasurementLogger):
+    """A thread that logs temperature readings in millidegrees Celsius."""
+    def __init__(self, measurements, seconds_period=30.0):
+        if not measurements:
+            measurements = []
+            tstats = ThermalStatHwmon()
+            for kname in tstats.fields:
+                match = re.match(r'(\S+)_temp(\d+)_input', kname)
+                if not match:
+                    continue
+                domain = match.group(1) + '-t' + match.group(2)
+                fpath = tstats.fields[kname][0]
+                new_meas = TempMeasurement(domain, fpath)
+                measurements.append(new_meas)
+        super(TempLogger, self).__init__(measurements, seconds_period)
+
+
+    def save_results(self, resultsdir, fname=None):
+        if not fname:
+            fname = 'temp_results_%.0f.txt' % time.time()
+        super(TempLogger, self).save_results(resultsdir, fname)
+
+
+    def calc(self, mtype='temp'):
+        return super(TempLogger, self).calc(mtype)
 
 
 class DiskStateLogger(threading.Thread):
@@ -1349,9 +1442,12 @@ class DiskStateLogger(threading.Thread):
         if scsi_sense[11] != 0: # errors: none
             raise error.TestError('ATA error code: %d' % scsi_sense[11])
 
-        if scsi_sense[13] == 0x00: return 'standby'
-        if scsi_sense[13] == 0x80: return 'idle'
-        if scsi_sense[13] == 0xff: return 'active'
+        if scsi_sense[13] == 0x00:
+            return 'standby'
+        if scsi_sense[13] == 0x80:
+            return 'idle'
+        if scsi_sense[13] == 0xff:
+            return 'active'
         return 'unknown(%d)' % scsi_sense[13]
 
 

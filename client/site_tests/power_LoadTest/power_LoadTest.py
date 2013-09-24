@@ -100,7 +100,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
 
-        self._power_status.assert_battery_state(percent_initial_charge_min)
+        #self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
@@ -190,7 +190,9 @@ class power_LoadTest(cros_ui_test.UITest):
         if power_utils.has_rapl_support():
             measurements += power_rapl.create_rapl()
         self._plog = power_status.PowerLogger(measurements, seconds_period=20)
+        self._tlog = power_status.TempLogger([], seconds_period=20)
         self._plog.start()
+        self._tlog.start()
 
         for i in range(self._loop_count):
             start_time = time.time()
@@ -218,6 +220,7 @@ class power_LoadTest(cros_ui_test.UITest):
                                         latch)
 
             self._plog.checkpoint('loop%d' % (i), start_time)
+            self._tlog.checkpoint('loop%d' % (i), start_time)
             if self._verbose:
                 logging.debug('loop %d completed' % i)
 
@@ -266,6 +269,7 @@ class power_LoadTest(cros_ui_test.UITest):
 
 
         keyvals = self._plog.calc()
+        keyvals.update(self._tlog.calc())
         keyvals.update(self._statomatic.publish())
 
         _log_all_stats()
@@ -312,11 +316,9 @@ class power_LoadTest(cros_ui_test.UITest):
                                     keyvals['minutes_battery_life_tested']
         keyvals['w_energy_rate'] = keyvals['wh_energy_used'] * 60 / \
                                    keyvals['minutes_battery_life_tested']
-        keyvals['mc_min_temp'] = self._power_status.min_temp
-        keyvals['mc_max_temp'] = self._power_status.max_temp
-
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
+        self._tlog.save_results(self.resultsdir)
 
 
     def cleanup(self):

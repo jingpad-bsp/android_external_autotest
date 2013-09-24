@@ -16,14 +16,19 @@ class power_Status(test.test):
         status = power_status.get_status()
         statomatic = power_status.StatoMatic()
         meas = [power_status.SystemPower(status.battery_path)]
-        plog = power_status.PowerLogger(meas, seconds_period=0.1)
+        plog = power_status.PowerLogger(meas, seconds_period=1)
+        tlog = power_status.TempLogger(None, seconds_period=1)
         plog.start()
+        tlog.start()
         time.sleep(2)
 
         logging.info("battery_energy: %f" % status.battery[0].energy)
         logging.info("linepower_online: %s" % status.linepower[0].online)
 
         keyvals = plog.calc()
+        keyvals.update(tlog.calc())
         keyvals.update(statomatic.publish())
         for k in sorted(keyvals.keys()):
             logging.info("%s: %s" , k, keyvals[k])
+        plog.save_results(self.resultsdir)
+        tlog.save_results(self.resultsdir)
