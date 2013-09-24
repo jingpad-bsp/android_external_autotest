@@ -83,7 +83,7 @@ class TunTap(object):
         """Creates or re-opens a TUN/TAP interface.
 
         @param mode: This argument is passed to the TUNSETIFF ioctl() to create
-        the interface. It says wheter the interface created is a TAP (IFF_TAP)
+        the interface. It says whether the interface created is a TAP (IFF_TAP)
         or TUN (IFF_TUN) interface and some related constant flags found on
         pyiftun.IFF_*.
         @param name: The name of the created interface. If the name ends in '%d'
