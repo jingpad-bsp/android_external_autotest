@@ -224,11 +224,15 @@ class PacketCapture(object):
         return time_util.get_datetime_float(self._host)
 
 
-    def force_tlsdate_restart(self):
+    def run(self, cmd):
         """
-        Invokes 'tlsdate restart' command.
+        Invokes run() on allocated host if possible
+        @param cmd: a string shell command for host
         """
-        time_util.force_tlsdate_restart(self._host)
+        if self._host is not None:
+            self._host.run(cmd)
+        else:
+            raise error.TestError('No allocated packet capture device.')
 
 
 class PacketCaptureManager(object):

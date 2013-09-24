@@ -10,6 +10,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.site_wlan import constants
 from autotest_lib.server.cros import time_util
+from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.wlan import api_shim
 
 
@@ -100,12 +101,10 @@ class TracingConnector(Connector):
         self.trace_filename = None
 
         self._host = host
-        if not self._clocks_are_in_sync(max_offset_in_sec):
-            # Attempt to force a clock sync on both DUT and tracer.
-            self._force_tlsdate_restart()
-            logging.debug('Completed tlsdate restart on both DUT and tracer.')
-
-            self._clocks_are_in_sync(max_offset_in_sec, raise_error=True)
+        # Attempt to force a clock sync on both DUT and tracer.
+        wifi_test_utils.sync_host_times((self._host,
+                                         self.capturer))
+        self._clocks_are_in_sync(max_offset_in_sec, raise_error=True)
 
     def set_frequency(self, frequency):
         """ Set the frequency with which to capture from.
@@ -184,11 +183,6 @@ class TracingConnector(Connector):
         logging.debug('Tracer time is %f sec.', tracer_time_epoch_sec)
 
         return fabs(dut_time_epoch_sec - tracer_time_epoch_sec)
-
-    def _force_tlsdate_restart(self):
-        """ Invokes 'tlsdate restart' command on both DUT and tracer. """
-        time_util.force_tlsdate_restart(self._host)
-        self.capturer.force_tlsdate_restart()
 
     def _clocks_are_in_sync(self, max_offset_in_sec, raise_error=False):
         """ Check if DUT and tracer are synchronized in time.

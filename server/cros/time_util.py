@@ -24,19 +24,3 @@ def get_datetime_float(host):
         return float(r.stdout)
     except ValueError as e:
         raise error.TestError('Error converting datetime string: %r', e)
-
-
-def force_tlsdate_restart(host):
-    """
-    Invokes 'tlsdate restart' command.
-
-    @param host: an Autotest host object.
-
-    @raises TestError: if command results in a non-zero return code.
-    """
-    r = host.run('tlsdate restart')
-    if r.exit_status > 0:
-        err = ('Error restarting tlsdated on tracer (%r): %r' %
-               (r.exit_status, r.stderr))
-        raise error.TestError(err)
-
