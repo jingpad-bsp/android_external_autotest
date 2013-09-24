@@ -24,6 +24,7 @@ class ChaosAP(object):
 
     This object is a wrapper that can be used to retrieve information
     about an AP in the chaos lab, and control its power.
+
     """
 
 
@@ -64,6 +65,13 @@ class ChaosAP(object):
 
 
     def __init__(self, bss, config):
+        """
+        Intialize object
+
+        @param bss: string containing bssid
+        @param config: ConfigParser read from file
+
+        """
         if not config.has_section(bss):
             raise APSectionError('BSS (%s) not defined.' % bss)
         self.bss = bss
@@ -71,54 +79,66 @@ class ChaosAP(object):
 
 
     def get_ssid(self):
+        """@return string ssid for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_SSID)
 
 
     def get_brand(self):
+        """@return string brand for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_BRAND)
 
 
     def get_model(self):
+        """@return string model for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_MODEL)
 
 
     def get_wan_mac(self):
+        """@return string mac for WAN port of AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_WAN_MAC)
 
 
     def get_wan_host(self):
+        """@return string host for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_WAN_HOST)
 
 
     def get_bss(self):
+        """@return string bss for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_BSS)
 
 
     def get_bss5(self):
+        """@return string bss5 for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_BSS5)
 
 
     def get_bandwidth(self):
+        """@return string bandwidth for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_BANDWIDTH)
 
 
     def get_security(self):
+        """@return string security for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_SECURITY)
 
 
     def get_psk(self):
+        """@return string psk for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_PSK)
 
 
     def get_frequency(self):
+        """@return int frequency for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_FREQUENCY)
 
-
     def get_channel(self):
+        """@return int channel for AP from config file"""
         return self.CHANNEL_TABLE[self.get_frequency()]
 
 
     def get_band(self):
+        """@return string band for AP from config file"""
         if int(frequency) < 4915:
             return self.BAND_2GHZ
         else:
@@ -126,18 +146,22 @@ class ChaosAP(object):
 
 
     def get_class(self):
+        """@return string class for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_CLASS)
 
 
     def get_admin(self):
+        """@return string admin for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_ADMIN)
 
 
     def power_off(self):
+        """call rpm_client to power off AP"""
         rpm_client.set_power(self.get_wan_host(), 'OFF')
 
 
     def power_on(self):
+        """call rpm_client to power on AP"""
         rpm_client.set_power(self.get_wan_host(), 'ON')
 
         # Hard coded timer for now to wait for the AP to come alive
@@ -147,6 +171,7 @@ class ChaosAP(object):
 
 
     def __str__(self):
+        """@return string description of AP"""
         ap_info = {
             'brand': self.get_brand(),
             'model': self.get_model(),
@@ -168,6 +193,7 @@ class ChaosAPList(object):
 
 
     def __init__(self):
+        """initialize object by reading config file"""
         self.ap_config = ConfigParser.RawConfigParser()
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             self.DYNAMIC_AP_CONFIG_FILE)
@@ -177,14 +203,33 @@ class ChaosAPList(object):
 
 
     def get_ap_by_bss(self, bss):
+        """
+        finds AP from bssid string in config file
+
+        @param bss: a string containing bssid of desired AP
+        @return ChaosAP object created from bssid lookup in config
+
+        """
         return ChaosAP(bss, self.ap_config)
 
 
     def next(self):
+        """
+        read next AP from config file
+
+        @return ChaosAP object created from bssid lookup in config
+
+        """
         bss = self._iterptr.next()
         return self.get_ap_by_bss(bss)
 
 
     def __iter__(self):
+        """
+        iterated through bssid sections in config file
+
+        @return iterator for next section
+
+        """
         self._iterptr = self.ap_config.sections().__iter__()
         return self
