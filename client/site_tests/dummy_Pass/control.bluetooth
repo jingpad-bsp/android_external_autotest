@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "dummy_BT"
+NAME = "dummy_Pass.bluetooth"
 PURPOSE = "Demonstrate DEPENDENCIES in autotests."
 CRITERIA = "This test will always succeed."
 DEPENDENCIES = "bluetooth"
@@ -18,4 +18,4 @@ This is a helper test that can only run on bluetooth devices,
 and should succeed trivially.
 """
 
-job.run_test('dummy_Pass')
+job.run_test('dummy_Pass', tag='bluetooth')

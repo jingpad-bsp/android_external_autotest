@@ -7,7 +7,6 @@ NAME = "dummy_Pass"
 PURPOSE = "Demonstrate success methods of autotests."
 CRITERIA = "This test will always succeed."
 SUITE = "something_else, dummy, dummyclientretries"
-EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "dummy"
@@ -18,5 +17,3 @@ This is a helper test that will succeed.
 """
 
 job.run_test('dummy_Pass')
-
-
