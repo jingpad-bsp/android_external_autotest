@@ -56,14 +56,16 @@ class network_WiFi_Perf(wifi_cell_test_base.WiFiCellTestBase):
                     ssid=self.context.router.get_ssid(),
                     security_config=ap_config.security_config)
             self.context.assert_connect_wifi(assoc_params)
-            # Conduct the performance tests.
             session = netperf_session.NetperfSession(self.context.client,
                                                      self.context.server)
-            session.warmup_stations()
-            keyval_logger.record_signal_keyval()
-            results = [session.run(config)
-                       for config in self.NETPERF_CONFIGS]
-            map(keyval_logger.record_keyvals_for_result, results)
+            # Conduct the performance tests while toggling powersave mode.
+            for power_save in (True, False):
+                self.context.client.powersave_switch(power_save)
+                session.warmup_stations()
+                keyval_logger.record_signal_keyval()
+                results = [session.run(config)
+                           for config in self.NETPERF_CONFIGS]
+                map(keyval_logger.record_keyvals_for_result, results)
             # Clean up router and client state for the next run.
             self.context.client.shill.disconnect(self.context.router.get_ssid())
             self.context.router.deconfig()

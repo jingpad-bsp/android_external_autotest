@@ -14,6 +14,12 @@ class NetperfWiFiPerfLogger(object):
         return 'ch%03d' % self._ap_config.channel
 
 
+    @property
+    def powersave_label(self):
+        """@return string 'PSon' if powersave mode is on, 'PSoff' otherwise."""
+        return 'PS%s' % ('on' if self._wifi_client.powersave_on else 'off')
+
+
     def __init__(self, ap_config, wifi_client, keyval_recorder):
         """Construct a NetperfWiFiPerfLogger.
 
@@ -38,6 +44,7 @@ class NetperfWiFiPerfLogger(object):
 
         """
         tag_pieces = [self._wifi_client.machine_id, 'signal',
+                      self.powersave_label,
                       self.channel_label]
         if descriptive_tag:
             tag_pieces.append(descriptive_tag)
@@ -61,12 +68,12 @@ class NetperfWiFiPerfLogger(object):
 
         """
         mode = self._ap_config.printable_mode
-        mode = mode.replace('+', 'p').replace('-', 'm')
-        suffix = '%s_mode%s_%s_%s' % (
-                self.channel_label,
-                mode,
-                self._ap_config.security_config.security,
-                descriptive_tag or result.tag)
+        mode = 'mode%s' % mode.replace('+', 'p').replace('-', 'm')
+        suffix = '_'.join([self.powersave_label,
+                           self.channel_label,
+                           mode,
+                           self._ap_config.security_config.security,
+                           descriptive_tag or result.tag])
         keyvals = result.get_keyval(prefix=self._wifi_client.machine_id,
                                     suffix=suffix)
         self.write_perf_keyval(keyvals)
