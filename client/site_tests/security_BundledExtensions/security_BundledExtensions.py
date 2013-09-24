@@ -6,14 +6,19 @@ import json
 import logging
 import os
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, site_utils
 from autotest_lib.client.cros import cros_ui_test
 
 class security_BundledExtensions(cros_ui_test.UITest):
+    """Verify security properties of bundled (on-disk) Extensions."""
     version = 2
 
     def load_baseline(self):
+        """
+        Loads the set of expected security properties.
+
+        @return Dictionary of expected security properties
+        """
         bfile = open(os.path.join(self.bindir, 'baseline'))
         with open(os.path.join(self.bindir, 'baseline')) as bfile:
             baseline = []
@@ -29,16 +34,15 @@ class security_BundledExtensions(cros_ui_test.UITest):
 
 
     def get_extensions_info(self):
-        """Wraps the pyauto method GetExtensionsInfo().
+        """
+        Wraps the pyauto method GetExtensionsInfo().
 
         Filters out extensions that are on the to-be-ignored list.
 
-        Returns:
-          A list of dicts, each representing an extension. For more
-          information, see the pyauto documentation.
+        @return list of dicts, each representing an extension
         """
         complete_info = self.pyauto.GetExtensionsInfo()
-        logging.debug("GetExtensionsInfo:\n%s" %
+        logging.debug("GetExtensionsInfo:\n%s",
                       self.pyauto.pformat(complete_info))
         filtered_info = []
         for rec in complete_info:
@@ -50,22 +54,26 @@ class security_BundledExtensions(cros_ui_test.UITest):
     def attempt_install(self, crx_file):
         """Try to install a crx, and log an error if it fails.
 
-        Args:
-          crx_file: A string containing the path to a .crx file.
+        @param crx_file string containing the path to a .crx file
         """
         # This helps limit the degree to which future bugs like
         # crbug.com/131480 interfere with testing. The test will still
         # fail, but at least the test will complete (and notice any
         # problems in any *other* extensions).
         import pyauto_errors
-        logging.debug('Installing %s' % crx_file)
+        logging.debug('Installing %s', crx_file)
         try:
             self.pyauto.InstallExtension(crx_file, from_webstore=True)
         except pyauto_errors.JSONInterfaceError:
-            logging.error('Installation failed for %s' % crx_file)
+            logging.error('Installation failed for %s', crx_file)
 
 
     def install_all(self, crx_dirs):
+        """
+        Install all crx's located in crx_dirs
+
+        @param crx_dirs a list of strings, each a path to a directory
+        """
         for crx_dir in crx_dirs:
             if not os.path.exists(crx_dir):
                 continue
@@ -74,17 +82,25 @@ class security_BundledExtensions(cros_ui_test.UITest):
                     continue
                 crx_id = self.crx_id_from_filename(file_name)
                 if crx_id in self._ignored_extension_ids:
-                    logging.debug('Ignoring %s' % file_name)
+                    logging.debug('Ignoring %s', file_name)
                     continue
                 self.attempt_install(os.path.join(crx_dir, file_name))
         logging.debug('Done installing extensions')
 
 
     def crx_id_from_filename(self, filename):
+        """
+        Obtain the id of a crx, given its filename.
+
+        @param filename the name of the crx file
+
+        @return the crx id
+        """
         return filename.split('.crx')[0]
 
 
     def install_and_compare(self):
+        """Install all extensions and compare to the expected set."""
         test_fail = False
         # Install all bundled extensions on the device.
         # Per crbug.com/275052 these all now live here:
@@ -119,10 +135,10 @@ class security_BundledExtensions(cros_ui_test.UITest):
         good_ids = expected_ids.intersection(observed_ids)
 
         if missing_names:
-            logging.error('Missing: %s' % '; '.join(missing_names))
+            logging.error('Missing: %s', '; '.join(missing_names))
             test_fail = True
         if unexpected_names:
-            logging.error('Unexpected: %s' % '; '.join(unexpected_names))
+            logging.error('Unexpected: %s', '; '.join(unexpected_names))
             test_fail = True
 
         # For those IDs in both the expected-and-observed, ie, "good":
@@ -154,11 +170,11 @@ class security_BundledExtensions(cros_ui_test.UITest):
 
 
     def _report_attribute_diffs(self, missing, unexpected, rec):
-        logging.error('Problem with %s (%s):' % (rec['name'], rec['id']))
+        logging.error('Problem with %s (%s):', rec['name'], rec['id'])
         if missing:
-            logging.error('It no longer uses: %s' % '; '.join(missing))
+            logging.error('It no longer uses: %s', '; '.join(missing))
         if unexpected:
-            logging.error('It unexpectedly uses: %s' % '; '.join(unexpected))
+            logging.error('It unexpectedly uses: %s', '; '.join(unexpected))
 
 
     def run_once(self, mode=None):
