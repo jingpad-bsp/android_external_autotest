@@ -39,6 +39,8 @@ class platform_FilePerms(test.test):
         '/dev/shm': {'type': 'tmpfs', 'options': standard_rw_options},
         '/home': {'type': 'ext4', 'options': standard_rw_options},
         '/home/chronos': {'type': 'ext4', 'options': standard_rw_options},
+        '/home/chronos/Default': {
+            'type': 'tmpfs', 'options': standard_rw_options + ['mode=700']},
         '/media': {'type': 'tmpfs', 'options': standard_rw_options},
         '/mnt/stateful_partition': {
             'type': 'ext4',
