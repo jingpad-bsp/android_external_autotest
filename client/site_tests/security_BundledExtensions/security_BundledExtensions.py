@@ -87,9 +87,8 @@ class security_BundledExtensions(cros_ui_test.UITest):
     def install_and_compare(self):
         test_fail = False
         # Install all bundled extensions on the device.
-        main_crx_dir = '/opt/google/chrome/extensions'
-        board_specific_crx_dir = '/usr/share/google-chrome/extensions'
-        self.install_all([main_crx_dir, board_specific_crx_dir])
+        # Per crbug.com/275052 these all now live here:
+        self.install_all(['/var/cache/external_cache/extensions'])
 
         # * Find the set of expected IDs.
         # * Find the set of observed IDs.
