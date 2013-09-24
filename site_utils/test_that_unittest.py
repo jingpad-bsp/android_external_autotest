@@ -171,6 +171,7 @@ class TestThatUnittests(unittest.TestCase):
         ssh_verbosity = 2
         ssh_options = '-F /dev/null -i /dev/null'
         args = 'matey'
+        ignore_deps = False
 
         def fake_suite_callback(*args, **dargs):
             for control_file in suite_control_files:
@@ -181,21 +182,23 @@ class TestThatUnittests(unittest.TestCase):
 
         self.mox.StubOutWithMock(test_that, 'schedule_local_suite')
         test_that.schedule_local_suite(autotest_path, mox.IgnoreArg(),
-                afe, build=build,
+                afe, remote=remote, build=build,
                 board=board, results_directory=results_dir,
-                no_experimental=False
+                no_experimental=False, ignore_deps=ignore_deps
                 ).WithSideEffects(fake_suite_callback)
         self.mox.StubOutWithMock(test_that, 'run_job')
         self.mox.StubOutWithMock(test_that, 'run_provisioning_job')
+        self.mox.StubOutWithMock(test_that, '_auto_detect_labels')
 
-        # Test perform_local_run. Enforce that run_provisioning_job
-        # and run_job are called correctly.
+        # Test perform_local_run. Enforce that run_provisioning_job,
+        # run_job and _auto_detect_labels are called correctly.
         test_that.run_provisioning_job(
                 'cros-version:' + build, remote, autotest_path,
                  results_dir, fast_mode,
                  ssh_verbosity, ssh_options,
                  False, False)
 
+        test_that._auto_detect_labels(afe, remote)
         for control_file in suite_control_files:
             test_that.run_job(mox.ContainsAttributeValue('control_file',
                                                          control_file),
