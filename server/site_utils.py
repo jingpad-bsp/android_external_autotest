@@ -5,6 +5,8 @@
 
 import logging
 import re
+import urllib2
+import httplib
 
 from autotest_lib.client.common_lib import base_utils, global_config
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -88,6 +90,9 @@ def get_sheriffs(lab_only=False):
                 _CHROMIUM_BUILD_URL, sheriff_js)).read()
         except (ValueError, IOError) as e:
             logging.warning('could not parse sheriff from url %s%s: %s',
+                             _CHROMIUM_BUILD_URL, sheriff_js, str(e))
+        except (urllib2.URLError, httplib.HTTPException) as e:
+            logging.warning('unexpected error reading from url "%s%s": %s',
                              _CHROMIUM_BUILD_URL, sheriff_js, str(e))
         else:
             ldaps = re.search(r"document.write\('(.*)'\)", url_content)
