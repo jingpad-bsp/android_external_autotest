@@ -250,6 +250,10 @@ class platform_FilePerms(test.test):
             for fs in mtab.keys():
                 if fs in ignored_fses:
                     continue
+                if fs.startswith('/media/removable'):
+                    # Work around lab breakage, see crbug.com/286701.
+                    logging.warn('Unexpected removable media present.')
+                    continue
                 if not fs in self.expected_mount_options:
                     logging.warn('No expectations entry for %s' % fs)
                     errors += 1
