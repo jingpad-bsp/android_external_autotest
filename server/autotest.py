@@ -647,7 +647,7 @@ class _BaseRun(object):
                 new_boot_id = self.host.get_boot_id(timeout=60)
             except Exception as e:
                 msg += ('DUT is pingable but not SSHable, it most likely'
-                        ' sporadically rebooted during testing. %s\n', str(e))
+                        ' sporadically rebooted during testing. %s\n' % str(e))
                 raise AutotestDeviceNotSSHable(msg)
             else:
                 if new_boot_id != old_boot_id:
