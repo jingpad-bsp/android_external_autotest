@@ -176,7 +176,15 @@ class MetricNameProps:
         average = lambda lst: float(sum(lst)) / len(lst)
         get_sums = lambda lst: [sum(count) for count in zip(*lst)]
         _pct = lambda lst: float(lst[0]) / lst[1] * 100
-        _missed_pct = lambda lst: float(lst[1] - lst[0]) / lst[1] * 100
+        # The following lambda function is used to compute the missed pct of
+        #
+        #       '(clicks with correct finger IDs, actual clicks)'
+        #
+        # In some cases when the number of actual clicks is 0, there are no
+        # missed finger IDs. So just return 0 for this special case to prevent
+        # the devision by 0 error.
+        _missed_pct = lambda lst: (float(lst[1] - lst[0]) / lst[1] * 100
+                                   if lst[1] != 0 else 0)
 
         # pct by numbers: lst means [(incorrect number, total number), ...]
         #  E.g., lst = [(2, 10), (0, 10), (0, 10), (0, 10)]
