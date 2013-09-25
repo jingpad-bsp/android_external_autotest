@@ -94,21 +94,28 @@ class WEPConfig(SecurityConfig):
     AUTH_ALGORITHM_DEFAULT = AUTH_ALGORITHM_OPEN
 
     @staticmethod
-    def hostapd_format(key):
-        """Format WEP keys so that hostapd accepts them.
+    def _format_key(key, ascii_key_formatter):
+        """Returns a key formatted to for its appropriate consumer.
 
-        hostapd wants WEP keys that aren't hex format to be surrounded by double
-        quotes.  We infer the format of a key by its length.
+        Both hostapd and wpa_cli want their ASCII encoded WEP keys formatted
+        in a particular way.  Hex string on the other hand can be given raw.
+        Other key formats aren't even accepted, and this method will raise
+        and exception if it sees such a key.
 
         @param key string a 40/104 bit WEP key.
-        @return string hostapd friendly formatted WEP key
+        @param ascii_key_formatter converter function that escapes a WEP
+                string-encoded passphrase. This conversion varies in format
+                depending on the consumer.
+        @return string corrected formatted WEP key.
 
         """
-        quote = lambda x: '"' + x + '"'
         if len(key) in (5, 13):
-            return quote(key)
+            # These are 'ASCII' strings, or at least N-byte strings
+            # of the right size.
+            return ascii_key_formatter(key)
 
         if len(key) in (10, 26):
+            # These are hex encoded byte strings.
             return key
 
         raise error.TestFail('Invalid WEP key: %r' % key)
@@ -141,8 +148,9 @@ class WEPConfig(SecurityConfig):
     def get_hostapd_config(self):
         """@return dict fragment of hostapd configuration for security."""
         ret = {}
+        quote = lambda x: '"%s"' % x
         for idx,key in enumerate(self.wep_keys):
-            ret['wep_key%d' % idx] = self.hostapd_format(key)
+            ret['wep_key%d' % idx] = self._format_key(key, quote)
         ret['wep_default_key'] = self.wep_default_key
         ret['auth_algs'] = self.auth_algorithm
         return ret
@@ -153,6 +161,17 @@ class WEPConfig(SecurityConfig):
         return {self.SERVICE_PROPERTY_PASSPHRASE: '%d:%s' % (
                         self.wep_default_key,
                         self.wep_keys[self.wep_default_key])}
+
+
+    def get_wpa_cli_properties(self):
+        properties = super(WEPConfig, self).get_wpa_cli_properties()
+        quote = lambda x: '\'\\"%s\\"\'' % x
+        for idx, key in enumerate(self.wep_keys):
+            properties['wep_key%d' % idx] = self._format_key(key, quote)
+        properties['wep_tx_keyidx'] = self.wep_default_key
+        if self.auth_algorithm == self.AUTH_ALGORITHM_SHARED:
+            properties['auth_alg'] = 'SHARED'
+        return properties
 
 
 class WPAConfig(SecurityConfig):
@@ -255,14 +274,13 @@ class WPAConfig(SecurityConfig):
 
     def get_wpa_cli_properties(self):
         properties = super(WPAConfig, self).get_wpa_cli_properties()
-        # TODO(wiley) This probably doesn't work for psks with spaces.
         # TODO(wiley) This probably doesn't work for raw PMK.
         protos = []
         if self.wpa_mode & self.MODE_PURE_WPA:
             protos.append('WPA')
         if self.wpa_mode & self.MODE_PURE_WPA2:
             protos.append('RSN')
-        properties.update({'psk': '"%s"' % self.psk,
+        properties.update({'psk': '\'\\"%s\\"\'' % self.psk,
                            'key_mgmt': 'WPA-PSK',
                            'proto': ' '.join(protos)})
         return properties
