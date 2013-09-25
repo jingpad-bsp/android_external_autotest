@@ -8,33 +8,23 @@ import pprint
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_config
 from autotest_lib.server.cros.chaos_ap_configurators.static_ap_configurator \
     import StaticAPConfigurator
 from autotest_lib.server.cros.chaos_config import ChaosAP
-from autotest_lib.server.cros.wlan import connector, disconnector
-from autotest_lib.server.cros.network import profile_manager
+from autotest_lib.server.cros.network import wifi_client
 
 
 class WiFiChaosConnectionTest(object):
-    """Base class for simple (connect/disconnect) dynamic Chaos test.
-
-    @attribute host: an Autotest host object, DUT.
-    @attribute connector: a TracingConnector object.
-    @attribute disconnector: a Disconnector object.
-    @attribute error_list: a list of errors, intermediate test failures.
-    @attribute ap_config: an APConfiguratorConfig object.
-    @attribute factory: an APConfiguratorFactory object.
-    @attribute psk_password: a string, password used for PSK authentication.
-
-    @attribute PSK: a string, WiFi Pre-Shared Key (Personal) mode.
-    """
+    """Base class for simple (connect/disconnect) dynamic Chaos test."""
 
     PSK = 'psk'
     FAILED_CONFIG_MSG = 'AP Configuration Failed!'
+    TEST_PROFILE_NAME = 'test'
 
 
     @property
@@ -52,36 +42,14 @@ class WiFiChaosConnectionTest(object):
         self._psk_password = password
 
 
-    def _get_dut_wlan_mac(self):
-        """Extracts MAC addr of DUT's WLAN interface.
-
-        @return a string, MAC address of a WLAN interface.
-        @raises TestFail: if error looking up wifi device or its MAC address.
-        """
-        devs = wifi_test_utils.get_wlan_devs(self.host, 'iw')
-        if not devs:
-            raise error.TestFail('No wifi devices found on %s.',
-                                 self.host.hostname)
-        logging.info('Found wifi device %s on %s', devs[0], self.host.hostname)
-        mac = wifi_test_utils.get_interface_mac(self.host, devs[0], 'ip')
-        if not mac:
-            raise error.TestFail('No MAC address found for %s on %s.',
-                                 devs[0], self.host.hostname)
-        logging.info('%s has MAC addr %s', devs[0], mac)
-        return mac
-
-
     def __init__(self, host, capturer):
         """Initialize.
 
         @param host: an Autotest host object, device under test (DUT).
         @param capturer: a PacketCaptureManager object, packet tracer.
         """
-        self.host = host
-        self.dut_mac_addr = self._get_dut_wlan_mac()
+        self.client = wifi_client.WiFiClient(host, './debug')
         self.capturer = capturer
-        self.connector = connector.TracingConnector(self.host, self.capturer)
-        self.disconnector = disconnector.Disconnector(self.host)
         self.error_list = []
         self.ap_config = ap_configurator_config.APConfiguratorConfig()
         self.psk_password = ''
@@ -96,37 +64,61 @@ class WiFiChaosConnectionTest(object):
         """@returns class name, DUT name + MAC addr and packet tracer name."""
         return 'class: %s, DUT: %s (MAC addr: %s), capturer: %s' % (
                 self.__class__.__name__,
-                self.host.hostname,
-                self.dut_mac_addr,
+                self.client.host.hostname,
+                self.client.wifi_mac,
                 self.capturer)
 
 
-    def run_connect_disconnect_test(self, ap_info):
+    def run_connect_disconnect_test(self, ap_info, pcap_file_pattern):
         """Attempts to connect to an AP.
 
         @param ap_info: a dict of attributes of a specific AP.
+        @param pcap_file_pattern: string path to file to save pcap in,
+                with one %s which we'll replace with 'success' or 'failure'
+                depending on the results of the connection attempt.
 
         @return a string (error message) or None.
-        """
-        self.disconnector.disconnect(ap_info['ssid'])
-        self.connector.set_frequency(ap_info['frequency'])
 
-        # Use profile manager to prevent fallback connections.
-        with profile_manager.ProfileManager(self.host) as pm:
-            try:
-                self.connector.connect(
-                        ap_info['ssid'],
-                        security=ap_info.get('security', ''),
-                        psk=ap_info.get(self.PSK, ''),
-                        frequency=ap_info['frequency'])
-            except (connector.ConnectException,
-                    connector.ConnectFailed,
-                    connector.ConnectTimeout) as e:
-                error = str(e)
-                logging.error(error)
-                return error
-            finally:
-                self.disconnector.disconnect(ap_info['ssid'])
+        """
+        self.client.shill.disconnect(ap_info['ssid'])
+        self.client.shill.clean_profiles()
+        # Be extra sure that we're going to push successfully.
+        self.client.shill.remove_profile(self.TEST_PROFILE_NAME)
+        if (not self.client.shill.create_profile(self.TEST_PROFILE_NAME) or
+                not self.client.shill.push_profile(self.TEST_PROFILE_NAME)):
+            return 'Failed to set up isolated test context profile.'
+
+        # TODO(wiley) We probably don't always want HT40, but
+        #             this information is hard to infer here.
+        #             Change how AP configuration happens so that
+        #             we expose this.
+        self.capturer.start_capture(ap_info['frequency'], 'HT40+')
+        try:
+            success = False
+            if ap_info['security'] == self.PSK:
+                security_config = xmlrpc_security_types.WPAConfig(
+                        psk=ap_info[self.PSK])
+            elif ap_info['security'] == '':
+                security_config = xmlrpc_security_types.SecurityConfig()
+            else:
+                raise error.TestFail('Router has unknown security type: %r' %
+                                     ap_info['security'])
+            assoc_params = xmlrpc_datatypes.AssociationParameters(
+                    ssid=ap_info['ssid'],
+                    is_hidden=ap_info['visibility'],
+                    security_config=security_config)
+            assoc_result = xmlrpc_datatypes.deserialize(
+                    self.client.shill.connect_wifi(assoc_params))
+            success = assoc_result.success
+            if not success:
+                return assoc_result.failure_reason
+        finally:
+            self.capturer.stop_capture()
+            filename = pcap_file_pattern % ('success' if success else 'fail')
+            self.capturer.get_capture_file(filename)
+            self.client.shill.disconnect(ap_info['ssid'])
+            self.client.shill.clean_profiles()
+        return None
 
 
     def run_ap_test(self, ap_info, tries, log_dir):
@@ -136,10 +128,6 @@ class WiFiChaosConnectionTest(object):
         @param tries: an integer, number of connection attempts.
         @param log_dir: a string, directory to store test logs.
         """
-
-        # Enable logging
-        self.host.run('restart wpasupplicant WPA_DEBUG=excessive')
-        self.host.run('restart shill SHILL_LOG_SCOPES=wifi SHILL_LOG_LEVEL=-5')
 
         ap_info['failed_iterations'] = []
         # Check the AP was successfully configured
@@ -160,11 +148,10 @@ class WiFiChaosConnectionTest(object):
         # Make iteration 1-indexed
         for iteration in range(1, tries+1):
             logging.info('Connection try %d', iteration)
-            filename = os.path.join(log_dir,
-                                    'connect_try_%d' % iteration)
-            self.connector.set_filename(filename)
-
-            resp = self.run_connect_disconnect_test(ap_info)
+            pcap_file_pattern = os.path.join(
+                    log_dir,
+                    '_'.join(['connect_try', str(iteration), '%s.trc']))
+            resp = self.run_connect_disconnect_test(ap_info, pcap_file_pattern)
             if resp:
                 ap_info['failed_iterations'].append({'error': resp,
                                                      'try': iteration})
@@ -310,14 +297,13 @@ class WiFiChaosConnectionTest(object):
         # Apply config settings to multiple APs in parallel.
         cartridge.run_configurators()
         # iw mlan0 scan for ARM and iw wlan0 scan for x86
-        scan_bss = 'for device in $(iw dev | grep Interface | awk \
-                    \'{ print $2 }\'); do iw $device scan; done'
+        scan_bss = '%s %s scan' % (self.client.command_iw, self.client.wifi_if)
         start_time = int(time.time())
         # Setting 300s as timeout
         logging.info('Waiting for the DUT to find BSS... ')
         while (int(time.time()) - start_time) < 300 and len(scan_list):
            # If command failed: Device or resource busy (-16), run again.
-           scan_result = self.host.run(scan_bss, ignore_status=True)
+           scan_result = self.client.host.run(scan_bss, ignore_status=True)
            if 'busy' in str(scan_result):
                continue
            for ap in scan_list:

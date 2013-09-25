@@ -143,6 +143,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return result
 
 
+    @xmlrpc_server.dbus_safe(False)
     def disconnect(self, ssid):
         """Attempt to disconnect from the given ssid.
 
