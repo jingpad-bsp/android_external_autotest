@@ -216,11 +216,14 @@ class FirmwareSummary:
         #   <title_str>  <fw1>  <fw2>  ...  <description>
         fws = self.slog.fws
         num_fws = len(fws)
+        fws_str_max_width = max(map(len, fws))
+        fws_str_width = max(fws_str_max_width + 1, 10)
         title_str = ('Metrics statistics by gesture: ' + gesture if gesture else
                      'Metrics statistics by validator')
         description_str = 'description (lower is better)'
+        fw_format = '{:>%d}' % fws_str_width
         complete_title = ('{:<37}: '.format(title_str) +
-                          ('{:>10}' * num_fws).format(*fws) +
+                          (fw_format * num_fws).format(*fws) +
                           '  {:<40}'.format(description_str))
         print '\n' * 2 + complete_title
         print '-' * len(complete_title)
@@ -228,6 +231,8 @@ class FirmwareSummary:
         # Print the metric name and the metric stats values of every firmwares
         name_format = ' ' * 6 + '{:<31}:'
         description_format = ' {:<40}'
+        float_format = '{:>%d.2f}' % fws_str_width
+        blank_format = '{:>%d}' % fws_str_width
         for validator in self.slog.validators:
             fw_stats_values = defaultdict(dict)
             for fw in fws:
@@ -246,7 +251,7 @@ class FirmwareSummary:
                 for fw in fws:
                     value = fw_values_dict.get(fw, '')
                     values.append(value)
-                    values_format += '{:>10.2f}' if value else '{:>10}'
+                    values_format += float_format if value else blank_format
 
                 # The metrics of some special validators will not be shown
                 # unless the display_all_stats flag is True or any stats values
