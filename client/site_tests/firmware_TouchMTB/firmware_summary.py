@@ -94,6 +94,7 @@ class FirmwareSummary:
     """Summary for touch device firmware tests."""
 
     def __init__(self, log_dir, display_metrics=False, debug_flag=False,
+                 individual_round_flag=False,
                  segment_weights=segment_weights,
                  validator_weights=validator_weights):
         """ segment_weights and validator_weights are passed as arguments
@@ -107,8 +108,11 @@ class FirmwareSummary:
             sys.exit(1)
 
         self.display_metrics = display_metrics
-        self.slog = firmware_log.SummaryLog(log_dir, segment_weights,
-                                            validator_weights, debug_flag)
+        self.slog = firmware_log.SummaryLog(log_dir,
+                                            segment_weights,
+                                            validator_weights,
+                                            individual_round_flag,
+                                            debug_flag)
 
     def _print_summary_title(self, summary_title_str):
         """Print the summary of the test results by gesture."""
@@ -340,6 +344,8 @@ def _usage_and_exit():
     print '        specify which log directory to derive the summary'
     print '  -h, --%s' % OPTIONS.HELP
     print '        show this help'
+    print '  -i, --%s' % OPTIONS.INDIVIDUAL
+    print '        Calculate statistics of every individual round separately'
     print '  -m, --%s <verbose_level>' % OPTIONS.METRICS
     print '        display the summary metrics.'
     print '        verbose_level:'
@@ -371,14 +377,16 @@ def _parse_options():
     # Set the default values of options.
     options = {OPTIONS.DEBUG: False,
                OPTIONS.DIR: log_root_dir,
+               OPTIONS.INDIVIDUAL: False,
                OPTIONS.METRICS: None,
     }
 
     try:
-        short_opt = 'Dd:hm:'
+        short_opt = 'Dd:him:'
         long_opt = [OPTIONS.DEBUG,
                     OPTIONS.DIR + '=',
                     OPTIONS.HELP,
+                    OPTIONS.INDIVIDUAL,
                     OPTIONS.METRICS + '=',
         ]
         opts, args = getopt.getopt(sys.argv[1:], short_opt, long_opt)
@@ -395,6 +403,8 @@ def _parse_options():
             if not os.path.isdir(arg):
                 print 'Error: the log directory %s does not exist.' % arg
                 _usage_and_exit()
+        elif opt in ('-i', '--%s' % OPTIONS.INDIVIDUAL):
+            options[OPTIONS.INDIVIDUAL] = True
         elif opt in ('-m', '--%s' % OPTIONS.METRICS):
             options[OPTIONS.METRICS] = OptionsDisplayMetrics(arg)
         else:
@@ -408,5 +418,6 @@ if __name__ == '__main__':
     options = _parse_options()
     summary = FirmwareSummary(options[OPTIONS.DIR],
                               display_metrics=options[OPTIONS.METRICS],
+                              individual_round_flag=options[OPTIONS.INDIVIDUAL],
                               debug_flag=options[OPTIONS.DEBUG])
     summary.print_result_summary()

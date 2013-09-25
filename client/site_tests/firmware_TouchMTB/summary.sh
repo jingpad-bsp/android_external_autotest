@@ -8,6 +8,8 @@
 . /usr/share/misc/shflags
 DEFINE_string "log_root_dir" "" "the log root directory" "d"
 DEFINE_string "metrics" "" "display the summary metrics" "m"
+DEFINE_boolean "individual" false \
+               "calculate statistics for every individual round" "i"
 
 PROG=$0
 FLAGS_HELP="USAGE: $PROG [flags]"
@@ -67,8 +69,10 @@ find "$TEST_DIR" \( -name \*.log -o -name \*.html \) \
 # Run firmware_summary module to derive the summary report.
 display_metrics=`[ "$FLAGS_metrics" = "" ] \
                  && echo "" || echo "-m $FLAGS_metrics"`
-python "${SCRIPT_DIR}/$SUMMARY_MODULE" $display_metrics -d "$SUMMARY_DIR" > \
-       "$SUMMARY_FILE"
+[ ${FLAGS_individual} -eq ${FLAGS_TRUE} ] && individual_flag="--individual" \
+                                          || individual_flag=""
+python "${SCRIPT_DIR}/$SUMMARY_MODULE" $display_metrics $individual_flag \
+       -d "$SUMMARY_DIR" > "$SUMMARY_FILE"
 
 # Create a tarball for the summary files.
 cd $SUMMARY_ROOT

@@ -516,10 +516,12 @@ class SummaryLog:
     A summary log may consist of result logs of different firmware versions
     where every firmware version may consist of multiple rounds.
     """
-    def __init__(self, log_dir, segment_weights, validator_weights, debug_flag):
+    def __init__(self, log_dir, segment_weights, validator_weights,
+                 individual_round_flag, debug_flag):
         self.log_dir = log_dir
         self.segment_weights = segment_weights
         self.validator_weights = validator_weights
+        self.individual_round_flag = individual_round_flag
         _setup_debug(debug_flag)
         self._read_logs()
         self.ext_validator_weights = {}
@@ -548,8 +550,9 @@ class SummaryLog:
         # fw_validators keeps track of the validators of every firmware
         self.fw_validators = defaultdict(set)
 
-        for log_filename in log_filenames:
-            self._add_round_log(log_filename)
+        for i, log_filename in enumerate(log_filenames):
+            round_no = i if self.individual_round_flag else None
+            self._add_round_log(log_filename, round_no)
 
         # Convert set to list below
         self.fws = sorted(list(self.fws))
@@ -561,11 +564,13 @@ class SummaryLog:
         for fw in self.fws:
             self.fw_validators[fw] = sorted(list(self.fw_validators[fw]))
 
-    def _add_round_log(self, log_filename):
+    def _add_round_log(self, log_filename, round_no):
         """Add the round log, decompose the validator logs, and build
         a flat summary log.
         """
         fw, round_name, glogs = RoundLog.load(log_filename)
+        if round_no is not None:
+            fw = '%s_%d' % (fw, round_no)
         self.fws.add(fw)
         debug_print('  fw(%s) round(%s)' % (fw, round_name))
         # Iterate through every gesture_variation of the round log,
