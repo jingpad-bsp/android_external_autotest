@@ -269,7 +269,14 @@ class WiFiClient(object):
         # the functionality there only makes sense for systems that want to
         # manage their own WiFi interfaces.  On client devices however, shill
         # does that work.
-        system = site_linux_system.LinuxSystem(self.host, {}, 'client')
+        system = site_linux_system.LinuxSystem(
+                self.host,
+                {'cmd_iw': self.command_iw,
+                 'cmd_ip': self.command_ip,
+                 # We're not going to be doing any packet captures through this.
+                 'cmd_netdump': None,
+                 'cmd_readlink': 'ls -l'},
+                'client')
         self._capabilities = system.capabilities
 
 
