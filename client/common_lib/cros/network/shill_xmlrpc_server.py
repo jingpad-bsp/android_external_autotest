@@ -9,6 +9,7 @@ import logging.handlers
 import multiprocessing
 
 import common
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
@@ -218,6 +219,16 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def enable_ui(self):
         """@return True iff the UI was successfully started."""
         return cros_ui.start(allow_fail=True) == 0
+
+
+    def sync_time_to(self, epoch_seconds):
+        """Sync time on the DUT to |epoch_seconds| from the epoch.
+
+        @param epoch_seconds: float number of seconds from the epoch.
+
+        """
+        utils.run('date -u --set=@%f' % epoch_seconds)
+        return True
 
 
     @staticmethod

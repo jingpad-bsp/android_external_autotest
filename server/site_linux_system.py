@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import datetime
 import logging
 import re
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.network import packet_capturer
@@ -230,6 +232,14 @@ class LinuxSystem(object):
                                                self.capture_interface))
         self._release_wlanif(self.capture_interface)
 
+
+    def sync_host_times(self):
+        """Set time on our DUT to match local time."""
+        epoch_seconds = time.time()
+        busybox_format = '%Y%m%d%H%M.%S'
+        busybox_date = datetime.datetime.utcnow().strftime(busybox_format)
+        self.host.run('date -u --set=@%s 2>/dev/null || date -u %s' %
+                      (epoch_seconds, busybox_date))
 
     def _get_phy_for_frequency(self, frequency, phytype):
         """Get a phy appropriate for a frequency and phytype.

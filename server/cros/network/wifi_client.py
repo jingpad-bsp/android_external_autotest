@@ -5,6 +5,7 @@
 import logging
 import re
 import signal
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
@@ -368,6 +369,12 @@ class WiFiClient(object):
     def stop_capture(self):
         """Stop a packet capture and copy over the results."""
         self._packet_capturer.stop()
+
+
+    def sync_host_times(self):
+        """Set time on our DUT to match local time."""
+        epoch_seconds = time.time()
+        self.shill.sync_time_to(epoch_seconds)
 
 
     def check_iw_link_value(self, iw_link_key, desired_value):

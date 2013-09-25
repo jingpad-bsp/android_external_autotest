@@ -204,7 +204,8 @@ class WiFiTest(object):
         self.host_route_args = {}
 
         # Synchronize time on all devices
-        wifi_test_utils.sync_host_times((self.client, self.server, self.router))
+        for system in (self.client, self.server, self.router):
+            system.sync_host_times()
 
         # Find all repeated steps and create iterators for them
         self.iterated_steps = {}
