@@ -42,7 +42,7 @@ class network_WiFi_DTIMPeriod(wifi_cell_test_base.WiFiCellTestBase):
         self.context.client.powersave_switch(True)
         self.context.assert_connect_wifi(assoc_params)
         self.context.client.check_iw_link_value(
-                wifi_client.WiFiClient.IW_LITNK_KEY_DTIM_PERIOD,
+                wifi_client.WiFiClient.IW_LINK_KEY_DTIM_PERIOD,
                 dtim_val)
         self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)

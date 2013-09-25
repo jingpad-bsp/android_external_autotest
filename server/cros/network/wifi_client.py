@@ -24,7 +24,7 @@ class WiFiClient(object):
     XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 
     IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
-    IW_LITNK_KEY_DTIM_PERIOD = 'dtim period'
+    IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
     IW_LINK_KEY_FREQUENCY = 'freq'
 
     DEFAULT_PING_COUNT = 10
@@ -379,7 +379,7 @@ class WiFiClient(object):
                                         result.stdout.splitlines()))
         if not find_results:
             raise error.TestFail('Could not find iw link property %s.' %
-                                 key)
+                                 iw_link_key)
 
         actual_value = find_results[0].group(1)
         desired_value = str(desired_value)
