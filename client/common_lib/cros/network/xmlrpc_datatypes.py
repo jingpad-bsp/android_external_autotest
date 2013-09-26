@@ -166,7 +166,8 @@ class BgscanConfiguration(xmlrpc_types.XmlRpcStruct):
         self.method = method
 
 
-    def set_auto_signal(signal_average, signal_offset=None, signal_noise=None):
+    def set_auto_signal(self, signal_average, signal_offset=None,
+                        signal_noise=None):
         """Set the signal threshold automatically from observed parameters.
 
         @param signal_average int average signal level.

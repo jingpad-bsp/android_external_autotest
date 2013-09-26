@@ -308,8 +308,7 @@ class WiFiTestContextManager(object):
             raise error.TestFail(
                     'Failed to connect to "%s" in %f seconds (state=%s)' %
                     (ssid, elapsed_seconds, state))
-
-        self.assert_ping_from_dut(ap_num=ap_num)
         if freq:
             self.client.check_iw_link_value(
                     wifi_client.WiFiClient.IW_LINK_KEY_FREQUENCY, freq)
+        self.assert_ping_from_dut(ap_num=ap_num)
