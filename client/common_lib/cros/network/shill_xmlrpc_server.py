@@ -279,6 +279,15 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    def clear_supplicant_blacklist(self):
+        """Clear wpa_supplicant's AP blacklist.
+
+        @return stdout and stderr returns from underlying |wpa| command.
+
+        """
+        return wifi_proxy.WifiProxy.clear_supplicant_blacklist()
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')

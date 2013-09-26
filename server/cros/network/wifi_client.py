@@ -530,3 +530,16 @@ class WiFiClient(object):
         logging.info('Suspending DUT (in background) for %d seconds...',
                      seconds)
         self._shill_proxy.do_suspend_bg(seconds)
+
+
+    def clear_supplicant_blacklist(self):
+        """Clear's the AP blacklist on the DUT.
+
+        @return stdout and stderror returns passed from
+                self._shill_proxy.clear_supplicant_blacklist()
+
+        """
+        stdoutdata, stderrdata = self._shill_proxy.clear_supplicant_blacklist()
+        logging.info('wpa_cli blacklist clear: out:%r err:%r', stdoutdata,
+                     stderrdata)
+        return stdoutdata, stderrdata
