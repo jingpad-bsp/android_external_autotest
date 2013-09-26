@@ -202,6 +202,18 @@ class WiFiClient(object):
         return self._interface.signal_level
 
 
+    def wifi_noise_level(self, frequency_mhz):
+        """Returns the noise level of this DUT's WiFi interface.
+
+        @param frequency_mhz: frequency at which the noise level should be
+               measured and reported.
+        @return int signal level of connected WiFi interface in dBm (e.g. -67)
+                or None if the value is unavailable.
+
+        """
+        return self._interface.noise_level(frequency_mhz)
+
+
     def __init__(self, client_host, result_dir):
         """
         Construct a WiFiClient.

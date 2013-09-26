@@ -147,6 +147,16 @@ class Interface:
         return socket.inet_ntoa(struct.pack("!I", int_mask))
 
 
+    def is_wifi_device(self):
+        """@return True if iw thinks this is a wifi device."""
+        if self._run('iw dev %s info' % self._name,
+                     ignore_status=True).exit_status:
+            logging.debug('%s does not seem to be a wireless device.',
+                          self._name)
+            return False
+        return True
+
+
     @property
     def signal_level(self):
         """Get the signal level for an interface.
@@ -169,10 +179,7 @@ class Interface:
         @return signal level in dBm (a negative, integral number).
 
         """
-        if self._run('iw dev %s info' % self._name,
-                     ignore_status=True).exit_status:
-            logging.debug('%s does not seem to be a wireless device.',
-                          self._name)
+        if not self.is_wifi_device():
             return None
 
         result_lines = self._run('iw dev %s link' %
@@ -185,4 +192,61 @@ class Interface:
                 return int(match.group(1))
 
         logging.error('Failed to find signal level for %s.', self._name)
+        return None
+
+
+    def noise_level(self, frequency_mhz):
+        """Get the noise level for an interface at a given frequency.
+
+        This is currently only defined for WiFi interfaces.
+
+        This only works on some devices because 'iw survey dump' (the method
+        used to get the noise) only works on some devices.  On other devices,
+        this method returns None.
+
+        @param frequency_mhz: frequency at which the noise level should be
+               measured and reported.
+        @return noise level in dBm (a negative, integral number) or None.
+
+        """
+        if not self.is_wifi_device():
+            return None
+
+        # This code has to find the frequency and then find the noise
+        # associated with that frequency because 'iw survey dump' output looks
+        # like this:
+        #
+        # localhost test # iw dev mlan0 survey dump
+        # ...
+        # Survey data from mlan0
+        #     frequency:              5805 MHz
+        #     noise:                  -91 dBm
+        #     channel active time:    124 ms
+        #     channel busy time:      1 ms
+        #     channel receive time:   1 ms
+        #     channel transmit time:  0 ms
+        # Survey data from mlan0
+        #     frequency:              5825 MHz
+        # ...
+
+        result_lines = self._run('iw dev %s survey dump' %
+                                 self._name).stdout.splitlines()
+        my_frequency_pattern = re.compile('frequency:\s*%d mhz' %
+                                          frequency_mhz)
+        any_frequency_pattern = re.compile('frequency:\s*\d{4} mhz')
+        inside_desired_frequency_block = False
+        noise_pattern = re.compile('noise:\s*([-0-9]+)\s+dbm')
+        for line in result_lines:
+            cleaned = line.strip().lower()
+            if my_frequency_pattern.match(cleaned):
+                inside_desired_frequency_block = True
+            elif inside_desired_frequency_block:
+                match = noise_pattern.match(cleaned)
+                if match is not None:
+                    return int(match.group(1))
+                if any_frequency_pattern.match(cleaned):
+                    inside_desired_frequency_block = False
+
+        logging.error('Failed to find noise level for %s at %d MHz.',
+                      self._name, frequency_mhz)
         return None
