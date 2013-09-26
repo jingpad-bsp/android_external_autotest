@@ -10,7 +10,6 @@ This test will fail if any of the following conditions occur:
   - cryptohome is not mounterd after login
   - cryptohome is mounted after log out
 """
-SUITE = "bvt, kaen_bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
