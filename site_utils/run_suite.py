@@ -277,7 +277,10 @@ class LogLink(object):
         """
         if self.bug_id:
             url = '%s%s' % (self._BUG_URL_PREFIX, self.bug_id)
-            if self.bug_count == 1:
+            if self.bug_count is None:
+                anchor_text = "%s (Unknown number of reports)" % (
+                        self.anchor.strip())
+            elif self.bug_count == 1:
                 anchor_text = "%s (new)" % self.anchor.strip()
             else:
                 anchor_text = "%s (%s reports)" % (

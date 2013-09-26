@@ -207,6 +207,19 @@ def create_bug_keyvals(testname, bug_info):
 def get_test_failure_bug_info(keyvals, testname):
     """Extract information about a bug filed against a test failure.
 
+    This method tries to extract bug_id and bug_count from the keyvals
+    of a suite. If for some reason it cannot retrieve the bug_id it will
+    return (None, None) and there will be no link to the bug filed. We will
+    instead link directly to the logs of the failed test.
+
+    If it cannot retrieve the bug_count, it will return (int(bug_id), None)
+    and this will result in a link to the bug filed, with an inline message
+    saying we weren't able to determine how many times the bug occured.
+
+    If it retrieved both the bug_id and bug_count, we return a tuple of 2
+    integers and link to the bug filed, as well as mention how many times
+    the bug has occured in the buildbot stages.
+
     @param keyvals  Keyvals associated with a suite job.
     @param testname Name of a test from the suite.
     @return         None if there is no bug info, or a pair with the
@@ -215,7 +228,9 @@ def get_test_failure_bug_info(keyvals, testname):
     """
     keyval_base = _testname_to_keyval_key(testname)
     bug_id = keyvals.get(keyval_base + _BUG_ID_KEYVAL)
-    if bug_id is not None:
-        bug_count = keyvals.get(keyval_base + _BUG_COUNT_KEYVAL)
-        return int(bug_id), int(bug_count)
-    return bug_id
+    if not bug_id:
+        return None, None
+    bug_id = int(bug_id)
+    bug_count = keyvals.get(keyval_base + _BUG_COUNT_KEYVAL)
+    bug_count = int(bug_count) if bug_count else None
+    return bug_id, bug_count
