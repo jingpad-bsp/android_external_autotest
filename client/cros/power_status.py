@@ -748,6 +748,7 @@ class GPUFreqStats(AbstractStats):
         events = None
         self._freqs = []
         self._prev_sample = None
+        self._trace = None
 
         if os.path.exists(self._MALI_DEV):
             self._set_gpu_type('mali')
@@ -782,7 +783,7 @@ class GPUFreqStats(AbstractStats):
             self._trace = kernel_trace.KernelTrace(events=events)
 
         # Not all platforms or kernel versions support tracing.
-        if not self._trace.is_tracing():
+        if not self._trace or not self._trace.is_tracing():
             logging.warn("GPU frequency tracing not enabled.")
         else:
             self._prev_sample = (cur_mhz, self._trace.uptime_secs())
