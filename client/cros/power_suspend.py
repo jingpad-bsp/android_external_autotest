@@ -281,6 +281,18 @@ class Suspender(object):
                     self.device_times[-1][key] = secs
 
 
+    def _identify_driver(self, device):
+        """Return the driver name of a device (or "unknown")."""
+        for path, subdirs, _ in os.walk('/sys/devices'):
+            if device in subdirs:
+                node = os.path.join(path, device, 'driver')
+                if not os.path.exists(node):
+                    return "unknown"
+                return os.path.basename(os.path.realpath(node))
+        else:
+            return "unknown"
+
+
     def suspend(self, duration=10):
         """
         Do a single suspend for 'duration' seconds. Estimates the amount of time
@@ -339,8 +351,13 @@ class Suspender(object):
                         else:
                             raise sys_power.KernelError("%s\n%s" % (src, text))
                     if abort_regex.search(line):
-                        raise sys_power.SuspendAbort(
-                                cros_logging.strip_timestamp(line))
+                        wake_source = 'unknown'
+                        match = re.search(r'last active wakeup source: (.*)$',
+                                '\n'.join(self._logs[i-5:i]), re.MULTILINE)
+                        if match:
+                            wake_source = match.group(1)
+                        raise sys_power.SuspendAbort('Spurious wake from %s|%s'
+                            % (wake_source, self._identify_driver(wake_source)))
                     if unknown_regex.search(line):
                         raise sys_power.SuspendFailure('Unidentified problem.')
 
