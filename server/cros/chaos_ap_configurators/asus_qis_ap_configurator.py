@@ -67,12 +67,13 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
         if band:
             self._set_band(band)
         if mode == ap_spec.MODE_AUTO:
-            mode_popup = 'auto'
+            mode_popup = 'Auto'
         elif mode == ap_spec.MODE_N:
             mode_popup = 'N Only'
         else:
             raise RuntimeError('Invalid mode passed %x' % mode)
         xpath = '//select[@name="wl_nmode_x"]'
+        self.wait_for_object_by_xpath(xpath)
         self.select_item_from_popup_by_xpath(mode_popup, xpath,
              alert_handler=self._invalid_security_handler)
 

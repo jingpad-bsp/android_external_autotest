@@ -75,23 +75,25 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
         page_url = urlparse.urljoin(self.admin_interface_url, 'wlan.php')
         self.get_url(page_url, page_title='WESTERN DIGITAL')
         xpath_found = self.wait_for_objects_by_id(['loginusr', 'ssid'])
+        switch = '//input[@id="en_wifi"]/../span[@class="checkbox"]'
         if 'loginusr' in xpath_found:
             self._login_to_router()
         elif 'ssid' not in xpath_found:
-            raise Exception('The page %s did not load' % page_url)
-        switch = '//input[@id="en_wifi"]/../span[@class="checkbox"]'
-        if self.current_band == ap_spec.BAND_5GHZ:
-            switch = '//input[@id="en_wifi_Aband"]/../span[@class="checkbox"]'
-        for timer in range(30):   # Waiting for the page to reload
-            on_off_switch = self.driver.find_element_by_xpath(switch)
-            try:
-                if ('checkbox.png' in
-                    on_off_switch.value_of_css_property('background-image')):
-                    return None
-            except:
-                pass
-            time.sleep(1)
-        raise RuntimeError('The radio is switched off.')
+            raise RuntimeError('The page %s did not load or Radio is switched'
+                               'off' % page_url)
+        else:
+            if self.current_band == ap_spec.BAND_5GHZ:
+                switch = '//input[@id="en_wifi_Aband"]/../ \
+                          span[@class="checkbox"]'
+            for timer in range(30):   # Waiting for the page to reload
+                on_off = self.driver.find_element_by_xpath(switch)
+                try:
+                    if ('checkbox.png' in
+                        on_off.value_of_css_property('background-image')):
+                        return None
+                except:
+                    pass
+                time.sleep(1)
 
 
     def _login_to_router(self):
@@ -202,6 +204,7 @@ class WesternDigitalN600APConfigurator(ap_configurator.APConfigurator):
                                '5.745 GHz - CH 149', '5.765 GHz - CH 153',
                                '5.785 GHz - CH 157', '5.805 GHz - CH 161',
                                '5.825 GHz - CH 165']
+        self.wait_for_object_by_id(channel_id)
         self.select_item_from_popup_by_id(channel_choices[position], channel_id)
 
 
