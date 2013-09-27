@@ -180,7 +180,7 @@ class HostapConfig(object):
         """@return True iff HT40- is enabled for this configuration."""
         channel_supported = (self.channel in
                              self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_MINUS])
-        return ((self.N_CAPABILITY_HT40_MINUS in self._n_capabilities and
+        return ((self.N_CAPABILITY_HT40_MINUS in self._n_capabilities or
                  self.N_CAPABILITY_HT40 in self._n_capabilities) and
                 channel_supported)
 
