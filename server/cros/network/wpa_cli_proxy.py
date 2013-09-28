@@ -258,3 +258,14 @@ class WpaCliProxy(object):
         logging.debug('disconnect()')
         self._run_wpa_cli_cmd('disable_network %d' %
                               self._created_networks[ssid])
+
+
+    def sync_time_to(self, epoch_seconds):
+        """
+        Sync time on the DUT to |epoch_seconds| from the epoch.
+
+        @param epoch_seconds float: number of seconds since the epoch.
+
+        """
+        # This will claim to fail, but will work anyway.
+        self._host.run('date -u %f' % epoch_seconds, ignore_status=True)
