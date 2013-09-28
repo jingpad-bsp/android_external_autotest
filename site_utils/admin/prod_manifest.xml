@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
   <remote  name="cros"
-           fetch="http://chromium.googlesource.com"
+           fetch="https://chromium.googlesource.com"
            review="chromium-review.googlesource.com" />
   <remote  name="cros-internal"
            fetch="https://chrome-internal-review.googlesource.com"

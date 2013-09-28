@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # TODO(tgao): use XMLHTTP instead of repeated SSH commands. See
-#             https://gerrit.chromium.org/gerrit/37180 and the code for
+#             https://chromium-review.googlesource.com/37180 and the code for
 #             remote_pyauto in client/cros for examples
 
 import logging

@@ -17,7 +17,7 @@ This template builds an email with details of test(s) that failed.
       {% if details %}
         <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #eaeef3; text-align: center">
           <a title="Click to view source." target="_blank"
-             href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.test_path }}">
+             href="https://chromium.googlesource.com/chromiumos/third_party/autotest.git/+/master/{{ details.test_path }}">
              {{ name }}
              {% if details.experimental %}
                <b>&nbsp;(experimental)</b>
@@ -73,7 +73,7 @@ This template builds an email with details of test(s) that failed.
         </td>
         <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #eaeef3;">
           <a title="Click to view source." target="_blank"
-             href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.0.test_path }}">
+             href="https://chromium.googlesource.com/chromiumos/third_party/autotest.git/+/master/{{ details.0.test_path }}">
              {{ name }}
              {% if details.0.experimental %}
                <b>&nbsp;(experimental)</b>

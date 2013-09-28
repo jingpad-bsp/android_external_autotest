@@ -1,5 +1,5 @@
 This directory includes openocd scripts copied from
-git://git.chromium.org/git/chromiumos/platform/ec:chip/lm4/openocd (sha1
+git://chromium.googlesource.com/git/chromiumos/platform/ec:chip/lm4/openocd (sha1
 52440ef8). The scripts are necessary for programming Chrome OS EC on x86
 platforms.
 

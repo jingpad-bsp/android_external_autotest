@@ -11,9 +11,9 @@ from cros.factory.test import task
 from cros.factory.test import ui
 
 # References
-# - Keyboard: http://gerrit.chromium.org/gerrit/gitweb?p=chromium/src.git;a=blob;f=chrome/browser/chromeos/input_method/ibus_input_methods.txt
-# - Locale: http://git.chromium.org/gitweb/?p=chromium.git;a=blob;f=ui/base/l10n/l10n_util.cc
-# - Time Zone: http://git.chromium.org/gitweb/?p=chromium.git;a=blob;f=chrome/browser/chromeos/dom_ui/system_settings_provider.cc
+# - Keyboard: https://chromium.googlesource.com/chromium/src.git/+/master/chrome/browser/chromeos/input_method/
+# - Locale: https://chromium.googlesource.com/chromium/src.git/+/master/ui/base/l10n/l10n_util.cc
+# - Time Zone: https://chromium.googlesource.com/chromium/src.git/+/master/chrome/browser/chromeos/dom_ui/system_settings_provider.cc
 #              http://google.com/codesearch/p?#uX1GffpyOZk/core/tests/coretests/src/android/util/TimeUtilsTest.java
 #              http://en.wikipedia.org/wiki/List_of_time_zones_by_UTC_offset
 
