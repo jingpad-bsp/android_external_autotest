@@ -388,10 +388,11 @@ class Reporter(object):
             filed_bug = self._phapi_client.create_issue(issue)
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create a bug for issue with title: %s and '
-                          'description %s. To file a new bug you need both a '
-                          'description and a title, and to assign it to an '
-                          'owner, that person must be known to the bug '
-                          'tracker', bug.title(), anchored_summary)
+                          'description %s and owner: %s. To file a new bug you '
+                          'need both a description and a title, and to assign '
+                          'it to an owner, that person must be known to the '
+                          'bug tracker', bug.title(), anchored_summary,
+                          issue.get('owner'))
         else:
             logging.info('Filing new bug %s, with description %s',
                          filed_bug.get('id'), anchored_summary)

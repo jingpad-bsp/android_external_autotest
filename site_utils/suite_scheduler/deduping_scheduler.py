@@ -79,14 +79,13 @@ class DedupingScheduler(object):
         """
         if not self._file_bug:
             return None
-        sheriffs = site_utils.get_sheriffs(lab_only=True)
-        owner = sheriffs[0] if sheriffs else ''
+        lab_sheriff = site_utils.get_sheriffs(lab_only=True)
         logging.info('Filing a bug: %s', title)
         return reporting.submit_generic_bug_report(
             title=title,
             summary=description,
-            owner=owner,
-            labels=['Suite-Scheduler-Bug'])
+            cc=lab_sheriff,
+            labels=['Hardware-lab'])
 
 
     def _Schedule(self, suite, board, build, pool, num, priority, timeout):

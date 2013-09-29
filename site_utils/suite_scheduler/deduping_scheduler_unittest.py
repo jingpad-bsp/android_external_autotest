@@ -213,13 +213,13 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                   self._SUITE, self._BUILD, self._BOARD, self._POOL))
         bug = reporting.Bug(title=title,
                             summary='IGNORED',
-                            owner='dummy@chromium.org',
-                            labels=['Suite-Scheduler-Bug'])
+                            cc=['dummy@chromium.org'],
+                            labels=['Hardware-lab'])
         self.mox.StubOutWithMock(reporting, 'Bug')
         reporting.Bug(title=title,
                       summary=mox.IgnoreArg(),
-                      owner='dummy@chromium.org',
-                      labels=['Suite-Scheduler-Bug']).AndReturn(bug)
+                      cc=['dummy@chromium.org'],
+                      labels=['Hardware-lab']).AndReturn(bug)
 
         reporting.Reporter.__init__()
         reporting.Reporter._check_tracker().AndReturn(True)
