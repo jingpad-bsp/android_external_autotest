@@ -10,7 +10,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import utils
-from autotest_lib.server.hosts import ssh_host
+from autotest_lib.server.hosts import abstract_ssh
 
 
 SHELL_CMD = 'shell'
@@ -25,7 +25,7 @@ CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
 
 
-class ADBHost(ssh_host.SSHHost):
+class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
 
 

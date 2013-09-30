@@ -19,7 +19,7 @@ args_dict = utils.args_to_dict(args)
 
 def run_benchmark(machine):
     device_hostname = args_dict.get('device_hostname')
-    host = hosts.create_host(machine, adb=True,
+    host = hosts.create_host(machine,
                              device_hostname=device_hostname)
     job.run_test("adb_Reboot", host=host)
 

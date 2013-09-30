@@ -1,4 +1,5 @@
-import os, sys, time, signal, socket, re, fnmatch, logging, threading
+# pylint: disable-msg=C0111
+import os, time, signal, socket, re, fnmatch, logging, threading
 import paramiko
 
 from autotest_lib.client.common_lib import utils, error, global_config
@@ -231,7 +232,8 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
 
     def run(self, command, timeout=3600, ignore_status=False,
             stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
-            connect_timeout=30, stdin=None, verbose=True, args=()):
+            connect_timeout=30, stdin=None, verbose=True, args=(),
+            ignore_timeout=False):
         """
         Run a command on the remote host.
         @see common_lib.hosts.host.run()
@@ -239,6 +241,8 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
         @param connect_timeout: connection timeout (in seconds)
         @param options: string with additional ssh command options
         @param verbose: log the commands
+        @param ignore_timeout: bool True command timeouts should be
+                               ignored.  Will return None on command timeout.
 
         @raises AutoservRunError: if the command failed
         @raises AutoservSSHTimeout: ssh connection has timed out
@@ -255,7 +259,7 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
             command += ' "%s"' % utils.sh_escape(arg)
 
         if verbose:
-            logging.debug("Running (ssh-paramiko) '%s'" % command)
+            logging.debug("Running (ssh-paramiko) '%s'", command)
 
         # start up the command
         start_time = time.time()
@@ -304,7 +308,8 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
         if timed_out:
             logging.warn('Paramiko command timed out after %s sec: %s', timeout,
                          command)
-            raise error.AutoservRunError("command timed out", result)
+            if not ignore_timeout:
+                raise error.AutoservRunError("command timed out", result)
         if not ignore_status and exit_status:
             raise error.AutoservRunError(command, result)
         return result

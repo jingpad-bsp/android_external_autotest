@@ -46,9 +46,39 @@ def _get_host_arguments():
             g.get('ssh_options', DEFAULT_SSH_OPTIONS))
 
 
+def _detect_host(connectivity_class, hostname, **args):
+    """Detect host type.
+
+    Currently checks if adb is on the host and if so returns ADBHost if not or
+    if the check fails, it will return CrosHost.
+
+    @param connectivity_class: connectivity class to use to talk to the host
+                               (ParamikoHost or SSHHost)
+    @param hostname: A string representing the host name of the device.
+    @param args: Args that will be passed to the constructor of
+                 the host class.
+
+    @returns Class type to use for this host.
+    """
+    # Detect if adb is on the host. If so we are using an ADBHost. If not use,
+    # CrosHost.
+    try:
+        # Attempt to find adb on the system. If that succeeds use ADBHost.
+        host = connectivity_class(hostname, **args)
+        result = host.run('which adb', timeout=10)
+        return adb_host.ADBHost
+    except (error.AutoservRunError, error.AutoservSSHTimeout):
+        # If any errors occur use CrosHost.
+        # TODO(fdeng): this method should should dynamically discover
+        # and allocate host types, crbug.com/273843
+        # TODO crbug.com/302026 (sbasi) - adjust this pathway for ADBHost in
+        # the future should a host require verify/repair.
+        return cros_host.CrosHost
+
+
 def create_host(
     hostname, auto_monitor=False, follow_paths=None, pattern_paths=None,
-    netconsole=False, adb=False, **args):
+    netconsole=False, **args):
     """Create a host object.
 
     This method mixes host classes that are needed into a new subclass
@@ -74,26 +104,28 @@ def create_host(
               host class.
     """
 
-    # TODO (sbasi) crbug.com/294328 - Find a better way to specify host type.
-    if adb:
-        classes = [adb_host.ADBHost]
-    else:
-        # TODO(fdeng): this method should should dynamically discover
-        # and allocate host types, crbug.com/273843
-        classes = [cros_host.CrosHost]
+    ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
+            _get_host_arguments()
+
+    hostname, args['user'], args['password'], args['port'] = \
+            server_utils.parse_machine(hostname, ssh_user, ssh_pass, ssh_port)
+    args['ssh_verbosity_flag'] = ssh_verbosity_flag
+    args['ssh_options'] = ssh_options
 
     # by default assume we're using SSH support
     if SSH_ENGINE == 'paramiko':
         from autotest_lib.server.hosts import paramiko_host
-        classes.append(paramiko_host.ParamikoHost)
+        connectivity_class = paramiko_host.ParamikoHost
     elif SSH_ENGINE == 'raw_ssh':
-        classes.append(ssh_host.SSHHost)
+        connectivity_class = ssh_host.SSHHost
     else:
         raise error.AutoServError("Unknown SSH engine %s. Please verify the "
                                   "value of the configuration key 'ssh_engine' "
                                   "on autotest's global_config.ini file." %
                                   SSH_ENGINE)
 
+    classes = [_detect_host(connectivity_class, hostname, **args),
+               connectivity_class]
     # by default mix in run_test support
     classes.append(autotest.AutotestHostMixin)
 
@@ -134,15 +166,6 @@ def create_host(
     # do any site-specific processing of the classes list
     site_factory.postprocess_classes(classes, hostname,
                                      auto_monitor=auto_monitor, **args)
-
-    ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
-            _get_host_arguments()
-
-    hostname, args['user'], args['password'], args['port'] = \
-            server_utils.parse_machine(hostname, ssh_user, ssh_pass, ssh_port)
-    args['ssh_verbosity_flag'] = ssh_verbosity_flag
-    args['ssh_options'] = ssh_options
-
 
     # create a custom host class for this machine and return an instance of it
     host_class = type("%s_host" % hostname, tuple(classes), {})
