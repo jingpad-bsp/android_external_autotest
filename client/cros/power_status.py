@@ -700,9 +700,13 @@ class GPUFreqStats(AbstractStats):
 
     _I915_ROOT = '/sys/kernel/debug/dri/0'
     _I915_EVENTS = ['i915:intel_gpu_freq_change']
-    _I915_CLK_TABLE = os.path.join(_I915_ROOT, 'i915_ring_freq_table')
     _I915_CLK = os.path.join(_I915_ROOT, 'i915_cur_delayinfo')
     _I915_TRACE_CLK_RE = r'(\d+.\d+): intel_gpu_freq_change: new_freq=(\d+)'
+    _I915_CUR_FREQ_RE = r'CAGF:\s+(\d+)MHz'
+    _I915_MIN_FREQ_RE = r'Lowest \(RPN\) frequency:\s+(\d+)MHz'
+    _I915_MAX_FREQ_RE = r'Max non-overclocked \(RP0\) frequency:\s+(\d+)MHz'
+    # TODO(dbasehore) parse this from debugfs if/when this value is added
+    _I915_FREQ_STEP = 50
 
     _gpu_type = None
 
@@ -762,6 +766,8 @@ class GPUFreqStats(AbstractStats):
     def __init__(self, incremental=False):
 
 
+        min_mhz = None
+        max_mhz = None
         cur_mhz = None
         events = None
         self._freqs = []
@@ -770,7 +776,7 @@ class GPUFreqStats(AbstractStats):
 
         if os.path.exists(self._MALI_DEV):
             self._set_gpu_type('mali')
-        elif os.path.exists(self._I915_CLK_TABLE):
+        elif os.path.exists(self._I915_CLK):
             self._set_gpu_type('i915')
 
         logging.debug("gpu_type is %s", self._gpu_type)
@@ -778,26 +784,36 @@ class GPUFreqStats(AbstractStats):
         if self._gpu_type is 'mali':
             events = self._MALI_EVENTS
             cur_mhz = self._get_mali_freqs()
+            if self._freqs:
+                min_mhz = self._freqs[0]
+                max_mhz = self._freqs[-1]
 
         elif self._gpu_type is 'i915':
             events = self._I915_EVENTS
             with open(self._I915_CLK) as fd:
                 for ln in fd.readlines():
                     logging.debug("ln = %s", ln)
-                    result = re.findall(r'CAGF:\s+(\d+)MHz', ln)
+                    result = re.findall(self._I915_CUR_FREQ_RE, ln)
                     if result:
                         cur_mhz = result[0]
-                        break
-            with open(self._I915_CLK_TABLE) as fd:
-                for ln in fd.readlines():
-                    logging.debug("ln = %s", ln)
-                    result = re.findall(r'(\d+)\t\t', ln)
+                        continue
+                    result = re.findall(self._I915_MIN_FREQ_RE, ln)
                     if result:
-                        self._freqs.append(result[0])
+                        min_mhz = result[0]
+                        continue
+                    result = re.findall(self._I915_MAX_FREQ_RE, ln)
+                    if result:
+                        max_mhz = result[0]
+                        continue
+                if min_mhz and max_mhz:
+                    for i in xrange(int(min_mhz), int(max_mhz) +
+                                    self._I915_FREQ_STEP, self._I915_FREQ_STEP):
+                        self._freqs.append(str(i))
 
-        logging.debug("cur_mhz = %s", cur_mhz)
+        logging.debug("cur_mhz = %s, min_mhz = %s, max_mhz = %s", cur_mhz,
+                      min_mhz, max_mhz)
 
-        if cur_mhz:
+        if cur_mhz and min_mhz and max_mhz:
             self._trace = kernel_trace.KernelTrace(events=events)
 
         # Not all platforms or kernel versions support tracing.
