@@ -33,8 +33,8 @@ class Attenuator(object):
 
     LAB_DOMAIN = '.cros'
     # Host names in RvR test cells.
-    HOST1 = 'chromeos3-grover-host1'
-    HOST2 = 'chromeos3-grover-host2'
+    HOST1 = 'chromeos1-grover-host1'
+    HOST2 = 'chromeos1-grover-host2'
     VALID_HOSTS = [HOST1, HOST2]
     # Look up fixed path loss by AP frequency, host name and port number.
     FREQ_LOSS_MAP = {2437: {HOST1: [44, 44], HOST2: [43, 43]},
