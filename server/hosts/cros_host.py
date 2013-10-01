@@ -918,15 +918,41 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         self._servo_repair_reinstall,
                         self._powercycle_to_repair]
         errors = []
+        board = self._get_board_from_afe()
         for repair_func in repair_funcs:
             try:
                 repair_func()
                 self.verify()
+                stats.Counter(
+                        '%s.SUCCEEDED' % repair_func.__name__).increment()
+                if board:
+                    stats.Counter(
+                        '%s.SUCCEEDED.%s' % (repair_func.__name__,
+                                             board)).increment()
                 return
+            except error.AutoservRepairMethodNA as e:
+                stats.Counter(
+                        '%s.RepairNA' % repair_func.__name__).increment()
+                if board:
+                    stats.Counter(
+                        '%s.RepairNA.%s' % (repair_func.__name__,
+                                            board)).increment()
+                logging.warn('Repair function NA: %s', e)
+                errors.append(str(e))
             except Exception as e:
+                stats.Counter(
+                        '%s.FAILED' % repair_func.__name__).increment()
+                if board:
+                    stats.Counter(
+                        '%s.FAILED.%s' % (repair_func.__name__,
+                                          board)).increment()
                 logging.warn('Failed to repair device: %s', e)
                 errors.append(str(e))
 
+        stats.Counter('Full_Repair_Failed').increment()
+        if board:
+            stats.Counter(
+                'Full_Repair_Failed.%s' % board).increment()
         raise error.AutoservRepairTotalFailure(
                 'All attempts at repairing the device failed:\n%s' %
                 '\n'.join(errors))
