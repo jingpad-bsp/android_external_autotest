@@ -663,13 +663,11 @@ def main():
                 # Any non experimental test that has a status other than WARN
                 # or GOOD will result in the tree closing. Experimental tests
                 # will not close the tree, even if they have been aborted.
-                if (view['status'] == 'WARN' or
-                    (is_fail_status(view['status']) and experimental)):
-                    # Failures that produce a warning. Either a test with WARN
-                    # status or any experimental test failure.
-                    code = RETURN_CODES.WARNING
-                else:
-                    code = RETURN_CODES.ERROR
+                if not experimental:
+                    if view['status'] == 'WARN':
+                        code = RETURN_CODES.WARNING
+                    elif is_fail_status(view['status']):
+                        code = RETURN_CODES.ERROR
 
         # Do not record stats for aborted suites.
         if not is_aborted:
