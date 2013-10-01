@@ -122,12 +122,13 @@ class Timer(statsd.Timer):
 
 
     def __enter__(self):
-      self.start()
-      return self
+        self.start()
+        return self
 
 
     def __exit__(self, exn_type, exn_value, traceback):
-      self.stop()
+        if exn_type is None:
+            self.stop()
 
 
 class Raw(statsd.Raw):
