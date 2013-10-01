@@ -25,8 +25,18 @@ import common
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
+_BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Type-Bug', 'Cr-OS-Kernel-Power'],
+    'owner': '',
+    'status': None,
+    'summary': None,
+    'title': None,
+    'ccs': ['dbasehore@chromium.org', 'snanda@chromium.org', 'tbroch@chromium.org']
+}
+
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='power_daily', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
-    file_bugs=file_bugs, priority=priority, timeout=timeout,
-    devserver_url=devserver_url, version_prefix=provision.CROS_VERSION_PREFIX)
+    file_bugs=True, priority=priority, timeout=timeout,
+    bug_template=_BUG_TEMPLATE, devserver_url=devserver_url,
+    version_prefix=provision.CROS_VERSION_PREFIX)
