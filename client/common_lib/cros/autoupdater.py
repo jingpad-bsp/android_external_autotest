@@ -214,11 +214,11 @@ class ChromiumOSUpdater():
         """
         autoupdate_cmd = '%s --check_for_update --omaha_url=%s' % (
             UPDATER_BIN, self.update_url)
-        logging.info('triggering update via: %s', autoupdate_cmd)
+        logging.info('Triggering update via: %s', autoupdate_cmd)
         try:
             self._run(autoupdate_cmd)
         except error.AutoservRunError, e:
-            raise RootFSUpdateError('update triggering failed on %s: %s' %
+            raise RootFSUpdateError('Update triggering failed on %s: %s' %
                                     (self.host.hostname, str(e)))
 
 
