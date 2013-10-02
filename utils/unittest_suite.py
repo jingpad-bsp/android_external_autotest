@@ -94,13 +94,27 @@ SKIP = set((
     'full_release_test.py',
     ))
 
+# Temporarily disable wardmodem unittests till all CLs are in.
+# crbug.com/302840
+WARDMODEM_NOT_READY_YET = set((
+    'client/cros/cellular/wardmodem/global_state_unittest.py',
+    'client/cros/cellular/wardmodem/state_machine_unittest.py',
+    'client/cros/cellular/wardmodem/state_machines/'
+    'network_identity_machine_unittest.py',
+    'client/cros/cellular/wardmodem/state_machines/'
+    'request_response_unittest.py',
+    ))
+
+
+
 LONG_TESTS = (REQUIRES_MYSQLDB |
               REQUIRES_GWT |
               REQUIRES_HTTPLIB2 |
               REQUIRES_AUTH |
               REQUIRES_PROTOBUFS |
               REQUIRES_SELENIUM |
-              LONG_RUNTIME)
+              LONG_RUNTIME |
+              WARDMODEM_NOT_READY_YET)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
