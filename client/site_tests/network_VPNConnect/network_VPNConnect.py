@@ -6,6 +6,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros import site_eap_certs
+from autotest_lib.client.cros import certificate_util
 from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.cros import tpm_store
 from autotest_lib.client.cros import virtual_ethernet_pair
@@ -156,6 +157,26 @@ class network_VPNConnect(test.test):
             if 'user_pass' in self._vpn_type:
                 params['OpenVPN.User'] = vpn_server.OpenVPNServer.USERNAME
                 params['OpenVPN.Password'] = vpn_server.OpenVPNServer.PASSWORD
+            if 'cert_verify' in self._vpn_type:
+                ca = certificate_util.PEMCertificate(site_eap_certs.ca_cert_1)
+                if 'incorrect_hash' in self._vpn_type:
+                    bogus_hash = ':'.join(['00'] * 20)
+                    params['OpenVPN.VerifyHash'] = bogus_hash
+                else:
+                    params['OpenVPN.VerifyHash'] = ca.fingerprint
+                server = certificate_util.PEMCertificate(
+                        site_eap_certs.server_cert_1)
+                if 'incorrect_subject' in self._vpn_type:
+                    params['OpenVPN.VerifyX509Name'] = 'bogus subject name'
+                elif 'incorrect_cn' in self._vpn_type:
+                    params['OpenVPN.VerifyX509Name'] = 'bogus cn'
+                    params['OpenVPN.VerifyX509Type'] = 'name'
+                elif 'cn_only' in self._vpn_type:
+                    params['OpenVPN.VerifyX509Name'] = server.subject_dict['CN']
+                    params['OpenVPN.VerifyX509Type'] = 'name'
+                else:
+                    # This is the form OpenVPN expects.
+                    params['OpenVPN.VerifyX509Name'] = ', '.join(server.subject)
             return params
         else:
             raise error.TestFail('Unknown vpn client type %s' % self._vpn_type)
@@ -172,19 +193,33 @@ class network_VPNConnect(test.test):
                                                 ('ready', 'online'),
                                                 self.CONNECT_TIMEOUT_SECONDS)
         (successful, _, _) = result
-        if not successful:
+        if not successful and self._expect_success:
             raise error.TestFail('VPN connection failed')
+        if successful and not self._expect_success:
+            raise error.TestFail('VPN connection suceeded '
+                                 'when it should have failed')
 
 
-    def run_once(self, vpn_type=None):
+    def run_once(self, vpn_types=[]):
         """Test main loop."""
         self._shill_proxy = shill_proxy.ShillProxy()
+        for vpn_type in vpn_types:
+            self.run_vpn_test(vpn_type)
+
+
+    def run_vpn_test(self, vpn_type):
+        """Run a vpn test of |vpn_type|.
+
+        @param vpn_type string type of VPN test to run.
+
+        """
         manager = self._shill_proxy.manager
         server_address_and_prefix = '%s/%d' % (self.SERVER_ADDRESS,
                                                self.NETWORK_PREFIX)
         client_address_and_prefix = '%s/%d' % (self.CLIENT_ADDRESS,
                                                self.NETWORK_PREFIX)
         self._vpn_type = vpn_type
+        self._expect_success = 'incorrect' not in vpn_type
 
         with shill_temporary_profile.ShillTemporaryProfile(
                 manager, profile_name=self.TEST_PROFILE_NAME):

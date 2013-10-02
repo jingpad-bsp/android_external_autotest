@@ -2,19 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "pstew@chromium.org"
-NAME = "network_Connect.openvpn_user_pass"
-PURPOSE = "Verify shill correctly authenticates to an OpenVPN server"
-SUITE = "network_nightly"
+AUTHOR = 'pstew@chromium.org'
+NAME = 'network_Connect.openvpn_user_pass'
+PURPOSE = 'Verify shill correctly authenticates to an OpenVPN server'
+SUITE = 'network_nightly'
 CRITERIA = """
 This test fails if the DUT cannot authenticate to a locally running
 OpenVPN server runing at the other end of a virtual Ethernet interface.
 This server performs username / password authentication.
 """
-TIME = "SHORT"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "network"
-TEST_TYPE = "client"
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'network'
+TEST_TYPE = 'client'
 
 DOC = """
   Tests that we can complete OpenVPN authentication with a server that
@@ -27,5 +27,5 @@ DOC = """
 """
 
 job.run_test('network_VPNConnect',
-             vpn_type='openvpn_user_pass',
+             vpn_types=[ 'openvpn_user_pass' ],
              tag=NAME.split('.')[1])
