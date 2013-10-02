@@ -29,7 +29,6 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server import test
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.network import wifi_client
 
 class ScriptNotFound(Exception):
@@ -67,10 +66,6 @@ class WiFiTest(object):
                               should always be preceded by client_monitor_start
       sleep                   pause on the autotest server for a time
       client_ping             ping the server on the client machine
-      client_iperf            run iperf on the client to the server
-      server_iperf            run iperf on the server to the client
-      client_netperf          run netperf on the client to the server
-      server_netperf          run netperf on the server to the client
       vpn_client_load_tunnel  load 'tun' device for VPN client
       vpn_client_kill         Kill the running VPN client.  Do nothing
                               if not running.
@@ -145,8 +140,6 @@ class WiFiTest(object):
         defaults = config.get('defaults', {})
         self.deftimeout = defaults.get('timeout', 30)
         self.defpingcount = defaults.get('pingcount', 10)
-        self.defwaittime = defaults.get('netperf_wait_time', 3)
-        self.defiperfport = str(defaults.get('iperf_port', 12866))
 
         if not site_linux_router.isLinuxRouter(self.router):
             raise error.TestFail('Unsupported router')
@@ -1063,164 +1056,6 @@ class WiFiTest(object):
         self.__print_pingstats("client_ping ", stats)
 
 
-    def __run_iperf(self, mode, params):
-        """ Executes iperf w/ user-specified command-line options
-
-        Caller is responsible for passing in correct options. Otherwise a test
-        error would be raised.
-        """
-        iperf_args = ""
-        if 'udp' in params:
-            iperf_args += " -u"
-            test = "UDP"
-        else:
-            test = "TCP"
-        if 'nodelay' in params:
-            iperf_args += " -N"
-            self.write_perf({'nodelay':'true'})
-        if 'window' in params:
-            iperf_args += " -w %s" % params['window']
-            self.write_perf({'window':params['window']})
-        if 'bufsize' in params:  # Set buffer size in bytes
-            iperf_args += " -l %s" % params['bufsize']
-            self.write_perf({'bufsize':params['bufsize']})
-        iperf_args += " -p %s" % self.defiperfport
-
-        # Assemble client-specific arguments
-        test_time = params.get('test_time', 15)
-        client_args = iperf_args + " -f m -t %s" % test_time
-        if 'bandwidth' in params:
-            client_args += " -b %s" % params['bandwidth']
-            self.write_perf({'bandwidth':params['bandwidth']})
-        elif 'udp' in params:
-            bw = None
-            # Supply nominal channel bandwidth
-            if self.cur_phymode == '802.11b':
-                bw = '7m'
-            elif self.cur_phymode == '802.11a':
-                bw = '30m'              # assumes no bursting
-            elif self.cur_phymode == '802.11g':
-                bw = '30m'              # assumes no bursting
-            elif self.cur_phymode == '802.11n':
-                # TODO(sleffler) distinguish HT20/HT40 and # streams
-                bw = '110m'
-            if bw is not None:
-                client_args += " -b %s" % bw
-                self.write_perf({'bandwidth':bw})
-
-        if mode == 'server':
-            server = { 'host': self.client,
-                       'cmd': self.client_proxy.command_iperf }
-            client = { 'host': self.server,
-                       'cmd': self.hosting_server.cmd_iperf,
-                       'target': self.client_proxy.wifi_ip }
-
-            # Open up access from the server into our DUT
-            self.client_proxy.firewall_open('tcp', self.server_wifi_ip)
-            self.client_proxy.firewall_open('udp', self.server_wifi_ip)
-        else:  # mode == 'client'
-            server = { 'host': self.server,
-                       'cmd': self.hosting_server.cmd_iperf }
-            client = { 'host': self.client,
-                       'cmd': self.client_proxy.command_iperf,
-                       'target': self.server_wifi_ip }
-
-        iperf_thread = remote_command.Command(server['host'],
-            "%s -s %s" % (server['cmd'], iperf_args))
-        # NB: block to allow server time to startup
-        time.sleep(self.defwaittime)
-
-        # Run iperf command and receive command results
-        t0 = time.time()
-        # Set timeout to be twice the test_time
-        results = client['host'].run("%s -c %s%s" % \
-            (client['cmd'], client['target'], client_args),
-            timeout=2*int(test_time))
-        actual_time = time.time() - t0
-        logging.info('actual_time: %f', actual_time)
-
-        iperf_thread.join()
-
-        # Close up whatever firewall rules we created for iperf
-        self.client_proxy.firewall_cleanup()
-
-        self.write_perf({
-            'attenuation': self.cur_attenuation or 'unknown',
-            'frequency'  : self.cur_frequency,
-            'phymode'    : self.cur_phymode,
-            'security'   : self.cur_security,
-            'test'       : test,
-            'mode'       : mode,
-            'actual_time': actual_time,
-        })
-
-        logging.info(results)
-
-        lines = results.stdout.splitlines()
-
-        # Each test type has a different form of output
-        if test in ['TCP', 'TCP_NODELAY']:
-            """Parses the following and returns a singleton containing
-            throughput.
-
-            ------------------------------------------------------------
-            Client connecting to localhost, TCP port 5001
-            TCP window size: 49.4 KByte (default)
-            ------------------------------------------------------------
-            [  3] local 127.0.0.1 port 57936 connected with 127.0.0.1 port 5001
-            [ ID] Interval       Transfer     Bandwidth
-            [  3]  0.0-10.0 sec  2.09 GBytes  1.79 Gbits/sec
-            """
-            tcp_tokens = lines[6].split()
-            if len(tcp_tokens) >= 6 and tcp_tokens[-1].endswith('bits/sec'):
-                self.write_perf({'throughput':float(tcp_tokens[-2])})
-        elif test in ['UDP', 'UDP_NODELAY']:
-            """Parses the following and returns a tuple containing throughput
-            and the number of errors.
-
-            ------------------------------------------------------------
-            Client connecting to localhost, UDP port 5001
-            Sending 1470 byte datagrams
-            UDP buffer size:   108 KByte (default)
-            ------------------------------------------------------------
-            [  3] local 127.0.0.1 port 54244 connected with 127.0.0.1 port 5001
-            [ ID] Interval       Transfer     Bandwidth
-            [  3]  0.0-10.0 sec  1.25 MBytes  1.05 Mbits/sec
-            [  3] Sent 893 datagrams
-            [  3] Server Report:
-            [ ID] Interval       Transfer     Bandwidth       Jitter   Lost/Total Datagrams
-            [  3]  0.0-10.0 sec  1.25 MBytes  1.05 Mbits/sec  0.032 ms    1/  894 (0.11%)
-            [  3]  0.0-15.0 sec  14060 datagrams received out-of-order
-            """
-            # Search for the last row containing the word 'Bytes'
-            mb_row = [row for row,data in enumerate(lines)
-                      if 'Bytes' in data][-1]
-            udp_tokens = lines[mb_row].replace('/', ' ').split()
-            # Find the column ending with "...Bytes"
-            mb_col = [col for col,data in enumerate(udp_tokens)
-                      if data.endswith('Bytes')]
-            if len(mb_col) > 0 and len(udp_tokens) >= mb_col[0] + 9:
-                # Make a sublist starting after the column named "MBytes"
-                stat_tokens = udp_tokens[mb_col[0]+1:]
-                self.write_perf({'throughput':float(stat_tokens[0]),
-                                 'jitter':float(stat_tokens[3]),
-                                 'lost':float(stat_tokens[7].strip('()%'))})
-        else:
-            raise error.TestError('Unhandled test')
-
-        return True
-
-
-    def client_iperf(self, params):
-        """ Run iperf on the client against the server """
-        self.__run_iperf('client', params)
-
-
-    def server_iperf(self, params):
-        """ Run iperf on the server against the client """
-        self.__run_iperf('server', params)
-
-
     def set_attenuation(self, params):
         """ Record current attenuation value """
         self.cur_attenuation = self.attenuator.set_attenuation(params)
@@ -1251,88 +1086,6 @@ class WiFiTest(object):
                             end_atten, start_atten)
             end_atten = start_atten
         return fixed_atten, start_atten, end_atten
-
-
-    def _parse_iperf_options(self, params):
-        """ Parse iperf options and set reasonable defaults """
-        proto = params.get('proto', 'udp')
-        iperf_params = {
-            proto: None,
-            'test_time': params.get('test_time', '60'),
-            'bufsize': params.get('bufsize', '1500'),
-            }
-        if proto == 'udp':
-            iperf_params['bandwidth'] = params.get('bandwidth', '150M')
-        else:
-            iperf_params['window'] = params.get('window', '512K')
-        return proto, iperf_params
-
-
-    def rvr_test(self, params):
-        """ Run rate vs. range tests using a variable attenuator """
-        if self.attenuator is None:
-            raise error.TestFail(
-                'No variable attenuator specified for this test.')
-
-        fixed_atten, start_atten, end_atten = self._parse_attenuation(params)
-        proto, iperf_params = self._parse_iperf_options(params)
-
-        atten_step = params.get('atten_step', 2)
-        # Pad 1 to end_atten to ensure it's not excluded by range(), e.g.
-        #   input: start_atten = 60, end_atten = 70, atten_step = 2
-        #   output with padding = [60, 62, 64, 66, 68, 70]  (desired)
-        #   output without padding = [60, 62, 64, 66, 68]  (probabaly undesired)
-        atten_sequence = range(start_atten, end_atten+1, atten_step)
-        for step_number, atten in enumerate(atten_sequence):
-            for port in [0, 1]:  # Grover testbed uses ports 0 and 1
-                self.set_attenuation(dict(va_port=port, fixed_atten=fixed_atten,
-                                          total_atten=atten))
-            iperf_params['attenuation'] = self.cur_attenuation
-            self.sleep(dict(time='5'))  # Wait 5 seconds for config to propagate
-
-            # Set iteration prefix for write_perf() to use
-            self.prefix = 'rvr_%s_%d' % (proto, step_number)
-            self.server_iperf(iperf_params)
-
-
-    def __run_netperf(self, server_serves, params):
-        runner = netperf_runner.NetperfRunner(self.client_proxy,
-                                              self.hosting_server)
-        test_type = params.get('test', 'TCP_STREAM')
-        netperf_config = netperf_runner.NetperfConfig(
-                test_type,
-                server_serves=server_serves,
-                test_time=params.get('test_time', 15))
-        netperf_result = runner.run(netperf_config)
-        mode = 'server'
-        if server_serves:
-            mode = 'client'
-        self.write_perf({
-            'frequency'  : self.cur_frequency,
-            'phymode'    : self.cur_phymode,
-            'security'   : self.cur_security,
-            'test'       : test_type,
-            'mode'       : mode,
-            'actual_time': netperf_result.duration_seconds,
-        })
-        if netperf_result.throughput:
-            self.write_perf({'Throughput': netperf_result.throughput})
-        if netperf_result.errors:
-            self.write_perf({'Errors': netperf_result.errors})
-        if netperf_result.transaction_rate:
-            self.write_perf(
-                    {'Transaction_Rate': netperf_result.transaction_rate})
-        return True
-
-
-    def client_netperf(self, params):
-        """ Run netperf on the client against the server """
-        self.__run_netperf(True, params)
-
-
-    def server_netperf(self, params):
-        """ Run netperf on the server against the client """
-        self.__run_netperf(False, params)
 
 
     def client_start_capture(self, params):
