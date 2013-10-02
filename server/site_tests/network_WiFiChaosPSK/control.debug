@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "tgao@chromium.org"
-NAME = "network_WiFiChaosPSK"
+NAME = "network_WiFiChaosPSK.debug"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
