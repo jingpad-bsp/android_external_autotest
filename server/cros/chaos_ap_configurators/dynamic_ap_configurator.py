@@ -118,6 +118,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         an error saving the screenshot None is returned.
 
         """
+        screenshot = None
         if self.driver_connection_established:
             try:
                 screenshot = self.driver.get_screenshot_as_base64()
