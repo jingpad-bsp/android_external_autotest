@@ -171,6 +171,21 @@ class _AlexController(_PowerStateController):
             self._servo.set('rec_mode', REC_OFF)
 
 
+class _LumpyController(_AlexController):
+
+    """Power-state controller for Lumpy."""
+
+    @_inherit_docstring(_AlexController)
+    def power_off(self):
+        # The debug header for MP Lumpy's are missing a resistor to support
+        # cold_reset. Therefore to do a power off we simply long hold the
+        # power button. This should cover the most common types of failures
+        # in the lab. However if the unit is already off this will cause it to
+        # power on instead. In this case, re-run repair a second time to
+        # recover the device.
+        self._servo.power_long_press()
+
+
 class _StumpyController(_AlexController):
 
     """Power-state controller for Stumpy."""
@@ -334,7 +349,7 @@ _CONTROLLER_BOARD_MAP = {
     'daisy': _DaisyController,
     'spring': _DaisyController,
     'link': _LinkController,
-    'lumpy': _AlexController,
+    'lumpy': _LumpyController,
     'parrot': _ParrotController,
     'stumpy': _StumpyController,
     'x86-alex': _AlexController
