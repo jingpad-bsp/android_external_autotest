@@ -836,7 +836,7 @@ class FAFTSequence(FAFTBase):
 
     def restore_ec_write_protect(self):
         """Restore the original EC write-protection."""
-        if self._old_ec_wp is None:
+        if (not hasattr(self, '_old_ec_wp')) or (self._old_ec_wp is None):
             return
         if not self.checkers.crossystem_checker(
                 {'wpsw_boot': '1' if self._old_ec_wp else '0'}):
