@@ -39,7 +39,7 @@ class ConfiguratorTest(unittest.TestCase):
     """
 
     # Specify the Chaos AP to run the tests against.
-    AP_SPEC = dict(hostnames=['chromeos3-row2-rack1-host3'])
+    AP_SPEC = dict(hostnames=['chromeos3-row2-rack2-host6'])
 
 
     @classmethod
@@ -50,6 +50,8 @@ class ConfiguratorTest(unittest.TestCase):
             raise RuntimeError('Unable to lock AP %r' % self.AP_SPEC)
         self.ap = ap_batch[0]
         print('Powering up the AP (this may take a minute...)')
+        # Use a development webdriver server
+        self.ap.webdriver_port = 9516
         self.ap._power_up_router()
 
 
@@ -87,7 +89,7 @@ class ConfiguratorTest(unittest.TestCase):
         for mode in self.ap.get_supported_modes():
             return_dict['band'] = mode['band']
             for mode_type in mode['modes']:
-                if mode_type & self.ap.mode_n != self.ap.mode_n:
+                if (mode_type & ap_spec.MODE_N) != ap_spec.MODE_N:
                     return_dict['mode'] = mode_type
         return return_dict
 
@@ -122,6 +124,8 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_visibility(self):
         """Test adjusting the visibility."""
+        if not self.ap.is_visibility_supported():
+            return
         self.ap.set_visibility(False)
         self.ap.apply_settings()
         self.ap.set_visibility(True)
@@ -134,11 +138,11 @@ class ConfiguratorTest(unittest.TestCase):
         self.assertTrue(bands_info, msg='Invalid band sent.')
         for bands in bands_info:
             band = bands['band']
-            if band == self.ap.band_2ghz:
+            if band == ap_spec.BAND_2GHZ:
                 self.ap.set_band(band)
                 self.ap.set_ssid('ssid2')
                 self.ap.apply_settings()
-            if band == self.ap.band_5ghz:
+            if band == ap_spec.BAND_2GHZ:
                 self.ap.set_band(band)
                 self.ap.set_ssid('ssid5')
                 self.ap.apply_settings()
@@ -146,9 +150,9 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_band(self):
         """Test switching the band."""
-        self.ap.set_band(self.ap.band_2ghz)
+        self.ap.set_band(ap_spec.BAND_2GHZ)
         self.ap.apply_settings()
-        self.ap.set_band(self.ap.band_5ghz)
+        self.ap.set_band(ap_spec.BAND_5GHZ)
         self.ap.apply_settings()
 
 
@@ -160,10 +164,11 @@ class ConfiguratorTest(unittest.TestCase):
         for band in bands_set:
             self.ap.set_band(band)
             self.ap.set_ssid('pqrstu_' + band)
-            self.ap.set_visibility(True)
-            if self.ap.is_security_mode_supported(self.ap.security_type_wep):
+            if self.ap.is_visibility_supported():
+                self.ap.set_visibility(True)
+            if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
                 self.ap.set_security_wep('test2',
-                                         self.ap.wep_authentication_open)
+                                         ap_spec.WEP_AUTHENTICATION_OPEN)
             self.ap.apply_settings()
 
 
@@ -171,12 +176,12 @@ class ConfiguratorTest(unittest.TestCase):
         """Test an exception is thrown for an invalid configuration."""
         self.disabled_security_on_all_bands()
         for mode in self.ap.get_supported_modes():
-            if not self.ap.mode_n in mode['modes']:
+            if not ap_spec.MODE_N in mode['modes']:
                 return
-        if not self.ap.is_security_mode_supported(self.ap.security_type_wep):
+        if not self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
             return
-        self.ap.set_mode(self.ap.mode_n)
-        self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
+        self.ap.set_mode(ap_spec.MODE_N)
+        self.ap.set_security_wep('77777', ap_spec.WEP_AUTHENTICATION_OPEN)
         try:
             self.ap.apply_settings()
         except RuntimeError, e:
@@ -190,25 +195,26 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_security_wep(self):
         """Test configuring WEP security."""
-        if not self.ap.is_security_mode_supported(self.ap.security_type_wep):
+        if not self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
             return
         for mode in self.ap.get_supported_modes():
             self.ap.set_band(mode['band'])
             for mode_type in mode['modes']:
-                if mode_type & self.ap.mode_n != self.ap.mode_n:
+                if mode_type & ap_spec.MODE_N != ap_spec.MODE_N:
                     self.ap.set_mode(mode_type)
                     self.ap.set_security_wep('45678',
-                                             self.ap.wep_authentication_open)
+                                             ap_spec.WEP_AUTHENTICATION_OPEN)
                     self.ap.apply_settings()
                     self.ap.set_security_wep('90123',
-                                             self.ap.wep_authentication_shared)
+                                             ap_spec.WEP_AUTHENTICATION_SHARED)
                     self.ap.apply_settings()
 
 
     def test_priority_sets(self):
         """Test that commands are run in the right priority."""
         self.ap.set_radio(enabled=False)
-        self.ap.set_visibility(True)
+        if self.ap.is_visibility_supported():
+            self.ap.set_visibility(True)
         self.ap.set_ssid('prioritytest')
         self.ap.apply_settings()
 
@@ -220,9 +226,10 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_radio(enabled=False)
         self.ap.set_band(good_pair['band'])
         self.ap.set_mode(good_pair['mode'])
-        self.ap.set_visibility(True)
-        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
-            self.ap.set_security_wep('88888', self.ap.wep_authentication_open)
+        if self.ap.is_visibility_supported():
+            self.ap.set_visibility(True)
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
+            self.ap.set_security_wep('88888', ap_spec.WEP_AUTHENTICATION_OPEN)
         self.ap.set_ssid('secgentest')
         self.ap.apply_settings()
 
@@ -252,11 +259,11 @@ class ConfiguratorTest(unittest.TestCase):
         modes_info = self.ap.get_supported_modes()
         n_bands = []
         for band_modes in modes_info:
-            if self.ap.mode_n in band_modes['modes']:
+            if ap_spec.MODE_N in band_modes['modes']:
                 n_bands.append(band_modes['band'])
         if len(n_bands) > 1:
             for n_band in n_bands:
-                self.ap.set_mode(self.ap.mode_n, band=n_band)
+                self.ap.set_mode(ap_spec.MODE_N, band=n_band)
                 self.ap.apply_settings()
 
 
@@ -264,11 +271,11 @@ class ConfiguratorTest(unittest.TestCase):
         """Mini stress for changing security settings rapidly."""
         self.disabled_security_on_all_bands()
         self.ap.set_radio(enabled=True)
-        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
-            self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
-        if self.ap.is_security_mode_supported(self.ap.security_type_disabled):
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
+            self.ap.set_security_wep('77777', ap_spec.WEP_AUTHENTICATION_OPEN)
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_DISABLED):
             self.ap.set_security_disabled()
-        if self.ap.is_security_mode_supported(self.ap.security_type_wpapsk):
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WPAPSK):
             self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
@@ -280,13 +287,13 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_radio(enabled=True)
         self.ap.set_band(good_pair['band'])
         self.ap.set_mode(good_pair['mode'])
-        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
-            self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
+            self.ap.set_security_wep('77777', ap_spec.WEP_AUTHENTICATION_OPEN)
         self.ap.apply_settings()
-        if self.ap.is_security_mode_supported(self.ap.security_type_disabled):
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_DISABLED):
             self.ap.set_security_disabled()
         self.ap.apply_settings()
-        if self.ap.is_security_mode_supported(self.ap.security_type_wpapsk):
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WPAPSK):
             self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
@@ -299,8 +306,8 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_band(good_pair['band'])
         self.ap.set_mode(good_pair['mode'])
         self.ap.apply_settings()
-        if self.ap.is_security_mode_supported(self.ap.security_type_wep):
-            self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
+            self.ap.set_security_wep('77777', ap_spec.WEP_AUTHENTICATION_OPEN)
         self.ap.set_radio(enabled=False)
         self.ap.apply_settings()
 

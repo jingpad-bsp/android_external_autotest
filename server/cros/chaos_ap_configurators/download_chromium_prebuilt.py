@@ -33,14 +33,13 @@ def _webdriver_is_installed():
     return True
 
 
-def _webdriver_is_running():
+def _webdriver_is_running(webdriver_port=9515):
     """Checks if webdriver binary is running.
 
     Webdriver binary must be running either on the local machine or in
     the lab as a service.
 
-    Webdriver is expected to run on port 9515. If the port is open, we
-    assume webdriver is already running.
+    @param webdriver_port: the port of the webdriver server
 
     @returns a string: of the address of a successful connection; None
                        if a connection cannot be established.
@@ -54,7 +53,7 @@ def _webdriver_is_running():
                'cl12-16-410.mtv.corp.google.com']
     # Perform a proper request
     for address in servers:
-        url = 'http://' + address + ':9515' + '/session'
+        url = 'http://%s:%d/session' % (address, webdriver_port)
         req = urllib2.Request(url, '{"desiredCapabilities":{}}')
         try:
             response = urllib2.urlopen(req)
@@ -103,11 +102,13 @@ def download_chromium_prebuilt_binaries():
                  '%s (inside chroot).', DOWNLOAD_PATH)
 
 
-def check_webdriver_ready():
+def check_webdriver_ready(webdriver_port=9515):
     """Checks if webdriver binary is installed and running.
 
     If it is running, skip install path check. This is needed to run dynamic
     Chaos tests on Autotest drones.
+
+    @param webdriver_port: port of the webdriver server
 
     @returns a string: of the address of webdriver running on port 9515.
 
@@ -117,7 +118,7 @@ def check_webdriver_ready():
     err = ('Webdriver is installed but not running. From outside chroot, run: '
            '<path to chroot directory>%s/%s' % (DOWNLOAD_PATH, WEBDRIVER))
 
-    server_address = _webdriver_is_running()
+    server_address = _webdriver_is_running(webdriver_port)
     if server_address is not None:
         return server_address
 

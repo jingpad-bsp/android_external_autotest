@@ -27,15 +27,17 @@ class WebDriverCoreHelpers(object):
     def _handle_alert(self, xpath, alert_handler):
         """Calls the alert handler if there is an alert.
 
-        Args:
-          alert_handler: the handler method to call.
+        @param alert_handler: the handler method to call.
+
         """
         try:
             self.driver.find_element_by_xpath(xpath)
             return
         except WebDriverException, e:
             message = str(e)
-            if message.find('An open modal dialog blocked the operation') == -1:
+            # The messages differ based on the webdriver version
+            if (message.find('An open modal dialog blocked') == -1 and
+                message.find('unexpected alert open') == -1):
                 return
         alert = self.driver.switch_to_alert()
         if not alert_handler:
@@ -57,10 +59,16 @@ class WebDriverCoreHelpers(object):
 
 
     def set_wait_time(self, time):
+        """Sets the wait time of webdriver commands.
+
+        @param time: the time to wait in seconds.
+
+        """
         self.wait = WebDriverWait(self.driver, timeout=time)
 
 
     def restore_default_wait_time(self):
+        """Restores the default webdriver wait time."""
         self.wait = WebDriverWait(self.driver, timeout=5)
 
 
@@ -71,6 +79,7 @@ class WebDriverCoreHelpers(object):
         @param wait_time: The time to wait before giving up.
 
         @return The id that was found first.
+
         """
         xpaths = []
         for element_id in element_ids:
@@ -88,6 +97,7 @@ class WebDriverCoreHelpers(object):
         @param wait_time: The time to wait before giving up.
 
         @return The xpath that was found first.
+
         """
         excpetion = None
         if wait_time < len(xpaths):
@@ -109,10 +119,10 @@ class WebDriverCoreHelpers(object):
     def click_button_by_id(self, element_id, alert_handler=None):
         """Clicks a button by id.
 
-        Args:
-          element_id: the id of the button
-          alert_handler: method invoked if an alert is detected.  The method
-                         must take one parameter, a webdriver alert object
+        @param element_id: the id of the button
+        @param alert_handler: method invoked if an alert is detected. The method
+                              must take one parameter, a webdriver alert object
+
         """
         xpath = 'id("%s")' % element_id
         return self.click_button_by_xpath(xpath, alert_handler)
@@ -121,10 +131,10 @@ class WebDriverCoreHelpers(object):
     def click_button_by_xpath(self, xpath, alert_handler=None):
         """Clicks a button by xpath.
 
-        Args:
-          xpath: the xpath of the button
-          alert_handler: method invoked if an alert is detected.  The method
-                         must take one parameter, a webdriver alert object
+        @param xpath: the xpath of the button
+        @param alert_handler: method invoked if an alert is detected. The method
+                              must take one parameter, a webdriver alert object
+
         """
         button = self.wait_for_object_by_xpath(xpath)
         button.click()
@@ -132,15 +142,13 @@ class WebDriverCoreHelpers(object):
 
 
     def get_url(self, page_url, page_title=None):
-        """Load page and check if the page loads completely, if not, reload
-           the page.
+        """Load page and check if the page loads completely, if not, reload.
 
-        Args:
-          page_url: The url to load.
-          page_title: The complete/partial title of the page after it loads.
+        @param page_url: The url to load.
+        @param page_title: The complete/partial title of the page after loaded.
 
-        Returns:
-          True if the page loaded properly. False if it did not.
+        @returns True if the page loaded properly. False if it did not.
+
         """
         self.driver.get(page_url)
         if page_title:
@@ -158,11 +166,11 @@ class WebDriverCoreHelpers(object):
     def wait_for_object_by_id(self, element_id, wait_time=5):
         """Waits for an element to become available; returns a reference to it.
 
-        Args:
-          element_id: the id of the element to wait for
+        @param element_id: the id of the element to wait for
+        @param wait_time: the time to wait for the object
 
-        Returns:
-          Reference to the element if found before a timeout.
+        @returns a reference to the element if found before a timeout.
+
         """
         xpath = 'id("%s")' % element_id
         return self.wait_for_object_by_xpath(xpath, wait_time=wait_time)
@@ -171,11 +179,10 @@ class WebDriverCoreHelpers(object):
     def object_by_id_exist(self, element_id):
         """Finds if an object exist in this particular page.
 
-        Args:
-          element_id: the id of the element to find
+        @param element_id: the id of the element to find
 
-        Returns:
-          True if the element exists. False if the element does not.
+        @returns True if the element exists. False if the element does not.
+
         """
         xpath = 'id("%s")' % element_id
         return self.object_by_xpath_exist(xpath)
@@ -184,11 +191,10 @@ class WebDriverCoreHelpers(object):
     def object_by_xpath_exist(self, xpath):
         """Finds if an object exist in this particular page.
 
-        Args:
-          element_id: the id of the element to find
+        @param xpath: the xpath of the element to find
 
-        Returns:
-          True if the xpath exists. False if the xpath does not.
+        @returns True if the xpath exists. False if the xpath does not.
+
         """
         try:
             self.wait_for_object_by_xpath(xpath)
@@ -200,11 +206,11 @@ class WebDriverCoreHelpers(object):
     def wait_for_object_by_xpath(self, xpath, wait_time=5):
         """Waits for an element to become available; returns a reference to it.
 
-        Args:
-          xpath: the xpath of the element to wait for
+        @param xpath: the xpath of the element to wait for
+        @param wait_time: the time to wait for the object.
 
-        Returns:
-          Reference to the element if found before a timeout.
+        @returns reference to the element if found before a timeout.
+
         """
         self.set_wait_time(wait_time)
         try:
@@ -220,12 +226,11 @@ class WebDriverCoreHelpers(object):
     def item_in_popup_by_id_exist(self, item, element_id):
         """Returns if an item exists in a popup given a id
 
-        Args:
-          item: name of the item
-          xpath: the xpath of the popup
+        @param item: name of the item
+        @param element_id: the id of the popup
 
-        Returns:
-          True if the item exists; False otherwise.
+        @returns True if the item exists; False otherwise.
+
         """
         xpath = 'id("%s")' % element_id
         return self.item_in_popup_by_xpath_exist(item, xpath)
@@ -234,12 +239,11 @@ class WebDriverCoreHelpers(object):
     def item_in_popup_by_xpath_exist(self, item, xpath):
         """Returns if an item exists in a popup given an xpath
 
-        Args:
-          item: name of the item
-          xpath: the xpath of the popup
+        @param item: name of the item
+        @param xpath: the xpath of the popup
 
-        Returns:
-          True if the item exists; False otherwise.
+        @returns True if the item exists; False otherwise.
+
         """
         if self.number_of_items_in_popup_by_xpath(xpath) == 0:
             raise SeleniumTimeoutException('The popup at xpath %s has no items.'
@@ -255,13 +259,12 @@ class WebDriverCoreHelpers(object):
     def number_of_items_in_popup_by_id(self, element_id, alert_handler=None):
         """Returns the number of items in a popup given the element ID.
 
-        Args:
-          element_id: the html ID of the item
-          alert_handler: method invoked if an alert is detected.  The method
-                         must take one parameter, a webdriver alert object
+        @param element_id: the html ID of the item
+        @param alert_handler: method invoked if an alert is detected. The method
+                              must take one parameter, a webdriver alert object
 
-        Returns:
-            The number of items in the popup.
+        @returns the number of items in the popup.
+
         """
         xpath = 'id("%s")' % element_id
         return self.number_of_items_in_popup_by_xpath(xpath, alert_handler)
@@ -270,13 +273,12 @@ class WebDriverCoreHelpers(object):
     def number_of_items_in_popup_by_xpath(self, xpath, alert_handler=None):
         """Returns the number of items in a popup given a xpath
 
-        Args:
-          xpath: the xpath of the popup
-          alert_handler: method invoked if an alert is detected.  The method
+        @param xpath: the xpath of the popup
+        @param alert_handler: method invoked if an alert is detected. The method
                          must take one parameter, a webdriver alert object
 
-        Returns:
-          The number of items in the popup.
+        @returns the number of items in the popup.
+
         """
         popup = self.driver.find_element_by_xpath(xpath)
         try:
@@ -291,13 +293,13 @@ class WebDriverCoreHelpers(object):
                                      wait_for_xpath=None, alert_handler=None):
         """Selects an item from a popup, by passing the element ID.
 
-        Args:
-          item: the string of the item to select from the popup
-          element_id: the html ID of the item
-          wait_for_xpath: an item to wait for before returning, if not specified
-                          the method does not wait.
-          alert_handler: method invoked if an alert is detected.  The method
-                         must take one parameter, a webdriver alert object
+        @param item: the string of the item to select from the popup
+        @param element_id: the html ID of the item
+        @param wait_for_xpath: an item to wait for before returning, if not
+                               specified the method does not wait.
+        @param alert_handler: method invoked if an alert is detected. The method
+                              must take one parameter, a webdriver alert object
+
         """
         xpath = 'id("%s")' % element_id
         self.select_item_from_popup_by_xpath(item, xpath, wait_for_xpath,
@@ -308,13 +310,13 @@ class WebDriverCoreHelpers(object):
                                         alert_handler=None):
         """Selects an item from a popup, by passing the xpath of the popup.
 
-        Args:
-          item: the string of the item to select from the popup
-          xpath: the xpath of the popup
-          wait_for_xpath: an item to wait for before returning, if not specified
-                          the method does not wait.
-          alert_handler: method invoked if an alert is detected.  The method
-                         must take one parameter, a webdriver alert object
+        @param item: the string of the item to select from the popup
+        @param xpath: the xpath of the popup
+        @param wait_for_xpath: an item to wait for before returning, if not
+                               specified the method does not wait.
+        @param alert_handler: method invoked if an alert is detected. The method
+                              must take one parameter, a webdriver alert object
+
         """
         if self.number_of_items_in_popup_by_xpath(xpath) == 0:
             raise SeleniumTimeoutException('The popup at xpath %s has no items.'
@@ -338,11 +340,11 @@ class WebDriverCoreHelpers(object):
                                         abort_check=False):
         """Sets the content of a textfield, by passing the element ID.
 
-        Args:
-          content: the content to apply to the textfield
-          text_field_id: the html ID of the textfield
-          wait_for_xpath: an item to wait for before returning, if not specified
-                          the method does not wait.
+        @param content: the content to apply to the textfield
+        @param text_field_id: the html ID of the textfield
+        @param wait_for_xpath: an item to wait for before returning, if not
+                               specified the method does not wait.
+
         """
         xpath = 'id("%s")' % text_field_id
         self.set_content_of_text_field_by_xpath(content, xpath,
@@ -355,12 +357,12 @@ class WebDriverCoreHelpers(object):
                                            abort_check=False):
         """Sets the content of a textfield, by passing the xpath.
 
-        Args:
-          content: the content to apply to the textfield
-          xpath: the xpath of the textfield
-          wait_for_xpath: an item to wait for before returning, if not specified
-                          the method does not wait.
-          abort_check: do not attempt to get the current value before setting
+        @param content: the content to apply to the textfield
+        @param xpath: the xpath of the textfield
+        @param wait_for_xpath: an item to wait for before returning, if not
+                               specified the method does not wait.
+        @param abort_check: do not get the current value before setting
+
         """
         # When we can get the value we know the text field is ready.
         text_field = self.driver.find_element_by_xpath(xpath)
@@ -380,13 +382,13 @@ class WebDriverCoreHelpers(object):
                                      wait_for_xpath=None, alert_handler=None):
         """Sets the state of a checkbox, by passing the ID.
 
-        Args:
-          check_box_id: the html id of the checkbox
-          selected: True to check the checkbox; False to uncheck it
-          wait_for_xpath: an item to wait for before returning, if not specified
-                          the method does not wait.
-          alert_handler: method invoked if an alert is detected.  The method
-                         must take one parameter, a webdriver alert object
+        @param check_box_id: the html id of the checkbox
+        @param selected: True to check the checkbox; False to uncheck it
+        @param wait_for_xpath: an item to wait for before returning, if not
+                               specified the method does not wait.
+        @param alert_handler: method invoked if an alert is detected. The method
+                              must take one parameter, a webdriver alert object
+
         """
         xpath = 'id("%s")' % check_box_id
         self.set_check_box_selected_by_xpath(xpath, selected, wait_for_xpath,
@@ -398,13 +400,12 @@ class WebDriverCoreHelpers(object):
                                         alert_handler=None):
         """Sets the state of a checkbox, by passing the xpath.
 
-        Args:
-          xpath: the xpath of the checkbox
-          selected: True to check the checkbox; False to uncheck it
-          wait_for_xpath: an item to wait for before returning, if not specified
-                          the method does not wait.
-          alert_handler: method invoked if an alert is detected.  The method
-                         must take one parameter, a webdriver alert object
+        @param xpath: the xpath of the checkbox
+        @param selected: True to check the checkbox; False to uncheck it
+        @param wait_for_xpath: an item to wait for before returning, if not
+                               specified the method does not wait.
+        @param alert_handler: method invoked if an alert is detected. The method
+                              must take one parameter, a webdriver alert object
         """
         check_box = self.wait_for_object_by_xpath(xpath)
         value = check_box.get_attribute('value')

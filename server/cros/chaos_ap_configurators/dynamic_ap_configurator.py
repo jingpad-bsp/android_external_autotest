@@ -10,7 +10,7 @@ import sys
 import xmlrpclib
 
 import ap_spec
-import download_chromium_prebuilt
+import download_chromium_prebuilt as prebuilt
 import web_driver_core_helpers
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
@@ -61,6 +61,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.driver_connection_established = False
         self.router_on = False
         self.configuration_success = False
+        self._webdriver_port = 9515
 
         self.ap_spec = set_ap_spec
         if self.ap_spec:
@@ -164,6 +165,23 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         """
         self._traceback = value
+
+
+    @property
+    def webdriver_port(self):
+        """Returns the webdriver port."""
+        return self._webdriver_port
+
+
+    @webdriver_port.setter
+    def webdriver_port(self, value):
+        """
+        Set the webdriver server port.
+
+        @param value: the port number of the webdriver server
+
+        """
+        self._webdriver_port = value
 
 
     def get_router_name(self):
@@ -523,7 +541,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         if self.driver_connection_established:
             return
         # Load the Auth extension
-        webdriver_server = download_chromium_prebuilt.check_webdriver_ready()
+        webdriver_server = prebuilt.check_webdriver_ready(self._webdriver_port)
         if webdriver_server is None:
             raise RuntimeError('Unable to connect to webdriver locally or '
                                'via the lab service.')
@@ -534,9 +552,10 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         base64_ext = (binascii.b2a_base64(f.read()).strip())
         base64_extensions.append(base64_ext)
         f.close()
-        webdriver_url = ('http://%s:9515' % webdriver_server)
-        self.driver = webdriver.Remote(webdriver_url,
-            {'chrome.extensions': base64_extensions})
+        webdriver_url = ('http://%s:%d' % (webdriver_server,
+                                           self._webdriver_port))
+        capabilities = {'chromeOptions' : {'extensions' : base64_extensions}}
+        self.driver = webdriver.Remote(webdriver_url, capabilities)
         self.driver_connection_established = True
 
 
