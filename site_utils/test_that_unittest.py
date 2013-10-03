@@ -9,6 +9,8 @@ import mox
 import common
 import subprocess
 import types
+from autotest_lib.server import utils
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.site_utils import test_that
 
 
@@ -89,6 +91,7 @@ class TestThatUnittests(unittest.TestCase):
         job2_results_dir = '/tmp/fakeresults/results-2-sullivan'
         args = 'matey'
         expected_args_sublist = ['--args', args]
+        experimental_keyval = {constants.JOB_EXPERIMENTAL_KEY: False}
         self.mox = mox.Mox()
 
         # Create some dummy job objects.
@@ -98,11 +101,13 @@ class TestThatUnittests(unittest.TestCase):
         setattr(job1, 'control_file', 'c1')
         setattr(job1, 'id', 1)
         setattr(job1, 'name', 'gilbert')
+        setattr(job1, 'keyvals', experimental_keyval)
 
         setattr(job2, 'control_type', 'Server')
         setattr(job2, 'control_file', 'c2')
         setattr(job2, 'id', 2)
         setattr(job2, 'name', 'sullivan')
+        setattr(job2, 'keyvals', experimental_keyval)
 
         id_digits = 1
 
@@ -119,8 +124,12 @@ class TestThatUnittests(unittest.TestCase):
         mock_process_2.stdout = fake_stdout
         mock_process_2.returncode = fake_returncode
 
+        self.mox.StubOutWithMock(os, 'makedirs')
+        self.mox.StubOutWithMock(utils, 'write_keyval')
         self.mox.StubOutWithMock(subprocess, 'Popen')
 
+        os.makedirs(job1_results_dir)
+        utils.write_keyval(job1_results_dir, experimental_keyval)
         arglist_1 = [autoserv_command, '-p', '-r', job1_results_dir,
                      '-m', remote, '--no_console_prefix', '-l', 'gilbert',
                      '-c']
@@ -132,6 +141,8 @@ class TestThatUnittests(unittest.TestCase):
         mock_process_1.stdout.readline().AndReturn(b'')
         mock_process_1.wait()
 
+        os.makedirs(job2_results_dir)
+        utils.write_keyval(job2_results_dir, experimental_keyval)
         arglist_2 = [autoserv_command, '-p', '-r', job2_results_dir,
                      '-m', remote,  '--no_console_prefix', '-l', 'sullivan',
                      '-s']

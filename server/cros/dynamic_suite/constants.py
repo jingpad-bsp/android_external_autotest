@@ -7,6 +7,9 @@
 JOB_BUILD_KEY = 'build'
 JOB_SUITE_KEY = 'suite'
 
+# Job keyval indicating whether a job is for an experimental test.
+JOB_EXPERIMENTAL_KEY = 'experimental'
+
 # Job attribute and label names
 EXPERIMENTAL_PREFIX = 'experimental_'
 FW_VERSION_PREFIX = 'fw-version:'

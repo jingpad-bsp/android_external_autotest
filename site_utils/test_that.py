@@ -30,6 +30,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.hosts import factory
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import server_logging_config
+from autotest_lib.server import utils
 
 
 try:
@@ -228,6 +229,11 @@ def run_job(job, host, autotest_path, results_directory, fast_mode,
         results_directory = os.path.join(results_directory,
                                          'results-%0*d-%s' % (id_digits, job.id,
                                                               name_tail))
+        # Drop experimental keyval in the keval file in the job result folder.
+        os.makedirs(results_directory)
+        utils.write_keyval(results_directory,
+                           {constants.JOB_EXPERIMENTAL_KEY: job.keyvals[
+                                   constants.JOB_EXPERIMENTAL_KEY]})
         extra_args = [temp_file.name]
         if args:
             extra_args.extend(['--args', args])
