@@ -715,6 +715,8 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
         return 0
 
     test_report_command = [_TEST_REPORT_SCRIPTNAME]
+    # Experimental test results do not influence the exit code.
+    test_report_command.append('--ignore_experimental_tests')
     if arguments.whitelist_chrome_crashes:
         test_report_command.append('--whitelist_chrome_crashes')
     test_report_command.append(results_directory)
