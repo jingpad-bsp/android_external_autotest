@@ -26,7 +26,7 @@ import sys
 
 import common
 
-from autotest_lib.server.hosts import ssh_host
+from autotest_lib.server import hosts
 from autotest_lib.server import frontend
 from autotest_lib.client.common_lib import error
 
@@ -44,13 +44,13 @@ def add_missing_labels(hostname, afe):
     """
 
     try:
-        ssh_obj = ssh_host.SSHHost(hostname)
-        labels = ssh_obj.get_labels()
+        host = hosts.create_host(hostname)
+        labels = host.get_labels()
     except socket.gaierror:
         logging.warning('Unable to establish ssh connection to hostname '
                         '%s. Skipping.', hostname)
         return False
-    except error.AutoservRunError:
+    except error.AutoservError:
         logging.warning('Unable to query labels on hostname %s. Skipping.',
                          hostname)
         return False
