@@ -30,7 +30,6 @@ class WiFiChaosConnectionTestTest(mox.MoxTestBase):
         # Mock out real objects in the base class __init__().
         def __init__(self, mox_obj):
             self.host = mox_obj.CreateMockAnything()
-            self.capturer = mox_obj.CreateMockAnything()
             self.connector = mox_obj.CreateMockAnything()
             self.disconnector = mox_obj.CreateMockAnything()
             self.outputdir = None

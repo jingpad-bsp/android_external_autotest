@@ -286,13 +286,17 @@ class PacketCapturer(object):
         return pid
 
 
-    def stop_capture(self, capture_pid=None):
+    def stop_capture(self, capture_pid=None, local_save_dir=None,
+                     local_pcap_filename=None):
         """Stop an ongoing packet capture, or all ongoing packet captures.
 
         If |capture_pid| is given, stops that capture, otherwise stops all
         ongoing captures.
 
         @param capture_pid int pid of ongoing packet capture or None.
+        @param local_save_dir path to directory to save pcap file in locally.
+        @param local_pcap_filename name of file to store pcap in
+                (basename only).
 
         """
         if capture_pid:
@@ -302,9 +306,17 @@ class PacketCapturer(object):
 
         for pid in pids_to_kill:
             self._host.run('kill -INT %d' % pid, ignore_status=True)
-            pcap, pcap_log, save_dir = self._ongoing_captures[pid]
-            for remote_file in (pcap, pcap_log):
-                local_file = os.path.join(save_dir,
-                                          os.path.basename(remote_file))
+            remote_pcap, remote_pcap_log, save_dir = self._ongoing_captures[pid]
+            pcap_filename = os.path.basename(remote_pcap)
+            pcap_log_filename = os.path.basename(remote_pcap_log)
+            if local_pcap_filename:
+                pcap_filename = local_pcap_filename
+                pcap_log_filename = '%s.log' % local_pcap_filename
+            pairs = [(remote_pcap, pcap_filename),
+                     (remote_pcap_log, pcap_log_filename)]
+
+            for remote_file, local_filename in pairs:
+                local_file = os.path.join(local_save_dir or save_dir,
+                                          local_filename)
                 self._host.get_file(remote_file, local_file)
             self._ongoing_captures.pop(pid)

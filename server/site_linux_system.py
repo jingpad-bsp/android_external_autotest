@@ -230,11 +230,17 @@ class LinuxSystem(object):
         self._packet_capturer.start_capture(self.capture_interface, './debug/')
 
 
-    def stop_capture(self):
-        """Stop a packet capture."""
+    def stop_capture(self, save_dir=None, save_filename=None):
+        """Stop a packet capture.
+
+        @param save_dir string path to directory to save pcap files in.
+        @param save_filename string basename of file to save pcap in locally.
+
+        """
         if not self._packet_capturer.capture_running:
             return
-        self._packet_capturer.stop_capture()
+        self._packet_capturer.stop_capture(local_save_dir=save_dir,
+                                           local_pcap_filename=save_filename)
         self.host.run('%s link set %s down' % (self.cmd_ip,
                                                self.capture_interface))
         self._release_wlanif(self.capture_interface)

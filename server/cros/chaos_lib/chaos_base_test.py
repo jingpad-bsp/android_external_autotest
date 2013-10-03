@@ -46,10 +46,10 @@ class WiFiChaosConnectionTest(object):
         """Initialize.
 
         @param host: an Autotest host object, device under test (DUT).
-        @param capturer: a PacketCaptureManager object, packet tracer.
+        @param capturer: a LinuxSystem object to use to collect packet captures.
         """
         self.client = wifi_client.WiFiClient(host, './debug')
-        self.capturer = capturer
+        self._capturer = capturer
         self.error_list = []
         self.ap_config = ap_configurator_config.APConfiguratorConfig()
         self.psk_password = ''
@@ -66,14 +66,15 @@ class WiFiChaosConnectionTest(object):
                 self.__class__.__name__,
                 self.client.host.hostname,
                 self.client.wifi_mac,
-                self.capturer)
+                self._capturer.host.hostname)
 
 
-    def run_connect_disconnect_test(self, ap_info, pcap_file_pattern):
+    def run_connect_disconnect_test(self, ap_info, log_dir, pcap_file_pattern):
         """Attempts to connect to an AP.
 
         @param ap_info: a dict of attributes of a specific AP.
-        @param pcap_file_pattern: string path to file to save pcap in,
+        @param log_dir: string path to directory to save pcap in.
+        @param pcap_file_pattern: string name of file to save pcap in,
                 with one %s which we'll replace with 'success' or 'failure'
                 depending on the results of the connection attempt.
 
@@ -92,7 +93,7 @@ class WiFiChaosConnectionTest(object):
         #             this information is hard to infer here.
         #             Change how AP configuration happens so that
         #             we expose this.
-        self.capturer.start_capture(ap_info['frequency'], 'HT40+')
+        self._capturer.start_capture(ap_info['frequency'], ht_type='HT40+')
         try:
             success = False
             if ap_info['security'] == self.PSK:
@@ -113,9 +114,9 @@ class WiFiChaosConnectionTest(object):
             if not success:
                 return assoc_result.failure_reason
         finally:
-            self.capturer.stop_capture()
             filename = pcap_file_pattern % ('success' if success else 'fail')
-            self.capturer.get_capture_file(filename)
+            self._capturer.stop_capture(save_dir=log_dir,
+                                        save_filename=filename)
             self.client.shill.disconnect(ap_info['ssid'])
             self.client.shill.clean_profiles()
         return None
@@ -148,10 +149,10 @@ class WiFiChaosConnectionTest(object):
         # Make iteration 1-indexed
         for iteration in range(1, tries+1):
             logging.info('Connection try %d', iteration)
-            pcap_file_pattern = os.path.join(
-                    log_dir,
-                    '_'.join(['connect_try', str(iteration), '%s.trc']))
-            resp = self.run_connect_disconnect_test(ap_info, pcap_file_pattern)
+            pcap_file_pattern = '_'.join(['connect_try', str(iteration),
+                                          '%s.trc'])
+            resp = self.run_connect_disconnect_test(
+                    ap_info, log_dir, pcap_file_pattern)
             if resp:
                 ap_info['failed_iterations'].append({'error': resp,
                                                      'try': iteration})

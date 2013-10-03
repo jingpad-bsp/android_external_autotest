@@ -25,7 +25,7 @@ def run_chaos_psk(machine):
     helper = chaos_interop_test.WifiChaosTest('network_WiFiChaosPSK', host)
     # capture_host: string hostname or IP of packet_capturer not managed in AFE
     #   NOTE: if capture_host is specified, it will not be locked in AFE
-    helper.run(job, ap_spec={'hostnames': debug_aps},  batch_size=2, tries=2,
-               capture_host=None)
+    helper.run(job, ap_spec={'hostnames': debug_aps},  batch_size=2, tries=2)
+
 
 parallel_simple(run_chaos_psk, machines)
