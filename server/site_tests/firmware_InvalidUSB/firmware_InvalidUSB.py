@@ -7,6 +7,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
+from autotest_lib.server.cros.faft.faft_classes import ConnectionError
 from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
 
 
@@ -36,7 +37,7 @@ class firmware_InvalidUSB(FAFTSequence):
         try:
             self.wait_for_client()
             raise error.TestFail('Should not boot from the invalid USB image.')
-        except AssertionError:
+        except ConnectionError:
             logging.info(
                 'The USB image is surely unable to boot. Restore it and try...')
 

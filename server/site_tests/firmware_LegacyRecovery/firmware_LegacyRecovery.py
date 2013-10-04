@@ -6,6 +6,7 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
+from autotest_lib.server.cros.faft.faft_classes import ConnectionError
 from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
 
 
@@ -37,7 +38,7 @@ class firmware_LegacyRecovery(FAFTSequence):
         self.wait_fw_screen_and_plug_usb()
         try:
             self.wait_for_client(install_deps=True)
-        except AssertionError:
+        except ConnectionError:
             raise error.TestError('Failed to boot the USB image.')
         self.faft_client.system.run_shell_command(
             'crossystem recovery_request=1')
@@ -51,7 +52,7 @@ class firmware_LegacyRecovery(FAFTSequence):
         try:
             self.wait_for_client()
             raise error.TestFail('Unexpected USB boot at Remove Screen.')
-        except AssertionError:
+        except ConnectionError:
             logging.info('Done, Waited till timeout and no USB boot occured.')
 
         self.wait_fw_screen_and_plug_usb()
