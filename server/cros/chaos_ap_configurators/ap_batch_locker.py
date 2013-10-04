@@ -10,7 +10,6 @@ from time import sleep
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import \
     ap_configurator_factory
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
@@ -85,7 +84,7 @@ class ApBatchLocker(object):
     MAX_SECONDS_TO_SLEEP = 120
 
 
-    def __init__(self, ap_spec, retries=MAX_RETRIES):
+    def __init__(self, lock_manager, ap_spec, retries=MAX_RETRIES):
         """Initialize.
 
         @param ap_spec: a dict of strings, AP attributes.
@@ -93,7 +92,8 @@ class ApBatchLocker(object):
                         Defaults to MAX_RETRIES.
         """
         self.aps_to_lock = construct_ap_lockers(ap_spec, retries)
-        self.manager = host_lock_manager.HostLockManager()
+        self.manager = lock_manager
+        self._locked_aps = []
 
 
     def has_more_aps(self):
@@ -112,6 +112,7 @@ class ApBatchLocker(object):
             return True
 
         if self.manager.lock([ap_locker.configurator.host_name]):
+            self._locked_aps.append(ap_locker.configurator.host_name)
             logging.info('locked %s', ap_locker.configurator.host_name)
             ap_locker.to_be_locked = False
             return True
@@ -177,48 +178,15 @@ class ApBatchLocker(object):
 
         @param host: a string, host name.
         """
+        if not host in self._locked_aps:
+            logging.error('Tried to unlock a host we have not locked?')
+            return
+
         self.manager.unlock(hosts=[host])
+        self._locked_aps.remove(host)
 
 
     def unlock_aps(self):
         """Unlock APs after we're done."""
-        self.manager.unlock()
-
-
-class ApBatchLockerManager(object):
-    """Context manager to make sure that 'ApBatchLocker' shuts down properly.
-
-    @attribute ap_spec: a dict of strings, AP attributes.
-    @attributes _batch_locker: a ApBatchLocker object.
-    @attributes _hosts_locked_by: a HostLockedBy object.
-    """
-
-
-    def __init__(self, ap_spec):
-        """Initialize.
-
-        @param ap_spec: a dict of strings, attributes of desired APs.
-                See docstring of get_ap_configurators() in
-                ap_configurator_factory.py.
-        @param capturer: a PacketCaptureManager object, packet tracer.
-        """
-        self.ap_spec = ap_spec
-        self._batch_locker = None
-        self._hosts_locked_by = None
-
-
-    # TODO(milleral): This code needs to be cleaned up once the host locking
-    # code is made more usable (see crosbug.com/36072).
-
-    def __enter__(self):
-        self._batch_locker = ApBatchLocker(self.ap_spec)
-        self._hosts_locked_by = host_lock_manager.HostsLockedBy(
-            self._batch_locker.manager)
-        self._hosts_locked_by.__enter__()
-        return self._batch_locker
-
-
-    def __exit__(self, exit_type, exit_value, exit_traceback):
-        if self._hosts_locked_by:
-            self._hosts_locked_by.__exit__(exit_type, exit_value,
-                                           exit_traceback)
+        for host in self._locked_aps:
+            self.unlock_one_ap(host)

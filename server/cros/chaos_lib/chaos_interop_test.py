@@ -110,46 +110,46 @@ class WifiChaosTest(object):
             capturer = site_linux_system.LinuxSystem(capture_host, {},
                                                      'packet_capturer')
             helper = self._setup(capturer)
-            with ap_batch_locker.ApBatchLockerManager(
-                    ap_spec=self._ap_spec) as batch_locker:
-                while batch_locker.has_more_aps():
-                    ap_batch = batch_locker.get_ap_batch(
-                            batch_size=batch_size)
-                    if not ap_batch:
-                        logging.info('No more APs to test.')
-                        break
+            batch_locker = ap_batch_locker.ApBatchLocker(lock_manager,
+                                                         self._ap_spec)
+            while batch_locker.has_more_aps():
+                ap_batch = batch_locker.get_ap_batch(
+                        batch_size=batch_size)
+                if not ap_batch:
+                    logging.info('No more APs to test.')
+                    break
 
-                    # Power down all of the APs because some can get grumpy
-                    # if they are configured several times and remain on.
-                    helper.power_down_aps(ap_batch)
-                    security = ''
-                    if helper.psk_password != '':
-                        security = helper.PSK
+                # Power down all of the APs because some can get grumpy
+                # if they are configured several times and remain on.
+                helper.power_down_aps(ap_batch)
+                security = ''
+                if helper.psk_password != '':
+                    security = helper.PSK
 
-                    # Test 2.4GHz band first, followed by 5GHz band. Release
-                    # APs as soon as we're done using them.
-                    aps_unlocked = set()
-                    for band in [helper.ap_config.BAND_2GHZ,
-                                 helper.ap_config.BAND_5GHZ]:
+                # Test 2.4GHz band first, followed by 5GHz band. Release
+                # APs as soon as we're done using them.
+                aps_unlocked = set()
+                for band in [helper.ap_config.BAND_2GHZ,
+                             helper.ap_config.BAND_5GHZ]:
 
-                        # Remove 2.4GHz-only APs before APs for 5GHz run
-                        if band == helper.ap_config.BAND_5GHZ:
-                            ap_batch = list(set(ap_batch) - aps_unlocked)
+                    # Remove 2.4GHz-only APs before APs for 5GHz run
+                    if band == helper.ap_config.BAND_5GHZ:
+                        ap_batch = list(set(ap_batch) - aps_unlocked)
 
-                        for ap_info in helper.config_aps(
-                                ap_batch, band, security=security):
-                            # Group test output by SSID
-                            mod_ssid = ap_info['ssid'].replace(' ', '_')
-                            job.run_test(self._test,
-                                         host=self._host,
-                                         helper=helper,
-                                         ap_info=ap_info,
-                                         tries=tries,
-                                         disable_sysinfo=False,
-                                         tag=mod_ssid)
-                            if ap_info['ok_to_unlock']:
-                                batch_locker.unlock_one_ap(
-                                        ap_info['configurator'].host_name)
-                                aps_unlocked.add(ap_info['configurator'])
+                    for ap_info in helper.config_aps(
+                            ap_batch, band, security=security):
+                        # Group test output by SSID
+                        mod_ssid = ap_info['ssid'].replace(' ', '_')
+                        job.run_test(self._test,
+                                     host=self._host,
+                                     helper=helper,
+                                     ap_info=ap_info,
+                                     tries=tries,
+                                     disable_sysinfo=False,
+                                     tag=mod_ssid)
+                        if ap_info['ok_to_unlock']:
+                            batch_locker.unlock_one_ap(
+                                    ap_info['configurator'].host_name)
+                            aps_unlocked.add(ap_info['configurator'])
 
-                    batch_locker.unlock_aps()
+                batch_locker.unlock_aps()
