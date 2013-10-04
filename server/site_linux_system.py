@@ -8,6 +8,7 @@ import re
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import packet_capturer
 
 class LinuxSystem(object):
@@ -40,9 +41,12 @@ class LinuxSystem(object):
 
     def __init__(self, host, params, role):
         # Command locations.
-        self.cmd_iw = params.get('cmd_iw', '/usr/sbin/iw')
-        self.cmd_ip = params.get('cmd_ip', '/usr/sbin/ip')
-        self.cmd_readlink = params.get('cmd_readlink', '/bin/ls -l')
+        self.cmd_iw = wifi_test_utils.must_be_installed(
+                host, params.get('cmd_iw', '/usr/sbin/iw'))
+        self.cmd_ip = wifi_test_utils.must_be_installed(
+                host, params.get('cmd_ip', '/usr/sbin/ip'))
+        self.cmd_readlink = '%s -l' % wifi_test_utils.must_be_installed(
+                host, params.get('cmd_readlink', '/bin/ls'))
 
         self.phy_bus_preference = params.get('phy_bus_preference', {})
         self.phydev2 = params.get('phydev2', None)
@@ -53,10 +57,13 @@ class LinuxSystem(object):
 
         self.capture_channel = None
         self.capture_ht_type = None
+        cmd_netdump = wifi_test_utils.must_be_installed(
+                host, params.get('cmd_netdump', '/usr/sbin/tcpdump'))
+        cmd_ifconfig = wifi_test_utils.must_be_installed(
+                host, params.get('cmd_ifconfig', '/sbin/ifconfig'))
         self._packet_capturer = packet_capturer.get_packet_capturer(
-                self.host, host_description=role, cmd_ip=self.cmd_ip,
-                cmd_iw=self.cmd_iw,
-                cmd_netdump=params.get('cmd_tcpdump', '/usr/sbin/tcpdump'))
+                self.host, host_description=role, cmd_ifconfig=cmd_ifconfig,
+                cmd_ip=self.cmd_ip, cmd_iw=self.cmd_iw, cmd_netdump=cmd_netdump)
 
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []

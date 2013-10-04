@@ -19,7 +19,6 @@ class LinuxServer(site_linux_system.LinuxSystem):
     COMMAND_PING = '/usr/bin/ping'
     COMMAND_NETPERF = '/usr/bin/netperf'
     COMMAND_NETSERVER = '/usr/bin/netserver'
-    COMMAND_IP = '/usr/sbin/ip'
     COMMAND_IPERF = '/usr/bin/iperf'
 
 
@@ -38,8 +37,6 @@ class LinuxServer(site_linux_system.LinuxSystem):
                 self._server, LinuxServer.COMMAND_NETPERF)
         self._cmd_netserver = wifi_test_utils.must_be_installed(
                 self._server, LinuxServer.COMMAND_NETSERVER)
-        self._cmd_ip = wifi_test_utils.must_be_installed(
-                self._server, LinuxServer.COMMAND_IP)
         self._cmd_iperf = wifi_test_utils.must_be_installed(
                 self._server, LinuxServer.COMMAND_IPERF)
         # /usr/bin/ping is preferred, as it is likely to be iputils.
@@ -129,7 +126,7 @@ localhost ~ # ip -4 addr show
     inet 192.168.0.124/24 brd 192.168.0.255 scope global mlan0
 
         """
-        ip_output = self.host.run('%s -4 addr show' % self._cmd_ip).stdout
+        ip_output = self.host.run('%s -4 addr show' % self.cmd_ip).stdout
         regex = re.compile('^inet ([0-9]{1,3}(\\.[0-9]{1,3}){3}).+ '
                            'scope [a-zA-Z]+ ([a-zA-Z0-9]+)$')
         for line in ip_output.splitlines():

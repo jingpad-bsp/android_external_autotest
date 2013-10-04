@@ -6,7 +6,6 @@ import logging
 import random
 import re
 import string
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
@@ -70,8 +69,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.cmd_dhcpd = params.get('cmd_dhcpd', '/usr/sbin/dhcpd')
         self.cmd_hostapd = wifi_test_utils.must_be_installed(
                 host, params.get('cmd_hostapd', '/usr/sbin/hostapd'))
-        self.cmd_hostapd_cli = params.get('cmd_hostapd_cli',
-                                          '/usr/sbin/hostapd_cli')
+        self.cmd_hostapd_cli = wifi_test_utils.must_be_installed(
+                host, params.get('cmd_hostapd_cli', '/usr/sbin/hostapd_cli'))
         self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
         self.dhcpd_leases = '/tmp/dhcpd.leases'
 
@@ -187,6 +186,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         pass
 
 
+    def get_hostapd_start_command(self, log_file, pid_file, conf_file):
+        return '%s -dd -t -P %s %s &> %s &' % (
+                self.cmd_hostapd, pid_file, conf_file, log_file)
+
+
     def start_hostapd(self, conf, params):
         """Start a hostapd instance described by conf.
 
@@ -216,39 +220,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run('rm %s' % log_file, ignore_status=True)
         self.router.run('rm %s' % pid_file, ignore_status=True)
         self._pre_start_hook(params)
-        self.router.run("%s -dd -B -t -f %s -P %s %s" %
-            (self.cmd_hostapd, log_file, pid_file, conf_file))
-        pid = int(self.router.run('cat %s' % pid_file).stdout)
-
-        # Wait for confirmation that the router came up.
-        logging.info('Waiting for hostapd to startup.')
-        start_time = time.time()
-        while time.time() - start_time < self.STARTUP_TIMEOUT_SECONDS:
-            success = self.router.run(
-                    'grep "Completing interface initialization" %s' % log_file,
-                    ignore_status=True).exit_status == 0
-            if success:
-                break
-
-            # A common failure is to request an invalid router configuration.
-            # Detect this and exit early if we see it.
-            bad_config = self.router.run(
-                    'grep "Interface initialization failed" %s' % log_file,
-                    ignore_status=True).exit_status == 0
-            if bad_config:
-                raise error.TestFail('hostapd failed to initialize AP '
-                                     'interface.')
-
-            early_exit = self.router.run('kill -0 %d' % pid,
-                                         ignore_status=True).exit_status
-            if early_exit:
-                raise error.TestFail('hostapd process terminated.')
-
-            time.sleep(self.STARTUP_POLLING_INTERVAL_SECONDS)
-        else:
-            raise error.TestFail('Timed out while waiting for hostapd '
-                                 'to start.')
-
+        start_command = self.get_hostapd_start_command(
+                log_file, pid_file, conf_file)
+        self.router.run(start_command)
         self.hostapd_instances.append({
             'conf_file': conf_file,
             'log_file': log_file,
@@ -740,10 +714,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                     self._remove_interface(instance['interface'], True)
 
                 self.kill_hostapd_instance(instance['conf_file'])
-                self.router.get_file(instance['log_file'],
-                                     'debug/hostapd_router_%d_%s.log' %
-                                     (self.hostapd['log_count'],
-                                      instance['interface']))
+                if wifi_test_utils.is_installed(self.host,
+                                                instance['log_file']):
+                    self.router.get_file(instance['log_file'],
+                                         'debug/hostapd_router_%d_%s.log' %
+                                         (self.hostapd['log_count'],
+                                          instance['interface']))
+                else:
+                    logging.error('Did not collect hostapd log file because '
+                                  'it was missing.')
                 self._release_wlanif(instance['interface'])
 #               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
             self.hostapd['log_count'] += 1
