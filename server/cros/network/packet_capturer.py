@@ -33,7 +33,7 @@ def get_packet_capturer(host, host_description=None, cmd_ifconfig=None,
                             host_description)
             return DisabledPacketCapturer()
         else:
-            raise error.TestFail('Missing commands needed for'
+            raise error.TestFail('Missing commands needed for '
                                  'capturing packets')
 
     return PacketCapturer(host, host_description, cmd_ifconfig, cmd_ip, cmd_iw,

@@ -57,13 +57,14 @@ class LinuxSystem(object):
 
         self.capture_channel = None
         self.capture_ht_type = None
-        cmd_netdump = wifi_test_utils.must_be_installed(
+        cmd_netdump = wifi_test_utils.get_install_path(
                 host, params.get('cmd_netdump', '/usr/sbin/tcpdump'))
-        cmd_ifconfig = wifi_test_utils.must_be_installed(
+        cmd_ifconfig = wifi_test_utils.get_install_path(
                 host, params.get('cmd_ifconfig', '/sbin/ifconfig'))
         self._packet_capturer = packet_capturer.get_packet_capturer(
                 self.host, host_description=role, cmd_ifconfig=cmd_ifconfig,
-                cmd_ip=self.cmd_ip, cmd_iw=self.cmd_iw, cmd_netdump=cmd_netdump)
+                cmd_ip=self.cmd_ip, cmd_iw=self.cmd_iw, cmd_netdump=cmd_netdump,
+                ignore_failures=True)
 
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []

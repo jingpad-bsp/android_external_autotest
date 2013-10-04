@@ -77,7 +77,7 @@ def is_installed(host, filename):
     @return True if filename is installed on host; False otherwise.
 
     """
-    result = host.run('ls %s' % filename, ignore_status=True)
+    result = host.run('ls %s 2> /dev/null' % filename, ignore_status=True)
     m = re.search(filename, result.stdout)
     return m is not None
 
@@ -99,9 +99,9 @@ def get_install_path(host, filename):
              '/usr/local/bin',
              '/usr/local/sbin']
     # Some hosts have poor support for which.  Sometimes none.
-    result = host.run('ls {%s}/%s' % (','.join(PATHS), filename),
+    result = host.run('ls {%s}/%s 2> /dev/null' % (','.join(PATHS), filename),
                       ignore_status=True)
-    found_path = result.stdout.split('\n')[0]
+    found_path = result.stdout.split('\n')[0].strip()
     return found_path or None
 
 
