@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.server import autotest, test
+from autotest_lib.server import test
 
 
 class network_WiFiChaosPSK(test.test):
@@ -21,10 +21,6 @@ class network_WiFiChaosPSK(test.test):
         @param ap_info: a dict of attributes of a specific AP.
         @param tries: an integer, number of connection attempts.
         """
-        # Install all of the autotest libraries on the client
-        client_at = autotest.Autotest(host)
-        client_at.install()
-
         helper.run_ap_test(ap_info, tries, self.outputdir)
 
         logging.info('Client test complete, powering down router.')
