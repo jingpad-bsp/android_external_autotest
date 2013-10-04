@@ -19,8 +19,8 @@ DOC = """Basic factory tests."""
 # Set these variables to the path of a test list reachable within the chroot
 # and the name of the test list respectively. If the test list is already on
 # the DUT you don't need a test_list_path.Eg of a local test_list_path:/home/\
-# <username>/trunk/src/third_party/autotest/files/client/site_tests/\
-# private_factory_suite/test_list.suspend_basic, for which the test_list_name
+# <username>/trunk/src/third_party/autotest/files/server/site_tests/\
+# factory_Basic/test_list.suspend_basic, for which the test_list_name
 # is suspend_basic.
 args_dict = utils.args_to_dict(args)
 test_list_path = args_dict.get('test_list_path', '')
@@ -29,7 +29,8 @@ test_list_name = args_dict.get('test_list_name')
 def run(machine):
     if test_list_name:
         host = hosts.create_host(machine)
-        job.run_test("factory_Basic", host=host, test_list_name=test_list_name,
+        job.run_test("factory_Basic", host=host, disable_sysinfo=True,
+                     test_list_name=test_list_name,
                      test_list_path=test_list_path)
     else:
         raise error.AutoservError('Please specify --args="test_list_path=<path '

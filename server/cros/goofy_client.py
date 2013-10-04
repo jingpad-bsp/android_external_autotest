@@ -26,6 +26,71 @@ class GoofyProxyException(Exception):
     pass
 
 
+class GoofyRuntimeException(Exception):
+    """Exception raised when something goes wrong while a test is running."""
+    pass
+
+
+def retry_goofy_rpc(exception_tuple, timeout_min=30):
+    """A decorator to use with goofy rpcs.
+
+    This decorator tries to recreate the goofy client proxy on
+    socket error. It will continue trying to do so until it
+    executes the method without any socket errors or till the
+    retry.retry decorator hits it's timeout.
+
+    Usage:
+        If you just want to recreate the proxy:
+        1. @retry_goofy_rpc(exception_tuple=(<exception>, socket.error),
+                            timeout_min=<timeout>)
+        2. @retry_goofy_rpc(socket.error, timeout_min=<timeout>)
+            Note: you need to specify the socket.error exception because we
+            want to retry the call after recreating the proxy.
+
+    @param exception_tuple: A tuple of exceptions to pass to
+        the retry decorator. Any of these exceptions will result
+        in retries for the duration of timeout_min.
+    @param timeout_min: The timeout, in minutes, for which we should
+        retry the method ignoring any exception in exception_tuple.
+    """
+    def inner_decorator(method):
+        """Inner retry decorator applied to the method.
+
+        @param method: The method that needs to be wrapped in the decorator.
+
+        @return A wrapper function that implements the retry.
+        """
+
+        @retry.retry(exception_tuple, timeout_min=timeout_min)
+        def wrapper(*args, **kwargs):
+            """This wrapper handles socket errors.
+
+            If the method in question:
+            1. Throws an exception in exception_tuple and it is not a
+               socket.error, retry for timeout_min through retry.retry.
+            2. Throws a socket.error, recreate the client proxy, and
+               retry for timeout_min through retry.retry.
+            3. Throws an exception not in exception_tuple, fail.
+            """
+            try:
+                return method(*args, **kwargs)
+            except socket.error as e:
+                goofy_proxy = args[0]
+                if type(goofy_proxy) is GoofyProxy:
+                    logging.warning('Socket error while running factory tests '
+                                    '%s, recreating goofy proxy.', e)
+                    goofy_proxy._create_client_proxy(timeout_min=timeout_min)
+                else:
+                    logging.warning('Connectivity was lost and the retry '
+                                    'decorator was unable to recreate a goofy '
+                                    'client proxy, args: %s.', args)
+                raise
+
+        return wrapper
+
+    return inner_decorator
+
+
 class GoofyProxy(object):
     """Client capable of making rpc calls to goofy.
 
@@ -64,11 +129,46 @@ class GoofyProxy(object):
         @param host: The host object representing the DUT running goofy.
         """
         self._host = host
-        self._client = host.jsonrpc_connect(GOOFY_JSONRPC_SERVER_PORT)
+        self._raw_stop_running_tests()
+        self._create_client_proxy(timeout_min=self.BASE_RPC_TIMEOUT)
+
+
+    def _create_client_proxy(self, timeout_min=30):
+        """Create a goofy client proxy.
+
+        Ping the host till it's up, then proceed to create a goofy proxy. We
+        don't wrap this method with a retry because it's used in the retry
+        decorator itself.
+        """
+
+        # We don't ssh ping here as there is a potential dealy in O(minutes)
+        # with our ssh command against a sleeping DUT, once it wakes up, and
+        # that will lead to significant overhead incurred over many reboots.
+        self._host.ping_wait_up(timeout_min)
+        logging.info('Host is pingable, creating goofy client proxy')
+        self._client = self._host.jsonrpc_connect(GOOFY_JSONRPC_SERVER_PORT)
 
 
     @retry.retry((httplib.BadStatusLine, socket.error),
                  timeout_min=BASE_RPC_TIMEOUT)
+    def _raw_stop_running_tests(self):
+        """Stop running tests by shelling out to the DUT.
+
+        Use this method only before we have actually created the client
+        proxy, as shelling out has several pitfalls. We need to stop all
+        tests in a retry loop because tests will start executing as soon
+        as we have reimaged a DUT and trying to create the proxy while
+        the DUT is rebooting will lead to a spurious failure.
+
+        Note that we use the plain retry decorator for this method since
+        we don't need to recreate the client proxy on failure.
+        """
+        logging.info('Stopping all tests and clearing factory state')
+        self._host.run('factory clear')
+
+
+    @retry_goofy_rpc((httplib.BadStatusLine, socket.error),
+                     timeout_min=BASE_RPC_TIMEOUT)
     def _get_goofy_status(self):
         """Return status of goofy, ignoring socket timeouts and http exceptions.
         """
@@ -90,7 +190,7 @@ class GoofyProxy(object):
         return
 
 
-    @retry.retry(socket.error, timeout_min=BASE_RPC_TIMEOUT*2)
+    @retry_goofy_rpc(socket.error, timeout_min=BASE_RPC_TIMEOUT*2)
     def _set_test_list(self, next_list):
         """Set the given test list for execution.
 
@@ -105,21 +205,30 @@ class GoofyProxy(object):
                                          to isn't on the DUT.
         """
 
-        # As part of SwitchTestList we perform a factory restart,
-        # which will throw a BadStatusLine. We don't want to retry
-        # on this exception though, as that will lead to setting the same
-        # test list over and over till the timeout expires. If the test
-        # list is not already on the DUT this method will fail, emitting
-        # the possible test lists one can switch to.
+        # We can get a BadStatus line on 2 occassions:
+        # 1. As part of SwitchTestList goofy performs a factory restart, which
+        # will throw a BadStatusLine because the rpc can't exit cleanly. We
+        # don't want to retry on this exception, since we've already set the
+        # right test list.
+        # 2. If we try to set a test list while goofy is already down
+        # (from a previous factory restart). In this case we wouldn't have
+        # set the new test list, because we coulnd't connect to goofy.
+        # To properly set a new test list it's important to wait till goofy is
+        # up before attempting to set the test list, while being aware that the
+        # preceding httplib error is from the rpc we just executed leading to
+        # a factory restart. Also note that if the test list is not already on
+        # the DUT this method will fail, emitting the possible test lists one
+        # can switch to.
+        self._wait_for_goofy()
+        logging.info('Switching to test list %s', next_list)
         try:
             self._client.SwitchTestList(next_list)
         except httplib.BadStatusLine:
             logging.info('Switched to list %s, goofy restarting', next_list)
-            pass
 
 
-    @retry.retry((httplib.BadStatusLine, socket.error),
-                 timeout_min=BASE_RPC_TIMEOUT*2)
+    @retry_goofy_rpc((httplib.BadStatusLine, socket.error),
+                     timeout_min=BASE_RPC_TIMEOUT*2)
     def _stop_running_tests(self):
        """Stop all running tests.
 
@@ -162,8 +271,8 @@ class GoofyProxy(object):
             logging.error('Could not gather results for current test: %s', e)
 
 
-    @retry.retry((httplib.BadStatusLine, socket.error),
-                 timeout_min=BASE_RPC_TIMEOUT*2)
+    @retry_goofy_rpc((httplib.BadStatusLine, socket.error),
+                     timeout_min=BASE_RPC_TIMEOUT*2)
     def _get_test_info(self, test_name):
         """Get the status of one test.
 
@@ -228,6 +337,7 @@ class GoofyProxy(object):
 
         @return: The result of the suite.
         """
+        logging.info('Starting suite: %s', suite_name)
         self._client.RunTest(suite_name)
         result = self._get_test_info(suite_name)
 
@@ -275,6 +385,13 @@ class GoofyProxy(object):
         self._stop_running_tests()
 
         test_map = self._get_test_map()
+        if test_map:
+            logging.info('About to execute tests: %s', test_map)
+        else:
+            raise GoofyRuntimeException('Test map is empty, you might have an '
+                                        'error in your test_list.')
+
+
         for current_suite in test_map.keys():
             logging.info('Processing suite %s', current_suite)
 
@@ -296,7 +413,8 @@ class GoofyProxy(object):
                                        current_suite)
 
 
-    @retry.retry((httplib.BadStatusLine, socket.timeout), timeout_min=1)
+    @retry_goofy_rpc((httplib.BadStatusLine, socket.error),
+                     timeout_min=BASE_RPC_TIMEOUT*2)
     def get_results(self, resultsdir):
         """Copies results from the DUT to a local results directory.
 
