@@ -6,6 +6,7 @@ import logging
 import os
 import pprint
 import urllib2
+import httplib
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, utils
@@ -19,6 +20,12 @@ from autotest_lib.client.cros import service_stopper
 # start ui
 
 
+# Keep track of hosts that result in any errors other than HTTPError 404 (url
+# not found).  A 404 error is expected (and timely).  Any other error means
+# that the access timed out.  Avoid any subsequent attempt to access that "bad"
+# host, to avoid accumulation of many timeouts.
+bad_host_cache = set()
+
 def ReferenceImageExists(images_file, images_url, imagename):
   found = False
   # check imagename in index file first
@@ -26,11 +33,18 @@ def ReferenceImageExists(images_file, images_url, imagename):
     return True
   # check if image can be found on web server
   url = images_url + imagename
+  host = urllib2.urlparse.urlparse(url).netloc
+  if host in bad_host_cache:
+    logging.warning('skipping cached unreachable host %s' % host)
+    return False
   try:
     urllib2.urlopen(urllib2.Request(url))
     found = True
-  except:
+  except (urllib2.HTTPError, urllib2.URLError, httplib.HTTPException) as e:
     found = False
+    if not (isinstance(e, urllib2.HTTPError) and e.getcode() == 404):
+      bad_host_cache.add(host)
+      logging.warning('cached unreachable host %s' % host)
   return found
 
 
