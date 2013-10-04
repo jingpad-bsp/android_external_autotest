@@ -33,6 +33,9 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     """
 
+    DEFAULT_TEST_PROFILE_NAME = 'test'
+
+
     def __init__(self):
         self._wifi_proxy = wifi_proxy.WifiProxy()
         self._tpm_store = tpm_store.TPMStore()
@@ -141,6 +144,27 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 configuration_timeout_seconds=params.configuration_timeout)
         result = xmlrpc_datatypes.AssociationResult.from_dbus_proxy_output(raw)
         return result
+
+
+    def init_test_network_state(self):
+        """Create a clean slate for tests with respect to remembered networks.
+
+        For shill, this means popping and removing profiles before adding a
+        'test' profile.
+
+        @return True iff operation succeeded, False otherwise.
+
+        """
+        # TODO(wiley) We've not seen this problem before, but there could
+        #             still be remembered networks in the default profile.
+        #             at the very least, this profile has the ethernet
+        #             entry.
+        self.clean_profiles()
+        self.remove_profile(self.DEFAULT_TEST_PROFILE_NAME)
+        worked = self.create_profile(self.DEFAULT_TEST_PROFILE_NAME)
+        if worked:
+            worked = self.push_profile(self.DEFAULT_TEST_PROFILE_NAME)
+        return worked
 
 
     @xmlrpc_server.dbus_safe(False)

@@ -199,13 +199,8 @@ class WiFiTestContextManager(object):
         # services, such as OpenVPN or StrongSwan.
         server_host = hosts.SSHHost(self.server_address, port=22)
         self._server = site_linux_server.LinuxServer(server_host, {})
-        # Set up a test profile on a clean stack.
-        self.client.shill.clean_profiles()
-        # This extra remove takes care of a case where we popped the test
-        # profile in a previous test, but crashed before we removed it.
-        self.client.shill.remove_profile('test')
-        self.client.shill.create_profile('test')
-        self.client.shill.push_profile('test')
+        # Set up a clean context to conduct WiFi tests in.
+        self.client.shill.init_test_network_state()
         if self.CMDLINE_CLIENT_PACKET_CAPTURES in self._cmdline_args:
             self._enable_client_packet_captures = True
         if self.CMDLINE_ROUTER_PACKET_CAPTURES in self._cmdline_args:

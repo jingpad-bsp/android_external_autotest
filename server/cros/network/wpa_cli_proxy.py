@@ -159,6 +159,18 @@ class WpaCliProxy(object):
         logging.info('Skipping remove_profile on %s', self.__class__.__name__)
 
 
+    def init_test_network_state(self):
+        """Create a clean slate for tests with respect to remembered networks.
+
+        For wpa_cli hosts, this means removing all remembered networks.
+
+        @return True iff operation succeeded, False otherwise.
+
+        """
+        self.clean_profiles()
+        return True
+
+
     def connect_wifi(self, assoc_params):
         """
         Connect to the WiFi network described by AssociationParameters.
@@ -245,6 +257,7 @@ class WpaCliProxy(object):
             return assoc_result.serialize()
 
         assoc_result.success = True
+        logging.info('Connected to %s', assoc_params.ssid)
         return assoc_result.serialize()
 
 
@@ -256,8 +269,11 @@ class WpaCliProxy(object):
 
         """
         logging.debug('disconnect()')
+        if ssid not in self._created_networks:
+            return False
         self._run_wpa_cli_cmd('disable_network %d' %
                               self._created_networks[ssid])
+        return True
 
 
     def sync_time_to(self, epoch_seconds):

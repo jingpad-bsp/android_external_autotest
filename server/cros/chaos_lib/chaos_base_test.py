@@ -82,11 +82,7 @@ class WiFiChaosConnectionTest(object):
 
         """
         self.client.shill.disconnect(ap_info['ssid'])
-        self.client.shill.clean_profiles()
-        # Be extra sure that we're going to push successfully.
-        self.client.shill.remove_profile(self.TEST_PROFILE_NAME)
-        if (not self.client.shill.create_profile(self.TEST_PROFILE_NAME) or
-                not self.client.shill.push_profile(self.TEST_PROFILE_NAME)):
+        if not self.client.shill.init_test_network_state():
             return 'Failed to set up isolated test context profile.'
 
         # TODO(wiley) We probably don't always want HT40, but
