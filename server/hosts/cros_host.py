@@ -100,7 +100,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     # We have a long timeout to ensure we don't flakily fail due to other
     # issues. Shorter timeouts are vetted in platform_RebootAfterUpdate.
-    REBOOT_TIMEOUT = 300
+    # TODO(sbasi - crbug.com/276094) Restore to 5 mins once the 'host did not
+    # return from reboot' bug is solved.
+    REBOOT_TIMEOUT = 480
 
     INSTALL_TIMEOUT = 240
 
