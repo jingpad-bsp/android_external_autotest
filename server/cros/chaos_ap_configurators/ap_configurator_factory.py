@@ -148,10 +148,8 @@ class APConfiguratorFactory(object):
 
     def __init__(self):
         webdriver_ready = False
-        chaos_ap_list = chaos_config.ChaosAPList()
-
         self.ap_list = []
-        for ap in chaos_ap_list:
+        for ap in chaos_config.get_ap_list():
             module_name, configurator_class = \
                     self.CONFIGURATOR_MAP[ap.get_class()]
             module = __import__(module_name, fromlist=configurator_class)

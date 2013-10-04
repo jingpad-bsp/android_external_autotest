@@ -9,7 +9,28 @@ import time
 
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
+
+DYNAMIC_AP_CONFIG_FILE = 'chaos_dynamic_ap_list.conf'
+SHADOW_AP_CONFIG_FILE = 'chaos_shadow_ap_list.conf'
+
 TIMEOUT = 100
+
+def get_ap_list():
+    aps = []
+    for filename in (DYNAMIC_AP_CONFIG_FILE, SHADOW_AP_CONFIG_FILE):
+        ap_config = ConfigParser.RawConfigParser()
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            filename)
+        if not os.path.exists(path):
+            logging.warning('Skipping missing config: "%s"', path)
+            continue
+
+        logging.debug('Reading config from: "%s"', path)
+        ap_config.read(path)
+        for bss in ap_config.sections():
+            aps.append(ChaosAP(bss, ap_config))
+    return aps
+
 
 class APPowerException(Exception):
     """ Exception raised when AP fails to power on. """
@@ -184,52 +205,3 @@ class ChaosAP(object):
                 '  SSID:      %(ssid)s\n'
                 '  BSS:       %(bss)s\n'
                 '  Hostname:  %(hostname)s\n' % ap_info)
-
-
-class ChaosAPList(object):
-    """ Object containing information about all AP's in the chaos lab. """
-
-    DYNAMIC_AP_CONFIG_FILE = 'chaos_dynamic_ap_list.conf'
-
-
-    def __init__(self):
-        """initialize object by reading config file"""
-        self.ap_config = ConfigParser.RawConfigParser()
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            self.DYNAMIC_AP_CONFIG_FILE)
-
-        logging.debug('Reading config from "%s"', path)
-        self.ap_config.read(path)
-
-
-    def get_ap_by_bss(self, bss):
-        """
-        finds AP from bssid string in config file
-
-        @param bss: a string containing bssid of desired AP
-        @return ChaosAP object created from bssid lookup in config
-
-        """
-        return ChaosAP(bss, self.ap_config)
-
-
-    def next(self):
-        """
-        read next AP from config file
-
-        @return ChaosAP object created from bssid lookup in config
-
-        """
-        bss = self._iterptr.next()
-        return self.get_ap_by_bss(bss)
-
-
-    def __iter__(self):
-        """
-        iterated through bssid sections in config file
-
-        @return iterator for next section
-
-        """
-        self._iterptr = self.ap_config.sections().__iter__()
-        return self
