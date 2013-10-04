@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import threading
+import select
+import socket
 import subprocess
 import unittest
 
@@ -13,6 +16,56 @@ from lansim import tuntap
 def raise_exception():
     """Raises an exception."""
     raise Exception('Something bad.')
+
+
+class InfoTCPServer(threading.Thread):
+    """A TCP server running on a separated thread.
+
+    This simple TCP server thread listen for connections for every new
+    connection it sends the address information of the connected client.
+    """
+    def __init__(self, host, port):
+        """Creates the TCP server on the host:port address.
+
+        @param host: The IP address in plain text.
+        @param port: The TCP port number where the server listens on."""
+        threading.Thread.__init__(self)
+        self._port = port
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._sock.bind((host, port))
+        self._sock.listen(1)
+        self._must_exit = False
+
+
+    def run(self):
+        while not self._must_exit:
+            # Check the must_exit flag every second.
+            rlist, wlist, xlist = select.select([self._sock], [], [], 1.)
+            if self._sock in rlist:
+                conn, (addr, port) = self._sock.accept()
+                # Send back the client address, port and our port
+                conn.send('%s %d %d' % (addr, port,  self._port))
+                conn.close()
+        self._sock.close()
+
+
+    def stop(self):
+        """Signal the termination of the running thread."""
+        self._must_exit = True
+
+
+def GetInfoTCP(host, port):
+    """Connects to a InfoTCPServer on host:port and reads all the information.
+
+    @param host: The host where the InfoTCPServer is running.
+    @param port: The port where the InfoTCPServer is running.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((host, port))
+    data = sock.recv(1024)
+    sock.close()
+    return data
 
 
 class SimulatorTest(unittest.TestCase):
@@ -64,10 +117,13 @@ class SimulatorThreadTest(unittest.TestCase):
         """Creates a SimulatorThread under test over a TAP device."""
         self._tap = tuntap.TunTap(tuntap.IFF_TAP, name="faketap")
         # See note about IP addresses on SimulatorTest.setUp().
-        self._tap.set_addr('169.254.11.11')
+        self._ip_addr = '169.254.11.11'
+        self._tap.set_addr(self._ip_addr)
         self._tap.up()
 
-        self._sim = simulator.SimulatorThread(self._tap)
+        # 20 seconds timeout for unittest completion (they should run in about
+        # 2 seconds each).
+        self._sim = simulator.SimulatorThread(self._tap, timeout=20)
 
 
     def tearDown(self):
@@ -113,6 +169,37 @@ class SimulatorThreadTest(unittest.TestCase):
                 'Unicast reply from 169.254.11.33 [12:34:56:78:90:44]'))
 
 
+    def testTCPForward(self):
+        """Host can forward TCP traffic back to the kernel network stack."""
+        h = host.SimpleHost(self._sim, '12:34:56:78:90:22', '169.254.11.22')
+        # Launch two TCP servers on the network interface end.
+        srv1 = InfoTCPServer(self._ip_addr, 1080)
+        srv1.start()
+        srv2 = InfoTCPServer(self._ip_addr, 1081)
+        srv2.start()
+
+        # Map those two ports to a given IP address on the fake network.
+        h.tcp_forward(80, self._ip_addr, 1080)
+        h.tcp_forward(81, self._ip_addr, 1081)
+
+        # Start the simulation.
+        self._sim.start()
+
+        try:
+            srv1data = GetInfoTCP('169.254.11.22', 80)
+            srv2data = GetInfoTCP('169.254.11.22', 81)
+        finally:
+            srv1.stop()
+            srv2.stop()
+            srv1.join()
+            srv2.join()
+
+        # First connection is seen from the .11.22:1024 client.
+        self.assertEqual(srv1data, '169.254.11.22 1024 1080')
+        # Second connection is seen from the .11.22:1024 client because is made
+        # to a different port.
+        self.assertEqual(srv2data, '169.254.11.22 1024 1081')
+
+
 if __name__ == '__main__':
     unittest.main()
-

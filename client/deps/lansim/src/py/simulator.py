@@ -211,7 +211,10 @@ class Simulator(object):
                 pkt = dpkt.ethernet.Ethernet(raw[4:])
                 for rule, callback in self._rules:
                     if rule(pkt):
-                        callback(pkt)
+                        # Parse again the packet to allow callbacks to modify
+                        # it.
+                        callback(dpkt.ethernet.Ethernet(raw[4:]))
+
 
         self._running = False
 

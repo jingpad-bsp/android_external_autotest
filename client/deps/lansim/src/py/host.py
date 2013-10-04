@@ -52,6 +52,10 @@ class SimpleHost(object):
         rule["dst"] = self._bin_hw_addr
         sim.add_match(rule, self.arp_request)
 
+        # Mappings used for TCP traffic forwarding.
+        self._tcp_fwd_in = {}
+        self._tcp_fwd_out = {}
+        self._tcp_fwd_ports = {}
 
     @property
     def ip_addr(self):
@@ -148,6 +152,78 @@ class SimpleHost(object):
             type = dpkt.ethernet.ETH_TYPE_IP,
             data = pkt)
         return self._sim.write(hw_pkt)
+
+
+    def tcp_forward(self, port, dest_addr, dest_port):
+        """Forwards all the TCP/IP traffic on a given port to another host.
+
+        This method makes all the incoming traffic for this host on a particular
+        port be redirected to dest_addr:dest_port. This allows us to use the
+        kernel's network stack to handle that traffic.
+
+        @param port: The TCP port on this simulated host.
+        @param dest_addr: A host IP address on the same network in plain text.
+        @param dest_port: The TCP port on the destination host.
+        """
+        if not self._tcp_fwd_ports:
+            # Lazy initialization.
+            self._sim.add_match({
+                'ip.dst': self._bin_ip_addr,
+                'ip.p': dpkt.ip.IP_PROTO_TCP}, self._handle_tcp_forward)
+
+        self._tcp_fwd_ports[port] = socket.inet_aton(dest_addr), dest_port
+
+
+    def _tcp_pick_port(self, dhost, dport):
+        """Picks a new unused source TCP port on the host."""
+        for p in range(1024, 65536):
+            if (dhost, dport, p) in self._tcp_fwd_out:
+                continue
+            if p in self._tcp_fwd_ports:
+                continue
+            return p
+        raise SimpleHostError("Too many connections.")
+
+
+    def _handle_tcp_forward(self, pkt):
+        # Source from:
+        shost = pkt.ip.src
+        sport = pkt.ip.tcp.sport
+        dport = pkt.ip.tcp.dport
+
+        ### Handle responses from forwarded traffic back to the sender (out).
+        if (shost, sport, dport) in self._tcp_fwd_out:
+            fhost, fport, oport = self._tcp_fwd_out[(shost, sport, dport)]
+            # Redirect the packet
+            pkt.ip.tcp.sport = oport
+            pkt.ip.tcp.dport = fport
+            pkt.ip.dst = fhost
+            pkt.ip.tcp.sum = 0 # Force checksum
+            self.send_ip(pkt.ip)
+            return
+
+        ### Handle incoming traffic to a local forwarded port (in).
+        if dport in self._tcp_fwd_ports:
+            # Forward to:
+            fhost, fport = self._tcp_fwd_ports[dport]
+
+            ### Check if it is an existing connection.
+            # lport: The port from where we send data out.
+            if (shost, sport, dport) in self._tcp_fwd_in:
+                lport = self._tcp_fwd_in[(shost, sport, dport)]
+            else:
+                # Pick a new local port on our side.
+                lport = self._tcp_pick_port(fhost, fport)
+                self._tcp_fwd_in[(shost, sport, dport)] = lport
+                self._tcp_fwd_out[(fhost, fport, lport)] = (shost, sport, dport)
+
+            # Redirect the packet
+            pkt.ip.tcp.sport = lport
+            pkt.ip.tcp.dport = fport
+            pkt.ip.dst = fhost
+            pkt.ip.tcp.sum = 0 # Force checksum
+            self.send_ip(pkt.ip)
+            return
 
 
     def socket(self, family, sock_type):
