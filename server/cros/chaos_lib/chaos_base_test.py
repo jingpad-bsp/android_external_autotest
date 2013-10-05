@@ -24,6 +24,7 @@ class WiFiChaosConnectionTest(object):
 
     PSK = 'psk'
     FAILED_CONFIG_MSG = 'AP Configuration Failed!'
+    FAILED_BSS_MSG = 'BSS was not found in scan'
     TEST_PROFILE_NAME = 'test'
 
 
@@ -127,6 +128,12 @@ class WiFiChaosConnectionTest(object):
         """
 
         ap_info['failed_iterations'] = []
+        # Check if we did not find AP's bss before connection
+        if not ap_info['bss_found']:
+            ap_info['failed_iterations'].append(
+                {'error': self.FAILED_BSS_MSG, 'try': 0})
+            self.error_list.append(ap_info)
+            return
         # Check the AP was successfully configured
         if not ap_info['configurator'].get_configuration_success():
             ap_info['failed_iterations'].append(
@@ -200,6 +207,7 @@ class WiFiChaosConnectionTest(object):
                 'frequency': ChaosAP.FREQUENCY_TABLE[
                         self.band_channel_map[band]],
                 'radio': True,
+                'bss_found': True,
                 'ssid': ssid,
                 'visibility': visibility,
                 'security': security,
@@ -275,6 +283,7 @@ class WiFiChaosConnectionTest(object):
                         'channel': ap.config_data.get_channel(),
                         'frequency': ap.config_data.get_frequency(),
                         'radio': True,
+                        'bss_found': True,
                         'ssid': ap.config_data.get_ssid(),
                         'visibility': visibility,
                         'security': ap.config_data.get_security(),
@@ -323,7 +332,7 @@ class WiFiChaosConnectionTest(object):
                                   '\tBSS:%s'.expandtabs(16),
                                    ap_info['brand'], ap_info['model'],
                                    ap_info['ssid'], ap_info['bss'])
-                    ap_info['configurator'].reset_command_list()
+                    ap_info['bss_found'] = False
         return configured_aps
 
 
