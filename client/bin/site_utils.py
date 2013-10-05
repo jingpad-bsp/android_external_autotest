@@ -1,3 +1,5 @@
+#pylint: disable-msg=C0111
+
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -89,6 +91,18 @@ def get_oldest_by_name(name):
         command_line = utils.system_output('ps -p %i -o command=' % pid,
                                            ignore_status=True).rstrip()
         return (pid, command_line)
+
+
+def get_chrome_remote_debugging_port():
+    """Returns remote debugging port for Chrome.
+
+    Parse chrome process's command line argument to get the remote debugging
+    port.
+    """
+    pid, command = get_oldest_by_name('chrome')
+    matches = re.search('--remote-debugging-port=([0-9]+)', command)
+    if matches:
+        return int(matches.group(1))
 
 
 def get_process_list(name, command_line=None):
@@ -195,10 +209,10 @@ def save_vm_state(checkpoint):
     # command to the serial port.
     proc = platform.processor()
     if 'QEMU' in proc and os.path.exists('/dev/ttyUSB0'):
-        logging.info('Saving VM state "%s"' % checkpoint)
+        logging.info('Saving VM state "%s"', checkpoint)
         serial = open('/dev/ttyUSB0', 'w')
         serial.write("savevm %s\r\n" % checkpoint)
-        logging.info('Done saving VM state "%s"' % checkpoint)
+        logging.info('Done saving VM state "%s"', checkpoint)
 
 
 def check_raw_dmesg(dmesg, message_level, whitelist):
