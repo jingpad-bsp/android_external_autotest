@@ -25,11 +25,12 @@ def run_chaos_debug(machine):
     client = wifi_client.WiFiClient(host, './debug')
     # List of specific APs to debug. Please verify the APs indeed support PSK.
     # Add your APs here.
-    debug_aps = []
+    debug_aps = ['chromeos3-row7-rack1-host2',]
     # IP or DNS name of host to use as a packet capturing device.
-    capturer_hostname = None
-    ap_specs = [ap_spec.APSpec(band=ap_spec.BAND_2GHZ, hostnames=debug_aps),
-                ap_spec.APSpec(band=ap_spec.BAND_5GHZ, hostnames=debug_aps)]
+    capturer_hostname = 'chromeos3-row7-rack1-host1.cros'
+    ap_specs = [ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPA2PSK,
+                               hostnames=debug_aps,
+                               band=ap_spec.BAND_2GHZ),]
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
                 'network_WiFi_ChaosConnectDisconnect', host, client, spec)
