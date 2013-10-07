@@ -13,7 +13,20 @@ class platform_KernelErrorPaths(test.test):
        results are found in the crash report."""
     version = 1
 
-    def provoke_crash(self, interface, trigger, cpu):
+    def _run_client_command(self, command):
+        try:
+            # Simply sending the trigger into lkdtm resets the target
+            # immediately, leaving files unsaved to disk and the master ssh
+            # connection wedged for a long time. The sequence below borrowed
+            # from logging_KernelCrashServer.py makes sure that the test
+            # proceeds smoothly.
+            self.client.run(
+                'sh -c "sync; sleep 1; %s" >/dev/null 2>&1 &' % command)
+        except error.AutoservRunError, e:
+            # It is expected that this will cause a non-zero exit status.
+            pass
+
+    def _provoke_crash(self, interface, trigger, cpu):
         """
         This test is ensuring that the machine will reboot on any
         type of kernel panic.  If the sysctls below are not set
@@ -39,17 +52,7 @@ class platform_KernelErrorPaths(test.test):
 
         logging.info("KernelErrorPaths: executing '%s' on %s",
                      command, self.client.hostname)
-        try:
-            # Simply sending the trigger into lkdtm resets the target
-            # immediately, leaving files unsaved to disk and the master ssh
-            # connection wedged for a long time. The sequence below borrowed
-            # from logging_KernelCrashServer.py makes sure that the test
-            # proceeds smoothly.
-            self.client.run(
-                'sh -c "sync; sleep 1; %s" >/dev/null 2>&1 &' % command)
-        except error.AutoservRunError, e:
-            # It is expected that this will cause a non-zero exit status.
-            pass
+        self._run_client_command(command)
 
     def _exists_on_client(self, f):
         return self.client.run('ls "%s"' % f,
@@ -80,16 +83,122 @@ class platform_KernelErrorPaths(test.test):
             if self._exists_on_client('%s.autotest_backup' % f):
                 self.client.run('mv "%s.autotest_backup" "%s"' % (f, f))
 
-    def cleanup(self):
-        self._restore_consent_files()
-        test.test.cleanup(self)
+    def _wait_for_restart_and_check(self, boot_id, trigger, text, cpu=0,
+                                    timeout=10):
+        """
+        Wait for panic reboot to complete and check @text in kcrash file.
 
-    def run_once(self, host=None):
-        self.client = host
-        self._enable_consent()
+        @param bootid: Boot ID of the current boot.
+        @param trigger: Text string that specifies what caused the panic/reboot.
+        @param text: Text string to match in the kcrash file.
+        @param cpu: CPU on which the trigger happened.
+        @param timeout: Time to wait for the remote host to go down.
 
-        crash_log_dir = CrashTestDefs._SYSTEM_CRASH_DIR
+        @raises error.TestFail if the @text string is not found in kcrash file.
+        """
+        try:
+            self.client.wait_for_restart(
+                down_timeout=timeout,
+                down_warning=timeout,
+                old_boot_id=boot_id,
+                # Extend the default reboot timeout as some targets take
+                # longer than normal before ssh is available again.
+                timeout=self.client.DEFAULT_REBOOT_TIMEOUT * 4)
+        except error.AutoservShutdownError:
+            self.client.run('ps alx')
+            raise
 
+        # give the crash_reporter some time to log the crash
+        time.sleep(5)
+        result = self.client.run('cat %s/kernel.*.kcrash' %
+                                 self._crash_log_dir)
+        if text not in result.stdout:
+            raise error.TestFail(
+                "No '%s' in the log after sending '%s' on cpu %d" %
+                (text, trigger, cpu))
+
+    def _client_run_output(self, cmd):
+        return self.client.run(cmd).stdout.strip()
+
+    def _get_pid(self, comm, parent):
+        """
+        Fetch PID of process named comm.
+
+        This function tries to lookup the PID for process named @comm. If
+        @parent is not None, the parent process is first looked up and then the
+        PID of child process matching @comm is returned. Since this method is
+        typically called when processes are getting killed/re-spawned, lets
+        try looking up the PID up to 10 times if there were errors.
+
+        @param comm: Name of the process whose PID needs to be fetched.
+        @param parent: Name of @comm's parent process. This parameter can be
+                       None.
+
+        @returns PID of matching process.
+
+        @raises error.TestFail exception if PID for @comm is not found.
+        """
+        for _ in range(10):
+            try:
+                if parent:
+                    ppid = self._client_run_output('ps -C %s -o pid=' % parent)
+                    pid = self._client_run_output('ps --ppid %s -o pid=' % ppid)
+                    new_comm = self._client_run_output('ps -p %s -o comm=' %
+                                                       pid)
+                    if comm != new_comm:
+                        logging.info("comm mismatch: %s != %s", comm, new_comm)
+                        time.sleep(1)
+                        continue
+                else:
+                    pid = self._client_run_output('ps -C %s -o pid=' % comm)
+                return pid
+            except error.AutoservRunError as e:
+                logging.debug("AutotestRunError is: %s", e)
+                time.sleep(1)
+        raise error.TestFail("Unable to get pid. comm = %s, parent = %s"
+                             % (comm, parent))
+
+    def _trigger_sysrq_x(self):
+        self._run_client_command('echo x > /proc/sysrq-trigger')
+
+    def _test_sysrq_x(self):
+        """
+        Test sysrq-x.
+
+        To help debug system hangs, we ask users to invoke alt-volume_up-x
+        key combination. The kernel sysrq-x handler is what handles the
+        alt-volume_up-x key combination. The sysrq-x handler in the kernel
+        does the following for successive sysrq-x invocations within a 20
+        second interval:
+        1. Abort the chrome process whose parent is the session_manager process.
+        2. Abort the X process.
+        3. Panic the kernel.
+        This function tests the above steps.
+        """
+        for process, parent in [('chrome', 'session_manager'),
+                                ('X', None)]:
+            orig_pid = self._get_pid(process, parent)
+            self._trigger_sysrq_x()
+            for _ in range(10):
+                new_pid = self._get_pid(process, parent)
+                logging.info("%s's original pid was %s and new pid is %s",
+                              process, orig_pid, new_pid)
+                if new_pid != orig_pid:
+                    break
+                time.sleep(1)
+            else:
+                raise error.TestFail('%s did not restart on sysrq-x' % process)
+
+        boot_id = self.client.get_boot_id()
+        trigger = 'sysrq-x'
+        text = 'sysrq_handle_cros_xkey'
+        self._trigger_sysrq_x()
+        self._wait_for_restart_and_check(boot_id, trigger, text)
+
+    def _test_panic_paths(self):
+        """
+        Test the kernel panic paths.
+        """
         # Each tuple consists of several components: the lkdtm string to write
         # to /sys/kernel/debug/provoke-crash/DIRECT on the target, or the if
         # lkdtm is not available, the string to write to /proc/breakme.
@@ -148,9 +257,10 @@ class platform_KernelErrorPaths(test.test):
                     continue
                 # Make sure a soft lockup detection doesn't get in the way.
                 self.client.run("sysctl -w kernel.softlockup_panic=0")
+
             if trigger == "SPINLOCKUP":
                 # This needs to be pre-triggered so the second one locks.
-                self.provoke_crash(interface, trigger, None)
+                self._provoke_crash(interface, trigger, None)
 
             if not all_cpu:
                 no_cpus = 1
@@ -159,32 +269,26 @@ class platform_KernelErrorPaths(test.test):
             for cpu in range(no_cpus):
                 # Always run on at least one cpu
                 # Delete crash results, if any
-                self.client.run('rm -f %s/*' % crash_log_dir)
+                self.client.run('rm -f %s/*' % self._crash_log_dir)
                 boot_id = self.client.get_boot_id()
                 # This should cause target reset.
                 # Run on a specific cpu if we're running on all of them,
                 # otherwise run normally
                 if all_cpu :
-                    self.provoke_crash(interface, trigger, cpu)
+                    self._provoke_crash(interface, trigger, cpu)
                 else:
-                    self.provoke_crash(interface, trigger, None)
-                try:
-                    self.client.wait_for_restart(
-                        down_timeout=timeout,
-                        down_warning=timeout,
-                        old_boot_id=boot_id,
-                        # Extend the default reboot timeout as some targets take
-                        # longer than normal before ssh is available again.
-                        timeout=self.client.DEFAULT_REBOOT_TIMEOUT * 4)
-                except error.AutoservShutdownError:
-                    self.client.run('ps alx')
-                    raise
+                    self._provoke_crash(interface, trigger, None)
+                self._wait_for_restart_and_check(boot_id, trigger, text,
+                                                 cpu=cpu, timeout=timeout)
 
-                # give the crash_reporter some time to log the crash
-                time.sleep(5)
-                result = self.client.run('cat %s/kernel.*.kcrash' %
-                                         crash_log_dir)
-                if text not in result.stdout:
-                    raise error.TestFail(
-                        "No '%s' in the log after sending '%s' on cpu %d"
-                        % (text, trigger, cpu))
+    def run_once(self, host=None):
+        self.client = host
+        self._enable_consent()
+        self._crash_log_dir = CrashTestDefs._SYSTEM_CRASH_DIR
+
+        self._test_panic_paths()
+        self._test_sysrq_x()
+
+    def cleanup(self):
+        self._restore_consent_files()
+        test.test.cleanup(self)
