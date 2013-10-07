@@ -17,6 +17,48 @@ class bluetooth_Sanity_Discoverable(bluetooth_test.BluetoothTest):
     version = 1
 
 
+    def discover_device(self):
+        """Discover the Bluetooth Device using the Tester.
+
+        @return True if found with expected name, False if not found,
+          Exception if found device did not have expected name.
+
+        """
+        devices = self.tester.discover_devices()
+        if devices == False:
+            raise error.TestFail('Tester could not discover devices')
+
+        # Iterate the devices we received in the discovery phase and
+        # look for the DUT.
+        for address, address_type, rssi, flags, eirdata in devices:
+            if address == self.adapter['Address']:
+                logging.info('Found device with RSSI %d', rssi)
+                found_device = True
+
+                # Make sure we picked up a name for the device along
+                # the way.
+                eir = bluetooth_socket.parse_eir(eirdata)
+                try:
+                    eir_name = eir[bluetooth_socket.EIR_NAME_COMPLETE]
+                    if eir_name != self.adapter['Alias']:
+                        raise error.TestFail(
+                                'Device did not have expected name ' +
+                                '"%s" != "%s"' %
+                                (eir_name, self.adapter['Alias']))
+
+                    # Write out the RSSI now we've found it. It might
+                    # be useful to graph this over time.
+                    self.write_perf_keyval({'rssi': int(rssi)})
+                    return True
+                except KeyError:
+                    logging.warning('Device did not have a name '
+                                    'in attempt %d', failed_attempts)
+        else:
+            logging.warning('Failed to find device in attempt %d',
+                            failed_attempts)
+
+        return False
+
     def run_once(self):
         # Reset the adapter to the powered on, discoverable state.
         if not (self.client.reset_on() and
@@ -38,30 +80,19 @@ class bluetooth_Sanity_Discoverable(bluetooth_test.BluetoothTest):
             # Setup the tester as a generic computer.
             if not self.tester.setup('computer'):
                 raise error.TestFail('Tester could not be initialized')
-            # Discover devices from the tester.
-            devices = self.tester.discover_devices()
-            if devices == False:
-                raise error.TestFail('Tester could not discover devices')
-            # Iterate the devices we received in the discovery phase and
-            # look for the DUT.
-            for address, address_type, rssi, flags, eirdata in devices:
-                if address == self.adapter['Address']:
-                    logging.info('Found device with RSSI %d', rssi)
-                    eir = bluetooth_socket.parse_eir(eirdata)
-                    try:
-                        eir_name = eir[bluetooth_socket.EIR_NAME_COMPLETE]
-                        if eir_name != self.adapter['Alias']:
-                            raise error.TestFail(
-                                    'Device did not have expected name ' +
-                                    '"%s" != "%s"' % (eir_name,
-                                                      self.adapter['Alias']))
-                    except KeyError:
-                        raise error.TestFail('Found device did not have a name')
-                    # Break out of the loop to skip the failure condition and
-                    # pass the test.
+
+            # Since radio is involved, this test is not 100% reliable; instead
+            # we repeat a few times until it succeeds.
+            for failed_attempts in range(0, 5):
+                if self.discover_device():
                     break
             else:
                 raise error.TestFail('Expected device was not found')
+
+            # Record how many attempts this took, hopefully we'll one day figure
+            # out a way to reduce this to zero and then the loop above can go
+            # away.
+            self.write_perf_keyval({'failed_attempts': failed_attempts })
 
         if self.interactive:
             self.interactive.append_buttons('Device Found', 'Device Not Found')

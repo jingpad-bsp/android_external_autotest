@@ -33,25 +33,25 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
         device_found = False
         for device in devices:
             if self.tester:
-                try:
-                    rssi = device['RSSI']
-                except KeyError:
-                    rssi = None
-
                 if self.address == device['Address']:
-                    logging.info('Found tester with RSSI %d', rssi)
+                    logging.info('Found tester with RSSI %d',
+                                 device.get('RSSI'))
                     # Check name as well; if the name and alias fields don't
                     # match, that means it hasn't been requested yet, so
                     # wait until next time.
-                    if device['Name'] != device['Alias']:
+                    if device.get('Name') != device['Alias']:
                         logging.info('Device name not yet received')
                         continue
                     if self.name != device['Alias']:
                         raise error.TestFail(
                                 'Tester did not have expected name ' +
-                                '"%s" != "%s"' % (device['Alias'], name))
+                                '"%s" != "%s"' % (device['Alias'],
+                                                  self.name))
                     # Found the device
                     device_found = True
+                    # Write out the RSSI now we've found it. It might
+                    # be useful to graph this over time.
+                    self.write_perf_keyval({'rssi': int(device.get('RSSI', 0))})
 
             if self.interactive:
                 item_name = device['Address'].replace(':', '')
@@ -120,14 +120,33 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
                                                 'Device Not Found')
 
         # Discover devices from the DUT.
-        if not self.client.start_discovery():
-            raise error.TestFail('Could not start discovery on DUT')
-        utils.poll_for_condition(
-                condition=self.find_device,
-                desc='Device discovered from DUT',
-                timeout=self.DISCOVERABLE_TIMEOUT)
-        if not self.client.stop_discovery():
-            logging.warning('Failed to stop discovery on DUT')
+        for failed_attempts in range(0, 5):
+            if not self.client.start_discovery():
+                raise error.TestFail('Could not start discovery on DUT')
+            try:
+                utils.poll_for_condition(
+                        condition=self.find_device,
+                        desc='Device discovered from DUT',
+                        timeout=self.DISCOVERABLE_TIMEOUT)
+                # We only reach this if we find a device. Break out of the
+                # failed_attempts loop to bypass the "reached the end"
+                # condition.
+                break
+            except utils.TimeoutError:
+                # Capture the timeout error and try once more through the
+                # loop.
+                pass
+            finally:
+                if not self.client.stop_discovery():
+                    logging.warning('Failed to stop discovery on DUT')
+        else:
+            # We only reach this if we tried five times to find the device and
+            # failed.
+            raise error.TestFail('DUT could not discover device')
+        # Record how many attempts this took, hopefully we'll one day figure
+        # out a way to reduce this to zero and then the loop above can go
+        # away.
+        self.write_perf_keyval({'failed_attempts': failed_attempts })
 
 
     def cleanup(self):
