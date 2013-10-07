@@ -14,6 +14,7 @@ class StaticAPConfigurator(APConfigurator):
     def __init__(self, ap_config=None):
         #super(StaticAPConfigurator, self).__init__(ap_config)
 
+        self.security = None
         if ap_config:
             # This allows the ability to build a generic configurator
             # which can be used to get access to the members above.
