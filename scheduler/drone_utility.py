@@ -6,6 +6,7 @@ import common
 from autotest_lib.client.common_lib import utils, global_config, error
 from autotest_lib.server import hosts, subcommand
 from autotest_lib.scheduler import email_manager, scheduler_config
+from autotest_lib.site_utils.graphite import stats
 
 # An environment variable we add to the environment to enable us to
 # distinguish processes we started from those that were started by
@@ -47,6 +48,7 @@ class BaseDroneUtility(object):
     All paths going into and out of this class are absolute.
     """
     _WARNING_DURATION = 400
+    timer = stats.Timer('drone_utility')
 
     def __init__(self):
         # Tattoo ourselves so that all of our spawn bears our mark.
@@ -87,6 +89,7 @@ class BaseDroneUtility(object):
 
 
     @classmethod
+    @timer.decorate
     def _get_process_info(cls):
         """
         @returns A generator of dicts with cls._PS_ARGS as keys and
@@ -122,6 +125,7 @@ class BaseDroneUtility(object):
         return processes
 
 
+    @timer.decorate
     def _read_pidfiles(self, pidfile_paths):
         pidfiles = {}
         for pidfile_path in pidfile_paths:
@@ -136,6 +140,7 @@ class BaseDroneUtility(object):
         return pidfiles
 
 
+    @timer.decorate
     def refresh(self, pidfile_paths):
         """
         pidfile_paths should be a list of paths to check for pidfiles.
