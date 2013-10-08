@@ -102,6 +102,9 @@ class WiFiChaosConnectionTest(object):
                 raise error.TestFail('Router has unknown security type: %r' %
                                      ap_info['security'])
             assoc_params = xmlrpc_datatypes.AssociationParameters(
+                    discovery_timeout=45,
+                    association_timeout=30,
+                    configuration_timeout=30,
                     ssid=ap_info['ssid'],
                     is_hidden=ap_info['visibility'],
                     security_config=security_config)
