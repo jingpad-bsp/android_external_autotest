@@ -10,6 +10,11 @@ from lansim import simulator
 from lansim import tuntap
 
 
+def raise_exception():
+    """Raises an exception."""
+    raise Exception('Something bad.')
+
+
 class SimulatorTest(unittest.TestCase):
     """Unit tests for the Simulator class."""
 
@@ -67,9 +72,17 @@ class SimulatorThreadTest(unittest.TestCase):
 
     def tearDown(self):
         """Stops and destroy the thread."""
-        self._sim.stop() # stop() can be called even if the thread is stopped.
+        self._sim.stop() # stop() is idempotent.
         self._sim.join()
         self._tap.down()
+
+
+    def testError(self):
+        """Exceptions raised on the thread appear on the exc_info member."""
+        self._sim.add_timeout(0.1, raise_exception)
+        self._sim.start()
+        self._sim.join()
+        self.assertEqual(self._sim.error.message, 'Something bad.')
 
 
     def testARPPing(self):

@@ -247,6 +247,7 @@ class SimulatorThread(threading.Thread, Simulator):
         threading.Thread.__init__(self)
         Simulator.__init__(self, iface)
         self._timeout = timeout
+        self.error = None
 
 
     def run(self):
@@ -255,4 +256,7 @@ class SimulatorThread(threading.Thread, Simulator):
         This method wraps the Simulator.run() to pass the timeout value passed
         during construction.
         """
-        Simulator.run(self, self._timeout)
+        try:
+            Simulator.run(self, self._timeout)
+        except Exception, e:
+            self.error = e
