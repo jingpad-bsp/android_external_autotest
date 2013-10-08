@@ -215,9 +215,8 @@ class WpaCliProxy(object):
                 found_stations.append(
                         Station(bssid=match.group(1), frequency=match.group(2),
                                 signal=match.group(3), ssid=match.group(5)))
-
-            logging.info('Found stations: %r',
-                         [station.ssid for station in found_stations])
+            logging.debug('Found stations: %r',
+                          [station.ssid for station in found_stations])
             if [station for station in found_stations
                     if station.ssid == assoc_params.ssid]:
                 break

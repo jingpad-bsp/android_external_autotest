@@ -157,6 +157,8 @@ class WiFiChaosConnectionTest(object):
             resp = self.run_connect_disconnect_test(
                     ap_info, log_dir, pcap_file_pattern)
             if resp:
+                logging.info(
+                        'Connection attempt failed with explanation: %s', resp)
                 ap_info['failed_iterations'].append({'error': resp,
                                                      'try': iteration})
 
