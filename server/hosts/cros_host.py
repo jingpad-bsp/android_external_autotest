@@ -906,8 +906,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         Chrome OS test lab.
 
         It first verifies and repairs servo if it is a DUT in CrOS
-        lab and a servo is attached. On success, it proceeds to
-        the following steps to repair the DUT.
+        lab and a servo is attached.
 
         If `self.verify()` fails, the following procedures are
         attempted:
@@ -933,7 +932,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         """
         if self._servo_host:
-            self.servo = self._servo_host.create_healthy_servo_object()
+            try:
+                self.servo = self._servo_host.create_healthy_servo_object()
+            except Exception as e:
+                self.servo = None
+                logging.error('Could not create a healthy servo: %s', e)
 
         # TODO(scottz): This should use something similar to label_decorator,
         # but needs to be populated in order so DUTs are repaired with the
