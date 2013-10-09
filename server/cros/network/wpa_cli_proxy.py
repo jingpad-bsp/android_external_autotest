@@ -9,7 +9,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server import site_linux_router
 
 
 # Used to represent stations we parse out of scan results.
@@ -21,6 +20,16 @@ class WpaCliProxy(object):
 
     SCANNING_INTERVAL_SECONDS = 5
     POLLING_INTERVAL_SECONDS = 0.5
+    # From wpa_supplicant.c:wpa_supplicant_state_txt()
+    WPA_SUPPLICANT_ASSOCIATING_STATES = (
+            'AUTHENTICATING',
+            'ASSOCIATING',
+            'ASSOCIATED',
+            '4WAY_HANDSHAKE',
+            'GROUP_HANDSHAKE')
+    WPA_SUPPLICANT_ASSOCIATED_STATES = (
+            'COMPLETED',)
+
 
 
     def __init__(self, host, wifi_if):
@@ -67,15 +76,72 @@ class WpaCliProxy(object):
         return result
 
 
-    def _wait_status(self, ssid, field_name, value_check, timeout_seconds):
+    def _get_status_dict(self):
         """
-        Wait for `wpa_cli status` to have a field with a certain value.
+        Gets the status output for a WiFi interface.
 
-        @param ssid string: ssid of the network we expect that status to match.
-        @param field_name string: name of field to look for (e.g. ip_address).
-        @param value_check function: function that takes the string value of the
-                specified field and returns True if it is the value we're
-                waiting to see.
+        Get the output of wpa_cli status.  This summarizes what wpa_supplicant
+        is doing with respect to the WiFi interface.
+
+        Example output:
+
+            Using interface 'wlan0'
+            wpa_state=INACTIVE
+            p2p_device_address=32:76:6f:f2:a6:c4
+            address=30:76:6f:f2:a6:c4
+
+        @return dict of key/value pairs parsed from output using = as divider.
+
+        """
+        status_result = self._run_wpa_cli_cmd('status', check_result=False)
+        return dict([line.strip().split('=', 1)
+                     for line in status_result.stdout.splitlines()
+                     if line.find('=') > 0])
+
+
+    def _is_associating_or_associated(self):
+        """@return True if the DUT is assocating or associated with a BSS."""
+        state = self._get_status_dict().get('wpa_state', None)
+        return state in (self.WPA_SUPPLICANT_ASSOCIATING_STATES +
+                         self.WPA_SUPPLICANT_ASSOCIATED_STATES)
+
+
+    def _is_associated(self, ssid):
+        """
+        Check if the DUT is associated to a given SSID.
+
+        @param ssid string: SSID of the network we're concerned about.
+        @return True if we're associated with the specified SSID.
+
+        """
+        status_dict = self._get_status_dict()
+        return (status_dict.get('ssid', None) == ssid and
+                status_dict.get('wpa_state', None) in
+                        self.WPA_SUPPLICANT_ASSOCIATED_STATES)
+
+
+    def _is_connected(self, ssid):
+        """
+        Check that we're connected to |ssid| and have an IP address.
+
+        @param ssid string: SSID of the network we're concerned about.
+        @return True if we have an IP and we're associated with |ssid|.
+
+        """
+        status_dict = self._get_status_dict()
+        return (status_dict.get('ssid', None) == ssid and
+                status_dict.get('ip_address', None))
+
+
+    def _wait_until(self, value_check, timeout_seconds):
+        """
+        Call a function repeatedly until we time out.
+
+        Call value_check() every POLLING_INTERVAL_SECONDS seconds
+        until |timeout_seconds| have passed.  Return whether
+        value_check() returned a True value and the time we spent in this
+        function.
+
         @param timeout_seconds numeric: number of seconds to wait.
         @return a tuple (success, duration_seconds) where success is a boolean
                 and duration is a float.
@@ -84,12 +150,7 @@ class WpaCliProxy(object):
         start_time = time.time()
         while time.time() - start_time < timeout_seconds:
             duration = time.time() - start_time
-            status_result = self._run_wpa_cli_cmd('status', check_result=False)
-            status_pairs = dict([line.strip().split('=', 1)
-                                 for line in status_result.stdout.splitlines()
-                                 if line.find('=') > 0])
-            if (status_pairs.get('ssid', None) == ssid and
-                    value_check(status_pairs.get(field_name, None))):
+            if value_check():
                 return (True, duration)
 
             time.sleep(self.POLLING_INTERVAL_SECONDS)
@@ -205,6 +266,12 @@ class WpaCliProxy(object):
         start_time = time.time()
         while time.time() - start_time < assoc_params.discovery_timeout:
             assoc_result.discovery_time = time.time() - start_time
+            if self._is_associating_or_associated():
+                # Internally, wpa_supplicant writes its scan_results response
+                # to a 4kb buffer.  When there are many BSS's, the buffer fills
+                # up, and we'll never see the BSS we care about in some cases.
+                break
+
             scan_result = self._run_wpa_cli_cmd('scan_results',
                                                 check_result=False)
             found_stations = []
@@ -233,23 +300,16 @@ class WpaCliProxy(object):
             return assoc_result.serialize()
 
         # Wait on association to finish.
-        success, assoc_result.association_time = self._wait_status(
-                assoc_params.ssid,
-                'wpa_state',
-                lambda wpa_state: wpa_state and wpa_state == 'COMPLETED',
+        success, assoc_result.association_time = self._wait_until(
+                lambda: self._is_associated(assoc_params.ssid),
                 assoc_params.association_timeout)
         if not success:
             assoc_result.failure_reason = 'Association timed out'
             return assoc_result.serialize()
 
         # Then wait for ip configuration to finish.
-        ip_prefix_str = '.'.join(map(
-                str,
-                site_linux_router.LinuxRouter.SUBNET_PREFIX_OCTETS))
-        success, assoc_result.configuration_time = self._wait_status(
-                assoc_params.ssid,
-                'ip_address',
-                lambda real_ip: real_ip and real_ip.startswith(ip_prefix_str),
+        success, assoc_result.configuration_time = self._wait_until(
+                lambda: self._is_connected(assoc_params.ssid),
                 assoc_params.configuration_timeout)
         if not success:
             assoc_result.failure_reason = 'DHCP negotiation timed out'
