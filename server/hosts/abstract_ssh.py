@@ -620,7 +620,11 @@ class AbstractSSHHost(remote.RemoteHost):
                 if self.master_ssh_job.sp.poll() is None:
                     logging.warning('Master ssh connection socket file '
                                     'was missing while its subprocess was '
-                                    'still running. Calling it dead.')
+                                    'still running.')
+                    if os.path.exists(self.master_ssh_tempdir.name):
+                        logging.warning('However, the socket file temporary '
+                                        'directory still exists.')
+                    logging.warning('Info on defunct master ssh ps below.')
                     master_pid = str(self.master_ssh_job.sp.pid)
                     try:
                         ps_output = subprocess.check_output(
