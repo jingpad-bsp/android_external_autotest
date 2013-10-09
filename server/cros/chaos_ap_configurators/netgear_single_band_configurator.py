@@ -84,6 +84,7 @@ class NetgearSingleBandAPConfigurator(
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=True)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

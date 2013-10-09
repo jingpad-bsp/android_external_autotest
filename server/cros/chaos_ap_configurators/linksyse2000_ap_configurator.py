@@ -134,6 +134,7 @@ class Linksyse2000APConfigurator(
             self.select_item_from_popup_by_xpath('Mixed', mode,
                                                  alert_handler=self._sec_alert)
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

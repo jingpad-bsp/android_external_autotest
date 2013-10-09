@@ -93,6 +93,7 @@ class Trendnet432brpAPConfigurator(trendnet_ap_configurator.
 
     def _set_ssid(self, ssid):
         self.set_content_of_text_field_by_id(ssid, 'ssid')
+        self._ssid = ssid
 
 
     def _set_channel(self, channel):

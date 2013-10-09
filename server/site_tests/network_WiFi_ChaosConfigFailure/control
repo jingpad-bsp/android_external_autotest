@@ -1,0 +1,34 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.server import utils
+
+AUTHOR = 'krisr@chromium.org'
+NAME = 'network_WiFi_ChaosConfigFailure'
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'network'
+TEST_TYPE = 'server'
+
+DOC = """
+This test is run when a chaos APConfigurator fails to successfully configure
+an AP.  It will grab screenshots and print stack traces of the failure.
+"""
+
+from autotest_lib.server.cros import ap_configurator_factory
+from autotest_lib.server.cros import ap_spec
+
+
+def run_chaos_config_failure(machine):
+    args_dict = utils.args_to_dict(args)
+    host = hosts.create_host(machine)
+    ap_hostname = args_dict.get('ap_hostname', 'chromeos3-row1-rack1-host7')
+    factory = ap_configurator_factory.APConfiguratorFactory()
+    ap = factory.get_aps_configurators_by_hostnames([ap_hostname])
+    ap.set_using_ap_spec(ap_spec.APSpec())
+    ap.apply_settings()
+    job.run_test('network_WiFi_ChaosConfigFailure', ap)
+
+
+parallel_simple(run_chaos_open, machines)

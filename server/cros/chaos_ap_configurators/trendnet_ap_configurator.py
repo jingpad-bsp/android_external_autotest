@@ -125,6 +125,7 @@ class TrendnetAPConfigurator(
 
     def _set_ssid(self, ssid):
         self.set_content_of_text_field_by_id(ssid, 'display_SSID1')
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

@@ -61,6 +61,14 @@ class BelkinF9KAPConfigurator(
 
 
     def is_security_mode_supported(self, security_mode):
+        """
+        Returns if a given security_type is supported.
+
+        @param security_mode: one security modes defined in the APSpec
+
+        @return True if the security mode is supported; False otherwise.
+
+        """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WPA2PSK,
@@ -68,6 +76,15 @@ class BelkinF9KAPConfigurator(
 
 
     def navigate_to_page(self, page_number):
+        """
+        Navigates to the page corresponding to the given page number.
+
+        This method performs the translation between a page number and a url to
+        load. This is used internally by apply_settings.
+
+        @param page_number: page number of the page to load
+
+        """
         self._login()
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
@@ -93,7 +110,11 @@ class BelkinF9KAPConfigurator(
 
 
     def save_page(self, page_number):
-        """Save changes and logout from the router."""
+        """Save changes and logout from the router.
+
+        @param page_number: the page number to save as an integer.
+
+        """
         self.click_button_by_xpath('//input[@type="submit" and '
                                    '@value="Apply Changes"]',
                                    alert_handler=self._security_alert)
@@ -113,6 +134,7 @@ class BelkinF9KAPConfigurator(
     def _set_ssid(self, ssid):
         xpath = '//input[@name="ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

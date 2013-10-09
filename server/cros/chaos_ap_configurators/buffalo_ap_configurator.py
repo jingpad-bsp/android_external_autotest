@@ -41,12 +41,29 @@ class BuffaloAPConfigurator(
 
 
     def is_security_mode_supported(self, security_mode):
+        """
+        Returns if a given security_type is supported.
+
+        @param security_mode: one security modes defined in the APSpec
+
+        @return True if the security mode is supported; False otherwise.
+
+        """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
+        """
+        Navigates to the page corresponding to the given page number.
+
+        This method performs the translation between a page number and a url to
+        load. This is used internally by apply_settings.
+
+        @param page_number: page number of the page to load
+
+        """
         if page_number == 1:
            page_url = urlparse.urljoin(self.admin_interface_url,
                                        'Wireless_Basic.asp')
@@ -62,6 +79,12 @@ class BuffaloAPConfigurator(
 
 
     def save_page(self, page_number):
+        """
+        Saves the given page.
+
+        @param page_number: Page number of the page to save.
+
+        """
         apply_set = '//input[@name="apply_button"]'
         self.click_button_by_xpath(apply_set)
         timeout = 0
@@ -108,6 +131,7 @@ class BuffaloAPConfigurator(
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="ath0_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

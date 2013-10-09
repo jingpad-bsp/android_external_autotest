@@ -60,12 +60,29 @@ class AsusAPConfigurator(
 
 
     def is_security_mode_supported(self, security_mode):
+        """
+        Returns if a given security_type is supported.
+
+        @param security_mode: one security modes defined in the APSpec
+
+        @return True if the security mode is supported; False otherwise.
+
+        """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
+        """
+        Navigates to the page corresponding to the given page number.
+
+        This method performs the translation between a page number and a url to
+        load. This is used internally by apply_settings.
+
+        @param page_number: page number of the page to load
+
+        """
         # The page is determined by what band we are using. We ignore the input.
         admin_url = self.admin_interface_url
         if self.current_band == ap_spec.BAND_2GHZ:
@@ -81,6 +98,12 @@ class AsusAPConfigurator(
 
 
     def save_page(self, page_number):
+        """
+        Saves the given page.
+
+        @param page_number: Page number of the page to save.
+
+        """
         button = self.driver.find_element_by_id('applyButton')
         button.click()
         menu_id = 'menu_body' #  id of the table with the main content
@@ -144,6 +167,7 @@ class AsusAPConfigurator(
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@maxlength="32" and @name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

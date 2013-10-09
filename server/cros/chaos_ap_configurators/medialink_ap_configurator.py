@@ -143,6 +143,7 @@ class MediaLinkAPConfigurator(
         self._set_radio(enabled=True)
         xpath = '//input[@name="ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

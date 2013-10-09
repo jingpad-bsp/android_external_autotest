@@ -23,6 +23,7 @@ class APConfigurator():
 
         # Set a default band, this can be overriden by the subclasses
         self.current_band = ap_spec.BAND_2GHZ
+        self._ssid = None
 
         # Diagnostic members
         self._command_list = []
@@ -32,10 +33,6 @@ class APConfigurator():
         self.driver_connection_established = False
         self.router_on = False
         self.configuration_success = False
-
-        self.ap_spec = set_ap_spec
-        if self.ap_spec:
-            self.set_using_ap_spec(self.ap_spec)
 
 
     @staticmethod
@@ -47,6 +44,12 @@ class APConfigurator():
 
         """
         return False
+
+
+    @property
+    def ssid(self):
+        """Returns the SSID."""
+        return self._ssid
 
 
     @property

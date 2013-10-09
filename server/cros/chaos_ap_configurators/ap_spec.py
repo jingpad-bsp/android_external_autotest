@@ -27,13 +27,13 @@ VALID_2GHZ_MODES = [MODE_B, MODE_G, MODE_N]
 VALID_5GHZ_MODES = [MODE_A, MODE_N]
 
 # Supported security types
-SECURITY_TYPE_DISABLED = 'disabled'
+SECURITY_TYPE_DISABLED = 'open'
 SECURITY_TYPE_WEP = 'wep'
-SECURITY_TYPE_WPAPSK = 'wpa-psk'
-SECURITY_TYPE_WPA2PSK = 'wpa2-psk'
+SECURITY_TYPE_WPAPSK = 'wpa'
+SECURITY_TYPE_WPA2PSK = 'wpa2'
 
-WEP_AUTHENTICATION_OPEN = 'open'
-WEP_AUTHENTICATION_SHARED = 'shared'
+WEP_AUTHENTICATION_OPEN = 'open_wep'
+WEP_AUTHENTICATION_SHARED = 'shared_wep'
 
 # List of valid securities.
 # TODO (krisr) the configurators do not support WEP at this time.
@@ -44,6 +44,20 @@ VALID_SECURITIES = [SECURITY_TYPE_DISABLED,
 # List of valid channels.
 VALID_2GHZ_CHANNELS = range(1,15)
 VALID_5GHZ_CHANNELS = [36, 40, 44, 48, 149, 153, 157, 161, 165]
+
+# Frequency to channel conversion table
+CHANNEL_TABLE = {2412: 1, 2417: 2, 2422: 3,
+                 2427: 4, 2432: 5, 2437: 6,
+                 2442: 7, 2447: 8, 2452: 9,
+                 2457: 10, 2462: 11, 2467: 12,
+                 2472: 13, 2484: 14, 5180: 36,
+                 5200: 40, 5220: 44, 5240: 48,
+                 5745: 149, 5765: 153, 5785: 157,
+                 5805: 161, 5825: 165}
+
+# This only works because the frequency table is one to one
+# for channels/frequencies.
+FREQUENCY_TABLE = dict((v,k) for k,v in CHANNEL_TABLE.iteritems())
 
 # Default values
 DEFAULT_BAND = BAND_2GHZ
@@ -99,12 +113,14 @@ class APSpec(object):
 
 
     def __init__(self, visible=True, security=SECURITY_TYPE_DISABLED,
-                 band=None, mode=None, channel=None, unique_id=None):
+                 band=None, mode=None, channel=None, hostnames=None,
+                 unique_id=None):
         super(APSpec, self).__init__()
         self._visible = visible
         self._security = security
         self._mode = mode
         self._channel = channel
+        self._hostnames = hostnames
 
         if not self._channel and not self._mode:
             if band == BAND_2GHZ or not band:
@@ -123,19 +139,7 @@ class APSpec(object):
             raise ValueError('Conflicting band and modes/channels.')
 
         self._validate_security()
-
         self._unique_id = unique_id
-
-        if not self._unique_id:
-            self._unique_id = 'ap'
-            unique_id_string = 'ap'
-        else:
-            unique_id_string = (
-                self._unique_id.replace(' ', '_').replace('.', '_'))
-        band_string = self.band.replace('.', '_')
-        self._ssid = str('%s_%s_%s_%d_%s' % (unique_id_string, band_string,
-                         mode_string_for_mode(self._mode),
-                         self._channel, self._security))
 
 
     def __str__(self):
@@ -147,9 +151,9 @@ class APSpec(object):
                 'channel=%d\n'
                 'unique_id=%s\n'
                 'ssid=%s\n'
-                'password=%s\n' % (self._visible, self._security, self._band,
+                'password=%s\n' % (self._visible, self._security, self.band,
                 mode_string_for_mode(self._mode), self._channel,
-                self._unique_id, self._ssid, self._password))
+                self._unique_id, self.ssid, self._password))
 
 
     @property
@@ -161,7 +165,17 @@ class APSpec(object):
     @property
     def ssid(self):
         """Returns the SSID for the AP."""
-        return self._ssid
+        if not self._unique_id:
+            unique_id_string = 'ap'
+        else:
+            unique_id_string = (
+                    self._unique_id.replace(' ', '_').replace('.', '_'))
+        return_string = str('%s_%s_ch%d_%s' % (unique_id_string,
+                            mode_string_for_mode(self._mode),
+                            self._channel, self._security))
+        # Return no more than 32 characters
+        return return_string[:32]
+
 
 
     @property
@@ -197,9 +211,31 @@ class APSpec(object):
 
 
     @property
+    def frequency(self):
+        """Return the frequency equivalent of the channel."""
+        return FREQUENCY_TABLE[self._channel]
+
+
+    @property
+    def hostnames(self):
+        """Return the hostnames; this may be None."""
+        return self._hostnames
+
+
+    @property
     def unique_id(self):
         """Return the unique id."""
         return self._unique_id
+
+
+    @unique_id.setter
+    def unique_id(self, value):
+        """Sets the unique id.
+
+        @param value: a string used as a unique identifier.
+
+        """
+        self._unique_id = value
 
 
     @property
@@ -215,8 +251,9 @@ class APSpec(object):
                              xmlrpc_security_types.WPAConfig.CIPHER_TKIP],
                 wpa2_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
         return xmlrpc_datatypes.AssociationParameters(
-                ssid=self._ssid, security_config=security_config,
-                is_hidden=not self._visible)
+                ssid=self.ssid, security_config=security_config,
+                discovery_timeout=45, association_timeout=30,
+                configuration_timeout=30, is_hidden=not self._visible)
 
 
     def _validate_channel_and_mode(self):

@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import os
-import time
 import ap_spec
 import trendnet692gr_ap_configurator
 
@@ -33,6 +32,14 @@ class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
 
 
     def is_security_mode_supported(self, security_mode):
+        """
+        Returns if a given security_type is supported.
+
+        @param security_mode: one security modes defined in the APSpec
+
+        @return True if the security mode is supported; False otherwise.
+
+        """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WPA2PSK)
@@ -74,6 +81,7 @@ class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=True)
+        self._ssid = ssid
 
 
     def _set_mode(self, mode, band=None):

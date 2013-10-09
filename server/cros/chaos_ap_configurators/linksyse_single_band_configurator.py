@@ -112,6 +112,7 @@ class LinksyseSingleBandAPConfigurator(
         # If security is off leaving focus from the field will throw
         # a alert dialog.
         ssid_field = self.driver.find_element_by_xpath(xpath)
+        self._ssid = ssid
         try:
             ssid_field.send_keys('\t')
             return

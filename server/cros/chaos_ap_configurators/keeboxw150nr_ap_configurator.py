@@ -87,6 +87,7 @@ class Keeboxw150nrAPConfigurator(
 
     def _set_ssid(self, ssid):
         self.set_content_of_text_field_by_id(ssid, 'ssid')
+        self._ssid = ssid
 
 
     def set_radio(self, enabled=True):

@@ -32,6 +32,15 @@ class Trendnet654trAPConfigurator(trendnet_ap_configurator.
 
 
     def navigate_to_page(self, page_number):
+        """
+        Navigates to the page corresponding to the given page number.
+
+        This method performs the translation between a page number and a url to
+        load. This is used internally by apply_settings.
+
+        @param page_number: page number of the page to load
+
+        """
         self.navigate_to_login_page()
         if page_number == 1:
             page_url = os.path.join(self.admin_interface_url,'wireless.htm')
@@ -43,6 +52,12 @@ class Trendnet654trAPConfigurator(trendnet_ap_configurator.
 
 
     def navigate_to_login_page(self):
+        """Navigates through the login page.
+
+        If we are logged out during and time this method walks through the login
+        process so the appropriate page is loaded to update the settings.
+
+        """
         # We need to login first in order to configure settings.
         self.get_url(self.admin_interface_url, page_title='TEW-654TR')
         self.wait_for_object_by_id('user_name')
@@ -54,6 +69,12 @@ class Trendnet654trAPConfigurator(trendnet_ap_configurator.
 
 
     def save_page(self, page_number):
+        """
+        Saves the given page.
+
+        @param page_number: Page number of the page to save.
+
+        """
         xpath = ('//a[contains(@href,"send_request")]//img')
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
         self.wait_for_object_by_id('back_btn')
@@ -66,6 +87,7 @@ class Trendnet654trAPConfigurator(trendnet_ap_configurator.
 
     def _set_ssid(self, ssid):
         self.set_content_of_text_field_by_id(ssid, 'ssid')
+        self._ssid = ssid
 
 
     def _set_channel(self, channel):

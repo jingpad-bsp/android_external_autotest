@@ -51,13 +51,13 @@ class ApLocker(object):
 def construct_ap_lockers(ap_spec, retries):
     """Convert APConfigurator objects to ApLocker objects for locking.
 
-    @param ap_spec: a dict of strings, AP attributes.
+    @param ap_spec: an APSpec object
     @param retries: an integer, max number of retry attempts to lock ap.
     @return a list of ApLocker objects.
     """
     ap_lockers_list = []
     factory = ap_configurator_factory.APConfiguratorFactory()
-    for ap in factory.get_ap_configurators(ap_spec):
+    for ap in factory.get_ap_configurators_by_spec(ap_spec):
         ap_lockers_list.append(ApLocker(ap, retries))
 
     if not len(ap_lockers_list):
@@ -72,7 +72,7 @@ class ApBatchLocker(object):
 
     @attribute SECONDS_TO_SLEEP: an integer, number of seconds to sleep between
                                  retries.
-    @attribute ap_spec: a dict of strings, AP attributes.
+    @attribute ap_spec: an APSpec object
     @attribute retries: an integer, max number of retry attempts to lock ap.
                         Defaults to MAX_RETRIES.
     @attribute aps_to_lock: a list of ApLocker objects.
@@ -87,7 +87,7 @@ class ApBatchLocker(object):
     def __init__(self, lock_manager, ap_spec, retries=MAX_RETRIES):
         """Initialize.
 
-        @param ap_spec: a dict of strings, AP attributes.
+        @param ap_spec: an APSpec object
         @param retries: an integer, max number of retry attempts to lock ap.
                         Defaults to MAX_RETRIES.
         """

@@ -52,6 +52,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         # Set a default band, this can be overriden by the subclasses
         self.current_band = ap_spec.BAND_2GHZ
+        self._ssid = None
 
         # Diagnostic members
         self._command_list = []
@@ -85,6 +86,12 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
 
         """
         return True
+
+
+    @property
+    def ssid(self):
+        """Returns the SSID."""
+        return self._ssid
 
 
     def add_item_to_command_list(self, method, args, page, priority):

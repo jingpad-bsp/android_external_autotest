@@ -148,6 +148,7 @@ class LinksyseDualBandAPConfigurator(
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@maxlength="32" and @name="wl1_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

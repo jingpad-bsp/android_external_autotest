@@ -72,17 +72,40 @@ class DLinkAPConfigurator(
 
 
     def is_security_mode_supported(self, security_mode):
+        """
+        Returns if a given security_type is supported.
+
+        @param security_mode: one security modes defined in the APSpec
+
+        @return True if the security mode is supported; False otherwise.
+
+        """
         return security_mode in (self.security_disabled,
                                  self.security_wpapsk,
                                  self.security_wep)
 
 
     def navigate_to_page(self, page_number):
+        """
+        Navigates to the page corresponding to the given page number.
+
+        This method performs the translation between a page number and a url to
+        load. This is used internally by apply_settings.
+
+        @param page_number: page number of the page to load
+
+        """
         # All settings are on the same page, so we always open the config page
         self._open_configuration_page()
 
 
     def save_page(self, page_number):
+        """
+        Saves the given page.
+
+        @param page_number: Page number of the page to save.
+
+        """
         # All settings are on the same page, we can ignore page_number
         button = self.driver.find_element_by_xpath('//input[@name="apply"]')
         button.click()
@@ -184,6 +207,7 @@ class DLinkAPConfigurator(
     def _set_ssid(self, ssid):
         self._set_radio(enabled=True)
         self.set_content_of_text_field_by_id(ssid, 'ssid')
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

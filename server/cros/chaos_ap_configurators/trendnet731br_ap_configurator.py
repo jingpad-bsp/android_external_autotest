@@ -41,6 +41,7 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
 
     def _set_ssid(self, ssid):
         self.set_content_of_text_field_by_id(ssid, 'show_ssid')
+        self._ssid = ssid
 
 
     def save_page(self, page_number):

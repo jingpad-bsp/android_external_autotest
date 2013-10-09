@@ -383,6 +383,9 @@ class APConfiguratorFactory(object):
         security_aps = self._get_aps_by_security(ap_spec.security)
         visible_aps = self._get_aps_by_visibility(ap_spec.visible)
         matching_aps = list(band_aps & mode_aps & security_aps & visible_aps)
+        if ap_spec.hostnames is not None:
+            matching_aps = self._get_aps_with_hostnames(ap_spec.hostnames,
+                                                        matching_aps)
         if pre_configure:
             for ap in matching_aps:
                 ap.set_using_ap_spec(ap_spec)

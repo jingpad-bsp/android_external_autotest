@@ -106,6 +106,7 @@ class LinksysAPConfigurator(
         self._set_radio(enabled=True)
         xpath = ('//input[@maxlength="32" and @name="SSID"]')
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

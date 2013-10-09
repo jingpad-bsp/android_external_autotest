@@ -183,6 +183,7 @@ class WesternDigitalN600APConfigurator(
             ssid_id = 'ssid_Aband'
         self.wait_for_object_by_id(ssid_id)
         self.set_content_of_text_field_by_id(ssid, ssid_id, abort_check=False)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

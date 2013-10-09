@@ -30,6 +30,7 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
+        self._ssid = ssid
 
 
     def _set_channel(self, channel):

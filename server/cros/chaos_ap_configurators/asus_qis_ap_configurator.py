@@ -85,6 +85,7 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
     def _set_ssid(self, ssid):
         xpath = '//input[@maxlength="32" and @name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):

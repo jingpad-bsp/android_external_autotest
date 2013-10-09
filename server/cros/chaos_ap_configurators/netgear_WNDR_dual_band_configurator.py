@@ -130,6 +130,7 @@ class NetgearDualBandAPConfigurator(
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="ssid_an"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath)
+        self._ssid = ssid
 
 
     def set_channel(self, channel):
