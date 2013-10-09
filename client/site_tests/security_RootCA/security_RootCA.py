@@ -178,11 +178,11 @@ class security_RootCA(test.test):
                 logging.error('Results for %s', lib)
                 logging.error('Unexpected')
                 for i in unexpected:
-                    logging.error('%s - %s', i, cert_details[i])
+                    logging.error('"%s": "%s"', i, cert_details[i])
                 if exact_match:
                     logging.error('Missing')
                     for i in missing:
-                        logging.error('%s - %s', i, cert_details[i])
+                        logging.error('"%s": "%s"', i, cert_details[i])
 
         # cert_perms_errors() call first to avoid short-circuiting.
         # Short circuiting could mask additional failures that would
