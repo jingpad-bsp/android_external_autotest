@@ -19,6 +19,7 @@ class telemetry_Crosperf(test.test):
 
     """
     version = 1
+    CHROME_SRC_ROOT = '/var/cache/chromeos-cache/distfiles/target/'
 
 
     def run_once(self, client_ip, args, stdout='', stderr=''):
@@ -40,20 +41,25 @@ class telemetry_Crosperf(test.test):
         self._test = args['test']
 
         # Look for chrome source root, either externally mounted, or inside
-        # the chroot.
+        # the chroot.  Prefer chrome-src-internal source tree to chrome-src.
+        sources_list = ('chrome-src-internal', 'chrome-src')
+
+        dir_list = [os.path.join(self.CHROME_SRC_ROOT, x) for x in sources_list]
         if 'CHROME_ROOT' in os.environ:
-            chrome_root_dir = os.environ['CHROME_ROOT']
+            dir_list.insert(0, os.environ['CHROME_ROOT'])
+
+        for dir in dir_list:
+            if os.path.exists(dir):
+                chrome_root_dir = dir
+                break
         else:
-            chrome_root_dir = '/var/cache/chromeos-chrome/chrome-src-internal'
+            raise error.TestError('Chrome source directory not found.')
 
-        script_file = '%s/src/tools/perf/run_benchmark' % chrome_root_dir
-
-        if not os.path.exists (script_file):
-            raise error.TestError('run_benchmark script not found.')
-
-        format_string = ('%s --browser=cros-chrome --remote=%s '
+        logging.info('Using Chrome source tree at %s', chrome_root_dir)
+        format_string = ('%s/src/tools/perf/run_benchmark '
+                         '--browser=cros-chrome --remote=%s '
                          '--pageset-repeat=%d %s')
-        command = format_string % (script_file, client_ip,
+        command = format_string % (chrome_root_dir, client_ip,
                                    self._iterations, self._test)
         logging.info('CMD: %s', command)
 
