@@ -51,39 +51,15 @@ class BoardInfo(object):
         """
         try:
             return self._board_config.get(board, attr)
-        except ConfigParser.NoSectionError, e:
+        except ConfigParser.NoSectionError:
             raise BoardError('board not found (%s)' % board)
-        except ConfigParser.NoOptionError, e:
+        except ConfigParser.NoOptionError:
             return None
 
 
     def get_board_names(self):
         """Returns the list of board names."""
         return self._board_config.sections()
-
-
-    def get_vendor(self, board):
-        """Returns the vendor string of a given board, None if undefined.
-
-        @raise BoardError: if board is not known
-        """
-        return self._get_attr(board, 'vendor')
-
-
-    def get_appid(self, board):
-        """Returns the appid string of a given board, None if undefined.
-
-        @raise BoardError: if board is not known
-        """
-        return self._get_attr(board, 'appid')
-
-
-    def get_hwid(self, board):
-        """Returns the hwid string of a given board, None if undefined.
-
-        @raise BoardError: if board is not known
-        """
-        return self._get_attr(board, 'hwid')
 
 
     def get_fsi_releases(self, board):
