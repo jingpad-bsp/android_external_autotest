@@ -363,6 +363,7 @@ def _auto_detect_labels(afe, remote):
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       build=_NO_BUILD, board=_NO_BOARD, args=None,
                       pretend=False, no_experimental=False,
+                      ignore_deps=True,
                       results_directory=None, ssh_verbosity=0,
                       ssh_options=None,
                       autoserv_verbose=False):
@@ -385,6 +386,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param pretend: If True, will print out autoserv commands rather than
                     running them.
     @param no_experimental: Skip experimental tests when scheduling a suite.
+    @param ignore_deps: If True, test dependencies will be ignored.
     @param results_directory: Directory to store results in. Defaults to None,
                               in which case results will be stored in a new
                               subdirectory of /tmp
@@ -400,6 +402,9 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     board_label = afe.create_label(constants.BOARD_PREFIX + board)
     new_host = afe.create_host(remote)
     new_host.add_labels([build_label.name, board_label.name])
+    if not ignore_deps:
+        logging.info('Auto-detecting labels for %s', remote)
+        _auto_detect_labels(afe, remote)
     # Provision the host to |build|.
     if build != _NO_BUILD:
         logging.info('Provisioning %s...', cros_version_label)
@@ -414,20 +419,10 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                           remote, cros_version_label, e)
             return
 
-    has_detected_labels = False
     # Schedule tests / suites in local afe
     for test in tests:
         (predicate, description) = get_predicate_for_test_arg(test)
         logging.info('Scheduling %s...', description)
-        if re.match(_SUITE_REGEX, test):
-            # It is a suite, auto-detect host labels and enforce
-            # satisfaction of test dependencies.
-            if not has_detected_labels:
-                _auto_detect_labels(afe, remote)
-                has_detected_labels = True
-            ignore_deps = False
-        else:
-            ignore_deps = True
         ntests = schedule_local_suite(autotest_path, predicate, afe,
                                       remote=remote,
                                       build=build, board=board,
@@ -534,6 +529,10 @@ def parse_arguments(argv):
                         help='Ignore chrome crashes when producing test '
                              'report. This flag gets passed along to the '
                              'report generation tool.')
+    parser.add_argument('--enforce-deps', action='store_true',
+                        default=False, dest='enforce_deps',
+                        help='Skip tests whose DEPENDENCIES can not '
+                             'be satisfied.')
     parser.add_argument('--ssh_verbosity', action='store', type=int,
                         choices=[0, 1, 2, 3], default=0,
                         help='Verbosity level for ssh, between 0 and 3 '
@@ -706,6 +705,7 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
                       args=arguments.args,
                       pretend=arguments.pretend,
                       no_experimental=arguments.no_experimental,
+                      ignore_deps=not arguments.enforce_deps,
                       results_directory=results_directory,
                       ssh_verbosity=arguments.ssh_verbosity,
                       ssh_options=arguments.ssh_options,

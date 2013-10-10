@@ -201,6 +201,7 @@ class TestThatUnittests(unittest.TestCase):
         self.mox.StubOutWithMock(test_that, 'run_provisioning_job')
         self.mox.StubOutWithMock(test_that, '_auto_detect_labels')
 
+        test_that._auto_detect_labels(afe, remote)
         # Test perform_local_run. Enforce that run_provisioning_job,
         # run_job and _auto_detect_labels are called correctly.
         test_that.run_provisioning_job(
@@ -209,7 +210,6 @@ class TestThatUnittests(unittest.TestCase):
                  ssh_verbosity, ssh_options,
                  False, False)
 
-        test_that._auto_detect_labels(afe, remote)
         for control_file in suite_control_files:
             test_that.run_job(mox.ContainsAttributeValue('control_file',
                                                          control_file),
@@ -219,6 +219,7 @@ class TestThatUnittests(unittest.TestCase):
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
                                     remote, fast_mode, build=build, board=board,
+                                    ignore_deps=False,
                                     ssh_verbosity=ssh_verbosity,
                                     ssh_options=ssh_options,
                                     args=args,
