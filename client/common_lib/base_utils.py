@@ -2046,11 +2046,14 @@ def call_xrandr(args_string=''):
 
 def get_xrandr_output_state():
     """
-    Retrieves the status of display outputs using Xrandr.
+    Retrieves output status of connected display(s) using xrandr.
 
-    Return value: dictionary of display states.
+    When xrandr report a display is "connected", it doesn't mean the
+    display is active. For active display, it will have '*' after display mode.
+
+    Return value: dictionary of connected display states.
                   key = output name
-                  value = False if off, True if on
+                  value = True if the display is active; False otherwise.
     """
 
     output = call_xrandr().split('\n')
@@ -2059,19 +2062,20 @@ def get_xrandr_output_state():
 
     # Parse output of xrandr, line by line.
     for line in output:
-        if line[0:5] == 'Screen':
+        if line.startswith('Screen'):
             continue
         # If the line contains "connected", it is a connected display, as
         # opposed to a disconnected output.
         if line.find(' connected') != -1:
             current_output_name = line.split()[0]
+            # Temporarily mark it as inactive until we see a '*' afterward.
             xrandr_outputs[current_output_name] = False
             continue
 
         # If "connected" was not found, this is a line that shows a display
         # mode, e.g:    1920x1080      50.0     60.0     24.0
         # Check if this has an asterisk indicating it's on.
-        if line.find('*') != -1 and current_output_name != '' :
+        if line.find('*') != -1 and current_output_name:
             xrandr_outputs[current_output_name] = True
             # Reset the output name since this should not be set more than once.
             current_output_name = ''
