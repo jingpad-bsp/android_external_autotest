@@ -646,7 +646,7 @@ def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv):
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
         for message in iter(s.stdout.readline, b''):
-            logging.debug('quickmerge| %s', message.strip())
+            logging.info('quickmerge| %s', message.strip())
         s.wait()
 
     logging.info('Re-running test_that script in %s copy of autotest.',
