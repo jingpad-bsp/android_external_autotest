@@ -77,11 +77,11 @@ def init_test(options, testdir):
                 pass
             # give the user a warning if there is an import error.
             else:
-                logging.error('%s import error: %s.  Skipping %s' %
+                logging.exception('%s import error: %s.  Skipping %s' %
                               (test_name, e, test_name))
         except Exception, e:
             # Log other errors (e.g., syntax errors) and collect the test.
-            logging.error("%s: %s", test_name, e)
+            logging.exception("%s: %s", test_name, e)
     finally:
         sys.path.pop(0) # pop up testbindir
     return client_test
