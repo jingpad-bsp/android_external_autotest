@@ -67,8 +67,6 @@ class login_ChromeProfileSanitaryTelemetry(test.test):
 
             cr.wait_for_browser_to_come_up()
 
-            if not cr.is_logged_in():
-                raise error.TestError('Logged out unexpectedly!')
             latch = self._testServer.add_wait_url(self._wait_path)
 
             # Navigate to site that leaves cookies.

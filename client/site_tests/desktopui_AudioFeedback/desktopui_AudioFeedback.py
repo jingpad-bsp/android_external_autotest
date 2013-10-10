@@ -55,7 +55,6 @@ class desktopui_AudioFeedback(test.test):
            @param tab: the tab to load page for testing.
         """
         tab.Navigate(self._test_url)
-        tab.Activate()
         tab.WaitForDocumentReadyStateToBeComplete()
 
         utils.poll_for_condition(
@@ -83,11 +82,6 @@ class desktopui_AudioFeedback(test.test):
             self._test_url = cr.browser.http_server.UrlOf('youtube.html')
             logging.info('Playing back youtube media file %s.', self._test_url)
 
-            cr.wait_for_browser_to_come_up()
-
-            if not cr.is_logged_in():
-                raise error.TestError('Logged out unexpectedly!')
-
             # Set volume and capture gain after Chrome is up, or those value
             # will be overriden by Chrome.
             audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
@@ -99,4 +93,4 @@ class desktopui_AudioFeedback(test.test):
                                             num_channels=self._num_channels,
                                             record_command=self._rec_cmd,
                                             mix_command=self._mix_cmd),
-                            cr.browser.tabs.New())
+                            cr.browser.tabs[0])

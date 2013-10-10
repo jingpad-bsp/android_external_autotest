@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
-
 from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
 
@@ -71,7 +69,9 @@ class Chrome(object):
 
 
     def wait_for_browser_to_come_up(self):
-        """Waits for the browser to come up."""
+        """Waits for the browser to come up. This should only be called after a
+        browser crash.
+        """
         def _BrowserReady(cr):
             try:
                 tab = cr.browser.tabs.New()
@@ -96,8 +96,3 @@ class Chrome(object):
             return True
         return False
 
-
-    def is_logged_in(self):
-        """Returns true iff logged in."""
-        # TODO(achuith): Do this better.
-        return os.path.exists('/var/run/state/logged-in')
