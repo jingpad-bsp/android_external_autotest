@@ -4,6 +4,7 @@
 
 import dpkt
 import socket
+import time
 
 
 MDNS_IP_ADDR = '224.0.0.251'
@@ -64,6 +65,11 @@ class ZeroconfDaemon(object):
         self._srv_records = {} # Local SRV records.
         self._ptr_records = {} # Local PTR records.
         self._txt_records = {} # Local TXT records.
+
+        # dict() of name --> (dict() of type --> (dict() of data --> timeout))
+        # For example: _peer_records['somehost.local'][dpkt.dns.DNS_A] \
+        #     ['192.168.0.1'] = time.time() + 3600
+        self._peer_records = {}
 
         # Register the host address locally.
         self.register_A(self.full_hostname, host.ip_addr)
@@ -136,6 +142,40 @@ class ZeroconfDaemon(object):
                 for known_ans in mdns.an if _RR_equals(known_ans, ans))]
 
             self._send_answers(answers)
+        elif mdns.op == 0x8400: # Standard response
+            cur_time = time.time()
+            for rr in mdns.an: # Answers RRs
+                # dpkt decodes the information on different fields depending on
+                # the response type.
+                if rr.type == dpkt.dns.DNS_A:
+                    data = socket.inet_ntoa(rr.ip)
+                elif rr.type == dpkt.dns.DNS_PTR:
+                    data = rr.ptrname
+                elif rr.type == dpkt.dns.DNS_TXT:
+                    data = tuple(rr.text) # Convert the list to a hashable tuple
+                elif rr.type == dpkt.dns.DNS_SRV:
+                    data = rr.srvname, rr.priority, rr.weight, rr.port
+                else:
+                    continue # Ignore unsupported records.
+                if not rr.name in self._peer_records:
+                    self._peer_records[rr.name] = {}
+                # Start a new cache or clear the existing if required.
+                if not rr.type in self._peer_records[rr.name] or (
+                        rr.cls & DNS_CACHE_FLUSH):
+                    self._peer_records[rr.name][rr.type] = {}
+
+                cached_ans = self._peer_records[rr.name][rr.type]
+                rr_timeout = cur_time + rr.ttl
+                # Update the answer timeout if already cached.
+                if data in cached_ans:
+                    cached_ans[data] = max(cached_ans[data], rr_timeout)
+                else:
+                    cached_ans[data] = rr_timeout
+
+
+    def clear_cache(self):
+        """Discards all the cached records."""
+        self._peer_records = {}
 
 
     def _send_answers(self, answers):
@@ -306,3 +346,39 @@ class ZeroconfDaemon(object):
             name = q.name,
             text = text_list)
         return [answer]
+
+
+    def cached_results(self, rrname, rrtype, timestamp=None):
+        """Return all the cached results for the requested rrname and rrtype.
+
+        This method is used to request all the received mDNS answers present
+        on the cache that were valid at the provided timestamp or later.
+        Answers received before this timestamp whose TTL isn't long enough to
+        make them valid at the timestamp aren't returned. On the other hand,
+        answers received *after* the provided timestamp will always be
+        considered, even if they weren't known at the provided timestamp point.
+        A timestamp of None will return them all.
+
+        This method allows to retrieve "volatile" answers with a TTL of zero.
+        According to the RFC, these answers should be only considered for the
+        "ongoing" request. To do this, call this method after a few seconds (the
+        request timeout) after calling the send_request() method, passing to
+        this method the returned timestamp.
+
+        @param rrname: The requested domain name.
+        @param rrtype: The DNS record type. For example, dpkt.dns.DNS_TXT.
+        @param timestamp: The request timestamp. See description.
+        @return: The list of matching records of the form (rrname, rrtype, data,
+                 timeout).
+        """
+        if timestamp is None:
+            timestamp = 0
+        if not rrname in self._peer_records:
+            return []
+        if not rrtype in self._peer_records[rrname]:
+            return []
+        res = []
+        for data, data_ts in self._peer_records[rrname][rrtype].iteritems():
+            if data_ts >= timestamp:
+                res.append((rrname, rrtype, data, data_ts))
+        return res

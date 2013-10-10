@@ -2,8 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dpkt
+import re
+
+
 CROS_P2P_PROTO = '_cros_p2p._tcp'
 CROS_P2P_PORT = 16725
+
 
 class CrosP2PDaemon(object):
     """Simulates a P2P server.
@@ -11,7 +16,6 @@ class CrosP2PDaemon(object):
     The simulated P2P server will instruct the underlying ZeroconfDaemon to
     reply to requests sharing the files registered on this server.
     """
-
     def __init__(self, zeroconf, port=CROS_P2P_PORT):
         """Initialize the CrosP2PDaemon.
 
@@ -71,3 +75,77 @@ class CrosP2PDaemon(object):
             txts.append('id_%s=%d' % (file_id, file_size))
         self._zeroconf.register_TXT(
             self._zeroconf.hostname + '.' + self._p2p_domain, txts)
+
+
+class CrosP2PClient(object):
+    """Simulates a P2P client.
+
+    The P2P client interacts with a ZeroconfDaemon instance that inquires the
+    network and collects the mDNS responses. A P2P client instance decodes those
+    responses according to the P2P protocol implemented over mDNS.
+    """
+    def __init__(self, zeroconf):
+        self._zeroconf = zeroconf
+        self._p2p_domain = CROS_P2P_PROTO + '.' + zeroconf.domain
+
+
+    def get_peers(self, timestamp=None):
+        """Return the cached list of peers.
+
+        @param timestamp: The deadline timestamp to consider the responses.
+        @return: A list of tuples of the form (peer_name, hostname, list_of_IPs,
+                 port).
+        """
+        res = []
+        # The PTR record points to a SRV name.
+        ptr_recs = self._zeroconf.cached_results(
+                self._p2p_domain, dpkt.dns.DNS_PTR, timestamp)
+        for _rrname, _rrtype, p2p_peer, _deadline in ptr_recs:
+            # The SRV points to a hostname, port, etc.
+            srv_recs = self._zeroconf.cached_results(
+                    p2p_peer, dpkt.dns.DNS_SRV, timestamp)
+            for _rrname, _rrtype, service, _deadline in srv_recs:
+                srvname, _priority, _weight, port = service
+                # Each service points to a hostname (srvname).
+                a_recs = self._zeroconf.cached_results(
+                        srvname, dpkt.dns.DNS_A, timestamp)
+                ip_list = [ip for _rrname, _rrtype, ip, _deadline in a_recs]
+                res.append((p2p_peer, srvname, ip_list, port))
+        return res
+
+
+    def get_peer_files(self, peer_name, timestamp=None):
+        """Returns the cached list of files of the given peer.
+
+        @peer_name: The peer_name as provided by get_peers().
+        @param timestamp: The deadline timestamp to consider the responses.
+        @return: A list of tuples of the form (file_name, current_size).
+        """
+        res = []
+        txt_records = self._zeroconf.cached_results(
+                peer_name, dpkt.dns.DNS_TXT, timestamp)
+        for _rrname, _rrtype, txt_list, _deadline in txt_records:
+            for txt in txt_list:
+                m = re.match(r'^id_(.*)=([0-9]+)$', txt)
+                if not m:
+                    continue
+                file_name, size = m.groups()
+                res.append((file_name, int(size)))
+        return res
+
+
+    def get_peer_connections(self, peer_name, timestamp=None):
+        """Returns the cached num_connections of the given peer.
+
+        @peer_name: The peer_name as provided by get_peers().
+        @param timestamp: The deadline timestamp to consider the responses.
+        @return: A list of tuples of the form (file_name, current_size).
+        """
+        txt_records = self._zeroconf.cached_results(
+                peer_name, dpkt.dns.DNS_TXT, timestamp)
+        for _rrname, _rrtype, txt_list, _deadline in txt_records:
+            for txt in txt_list:
+                m = re.match(r'num_connections=(\d+)$', txt)
+                if m:
+                    return int(m.group(1))
+        return None # No num_connections found.
