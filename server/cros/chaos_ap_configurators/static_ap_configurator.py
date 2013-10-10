@@ -28,6 +28,10 @@ class StaticAPConfigurator(APConfigurator):
             self.bandwidth = ap_config.get_bandwidth()
             self.channel = ap_config.get_channel()
             self.band = ap_config.get_band()
+            self.current_band = ap_config.get_band()
+            self.security = ap_config.get_security()
+            self._ssid = ap_config.get_ssid()
+            self.psk = ap_config.get_psk()
 
 
     def power_down_router(self):
@@ -136,10 +140,3 @@ class StaticAPConfigurator(APConfigurator):
 
         """
         return self.security == security_mode
-
-
-    def apply_settings(self):
-        """Apply all settings to the access point."""
-        logging.error('%s.%s: Can not run for Static APs',
-                self.__class__.__name__,
-                self.apply_settings.__name__)

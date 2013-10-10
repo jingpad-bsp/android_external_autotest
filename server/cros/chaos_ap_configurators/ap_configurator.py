@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
+from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+
 class APConfigurator():
     """Base class to find and control access points."""
 
@@ -50,6 +54,21 @@ class APConfigurator():
     def ssid(self):
         """Returns the SSID."""
         return self._ssid
+
+
+    def save_screenshot(self):
+        """
+        Stores and returns the screenshot as a base 64 encoded string.
+        Note: The derived class may override this method.
+
+        @returns the screenshot as a base 64 encoded string; if there was
+        an error saving the screenshot None is returned.
+
+        """
+        logging.warning('%s.%s: apparently not needed',
+                self.__class__.__name__,
+                self.save_screenshot.__name__)
+        return None
 
 
     @property
@@ -188,3 +207,29 @@ class APConfigurator():
 
         """
         raise NotImplementedError
+
+
+
+    def set_using_ap_spec(self, set_ap_spec, power_up=True):
+        """
+        Sets all configurator options.
+        Note: The derived class may override this method.
+
+        @param set_ap_spec: APSpec object
+        @param power_up: bool, enable power via rpm if applicable
+
+        """
+        logging.warning('%s.%s: Not Implemented',
+                self.__class__.__name__,
+                self.set_using_ap_spec.__name__)
+
+
+    def apply_settings(self):
+        """
+        Apply all settings to the access point.
+        Note: The derived class may override this method.
+
+        """
+        logging.warning('%s.%s: Not Implemented',
+                self.__class__.__name__,
+                self.apply_settings.__name__)
