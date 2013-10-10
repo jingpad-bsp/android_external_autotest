@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import pprint
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
@@ -62,5 +63,6 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
                 client.shill.clean_profiles()
 
         if len(results) > 0:
-            raise error.TestFail('Failed on the following attempts:\n%s',
-                                 results)
+            raise error.TestFail('Failed on the following attempts:\n%s\n'
+                                 'With the ap_spec: %s',
+                                 pprint.pformat(results), ap_spec)

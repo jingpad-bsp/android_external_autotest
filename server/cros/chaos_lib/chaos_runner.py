@@ -13,22 +13,24 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-from autotest_lib.server.cros.network import wifi_client
 
 
 class ChaosRunner(object):
     """Object to run a network_WiFi_ChaosXXX test."""
 
 
-    def __init__(self, test, host, ap_spec):
+    def __init__(self, test, host, wifi_client, ap_spec):
         """Initializes and runs test.
 
         @param test: a string, test name.
         @param host: an Autotest host object, device under test.
+        @param wifi_client: a WiFiClient object
+        @param ap_spec: an APSpec object
 
         """
         self._test = test
         self._host = host
+        self._wifi_client = wifi_client
         self._ap_spec = ap_spec
         # Log server and DUT times
         dt = datetime.datetime.now()
@@ -98,22 +100,23 @@ class ChaosRunner(object):
         cartridge.run_configurators()
 
 
-    def verify_bss_in_scan(self, bss, client):
+    def verify_bss_in_scan(self, bss):
         """Runs a scan on the DUT and verifies the SSID is being broadcasted.
 
         @param bss: the BSS to scan for
-        @param client: a WiFiClient object
 
         @returns True is the SSID is found; false otherwise
 
         """
-        scan_bss = '%s %s scan' % (client.command_iw, client.wifi_if)
+        scan_bss = '%s %s scan' % (self._wifi_client.command_iw,
+                                   self._wifi_client.wifi_if)
         start_time = int(time.time())
         # Setting 300s as timeout
         logging.info('Waiting for the DUT to find BSS %s... ', bss)
         while (int(time.time()) - start_time) < 300:
            # If command failed: Device or resource busy (-16), run again.
-           scan_result = client.host.run(scan_bss, ignore_status=True)
+           scan_result = self._wifi_client.host.run(scan_bss,
+                                                    ignore_status=True)
            if 'busy' in str(scan_result):
                continue
            if bss in str(scan_result):
@@ -134,7 +137,6 @@ class ChaosRunner(object):
 
         """
 
-        client = wifi_client.WiFiClient(self._host, './debug')
         lock_manager = host_lock_manager.HostLockManager()
         with host_lock_manager.HostsLockedBy(lock_manager):
             capture_host = self._allocate_packet_capturer(
@@ -160,13 +162,13 @@ class ChaosRunner(object):
                     if not ap.get_configuration_success:
                         # The AP was not configured correctly
                         job.run_test('network_WiFi_ChaosConfigFailure',
-                                     ap,
+                                     ap=ap,
                                      tag=ap.ssid)
                         continue
-                    if not self.verify_bss_in_scan(ap.get_bss(), client):
+                    if not self.verify_bss_in_scan(ap.get_bss()):
                         # The BSS of the AP was not found
                         job.run_test('network_WiFi_ChaosConfigFailure',
-                                     ap,
+                                     ap=ap,
                                      missing_from_scan=True,
                                      tag=ap.ssid)
                         continue
@@ -176,7 +178,7 @@ class ChaosRunner(object):
                                  capturer=capturer,
                                  host=self._host,
                                  ap_spec=self._ap_spec,
-                                 client=client,
+                                 client=self._wifi_client,
                                  tries=tries,
                                  # Copy all logs from the system
                                  disabled_sysinfo=False,
@@ -187,4 +189,3 @@ class ChaosRunner(object):
                     batch_locker.unlock_one_ap(ap.host_name)
 
                 batch_locker.unlock_aps()
-        client.close()
