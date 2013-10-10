@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
-
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
@@ -13,43 +11,31 @@ class telemetry_LoginTest(test.test):
     version = 1
 
 
+    def get_login_status(self, cr):
+        login_status = cr.login_status
+        if not login_status:
+            raise error.TestFail('Failed to get LoginStatus')
+
+        if type(login_status) != dict:
+            raise error.TestFail('LoginStatus type mismatch %r'
+                                 % type(login_status))
+
+        is_regular_user = login_status['isRegularUser']
+        is_guest = login_status['isGuest']
+        email = login_status['email']
+        if is_regular_user == is_guest:
+            raise error.TestFail('isRegularUser == isGuest')
+        return (is_regular_user, email)
+
+
     def run_once(self):
         """
-        This test imports telemetry, restarts and connects to chrome, navigates
-        the login flow and checks to ensure that the login process is
-        completed.
+        This test imports telemetry via chrome.py, logs in as a regular
+        user, and checks the login status via autotestPrivate.loginStatus
         """
-        extension_path = os.path.join(os.path.dirname(__file__),
-                                      'login_status_ext')
-        with chrome.Chrome(logged_in=True,
-                           extension_paths=[extension_path]) as cr:
-            # By creating a browser and using 'with' any code in this section
-            # is wrapped by a login/logout.
-            if not os.path.exists('/var/run/state/logged-in'):
-                raise error.TestFail('Failed to log into the system.')
-
-            extension = cr.get_extension(extension_path)
-            if not extension:
-                raise error.TestFail('Failed to find loaded extension %s'
-                                     % extension_path)
-
-            # Ensure private api loginStatus can be called.
-            extension.ExecuteJavaScript('''
-                chrome.autotestPrivate.loginStatus(function(s) {
-                  window.__login_status = s;
-                });
-            ''')
-            login_status = extension.EvaluateJavaScript(
-                    'window.__login_status')
-            if type(login_status) != dict:
-                raise error.TestFail('LoginStatus type mismatch %r'
-                                     % type(login_status))
-
-            if not login_status['isRegularUser']:
+        with chrome.Chrome(logged_in=True, autotest_ext=True) as cr:
+            (is_regular_user, email) = self.get_login_status(cr)
+            if not is_regular_user:
                 raise error.TestFail('isRegularUser should be True')
-            if login_status['isGuest']:
-                raise error.TestFail('isGuest should be False')
-            if login_status['email'] != chrome.LOGIN_USER:
-                raise error.TestFail('user email mismatch %s'
-                                     % login_status['email'])
-
+            if email != chrome.LOGIN_USER:
+                raise error.TestFail('user email mismatch %s' % email)
