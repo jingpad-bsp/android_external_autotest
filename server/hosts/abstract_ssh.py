@@ -1,4 +1,4 @@
-import os, time, socket, shutil, glob, logging, subprocess, traceback, tempfile
+import os, time, socket, shutil, glob, logging, traceback, tempfile
 from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.server import utils, autotest
 from autotest_lib.server.hosts import remote
@@ -624,18 +624,17 @@ class AbstractSSHHost(remote.RemoteHost):
                     if os.path.exists(self.master_ssh_tempdir.name):
                         logging.warning('However, the socket file temporary '
                                         'directory still exists.')
+
                     logging.warning('Info on defunct master ssh ps below.')
                     master_pid = str(self.master_ssh_job.sp.pid)
-                    try:
-                        ps_output = subprocess.check_output(
-                                ['ps', '-Fww', master_pid])
-                        logging.debug('Master ssh connection ps info: %s, ',
+                    ps_output = utils.run(['ps', '-Fww', master_pid],
+                                          ignore_status=True).stdout
+                    logging.warning('Master ssh connection ps info: %s',
                                     ps_output)
-                    except subprocess.CalledProcessError as e:
-                        logging.warning('Unexpected error running ps on '
-                                        'master ssh connection with pid %s. '
-                                        'Output was: %s', master_pid, e.output)
-
+                    lsof_output = utils.run(['lsof', '-p', master_pid],
+                                            ignore_status=True).stdout
+                    logging.warning('Master ssh connection lsof info: %s',
+                                    lsof_output)
 
                 logging.info("Master ssh connection to %s is down.",
                              self.hostname)
