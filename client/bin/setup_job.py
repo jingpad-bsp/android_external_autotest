@@ -107,7 +107,7 @@ def load_all_client_tests(options):
     broken_tests = []
     for test_base_dir in ['tests', 'site_tests']:
         testdir = os.path.join(os.environ['AUTODIR'], test_base_dir)
-        for test_name in os.listdir(testdir):
+        for test_name in sorted(os.listdir(testdir)):
             client_test = init_test(options, os.path.join(testdir, test_name))
             if client_test:
                 all_tests.append(client_test)
