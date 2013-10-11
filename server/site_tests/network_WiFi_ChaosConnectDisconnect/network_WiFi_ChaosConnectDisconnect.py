@@ -63,6 +63,9 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
                 client.shill.clean_profiles()
 
         if len(results) > 0:
-            raise error.TestFail('Failed on the following attempts:\n%s\n'
-                                 'With the ap_spec: %s',
-                                 pprint.pformat(results), ap_spec)
+            # error.TestError doesn't handle the formatting inline, doing it
+            # here so it is clearer to read in the status.log file.
+            msg = str('Failed on the following attempts:\n%s\n'
+                      'With the ap_spec:\n%s' % (pprint.pformat(results),
+                      ap_spec))
+            raise error.TestFail(msg)

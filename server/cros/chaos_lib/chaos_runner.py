@@ -159,7 +159,7 @@ class ChaosRunner(object):
                 self._configure_aps(aps)
 
                 for ap in aps:
-                    if not ap.get_configuration_success:
+                    if not ap.get_configuration_success():
                         # The AP was not configured correctly
                         job.run_test('network_WiFi_ChaosConfigFailure',
                                      ap=ap,

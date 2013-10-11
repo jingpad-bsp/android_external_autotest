@@ -151,7 +151,7 @@ class APSpec(object):
                 'channel=%d\n'
                 'unique_id=%s\n'
                 'ssid=%s\n'
-                'password=%s\n' % (self._visible, self._security, self.band,
+                'password=%s' % (self._visible, self._security, self.band,
                 mode_string_for_mode(self._mode), self._channel,
                 self._unique_id, self.ssid, self._password))
 

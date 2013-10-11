@@ -77,6 +77,15 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
             pass
 
 
+    def __str__(self):
+        """Prettier display of the object"""
+        return('AP Name: %s\n'
+               'BSS: %s\n'
+               'SSID: %s\n'
+               'Short name: %s' % (self.get_router_name(), self.get_bss(),
+               self._ssid, self.get_router_short_name()))
+
+
     @staticmethod
     def is_dynamic():
         """
