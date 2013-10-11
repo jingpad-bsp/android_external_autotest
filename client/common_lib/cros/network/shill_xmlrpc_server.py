@@ -282,6 +282,9 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
+    formatter = logging.Formatter(
+            'shill_xmlrpc_server: [%(levelname)s] %(message)s')
+    handler.setFormatter(formatter)
     logging.getLogger().addHandler(handler)
     logging.debug('shill_xmlrpc_server main...')
     server = xmlrpc_server.XmlRpcServer('localhost',

@@ -223,6 +223,9 @@ class InteractiveXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address='/dev/log')
+    formatter = logging.Formatter(
+            'interactive_xmlrpc_server: [%(levelname)s] %(message)s')
+    handler.setFormatter(formatter)
     logging.getLogger().addHandler(handler)
     logging.debug('interactive_xmlrpc_server main...')
     server = xmlrpc_server.XmlRpcServer(

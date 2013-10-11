@@ -288,6 +288,9 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
+    formatter = logging.Formatter(
+            'bluetooth_tester_xmlrpc_server: [%(levelname)s] %(message)s')
+    handler.setFormatter(formatter)
     logging.getLogger().addHandler(handler)
     logging.debug('bluetooth_tester_xmlrpc_server main...')
     server = xmlrpc_server.XmlRpcServer(
