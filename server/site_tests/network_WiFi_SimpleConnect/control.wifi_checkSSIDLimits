@@ -6,7 +6,7 @@ AUTHOR = 'wiley@chromium.com'
 NAME = 'network_WiFi_SimpleConnect.wifi_checkSSIDLimits'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc'
+SUITE = 'wifi_matfunc, wifi_android_correctness'
 DEPENDENCIES = 'wificell'
 
 DOC = """
