@@ -49,6 +49,7 @@ class Suspender(object):
         # TODO: Reevaluate this when http://crosbug.com/38460 is fixed
         'daisy': 5,
         'daisy_spring': 5,
+        'peach_pit': 5,
 
         # TODO: Reevaluate this when http://crosbug.com/36766 is fixed
         'x86-zgb': 4,
@@ -335,7 +336,8 @@ class Suspender(object):
 
                 warning_regex = re.compile(r' kernel: \[.*WARNING:')
                 abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
-                        r'|powerd_suspend\[.*Cancel suspend at kernel')
+                        r'| powerd_suspend\[.*Cancel suspend at kernel'
+                        r'| kernel: \[.*PM: Wakeup pending, aborting suspend')
                 unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
                 # TODO(scottz): warning_monitor crosbug.com/38092
                 self._update_logs()
@@ -355,7 +357,7 @@ class Suspender(object):
                     if abort_regex.search(line):
                         wake_source = 'unknown'
                         match = re.search(r'last active wakeup source: (.*)$',
-                                '\n'.join(self._logs[i-5:i]), re.MULTILINE)
+                                '\n'.join(self._logs[i-5:i+3]), re.MULTILINE)
                         if match:
                             wake_source = match.group(1)
                         raise sys_power.SuspendAbort('Spurious wake from %s|%s'
