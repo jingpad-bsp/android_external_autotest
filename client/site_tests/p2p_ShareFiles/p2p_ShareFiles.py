@@ -151,3 +151,32 @@ class p2p_ShareFiles(test.test):
         if num_connections:
             logging.info('Peer connections: %r', num_connections)
             raise error.TestFail('DUT already has p2p connections.')
+
+        # Share a small file and check that it is broadcasted.
+        with open(os.path.join(P2P_SHARE_PATH, 'my_file=HASH==.p2p'), 'w') as f:
+            f.write('0123456789')
+
+        # Run the loop for 5 seconds. Normally, the p2p-server takes up to 1
+        # second to detect a change on the shared directory and announces it
+        # right away a few times.
+        self._run_lansim_loop(timeout=5)
+
+        files = p2pcli.get_peer_files(peer_name)
+        if files != [('my_file=HASH==', 10)]:
+            logging.info('Peer files: %r', files)
+            raise error.TestFail('Expected exported file on the DUT.')
+
+        # Test that the DUT replies to active requests.
+        zero.clear_cache()
+        p2pcli.start_query()
+        # A query can be replied by several peers after it is send, but there's
+        # no one-to-one mapping between these two. A query simply forces other
+        # peers to send the requested information shortly after. Thus, here we
+        # just wait a few seconds until we decide that the query timeouted.
+        self._run_lansim_loop(timeout=3)
+        p2pcli.stop_query()
+
+        files = p2pcli.get_peer_files(peer_name)
+        if files != [('my_file=HASH==', 10)]:
+            logging.info('Peer files: %r', files)
+            raise error.TestFail('Expected exported file on the DUT.')

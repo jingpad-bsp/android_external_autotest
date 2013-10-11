@@ -79,6 +79,9 @@ class ZeroconfDaemon(object):
         self._sock = host.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.listen(MDNS_IP_ADDR, MDNS_PORT, self._mdns_request)
 
+        # Observer list for new responses.
+        self._answer_callbacks = []
+
 
     def __del__(self):
         self._sock.close()
@@ -144,6 +147,7 @@ class ZeroconfDaemon(object):
             self._send_answers(answers)
         elif mdns.op == 0x8400: # Standard response
             cur_time = time.time()
+            new_answers = []
             for rr in mdns.an: # Answers RRs
                 # dpkt decodes the information on different fields depending on
                 # the response type.
@@ -164,6 +168,7 @@ class ZeroconfDaemon(object):
                         rr.cls & DNS_CACHE_FLUSH):
                     self._peer_records[rr.name][rr.type] = {}
 
+                new_answers.append((rr.type, rr.name, data))
                 cached_ans = self._peer_records[rr.name][rr.type]
                 rr_timeout = cur_time + rr.ttl
                 # Update the answer timeout if already cached.
@@ -171,6 +176,9 @@ class ZeroconfDaemon(object):
                     cached_ans[data] = max(cached_ans[data], rr_timeout)
                 else:
                     cached_ans[data] = rr_timeout
+            if new_answers:
+                for cbk in self._answer_callbacks:
+                    cbk(new_answers)
 
 
     def clear_cache(self):
@@ -382,3 +390,38 @@ class ZeroconfDaemon(object):
             if data_ts >= timestamp:
                 res.append((rrname, rrtype, data, data_ts))
         return res
+
+
+    def send_request(self, queries):
+        """Sends a request for the provided rrname and rrtype.
+
+        All the known and valid answers for this request will be included in the
+        non authoritative list of known answers together with the request. This
+        is recommended by the RFC and avoid unnecessary responses.
+
+        @param queries: A list of pairs (rrname, rrtype) where rrname is the
+        domain name you are requesting for and the rrtype is the DNS record
+        type. For example, ('somehost.local', dpkt.dns.DNS_ANY).
+        @return: The timestamp where this request is sent. See cached_results().
+        """
+        queries = [dpkt.dns.DNS.Q(name=rrname, type=rrtype)
+                for rrname, rrtype in queries]
+        # TODO(deymo): Inlcude the already known answers on the request.
+        answers = []
+        mdns = dpkt.dns.DNS(
+            op = dpkt.dns.DNS_QUERY,
+            qd = queries,
+            an = answers)
+        self._sock.send(str(mdns), MDNS_IP_ADDR, MDNS_PORT)
+        return time.time()
+
+
+    def add_answer_observer(self, callback):
+        """Adds the callback to the list of observers for new answers.
+
+        @param callback: A callable object accepting a list of tuples (rrname,
+        rrtype, data) where rrname is the domain name, rrtype the DNS record
+        type and data is the information associated with the answers, similar to
+        what cached_results() returns.
+        """
+        self._answer_callbacks.append(callback)

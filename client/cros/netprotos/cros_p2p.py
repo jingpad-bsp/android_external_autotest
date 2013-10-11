@@ -87,6 +87,55 @@ class CrosP2PClient(object):
     def __init__(self, zeroconf):
         self._zeroconf = zeroconf
         self._p2p_domain = CROS_P2P_PROTO + '.' + zeroconf.domain
+        self._in_query = 0
+        zeroconf.add_answer_observer(self._new_answers)
+
+
+    def start_query(self):
+        """Sends queries to gather all the p2p information on the network.
+
+        When a response that requires to send a new query to the peer is
+        received, such query will be sent until stop_query() is called.
+        Responses received when no query is running will not generate a new.
+        """
+        self._in_query += 1
+        ts = self._zeroconf.send_request([(self._p2p_domain, dpkt.dns.DNS_PTR)])
+        # Also send requests for all the known PTR records.
+        queries = []
+
+
+        # The PTR record points to a SRV name.
+        ptr_recs = self._zeroconf.cached_results(
+                self._p2p_domain, dpkt.dns.DNS_PTR, ts)
+        for _rrname, _rrtype, p2p_peer, _deadline in ptr_recs:
+            # Request all the information for that peer.
+            queries.append((p2p_peer, dpkt.dns.DNS_ANY))
+            # The SRV points to a hostname, port, etc.
+            srv_recs = self._zeroconf.cached_results(
+                    p2p_peer, dpkt.dns.DNS_SRV, ts)
+            for _rrname, _rrtype, service, _deadline in srv_recs:
+                srvname, _priority, _weight, port = service
+                # Request all the information for the host name.
+                queries.append((srvname, dpkt.dns.DNS_ANY))
+        if queries:
+            self._zeroconf.send_request(queries)
+
+
+    def stop_query(self):
+        """Stops a started query."""
+        self._in_query -= 1
+
+
+    def _new_answers(self, answers):
+        if not self._in_query:
+            return
+        queries = []
+        for rrname, rrtype, data in answers:
+            if rrname == self._p2p_domain and rrtype == dpkt.dns.DNS_PTR:
+                # data is a "ptrname" string.
+                queries.append((ptrname, dpkt.dns.DNS_ANY))
+        if queries:
+            self._zeroconf.send_request(queries)
 
 
     def get_peers(self, timestamp=None):
