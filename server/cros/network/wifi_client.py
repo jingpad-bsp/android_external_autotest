@@ -39,15 +39,9 @@ class WiFiClient(object):
     @property
     def board(self):
         """@return string self reported board of this device."""
-        if not self._board:
-            self._board = self.UNKNOWN_BOARD_TYPE
-            result = self.host.run('cat /etc/lsb-release', ignore_status=True)
-            if not result.exit_status:
-                BOARD_PREFIX = 'CHROMEOS_RELEASE_BOARD='
-                for line in result.stdout.splitlines():
-                    if line.startswith(BOARD_PREFIX):
-                        self._board = line[len(BOARD_PREFIX):]
-                        break
+        if self._board is None:
+            # Remove 'board:' prefix.
+            self._board = self.host.get_board().split(':')[1]
         return self._board
 
 

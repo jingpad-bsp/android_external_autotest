@@ -163,6 +163,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     connect_timeout=connect_timeout, args=args)
 
 
+    def get_board(self):
+        return 'adb'
+
+
     def run(self, command, timeout=3600, ignore_status=False,
             ignore_timeout=False, stdout_tee=utils.TEE_TO_LOGS,
             stderr_tee=utils.TEE_TO_LOGS, connect_timeout=30, options='',
