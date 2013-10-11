@@ -20,6 +20,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import ssh_host
+from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 
@@ -35,6 +36,11 @@ class ServoHostVerifyFailure(ServoHostException):
 
 class ServoHostRepairFailure(ServoHostException):
     """Raised when a repair method fails to repair a servo host."""
+    pass
+
+
+class ServoHostRepairMethodNA(ServoHostException):
+    """Raised when a repair method is not applicable."""
     pass
 
 
@@ -346,11 +352,12 @@ class ServoHost(ssh_host.SSHHost):
         """Power cycle the servo host using PoE.
 
         @raises ServoHostRepairFailure if it fails to fix the servo host.
+        @raises ServoHostRepairMethodNA if it does not support power.
 
         """
         if not self.has_power():
-            raise ServoHostRepairFailure('%s does not support power.' %
-                                         self.hostname)
+            raise ServoHostRepairMethodNA('%s does not support power.' %
+                                          self.hostname)
         logging.info('Attempting repair via PoE powercycle.')
         failed_cycles = 0
         self.power_cycle()
@@ -386,13 +393,21 @@ class ServoHost(ssh_host.SSHHost):
                         self._powercycle_to_repair]
         errors = []
         for repair_func in repair_funcs:
+            counter_prefix = 'servo_host_repair.%s.' % repair_func.__name__
             try:
                 repair_func()
                 self.verify()
+                stats.Counter(counter_prefix + 'SUCCEEDED').increment()
                 return
+            except ServoHostRepairMethodNA as e:
+                logging.warn('Repair method NA: %s', e)
+                stats.Counter(counter_prefix + 'RepairNA').increment()
+                errors.append(str(e))
             except Exception as e:
                 logging.warn('Failed to repair servo: %s', e)
+                stats.Counter(counter_prefix + 'FAILED').increment()
                 errors.append(str(e))
+        stats.Counter('servo_host_repair.Full_Repair_Failed').increment()
         raise ServoHostRepairTotalFailure(
                 'All attempts at repairing the servo failed:\n%s' %
                 '\n'.join(errors))
