@@ -250,9 +250,9 @@ class power_x86Settings(test.test):
         """Checks the kernel log for a message that an LVDS downclock mode has
         been added.
 
-        This test is specific to alex & lumpy, since they use the i915 driver
-        (which has downclocking ability) and use the same LCD. This LCD is
-        special, in that it supports a downclocked refresh rate, but doesn't
+        This test is specific to alex/lumpy/parrot/stout since they use the i915
+	driver (which has downclocking ability) and use known LCDs. These LCDs
+	are special, in that they support a downclocked refresh rate, but don't
         advertise it in the EDID.
 
         To counteract this, I added a quirk in drm to add a downclocked mode to
@@ -266,10 +266,10 @@ class power_x86Settings(test.test):
         Returns:
             0 if no errors, otherwise the number of errors that occurred.
         """
-        # Skip all boards except lumpy and alex
         cmd = 'cat /etc/lsb-release | grep CHROMEOS_RELEASE_BOARD'
         output = utils.system_output(cmd)
-        if 'lumpy' not in output and 'alex' not in output:
+        if ('lumpy' not in output and 'alex' not in output and
+	   'parrot' not in output and 'stout' not in output):
             return 0
 
         # Get the downclock message from the logs
