@@ -267,7 +267,7 @@ class ZeroconfDaemon(object):
         for dest in self._ptr_records[q.name]:
             answers.append(dpkt.dns.DNS.RR(
                 type = dpkt.dns.DNS_PTR,
-                cls = dpkt.dns.DNS_IN | DNS_CACHE_FLUSH,
+                cls = dpkt.dns.DNS_IN, # Don't cache flush for PTR records.
                 ttl = self._response_ttl,
                 name = q.name,
                 ptrname = dest + '.' + q.name))
