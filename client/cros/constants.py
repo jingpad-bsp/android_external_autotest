@@ -130,21 +130,21 @@ FAKE_NSSDB_DIR = FAKE_ROOT_CA_DIR + '/nssdb'
 
 INTERACTIVE_XMLRPC_SERVER_PORT = 9980
 INTERACTIVE_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros && '
+        'cd /usr/local/autotest/common_lib/cros; '
         './interactive_xmlrpc_server.py')
 INTERACTIVE_XMLRPC_SERVER_CLEANUP_PATTERN = 'interactive_xmlrpc_server'
 INTERACTIVE_XMLRPC_SERVER_READY_METHOD = 'ready'
 
 SHILL_XMLRPC_SERVER_PORT = 9989
 SHILL_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros/network && '
+        'cd /usr/local/autotest/common_lib/cros/network; '
         './shill_xmlrpc_server.py')
 SHILL_XMLRPC_SERVER_CLEANUP_PATTERN = 'shill_xmlrpc_server'
 SHILL_XMLRPC_SERVER_READY_METHOD = 'ready'
 
 BLUETOOTH_CLIENT_XMLRPC_SERVER_PORT = 9990
 BLUETOOTH_CLIENT_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros/bluetooth && '
+        'cd /usr/local/autotest/common_lib/cros/bluetooth; '
         './bluetooth_client_xmlrpc_server.py')
 BLUETOOTH_CLIENT_XMLRPC_SERVER_CLEANUP_PATTERN = (
         'bluetooth_client_xmlrpc_server')
@@ -152,7 +152,7 @@ BLUETOOTH_CLIENT_XMLRPC_SERVER_READY_METHOD = 'ready'
 
 BLUETOOTH_TESTER_XMLRPC_SERVER_PORT = 9990
 BLUETOOTH_TESTER_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros/bluetooth && '
+        'cd /usr/local/autotest/common_lib/cros/bluetooth;  '
         './bluetooth_tester_xmlrpc_server.py')
 BLUETOOTH_TESTER_XMLRPC_SERVER_CLEANUP_PATTERN = (
         'bluetooth_tester_xmlrpc_server')

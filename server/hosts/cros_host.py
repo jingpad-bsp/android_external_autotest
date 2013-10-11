@@ -112,6 +112,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _POWER_CYCLE_TIMEOUT = 10
 
     _RPC_PROXY_URL = 'http://localhost:%d'
+    _RPC_SHUTDOWN_POLLING_PERIOD_SECONDS = 2
+    _RPC_SHUTDOWN_TIMEOUT_SECONDS = 20
 
     _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
             'rpm_recovery_boards', type=str).split(',')
@@ -1173,7 +1175,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return tunnel_proc
 
 
-    def _setup_rpc(self, port, command_name):
+    def _setup_rpc(self, port, command_name, remote_pid=None):
         """Sets up a tunnel process and performs rpc connection book keeping.
 
         This method assumes that xmlrpc and jsonrpc never conflict, since
@@ -1206,7 +1208,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.rpc_disconnect(port)
         local_port = utils.get_unused_port()
         tunnel_proc = self._create_ssh_tunnel(port, local_port)
-        self._rpc_proxy_map[port] = (command_name, tunnel_proc)
+        self._rpc_proxy_map[port] = (command_name, tunnel_proc, remote_pid)
         return self._RPC_PROXY_URL % local_port
 
 
@@ -1251,22 +1253,19 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             TestFail error if server is not ready in time.
 
         """
-        rpc_url = self._setup_rpc(port, command_name)
         # Start the server on the host.  Redirection in the command
         # below is necessary, because 'ssh' won't terminate until
         # background child processes close stdin, stdout, and
         # stderr.
-        remote_cmd = '( %s ) </dev/null >/dev/null 2>&1 & echo $!' % command
-        try:
-            remote_pid = self.run(remote_cmd).stdout.rstrip('\n')
-        except Exception as e:
-            self.rpc_disconnect(port)
-            raise
-
+        remote_cmd = '%s </dev/null >/dev/null 2>&1 & echo $!' % command
+        remote_pid = self.run(remote_cmd).stdout.rstrip('\n')
         logging.debug('Started XMLRPC server on host %s, pid = %s',
                       self.hostname, remote_pid)
 
+        # Tunnel through SSH to be able to reach that remote port.
+        rpc_url = self._setup_rpc(port, command_name, remote_pid=remote_pid)
         proxy = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
+
         if ready_test_name is not None:
             # retry.retry logs each attempt; calculate delay_sec to
             # keep log spam to a dull roar.
@@ -1342,9 +1341,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         if port not in self._rpc_proxy_map:
             return
-        entry = self._rpc_proxy_map[port]
-        remote_name = entry[0]
-        tunnel_proc = entry[1]
+        remote_name, tunnel_proc, remote_pid = self._rpc_proxy_map[port]
         if remote_name:
             # We use 'pkill' to find our target process rather than
             # a PID, because the host may have rebooted since
@@ -1356,6 +1353,22 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # exception.  We don't want that, so we the ignore
             # status.
             self.run("pkill -f '%s'" % remote_name, ignore_status=True)
+            if remote_pid:
+                logging.info('Waiting for RPC server "%s" shutdown',
+                             remote_name)
+                start_time = time.time()
+                while (time.time() - start_time <
+                       self._RPC_SHUTDOWN_TIMEOUT_SECONDS):
+                    running_processes = self.run(
+                            "pgrep -f '%s'" % remote_name,
+                            ignore_status=True).stdout.split()
+                    if not remote_pid in running_processes:
+                        logging.info('Shut down RPC server.')
+                        break
+                    time.sleep(self._RPC_SHUTDOWN_POLLING_PERIOD_SECONDS)
+                else:
+                    raise error.TestError('Failed to shutdown RPC server %s' %
+                                          remote_name)
 
         if tunnel_proc.poll() is None:
             tunnel_proc.terminate()
