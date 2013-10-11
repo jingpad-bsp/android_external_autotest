@@ -276,7 +276,6 @@ class TestConfigGenerator(object):
                 raise FullReleaseTestError(
                         'delta target release %s does not contain %s (%s)',
                         target_version, self.tested_release, self.board)
-
             source_uri = self._get_source_uri_from_build_version(source_version)
             if not source_uri:
                 logging.warning('cannot find source for %s, %s', self.board,
@@ -555,7 +554,7 @@ def get_job_url(server, job_id):
             _autotest_url_format % dict(host=server, job=job_id))
 
 
-def parse_args():
+def parse_args(argv):
     parser = optparse.OptionParser(
             usage='Usage: %prog [options] RELEASE [BOARD...]',
             description='Schedule Chrome OS release update tests on given '
@@ -599,7 +598,7 @@ def parse_args():
                       help='verbosity level: %s' % ' '.join(_valid_log_levels))
 
     # Parse arguments.
-    opts, args = parser.parse_args()
+    opts, args = parser.parse_args(argv)
 
     # Get positional arguments, adding them as option values.
     if len(args) < 1:
@@ -643,14 +642,14 @@ def parse_args():
     return opts
 
 
-def main():
+def main(argv):
     try:
         # Initialize board/release configs.
         _board_info.initialize()
         _release_info.initialize()
 
         # Parse command-line arguments.
-        args = parse_args()
+        args = parse_args(argv)
 
         # Set log verbosity.
         if args.log_level == _log_debug:
@@ -715,8 +714,10 @@ def main():
 
     except FullReleaseTestError, e:
         logging.fatal(str(e))
-        sys.exit(1)
+        return 1
+    else:
+        return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main(sys.argv[1:]))
