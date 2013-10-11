@@ -20,9 +20,6 @@ class hardware_StorageFio(test.test):
 
     version = 6
 
-    # Version information for the fio parser object.
-    _fio_version = '2.1'
-
     # Initialize fail counter used to determine test pass/fail.
     _fail_count = 0
 
@@ -137,7 +134,7 @@ class hardware_StorageFio(test.test):
             # instead of the job description or possible blank lines.
             if len(values) <= 128:
                 continue
-            results.update(fio_job_output(self._fio_version, values))
+            results.update(fio_job_output(values))
 
         return results
 
@@ -171,7 +168,7 @@ class hardware_StorageFio(test.test):
 
         logging.debug(fio.stdout)
         output =  self.__parse_fio(fio.stdout)
-        self._fail_count += int(output[job + '_error'])
+        self._fail_count += int(output[job + '-error'])
         return output
 
 
