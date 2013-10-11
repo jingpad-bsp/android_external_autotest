@@ -4,7 +4,6 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "login_CryptohomeIncognitoMounted"
-SUITE = "bvt, kaen_bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
