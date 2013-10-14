@@ -787,6 +787,11 @@ class BaseDispatcher(object):
         if not queue_entries:
             return
 
+        new_hostless_jobs = 0
+        new_atomic_groups = 0
+        new_jobs_with_hosts = 0
+        new_jobs_need_hosts = 0
+
         logging.debug('Processing %d queue_entries', len(queue_entries))
         for queue_entry in queue_entries:
             self._log_extra_msg('Processing queue_entry: %s' % queue_entry)
@@ -797,13 +802,24 @@ class BaseDispatcher(object):
             if queue_entry.is_hostless():
                 self._log_extra_msg('Scheduling hostless job.')
                 self._schedule_hostless_job(queue_entry)
+                new_hostless_jobs = new_hostless_jobs + 1
             elif is_unassigned_atomic_group:
                 self._schedule_atomic_group(queue_entry)
+                new_atmoic_groups = new_atomic_groups + 1
             else:
+                new_jobs_need_hosts = new_jobs_need_hosts + 1
                 assigned_host = self._host_scheduler.schedule_entry(queue_entry)
                 if assigned_host and not self.host_has_agent(assigned_host):
                     assert assigned_host.id == queue_entry.host_id
                     self._run_queue_entry(queue_entry)
+                    new_jobs_with_hosts = new_jobs_with_hosts + 1
+
+        key = 'scheduler.jobs_per_tick'
+        stats.Gauge(key).send('new_hostless_jobs', new_hostless_jobs)
+        stats.Gauge(key).send('new_atomic_groups', new_atomic_groups)
+        stats.Gauge(key).send('new_jobs_with_hosts', new_jobs_with_hosts)
+        stats.Gauge(key).send('new_jobs_without_hosts',
+                              new_jobs_need_hosts - new_jobs_with_hosts)
 
 
     def _schedule_running_host_queue_entries(self):
