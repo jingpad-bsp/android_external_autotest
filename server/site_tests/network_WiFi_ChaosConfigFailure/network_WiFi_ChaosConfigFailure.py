@@ -12,13 +12,13 @@ class network_WiFi_ChaosConfigFailure(test.test):
     version = 1
 
 
-    def _save_all_pages(self):
+    def _save_all_pages(self, ap):
         for page in range(1, ap.get_number_of_pages() + 1):
             ap.navigate_to_page(page)
             ap.save_screenshot()
 
 
-    def _write_screenshots(self, filename):
+    def _write_screenshots(self, ap, filename):
         for (i, image) in enumerate(ap.get_all_screenshots):
             path = os.path.join(self.outputdir,
                                 filename, '_%d.png' % (i + 1))
@@ -40,10 +40,10 @@ class network_WiFi_ChaosConfigFailure(test.test):
         """
 
         if not missing_from_scan:
-            self._write_screenshots('config_failure')
+            self._write_screenshots(ap, 'config_failure')
             ap.clear_screenshot_list()
-        self._save_all_pages()
-        self._write_screenshots('final_configuration')
+        self._save_all_pages(ap)
+        self._write_screenshots(ap, 'final_configuration')
         ap.clear_screenshot_list()
 
         if not missing_from_scan:
