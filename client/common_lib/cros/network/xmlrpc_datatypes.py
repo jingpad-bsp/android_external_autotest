@@ -4,6 +4,7 @@
 
 import copy
 import logging
+import pprint
 import sys
 
 from autotest_lib.client.common_lib.cros import xmlrpc_types
@@ -85,6 +86,10 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
         self.save_credentials = save_credentials
         self.station_type = station_type
         self.expect_failure = expect_failure
+
+    def __str__(self):
+        """Returns a formatted string of member parameters"""
+        return pprint.pformat(self.__dict__)
 
 
 class AssociationResult(xmlrpc_types.XmlRpcStruct):

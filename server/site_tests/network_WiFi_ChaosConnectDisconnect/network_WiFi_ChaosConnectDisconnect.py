@@ -16,18 +16,20 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
     version = 1
 
 
-    def run_once(self, capturer, host, ap_spec, client, tries):
+    def run_once(self, capturer, capturer_frequency, capturer_ht_type,
+                 host, assoc_params, client, tries):
         """ Main entry function for autotest.
 
         @param capturer: a packet capture device
+        @param capturer_frequency: integer channel frequency in MHz.
+        @param capturer_ht_type: string specifier of channel HT type.
         @param host: an Autotest host object, DUT.
-        @param ap_spec: an APSpec object
+        @param assoc_params: an AssociationParameters object.
         @param client: WiFiClient object
         @param tries: an integer, number of connection attempts.
 
         """
 
-        assoc_params = ap_spec.association_parameters
         results = []
 
         for i in range(1, tries + 1):
@@ -35,11 +37,7 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
             if not client.shill.init_test_network_state():
                 return 'Failed to set up isolated test context profile.'
 
-            # TODO(wiley) We probably don't always want HT40, but
-            #             this information is hard to infer here.
-            #             Change how AP configuration happens so that
-            #             we expose this.
-            capturer.start_capture(ap_spec.frequency, ht_type='HT40+')
+            capturer.start_capture(capturer_frequency, ht_type=capturer_ht_type)
             try:
                 success = False
                 logging.info('Connection attempt %d', i)
@@ -66,6 +64,6 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
             # error.TestError doesn't handle the formatting inline, doing it
             # here so it is clearer to read in the status.log file.
             msg = str('Failed on the following attempts:\n%s\n'
-                      'With the ap_spec:\n%s' % (pprint.pformat(results),
-                      ap_spec))
+                      'With the assoc_params:\n%s' % (pprint.pformat(results),
+                      assoc_params))
             raise error.TestFail(msg)

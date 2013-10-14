@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
-
 # Supported bands
 BAND_2GHZ = '2.4GHz'
 BAND_5GHZ = '5GHz'
@@ -105,16 +102,11 @@ class APSpec(object):
     For those not given the defaults listed above will be used.  Validation
     is done on the values to make sure the spec created is valid.  If
     validation fails a ValueError is raised.
-
-    The exception for this is the unique_id member.  There is no validation
-    done on this string.  It can be used by the called to easily identify an
-    APSpec instance.
     """
 
 
     def __init__(self, visible=True, security=SECURITY_TYPE_DISABLED,
-                 band=None, mode=None, channel=None, hostnames=None,
-                 unique_id=None):
+                 band=None, mode=None, channel=None, hostnames=None):
         super(APSpec, self).__init__()
         self._visible = visible
         self._security = security
@@ -139,7 +131,6 @@ class APSpec(object):
             raise ValueError('Conflicting band and modes/channels.')
 
         self._validate_security()
-        self._unique_id = unique_id
 
 
     def __str__(self):
@@ -149,32 +140,15 @@ class APSpec(object):
                 'band=%s\n'
                 'mode=%s\n'
                 'channel=%d\n'
-                'unique_id=%s\n'
-                'ssid=%s\n'
                 'password=%s' % (self._visible, self._security, self.band,
                 mode_string_for_mode(self._mode), self._channel,
-                self._unique_id, self.ssid, self._password))
+                self._password))
 
 
     @property
     def password(self):
         """Returns the password for password supported secured networks."""
         return self._password
-
-
-    @property
-    def ssid(self):
-        """Returns the SSID for the AP."""
-        if not self._unique_id:
-            unique_id_string = 'ap'
-        else:
-            unique_id_string = (
-                    self._unique_id.replace(' ', '_').replace('.', '_'))
-        return_string = str('%s_%s_ch%d_%s' % (unique_id_string,
-                            mode_string_for_mode(self._mode),
-                            self._channel, self._security))
-        # Return no more than 32 characters
-        return return_string[:32]
 
 
 
@@ -220,40 +194,6 @@ class APSpec(object):
     def hostnames(self):
         """Return the hostnames; this may be None."""
         return self._hostnames
-
-
-    @property
-    def unique_id(self):
-        """Return the unique id."""
-        return self._unique_id
-
-
-    @unique_id.setter
-    def unique_id(self, value):
-        """Sets the unique id.
-
-        @param value: a string used as a unique identifier.
-
-        """
-        self._unique_id = value
-
-
-    @property
-    def association_parameters(self):
-        """Returns the AssociationParameters equivalent for the APSpec."""
-        security_config = None
-        if self._security == SECURITY_TYPE_WPAPSK:
-            # Not all of this is required but doing it just in case.
-            security_config = xmlrpc_security_types.WPAConfig(
-                psk=self._password,
-                wpa_mode=xmlrpc_security_types.WPAConfig.MODE_MIXED_WPA,
-                wpa_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP,
-                             xmlrpc_security_types.WPAConfig.CIPHER_TKIP],
-                wpa2_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
-        return xmlrpc_datatypes.AssociationParameters(
-                ssid=self.ssid, security_config=security_config,
-                discovery_timeout=45, association_timeout=30,
-                configuration_timeout=30, is_hidden=not self._visible)
 
 
     def _validate_channel_and_mode(self):

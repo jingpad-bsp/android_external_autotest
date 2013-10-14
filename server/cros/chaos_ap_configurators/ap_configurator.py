@@ -131,7 +131,7 @@ class APConfigurator():
         @return a list of dictionaries as described above
 
         """
-        raise NotImplementedError
+        raise NotImplementedError('Missing subclass implementation')
 
 
     def get_bss(self):
@@ -160,7 +160,7 @@ class APConfigurator():
         @return a list of dictionaries as described above
 
         """
-        raise NotImplementedError
+        raise NotImplementedError('Missing subclass implementation')
 
 
     def is_visibility_supported(self):
@@ -206,7 +206,7 @@ class APConfigurator():
         @return True if the security mode is supported; False otherwise.
 
         """
-        raise NotImplementedError
+        raise NotImplementedError('Missing subclass implementation')
 
 
 
@@ -233,3 +233,15 @@ class APConfigurator():
         logging.warning('%s.%s: Not Implemented',
                 self.__class__.__name__,
                 self.apply_settings.__name__)
+
+
+    def get_association_parameters(self):
+        """
+        Returns xmlrpc_datatypes.AssociationParameters for this AP
+
+        Note: The derived class must implement this method.
+
+        @return xmlrpc_datatypes.AssociationParameters
+
+        """
+        raise NotImplementedError('Missing subclass implementation')

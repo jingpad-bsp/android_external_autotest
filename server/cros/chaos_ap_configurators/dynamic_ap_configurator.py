@@ -13,6 +13,9 @@ import ap_spec
 import download_chromium_prebuilt as prebuilt
 import web_driver_core_helpers
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
                              'chrome_test', 'test_src', 'third_party',
                              'webdriver', 'pylib'))
@@ -432,7 +435,6 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         if power_up:
             self.power_up_router()
-        self.set_ssid(set_ap_spec.ssid)
         if self.is_visibility_supported():
             self.set_visibility(set_ap_spec.visible)
         if (set_ap_spec.security == ap_spec.SECURITY_TYPE_WPAPSK or
@@ -443,6 +445,15 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.set_band(set_ap_spec.band)
         self.set_mode(set_ap_spec.mode)
         self.set_channel(set_ap_spec.channel)
+
+        # Update ssid
+        raw_ssid = '%s_%s_ch%d_%s' % (
+                self.get_router_short_name(),
+                ap_spec.mode_string_for_mode(set_ap_spec.mode),
+                set_ap_spec.channel,
+                set_ap_spec.security)
+        self._ssid = raw_ssid.replace(' ', '_').replace('.', '_')[:32]
+        self.set_ssid(self._ssid)
         self.ap_spec = set_ap_spec
 
 
@@ -649,3 +660,26 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.configuration_success = True
         self._traceback = None
         self.destroy_driver_connection()
+
+
+    def get_association_parameters(self):
+        """
+        Creates an AssociationParameters from the configured AP.
+
+        @returns AssociationParameters for the configured AP.
+
+        """
+        security_config = None
+        if self.ap_spec.security in [ap_spec.SECURITY_TYPE_WPAPSK,
+                                     ap_spec.SECURITY_TYPE_WPA2PSK]:
+            # Not all of this is required but doing it just in case.
+            security_config = xmlrpc_security_types.WPAConfig(
+                    psk=self.ap_spec.password,
+                    wpa_mode=xmlrpc_security_types.WPAConfig.MODE_MIXED_WPA,
+                    wpa_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP,
+                                 xmlrpc_security_types.WPAConfig.CIPHER_TKIP],
+                    wpa2_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
+        return xmlrpc_datatypes.AssociationParameters(
+                ssid=self._ssid, security_config=security_config,
+                discovery_timeout=45, association_timeout=30,
+                configuration_timeout=30, is_hidden=not self.ap_spec.visible)

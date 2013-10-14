@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 import logging
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.chaos_ap_configurators.ap_configurator \
         import APConfigurator
 from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
@@ -140,3 +142,28 @@ class StaticAPConfigurator(APConfigurator):
 
         """
         return self.security == security_mode
+
+
+    def get_association_parameters(self):
+        """
+        Creates an AssociationParameters from the configured AP.
+
+        @returns AssociationParameters for the configured AP.
+
+        """
+        security_config = None
+        if self.security in [ap_spec.SECURITY_TYPE_WPAPSK,
+                             ap_spec.SECURITY_TYPE_WPA2PSK]:
+            # Not all of this is required but doing it just in case.
+            security_config = xmlrpc_security_types.WPAConfig(
+                    psk=self.psk,
+                    wpa_mode=xmlrpc_security_types.WPAConfig.MODE_MIXED_WPA,
+                    wpa_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP,
+                                 xmlrpc_security_types.WPAConfig.CIPHER_TKIP],
+                    wpa2_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
+        # TODO(jabele) Allow StaticAPs configured as hidden
+        #              by way of the ap_config file
+        return xmlrpc_datatypes.AssociationParameters(
+                ssid=self._ssid, security_config=security_config,
+                discovery_timeout=45, association_timeout=30,
+                configuration_timeout=30, is_hidden=False)

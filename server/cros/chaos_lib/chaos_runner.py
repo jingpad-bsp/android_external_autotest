@@ -93,8 +93,6 @@ class ChaosRunner(object):
         """
         cartridge = ap_cartridge.APCartridge()
         for ap in aps:
-            # Update the unique id so the SSID is unique for each AP.
-            self._ap_spec.unique_id = ap.get_router_short_name()
             ap.set_using_ap_spec(self._ap_spec)
             cartridge.push_configurator(ap)
         cartridge.run_configurators()
@@ -176,12 +174,19 @@ class ChaosRunner(object):
                                      missing_from_scan=True,
                                      tag=ap.ssid)
                         continue
-                    # Refresh the unique_id for this AP.
-                    self._ap_spec.unique_id = ap.get_router_short_name()
+
+                    assoc_params = ap.get_association_parameters()
+
+                    # TODO(wiley) We probably don't always want HT40, but
+                    #             this information is hard to infer here.
+                    #             Change how AP configuration happens so that
+                    #             we expose this.
                     result = job.run_test(self._test,
                                  capturer=capturer,
+                                 capturer_frequency=self._ap_spec.frequency,
+                                 capturer_ht_type='HT40+',
                                  host=self._host,
-                                 ap_spec=self._ap_spec,
+                                 assoc_params=assoc_params,
                                  client=self._wifi_client,
                                  tries=tries,
                                  # Copy all logs from the system
