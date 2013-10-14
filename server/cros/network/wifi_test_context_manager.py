@@ -26,10 +26,10 @@ class WiFiTestContextManager(object):
     manager rather than building it into the test class logic.
 
     """
-
     CMDLINE_CLIENT_PACKET_CAPTURES = 'client_capture'
-    CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
+    CMDLINE_PACKET_CAPTURE_SNAPLEN = 'capture_snaplen'
     CMDLINE_ROUTER_ADDR = 'router_addr'
+    CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
     CMDLINE_ROUTER_PORT = 'router_port'
     CMDLINE_SERVER_ADDR = 'server_addr'
     CONNECTED_STATES = 'ready', 'portal', 'online'
@@ -84,6 +84,7 @@ class WiFiTestContextManager(object):
         self._server = None
         self._enable_client_packet_captures = False
         self._enable_router_packet_captures = False
+        self._packet_capture_snaplen = None
 
 
     def __enter__(self):
@@ -170,11 +171,12 @@ class WiFiTestContextManager(object):
             self.router.hostap_configure(configuration_parameters,
                                          multi_interface=multi_interface)
         if self._enable_client_packet_captures:
-            self.client.start_capture()
+            self.client.start_capture(snaplen=self._packet_capture_snaplen)
         if self._enable_router_packet_captures:
             self.router.start_capture(
                     configuration_parameters.frequency,
-                    ht_type=configuration_parameters.ht_packet_capture_mode)
+                    ht_type=configuration_parameters.ht_packet_capture_mode,
+                    snaplen=self._packet_capture_snaplen)
 
 
     def setup(self):
@@ -205,6 +207,9 @@ class WiFiTestContextManager(object):
             self._enable_client_packet_captures = True
         if self.CMDLINE_ROUTER_PACKET_CAPTURES in self._cmdline_args:
             self._enable_router_packet_captures = True
+        if self.CMDLINE_PACKET_CAPTURE_SNAPLEN in self._cmdline_args:
+            self._packet_capture_snaplen = int(
+                    self._cmdline_args[self.CMDLINE_PACKET_CAPTURE_SNAPLEN])
         for system in (self.client, self.server, self.router):
             system.sync_host_times()
 

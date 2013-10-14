@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
 import os.path
 import uuid
@@ -13,6 +14,12 @@ from autotest_lib.server.cros import wifi_test_utils
 class PacketCapturesDisabledError(Exception):
     """Signifies that this remote host does not support packet captures."""
     pass
+
+
+# pcap_path refers to the path of the result on the remote host.
+# log_path refers to the tcpdump log file path on the remote host.
+RemoteCaptureResult = collections.namedtuple('RemoteCaptureResult',
+                                             ['pcap_path', 'log_path'])
 
 
 def get_packet_capturer(host, host_description=None, cmd_ifconfig=None,
@@ -148,6 +155,7 @@ class PacketCapturer(object):
         self._created_managed_devices = []
         self._created_raw_devices = []
         self._host_description = host_description
+        self._remote_results = []
 
 
     def __enter__(self):
@@ -155,10 +163,10 @@ class PacketCapturer(object):
 
 
     def __exit__(self):
-        self.stop()
+        self.close()
 
 
-    def stop(self):
+    def close(self):
         """Stop ongoing captures and destroy all created devices."""
         self.stop_capture()
         for device in self._created_managed_devices:
@@ -168,6 +176,10 @@ class PacketCapturer(object):
             self._host.run("%s link set %s down" % (self._cmd_ip, device))
             self._host.run("%s dev %s del" % (self._cmd_iw, device))
         self._created_raw_devices = []
+        for result in self._remote_results:
+            self._host.run('rm -f %s' % result.log_path)
+            self._host.run('rm -f %s' % result.pcap_path)
+        self._remote_results = []
 
 
     def create_raw_monitor(self, phy, frequency, ht_type=None,
@@ -297,6 +309,7 @@ class PacketCapturer(object):
         @param local_save_dir path to directory to save pcap file in locally.
         @param local_pcap_filename name of file to store pcap in
                 (basename only).
+        @return list of RemoteCaptureResult tuples
 
         """
         if capture_pid:
@@ -304,6 +317,7 @@ class PacketCapturer(object):
         else:
             pids_to_kill = list(self._ongoing_captures.keys())
 
+        results = []
         for pid in pids_to_kill:
             self._host.run('kill -INT %d' % pid, ignore_status=True)
             remote_pcap, remote_pcap_log, save_dir = self._ongoing_captures[pid]
@@ -320,3 +334,6 @@ class PacketCapturer(object):
                                           local_filename)
                 self._host.get_file(remote_file, local_file)
             self._ongoing_captures.pop(pid)
+            results.append(RemoteCaptureResult(remote_pcap, remote_pcap_log))
+        self._remote_results += results
+        return results

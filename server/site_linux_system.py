@@ -148,7 +148,7 @@ class LinuxSystem(object):
     def close(self):
         """Close global resources held by this system."""
         logging.debug('Cleaning up host object for %s', self.role)
-        self._packet_capturer.stop()
+        self._packet_capturer.close()
         self.host.close()
         self.host = None
 
@@ -194,14 +194,15 @@ class LinuxSystem(object):
         @param params dict unused, but required by our dispatch method.
 
         """
-        self.stop_capture()
+        return self.stop_capture()
 
 
-    def start_capture(self, frequency, ht_type=None):
+    def start_capture(self, frequency, ht_type=None, snaplen=None):
         """Start a packet capture.
 
         @param frequency int frequency of channel to capture on.
         @param ht_type string one of (None, 'HT20', 'HT40+', 'HT40-').
+        @param snaplen int number of bytes to retain per capture frame.
 
         """
         if self._packet_capturer.capture_running:
@@ -213,7 +214,8 @@ class LinuxSystem(object):
                                                     frequency,
                                                     ht_type=ht_type)
         # Start the capture.
-        self._packet_capturer.start_capture(self.capture_interface, './debug/')
+        self._packet_capturer.start_capture(self.capture_interface, './debug/',
+                                            snaplen=snaplen)
 
 
     def stop_capture(self, save_dir=None, save_filename=None):
@@ -225,11 +227,12 @@ class LinuxSystem(object):
         """
         if not self._packet_capturer.capture_running:
             return
-        self._packet_capturer.stop_capture(local_save_dir=save_dir,
-                                           local_pcap_filename=save_filename)
+        results = self._packet_capturer.stop_capture(
+                local_save_dir=save_dir, local_pcap_filename=save_filename)
         self.host.run('%s link set %s down' % (self.cmd_ip,
                                                self.capture_interface))
         self._release_wlanif(self.capture_interface)
+        return results
 
 
     def sync_host_times(self):

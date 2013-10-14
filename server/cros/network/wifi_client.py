@@ -364,12 +364,14 @@ class WiFiClient(object):
         self._firewall_rules = []
 
 
-    def start_capture(self):
+    def start_capture(self, snaplen=None):
         """Start a packet capture.
 
         Attempt to start a host based OTA capture.  If the driver stack does
         not support creating monitor interfaces, fall back to managed interface
         packet capture.  Only one ongoing packet capture is supported at a time.
+
+        @param snaplen int number of byte to retain per captured frame.
 
         """
         self.stop_capture()
@@ -378,12 +380,13 @@ class WiFiClient(object):
             logging.warning('Failure creating monitor interface; doing '
                             'managed packet capture instead.')
             devname = self.wifi_if
-        self._packet_capturer.start_capture(devname, self._result_dir)
+        self._packet_capturer.start_capture(devname, self._result_dir,
+                                            snaplen=snaplen)
 
 
     def stop_capture(self):
         """Stop a packet capture and copy over the results."""
-        self._packet_capturer.stop()
+        self._packet_capturer.close()
 
 
     def sync_host_times(self):
