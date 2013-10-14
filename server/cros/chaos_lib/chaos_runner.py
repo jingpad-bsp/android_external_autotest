@@ -159,6 +159,10 @@ class ChaosRunner(object):
                 self._configure_aps(aps)
 
                 for ap in aps:
+                    # http://crbug.com/306687
+                    if ap.ssid == None:
+                        logging.error('The SSID was not set for the AP:%s', ap)
+
                     if not ap.get_configuration_success():
                         # The AP was not configured correctly
                         job.run_test('network_WiFi_ChaosConfigFailure',

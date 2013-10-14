@@ -13,6 +13,7 @@ sys.path.append(os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
 from utils import common
 
+from autotest_lib.server.cros import host_lock_manager
 import ap_batch_locker
 import ap_spec
 
@@ -38,13 +39,14 @@ class ConfiguratorTest(unittest.TestCase):
       $ python -m unittest ap_configurator_test.ConfiguratorTest.test_ssid
     """
 
-    # Specify the Chaos AP to run the tests against.
-    AP_SPEC = dict(hostnames=['chromeos3-row2-rack2-host6'])
-
+    # Enter the hostname of the AP to test against
+    AP_SPEC = ap_spec.APSpec(hostnames=['chromeos3-row2-rack2-host6'])
 
     @classmethod
     def setUpClass(self):
-        self.batch_locker = ap_batch_locker.ApBatchLocker(self.AP_SPEC)
+        lock_manager = host_lock_manager.HostLockManager()
+        self.batch_locker = ap_batch_locker.ApBatchLocker(lock_manager,
+                                                          self.AP_SPEC)
         ap_batch = self.batch_locker.get_ap_batch(batch_size=1)
         if not ap_batch:
             raise RuntimeError('Unable to lock AP %r' % self.AP_SPEC)
@@ -136,16 +138,15 @@ class ConfiguratorTest(unittest.TestCase):
         """Test setting the SSID."""
         bands_info = self.ap.get_supported_bands()
         self.assertTrue(bands_info, msg='Invalid band sent.')
+        ssid = 'ssid2'
         for bands in bands_info:
             band = bands['band']
-            if band == ap_spec.BAND_2GHZ:
-                self.ap.set_band(band)
-                self.ap.set_ssid('ssid2')
-                self.ap.apply_settings()
-            if band == ap_spec.BAND_2GHZ:
-                self.ap.set_band(band)
-                self.ap.set_ssid('ssid5')
-                self.ap.apply_settings()
+            if band == ap_spec.BAND_5GHZ:
+                ssid = 'ssid5'
+            self.ap.set_band(band)
+            self.ap.set_ssid(ssid)
+            self.ap.apply_settings()
+        self.assertEqual(ssid, self.ap.ssid)
 
 
     def test_band(self):
