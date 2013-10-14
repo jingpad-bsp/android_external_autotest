@@ -36,8 +36,24 @@ class p2p_ConsumeFiles(test.test):
 
         # Import the lansim modules installed on lansim/build/
         sys.path.append(os.path.join(dep_dir, 'build'))
-        from lansim import tuntap
 
+        self._services = None
+        self._tap = None
+
+
+    def cleanup(self):
+        avahi_utils.avahi_stop()
+
+        if self._tap:
+            self._tap.down()
+
+        if self._services:
+            self._services.restore_services()
+
+
+    def _setup_avahi(self):
+        """Initializes avahi daemon on a new tap interface."""
+        from lansim import tuntap
         # Ensure p2p and avahi aren't running.
         self._services = service_stopper.ServiceStopper(['p2p', 'avahi'])
         self._services.stop_services()
@@ -47,24 +63,11 @@ class p2p_ConsumeFiles(test.test):
 
         # The network 169.254/16 shouldn't clash with other real services. We
         # use a /24 subnet of it here.
-        self._tap.set_addr("169.254.10.1", mask=24)
+        self._tap.set_addr('169.254.10.1', mask=24)
         self._tap.up()
 
-        # Re-launch avahi-daemon with custom options.
-        opts = [('server', 'allow-interfaces', self._tap.name),
-                ('server', 'deny-interfaces', None)]
-        conf = avahi_utils.avahi_config(opts)
-        avahi_utils.avahi_start(config_file=conf)
-        os.unlink(conf)
-
-
-    def cleanup(self):
-        avahi_utils.avahi_stop()
-
-        self._tap.down()
-
-        if self._services:
-            self._services.restore_services()
+        # Re-launch avahi-daemon on the tap interface.
+        avahi_utils.avahi_start_on_iface(self._tap.name)
 
 
     def _run_p2p_client(self, args, timeout=10., ignore_status=False):
@@ -91,6 +94,9 @@ class p2p_ConsumeFiles(test.test):
 
     def run_once(self):
         from lansim import simulator, host
+
+        # Setup the environment where avahi-daemon runs during the test.
+        self._setup_avahi()
 
         sim = simulator.SimulatorThread(self._tap)
         # Create three peers host-a, host-b and host-c sharing a set of files.

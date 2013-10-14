@@ -53,6 +53,8 @@ class TunTapTest(unittest.TestCase):
         """Tests if it is possible to bring up and down the interface."""
         tap = tuntap.TunTap(tuntap.IFF_TAP, name="faketap%d")
         # Set the IP address to a safe value:
+        tap.set_addr('169.254.10.1')
+        self.assertEqual(tap.addr, '169.254.10.1')
         tap.set_addr('0.0.0.0')
 
         self.assertFalse(tap.is_up())

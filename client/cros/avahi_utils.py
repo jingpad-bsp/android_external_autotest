@@ -89,3 +89,15 @@ def avahi_start(config_file=None):
 def avahi_stop():
     """Stop the avahi daemon."""
     utils.system('stop avahi')
+
+
+def avahi_start_on_iface(iface):
+    """Starts avahi daemon listening only on the provided interface.
+
+    @param iface: A string with the interface name.
+    """
+    opts = [('server', 'allow-interfaces', iface),
+            ('server', 'deny-interfaces', None)]
+    conf = avahi_config(opts)
+    avahi_start(config_file=conf)
+    os.unlink(conf)

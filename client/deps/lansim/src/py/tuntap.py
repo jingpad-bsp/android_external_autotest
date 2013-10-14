@@ -146,6 +146,21 @@ class TunTap(object):
         return ifr_flags
 
 
+    def get_addr(self):
+        """Return the address of the interface.
+
+        @param string addr: The IPv4 address for the interface.
+        """
+        ifs = fcntl.ioctl(self._sock, pyiftun.SIOCGIFADDR,
+            pack_struct_ifreq(self.name, 'ifr_addr', socket.AF_INET, 0, ''))
+        ifr_name, ifr_family, ifr_type, ifr_addr = unpack_struct_ifreq(
+                ifs, 'ifr_addr')
+        if ifr_type != 0:
+            return None
+        # ifr_addr contains up to 12 bytes (see STRUCT_IFREQ_FMT).
+        return socket.inet_ntoa(ifr_addr[:4])
+
+
     def set_addr(self, addr, mask=None):
         """Sets the address and network mask of the interface.
 
@@ -162,6 +177,10 @@ class TunTap(object):
           ifs = fcntl.ioctl(self._sock, pyiftun.SIOCSIFNETMASK,
               pack_struct_ifreq(self.name, 'ifr_addr',
                   socket.AF_INET, 0, str_mask))
+
+
+    """The interface IPv4 address in plain text as in '192.168.0.1'."""
+    addr = property(get_addr, set_addr)
 
 
     def get_hwaddr(self):
@@ -186,6 +205,10 @@ class TunTap(object):
         ifr_name, ifr_family, ifr_hwaddr = unpack_struct_ifreq(
             ifs, 'ifr_hwaddr')
         return (ifr_family, tools.inet_ntohw(ifr_hwaddr[:6]))
+
+
+    """The interface Ethernet address as in '00:11:22:AA:BB:CC'."""
+    hwaddr = property(get_hwaddr, set_hwaddr)
 
 
     def up(self):
