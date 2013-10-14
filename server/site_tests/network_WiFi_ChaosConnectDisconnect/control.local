@@ -32,9 +32,9 @@ def run_chaos_debug(machine):
                 ap_spec.APSpec(band=ap_spec.BAND_5GHZ, hostnames=debug_aps)]
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
-                'network_WiFi_ChaosConnectDisconnect', host, client, spec,
-                capturer_hostname=capturer_hostname)
-        runner.run(job, batch_size=2, tries=2)
+                'network_WiFi_ChaosConnectDisconnect', host, client, spec)
+        runner.run(job, batch_size=2, tries=2,
+                   capturer_hostname=capturer_hostname)
 
 
 parallel_simple(run_chaos_debug, machines)

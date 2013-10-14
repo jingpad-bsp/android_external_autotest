@@ -127,20 +127,20 @@ class ChaosRunner(object):
         return False
 
 
-    def run(self, job, batch_size=15, tries=10, capture_hostname=None):
+    def run(self, job, batch_size=15, tries=10, capturer_hostname=None):
         """Executes Chaos test.
 
         @param job: an Autotest job object.
         @param batch_size: an integer, max number of APs to lock in one batch.
         @param tries: an integer, number of iterations to run per AP.
-        @param capture_hostname: a string or None, hostname or IP of capturer.
+        @param capturer_hostname: a string or None, hostname or IP of capturer.
 
         """
 
         lock_manager = host_lock_manager.HostLockManager()
         with host_lock_manager.HostsLockedBy(lock_manager):
             capture_host = self._allocate_packet_capturer(
-                    lock_manager, hostname=capture_hostname)
+                    lock_manager, hostname=capturer_hostname)
             capturer = site_linux_system.LinuxSystem(capture_host, {},
                                                      'packet_capturer')
             batch_locker = ap_batch_locker.ApBatchLocker(lock_manager,
