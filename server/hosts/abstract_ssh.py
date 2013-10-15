@@ -649,6 +649,7 @@ class AbstractSSHHost(remote.RemoteHost):
 
             # Start the master SSH connection in the background.
             master_cmd = self.ssh_command(options="-N -o ControlMaster=yes")
+            logging.debug("System load: %s",  utils.run(['uptime']).stdout)
             logging.info("Starting master ssh connection '%s'", master_cmd)
             self.master_ssh_job = utils.BgJob(master_cmd,
                                               nickname='master-ssh',
