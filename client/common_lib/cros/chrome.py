@@ -40,6 +40,9 @@ class Chrome(object):
                 extensions_to_load.append(extension)
             self._extensions_to_load = extensions_to_load
 
+        # finder options must be set before parse_args(), browser options must
+        # be set before Create().
+        finder_options.verbosity = 1 # info logging for telemetry.
         finder_options.CreateParser().parse_args(args=[])
         b_options = finder_options.browser_options
         b_options.disable_component_extensions_with_background_pages = False
