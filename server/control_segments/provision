@@ -36,8 +36,7 @@ def provision_machine(machine):
             # sysinfo isn't really going to get us anything incredibly
             # interesting here, and it takes a non-trivial amount of time, so
             # we might as well just turn it off.
-            success = job.run_test(test, host=host, value=value,
-                                   disable_sysinfo=True)
+            success = job.run_test(test, host=host, value=value)
             if not success:
                 raise Exception('Provisioning %s:%s failed on %s' %
                                 (name, value, machine))
