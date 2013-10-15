@@ -51,11 +51,9 @@ class bluetooth_Sanity_Discoverable(bluetooth_test.BluetoothTest):
                     self.write_perf_keyval({'rssi': int(rssi)})
                     return True
                 except KeyError:
-                    logging.warning('Device did not have a name '
-                                    'in attempt %d', failed_attempts)
+                    logging.warning('Device did not have a name')
         else:
-            logging.warning('Failed to find device in attempt %d',
-                            failed_attempts)
+            logging.warning('Failed to find device')
 
         return False
 
