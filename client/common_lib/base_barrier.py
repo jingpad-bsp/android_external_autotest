@@ -1,6 +1,6 @@
 import sys, socket, errno, logging
 from time import time, sleep
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, utils
 
 # default barrier port
 _DEFAULT_PORT = 11922
@@ -42,6 +42,10 @@ class listen_server(object):
         """
         self.address = address
         self.port = port
+        # Open the port so that the listening server can accept incoming
+        # connections.
+        utils.run('iptables -A INPUT -p tcp -m tcp --dport %d -j ACCEPT' %
+                  port)
         self.socket = self._setup()
 
 

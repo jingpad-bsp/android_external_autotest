@@ -5,12 +5,18 @@ __author__ = """Ashwin Ganti (aganti@google.com)"""
 import os, sys, socket, errno, unittest, threading
 from time import time, sleep
 import common
-from autotest_lib.client.common_lib import error, base_barrier
+from autotest_lib.client.common_lib import error, base_barrier, utils
 barrier = base_barrier
 from autotest_lib.client.common_lib.test_utils import mock
 
 
 class listen_server_test(unittest.TestCase):
+
+    def setUp(self):
+        self.god = mock.mock_god()
+        self.god.stub_function(utils, 'run')
+        utils.run.expect_any_call()
+
 
     def test_init(self):
         server = barrier.listen_server()
@@ -20,9 +26,11 @@ class listen_server_test(unittest.TestCase):
     def test_close(self):
         server = barrier.listen_server()
         # cannot bind on the same port again
+        utils.run.expect_any_call()
         self.assertRaises(socket.error, barrier.listen_server)
         server.close()
         # now we can
+        utils.run.expect_any_call()
         server = barrier.listen_server()
         server.close()
 
@@ -32,6 +40,8 @@ class barrier_test(unittest.TestCase):
     def setUp(self):
         self.god = mock.mock_god()
         self.god.mock_io()
+        self.god.stub_function(utils, 'run')
+        utils.run.expect_any_call()
 
 
     def tearDown(self):
