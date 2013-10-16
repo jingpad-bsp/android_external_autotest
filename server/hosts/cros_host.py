@@ -68,10 +68,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _parser = autoserv_parser.autoserv_parser
     _AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
 
-    # Time to wait for new kernel to be marked successful after
-    # auto update.
-    _KERNEL_UPDATE_TIMEOUT = 120
-
     # Timeout values (in seconds) associated with various Chrome OS
     # state changes.
     #
@@ -410,11 +406,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         try:
             board, build_type, branch = site_utils.ParseBuildName(
                                                 image_name)[:3]
-        except site_utils.ParseBuildNameException as e:
+        except site_utils.ParseBuildNameException:
             pass
         else:
             devserver = devserver_url[
-                devserver_url.find('/')+2:devserver_url.rfind(':')]
+                devserver_url.find('/') + 2:devserver_url.rfind(':')]
             stats_key = {
                 'board': board,
                 'build_type': build_type,
@@ -486,49 +482,17 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # it depends on the _LAB_MACHINE_FILE.
         self.run('touch %s' % self._LAB_MACHINE_FILE)
         self.run('start autoreboot')
-
-        # Figure out the newly active kernel.
-        active_kernel, _ = updater.get_kernel_state()
-
-        # Check for rollback due to a bad build.
-        if expected_kernel and active_kernel != expected_kernel:
-            # Print out some information to make it easier to debug
-            # the rollback.
-            logging.debug('Dumping partition table.')
-            self.run('cgpt show $(rootdev -s -d)')
-            logging.debug('Dumping crossystem for firmware debugging.')
-            self.run('crossystem --all')
-            raise autoupdater.ChromiumOSError(
-                'Build %s failed to boot on %s; system rolled back '
-                'to previous build' % (updater.update_version,
-                                           self.hostname))
-
+        updater.verify_boot_expectations(
+                expected_kernel, rollback_message=
+                'Build %s failed to boot on %s; system rolled back to previous'
+                'build' % (updater.update_version, self.hostname))
         # Check that we've got the build we meant to install.
         if not updater.check_version_to_confirm_install():
             raise autoupdater.ChromiumOSError(
                 'Failed to update %s to build %s; found build '
                 '%s instead' % (self.hostname,
-                                 updater.update_version,
-                                 updater.get_build_id()))
-
-        # Make sure chromeos-setgoodkernel runs.
-        try:
-            utils.poll_for_condition(
-                lambda: (updater.get_kernel_tries(active_kernel) == 0
-                         and updater.get_kernel_success(active_kernel)),
-                exception=autoupdater.ChromiumOSError(),
-                timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
-        except autoupdater.ChromiumOSError as e:
-            services_status = self.run('status system-services').stdout
-            if services_status != 'system-services start/running\n':
-                event = ('Chrome failed to reach login screen')
-            else:
-                event = ('update-engine failed to call '
-                         'chromeos-setgoodkernel')
-            raise autoupdater.ChromiumOSError(
-                    'After update and reboot, %s '
-                    'within %d seconds' % (event,
-                                           self._KERNEL_UPDATE_TIMEOUT))
+                                updater.update_version,
+                                updater.get_build_id()))
 
 
     def _stage_image_for_update(self, image_name=None):
@@ -1276,8 +1240,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             @retry.retry((socket.error,
                           xmlrpclib.ProtocolError,
                           httplib.BadStatusLine),
-                         timeout_min=timeout_seconds/60.0,
-                         delay_sec=min(max(timeout_seconds/20.0, 0.1), 1))
+                         timeout_min=timeout_seconds / 60.0,
+                         delay_sec=min(max(timeout_seconds / 20.0, 0.1), 1))
             def ready_test():
                 """ Call proxy.ready_test_name(). """
                 getattr(proxy, ready_test_name)()

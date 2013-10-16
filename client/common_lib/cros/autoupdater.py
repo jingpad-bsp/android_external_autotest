@@ -9,6 +9,7 @@ import os
 import re
 import urlparse
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 
 # Local stateful update path is relative to the CrOS source directory.
@@ -70,6 +71,9 @@ class ChromiumOSUpdater():
     """Helper class used to update DUT with image of desired version."""
     KERNEL_A = {'name': 'KERN-A', 'kernel': 2, 'root': 3}
     KERNEL_B = {'name': 'KERN-B', 'kernel': 4, 'root': 5}
+    # Time to wait for new kernel to be marked successful after
+    # auto update.
+    KERNEL_UPDATE_TIMEOUT = 120
 
 
     def __init__(self, update_url, host=None, local_devserver=False):
@@ -456,3 +460,51 @@ class ChromiumOSUpdater():
         """Pulls the CHROMEOS_RELEASE_VERSION string from /etc/lsb-release."""
         return self._run('grep CHROMEOS_RELEASE_VERSION'
                          ' /etc/lsb-release').stdout.split('=')[1].strip()
+
+
+    def verify_boot_expectations(self, expected_kernel_state, rollback_message):
+        """Verifies that we fully booted given expected kernel state.
+
+        This method both verifies that we booted using the correct kernel
+        state and that the OS has marked the kernel as good.
+
+        @param expected_kernel_state: kernel state that we are verifying with
+            i.e. I expect to be booted onto partition 4 etc. See output of
+            get_kernel_state.
+        @param rollback_message: string to raise as a ChromiumOSError
+            if we booted with the wrong partition.
+
+        @raises ChromiumOSError: If we didn't.
+        """
+        # Figure out the newly active kernel.
+        active_kernel_state = self.get_kernel_state()[0]
+
+        # Check for rollback due to a bad build.
+        if (expected_kernel_state and
+                active_kernel_state != expected_kernel_state):
+            # Print out some information to make it easier to debug
+            # the rollback.
+            logging.debug('Dumping partition table.')
+            self._run('cgpt show $(rootdev -s -d)')
+            logging.debug('Dumping crossystem for firmware debugging.')
+            self._run('crossystem --all')
+            raise ChromiumOSError(rollback_message)
+
+        # Make sure chromeos-setgoodkernel runs.
+        try:
+            utils.poll_for_condition(
+                lambda: (self.get_kernel_tries(active_kernel_state) == 0
+                         and self.get_kernel_success(active_kernel_state)),
+                exception=ChromiumOSError(),
+                timeout=self.KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
+        except ChromiumOSError:
+            services_status = self._run('status system-services').stdout
+            if services_status != 'system-services start/running\n':
+                event = ('Chrome failed to reach login screen')
+            else:
+                event = ('update-engine failed to call '
+                         'chromeos-setgoodkernel')
+            raise ChromiumOSError(
+                    'After update and reboot, %s '
+                    'within %d seconds' % (event,
+                                           self.KERNEL_UPDATE_TIMEOUT))
