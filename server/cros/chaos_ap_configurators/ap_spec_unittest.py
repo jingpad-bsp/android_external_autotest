@@ -22,8 +22,6 @@ class APSpecTest(unittest.TestCase):
         self.assertEquals(spec.mode, ap_spec.DEFAULT_2GHZ_MODE)
         self.assertEquals(spec.channel, ap_spec.DEFAULT_2GHZ_CHANNEL)
         self.assertIsNone(spec.password)
-        self.assertEquals(spec.ssid.find('.'), -1)
-        self.assertEquals(spec.ssid.find(' '), -1)
 
 
     def test_only_set_band_2ghz(self):
@@ -163,31 +161,6 @@ class APSpecTest(unittest.TestCase):
 
         mode = ap_spec.mode_string_for_mode(ap_spec.MODE_A)
         self.assertEquals('a', mode)
-
-
-    def test_association_parameters_no_security(self):
-        """Tests password is set correctly for association parameters."""
-        spec = ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_DISABLED)
-        assoc_params = spec.association_parameters
-        self.assertEquals(assoc_params.security, 'none')
-
-
-    def test_association_parameters_wpapsk(self):
-        """Tests password is set correctly for association parameters."""
-        spec = ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPAPSK)
-        assoc_params = spec.association_parameters
-        self.assertEquals(assoc_params.security, 'psk')
-
-
-    def test_association_parameters_visibility(self):
-        """Tests visibility is set correctly for association parameters."""
-        spec = ap_spec.APSpec(visible=True)
-        assoc_params = spec.association_parameters
-        self.assertEquals(assoc_params.is_hidden, False)
-
-        spec = ap_spec.APSpec(visible=False)
-        assoc_params = spec.association_parameters
-        self.assertEquals(assoc_params.is_hidden, True)
 
 
 if __name__ == '__main__':
