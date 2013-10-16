@@ -6,8 +6,10 @@ import dpkt
 import os
 import select
 import struct
+import sys
 import threading
 import time
+import traceback
 
 
 class SimulatorError(Exception):
@@ -260,3 +262,6 @@ class SimulatorThread(threading.Thread, Simulator):
             Simulator.run(self, self._timeout)
         except Exception, e:
             self.error = e
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.traceback = ''.join(traceback.format_exception(
+                    exc_type, exc_value, exc_traceback))

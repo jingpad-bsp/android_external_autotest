@@ -86,10 +86,20 @@ class p2p_ConsumeFiles(test.test):
         os.unlink(tempfn)
 
         if not ignore_status and ret.exit_status != 0:
+            self._join_simulator()
             raise error.TestFail('p2p-client %s finished with value: %d' % (
                                  ' '.join(args), ret.exit_status))
 
         return ret.exit_status, url
+
+
+    def _join_simulator(self):
+        """Stops the simulator and logs any exception generated there."""
+        self._sim.stop()
+        self._sim.join()
+        if self._sim.error:
+            logging.error('SimulatorThread exception: %r', self._sim.error)
+            logging.error(self._sim.traceback)
 
 
     def run_once(self):
@@ -98,14 +108,17 @@ class p2p_ConsumeFiles(test.test):
         # Setup the environment where avahi-daemon runs during the test.
         self._setup_avahi()
 
-        sim = simulator.SimulatorThread(self._tap)
+        self._sim = simulator.SimulatorThread(self._tap)
         # Create three peers host-a, host-b and host-c sharing a set of files.
         # This first block creates the fake host on the simulator. For clarity
         # and easier debug, note that the last octect on the IPv4 address is the
         # ASCII for a, b and c respectively.
-        peer_a = host.SimpleHost(sim, '94:EB:2C:00:00:61', '169.254.10.97')
-        peer_b = host.SimpleHost(sim, '94:EB:2C:00:00:62', '169.254.10.98')
-        peer_c = host.SimpleHost(sim, '94:EB:2C:00:00:63', '169.254.10.99')
+        peer_a = host.SimpleHost(self._sim, '94:EB:2C:00:00:61',
+                                 '169.254.10.97')
+        peer_b = host.SimpleHost(self._sim, '94:EB:2C:00:00:62',
+                                 '169.254.10.98')
+        peer_c = host.SimpleHost(self._sim, '94:EB:2C:00:00:63',
+                                 '169.254.10.99')
 
         # Run a userspace implementation of avahi + p2p-server on the fake
         # hosts. This announces the P2P service on each fake host.
@@ -135,19 +148,21 @@ class p2p_ConsumeFiles(test.test):
         cros_a.set_num_connections(1)
         cros_c.set_num_connections(1)
 
-        sim.start()
+        self._sim.start()
 
         ### Request a file shared from only one peer.
         _ret, url = self._run_p2p_client(
                 args=('--get-url=only-a',), timeout=10.)
 
         if url.strip() != 'http://169.254.10.97:16725/only-a':
+            self._join_simulator()
             raise error.TestFail('Received unknown url: "%s"' % url)
 
         ### Check that the num_connections is reported properly.
         _ret, conns = self._run_p2p_client(args=('--num-connections',),
                                           timeout=10.)
         if conns.strip() != '2':
+            self._join_simulator()
             raise error.TestFail('Wrong number of connections reported: %s' %
                                  conns)
 
@@ -157,6 +172,7 @@ class p2p_ConsumeFiles(test.test):
                 timeout=10.)
 
         if url.strip() != 'http://169.254.10.99:16725/everyone':
+            self._join_simulator()
             raise error.TestFail('Received unknown url: "%s"' % url)
 
         ### Request too much bytes of an existing file.
@@ -165,6 +181,7 @@ class p2p_ConsumeFiles(test.test):
                 timeout=10., ignore_status=True)
 
         if url:
+            self._join_simulator()
             raise error.TestFail('Received url but expected none: "%s"' % url)
         if ret == 0:
             error.TestFail('p2p-client returned no URL, but without an error.')
@@ -176,12 +193,13 @@ class p2p_ConsumeFiles(test.test):
         ret, url = self._run_p2p_client(
                 args=('--get-url=only-b',), timeout=5., ignore_status=True)
         if ret == 0:
+            self._join_simulator()
             error.TestFail('p2p-client finished but should have waited for '
                            'num_connections to drop.')
 
-        sim.stop()
-        sim.join()
+        self._sim.stop()
+        self._sim.join()
 
-        if sim.error:
+        if self._sim.error:
             raise error.TestError('SimulatorThread ended with an exception: %r'
-                                  % sim.error)
+                                  % self._sim.error)
