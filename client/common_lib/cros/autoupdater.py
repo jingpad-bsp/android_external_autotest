@@ -225,6 +225,42 @@ class ChromiumOSUpdater():
             raise RootFSUpdateError('Update triggering failed on %s: %s' %
                                     (self.host.hostname, str(e)))
 
+    def _verify_update_completed(self):
+        """Verifies that an update has completed.
+
+        @raise RootFSUpdateError: if verification fails.
+        """
+        status = self.check_update_status()
+        if status != UPDATER_NEED_REBOOT:
+            raise RootFSUpdateError('Update did not complete with correct '
+                                    'status. Expecting %s, actual %s' %
+                                            (UPDATER_NEED_REBOOT, status))
+
+
+    def rollback_rootfs(self, powerwash):
+        """Triggers rollback and waits for it to complete.
+
+        @param powerwash: If true, powerwash as part of rollback.
+
+        @raise RootFSUpdateError if anything went wrong.
+
+        """
+        #TODO(sosa): crbug.com/309051 - Make this one update_engine_client call.
+        rollback_cmd = '%s --rollback' % (UPDATER_BIN)
+        wait_for_update_to_complete_cmd = '%s --update' % (UPDATER_BIN)
+        if not powerwash:
+          rollback_cmd += ' --nopowerwash'
+
+        logging.info('Triggering rollback.')
+        try:
+            self._run(rollback_cmd)
+            self._run(wait_for_update_to_complete_cmd)
+        except error.AutoservRunError as e:
+            raise RootFSUpdateError('Rollback failed on %s: %s' %
+                                    (self.host.hostname, str(e)))
+
+        self._verify_update_completed()
+
 
     def update_rootfs(self):
         """Updates the rootfs partition only."""
@@ -241,13 +277,11 @@ class ChromiumOSUpdater():
             self._update_error_queue.put(update_error)
             raise update_error
 
-        # Check that the installer completed as expected.
-        status = self.check_update_status()
-        if status != UPDATER_NEED_REBOOT:
-            update_error = RootFSUpdateError('update-engine error on %s: %s' %
-                                             (self.host.hostname, status))
-            self._update_error_queue.put(update_error)
-            raise update_error
+        try:
+            self._verify_update_completed()
+        except RootFSUpdateError as e:
+            self._update_error_queue.put(e)
+            raise
 
 
     def update_stateful(self, clobber=True):

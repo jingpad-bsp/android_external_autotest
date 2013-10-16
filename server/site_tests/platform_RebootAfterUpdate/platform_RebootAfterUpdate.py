@@ -6,9 +6,8 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import autoupdater, dev_server
 from autotest_lib.server import autotest, test
-from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros import autoupdate_utils
 
 
 class platform_RebootAfterUpdate(test.test):
@@ -68,28 +67,7 @@ class platform_RebootAfterUpdate(test.test):
                error.TestFail if any part of the test has failed.
 
         """
-        # Get the job_repo_url -- if not present, attempt to use the one
-        # specified in the host attributes for the host.
-        if not job_repo_url:
-            try:
-                job_repo_url = host.lookup_job_repo_url()
-            except KeyError:
-                logging.fatal('Could not lookup job_repo_url from afe.')
-
-            if not job_repo_url:
-                raise error.TestError(
-                        'Test could not be run. Missing the url with which to '
-                        're-image the device!')
-
-        # Get the devserver url and build (image) from the repo url e.g.
-        # 'http://mydevserver:8080', 'x86-alex-release/R27-123.0.0'
-        ds, build = tools.get_devserver_build_from_package_url(job_repo_url)
-        devserver = dev_server.ImageServer(ds)
-        devserver.stage_artifacts(build, ['stateful'])
-
-        # We only need to update stateful to do this test.
-        updater = autoupdater.ChromiumOSUpdater(
-                devserver.get_update_url(build), host=host)
+        updater = autoupdate_utils.get_updater_from_repo_url(host, job_repo_url)
         updater.update_stateful(clobber=True)
 
         logging.info('Rebooting after performing update.')
