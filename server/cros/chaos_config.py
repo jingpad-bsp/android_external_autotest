@@ -18,7 +18,8 @@ TIMEOUT = 100
 def get_ap_list():
     aps = []
     for filename in (DYNAMIC_AP_CONFIG_FILE, SHADOW_AP_CONFIG_FILE):
-        ap_config = ConfigParser.RawConfigParser()
+        ap_config = ConfigParser.RawConfigParser(
+                {ChaosAP.CONF_RPM_MANAGED: 'False'})
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             filename)
         if not os.path.exists(path):
@@ -55,6 +56,7 @@ class ChaosAP(object):
     CONF_MODEL = 'model'
     CONF_WAN_MAC = 'wan mac'
     CONF_WAN_HOST = 'wan_hostname'
+    CONF_RPM_MANAGED = 'rpm_managed'
     CONF_BSS = 'bss'
     CONF_BSS5 = 'bss5'
     CONF_BANDWIDTH = 'bandwidth'
@@ -122,6 +124,11 @@ class ChaosAP(object):
     def get_wan_host(self):
         """@return string host for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_WAN_HOST)
+
+
+    def get_rpm_managed(self):
+        """@return bool for AP power via rpm from config file"""
+        return self.ap_config.getboolean(self.bss, self.CONF_RPM_MANAGED)
 
 
     def get_bss(self):
