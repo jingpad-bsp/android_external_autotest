@@ -25,7 +25,7 @@ class desktopui_Respawn(test.test):
         try:
             utils.nuke_process_by_name(constants.SESSION_MANAGER,
                                        with_prejudice=True)
-        except utils.AutoservPidAlreadyDeadError:
+        except error.AutoservPidAlreadyDeadError:
             pass
         utils.poll_for_condition(
             lambda: utils.get_oldest_pid_by_name(constants.SESSION_MANAGER),
