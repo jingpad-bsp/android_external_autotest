@@ -250,9 +250,14 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # called in before_iteration_loggables, it collects file status in
         # the directory. When run is called in after_iteration_loggables, diff
         # is executed.
-        diffable_log = diffable_logdir(constants.LOG_DIR)
-        self.diffable_loggables = set()
-        self.diffable_loggables.add(diffable_log)
+        # self.diffable_loggables is only initialized if the instance does not
+        # have this attribute yet. The sysinfo instance could be loaded
+        # from an earlier pickle dump, which has already initialized attribute
+        # self.diffable_loggables.
+        if not hasattr(self, 'diffable_loggables'):
+            diffable_log = diffable_logdir(constants.LOG_DIR)
+            self.diffable_loggables = set()
+            self.diffable_loggables.add(diffable_log)
 
         # add in some extra command logging
         self.boot_loggables.add(command("ls -l /boot",
