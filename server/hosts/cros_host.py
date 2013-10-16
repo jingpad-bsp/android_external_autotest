@@ -1253,6 +1253,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             TestFail error if server is not ready in time.
 
         """
+        # Clean up any existing state.  If the caller is willing
+        # to believe their server is down, we ought to clean up
+        # any tunnels we might have sitting around.
+        self.rpc_disconnect(port)
         # Start the server on the host.  Redirection in the command
         # below is necessary, because 'ssh' won't terminate until
         # background child processes close stdin, stdout, and
