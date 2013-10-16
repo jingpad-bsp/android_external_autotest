@@ -47,7 +47,7 @@ no_gap_criteria = '<= 1.8, ~ +1.0'
 no_level_jump_criteria = '<= 10, ~ +30'
 no_reversed_motion_criteria = '<= 5, ~ +30'
 pinch_criteria = '>= 200, ~ -100'
-range_criteria = '<= 0.05, ~ +0.05'
+range_criteria = '<= 0.01, ~ +0.07'
 min_report_rate = 60
 report_rate_criteria = '>= %d' % min_report_rate
 stationary_finger_criteria = (lambda: '<= 1.25, ~ +1.25'
