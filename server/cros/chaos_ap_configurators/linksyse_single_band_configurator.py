@@ -28,7 +28,6 @@ class LinksyseSingleBandAPConfigurator(
         elif 'Wireless security is currently disabled.' in text:
             alert.accept()
             self.click_button_by_id('divBT1', alert_handler=self._sec_alert)
-            self.click_button_by_xpath('//input[@value="Continue"]')
         elif 'Your new setting will disable Wi-Fi Protected Setup.' in text:
             alert.accept()
         elif 'Illegal characters [ acceptable characters: 0 to 9 ]' in text:
@@ -46,7 +45,7 @@ class LinksyseSingleBandAPConfigurator(
     def get_supported_modes(self):
         return [{'band': ap_spec.BAND_2GHZ,
                  'modes': [ap_spec.MODE_M, ap_spec.MODE_B | ap_spec.MODE_G,
-                           ap_spec.MODE_B, ap_spec.MODE_N]}]
+                           ap_spec.MODE_G, ap_spec.MODE_B, ap_spec.MODE_N]}]
 
 
     def get_supported_bands(self):
@@ -77,7 +76,10 @@ class LinksyseSingleBandAPConfigurator(
 
 
     def save_page(self, page_number):
-        self.click_button_by_id('divBT1', alert_handler=self._sec_alert)
+        try:
+            self.click_button_by_id('divBT1', alert_handler=self._sec_alert)
+        except:
+            self._handle_alert('//input[@id="divBT1"]', self._sec_alert)
         xpath_continue = '//input[@value="Continue"]'
         self.wait_for_object_by_xpath(xpath_continue, wait_time=20)
         self.click_button_by_xpath(xpath_continue)
