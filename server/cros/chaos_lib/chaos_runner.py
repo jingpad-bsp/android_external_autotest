@@ -141,7 +141,7 @@ class ChaosRunner(object):
                                      tag=ap.ssid)
                         continue
                     iw_scanner = iw_runner.IwRunner(self._host,
-                            iw_command=self._wifi_client.command_iw)
+                            command_iw=self._wifi_client.command_iw)
                     networks = iw_scanner.wait_for_scan_result(
                             self._wifi_client._wifi_if, ssid=ap.ssid,
                             # We have some APs that need a while to come on-line

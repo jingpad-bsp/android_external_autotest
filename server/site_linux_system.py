@@ -4,12 +4,12 @@
 
 import datetime
 import logging
-import re
 import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import packet_capturer
+from autotest_lib.server.cros.network import iw_runner
 
 class LinuxSystem(object):
     """Superclass for test machines running Linux.
@@ -41,7 +41,7 @@ class LinuxSystem(object):
 
     def __init__(self, host, params, role):
         # Command locations.
-        self.cmd_iw = wifi_test_utils.must_be_installed(
+        cmd_iw = wifi_test_utils.must_be_installed(
                 host, params.get('cmd_iw', '/usr/sbin/iw'))
         self.cmd_ip = wifi_test_utils.must_be_installed(
                 host, params.get('cmd_ip', '/usr/sbin/ip'))
@@ -63,11 +63,13 @@ class LinuxSystem(object):
                 host, params.get('cmd_ifconfig', '/sbin/ifconfig'))
         self._packet_capturer = packet_capturer.get_packet_capturer(
                 self.host, host_description=role, cmd_ifconfig=cmd_ifconfig,
-                cmd_ip=self.cmd_ip, cmd_iw=self.cmd_iw, cmd_netdump=cmd_netdump,
+                cmd_ip=self.cmd_ip, cmd_iw=cmd_iw, cmd_netdump=cmd_netdump,
                 ignore_failures=True)
+        self.iw_runner = iw_runner.IwRunner(host, command_iw=cmd_iw)
 
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []
+        self.wlanifs = {}
         self._capabilities = None
 
 
@@ -85,29 +87,17 @@ class LinuxSystem(object):
         @return phys_for_frequency, phy_bus_type tuple as described.
 
         """
-        output = self.host.run('%s list' % self.cmd_iw).stdout
-        re_wiphy = re.compile('Wiphy (.*)')
-        re_mhz = re.compile('(\d+) MHz')
-        in_phy = False
-        phy_list = []
+        phys = self.iw_runner.list_phys()
         phys_for_frequency = {}
-        for line in output.splitlines():
-            match_wiphy = re_wiphy.match(line)
-            if match_wiphy:
-                in_phy = True
-                wiphyname = match_wiphy.group(1)
-                phy_list.append(wiphyname)
-            elif in_phy:
-                if line[0] == '\t':
-                    match_mhz = re_mhz.search(line)
-                    if match_mhz:
-                        mhz = int(match_mhz.group(1))
-                        if mhz not in phys_for_frequency:
-                            phys_for_frequency[mhz] = [wiphyname]
-                        else:
-                            phys_for_frequency[mhz].append(wiphyname)
-                else:
-                    in_phy = False
+        phy_list = []
+        for phy in phys:
+            phy_list.append(phy.name)
+            for band in phy.bands:
+                for mhz in band.frequencies:
+                    if mhz not in phys_for_frequency:
+                        phys_for_frequency[mhz] = [phy.name]
+                    else:
+                        phys_for_frequency[mhz].append(phy.name)
 
         phy_bus_type = {}
         for phy in phy_list:
@@ -133,14 +123,14 @@ class LinuxSystem(object):
 
         """
         self.host.run('%s link set %s down' % (self.cmd_ip, interface))
-        self.host.run('%s dev %s del' % (self.cmd_iw, interface))
+        self.iw_runner.remove_interface(interface)
         if remove_monitor:
             # Some old hostap implementations create a 'mon.<interface>' to
             # handle management frame transmit/receive.
             self.host.run('%s link set mon.%s down' % (self.cmd_ip, interface),
                           ignore_status=True)
-            self.host.run('%s dev mon.%s del' % (self.cmd_iw, interface),
-                      ignore_status=True)
+            self.iw_runner.remove_interface('mon.%s' % interface,
+                                             ignore_status=True)
         for phytype in self.wlanifs:
             for phy in self.wlanifs[phytype]:
                 if self.wlanifs[phytype][phy] == interface:
@@ -150,14 +140,9 @@ class LinuxSystem(object):
 
     def _remove_interfaces(self):
         """Remove all WiFi devices."""
+        for interface in self.iw_runner.list_interfaces():
+            self.iw_runner.remove_interface(interface)
         self.wlanifs = {}
-        # Remove all wifi devices.
-        output = self.host.run('%s dev' % self.cmd_iw).stdout
-        test = re.compile('[\s]*Interface (.*)')
-        for line in output.splitlines():
-            m = test.match(line)
-            if m:
-                self._remove_interface(m.group(1), False)
 
 
     def close(self):
@@ -329,9 +314,7 @@ class LinuxSystem(object):
         wlanif = '%s%d' % (phytype, len(self.wlanifs[phytype].keys()))
         self.wlanifs[phytype][phy] = wlanif
 
-        self.host.run('%s phy %s interface add %s type %s' %
-            (self.cmd_iw, phy, wlanif, phytype))
-
+        self.iw_runner.add_interface(phy, wlanif, phytype)
         self.wlanifs_in_use.append((phy, wlanif, phytype))
 
         return wlanif

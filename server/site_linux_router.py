@@ -114,7 +114,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.stop_dhcp_servers()
 
         # Place us in the US by default
-        self.router.run("%s reg set US" % self.cmd_iw)
+        self.iw_runner.set_regulatory_domain('US')
 
 
     def close(self):
@@ -537,9 +537,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                         self._build_ssid(config.ssid_suffix))
         # Connect the station
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
-        self.router.run('%s dev %s ibss join %s %d' % (
-                self.cmd_iw, interface, self.station['conf']['ssid'],
-                config.frequency))
+        self.iw_runner.ibss_join(
+                interface, self.station['conf']['ssid'], config.frequency)
         # Always start a local server.
         self.start_local_server(interface)
         # Remember that this interface is up.
@@ -730,11 +729,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             local_servers = self.local_servers
             self.local_servers = []
             if self.station['type'] == 'ibss':
-                self.router.run("%s dev %s ibss leave" %
-                                (self.cmd_iw, self.station['interface']))
+                self.iw_runner.ibss_leave(self.station['interface'])
             else:
-                self.router.run("%s dev %s disconnect" %
-                                (self.cmd_iw, self.station['interface']))
+                self.iw_runner.disconnect_station(self.station['interface'])
             self.router.run("%s link set %s down" % (self.cmd_ip,
                                                      self.station['interface']))
 
@@ -784,8 +781,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         interface = params.get('interface',
                                self.hostapd_instances[0]['interface'])
         power = params.get('power', 'auto')
-        self.router.run("%s dev %s set txpower %s" %
-                        (self.cmd_iw, interface, power))
+        self.iw_runner.set_tx_power(interface, power)
 
 
     def deauth(self, params):
