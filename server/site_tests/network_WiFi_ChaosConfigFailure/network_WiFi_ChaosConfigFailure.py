@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
 class network_WiFi_ChaosConfigFailure(test.test):
@@ -13,15 +15,20 @@ class network_WiFi_ChaosConfigFailure(test.test):
 
 
     def _save_all_pages(self, ap):
+        ap.establish_driver_connection()
+        if not ap.driver_connection_established:
+            logging.error('Unable to establish webdriver connection to '
+                          'retrieve screenshots.')
+            return
         for page in range(1, ap.get_number_of_pages() + 1):
             ap.navigate_to_page(page)
             ap.save_screenshot()
 
 
     def _write_screenshots(self, ap, filename):
-        for (i, image) in enumerate(ap.get_all_screenshots):
+        for (i, image) in enumerate(ap.get_all_screenshots()):
             path = os.path.join(self.outputdir,
-                                filename, '_%d.png' % (i + 1))
+                                str('%s_%d.png' % (filename, (i + 1))))
             with open(path, 'wb') as f:
                 f.write(image.decode('base64'))
 
@@ -45,6 +52,7 @@ class network_WiFi_ChaosConfigFailure(test.test):
         self._save_all_pages(ap)
         self._write_screenshots(ap, 'final_configuration')
         ap.clear_screenshot_list()
+        ap.reset_command_list()
 
         if not missing_from_scan:
             logging.error('Traceback:\n %s', ap.traceback)
@@ -52,4 +60,4 @@ class network_WiFi_ChaosConfigFailure(test.test):
                                   'see the ERROR log for more details.')
         else:
             raise error.TestError('The SSID %s was not found in the scan. '
-                                  'Check the screenshots to debug.')
+                                  'Check the screenshots to debug.', ap.ssid)

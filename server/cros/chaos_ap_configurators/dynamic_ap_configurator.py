@@ -141,9 +141,16 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         screenshot = None
         if self.driver_connection_established:
             try:
+                # driver.get_screenshot_as_base64 takes a screenshot that is
+                # whatever the size of the window is.  That can be anything,
+                # forcing a size that will get everything we care about.
+                window_size = self.driver.get_window_size()
+                self.driver.set_window_size(800, 1000)
                 screenshot = self.driver.get_screenshot_as_base64()
-            except:
-                logging.error('Getting the screenshot failed.')
+                self.driver.set_window_size(window_size['width'],
+                                            window_size['height'])
+            except Exception as e:
+                logging.error('Getting the screenshot failed. %s', e)
                 screenshot = None
             if screenshot:
                 self._screenshot_list.append(screenshot)

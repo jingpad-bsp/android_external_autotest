@@ -2,10 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import datetime
+import logging
 import random
-import time
 
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
@@ -13,7 +12,7 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-
+from autotest_lib.server.cros.network import iw_runner
 
 class ChaosRunner(object):
     """Object to run a network_WiFi_ChaosXXX test."""
@@ -98,33 +97,6 @@ class ChaosRunner(object):
         cartridge.run_configurators()
 
 
-    def verify_bss_in_scan(self, bss):
-        """Runs a scan on the DUT and verifies the SSID is being broadcasted.
-
-        @param bss: the BSS to scan for
-
-        @returns True is the SSID is found; false otherwise
-
-        """
-        scan_bss = '%s %s scan' % (self._wifi_client.command_iw,
-                                   self._wifi_client.wifi_if)
-        start_time = int(time.time())
-        # Setting 300s as timeout
-        logging.info('Waiting for the DUT to find BSS %s... ', bss)
-        while (int(time.time()) - start_time) < 300:
-           # If command failed: Device or resource busy (-16), run again.
-           scan_result = self._wifi_client.host.run(scan_bss,
-                                                    ignore_status=True)
-           if 'busy' in str(scan_result):
-               continue
-           if bss in str(scan_result):
-               logging.debug('Found bss %s in scan', bss)
-               return True
-           else:
-               continue
-        return False
-
-
     def run(self, job, batch_size=15, tries=10, capturer_hostname=None):
         """Executes Chaos test.
 
@@ -162,13 +134,22 @@ class ChaosRunner(object):
                         logging.error('The SSID was not set for the AP:%s', ap)
 
                     if not ap.get_configuration_success():
-                        # The AP was not configured correctly
+                        logging.error('The AP %s was not configured correctly',
+                                      ap.ssid)
                         job.run_test('network_WiFi_ChaosConfigFailure',
                                      ap=ap,
                                      tag=ap.ssid)
                         continue
-                    if not self.verify_bss_in_scan(ap.get_bss()):
-                        # The BSS of the AP was not found
+                    iw_scanner = iw_runner.IwRunner(self._host,
+                            iw_command=self._wifi_client.command_iw)
+                    networks = iw_scanner.wait_for_scan_result(
+                            self._wifi_client._wifi_if, ssid=ap.ssid,
+                            # We have some APs that need a while to come on-line
+                            timeout_seconds=300)
+                    if networks == None or len(networks) == 0:
+                        # The SSID of the AP was not found
+                        logging.error('The ssid %s was not found in the scan',
+                                      ap.ssid)
                         job.run_test('network_WiFi_ChaosConfigFailure',
                                      ap=ap,
                                      missing_from_scan=True,
@@ -176,15 +157,10 @@ class ChaosRunner(object):
                         continue
 
                     assoc_params = ap.get_association_parameters()
-
-                    # TODO(wiley) We probably don't always want HT40, but
-                    #             this information is hard to infer here.
-                    #             Change how AP configuration happens so that
-                    #             we expose this.
                     result = job.run_test(self._test,
                                  capturer=capturer,
-                                 capturer_frequency=self._ap_spec.frequency,
-                                 capturer_ht_type='HT40+',
+                                 capturer_frequency=networks[0].frequency,
+                                 capturer_ht_type=networks[0].ht,
                                  host=self._host,
                                  assoc_params=assoc_params,
                                  client=self._wifi_client,
@@ -193,8 +169,8 @@ class ChaosRunner(object):
                                  disabled_sysinfo=False,
                                  tag=ap.ssid)
 
-                    logging.info('Test result: %d', result)
-
+                    ap.power_down_router()
+                    ap.apply_settings()
                     batch_locker.unlock_one_ap(ap.host_name)
 
                 batch_locker.unlock_aps()
