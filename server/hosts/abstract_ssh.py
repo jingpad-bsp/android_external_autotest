@@ -600,13 +600,17 @@ class AbstractSSHHost(remote.RemoteHost):
             self.master_ssh_option = ''
 
 
-    def start_master_ssh(self):
+    def start_master_ssh(self, timeout=5):
         """
         Called whenever a slave SSH connection needs to be initiated (e.g., by
         run, rsync, scp). If master SSH support is enabled and a master SSH
         connection is not active already, start a new one in the background.
         Also, cleanup any zombie master SSH connections (e.g., dead due to
         reboot).
+
+        timeout: timeout in seconds (default 5) to wait for master ssh
+                 connection to be established. If timeout is reached, a
+                 warning message is logged, but no other action is taken.
         """
         if not enable_master_ssh:
             return
@@ -654,6 +658,19 @@ class AbstractSSHHost(remote.RemoteHost):
             self.master_ssh_job = utils.BgJob(master_cmd,
                                               nickname='master-ssh',
                                               no_pipes=True)
+            # To prevent a race between the the master ssh connection startup
+            # and its first attempted use, wait for socket file to exist before
+            # returning.
+            end_time = time.time() + timeout
+            socket_file_path = os.path.join(self.master_ssh_tempdir.name,
+                                            'socket')
+            while time.time() < end_time:
+                if os.path.exists(socket_file_path):
+                    break
+                time.sleep(.2)
+            else:
+                logging.warn('Timed out waiting for master-ssh connection '
+                             'to be established.')
 
 
     def clear_known_hosts(self):
