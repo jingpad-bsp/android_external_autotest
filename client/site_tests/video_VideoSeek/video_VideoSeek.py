@@ -14,7 +14,7 @@ class video_VideoSeek(test.test):
     """This test verifies video seek works in Chrome."""
     version = 1
 
-    def run_once(self, video):
+    def run_once(self, video, fast_seek=False):
         """Tests whether video seek works by random seeks forward and backward.
 
         @param video: Sample video file to be seeked in Chrome.
@@ -23,7 +23,11 @@ class video_VideoSeek(test.test):
             cr.browser.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
             tab.Navigate(cr.browser.http_server.UrlOf('video.html'))
-            tab.EvaluateJavaScript('loadSourceAndRunSeekTest("%s")' % video)
+
+            # Test seeks either before or after the previous seeks complete.
+            seek_event = 'seeking' if fast_seek else 'seeked'
+            tab.EvaluateJavaScript(
+                'loadSourceAndRunSeekTest("%s", "%s")' % (video, seek_event))
 
             def get_seek_test_status():
                 seek_test_status = tab.EvaluateJavaScript('getSeekTestStatus()')

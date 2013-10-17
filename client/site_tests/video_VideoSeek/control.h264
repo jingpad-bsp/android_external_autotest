@@ -4,9 +4,9 @@
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_VideoSeek"
-PURPOSE = "Verify that H264 video seeks work in Chrome"
+PURPOSE = "Verify that H264 non-resolution-changing video seek works in Chrome"
 CRITERIA = """
-This test will fail if video seeks don't work with Chrome navigating to an mp4 file.
+This test will fail if a non-resolution-changing H264 video fails to seek in Chrome HTML5 page.
 """
 SUITE = "video"
 TIME = "SHORT"
@@ -17,7 +17,7 @@ DEPENDENCIES = "hw_video_acc_h264"
 EXPERIMENTAL = "True"
 
 DOC = """
-This test verifies video seeks work for H264 hardware video decode.
+This test verifies H264 non-resolution-changing video can seek on machines with VDA.
 """
 
 video = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/video_VideoSeek/video.mp4'

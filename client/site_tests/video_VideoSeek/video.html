@@ -7,18 +7,20 @@
 </body>
 
 <script type="text/javascript">
-var seeked = 0;
+var seeks = 0;
 var max_seeks = 100;
 var testvideo = document.getElementById('testvideo');
 
-function loadSourceAndRunSeekTest(video) {
+function loadSourceAndRunSeekTest(video, seek_event) {
   testvideo.src = video;
   testvideo.play();
 
   // Random seek forward and backward until reaching max seeks.
-  seeked = 0;
-  testvideo.addEventListener("seeked", function() {
-      seeked++; if (seeked < max_seeks) randomSeek(); });
+  // The next seek can be right after the current seek begins or completes by
+  // using either 'seeking' or 'seeked' event.
+  seeks = 0;
+  testvideo.addEventListener(seek_event, function() {
+      seeks++; if (seeks < max_seeks) randomSeek(); });
 
   // Start the first seek only after the video is ready.
   testvideo.addEventListener("loadeddata", function() { randomSeek(); });
@@ -29,10 +31,10 @@ function randomSeek() {
 }
 
 function getSeekTestStatus() {
-  if (seeked == max_seeks)
+  if (seeks == max_seeks)
     return 'pass'
 
-  return testvideo.currentTime + '/' + testvideo.duration + '/' + seeked;
+  return testvideo.currentTime + '/' + testvideo.duration + '/' + seeks;
 }
 </script>
 </html>

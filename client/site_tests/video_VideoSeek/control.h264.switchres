@@ -4,21 +4,21 @@
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_VideoSeek"
-PURPOSE = "Verify that VP8 non-resolution-changing video seek works in Chrome"
+PURPOSE = "Verify that H264 resolution-changing video seek works in Chrome"
 CRITERIA = """
-This test will fail if a non-resolution-changing VP8 video fails to seek in Chrome HTML5 page.
+This test will fail if a resolution-changing H264 video fails to seek in Chrome HTML5 page.
 """
 SUITE = "video"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "audiovideo"
 TEST_TYPE = "client"
-DEPENDENCIES = "hw_video_acc_vp8"
+DEPENDENCIES = "hw_video_acc_h264"
 EXPERIMENTAL = "True"
 
 DOC = """
-This test verifies VP8 non-resolution-changing video can seek on machines with VDA.
+This test verifies H264 resolution-changing video can seek on machines with VDA.
 """
 
-video = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/video_VideoSeek/video.webm'
+video = 'http://yt-dash-mse-test.commondatastorage.googleapis.com/switchtest/switch_1080p_720p.mp4'
 job.run_test('video_VideoSeek', video=video)
