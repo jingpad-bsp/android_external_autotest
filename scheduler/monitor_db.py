@@ -1388,8 +1388,6 @@ class BaseAgentTask(object):
         self.done = True
         self.aborted = True
         self.cleanup()
-        if self.started:
-            self.finished(success=False)
 
 
     def _get_consistent_execution_path(self, execution_entries):
