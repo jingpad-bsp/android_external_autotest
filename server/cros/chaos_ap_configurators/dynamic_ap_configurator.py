@@ -145,7 +145,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 # whatever the size of the window is.  That can be anything,
                 # forcing a size that will get everything we care about.
                 window_size = self.driver.get_window_size()
-                self.driver.set_window_size(800, 1000)
+                self.driver.set_window_size(2000, 5000)
                 screenshot = self.driver.get_screenshot_as_base64()
                 self.driver.set_window_size(window_size['width'],
                                             window_size['height'])
