@@ -16,7 +16,7 @@ from firmware_constants import GV, MODE
 
 # Define the robot control script names.
 SCRIPT_LINE = 'line.py'
-SCRIPT_DRUMROLL = 'drumroll.py'
+SCRIPT_TAP = 'tap.py'
 
 # Define constants for coordinates.
 # Normally, a gesture is performed within [START, END].
@@ -50,15 +50,18 @@ class RobotWrapper:
         # Each get_contorol_command method maps to a script name.
         self._robot_script_name_dict = {
             self._get_control_command_line: SCRIPT_LINE,
-            self._get_control_command_rapid_taps: SCRIPT_DRUMROLL,
+            self._get_control_command_rapid_taps: SCRIPT_TAP,
+            self._get_control_command_single_tap: SCRIPT_TAP,
         }
 
         # Each gesture maps to a get_contorol_command method
         self._method_of_control_command_dict = {
             conf.ONE_FINGER_TRACKING: self._get_control_command_line,
             conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
+            conf.ONE_FINGER_TAP: self._get_control_command_single_tap,
             conf.TWO_FINGER_TRACKING: self._get_control_command_line,
             conf.RAPID_TAPS: self._get_control_command_rapid_taps,
+            conf.TWO_FINGER_TAP: self._get_control_command_single_tap,
         }
 
         self._line_dict = {
@@ -215,32 +218,46 @@ class RobotWrapper:
                 end_x, end_y, finger_angle, finger_spacing,
                 fingers[0], fingers[1], fingers[2], fingers[3],
                 speed)
-        control_cmd = 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f' %
-                                                                            para
-        return control_cmd
+        cmd = 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f' % para
+        return cmd
 
     def _get_control_command_rapid_taps(self, robot_script, gesture, variation):
-        """Get robot control command for the rapid tap gestures."""
+        num_taps = self._get_num_taps(gesture)
+        return self._get_control_command_taps(robot_script, gesture,
+                                              variation, num_taps)
+
+    def _get_control_command_single_tap(self, robot_script, gesture, variation):
+        return self._get_control_command_taps(robot_script, gesture,
+                                              variation, 1)
+
+    def _get_control_command_taps(self, robot_script, gesture,
+                                  variation, num_taps):
+        """Get robot control command for tap gestures.  This includes rapid tap
+        tests as well as 1 and 2 finger taps at various locations on the pad.
+        """
         location = None
         for element in variation:
             location = self._location_dict.get(element)
             if location:
                 location_str = ' '.join(
                     map(str, self._reverse_coord_if_is_touchscreen(location)))
-                location_str += ' 0 20'
                 break
 
         if location is None:
             msg = 'Cannot determine the location parameters from %s %s.'
             self._raise_error(msg % (gesture, variation))
 
-        num_taps = self._get_num_taps(gesture)
-        if not num_taps:
+        if num_taps is None:
             msg = 'Cannot determine the number of taps to do from %s.'
             self._raise_error(msg % gesture)
 
-        para = (robot_script, self._board, location_str, num_taps)
-        control_cmd = 'python %s %s.p %s 0 1 0 0 %s' % para
+        fingers = [0, 1, 0, 1] if 'two' in gesture else [0, 1, 0, 0]
+        angle = 45 if 'two' in gesture else 0
+        spacing = 17
+
+        para = (robot_script, self._board, location_str, angle, spacing,
+                fingers[0], fingers[1], fingers[2], fingers[3], num_taps)
+        control_cmd = 'python %s %s.p %s %d %d %d %d %d %d %s tap' % para
         return control_cmd
 
     def _build_robot_script_paths(self):
