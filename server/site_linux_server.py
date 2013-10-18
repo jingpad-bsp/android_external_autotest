@@ -19,7 +19,6 @@ class LinuxServer(site_linux_system.LinuxSystem):
     COMMAND_PING = '/usr/bin/ping'
     COMMAND_NETPERF = '/usr/bin/netperf'
     COMMAND_NETSERVER = '/usr/bin/netserver'
-    COMMAND_IPERF = '/usr/bin/iperf'
 
 
     def __init__(self, server, config):
@@ -37,8 +36,6 @@ class LinuxServer(site_linux_system.LinuxSystem):
                 self._server, LinuxServer.COMMAND_NETPERF)
         self._cmd_netserver = wifi_test_utils.must_be_installed(
                 self._server, LinuxServer.COMMAND_NETSERVER)
-        self._cmd_iperf = wifi_test_utils.must_be_installed(
-                self._server, LinuxServer.COMMAND_IPERF)
         # /usr/bin/ping is preferred, as it is likely to be iputils.
         if wifi_test_utils.is_installed(self._server,
                                         LinuxServer.COMMAND_PING):
@@ -63,12 +60,6 @@ class LinuxServer(site_linux_system.LinuxSystem):
     def cmd_netserv(self):
         """ @return string full path to start netserv. """
         return self._cmd_netserver
-
-
-    @property
-    def cmd_iperf(self):
-        """ @return string full path to start iperf. """
-        return self._cmd_iperf
 
 
     @property

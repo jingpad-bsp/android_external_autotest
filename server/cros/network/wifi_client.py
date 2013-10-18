@@ -131,12 +131,6 @@ class WiFiClient(object):
 
 
     @property
-    def command_iperf(self):
-        """@return string path to iperf command."""
-        return self._command_iperf
-
-
-    @property
     def command_iptables(self):
         """@return string path to iptables command."""
         return self._command_iptables
@@ -262,8 +256,6 @@ class WiFiClient(object):
                     timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
             # These commands aren't known to work with ADB hosts.
             self._command_ifconfig = 'ifconfig'
-            self._command_iperf = wifi_test_utils.must_be_installed(
-                    self.host, '/usr/local/bin/iperf')
             self._raise_logging_level()
         # Used for packet captures.
         self._packet_capturer = packet_capturer.get_packet_capturer(
@@ -347,10 +339,10 @@ class WiFiClient(object):
 
 
     def firewall_open(self, proto, src):
-        """Opens up firewall to run iperf/netperf tests.
+        """Opens up firewall to run netperf tests.
 
         By default, we have a firewall rule for NFQUEUE (see crbug.com/220736).
-        In order to run iperf test, we need to add a new firewall rule BEFORE
+        In order to run netperf test, we need to add a new firewall rule BEFORE
         this NFQUEUE rule in the INPUT chain.
 
         @param proto a string, test traffic protocol, e.g. udp, tcp.
