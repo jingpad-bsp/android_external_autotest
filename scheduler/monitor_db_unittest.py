@@ -1226,5 +1226,26 @@ class AgentTaskTest(unittest.TestCase,
         self.god.check_playback()
 
 
+    def test_abort_HostlessQueueTask(self):
+        hqe = self.god.create_mock_class(scheduler_models.HostQueueEntry,
+                                         'HostQueueEntry')
+        # If hqe is still in STARTING status, aborting the task should finish
+        # without changing hqe's status.
+        hqe.status = models.HostQueueEntry.Status.STARTING
+        hqe.job = None
+        hqe.id = 0
+        task = monitor_db.HostlessQueueTask(hqe)
+        task.abort()
+
+        # If hqe is in RUNNING status, aborting the task should change hqe's
+        # status to Parsing, so FinalReparseTask can be scheduled.
+        hqe.set_status.expect_call('Parsing')
+        hqe.status = models.HostQueueEntry.Status.RUNNING
+        hqe.job = None
+        hqe.id = 0
+        task = monitor_db.HostlessQueueTask(hqe)
+        task.abort()
+
+
 if __name__ == '__main__':
     unittest.main()

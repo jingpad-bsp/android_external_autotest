@@ -752,8 +752,20 @@ class HostQueueEntry(DBObject):
 
         if self.status in (Status.STARTING, Status.PENDING, Status.RUNNING,
                            Status.WAITING):
-            assert not dispatcher.get_agents_for_entry(self)
-            self.host.set_status(models.Host.Status.READY)
+            # If hqe is in any of these status, it should not have any
+            # unfinished agent before it can be aborted.
+            agents = dispatcher.get_agents_for_entry(self)
+            # Agent with finished task can be left behind. This is added to
+            # handle the special case of aborting hostless job in STARTING
+            # status, in which the agent has only a HostlessQueueTask
+            # associated. The finished HostlessQueueTask will be cleaned up in
+            # the next tick, so it's safe to leave the agent there. Without
+            # filtering out finished agent, HQE abort won't be able to proceed.
+            assert all([agent.is_done() for agent in agents])
+            # If hqe is still in STARTING status, it may not have assigned a
+            # host yet.
+            if self.host:
+                self.host.set_status(models.Host.Status.READY)
         elif (self.status == Status.VERIFYING or
               self.status == Status.RESETTING):
             models.SpecialTask.objects.create(
@@ -799,7 +811,7 @@ class HostQueueEntry(DBObject):
             logging.error('No execution_subdir for host queue id:%s.', self.id)
             logging.error('====DB DEBUG====\n%s', SQL_SUSPECT_ENTRIES)
             for row in _db.execute(SQL_SUSPECT_ENTRIES):
-              logging.error(row)
+                logging.error(row)
             logging.error('====DB DEBUG====\n')
             fix_query = SQL_FIX_SUSPECT_ENTRY % self.id
             logging.error('EXECUTING: %s', fix_query)

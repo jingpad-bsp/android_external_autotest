@@ -637,8 +637,20 @@ def main():
         # this without digging through the views.
         is_aborted = any([view['job_keyvals'].get('aborted_by')
                           for view in views])
+        # For hostless job in Starting status, there is no test view associated.
+        # This can happen when a suite job in Starting status is aborted. When
+        # the scheduler hits some limit, e.g., max_hostless_jobs_per_drone,
+        # max_jobs_started_per_cycle, a suite job can stays in Starting status.
+        if not views:
+            code = RETURN_CODES.ERROR
+            returnmessage = RETURN_CODES.get_string(code)
+            logging.info('\nNo test view was found.\n'
+                         'Will return from run_suite with status:  %s',
+                         returnmessage)
+            return code
+
         width = max((len(_full_test_name(job_id, view, options.build,
-            options.name)) for view in views)) + 3
+                                         options.name)) for view in views)) + 3
 
         relevant_views = filter(job_status.view_is_relevant, views)
         if not relevant_views:

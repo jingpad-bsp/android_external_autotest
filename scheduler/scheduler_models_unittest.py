@@ -1,4 +1,5 @@
 #!/usr/bin/python
+#pylint: disable-msg=C0111
 
 import datetime
 import common
@@ -8,6 +9,7 @@ from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models, model_attributes
+from autotest_lib.scheduler import monitor_db
 from autotest_lib.scheduler import monitor_db_functional_test
 from autotest_lib.scheduler import scheduler_models
 
@@ -243,6 +245,44 @@ class HostQueueEntryTest(BaseSchedulerModelsTest):
         hqe = self._create_hqe(dependency_labels=(self.label3, self.label4),
                                metahosts=[1])
         self._check_hqe_labels(hqe, ['label1', 'label3', 'label4'])
+
+
+    def setup_abort_test(self, agent_finished=True):
+        """Setup the variables for testing abort method.
+
+        @param agent_finished: True to mock agent is finished before aborting
+                               the hqe.
+        @return hqe, dispatcher: Mock object of hqe and dispatcher to be used
+                               to test abort method.
+        """
+        hqe = self._create_hqe(hosts=[1])
+        hqe.aborted = True
+        hqe.complete = False
+        hqe.status = models.HostQueueEntry.Status.STARTING
+
+        dispatcher = self.god.create_mock_class(monitor_db.BaseDispatcher,
+                                                'BaseDispatcher')
+        agent = self.god.create_mock_class(monitor_db.Agent, 'Agent')
+        dispatcher.get_agents_for_entry.expect_call(hqe).and_return([agent])
+        agent.is_done.expect_call().and_return(agent_finished)
+        return hqe, dispatcher
+
+
+    def test_abort_fail_with_unfinished_agent(self):
+        """abort should fail if the hqe still has agent not finished.
+        """
+        hqe, dispatcher = self.setup_abort_test(agent_finished=False)
+        with self.assertRaises(AssertionError):
+            hqe.abort(dispatcher)
+        self.god.check_playback()
+
+
+    def test_abort_success(self):
+        """abort should succeed if all agents for the hqe are finished.
+        """
+        hqe, dispatcher = self.setup_abort_test(agent_finished=True)
+        hqe.abort(dispatcher)
+        self.god.check_playback()
 
 
 class JobTest(BaseSchedulerModelsTest):

@@ -362,6 +362,11 @@ class BaseDispatcher(object):
         for object_id in object_ids:
             assert object_id in agent_dict
             agent_dict[object_id].remove(agent)
+            # If an ID has no more active agent associated, there is no need to
+            # keep it in the dictionary. Otherwise, scheduler will keep an
+            # unnecessarily big dictionary until being restarted.
+            if not agent_dict[object_id]:
+                agent_dict.pop(object_id)
 
 
     def add_agent_task(self, agent_task):
@@ -1338,7 +1343,21 @@ class HostlessQueueTask(AbstractQueueTask):
 
     def _finish_task(self):
         super(HostlessQueueTask, self)._finish_task()
-        self.queue_entries[0].set_status(models.HostQueueEntry.Status.PARSING)
+
+        # When a job is added to database, its initial status is always
+        # Starting. In a scheduler tick, scheduler finds all jobs in Starting
+        # status, check if any of them can be started. If scheduler hits some
+        # limit, e.g., max_hostless_jobs_per_drone, max_jobs_started_per_cycle,
+        # scheduler will leave these jobs in Starting status. Otherwise, the
+        # jobs' status will be changed to Running, and an autoserv process will
+        # be started in drone for each of these jobs.
+        # If the entry is still in status Starting, the process has not started
+        # yet. Therefore, there is no need to parse and collect log. Without
+        # this check, exception will be raised by scheduler as execution_subdir
+        # for this queue entry does not have a value yet.
+        hqe = self.queue_entries[0]
+        if hqe.status != models.HostQueueEntry.Status.STARTING:
+            hqe.set_status(models.HostQueueEntry.Status.PARSING)
 
 
 if __name__ == '__main__':
