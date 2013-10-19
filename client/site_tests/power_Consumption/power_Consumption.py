@@ -218,8 +218,10 @@ class power_Consumption(test.test):
 
         more_urls = [('BallsDHTML',
                       data_url + 'balls/DHTMLBalls/dhtml.htm'),
-                     ('BallsFlex',
-                      data_url + 'balls/FlexBalls/flexballs.html'), ]
+                     # Disabling FlexBalls as experiment http://crbug.com/309403
+                     # ('BallsFlex',
+                     #  data_url + 'balls/FlexBalls/flexballs.html'),
+                    ]
 
         if self.short:
             urls += more_urls
