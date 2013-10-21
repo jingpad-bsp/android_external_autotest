@@ -1,6 +1,6 @@
 """Provides a factory method to create a host object."""
 
-
+from contextlib import closing
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import autotest, utils as server_utils
 from autotest_lib.server.hosts import site_factory, cros_host, ssh_host, serial
@@ -64,9 +64,9 @@ def _detect_host(connectivity_class, hostname, **args):
     # CrosHost.
     try:
         # Attempt to find adb on the system. If that succeeds use ADBHost.
-        host = connectivity_class(hostname, **args)
-        result = host.run('which adb', timeout=10)
-        return adb_host.ADBHost
+        with closing(connectivity_class(hostname, **args)) as host:
+            result = host.run('which adb', timeout=10)
+            return adb_host.ADBHost
     except (error.AutoservRunError, error.AutoservSSHTimeout):
         # If any errors occur use CrosHost.
         # TODO(fdeng): this method should should dynamically discover
