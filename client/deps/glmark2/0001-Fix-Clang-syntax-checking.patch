@@ -8,3 +8,20 @@
      double wave_velocity_;
  
      std::vector<double> displacement_;
+--- glmark2-2012.03/src/main.cpp.bak	2013-10-22 09:17:29.809976290 -0700
++++ glmark2-2012.03/src/main.cpp	2013-10-22 09:17:54.620164586 -0700
+@@ -100,14 +100,6 @@
+     }
+ }
+ 
+-static inline void
+-fps_renderer_update_text(TextRenderer &fps_renderer, unsigned int fps)
+-{
+-    std::stringstream ss;
+-    ss << "FPS: " << fps;
+-    fps_renderer.text(ss.str());
+-}
+-
+ void
+ do_benchmark(Canvas &canvas)
+ {
