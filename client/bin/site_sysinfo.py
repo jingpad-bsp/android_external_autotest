@@ -204,18 +204,23 @@ class diffable_logdir(logdir):
             self._copy_new_data_in_file(src_file, src_dir, dest_dir)
 
 
-    def run(self, log_dir, collect_init_status=True):
+    def run(self, log_dir, collect_init_status=True, collect_all=False):
         """Copies new content from self.dir to the destination log_dir.
 
         @param log_dir: The destination log directory.
         @param collect_init_status: Set to True if run method is called to
             collect the initial status of files.
+        @param collect_all: Set to True to force to collect all files.
 
         """
         if collect_init_status:
             self._get_init_status_of_src_dir(self.dir)
         elif os.path.exists(self.dir):
-            self._log_diff(self.dir, log_dir)
+            if not collect_all:
+                self._log_diff(self.dir, log_dir)
+            else:
+                logdir_temp = logdir(self.dir)
+                logdir_temp.run(log_dir)
 
 
 class purgeable_logdir(logdir):
@@ -312,8 +317,10 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         super(site_sysinfo, self).log_after_each_test(test)
 
         test_sysinfodir = self._get_sysinfodir(test.outputdir)
+
         for log in self.diffable_loggables:
-            log.run(log_dir=test_sysinfodir, collect_init_status=False)
+            log.run(log_dir=test_sysinfodir, collect_init_status=False,
+                    collect_all=not test.success)
 
 
     def _get_chrome_version(self):

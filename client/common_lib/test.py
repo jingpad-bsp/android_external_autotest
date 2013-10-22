@@ -59,6 +59,9 @@ class base_test(object):
         self.before_iteration_hooks = []
         self.after_iteration_hooks = []
 
+        # Flag to indicate if the test has succeeded or failed.
+        self.success = False
+
 
     def configure_crash_handler(self):
         pass
@@ -783,6 +786,7 @@ def runtest(job, url, tag, args, dargs,
 
     try:
         mytest = global_namespace['mytest']
+        mytest.success = False
         if before_test_hook:
             before_test_hook(mytest)
 
@@ -793,6 +797,7 @@ def runtest(job, url, tag, args, dargs,
         if after_iteration_hook:
             mytest.register_after_iteration_hook(after_iteration_hook)
         mytest._exec(args, dargs)
+        mytest.success = True
     finally:
         os.chdir(pwd)
         if after_test_hook:
