@@ -65,7 +65,9 @@ def _detect_host(connectivity_class, hostname, **args):
     try:
         # Attempt to find adb on the system. If that succeeds use ADBHost.
         with closing(connectivity_class(hostname, **args)) as host:
-            result = host.run('which adb', timeout=10)
+            # Send stderr to /dev/null which cleans up log spam about not
+            # finding adb installed.
+            result = host.run('which adb 2> /dev/null', timeout=10)
             return adb_host.ADBHost
     except (error.AutoservRunError, error.AutoservSSHTimeout):
         # If any errors occur use CrosHost.
