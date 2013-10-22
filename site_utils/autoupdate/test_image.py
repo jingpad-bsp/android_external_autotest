@@ -4,27 +4,16 @@
 
 """Module for discovering Chrome OS test images and payloads."""
 
-import imp
 import logging
-import os
 import re
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.utils import external_packages
 
-def update_devserver_checkout():
-    """Bring the devserver checkout to ToT."""
-    from autotest_lib.utils import build_externals, external_packages
-    tot = external_packages.find_top_of_autotest_tree()
-    install_dir = os.path.join(tot, build_externals.INSTALL_DIR)
-    build_externals.build_and_install_packages(
-        [external_packages.DevServerRepo()], install_dir)
-
-
-update_devserver_checkout()
-# Note this is needed to find the devserver module since we install a new
-# version in update_devserver_checkout.
-devserver = imp.load_module('devserver', *imp.find_module('devserver'))
+from autotest_lib.site_utils.autoupdate import import_common
+devserver = import_common.download_and_import('devserver',
+                                              external_packages.DevServerRepo())
 from devserver import gsutil_util
 
 

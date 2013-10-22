@@ -14,7 +14,6 @@ import unittest
 
 import common
 from autotest_lib.site_utils.autoupdate import full_release_test
-from autotest_lib.site_utils.autoupdate import board as board_util
 # This is convoluted because of the way we pull in gsutil_util.
 # pylint: disable-msg=W0611
 from autotest_lib.site_utils.autoupdate import test_image
@@ -166,9 +165,7 @@ class FullReleaseTestTests(mox.MoxTestBase):
     def testIntegrationNpoAllBoards(self):
         """Tests that we successfully generate a npo control file 4 all boards.
         """
-        board_info = board_util.BoardInfo()
-        board_info.initialize()
-        boards = board_info.get_board_names()
+        boards = full_release_test.get_boards_from_chromite()
         branch = '24'
         target = '3000.0.0'
         src = '3000.0.0'
@@ -295,6 +292,14 @@ class FullReleaseTestTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 1)
         self.mox.VerifyAll()
+
+
+    def testChromiteBoards(self):
+        """Sanity test that we can parse the boards from cbuildbot_config."""
+        all_boards = full_release_test.get_boards_from_chromite()
+        self.assertTrue('x86-mario' in all_boards)
+        self.assertTrue('lumpy' in all_boards)
+        self.assertTrue('stumpy' in all_boards)
 
 
 if __name__ == '__main__':

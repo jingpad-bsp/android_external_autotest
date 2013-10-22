@@ -21,18 +21,23 @@ import sys
 import common
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import frontend
-from autotest_lib.site_utils.autoupdate import board as board_util
+from autotest_lib.utils import external_packages
+
+from autotest_lib.site_utils.autoupdate import import_common
 from autotest_lib.site_utils.autoupdate import release as release_util
 from autotest_lib.site_utils.autoupdate import test_image
 from autotest_lib.site_utils.autoupdate.lib import test_control
 from autotest_lib.site_utils.autoupdate.lib import test_params
+
+chromite = import_common.download_and_import('chromite',
+                                             external_packages.ChromiteRepo())
+from chromite.buildbot import cbuildbot_config
 
 # Autotest pylint is more restrictive than it should with args.
 #pylint: disable=C0111
 
 
 # Global reference objects.
-_board_info = board_util.BoardInfo()
 _release_info = release_util.ReleaseInfo()
 
 _log_debug = 'debug'
@@ -157,13 +162,6 @@ class TestConfigGenerator(object):
                 'generation of mp-signed test configs not implemented')
 
 
-    def generate_mp_image_fsi_list(self):
-        """Generates FSI test configurations with MP-signed images."""
-        # TODO(garnold) configure FSI-to-N delta tests for MP-signed images.
-        raise NotImplementedError(
-            'generation of mp-signed test configs not implemented')
-
-
     def generate_mp_image_specific_list(self, specific_source_releases):
         """Generates specific test configurations with MP-signed images.
 
@@ -176,7 +174,7 @@ class TestConfigGenerator(object):
                 releases.
 
         """
-        # TODO(garnold) configure FSI-to-N delta tests for MP-signed images.
+        # TODO(garnold) generate specific configurations for MP-signed images.
         raise NotImplementedError(
             'generation of mp-signed test configs not implemented')
 
@@ -347,20 +345,6 @@ class TestConfigGenerator(object):
         return test_list
 
 
-    def generate_test_image_fsi_list(self):
-        """Generates FSI test configurations with test images.
-
-        Returns a list of test configurations from FSI releases to the given
-        tested release and board.
-
-        @return List of TestConfig objects corresponding to the FSI tests for
-                the given board.
-
-        """
-        return self.generate_test_image_full_update_list(
-                _board_info.get_fsi_releases(self.board), 'fsi')
-
-
     def generate_test_image_specific_list(self, specific_source_releases):
         """Generates specific test configurations with test images.
 
@@ -396,28 +380,12 @@ class TestConfigGenerator(object):
             return self.generate_test_image_npo_nmo_list()
 
 
-    def generate_fsi_list(self):
-        """Generates FSI test configurations.
-
-        Returns a list of test configurations from FSI releases to the given
-        tested release and board.
-
-        @return List of TestConfig objects corresponding to the FSI tests for
-                the given board.
-
-        """
-        if self.use_mp_images:
-            return self.generate_mp_image_fsi_list()
-        else:
-            return self.generate_test_image_fsi_list()
-
-
     def generate_specific_list(self, specific_source_releases, generated_tests):
         """Generates test configurations for a list of specific source releases.
 
         Returns a list of test configurations from a given list of releases to
         the given tested release and board. Cares to exclude test configurations
-        that were already generated elsewhere (e.g. N-1/N+1, FSI).
+        that were already generated elsewhere (e.g. N-1/N+1).
 
         @param specific_source_releases: list of source release to test
         @param generated_tests: already generated test configuration
@@ -464,10 +432,6 @@ def generate_test_list(args):
         # Configure N-1-to-N and N-to-N+1 tests.
         if args.test_nmo or args.test_npo:
             test_list_for_board += generator.generate_npo_nmo_list()
-
-        # Configure FSI tests.
-        if args.test_fsi:
-            test_list_for_board += generator.generate_fsi_list()
 
         # Add tests for specifically provided source releases.
         if args.specific:
@@ -554,6 +518,16 @@ def get_job_url(server, job_id):
             _autotest_url_format % dict(host=server, job=job_id))
 
 
+def get_boards_from_chromite():
+    """Returns the list of boards from cbuildbot_config."""
+    boards = set()
+    for config in cbuildbot_config.config.itervalues():
+        if config.get('hw_tests'):
+            boards.update(config.get('boards'))
+
+    return list(boards)
+
+
 def parse_args(argv):
     parser = optparse.OptionParser(
             usage='Usage: %prog [options] RELEASE [BOARD...]',
@@ -573,8 +547,6 @@ def parse_args(argv):
                       help='generate N-1 update tests')
     parser.add_option('--npo', dest='test_npo', action='store_true',
                       help='generate N+1 update tests')
-    parser.add_option('--fsi', dest='test_fsi', action='store_true',
-                      help='generate FSI update tests')
     parser.add_option('--specific', metavar='LIST',
                       help='comma-separated list of source releases to '
                            'generate test configurations from')
@@ -612,12 +584,13 @@ def parse_args(argv):
         parser.error('--all_boards should not be used with individual board '
                      'arguments".')
 
+    all_boards = get_boards_from_chromite()
     if opts.all_boards:
-        opts.tested_board_list = _board_info.get_board_names()
+        opts.tested_board_list = all_boards
     else:
         # Sanity check board.
         for board in opts.tested_board_list:
-            if board not in _board_info.get_board_names():
+            if board not in all_boards:
                 parser.error('unknown board (%s)' % board)
 
     # Skip specific board.
@@ -644,8 +617,7 @@ def parse_args(argv):
 
 def main(argv):
     try:
-        # Initialize board/release configs.
-        _board_info.initialize()
+        # Initialize release config.
         _release_info.initialize()
 
         # Parse command-line arguments.
