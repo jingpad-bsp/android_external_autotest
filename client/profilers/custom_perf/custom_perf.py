@@ -2,11 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""
-This is a profiler class for the perf profiler in ChromeOS. It differs from
-cros_perf in that you can completely customize what arguments you send in to
-perf.
-"""
 
 import os, signal, subprocess
 from autotest_lib.client.bin import profiler, os_dep
@@ -14,6 +9,11 @@ from autotest_lib.client.common_lib import error
 
 
 class custom_perf(profiler.profiler):
+    """
+    This is a profiler class for the perf profiler in ChromeOS. It differs from
+    cros_perf in that you can completely customize what arguments you send in to
+    perf.
+    """
     version = 1
 
     def initialize(self, perf_options=''):
@@ -25,8 +25,8 @@ class custom_perf(profiler.profiler):
     def start(self, test):
         outfile = os.path.join(test.profdir, 'perf.out')
 
-        cmd = ('exec %s %s > %s 2>&1' %
-               (self.perf_bin, self.perf_options, outfile))
+        cmd = ('cd %s; exec %s %s > %s 2>&1' %
+               (test.profdir, self.perf_bin, self.perf_options, outfile))
 
         self._process = subprocess.Popen(cmd, shell=True,
                                          stderr=subprocess.STDOUT)
