@@ -76,6 +76,21 @@ def get_oldest_pid_by_name(name):
         return int(str_pid)
 
 
+def get_oldest_by_name(name):
+    """Return pid and command line of oldest process whose name matches |name|.
+
+    @param name: egrep expression to match desired process name.
+    @return: A tuple of (pid, command_line) of the oldest process whose name
+             matches |name|.
+
+    """
+    pid = get_oldest_pid_by_name(name)
+    if pid:
+        command_line = utils.system_output('ps -p %i -o command=' % pid,
+                                           ignore_status=True).rstrip()
+        return (pid, command_line)
+
+
 def get_process_list(name, command_line=None):
     """
     Return the list of pid for matching process |name command_line|.
