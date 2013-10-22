@@ -696,7 +696,8 @@ class GPUFreqStats(AbstractStats):
 
     _MALI_DEV = '/sys/class/misc/mali0/device'
     _MALI_EVENTS = ['mali_dvfs:mali_dvfs_set_clock']
-    _MALI_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)'
+    _MALI_34_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)'
+    _MALI_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)\d{6}'
 
     _I915_ROOT = '/sys/kernel/debug/dri/0'
     _I915_EVENTS = ['i915:intel_gpu_freq_change']
@@ -733,7 +734,7 @@ class GPUFreqStats(AbstractStats):
             533000000
 
         Returns:
-          cur_mhz: integer of current GPU clock in mhz
+          cur_mhz: string of current GPU clock in mhz
         """
         cur_mhz = None
         fqs = []
@@ -751,12 +752,12 @@ class GPUFreqStats(AbstractStats):
                         fqs = result
                         fd.close()
         else:
-            cur_mhz = int(int(utils.read_one_line(fname)) / 1e6)
+            cur_mhz = str(int(int(utils.read_one_line(fname).strip()) / 1e6))
             fname = os.path.join(self._MALI_DEV, 'available_frequencies')
             with open(fname) as fd:
-                lns = fd.readlines()
-                # TODO(tbroch): remove set/sort once crbug.com/293679 resolved
-                fqs = list(int(int(ln.strip()) / 1e6) for ln in set(lns))
+                for ln in fd.readlines():
+                    freq = int(int(ln.strip()) / 1e6)
+                    fqs.append(str(freq))
                 fqs.sort()
 
         self._freqs = fqs
@@ -880,6 +881,13 @@ class GPUFreqStats(AbstractStats):
     def _mali_read_stats(self):
         """Read Mali GPU stats
 
+        For 3.4:
+            Frequencies are reported in MHz.
+
+        For 3.8+:
+            Frequencies are reported in Hz, so use a regex that drops the last 6
+            digits.
+
         Output in trace looks like this:
 
             kworker/u:24-5220  [000] .... 81060.329232: mali_dvfs_set_clock: frequency=400
@@ -889,7 +897,13 @@ class GPUFreqStats(AbstractStats):
             Dict with frequency in mhz as key and float in seconds for time
               spent at that frequency.
         """
-        return self._trace_read_stats(self._MALI_TRACE_CLK_RE)
+        regexp = None
+        if os.uname()[2].startswith('3.4'):
+            regexp = self._MALI_34_TRACE_CLK_RE
+        else:
+            regexp = self._MALI_TRACE_CLK_RE
+
+        return self._trace_read_stats(regexp)
 
 
     def _i915_read_stats(self):
