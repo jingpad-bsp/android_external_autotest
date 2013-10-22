@@ -70,6 +70,10 @@ class LinuxSystem(object):
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []
         self.wlanifs = {}
+        # Some uses of LinuxSystem don't use the interface allocation facility.
+        # Don't force us to remove all the existing interfaces if this facility
+        # is not desired.
+        self._wlanifs_initialized = False
         self._capabilities = None
 
 
@@ -143,6 +147,7 @@ class LinuxSystem(object):
         for interface in self.iw_runner.list_interfaces():
             self.iw_runner.remove_interface(interface)
         self.wlanifs = {}
+        self._wlanifs_initialized = True
 
 
     def close(self):
@@ -304,10 +309,7 @@ class LinuxSystem(object):
             raise error.TestFail('Unable to find phy for frequency %d mode %s' %
                                  (frequency, mode))
 
-        # If self.wlanifs is not defined, this is the first time we've
-        # allocated a wlan interface.  Perform init by calling
-        # remove_interfaces().
-        if not hasattr(self, 'wlanifs'):
+        if not self._wlanifs_initialized:
             self._remove_interfaces()
         if phytype not in self.wlanifs:
             self.wlanifs[phytype] = {}
