@@ -2,22 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections
-import datetime
 import logging
-import re
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import iw_runner
 from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.network import wifi_cell_test_base
-
-
-FrameLine = collections.namedtuple('FrameLine', ['time_delta_seconds',
-                                                 'bit_rate',
-                                                 'mcs_index'])
 
 
 class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
@@ -50,52 +43,15 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
         self._ap_configs = additional_params
 
 
-    def check_bitrates_in_capture(self, pcap_result, client_ip, frequency):
+    def get_highest_mcs_rate(self, frequency):
         """
-        Check that frames in a packet capture have expected MCS indices.
+        Get the highest MCS index supported by the DUT on |frequency|.
 
-        @param pcap_result: RemoteCaptureResult tuple.
-        @param client_ip: string IP address of the client device in the packet
-                capture.
-        @param frequency: int frequency of packet capture in Mhz.
+        @param frequency: int frequency to look for supported MCS rates.
+        @return int highest rate supported.
 
         """
-        logging.info('Analyzing packet capture...')
-        pcap_filter = 'udp and ip src host %s' % client_ip
-        result = self.context.router.host.run(
-                'tcpdump -ttttt -r %s "%s"' % (pcap_result.pcap_path,
-                                               pcap_filter))
-        frames = []
-        # Right now we only care about the MCS index, but one can imagine
-        # checking properties of the distribution of MCS index frames across
-        # time.  Support that by parsing as much useful information as possible.
-        logging.info('Parsing frames')
-        bad_lines = 0
-        for frame in result.stdout.splitlines():
-            match = re.search(r'^(?P<ts>\d{2}:\d{2}:\d{2}\.\d{6}) .+ '
-                              r'(?P<rate>\d+.\d) Mb/s MCS (?P<mcs_index>\d+)',
-                              frame)
-            if not match:
-                bad_lines += 1
-                continue
-            rel_time = datetime.datetime.strptime(match.group('ts'),
-                                                  '%H:%M:%S.%f')
-            diff_seconds = rel_time.time()
-            rate = float(match.group('rate'))
-            mcs_index = int(match.group('mcs_index'))
-            frames.append(FrameLine(diff_seconds, rate, mcs_index))
-        if bad_lines:
-            logging.error('Failed to parse %d lines.', bad_lines)
-
-        logging.info('Grouping frames by MCS index')
-        counts = {}
-        for frame in frames:
-            counts[frame.mcs_index] = counts.get(frame.mcs_index, 0) + 1
-        logging.info('Saw WiFi frames with MCS indices: %r', counts)
-
         # Figure out the highest MCS index supported by this hardware.
-        # The device should sense that it is in a clean RF environment and use
-        # the highest index to achieve maximal throughput.
         phys = iw_runner.IwRunner(self.context.client.host).list_phys()
         if len(phys) != 1:
             raise error.TestFail('Test expects a single PHY, but we got %d' %
@@ -108,12 +64,37 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
                                  'given frequency, but this device has %d '
                                  'such bands.' % len(bands))
 
-        band = bands[0]
-        max_possible_index = -1
-        for index in band.mcs_indices:
-            # 32 is a special low throughput, high resilience mode.  Ignore it.
-            if index > max_possible_index and index != 32:
-                max_possible_index = index
+        # 32 is a special low throughput, high resilience mode.  Ignore it.
+        possible_indices = filter(lambda x: x != 32, bands[0].mcs_indices)
+
+        if not possible_indices:
+            raise error.TestFail('No possible MCS indices on frequency %d' %
+                                 frequency)
+
+        return max(possible_indices)
+
+
+    def check_bitrates_in_capture(self, pcap_result, max_mcs_index):
+        """
+        Check that frames in a packet capture have expected MCS indices.
+
+        @param pcap_result: RemoteCaptureResult tuple.
+        @param max_mcs_index: int MCS index representing the highest possible
+                bitrate on this device.
+
+        """
+        logging.info('Analyzing packet capture...')
+        pcap_filter = 'udp and ip src host %s' % self.context.client.wifi_ip
+        frames = tcpdump_analyzer.get_frames(
+                pcap_result.pcap_path,
+                remote_host=self.context.router.host,
+                pcap_filter=pcap_filter)
+
+        logging.info('Grouping frames by MCS index')
+        counts = {}
+        for frame in frames:
+            counts[frame.mcs_index] = counts.get(frame.mcs_index, 0) + 1
+        logging.info('Saw WiFi frames with MCS indices: %r', counts)
 
         # Now figure out the index which the device sent the most packets with.
         dominant_index = None
@@ -126,10 +107,10 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
         # We should see that the device sent more frames with the maximal index
         # than anything else.  This checks that the rate controller is fairly
         # aggressive and using all of the device's capabilities.
-        if dominant_index != max_possible_index:
+        if dominant_index != max_mcs_index:
             raise error.TestFail('Failed to use best possible MCS '
                                  'index %d in a clean RF environment: %r' %
-                                 (max_possible_index, counts))
+                                 (max_mcs_index, counts))
 
 
     def run_once(self):
@@ -161,9 +142,10 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
                                       'capture but got %d instead.' %
                                       len(results))
 
-            client_ip = self.context.client.wifi_ip
-            self.check_bitrates_in_capture(results[0], client_ip,
-                                           ap_config.frequency)
+            # The device should sense that it is in a clean RF environment and
+            # use the highest index to achieve maximal throughput.
+            max_mcs_index = self.get_highest_mcs_rate(ap_config.frequency)
+            self.check_bitrates_in_capture(results[0], max_mcs_index)
             # Clean up router and client state for the next run.
             self.context.client.shill.disconnect(self.context.router.get_ssid())
             self.context.router.deconfig()
