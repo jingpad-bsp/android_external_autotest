@@ -657,6 +657,9 @@ def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv,
                  autotest_path)
     script_command = os.path.join(autotest_path, 'site_utils',
                                   os.path.basename(__file__))
+    if not os.path.exists(script_command):
+        raise TestThatRunError('Unable to bootstrap to autotest root, '
+                               '%s not found.' % script_command)
     proc = None
     def resend_sig(signum, stack_frame):
         #pylint: disable-msg=C0111
