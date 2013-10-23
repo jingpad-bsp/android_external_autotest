@@ -4,6 +4,7 @@
 
 import binascii
 import copy
+import datetime
 import logging
 import os
 import sys
@@ -589,7 +590,12 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         f.close()
         webdriver_url = ('http://%s:%d' % (webdriver_server,
                                            self._webdriver_port))
-        capabilities = {'chromeOptions' : {'extensions' : base64_extensions}}
+        router_name = self.get_router_short_name().replace(' ', '_')
+        temp_dir = datetime.datetime.now().strftime('/tmp/chromedriver_' +
+                                                    router_name +
+                                                    '_' + '%H%M%S%m%d%Y')
+        capabilities = {'chromeOptions' : {'extensions' : base64_extensions,
+                        'args' : [str('--user-data-dir=%s' % temp_dir)]}}
         self.driver = webdriver.Remote(webdriver_url, capabilities)
         self.driver_connection_established = True
 
