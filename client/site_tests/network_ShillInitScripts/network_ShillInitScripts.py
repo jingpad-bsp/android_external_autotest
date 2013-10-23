@@ -504,28 +504,29 @@ class network_ShillInitScripts(test.test):
                                  'Only InsertUserProfile is called')
 
     def test_login_multi_profile(self):
-        """ Login script should create multiple profiles in parallel
-            if called more than once without an intervening logout.
+        """ Login script should not create multiple profiles in parallel
+            if called more than once without an intervening logout.  Only
+            the initial user profile should be created.
         """
         os.mkdir('/var/run/shill')
         self.create_new_shill_user_profile('')
-        expected_usernames = [ 'chronos', 'user001', 'user002', 'user003' ]
-        created_profiles = []
-        for username in expected_usernames:
+
+        # First logged-in user should create a profile (tested above).
+        self.login()
+
+        # Clear the mock method-call queue.
+        self.mock_flimflam.get_method_calls()
+
+        for attempt in range(5):
             self.login()
-            profile = "~%s/shill" % username
-            self.assure_method_calls([[ 'InsertUserProfile',
-                                        (profile, self.fake_user_hash) ]],
-                                     'InsertUserProfile is called for %s' %
-                                     profile)
-            self.assure_is_link_to('/var/run/shill/user_profiles/%s' % username,
-                                   self.new_shill_user_profile_dir,
-                                   'Shill profile link for %s' % username)
-            # Despite multiple logins, the log directory remains the same.
+            self.assure_method_calls([], 'No more profiles are added to shill')
+            profile_links = os.listdir('/var/run/shill/user_profiles')
+            self.assure(len(profile_links) == 1, 'Only one profile exists')
+            self.assure(profile_links[0] == 'chronos',
+                        'The profile link is for the chronos user')
             self.assure_is_link_to('/var/run/shill/log',
                                    self.user_cryptohome_log_dir,
-                                   'Shill log link for %s' % username)
-            created_profiles.append(profile)
+                                   'Shill log link for chronos')
 
     def test_logout(self):
         os.makedirs('/var/run/shill/user_profiles')
