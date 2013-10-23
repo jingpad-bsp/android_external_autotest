@@ -91,9 +91,25 @@ class BuffaloAPConfigurator(
         while self.object_by_xpath_exist("ddwrt_message") and timeout < 60:
             time.sleep(1)
             timeout = timeout + 1
-        # Sometime the buffalo interface will go down
-        if self.driver.title.find('DD-WRT') == -1:
-            self.navigate_to_page(page_number)
+        self._retry_page(page_number)
+
+
+    def _retry_page(self, page_number):
+        """Sometimes the interface goes down, retry."""
+        for i in range(3):
+            if self.driver.title.find('DD-WRT') == -1:
+                self.navigate_to_page(page_number)
+            else:
+                return
+
+    def _wait_for_item_in_popup(self, item, popup):
+        """Wait for the popup to be enumerated."""
+        for i in range(3):
+            self.wait_for_object_by_xpath(popup)
+            if self.item_in_popup_by_xpath_exist(item, popup):
+                break
+            else:
+                time.sleep(1)
 
 
     def set_mode(self, mode, band=None):
@@ -198,13 +214,21 @@ class BuffaloAPConfigurator(
 
 
     def _set_security_disabled(self):
-        xpath = '//select[@name="ath0_security_mode"]'
-        self.select_item_from_popup_by_xpath('Disabled', xpath)
-        # Sometime the buffalo interface will go down
-        if self.driver.title.find('DD-WRT') == -1:
-            page_url = urlparse.urljoin(self.admin_interface_url,
-                                        'WL_WPATable.asp')
-            self.get_url(page_url, page_title='DD-WRT')
+        self._retry_page(2)
+
+        popup = '//select[@name="ath0_security_mode"]'
+        disabled_item = 'Disabled'
+
+        self._wait_for_item_in_popup(disabled_item, popup)
+
+        self.select_item_from_popup_by_xpath(disabled_item, popup)
+
+        for i in range(3):
+            if (self.object_by_xpath_exist('//input[@name="ath0_passphrase"]')
+                or self.object_by_xpath_exist('//input[@name="ath0_wpa_psk"]')):
+                time.sleep(1)
+            else:
+                break
 
 
     def set_security_wep(self, key_value, authentication):
@@ -215,11 +239,17 @@ class BuffaloAPConfigurator(
     def _set_security_wep(self, key_value, authentication):
         # Buffalo supports WEP with wireless network mode N.
         # No exception is thrown for N-mode with WEP security.
+        self._retry_page(2)
+
         popup = '//select[@name="ath0_security_mode"]'
         text_field = '//input[@name="ath0_passphrase"]'
-        self.wait_for_object_by_xpath(popup)
+        wep_item = 'WEP'
+
+        self._wait_for_item_in_popup(wep_item, popup)
+
         self.select_item_from_popup_by_xpath('WEP', popup,
                                              wait_for_xpath=text_field)
+        self.wait_for_object_by_xpath(text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
         self.click_button_by_xpath('//input[@value="Generate"]')
@@ -231,22 +261,17 @@ class BuffaloAPConfigurator(
 
 
     def _set_security_wpapsk(self, shared_key, update_interval=3600):
+        self._retry_page(2)
+
         popup = '//select[@name="ath0_security_mode"]'
-        self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="ath0_wpa_psk"]'
-        self.select_item_from_popup_by_xpath('WPA2 Personal', popup)
-        if self.driver.title.find('DD-WRT') == -1:
-            page_url = urlparse.urljoin(self.admin_interface_url,
-                                        'WL_WPATable.asp')
-            self.get_url(page_url, page_title='DD-WRT')
-        try:
-            self.wait_for_object_by_xpath(key_field, wait_time=5)
-        except:
-            page_url = urlparse.urljoin(self.admin_interface_url,
-                                        'WL_WPATable.asp')
-            self.get_url(page_url, page_title='DD-WRT')
-        self.set_content_of_text_field_by_xpath(shared_key, key_field)
         interval_field='//input[@name="ath0_wpa_gtk_rekey"]'
+
+        self._wait_for_item_in_popup(wpa_item, popup)
+        self.select_item_from_popup_by_xpath('WPA2 Personal', popup)
+        self.wait_for_object_by_xpath(key_field)
+        self.set_content_of_text_field_by_xpath(shared_key, key_field)
+        self.wait_for_object_by_xpath(interval_field)
         self.set_content_of_text_field_by_xpath(str(update_interval),
                                                 interval_field)
 

@@ -215,12 +215,14 @@ class WebDriverCoreHelpers(object):
         self.set_wait_time(wait_time)
         try:
             self.wait.until(lambda _: self.driver.find_element_by_xpath(xpath))
+            element = self.driver.find_element_by_xpath(xpath)
         except SeleniumTimeoutException, e:
+            self.restore_default_wait_time()
             raise SeleniumTimeoutException('Unable to find the object by '
                                            'xpath: %s\n WebDriver exception: '
                                            '%s' % (xpath, str(e)))
         self.restore_default_wait_time()
-        return self.driver.find_element_by_xpath(xpath)
+        return element
 
 
     def item_in_popup_by_id_exist(self, item, element_id):

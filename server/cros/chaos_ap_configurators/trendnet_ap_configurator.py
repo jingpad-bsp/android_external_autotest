@@ -71,9 +71,14 @@ class TrendnetAPConfigurator(
         for i in xrange(240):
             if not self.object_by_id_exist('progressValue'):
                 return
-            progress_value = self.wait_for_object_by_id('progressValue')
-            html = self.driver.execute_script('return arguments[0].innerHTML',
-                                              progress_value)
+            try:
+                progress_value = self.wait_for_object_by_id('progressValue')
+                html = self.driver.execute_script(
+                        'return arguments[0].innerHTML', progress_value)
+            except Exception as e:
+                # The progress bar is gone and the page reloaded.  This can
+                # happen if we fly from < 95% to done.
+                return
             percentage = html.rstrip('%')
             if int(percentage) < 95:
                 time.sleep(0.5)

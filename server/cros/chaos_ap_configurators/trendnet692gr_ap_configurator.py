@@ -51,7 +51,7 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
         return [{'band': ap_spec.BAND_2GHZ,
                  'channels': range(1, 12)},
                 {'band': ap_spec.BAND_5GHZ,
-                 'channels':[36, 40, 44, 48, 149, 153, 157, 161, 165]}]
+                 'channels':[36, 40, 44, 48, 149, 153, 157, 161]}]
 
 
     def get_supported_modes(self):
@@ -148,12 +148,12 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
                                 '2442MHz (Channel 7)', '2447MHz (Channel 8)',
                                 '2452MHz (Channel 9)', '2457MHz (Channel 10)',
                                 '2462MHz (Channel 11)']
-        channel_choices_5GHZ = ['AutoSelect', '5180MHz (Channel 36)',
-                                '5200MHz (Channel 40)', '5220MHz (Channel 44)',
+        channel_choices_5GHZ = ['5180MHz (Channel 36)', '5200MHz (Channel 40)',
                                 '5220MHz (Channel 44)', '5240MHz (Channel 48)',
-                                '5745MHz (Channel 149)','5765MHz (Channel 153)',
-                                '5785MHz (Channel 157)','5805MHz (Channel 161)',
-                                '5825MHz (Channel 165)']
+                                '5745MHz (Channel 149)',
+                                '5765MHz (Channel 153)',
+                                '5785MHz (Channel 157)',
+                                '5805MHz (Channel 161)']
         if self.current_band == ap_spec.BAND_2GHZ:
             self.select_item_from_popup_by_id(channel_choices_2GHZ[position],
                                               'sz11gChannel')
