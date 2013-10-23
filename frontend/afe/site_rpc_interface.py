@@ -129,7 +129,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     ds = dev_server.ImageServer.resolve(build)
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     try:
-        ds.stage_artifacts(build, ['test_suites'])
+        ds.trigger_download(build, synchronous=False)
     except dev_server.DevServerException as e:
         raise error.StageBuildFailure(
                 "Failed to stage %s for %s: %s" % (build, board, e))
