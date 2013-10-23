@@ -67,7 +67,8 @@ def parse_options():
     #  can't handle flags that don't take arguments.
     parser.add_option("-n", "--no_wait", dest="no_wait", default="False",
                       help='Must pass "True" or "False" if used.')
-    parser.add_option("-p", "--pool", dest="pool", default="")
+    # If you really want no pool, --pool="" will do it. USE WITH CARE.
+    parser.add_option("-p", "--pool", dest="pool", default="suites")
     parser.add_option("-s", "--suite_name", dest="name")
     parser.add_option("-a", "--afe_timeout_mins", dest="afe_timeout_mins",
                       default=30)
