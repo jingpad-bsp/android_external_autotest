@@ -133,6 +133,9 @@ class APConfiguratorFactory(object):
         'Keeboxw150nrAPConfigurator':
             [PREFIX + 'keeboxw150nr_ap_configurator',
                 'Keeboxw150nrAPConfigurator'],
+        'EdimaxAPConfigurator':
+            [PREFIX + 'edimax_ap_configurator',
+                'EdimaxAPConfigurator'],
         'StaticAPConfigurator':
             [PREFIX + 'static_ap_configurator',
                 'StaticAPConfigurator'],
