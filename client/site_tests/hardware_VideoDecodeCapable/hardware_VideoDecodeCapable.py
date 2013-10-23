@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 
 """Test to probe the video capability."""
-import logging, os, sys
+import glob, logging, os, sys
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
@@ -19,7 +20,7 @@ VAEntrypointVLD = 1
 # VA_RT_FORMAT that we are interested in
 VA_RT_FORMAT_YUV420 = 0x01
 
-KEY_DEVICES = 'devices'
+KEY_DEVICE = 'device'
 KEY_FORMATS = 'formats'
 
 class hardware_VideoDecodeCapable(test.test):
@@ -34,12 +35,13 @@ class hardware_VideoDecodeCapable(test.test):
 
     REQUESTED_V4L2_FORMATS = [
         # Requested formats for decoding devices
-        {KEY_DEVICES: ['/dev/mfc-dec'],
+        {KEY_DEVICE: '/dev/mfc-dec',
          KEY_FORMATS: ['cap_fmt_VM12', 'cap_fmt_NM12',
                       'out_fmt_H264', 'out_fmt_VP80']},
         # REQUESTED formats for GSCALER devices
-        {KEY_DEVICES: ['/dev/gsc0', '/dev/gsc1', '/dev/gsc2', '/dev/gsc3'],
+        {KEY_DEVICE: '/dev/gsc*',
          KEY_FORMATS: ['cap_fmt_RGB4', 'out_fmt_VM12']}]
+
 
     def assertTrue(self, condition, message = '', *args):
         """Raises an TestFail when the assertion failed"""
@@ -126,11 +128,15 @@ class hardware_VideoDecodeCapable(test.test):
         """Check supported image formats for all expected device nodes
         """
         for rules in self.REQUESTED_V4L2_FORMATS:
-            formats = rules['formats']
-            for device in rules['devices']:
+            formats = rules[KEY_FORMATS]
+            devices = glob.glob(rules[KEY_DEVICE]);
+            self.assertTrue(len(devices) > 0,
+                            'No matched devices: %s', rules[KEY_DEVICE]);
+            for device in devices:
                 missed = set(formats) - set(self._enum_formats(device))
                 self.assertTrue(not missed,
-                                'Formats: %s is not supported', missed)
+                                'Formats: %s is not supported for device: %s',
+                                missed, device)
 
     def run_once(self, type='v4l2'):
         if type == 'v4l2':
