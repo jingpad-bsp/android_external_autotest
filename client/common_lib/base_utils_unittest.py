@@ -244,6 +244,10 @@ class test_read_keyval(unittest.TestCase):
         keyval = self.read_keyval("a-b=value\n")
         self.assertEquals(keyval, {"a-b": "value"})
 
+    def test_empty_value_is_allowed(self):
+        keyval = self.read_keyval("a=\n")
+        self.assertEquals(keyval, {"a": ""})
+
 
 class test_write_keyval(unittest.TestCase):
     def setUp(self):
