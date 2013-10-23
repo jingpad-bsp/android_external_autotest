@@ -58,9 +58,11 @@ class RobotWrapper:
         self._method_of_control_command_dict = {
             conf.ONE_FINGER_TRACKING: self._get_control_command_line,
             conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
+            conf.ONE_FINGER_SWIPE: self._get_control_command_line,
             conf.ONE_FINGER_TAP: self._get_control_command_single_tap,
             conf.TWO_FINGER_TRACKING: self._get_control_command_line,
             conf.RAPID_TAPS: self._get_control_command_rapid_taps,
+            conf.TWO_FINGER_SWIPE: self._get_control_command_line,
             conf.TWO_FINGER_TAP: self._get_control_command_single_tap,
         }
 
@@ -184,13 +186,16 @@ class RobotWrapper:
 
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
-
+        line_type = 'swipe' if bool('swipe' in gesture) else 'basic'
         line = speed = None
         for element in variation:
             if element in GV.GESTURE_DIRECTIONS:
                 line = self._line_dict[element]
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
+
+        if line_type is 'swipe' and speed is None:
+            speed = self._speed_dict[GV.FAST]
 
         if line is None or speed is None:
             msg = 'Cannot derive the line/speed parameters from %s %s.'
@@ -217,8 +222,8 @@ class RobotWrapper:
                 start_x, start_y, finger_angle, finger_spacing,
                 end_x, end_y, finger_angle, finger_spacing,
                 fingers[0], fingers[1], fingers[2], fingers[3],
-                speed)
-        cmd = 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f' % para
+                speed, line_type)
+        cmd = 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
         return cmd
 
     def _get_control_command_rapid_taps(self, robot_script, gesture, variation):
