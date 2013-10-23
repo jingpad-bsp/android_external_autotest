@@ -530,7 +530,7 @@ class AbstractSSHHost(remote.RemoteHost):
                     return True
 
             if warning_timer and current_time > warn_time:
-                self.record("WARN", None, "shutdown",
+                self.record("INFO", None, "shutdown",
                             "Shutdown took longer than %ds" % warning_timer)
                 # Print the warning only once.
                 warning_timer = None
