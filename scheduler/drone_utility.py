@@ -4,7 +4,9 @@ import pickle, subprocess, os, shutil, socket, sys, time, signal, getpass
 import datetime, traceback, tempfile, itertools, logging
 import common
 from autotest_lib.client.common_lib import utils, global_config, error
+from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.scheduler import drone_logging_config
 from autotest_lib.scheduler import email_manager, scheduler_config
 from autotest_lib.server import hosts, subcommand
 from autotest_lib.site_utils.graphite import stats
@@ -448,6 +450,8 @@ def return_data(data):
 
 
 def main():
+    logging_manager.configure_logging(
+            drone_logging_config.DroneLoggingConfig())
     calls = parse_input()
     drone_utility = DroneUtility()
     return_value = drone_utility.execute_calls(calls)
