@@ -68,7 +68,7 @@ class DisabledPacketCapturer(object):
         pass
 
 
-    def stop(self):
+    def close(self):
         """No-op"""
 
 
