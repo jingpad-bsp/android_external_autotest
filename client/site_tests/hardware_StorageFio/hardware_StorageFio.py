@@ -18,7 +18,8 @@ class hardware_StorageFio(test.test):
 
     """
 
-    version = 6
+    version = 7
+    DEFAULT_FILE_SIZE = 1024*1024*1024
 
     # Initialize fail counter used to determine test pass/fail.
     _fail_count = 0
@@ -172,26 +173,40 @@ class hardware_StorageFio(test.test):
         return output
 
 
-    def initialize(self, dev='', filesize=1024*1024*1024):
+    def initialize(self, dev='', filesize=DEFAULT_FILE_SIZE):
+        """
+        Set up local variables.
+
+        @param dev: block device to test.
+                Spare partition on root device by default
+        @param filesize: size of the file. 0 means whole partition.
+                by default, 1GB.
+        """
         if dev in ['', utils.system_output('rootdev -s -d')]:
+            if filesize == 0:
+                raise error.TestError(
+                    'Using the root device as a whole is not allowed')
             self.__find_free_root_partition()
-        else:
+        elif filesize != 0:
             # Use the first partition of the external drive
             if dev[5:7] == 'sd':
                 self.__filename = dev + '1'
             else:
                 self.__filename = dev + 'p1'
+        else:
+            self.__filename = dev
         self.__get_file_size()
         self.__get_device_description()
 
         # Restrict test to use a given file size, default 1GiB
-        self.__filesize = min(self.__filesize, filesize)
+        if filesize != 0:
+            self.__filesize = min(self.__filesize, filesize)
 
 
     def run_once(self, dev='', quicktest=False, requirements=None,
                  integrity=False, wait=60 * 60 * 72):
         """
-        Runs several fio jobs and reports resutls.
+        Runs several fio jobs and reports results.
 
         @param dev: block device to test
         @param quicktest: short test
