@@ -4,8 +4,9 @@ import pickle, subprocess, os, shutil, socket, sys, time, signal, getpass
 import datetime, traceback, tempfile, itertools, logging
 import common
 from autotest_lib.client.common_lib import utils, global_config, error
-from autotest_lib.server import hosts, subcommand
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.scheduler import email_manager, scheduler_config
+from autotest_lib.server import hosts, subcommand
 from autotest_lib.site_utils.graphite import stats
 
 # An environment variable we add to the environment to enable us to
@@ -95,11 +96,13 @@ class BaseDroneUtility(object):
         @returns A generator of dicts with cls._PS_ARGS as keys and
                 string values each representing a running process.
         """
-        ps_proc = subprocess.Popen(
-            ['/bin/ps', 'x', '-o', ','.join(cls._PS_ARGS)],
-            stdout=subprocess.PIPE)
-        ps_output = ps_proc.communicate()[0]
+        @retry.retry(subprocess.CalledProcessError,
+                     timeout_min=0.5, delay_sec=0.25)
+        def run_ps():
+            return subprocess.check_output(
+                    ['/bin/ps', 'x', '-o', ','.join(cls._PS_ARGS)])
 
+        ps_output = run_ps()
         # split each line into the columns output by ps
         split_lines = [line.split(None, 4) for line in ps_output.splitlines()]
         return (dict(itertools.izip(cls._PS_ARGS, line_components))
