@@ -4,9 +4,9 @@
 
 import logging, tempfile
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd
+from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.audio import audio_helper
 
 # Names of mixer controls.
@@ -32,8 +32,9 @@ _MEDIA_FORMATS = ['sine440.mp3',
                   'sine440.ogv',
                   'sine440.webm']
 
+_PLAYER_READY_TIMEOUT = 45
 
-class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
+class desktopui_MediaAudioFeedback(test.test):
     """Verifies if media playback can be captured."""
     version = 1
 
@@ -63,19 +64,15 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         self._num_channels = num_channels
 
         super(desktopui_MediaAudioFeedback, self).initialize()
-        self._test_url = 'http://localhost:8000/play.html'
-        self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
-        self._testServer.run()
 
     def run_once(self):
         audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
         if not audio_helper.check_loopback_dongle():
             raise error.TestError('Audio loopback dongle is in bad state.')
 
-        # Record a sample of "silence" to use as a noise profile.
-        with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
-            logging.info('Noise file: %s', noise_file.name)
-            audio_helper.record_sample(noise_file.name, self._rec_cmd)
+        with chrome.Chrome() as cr:
+            cr.browser.SetHTTPServerDirectories(self.bindir)
+            self._cr = cr
 
             def record_callback(filename):
                 audio_helper.record_sample(filename, self._rec_cmd)
@@ -83,26 +80,32 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             def mix_callback(filename):
                 utils.system("%s %s" % (self._mix_cmd, filename))
 
-            # Test each media file for all channels.
-            for media_file in _MEDIA_FORMATS:
-                audio_helper.loopback_test_channels(noise_file.name,
-                        self.resultsdir,
-                        lambda channel: self.play_media(media_file),
-                        self.wait_player_end_then_check_recorded,
-                        num_channels=self._num_channels,
-                        record_callback=record_callback,
-                        mix_callback=mix_callback)
+            # Record a sample of "silence" to use as a noise profile.
+            with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
+                logging.info('Noise file: %s', noise_file.name)
+                audio_helper.record_sample(noise_file.name, self._rec_cmd)
+                # Test each media file for all channels.
+                for media_file in _MEDIA_FORMATS:
+                    audio_helper.loopback_test_channels(noise_file.name,
+                            self.resultsdir,
+                            lambda channel: self.play_media(media_file),
+                            self.wait_player_end_then_check_recorded,
+                            num_channels=self._num_channels,
+                            record_callback=record_callback,
+                            mix_callback=mix_callback)
 
     def wait_player_end_then_check_recorded(self, sox_output):
         """Wait for player ends playing and then check for recorded result.
 
         @param sox_output: sox statistics output of recorded wav file.
         """
-        if not self.pyauto.WaitUntil(lambda: self.pyauto.ExecuteJavascript("""
-                    player_status = document.getElementById('status');
-                    window.domAutomationController.send(player_status.innerHTML);
-                """), expect_retval='Ended'):
-            raise error.TestError('Player never end until timeout.');
+        tab = self._cr.browser.tabs[0]
+        utils.poll_for_condition(
+            condition=lambda: tab.EvaluateJavaScript('getPlayerStatus()') ==
+                    'Ended',
+            exception=error.TestError('Player never end until timeout.'),
+            sleep_interval=1,
+            timeout=_PLAYER_READY_TIMEOUT)
         audio_helper.check_audio_rms(sox_output)
 
     def play_media(self, media_file):
@@ -114,4 +117,5 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
 
         # Navigate to play.html?<file-name>, javascript test will parse
         # the media file name and play it.
-        self.pyauto.NavigateToURL("%s?%s" % (self._test_url, media_file))
+        url = self._cr.browser.http_server.UrlOf('play.html')
+        self._cr.browser.tabs[0].Navigate('%s?%s' % (url, media_file))

@@ -13,6 +13,9 @@
   function on_ended() {
     document.getElementById("status").innerHTML = "Ended";
   }
+  function getPlayerStatus() {
+    return document.getElementById('status').innerHTML;
+  }
 </script>
 
 <body onload="play_file()">
