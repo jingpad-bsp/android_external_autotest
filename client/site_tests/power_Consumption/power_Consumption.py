@@ -98,8 +98,11 @@ class power_Consumption(test.test):
         if not self.short:
             file_list += [
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.ogg',
-                repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.mp4',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.webm',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.mp4',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.ogg',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.webm',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.mp4',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.ogg',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.webm',
                 repo + 'wikimedia/Greensleeves.ogg',
@@ -279,14 +282,21 @@ class power_Consumption(test.test):
         if not self.short:
             urls += [
                 ('vid400p_ogg', 'big_buck_bunny_trailer_400p.ogg'),
-                ('vid1080_h264', 'big_buck_bunny_trailer_1080p.mp4'),
                 ('vid400p_vp8', 'big_buck_bunny_trailer_400p.webm'),
+                ('vid720_h264', 'big_buck_bunny_trailer_720p.mp4'),
+                ('vid720_ogg', 'big_buck_bunny_trailer_720p.ogg'),
+                ('vid720_vp8', 'big_buck_bunny_trailer_720p.webm'),
+                ('vid1080_h264', 'big_buck_bunny_trailer_1080p.mp4'),
                 ('vid1080_ogg', 'big_buck_bunny_trailer_1080p.ogg'),
                 ('vid1080_vp8', 'big_buck_bunny_trailer_1080p.webm'),
                 ('audio', 'Greensleeves.ogg'),
                 ]
 
             fullscreen_urls += [
+                ('vid720_h264_fs',
+                 'big_buck_bunny_trailer_720p.mp4'),
+                ('vid720_vp8_fs',
+                 'big_buck_bunny_trailer_720p.webm'),
                 ('vid1080_h264_fs',
                  'big_buck_bunny_trailer_1080p.mp4'),
                 ('vid1080_vp8_fs',
