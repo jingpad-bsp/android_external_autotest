@@ -5,7 +5,6 @@
 """Base class for NetgearWNDR dual band routers."""
 
 import urlparse
-
 import dynamic_ap_configurator
 import ap_spec
 
@@ -45,8 +44,7 @@ class NetgearDualBandAPConfigurator(
 
 
     def is_update_interval_supported(self):
-        """
-        Returns True if setting the PSK refresh interval is supported.
+        """Returns True if setting the PSK refresh interval is supported.
 
         @return True is supported; False otherwise
         """
@@ -69,12 +67,22 @@ class NetgearDualBandAPConfigurator(
 
 
     def is_security_mode_supported(self, security_mode):
+        """Returns if the supported security modes.
+
+        @param security_mode: the security mode to check against
+
+        """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
     def navigate_to_page(self, page_number):
+        """Navigates to the given page.
+
+        @param page_number: page number to open as an iteger
+
+        """
         if page_number != 1:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %
@@ -92,6 +100,11 @@ class NetgearDualBandAPConfigurator(
 
 
     def save_page(self, page_number):
+        """Saves all settings.
+
+        @param page_number: the page to save.
+
+        """
         self.click_button_by_xpath('//button[@name="Apply"]',
                                    alert_handler=self._alert_handler)
 
@@ -99,8 +112,8 @@ class NetgearDualBandAPConfigurator(
     def set_mode(self, mode, band=None):
         # The mode popup changes based on the security mode.  Set to no
         # security to get the right popup.
-        self.add_item_to_command_list(self._set_security_disabled, (), 1, 799)
-        self.add_item_to_command_list(self._set_mode, (mode, ), 1, 800)
+        self.add_item_to_command_list(self._set_security_disabled, (), 1, 600)
+        self.add_item_to_command_list(self._set_mode, (mode, ), 1, 700)
 
 
     def _set_mode(self, mode, band=None):
@@ -134,7 +147,7 @@ class NetgearDualBandAPConfigurator(
 
 
     def set_channel(self, channel):
-        self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
+        self.add_item_to_command_list(self._set_channel, (channel,), 1, 800)
 
 
     def _set_channel(self, channel):
@@ -161,7 +174,7 @@ class NetgearDualBandAPConfigurator(
 
 
     def set_security_disabled(self):
-        self.add_item_to_command_list(self._set_security_disabled, (), 1, 900)
+        self.add_item_to_command_list(self._set_security_disabled, (), 1, 1000)
 
 
     def _set_security_disabled(self):
@@ -174,7 +187,7 @@ class NetgearDualBandAPConfigurator(
     def set_security_wep(self, key_value, authentication):
         # The button name seems to differ in various Netgear routers
         self.add_item_to_command_list(self._set_security_wep,
-                                      (key_value, authentication), 1, 900)
+                                      (key_value, authentication), 1, 1000)
 
 
     def _set_security_wep(self, key_value, authentication):
@@ -201,7 +214,7 @@ class NetgearDualBandAPConfigurator(
 
     def set_security_wpapsk(self, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key,), 1, 900)
+                                      (shared_key,), 1, 1000)
 
 
     def _set_security_wpapsk(self, shared_key, update_interval=None):
@@ -224,7 +237,7 @@ class NetgearDualBandAPConfigurator(
         # This router is very fussy with WPS even if it is not enabled.  It
         # throws a dialog is visibility is off before you adjust security.
         # Bump visibilities priority to avoid that warning.
-        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 700)
+        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 500)
 
 
     def _set_visibility(self, visible=True):

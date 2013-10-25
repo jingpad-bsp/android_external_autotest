@@ -6,7 +6,6 @@ import ap_spec
 import netgear_WNDR_dual_band_configurator
 from netgear_WNDR_dual_band_configurator import *
 
-
 class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
                                 NetgearDualBandAPConfigurator):
     """Derived class to control Netgear 3700 router."""
@@ -76,7 +75,7 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def set_channel(self, channel):
-        self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
+        self.add_item_to_command_list(self._set_channel, (channel,), 1, 800)
 
 
     def _set_channel(self, channel):
@@ -95,7 +94,7 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
     def set_security_wep(self, key_value, authentication):
         # The button name seems to differ in various Netgear routers
         self.add_item_to_command_list(self._set_security_wep,
-                                      (key_value, authentication), 1, 900)
+                                      (key_value, authentication), 1, 1000)
 
 
     def _set_security_wep(self, value, authentication):
