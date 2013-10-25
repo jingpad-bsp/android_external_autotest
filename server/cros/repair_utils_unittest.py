@@ -13,7 +13,7 @@ import common
 # We want to import setup_django_lite_environment first so that the database
 # is setup correctly.
 from autotest_lib.frontend import setup_django_lite_environment
-from autotest_lib.client.common_lib import global_config, utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import models, rpc_interface
 from django import test
 from autotest_lib.server.cros import repair_utils
@@ -46,15 +46,15 @@ class FindProblemTestTests(mox.MoxTestBase, test.TestCase):
     def setUp(self):
         super(FindProblemTestTests, self).setUp()
         self.mox.StubOutWithMock(MockDatetime, 'today')
-        self.mox.StubOutWithMock(global_config.global_config,
-                                 'get_config_value')
 
         self.datetime = datetime.datetime
         datetime.datetime = MockDatetime
         self._orig_cutoff = repair_utils._CUTOFF_AFTER_TIMEOUT_MINS
+        self._orig_timeout = repair_utils._DEFAULT_TEST_TIMEOUT_MINS
 
 
     def tearDown(self):
+        repair_utils._DEFAULT_TEST_TIMEOUT_MINS = self._orig_timeout
         repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = self._orig_cutoff
         datetime.datetime = self.datetime
         super(FindProblemTestTests, self).tearDown()
@@ -84,8 +84,8 @@ class FindProblemTestTests(mox.MoxTestBase, test.TestCase):
 
         mock_rpc = MockAFE()
         datetime.datetime.today().AndReturn(datetime.datetime(2012,1,1))
-        global_config.global_config.get_config_value('AUTOTEST_WEB',
-            'job_max_runtime_mins_default', type=int).AndReturn(1440)
+        repair_utils._DEFAULT_TEST_TIMEOUT_MINS = 1440
+
         repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = 60
 
         self.mox.ReplayAll()
@@ -119,8 +119,8 @@ class FindProblemTestTests(mox.MoxTestBase, test.TestCase):
 
         mock_rpc = MockAFE()
         datetime.datetime.today().AndReturn(datetime.datetime(2012,1,1))
-        global_config.global_config.get_config_value('AUTOTEST_WEB',
-            'job_max_runtime_mins_default', type=int).AndReturn(1440)
+        repair_utils._DEFAULT_TEST_TIMEOUT_MINS = 1440
+
         repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = 60
 
         self.mox.ReplayAll()
@@ -146,8 +146,8 @@ class FindProblemTestTests(mox.MoxTestBase, test.TestCase):
         mock_rpc = MockAFE()
         datetime.datetime.today().AndReturn(datetime.datetime(2012, 1, 2, 0,
                                                               30))
-        global_config.global_config.get_config_value('AUTOTEST_WEB',
-            'job_max_runtime_mins_default', type=int).AndReturn(1440)
+        repair_utils._DEFAULT_TEST_TIMEOUT_MINS = 1440
+
         repair_utils._CUTOFF_AFTER_TIMEOUT_MINS = 60
 
         self.mox.ReplayAll()
