@@ -24,7 +24,7 @@ while this test is running corruption may occur.
 
 job.run_test('hardware_StorageFio',
              constraints=[
-                 'seq_read-rd_mean_bw-KB_sec >= 20 * 1024',
-                 'seq_write-wr_mean_bw-KB_sec >= 15 * 1024',
-                 '4k_write-wr-IOPS >= 10',
+                 '_seq_read_rd_mean_bw_KB_sec >= 50 * 1024',
+                 '_seq_write_wr_mean_bw_KB_sec >= 15 * 1024',
+                 '_4k_write_wr_IOPS >= 10',
              ])

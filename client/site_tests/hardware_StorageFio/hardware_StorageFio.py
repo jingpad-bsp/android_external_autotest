@@ -168,7 +168,7 @@ class hardware_StorageFio(test.test):
 
         logging.debug(fio.stdout)
         output =  self.__parse_fio(fio.stdout)
-        self._fail_count += int(output[job + '-error'])
+        self._fail_count += int(output['_' + job + '_error'])
         return output
 
 

@@ -40,10 +40,18 @@ job.run_test('hardware_MemoryThroughput', num_iteration=2500, test_list='21')
 
 # Storage
 job.run_test('hardware_StorageFio',
+             requirements = [
+                 ('surfing', []),
+		 ('boot', []),
+		 ('seq_read', []),
+		 ('seq_write', []),
+		 ('4k_read', []),
+		 ('4k_write', [])
+             ],
              constraints=[
-                 'bytes_per_sec_seq_read >= 20 * 1024 * 1024',
-                 'bytes_per_sec_seq_write >= 15 * 1024 * 1024',
-                 'iops_4k_write >= 10',
+                 '_seq_read_rd_mean_bw_KB_sec >= 50 * 1024',
+                 '_seq_write_wr_mean_bw_KB_sec >= 15 * 1024',
+                 '_4k_write_wr_IOPS >= 10',
              ])
 job.run_test('hardware_DiskSize',
              constraints=['gb_main_disk_size >= 8'])

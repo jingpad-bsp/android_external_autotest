@@ -78,10 +78,10 @@ class fio_job_output(UserDict):
 
         """
 
-        fields = ['%s-' +  '%s_min_%s_lat-usec' % (io, typ),
-                  '%s-' +  '%s_max_%s_lat-usec' % (io, typ),
-                  '%s-' + '%s_mean_%s_lat-usec' % (io, typ),
-                  '%s-' + '%s_stdv_%s_lat-usec' % (io, typ)]
+        fields = ['_%s_' +  '%s_min_%s_lat_usec' % (io, typ),
+                  '_%s_' +  '%s_max_%s_lat_usec' % (io, typ),
+                  '_%s_' + '%s_mean_%s_lat_usec' % (io, typ),
+                  '_%s_' + '%s_stdv_%s_lat_usec' % (io, typ)]
         for field, idx in zip(fields, idxs):
             self._fio_table.append((field, idx, self._parse_gen))
 
@@ -96,7 +96,7 @@ class fio_job_output(UserDict):
         """
 
         for i in idxs:
-            field = '%s-' + '%s_lat_' % io + '%.2f_percent-usec'
+            field = '_%s_' + '%s_lat_' % io + '%.2f_percent_usec'
             self._fio_table.append((field, i, self._parse_percentile))
 
 
@@ -108,91 +108,91 @@ class fio_job_output(UserDict):
 
         # General fio Job Info:
         self._fio_table.extend([
-                ('%s-fio_version'                  ,   1,    self._parse_gen),
-                ('%s-groupid'                      ,   3,    self._parse_gen),
-                ('%s-error'                        ,   4,    self._parse_gen)])
+                ('_%s_fio_version'                  ,   1,    self._parse_gen),
+                ('_%s_groupid'                      ,   3,    self._parse_gen),
+                ('_%s_error'                        ,   4,    self._parse_gen)])
 
         # Results of READ Status:
         self._fio_table.extend([
-                ('%s-rd_total_io-KB'               ,   5,    self._parse_gen),
-                ('%s-rd_bw-KB_sec'                 ,   6,    self._parse_gen),
-                ('%s-rd-IOPS'                      ,   7,    self._parse_gen),
-                ('%s-rd_runtime-msec'              ,   8,    self._parse_gen)])
+                ('_%s_rd_total_io_KB'               ,   5,    self._parse_gen),
+                ('_%s_rd_bw_KB_sec'                 ,   6,    self._parse_gen),
+                ('_%s_rd_IOPS'                      ,   7,    self._parse_gen),
+                ('_%s_rd_runtime_msec'              ,   8,    self._parse_gen)])
         self._append_stats(range( 9, 13), 'rd', 'submitted')
         self._append_stats(range(13, 17), 'rd', 'completed')
         self._append_percentiles(range(17, 37), 'rd')
         self._append_stats(range(37, 41), 'rd',  'total')
         self._fio_table.extend([
-                ('%s-rd_min_bw-KB_sec'             ,  41,    self._parse_gen),
-                ('%s-rd_max_bw-KB_sec'             ,  42,    self._parse_gen),
-                ('%s-rd-percent'                   ,  43,    self._parse_gen),
-                ('%s-rd_mean_bw-KB_sec'            ,  44,    self._parse_gen),
-                ('%s-rd_stdev_bw-KB_sec'           ,  45,    self._parse_gen)])
+                ('_%s_rd_min_bw_KB_sec'             ,  41,    self._parse_gen),
+                ('_%s_rd_max_bw_KB_sec'             ,  42,    self._parse_gen),
+                ('_%s_rd_percent'                   ,  43,    self._parse_gen),
+                ('_%s_rd_mean_bw_KB_sec'            ,  44,    self._parse_gen),
+                ('_%s_rd_stdev_bw_KB_sec'           ,  45,    self._parse_gen)])
 
         # Results of WRITE Status:
         self._fio_table.extend([
-                ('%s-wr_total_io-KB'               ,  46,    self._parse_gen),
-                ('%s-wr_bw-KB_sec'                 ,  47,    self._parse_gen),
-                ('%s-wr-IOPS'                      ,  48,    self._parse_gen),
-                ('%s-wr_runtime-msec'              ,  49,    self._parse_gen)])
+                ('_%s_wr_total_io_KB'               ,  46,    self._parse_gen),
+                ('_%s_wr_bw_KB_sec'                 ,  47,    self._parse_gen),
+                ('_%s_wr_IOPS'                      ,  48,    self._parse_gen),
+                ('_%s_wr_runtime_msec'              ,  49,    self._parse_gen)])
         self._append_stats(range(50, 54), 'wr', 'submitted')
         self._append_stats(range(54, 58), 'wr', 'completed')
         self._append_percentiles(range(58, 78), 'wr')
         self._append_stats(range(78, 82), 'wr',  'total')
         self._fio_table.extend([
-                ('%s-wr_min_bw-KB_sec'             ,  82,    self._parse_gen),
-                ('%s-wr_max_bw-KB_sec'             ,  83,    self._parse_gen),
-                ('%s-wr-percent'                   ,  84,    self._parse_gen),
-                ('%s-wr_mean_bw-KB_sec'            ,  85,    self._parse_gen),
-                ('%s-wr_stdv_bw-KB_sec'            ,  86,    self._parse_gen)])
+                ('_%s_wr_min_bw_KB_sec'             ,  82,    self._parse_gen),
+                ('_%s_wr_max_bw_KB_sec'             ,  83,    self._parse_gen),
+                ('_%s_wr_percent'                   ,  84,    self._parse_gen),
+                ('_%s_wr_mean_bw_KB_sec'            ,  85,    self._parse_gen),
+                ('_%s_wr_stdv_bw_KB_sec'            ,  86,    self._parse_gen)])
 
         # Other Results:
         self._fio_table.extend([
-                ('%s-cpu_usg_usr-percent'          ,  87,    self._parse_gen),
-                ('%s-cpu_usg_sys-percent'          ,  88,    self._parse_gen),
-                ('%s-cpu_context_sw-percent'       ,  89,    self._parse_gen),
-                ('%s-major_page_faults'            ,  90,    self._parse_gen),
-                ('%s-minor_page_faults'            ,  91,    self._parse_gen),
-                ('%s-io_depth_le_1-percent'        ,  92,    self._parse_gen),
-                ('%s-io_depth_2-percent'           ,  93,    self._parse_gen),
-                ('%s-io_depth_4-percent'           ,  94,    self._parse_gen),
-                ('%s-io_depth_8-percent'           ,  95,    self._parse_gen),
-                ('%s-io_depth_16-percent'          ,  96,    self._parse_gen),
-                ('%s-io_depth_32-percent'          ,  97,    self._parse_gen),
-                ('%s-io_depth_ge_64-percent'       ,  98,    self._parse_gen),
-                ('%s-io_lats_le_2_usec-percent'    ,  99,    self._parse_gen),
-                ('%s-io_lats_4_usec-percent'       , 100,    self._parse_gen),
-                ('%s-io_lats_10_usec-percent'      , 101,    self._parse_gen),
-                ('%s-io_lats_20_usec-percent'      , 102,    self._parse_gen),
-                ('%s-io_lats_50_usec-percent'      , 103,    self._parse_gen),
-                ('%s-io_lats_100_usec-percent'     , 104,    self._parse_gen),
-                ('%s-io_lats_250_usec-percent'     , 105,    self._parse_gen),
-                ('%s-io_lats_500_usec-percent'     , 106,    self._parse_gen),
-                ('%s-io_lats_750_usec-percent'     , 107,    self._parse_gen),
-                ('%s-io_lats_1000_usec-percent'    , 108,    self._parse_gen),
-                ('%s-io_lats_le_2_msec-percent'    , 109,    self._parse_gen),
-                ('%s-io_lats_4_msec-percent'       , 110,    self._parse_gen),
-                ('%s-io_lats_10_msec-percent'      , 111,    self._parse_gen),
-                ('%s-io_lats_20_msec-percent'      , 112,    self._parse_gen),
-                ('%s-io_lats_50_msec-percent'      , 113,    self._parse_gen),
-                ('%s-io_lats_100_msec-percent'     , 114,    self._parse_gen),
-                ('%s-io_lats_250_msec-percent'     , 115,    self._parse_gen),
-                ('%s-io_lats_500_msec-percent'     , 116,    self._parse_gen),
-                ('%s-io_lats_750_msec-percent'     , 117,    self._parse_gen),
-                ('%s-io_lats_1000_msec-percent'    , 118,    self._parse_gen),
-                ('%s-io_lats_2000_msec-percent'    , 119,    self._parse_gen),
-                ('%s-io_lats_gt_2000_msec-percent' , 120,    self._parse_gen),
+                ('_%s_cpu_usg_usr_percent'          ,  87,    self._parse_gen),
+                ('_%s_cpu_usg_sys_percent'          ,  88,    self._parse_gen),
+                ('_%s_cpu_context_sw_percent'       ,  89,    self._parse_gen),
+                ('_%s_major_page_faults'            ,  90,    self._parse_gen),
+                ('_%s_minor_page_faults'            ,  91,    self._parse_gen),
+                ('_%s_io_depth_le_1_percent'        ,  92,    self._parse_gen),
+                ('_%s_io_depth_2_percent'           ,  93,    self._parse_gen),
+                ('_%s_io_depth_4_percent'           ,  94,    self._parse_gen),
+                ('_%s_io_depth_8_percent'           ,  95,    self._parse_gen),
+                ('_%s_io_depth_16_percent'          ,  96,    self._parse_gen),
+                ('_%s_io_depth_32_percent'          ,  97,    self._parse_gen),
+                ('_%s_io_depth_ge_64_percent'       ,  98,    self._parse_gen),
+                ('_%s_io_lats_le_2_usec_percent'    ,  99,    self._parse_gen),
+                ('_%s_io_lats_4_usec_percent'       , 100,    self._parse_gen),
+                ('_%s_io_lats_10_usec_percent'      , 101,    self._parse_gen),
+                ('_%s_io_lats_20_usec_percent'      , 102,    self._parse_gen),
+                ('_%s_io_lats_50_usec_percent'      , 103,    self._parse_gen),
+                ('_%s_io_lats_100_usec_percent'     , 104,    self._parse_gen),
+                ('_%s_io_lats_250_usec_percent'     , 105,    self._parse_gen),
+                ('_%s_io_lats_500_usec_percent'     , 106,    self._parse_gen),
+                ('_%s_io_lats_750_usec_percent'     , 107,    self._parse_gen),
+                ('_%s_io_lats_1000_usec_percent'    , 108,    self._parse_gen),
+                ('_%s_io_lats_le_2_msec_percent'    , 109,    self._parse_gen),
+                ('_%s_io_lats_4_msec_percent'       , 110,    self._parse_gen),
+                ('_%s_io_lats_10_msec_percent'      , 111,    self._parse_gen),
+                ('_%s_io_lats_20_msec_percent'      , 112,    self._parse_gen),
+                ('_%s_io_lats_50_msec_percent'      , 113,    self._parse_gen),
+                ('_%s_io_lats_100_msec_percent'     , 114,    self._parse_gen),
+                ('_%s_io_lats_250_msec_percent'     , 115,    self._parse_gen),
+                ('_%s_io_lats_500_msec_percent'     , 116,    self._parse_gen),
+                ('_%s_io_lats_750_msec_percent'     , 117,    self._parse_gen),
+                ('_%s_io_lats_1000_msec_percent'    , 118,    self._parse_gen),
+                ('_%s_io_lats_2000_msec_percent'    , 119,    self._parse_gen),
+                ('_%s_io_lats_gt_2000_msec_percent' , 120,    self._parse_gen),
 
                 # Disk Utilization: only boot disk is tested
-                ('%s-disk_name'                    , 121,    self._parse_gen),
-                ('%s-rd_ios'                       , 122,    self._parse_gen),
-                ('%s-wr_ios'                       , 123,    self._parse_gen),
-                ('%s-rd_merges'                    , 124,    self._parse_gen),
-                ('%s-wr_merges'                    , 125,    self._parse_gen),
-                ('%s-rd_ticks'                     , 126,    self._parse_gen),
-                ('%s-wr_ticks'                     , 127,    self._parse_gen),
-                ('%s-time_in_queue'                , 128,    self._parse_gen),
-                ('%s-disk_util-percent'            , 129,    self._parse_gen)])
+                ('_%s_disk_name'                    , 121,    self._parse_gen),
+                ('_%s_rd_ios'                       , 122,    self._parse_gen),
+                ('_%s_wr_ios'                       , 123,    self._parse_gen),
+                ('_%s_rd_merges'                    , 124,    self._parse_gen),
+                ('_%s_wr_merges'                    , 125,    self._parse_gen),
+                ('_%s_rd_ticks'                     , 126,    self._parse_gen),
+                ('_%s_wr_ticks'                     , 127,    self._parse_gen),
+                ('_%s_time_in_queue'                , 128,    self._parse_gen),
+                ('_%s_disk_util_percent'            , 129,    self._parse_gen)])
 
 
     def __init__(self, data):
