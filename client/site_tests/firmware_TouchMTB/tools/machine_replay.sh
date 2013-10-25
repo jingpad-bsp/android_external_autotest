@@ -23,7 +23,6 @@ PROJ_PATH=${THIS_SCRIPT_PATH%/${TOOLS_SUBDIR}/$(basename $PROG)}
 # Read command flags
 . /usr/share/misc/shflags
 DEFINE_string board_path "" "the unit test path of the board" "b"
-DEFINE_boolean show_spec_v2 false "show the spec v2" "s"
 
 FLAGS_HELP="USAGE: $PROG [flags]"
 
@@ -58,15 +57,12 @@ else
   die "Error: the board path $FLAGS_board_path does not exist!"
 fi
 
-[ ${FLAGS_show_spec_v2} -eq ${FLAGS_TRUE} ] && show_spec="--show_spec_v2" \
-                                            || show_spec=""
-
 # Replay the logs on the machine.
 cd $PROJ_PATH
 export DISPLAY=:0
 export XAUTHORITY=/home/chronos/.Xauthority
 for round_dir in "$TMP_LOG_ROOT"/*; do
   if [ -d $round_dir -a ! -L $round_dir ]; then
-    python main.py -m complete $show_spec --skip_html -i 3 --replay $round_dir
+    python main.py -m complete --skip_html -i 3 --replay $round_dir
   fi
 done

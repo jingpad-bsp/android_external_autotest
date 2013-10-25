@@ -76,9 +76,6 @@ END_PERCENTAGE = 0.1
 VALIDATOR = 'Validator'
 
 
-show_spec_v2 = False
-
-
 def validate(packets, gesture, variation):
     """Validate a single gesture."""
     if packets is None:
@@ -157,14 +154,6 @@ def get_derived_name(validator_name, segment):
 def init_base_validator(device):
     """Initialize the device for all the Validators to use"""
     BaseValidator._device = device
-
-
-def set_show_spec_v2(flag=True):
-    """Set/reset show_spec_v2 to determine whether to adopt the v2 version
-    of some validators.
-    """
-    global show_spec_v2
-    show_spec_v2 = flag
 
 
 class BaseValidator(object):
@@ -392,12 +381,12 @@ class LinearityValidator1(BaseValidator):
         return self.vlog
 
 
-class LinearityValidator2(BaseValidator):
-    """A new validator to verify linearity based on x-t and y-t
+class LinearityValidator(BaseValidator):
+    """A validator to verify linearity based on x-t and y-t
 
     Example:
         To check the linearity of the line drawn in finger 1:
-          LinearityValidator2('<= 0.03, ~ +0.07', finger=1)
+          LinearityValidator('<= 0.03, ~ +0.07', finger=1)
         Note: the finger number begins from 0
     """
     # Define the partial group size for calculating Mean Squared Error
@@ -408,7 +397,7 @@ class LinearityValidator2(BaseValidator):
         self._segments = segments
         self.finger = finger
         name = get_derived_name(self.__class__.__name__, segments)
-        super(LinearityValidator2, self).__init__(criteria_str, mf, device,
+        super(LinearityValidator, self).__init__(criteria_str, mf, device,
                                                   name)
 
     def _calc_residuals(self, line, list_t, list_y):
@@ -552,14 +541,6 @@ class LinearityValidator2(BaseValidator):
         return self.vlog
 
 
-def LinearityValidator(*args, **kwargs):
-    """A wrapper determining the class that is actually used based on
-    show_spec_v2 option.
-    """
-    return (LinearityValidator2(*args, **kwargs) if show_spec_v2 else
-            LinearityValidator1(*args, **kwargs))
-
-
 class RangeValidator(BaseValidator):
     """Validator to check the observed (x, y) positions should be within
     the range of reported min/max values.
@@ -669,10 +650,8 @@ class StationaryFingerValidator(BaseValidator):
     def check(self, packets, variation=None):
         """Check the moving distance of the specified finger."""
         self.init_check(packets)
-        unit = UNIT.MM if show_spec_v2 else UNIT.PIXEL
-        max_distance = self.packets.get_max_distance(self.slot, unit)
-        msg = ('Max distance slot%d: %d mm' if show_spec_v2 else
-               'Largest distance slot%d: %d px')
+        max_distance = self.packets.get_max_distance(self.slot, UNIT.MM)
+        msg = 'Max distance slot%d: %d mm'
         self.log_details(msg % (self.slot, max_distance))
         self.vlog.metrics = [
             firmware_log.Metric(self.mnprops.MAX_DISTANCE, max_distance)

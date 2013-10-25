@@ -31,11 +31,6 @@ score_aggregator = 'fuzzy.average'
 
 
 # Define some common criteria
-#
-# Notes about show_spec_v2 below:
-# Some of the following criteria may need to be determined at run time.
-# Use lambda to do lazy evaluation because the show_spec_v2 may not be
-# assigned its value yet when this module is imported.
 count_packets_criteria = '>= 3, ~ -3'
 drumroll_criteria = '<= 2.0'
 # linearity_criteria is used for strictly straight line drawn with a ruler.
@@ -50,8 +45,7 @@ pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.01, ~ +0.07'
 min_report_rate = 60
 report_rate_criteria = '>= %d' % min_report_rate
-stationary_finger_criteria = (lambda: '<= 1.25, ~ +1.25'
-                              if validators.show_spec_v2 else '<= 20, ~ +20')
+stationary_finger_criteria = '<= 1.25, ~ +1.25'
 relaxed_stationary_finger_criteria = '<= 100, ~ +100'
 
 MIN_MOVING_DISTANCE = 20

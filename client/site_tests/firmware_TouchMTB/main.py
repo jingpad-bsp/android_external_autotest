@@ -64,12 +64,6 @@ class firmware_TouchMTB:
         self._check_device(self.touch_device)
         validators.init_base_validator(self.touch_device)
 
-        # Set show_spec_v2 in validators module if proper.
-        # This option makes the validators module to use
-        # the validators of spec v2 if available.
-        if options[OPTIONS.SHOW_SPEC_V2]:
-            validators.set_show_spec_v2()
-
         # Create the keyboard device.
         self.keyboard = keyboard_device.KeyboardDevice()
         self._check_device(self.keyboard)
@@ -342,8 +336,6 @@ def _usage_and_exit():
     print '            robot: using robot to perform gestures automatically'
     print '            robot_int: using robot with finger interaction'
     print '            robot_sim: robot simulation, for developer only'
-    print '  --%s' % OPTIONS.SHOW_SPEC_V2
-    print '        Show the results derived with the validator spec v2.'
     print '  --%s log_dir' % OPTIONS.REPLAY
     print '        Replay the gesture files and get the test results.'
     print '        log_dir is a log sub-directory in %s' % conf.log_root_dir
@@ -393,9 +385,6 @@ def _usage_and_exit():
                                                            example_log_dir)
     print '  $ DISPLAY=:0 OPTIONS="--resume %s" python main.py\n' % \
             example_log_dir
-    print '  # Show the results derived with the new validator spec.'
-    print '  $ DISPLAY=:0 OPTIONS="--show_spec_v2" python main.py\n'
-
     print ('  # Upload the gesture event files specified in the log_dir '
              'to Google cloud storage server.')
     print ('  $ DISPLAY=:0 OPTIONS="-u 20130701_020120-fw_11.23-complete" '
@@ -425,7 +414,6 @@ def _parse_options():
                OPTIONS.MODE: MODE.MANUAL,
                OPTIONS.REPLAY: None,
                OPTIONS.RESUME: None,
-               OPTIONS.SHOW_SPEC_V2: False,
                OPTIONS.SIMPLIFIED: False,
                OPTIONS.SKIP_HTML: False,
                OPTIONS.TOUCHSCREEN: False,
@@ -444,7 +432,6 @@ def _parse_options():
                 OPTIONS.MODE + '=',
                 OPTIONS.REPLAY + '=',
                 OPTIONS.RESUME + '=',
-                OPTIONS.SHOW_SPEC_V2,
                 OPTIONS.SIMPLIFIED,
                 OPTIONS.SKIP_HTML,
                 OPTIONS.TOUCHSCREEN,
@@ -480,8 +467,6 @@ def _parse_options():
             else:
                 print 'Error: the log directory "%s" does not exist.' % log_dir
                 _usage_and_exit()
-        elif opt in ('--%s' % OPTIONS.SHOW_SPEC_V2,):
-            options[OPTIONS.SHOW_SPEC_V2] = True
         elif opt in ('-s', '--%s' % OPTIONS.SIMPLIFIED):
             options[OPTIONS.SIMPLIFIED] = True
         elif opt in ('--%s' % OPTIONS.SKIP_HTML,):
