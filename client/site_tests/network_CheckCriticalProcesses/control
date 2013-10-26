@@ -1,0 +1,23 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'pstew@chromium.org'
+NAME = 'network_CheckCriticalProcesses'
+PURPOSE = 'Make sure all expected essential networking processes are running.'
+CRITERIA = """
+Fail if we find any missing processes.
+"""
+SUITE='bvt, network_nightly'
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'network'
+TEST_TYPE = 'client'
+
+DOC = """
+This test has a static list of process names that should be running
+on any "good" ChromeOS image.  It fails if any of these are not
+running at the time of the test.
+"""
+
+job.run_test('network_CheckCriticalProcesses')
