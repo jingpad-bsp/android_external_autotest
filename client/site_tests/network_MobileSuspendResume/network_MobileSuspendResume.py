@@ -273,27 +273,6 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
             return 0
         return 1
 
-    # This sets the autoconnect parameter for the mobile service.
-    def set_autoconnect(self, service, autoconnect=dbus.Boolean(0)):
-        props = service.GetProperties()
-
-        # If the mobile service is not a favorite, we cannot
-        # set the auto-connect parameters.  Connect to the service first
-        # to make it a favorite.
-        if not props['Favorite']:
-            self.filterexns(
-                lambda: self.connect_mobile_service(
-                            service=service,
-                            assoc_timeout=60,
-                            config_timeout=60),
-                network_MobileSuspendResume.service_okerrors)
-            if not service.GetProperties()['State'] in \
-                ['ready', 'portal', 'online']:
-                raise error.TestFail('Unable to set Favorite because device '
-                                     'could not connect to mobile service.')
-
-        service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
-
     # This is the wrapper around the running of each scenario with
     # initialization steps and final checks.
     def run_scenario(self, function_name, **kwargs):
@@ -364,7 +343,7 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
         if not service:
             raise error.TestFail('Cannot find mobile service.')
 
-        self.set_autoconnect(service, dbus.Boolean(autoconnect))
+        service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
 
         logging.info('Running scenarios with autoconnect %s.' % autoconnect)
 

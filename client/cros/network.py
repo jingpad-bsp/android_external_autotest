@@ -56,7 +56,7 @@ def ResetAllModems(conn_mgr):
     logging.info('ResetAllModems: found service %s', service)
 
     try:
-        if service and service.GetProperties()['Favorite']:
+        if service:
             service.SetProperty('AutoConnect', False),
     except dbus.exceptions.DBusException, e:
         # The service object may disappear, we can safely ignore it.

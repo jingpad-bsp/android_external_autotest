@@ -428,29 +428,16 @@ class AutoConnectContext(object):
             raise error.TestFail('No cellular service available.')
 
         props = service.GetProperties()
-        favorite = props['Favorite']
-
-        if not favorite:
-            logger.info('Enabling Favorite by connecting to service.')
-            ConnectToCellular(self.flim)
-            props = service.GetProperties()
-            favorite = props['Favorite']
-
         autoconnect = props['AutoConnect']
-        logger.info('Favorite = %s, AutoConnect = %s' % (
-            favorite, autoconnect))
+        logger.info('AutoConnect = %s' % autoconnect)
 
         if autoconnect != self.autoconnect:
             logger.info('Setting AutoConnect = %s.', self.autoconnect)
             service.SetProperty('AutoConnect', dbus.Boolean(self.autoconnect))
 
             props = service.GetProperties()
-            favorite = props['Favorite']
             autoconnect = props['AutoConnect']
             changed = True
-
-        if not favorite:
-            raise error.TestFail('Favorite=False, but we want it to be True')
 
         if autoconnect != self.autoconnect:
             raise error.TestFail('AutoConnect is %s, but we want it to be %s' %
