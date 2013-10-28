@@ -64,10 +64,10 @@ class platform_DebugDaemonGetPerfData(test.test):
         iface = dbus.Interface(proxy, dbus_interface=self._dbus_debugd_name)
         iface_function = getattr(iface, get_perf_method)
         result = iface_function(duration)
-        logging.info('%s() for %s seconds returned: %s', get_perf_method,
-                     duration, result)
         if not result:
             raise error.TestFail('No perf output found: %s' % result)
+        logging.info('%s() for %s seconds returned %d items', get_perf_method,
+                     duration, len(result))
         if len(result) < 10:
             raise error.TestFail('Perf output too small')
 
