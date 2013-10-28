@@ -10,12 +10,13 @@ This test will fail if any of the tests in video_decode_accelerator_unittest
 fails. Running video_decode_accelerator_unittest is skipped on machines that are
 known not to support video decode.
 """
-SUITE = "video"
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "audiovideo"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_h264"
+EXPERIMENTAL = "True"
 
 DOC = """
 This is a wrapper test for Chrome video_decode_accelerator_unittest.
