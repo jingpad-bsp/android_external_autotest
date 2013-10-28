@@ -363,8 +363,6 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self.mock_config.set_config_value('SCHEDULER',
                                           'max_transfer_processes', 50)
         self.mock_config.set_config_value('SCHEDULER',
-                                          'max_hostless_processes', 50)
-        self.mock_config.set_config_value('SCHEDULER',
                                           'clean_interval_minutes', 50)
         self.mock_config.set_config_value('SCHEDULER',
                                           'max_provision_retries', 1)
