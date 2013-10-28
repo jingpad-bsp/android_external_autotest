@@ -101,6 +101,27 @@ class Simulator(object):
             self._events[timestamp].append(callback)
 
 
+    def remove_timeout(self, callback):
+        """Removes the every scheduled timeout call to the passed callback.
+
+        When a callable object is passed to add_timeout() it is scheduled to be
+        called once the timeout is reached. This method removes all the
+        scheduled calls to that object.
+
+        @param callback: The callable object passed to add_timeout().
+        @return: Wether the callback was found and removed at least once.
+        """
+        removed = False
+        for _ts, ev_list in self._events.iteritems():
+            try:
+                while True:
+                    ev_list.remove(callback)
+                    removed = True
+            except ValueError:
+                pass
+        return removed
+
+
     def _dict_rule(self, rules, pkt):
         """Returns wether a given packet matches a set of rules.
 
@@ -127,25 +148,34 @@ class Simulator(object):
         self._write_queue.append(struct.pack("!HH", 0, pkt.type) + str(pkt))
 
 
-    def run(self, timeout=None):
+    def run(self, timeout=None, until=None):
         """Runs the Simulator.
 
         This method blocks the caller thread until the timeout is reached (if
-        a timeout is passed) or until stop() is called. stop() can be called
-        from any other thread or from a callback called from this thread.
+        a timeout is passed), until stop() is called or until the function
+        passed in until returns a True value (if a function is passed);
+        whichever occurs first. stop() can be called from any other thread or
+        from a callback called from this thread.
 
         @param timeout: The timeout in seconds. Can be a float value, or None
         for no timeout.
+        @param until: A callable object called during the loop returning True
+        when the loop should stop.
         """
         if not self._iface.is_up():
             raise SimulatorError("Interface is down.")
 
+        stop_callback = None
         if timeout != None:
-            self.add_timeout(timeout, lambda: self.stop())
+            # We use a newly created callable object to avoid remove another
+            # scheduled call to self.stop.
+            stop_callback = lambda: self.stop()
+            self.add_timeout(timeout, stop_callback)
 
         self._running = True
         iface_fd = self._iface.fileno()
-        while self._running:
+        # Check the until function.
+        while self._running and not (until and until()):
             # The main purpose of this loop is to wait (block) until the next
             # event is required to be fired. There are four kinds of events:
             #  * a packet is received.
@@ -172,6 +202,10 @@ class Simulator(object):
             # min(self._events) > cur_time because the previous while finished.
             if self._events:
                 timeout = min(self._events) - cur_time # in seconds
+
+            # Pool the until() function at least once a second.
+            if timeout is None or timeout > 1.0:
+                timeout = 1.0
 
             # Compute the list of file descriptors that select.select() needs to
             # monitor to attend the required events. select() will return when
@@ -215,7 +249,8 @@ class Simulator(object):
                         # it.
                         callback(dpkt.ethernet.Ethernet(raw[4:]))
 
-
+        if stop_callback:
+            self.remove_timeout(stop_callback)
         self._running = False
 
 

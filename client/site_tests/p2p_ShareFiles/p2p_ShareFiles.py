@@ -93,10 +93,10 @@ class p2p_ShareFiles(test.test):
         avahi_utils.avahi_start_on_iface(self._tap.name)
 
 
-    def _run_lansim_loop(self, timeout=None):
+    def _run_lansim_loop(self, timeout=None, until=None):
         """Run the Simulator main loop for a given time."""
         try:
-            self._sim.run(timeout=timeout)
+            self._sim.run(timeout=timeout, until=until)
         except Exception, e:
             logging.exception('Simulator ended with an exception:')
             raise error.TestError('Simulator ended with an exception: %r' % e)
@@ -125,7 +125,7 @@ class p2p_ShareFiles(test.test):
         # On p2p-server startup, it should announce the service even if we
         # aren't sharing any file. Usually it doesn't take more than 2 seconds
         # to start announcing the service, repeated a few times.
-        self._run_lansim_loop(timeout=10)
+        self._run_lansim_loop(timeout=20, until=p2pcli.get_peers())
         # Check that we see the DUT on the list of peers.
         peers = p2pcli.get_peers()
         if len(peers) != 1:
@@ -156,10 +156,13 @@ class p2p_ShareFiles(test.test):
         with open(os.path.join(P2P_SHARE_PATH, 'my_file=HASH==.p2p'), 'w') as f:
             f.write('0123456789')
 
-        # Run the loop for 5 seconds. Normally, the p2p-server takes up to 1
-        # second to detect a change on the shared directory and announces it
-        # right away a few times.
-        self._run_lansim_loop(timeout=5)
+        # Run the loop until the file is shared. Normally, the p2p-server takes
+        # up to 1 second to detect a change on the shared directory and
+        # announces it right away a few times. Wait until the file is announced,
+        # what should not take more than a few seconds. If after 30 seconds the
+        # files isn't announced, that is an error.
+        self._run_lansim_loop(timeout=30,
+                              until=lambda: p2pcli.get_peer_files(peer_name))
 
         files = p2pcli.get_peer_files(peer_name)
         if files != [('my_file=HASH==', 10)]:

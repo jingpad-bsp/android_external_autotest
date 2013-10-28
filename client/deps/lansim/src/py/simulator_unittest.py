@@ -100,6 +100,29 @@ class SimulatorTest(unittest.TestCase):
         # stop() method works.
         self._sim.run(timeout=0.1)
 
+
+    def testRemoveTimeout(self):
+        """Tests that the Simulator can remove unfired timeout calls."""
+        # Schedule the callback far in time, run the simulator for a short time
+        # and remove it.
+        self._sim.add_timeout(60, raise_exception)
+        self._sim.run(timeout=0.1)
+        self.assertTrue(self._sim.remove_timeout(raise_exception))
+        self.assertFalse(self._sim.remove_timeout(raise_exception))
+
+
+    def testUntil(self):
+        """Tests that the Simulator can start run until a condition is met."""
+        tasks_done = []
+        # After 0.2 seconds we add a task to tasks_done that should break the
+        # loop. If it doesn't, the a second value will be added making the test
+        # fail.
+        self._sim.add_timeout(0.2, lambda: tasks_done.append('good task'))
+        self._sim.add_timeout(4.0, lambda: tasks_done.append('bad task'))
+        self._sim.run(timeout=5.0, until=lambda: tasks_done)
+        self.assertEqual(len(tasks_done), 1)
+
+
     def testHost(self):
         """Tests that the Simulator can add rules from the SimpleHost."""
         # The IP and MAC addresses simulated are unknown to the rest of the
