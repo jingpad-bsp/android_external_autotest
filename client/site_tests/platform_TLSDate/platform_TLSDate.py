@@ -25,16 +25,24 @@ class TLSDate:
         self._subprog = '?'
         self._test_obj = test_obj
         self._output = None
+        self._tlsdate_uid = 227  # proxystate
         os.mkdir(self._cachedir)
+        # Let the tlsdate user (proxystate) write.
+        os.chown(self._testdir, self._tlsdate_uid, -1)
+        # Allow support shell library to be sourced.
+        os.chown(self._test_obj.srcdir + '/time.sh', self._tlsdate_uid, -1)
 
     def start(self, subprog):
         print 'running with %s' % self._test_obj.srcdir + '/' + subprog
         self._subprog = subprog
-        args = ['/usr/bin/tlsdated',
+        # Make sure the tlsdate user can access the files
+        fake_tlsdate = self._test_obj.srcdir + '/' + subprog
+        os.chown(fake_tlsdate, self._tlsdate_uid, -1)
+        args = ['/usr/bin/tlsdated', '-p',
                 '-f', self._test_obj.srcdir + '/test.conf',
                 '-c', self._cachedir,
                 '-v',
-                self._test_obj.srcdir + '/' + subprog,
+                fake_tlsdate,
                 self._outfile]
         self._proc = subprocess.Popen(args, stdin=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
@@ -89,9 +97,8 @@ class platform_TLSDate(test.test):
         """
         t = TLSDate(self)
         t.start('delay_subproc')
-        self.require_output(t, 'wait for child attempt 0')
-        self.require_output(t, 'wait for child attempt 1')
-        self.require_output(t, 'child exited with 0')
+        self.require_output(t, 'attempt 1 backoff')
+        self.require_output(t, 'time set from the network')
         self.require_ok(t)
 
     def test_hang_subproc(self):
@@ -101,9 +108,8 @@ class platform_TLSDate(test.test):
         """
         t = TLSDate(self)
         t.start('hang_subproc')
-        self.require_output(t, 'wait for child attempt 0')
-        self.require_output(t, 'wait for child attempt 1')
-        self.require_output(t, 'child hung?')
+        self.require_output(t, 'attempt 1 backoff')
+        self.require_output(t, 'tlsdate timed out')
         self.require_ok(t)
 
     def test_fail_routes(self):
@@ -114,8 +120,9 @@ class platform_TLSDate(test.test):
         t = TLSDate(self)
         t.start('fail_routes')
         t.route_up()
-        self.require_output(t, 'child exited with 256')
-        self.require_output(t, 'tlsdate succeeded')
+        self.require_output(t, 'status:2')
+        self.require_output(t, 'stdin')
+        self.require_output(t, 'time set from the network')
         self.require_ok(t)
 
     def run_once(self):

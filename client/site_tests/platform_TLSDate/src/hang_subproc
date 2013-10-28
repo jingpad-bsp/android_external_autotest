@@ -4,7 +4,9 @@
 # found in the LICENSE file.
 
 if grep -q '^ok$' "$1" 2>/dev/null; then
-	kill -TERM $PPID;
+	# Take down tlsdated
+	kill -TERM $PPID
+	exit 1
 fi
 
 echo 'ok' > "$1"
