@@ -9,7 +9,9 @@ from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models
+from autotest_lib.scheduler import agent_task
 from autotest_lib.scheduler import monitor_db, drone_manager, email_manager
+from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import scheduler_config, gc_stats, host_scheduler
 from autotest_lib.scheduler import monitor_db_functional_test
 from autotest_lib.scheduler import scheduler_models
@@ -831,10 +833,10 @@ class PidfileRunMonitorTest(unittest.TestCase):
         self.god = mock.mock_god()
         self.mock_drone_manager = self.god.create_mock_class(
             drone_manager.DroneManager, 'drone_manager')
-        self.god.stub_with(monitor_db, '_drone_manager',
+        self.god.stub_with(pidfile_monitor, '_drone_manager',
                            self.mock_drone_manager)
         self.god.stub_function(email_manager.manager, 'enqueue_notify_email')
-        self.god.stub_with(monitor_db, '_get_pidfile_timeout_secs',
+        self.god.stub_with(pidfile_monitor, '_get_pidfile_timeout_secs',
                            self._mock_get_pidfile_timeout_secs)
 
         self.pidfile_id = object()
@@ -844,7 +846,7 @@ class PidfileRunMonitorTest(unittest.TestCase):
                           pidfile_name=drone_manager.AUTOSERV_PID_FILE)
              .and_return(self.pidfile_id))
 
-        self.monitor = monitor_db.PidfileRunMonitor()
+        self.monitor = pidfile_monitor.PidfileRunMonitor()
         self.monitor.attach_to_existing_process(self.execution_tag)
 
     def tearDown(self):
@@ -931,7 +933,7 @@ class PidfileRunMonitorTest(unittest.TestCase):
         self.mock_drone_manager.get_pidfile_contents.expect_call(
             self.pidfile_id, use_second_read=False).and_return(
             drone_manager.InvalidPidfile('error'))
-        self.assertRaises(monitor_db.PidfileRunMonitor._PidfileException,
+        self.assertRaises(pidfile_monitor.PidfileRunMonitor._PidfileException,
                           self.monitor._read_pidfile)
         self.god.check_playback()
 
@@ -995,7 +997,7 @@ class PidfileRunMonitorTest(unittest.TestCase):
         email_manager.manager.enqueue_notify_email.expect_call(
             mock.is_string_comparator(), mock.is_string_comparator())
         self.monitor._start_time = (time.time() -
-                                    monitor_db._get_pidfile_timeout_secs() - 1)
+                                    pidfile_monitor._get_pidfile_timeout_secs() - 1)
         self._test_get_pidfile_info_helper(None, 1, 0)
         self.assertTrue(self.monitor.lost_process)
 
@@ -1012,7 +1014,7 @@ class AgentTest(unittest.TestCase):
 
 
     def _create_mock_task(self, name):
-        task = self.god.create_mock_class(monitor_db.AgentTask, name)
+        task = self.god.create_mock_class(agent_task.AgentTask, name)
         task.num_processes = 1
         _set_host_and_qe_ids(task)
         return task
@@ -1414,7 +1416,7 @@ class AgentTaskTest(unittest.TestCase,
         hqe_3 = job_3.hostqueueentry_set.all()[0]
         hqe_4 = job_4.hostqueueentry_set.all()[0]
 
-        return (hqe_1, hqe_2, hqe_3, hqe_4), monitor_db.AgentTask()
+        return (hqe_1, hqe_2, hqe_3, hqe_4), agent_task.AgentTask()
 
 
     def test_get_drone_hostnames_allowed_no_drones_in_set(self):
@@ -1458,7 +1460,7 @@ class AgentTaskTest(unittest.TestCase,
         class MockSpecialTask(object):
             requested_by = object()
 
-        class MockSpecialAgentTask(monitor_db.SpecialAgentTask):
+        class MockSpecialAgentTask(agent_task.SpecialAgentTask):
             task = MockSpecialTask()
             queue_entry_ids = []
             def __init__(self, *args, **kwargs):
@@ -1498,7 +1500,7 @@ class AgentTaskTest(unittest.TestCase,
 
         self._setup_test_user_or_global_default_drone_set()
 
-        actual = monitor_db.AgentTask()._user_or_global_default_drone_set(
+        actual = agent_task.AgentTask()._user_or_global_default_drone_set(
                 None, MockUser())
 
         self.assertEqual(expected, actual)
@@ -1507,7 +1509,7 @@ class AgentTaskTest(unittest.TestCase,
 
     def test_user_or_global_default_drone_set_no_user(self):
         expected = self._setup_test_user_or_global_default_drone_set()
-        actual = monitor_db.AgentTask()._user_or_global_default_drone_set(
+        actual = agent_task.AgentTask()._user_or_global_default_drone_set(
                 None, None)
 
         self.assertEqual(expected, actual)
@@ -1520,7 +1522,7 @@ class AgentTaskTest(unittest.TestCase,
             login = None
 
         expected = self._setup_test_user_or_global_default_drone_set()
-        actual = monitor_db.AgentTask()._user_or_global_default_drone_set(
+        actual = agent_task.AgentTask()._user_or_global_default_drone_set(
                 None, MockUser())
 
         self.assertEqual(expected, actual)

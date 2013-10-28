@@ -7,6 +7,26 @@ import os
 
 import common
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
+try:
+    # test that imports autoserv_utils for vm_tests
+    from autotest_lib.scheduler import drone_manager
+except ImportError as e:
+    drone_manager = None
+    pass
+
+AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value('SCHEDULER',
+                                                 'drone_installation_directory')
+autoserv_directory = os.path.join(AUTOTEST_INSTALL_DIR, 'server')
+autoserv_path = os.path.join(autoserv_directory, 'autoserv')
+
+def _parser_path_default(install_dir):
+    return os.path.join(install_dir, 'tko', 'parse')
+
+_parser_path_func = utils.import_site_function(
+        __file__, 'autotest_lib.scheduler.site_monitor_db',
+        'parser_path', _parser_path_default)
 
 
 def autoserv_run_job_command(autoserv_directory, machines,
@@ -96,3 +116,25 @@ def autoserv_run_job_command(autoserv_directory, machines,
         command.append('--no_collect_crashinfo')
 
     return command + extra_args
+
+
+def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
+                           verbose=True):
+    """
+    @returns The autoserv command line as a list of executable + parameters.
+
+    @param machines - string - A machine or comma separated list of machines
+            for the (-m) flag.
+    @param extra_args - list - Additional arguments to pass to autoserv.
+    @param job - Job object - If supplied, -u owner, -l name, --test-retry,
+            and client -c or server -s parameters will be added.
+    @param queue_entry - A HostQueueEntry object - If supplied and no Job
+            object was supplied, this will be used to lookup the Job object.
+    """
+    if drone_manager is None:
+        raise ImportError('Unable to import drone_manager in autoserv_utils')
+
+    return autoserv_run_job_command(autoserv_directory,
+            machines, results_directory=drone_manager.WORKING_DIRECTORY,
+            extra_args=extra_args, job=job, queue_entry=queue_entry,
+            verbose=verbose)

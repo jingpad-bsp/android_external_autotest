@@ -417,7 +417,7 @@ def main():
         pylint_base_opts = ['--rcfile=%s' % pylint_rc,
                             '--reports=no',
                             '--disable=W,R,E,C,F',
-                            '--enable=W0611,W1201,C0111,C0112',
+                            '--enable=W0611,W1201,C0111,C0112,E0602,W0601',
                             '--no-docstring-rgx=%s' % no_docstring_rgx,]
     else:
         all_failures = 'error,warning,refactor,convention'
