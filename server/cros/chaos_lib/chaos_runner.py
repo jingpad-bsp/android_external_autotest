@@ -6,6 +6,7 @@ import datetime
 import logging
 import random
 
+from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system
@@ -127,6 +128,12 @@ class ChaosRunner(object):
                 # configurations.
                 self._power_down_aps(aps)
                 self._configure_aps(aps)
+                # Sanitized security mapping for iw scanner.
+                sanitized_security = {
+                    iw_runner.SECURITY_OPEN: 'open',
+                    iw_runner.SECURITY_WPA: 'psk',
+                    iw_runner.SECURITY_WPA2: 'psk',
+                    iw_runner.SECURITY_MIXED: 'mixed'}
 
                 for ap in aps:
                     # http://crbug.com/306687
@@ -138,6 +145,8 @@ class ChaosRunner(object):
                                       ap.ssid)
                         job.run_test('network_WiFi_ChaosConfigFailure',
                                      ap=ap,
+                                     error_string=
+                                         chaos_constants.AP_CONFIG_FAIL,
                                      tag=ap.ssid)
                         continue
                     logging.info('Searching for SSID %s in scan...', ap.ssid)
@@ -153,7 +162,20 @@ class ChaosRunner(object):
                                       ap.ssid)
                         job.run_test('network_WiFi_ChaosConfigFailure',
                                      ap=ap,
-                                     missing_from_scan=True,
+                                     error_string=
+                                         chaos_constants.AP_SSID_NOTFOUND,
+                                     tag=ap.ssid)
+                        continue
+                    if (sanitized_security[networks[0].security] !=
+                            sanitized_security[self._ap_spec.security]):
+                        # Check if AP is configured with the expected security.
+                        logging.error('%s was the expected security but got %s',
+                                      self._ap_spec.security,
+                                      networks[0].security)
+                        job.run_test('network_WiFi_ChaosConfigFailure',
+                                     ap=ap,
+                                     error_string=
+                                         chaos_constants.AP_SECURITY_MISMATCH,
                                      tag=ap.ssid)
                         continue
 

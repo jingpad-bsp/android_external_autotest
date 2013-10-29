@@ -6,6 +6,7 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.server import test
 
 class network_WiFi_ChaosConfigFailure(test.test):
@@ -33,7 +34,7 @@ class network_WiFi_ChaosConfigFailure(test.test):
                 f.write(image.decode('base64'))
 
 
-    def run_once(self, ap, missing_from_scan=False):
+    def run_once(self, ap, error_string):
         """ Main entry function for autotest.
 
         There are three pieces of information we want to grab:
@@ -42,11 +43,11 @@ class network_WiFi_ChaosConfigFailure(test.test):
           3.) Stack trace of failure
 
         @param ap: an APConfigurator object
-        @param missing_from_scan: boolean if the SSID was not found in the scan
+        @param error_string: String with the Configurator error description
 
         """
 
-        if not missing_from_scan:
+        if chaos_constants.AP_CONFIG_FAIL in error_string:
             self._write_screenshots(ap, 'config_failure')
             ap.clear_screenshot_list()
         self._save_all_pages(ap)
@@ -54,11 +55,15 @@ class network_WiFi_ChaosConfigFailure(test.test):
         ap.clear_screenshot_list()
         ap.reset_command_list()
 
-        if not missing_from_scan:
+        if chaos_constants.AP_CONFIG_FAIL in error_string:
             logging.error('Traceback:\n %s', ap.traceback)
             raise error.TestError('The AP was not configured correctly. Please '
                                   'see the ERROR log for more details.\n%s',
                                   ap.get_router_name())
+        elif chaos_constants.AP_SECURITY_MISMATCH in error_string:
+            raise error.TestError('The AP was not configured with correct '
+                                  'security. Please check screenshots to '
+                                  'debug.\n%s', ap.get_router_name())
         else:
             raise error.TestError('The SSID %s was not found in the scan. '
                                   'Check the screenshots to debug.\n%s',

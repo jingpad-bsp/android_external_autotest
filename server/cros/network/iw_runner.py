@@ -10,6 +10,13 @@ HT20 = 'HT20'
 HT40_ABOVE = 'HT40+'
 HT40_BELOW = 'HT40-'
 
+SECURITY_OPEN = 'open'
+SECURITY_WEP = 'wep'
+SECURITY_WPA = 'wpa'
+SECURITY_WPA2 = 'wpa2'
+# MIxed mode security is WPA2/WPA
+SECURITY_MIXED = 'mixed'
+
 # Table of lookups between the output of item 'secondary channel offset:' from
 # iw <device> scan to constants.
 
@@ -18,7 +25,8 @@ HT_TABLE = {'no secondary': HT20,
             'below': HT40_BELOW}
 
 IwBand = collections.namedtuple('Band', ['num', 'frequencies', 'mcs_indices'])
-IwBss = collections.namedtuple('IwBss', ['bss', 'frequency', 'ssid', 'ht'])
+IwBss = collections.namedtuple('IwBss', ['bss', 'frequency', 'ssid', 'security',
+                                         'ht'])
 IwPhy = collections.namedtuple('Phy', ['name', 'bands'])
 
 DEFAULT_COMMAND_IW = 'iw'
@@ -151,6 +159,21 @@ class IwRunner(object):
                        ignore_status=ignore_status)
 
 
+    def determine_security(self, supported_securities):
+        """Determines security from the given list of supported securities.
+
+        @param supported_securities: list of supported securities from scan
+
+        """
+        if not supported_securities:
+            security = SECURITY_OPEN
+        elif len(supported_securities) == 1:
+            security = supported_securities[0]
+        else:
+            security = SECURITY_MIXED
+        return security
+
+
     def scan(self, interface):
         """Performs a scan.
 
@@ -169,16 +192,20 @@ class IwRunner(object):
         frequency = None
         ssid = None
         ht = None
+        security = None
 
+        supported_securities = []
         bss_list = []
 
         for line in scan.stdout.splitlines():
             line = line.strip()
             if line.startswith('BSS'):
                 if bss != None:
-                    iwbss = IwBss(bss, frequency, ssid, ht)
+                    security = self.determine_security(supported_securities)
+                    iwbss = IwBss(bss, frequency, ssid, security, ht)
                     bss_list.append(iwbss)
-                    bss = frequency = ssid = ht = None
+                    bss = frequency = ssid = security = ht = None
+                    supported_securities = []
                 bss = line.split()[1]
             if line.startswith('freq:'):
                 frequency = int(line.split()[1])
@@ -190,8 +217,12 @@ class IwRunner(object):
                     ssid = None
             if line.startswith('* secondary channel offset'):
                 ht = HT_TABLE[line.split(':')[1].strip()]
-
-        bss_list.append(IwBss(bss, frequency, ssid, ht))
+            if line.startswith('WPA'):
+               supported_securities.append(SECURITY_WPA)
+            if line.startswith('RSN'):
+               supported_securities.append(SECURITY_WPA2)
+        security = self.determine_security(supported_securities)
+        bss_list.append(IwBss(bss, frequency, ssid, security, ht))
         return bss_list
 
 

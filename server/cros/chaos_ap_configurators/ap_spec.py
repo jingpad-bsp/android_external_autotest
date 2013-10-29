@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server.cros.network import iw_runner
+
 # Supported bands
 BAND_2GHZ = '2.4GHz'
 BAND_5GHZ = '5GHz'
@@ -24,10 +26,12 @@ VALID_2GHZ_MODES = [MODE_B, MODE_G, MODE_N]
 VALID_5GHZ_MODES = [MODE_A, MODE_N]
 
 # Supported security types
-SECURITY_TYPE_DISABLED = 'open'
-SECURITY_TYPE_WEP = 'wep'
-SECURITY_TYPE_WPAPSK = 'wpa'
-SECURITY_TYPE_WPA2PSK = 'wpa2'
+SECURITY_TYPE_DISABLED = iw_runner.SECURITY_OPEN
+SECURITY_TYPE_WEP = iw_runner.SECURITY_WEP
+SECURITY_TYPE_WPAPSK = iw_runner.SECURITY_WPA
+SECURITY_TYPE_WPA2PSK = iw_runner.SECURITY_WPA2
+# Mixed mode security is wpa/wpa2
+SECURITY_TYPE_MIXED = iw_runner.SECURITY_MIXED
 
 WEP_AUTHENTICATION_OPEN = 'open_wep'
 WEP_AUTHENTICATION_SHARED = 'shared_wep'
