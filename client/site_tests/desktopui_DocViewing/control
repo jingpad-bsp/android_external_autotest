@@ -10,7 +10,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
-SUITE = "regression"
 
 DOC = """
 Tests for viewing Office documents in File Manager.

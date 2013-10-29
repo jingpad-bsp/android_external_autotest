@@ -8,7 +8,6 @@ PURPOSE = "Verify commands sent to a modem manager are reflected in flimflam."
 CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
 """
-SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

@@ -11,7 +11,6 @@ This test will fail if one of the conditions occurs:
   - the number of video streams is not 2
   - the video framerate is less than 5 fps
 """
-SUITE = "hwqual"
 TIME = "MEDIUM"
 TEST_CATEGORY = "GTalk"
 TEST_CLASS = "realtimecomm"

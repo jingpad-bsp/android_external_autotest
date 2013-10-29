@@ -13,7 +13,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-SUITE = "network3g"
 DEPENDENCIES = "modem:e362"
 DOC = """
   Tests that a cellular modem provides correct identification information

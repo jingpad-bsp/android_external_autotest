@@ -6,7 +6,6 @@ AUTHOR = 'wiley@chromium.com'
 NAME = 'network_WiFi_SimpleConnect.wifi_checkSGI'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_flaky'
 DEPENDENCIES = 'wificell'
 
 DOC = """

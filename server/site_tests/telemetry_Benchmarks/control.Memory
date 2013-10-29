@@ -4,7 +4,6 @@
 
 AUTHOR = "chromeos-perf"
 NAME = "Telemetry Memory Benchmark"
-SUITE = "perf_v2"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "performance"

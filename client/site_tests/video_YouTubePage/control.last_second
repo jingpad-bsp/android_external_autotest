@@ -9,7 +9,6 @@ CRITERIA = """
 This test will fail if YouTube page HTML5 video fails to continuously play the
 last second of the video.
 """
-SUITE = "youtube_page"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

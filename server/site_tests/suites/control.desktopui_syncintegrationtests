@@ -4,7 +4,6 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "Sync"
-SUITE = "sync"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"

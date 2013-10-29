@@ -8,7 +8,6 @@ PURPOSE = "Verify Chrome MSE/EME works for YouTube."
 CRITERIA = """
 This test will fail if WebM containers can't be played.
 """
-SUITE = "youtube_mse_eme"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

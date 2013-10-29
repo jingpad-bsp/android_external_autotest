@@ -4,7 +4,6 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "PyAuto"
-SUITE = "pyauto"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"

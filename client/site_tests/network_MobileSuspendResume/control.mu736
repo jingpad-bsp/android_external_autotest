@@ -11,7 +11,6 @@ CRITERIA = """
     Verify that if autoconnect is turned on that the modem autoconnects
     after resuming.
 """
-SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

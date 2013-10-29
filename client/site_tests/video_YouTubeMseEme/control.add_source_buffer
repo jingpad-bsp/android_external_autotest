@@ -8,7 +8,6 @@ PURPOSE = "Verify Chrome MSE/EME works for YouTube."
 CRITERIA = """
 This test will fail if valid source buffers can't be added to MSE.
 """
-SUITE = "youtube_mse_eme"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

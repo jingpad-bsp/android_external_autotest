@@ -9,7 +9,6 @@ CRITERIA = """
 This test will fail if media source duration after appending to the source
 buffer is incorrect.
 """
-SUITE = "youtube_mse_eme"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

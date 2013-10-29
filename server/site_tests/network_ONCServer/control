@@ -8,7 +8,6 @@ NAME = "ONC Tests"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "Server"
-SUITE = "onccell"
 SYNC_COUNT = 1
 DOC = """
 ONCServer is a suite of 3-machine tests and a client side test network_ONC to
