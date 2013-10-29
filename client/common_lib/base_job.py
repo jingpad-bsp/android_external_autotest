@@ -1,6 +1,7 @@
 import os, copy, logging, errno, fcntl, time, re, weakref, traceback
 import tarfile
 import cPickle as pickle
+import tempfile
 from autotest_lib.client.common_lib import autotemp, error, log
 
 
@@ -1033,22 +1034,23 @@ class base_job(object):
         self._toolsdir = readonly_dir(self.clientdir, 'tools')
 
         # directories which are in serverdir on a server, clientdir on a client
-        # tmp, tests, and site_tests need to be read_write for client, but only
-        # read for server
+        # tmp tests, and site_tests need to be read_write for client, but only
+        # read for server.
         if self.serverdir:
             root = self.serverdir
             r_or_rw_dir = readonly_dir
         else:
             root = self.clientdir
             r_or_rw_dir = readwrite_dir
-        self._tmpdir = r_or_rw_dir(root, 'tmp')
         self._testdir = r_or_rw_dir(root, 'tests')
         self._site_testdir = r_or_rw_dir(root, 'site_tests')
 
         # various server-specific directories
         if self.serverdir:
+            self._tmpdir = readwrite_dir(tempfile.gettempdir())
             self._conmuxdir = readonly_dir(self.autodir, 'conmux')
         else:
+            self._tmpdir = readwrite_dir(root, 'tmp')
             self._conmuxdir = None
 
 

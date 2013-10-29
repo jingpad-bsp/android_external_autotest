@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, stat, tempfile, shutil, logging
+import os, stat, tempfile, shutil, logging, tempfile
 
 import common
 from autotest_lib.client.common_lib import base_job, error
@@ -182,7 +182,7 @@ class test_initialize_dir_properties(unittest.TestCase):
         self.assert_(self.cjob.tmpdir.startswith('/atest/client'))
         self.assert_(self.cjob.testdir.startswith('/atest/client'))
         self.assert_(self.cjob.site_testdir.startswith('/atest/client'))
-        self.assert_(self.sjob.tmpdir.startswith('/atest/server'))
+        self.assertEqual(self.sjob.tmpdir, tempfile.gettempdir())
         self.assert_(self.sjob.testdir.startswith('/atest/server'))
         self.assert_(self.sjob.site_testdir.startswith('/atest/server'))
 
