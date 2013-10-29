@@ -131,19 +131,23 @@ static const char *k_func_get_sysfs_path = "g_udev_device_get_sysfs_path";
 static const char *k_func_get_sysfs_attr = "g_udev_device_get_sysfs_attr";
 
 
-/* TODO(njw): set up a _fini() routine to free allocated memory */
-
+/*
+ * Don't initialize the global data in this library using the library
+ * constructor. GLib may not be setup when this library is loaded.
+ */
 static void
-g_udev_preload_init ()
+g_udev_preload_init (void)
 {
   const char *orig_ev;
   char *ev, *saveptr, *name, *value;
   FakeGUdevDevice *fake_device;
 
   /* global tables */
-  devices_by_path = g_hash_table_new (g_str_hash, g_str_equal);
-  devices_by_syspath = g_hash_table_new (g_str_hash, g_str_equal);
-  devices_by_ptr = g_hash_table_new (NULL, NULL);
+  devices_by_path = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                           g_free, g_object_unref);
+  devices_by_syspath = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                              g_free, g_object_unref);
+  devices_by_ptr = g_hash_table_new_full (NULL, NULL, g_object_unref, NULL);
 
   orig_ev = getenv (k_env_devices);
   if (orig_ev == NULL)
@@ -158,8 +162,12 @@ g_udev_preload_init ()
     if (strcmp (name, k_prop_device_file) == 0) {
       fake_device = FAKE_G_UDEV_DEVICE (g_object_new (FAKE_G_UDEV_TYPE_DEVICE,
                                                       NULL));
-      g_hash_table_insert (devices_by_path, g_strdup (value), fake_device);
-      g_hash_table_insert (devices_by_ptr, fake_device, NULL);
+      g_hash_table_insert (devices_by_path,
+                           g_strdup (value),
+                           g_object_ref (fake_device));
+      g_hash_table_insert (devices_by_ptr,
+                           g_object_ref (fake_device),
+                           NULL);
     }
     if (fake_device != NULL) {
       g_hash_table_insert (fake_device->priv->properties,
@@ -167,7 +175,9 @@ g_udev_preload_init ()
                            g_strdup (value));
 
       if (strcmp (name, k_prop_sysfs_path) == 0)
-        g_hash_table_insert (devices_by_syspath, g_strdup (value), fake_device);
+        g_hash_table_insert (devices_by_syspath,
+                             g_strdup (value),
+                             g_object_ref (fake_device));
     }
 
     name = strtok_r (NULL, k_delims, &saveptr);
@@ -200,6 +210,17 @@ get_fake_g_udev_device (GUdevDevice *device)
   return fake_device;
 }
 
+void __attribute__ ((destructor))
+fake_g_udev_fini (void)
+{
+  if (devices_by_path)
+    g_hash_table_unref (devices_by_path);
+  if (devices_by_syspath)
+    g_hash_table_unref (devices_by_syspath);
+  if (devices_by_ptr)
+    g_hash_table_unref (devices_by_ptr);
+}
+
 GList *
 g_udev_client_query_by_subsystem (GUdevClient *client, const gchar *subsystem)
 {
@@ -227,7 +248,6 @@ g_udev_client_query_by_subsystem (GUdevClient *client, const gchar *subsystem)
       realfunc = (GList *(*)()) dlsym (RTLD_NEXT, k_func_q_by_subsystem);
     reallist = realfunc (client, subsystem);
     list = g_list_concat (list, reallist);
-    g_list_free (reallist);
   }
 
   return list;
@@ -598,6 +618,9 @@ fake_g_udev_device_finalize (GObject *object)
 {
   FakeGUdevDevice *device = FAKE_G_UDEV_DEVICE (object);
 
+  if (device->priv->client)
+    g_object_unref (device->priv->client);
+  g_free (device->priv->propkeys);
   g_hash_table_unref (device->priv->properties);
 }
 
