@@ -8,6 +8,7 @@ import datetime
 import logging
 import os
 import sys
+import time
 import xmlrpclib
 
 import ap_spec
@@ -23,6 +24,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
 
 try:
   from selenium import webdriver
+  from selenium.common.exceptions import WebDriverException
 except ImportError:
   raise ImportError('Could not locate the webdriver package.  Did you build? '
                     'Are you using a prebuilt autotest package?')
@@ -152,8 +154,9 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                                             window_size['height'])
             except Exception as e:
                 # The messages differ based on the webdriver version
-                if (message.find('An open modal dialog blocked') == -1 and
-                    message.find('unexpected alert open') == -1):
+                message = str(e)
+                if (message.find('An open modal dialog blocked') == 1 or
+                    message.find('unexpected alert open') == 1):
                    alert = self.driver.switch_to_alert()
                    try:
                        alert_text = alert.text

@@ -140,6 +140,7 @@ class ChaosRunner(object):
                                      ap=ap,
                                      tag=ap.ssid)
                         continue
+                    logging.info('Searching for SSID %s in scan...', ap.ssid)
                     iw_scanner = iw_runner.IwRunner(self._host,
                             command_iw=self._wifi_client.command_iw)
                     networks = iw_scanner.wait_for_scan_result(
@@ -165,6 +166,7 @@ class ChaosRunner(object):
                                  assoc_params=assoc_params,
                                  client=self._wifi_client,
                                  tries=tries,
+                                 debug_info=ap.get_router_name(),
                                  # Copy all logs from the system
                                  disabled_sysinfo=False,
                                  tag=ap.ssid)

@@ -41,11 +41,12 @@ class APCartridge(object):
             try:
                 configurator.apply_settings()
             except Exception:
+                trace = ''.join(traceback.format_exc())
                 logging.error('Configuration failed for AP: %s\n%s',
-                              configurator.get_router_name(),
-                              ''.join(traceback.format_exc()))
+                              configurator.get_router_name(), trace)
                 configurator.save_screenshot()
                 configurator.reset_command_list()
+                configurator.traceback = trace
             logging.info('Configuration of AP %s complete.',
                          configurator.get_router_name())
             self.cartridge.task_done()

@@ -17,7 +17,7 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
 
 
     def run_once(self, capturer, capturer_frequency, capturer_ht_type,
-                 host, assoc_params, client, tries):
+                 host, assoc_params, client, tries, debug_info=None):
         """ Main entry function for autotest.
 
         @param capturer: a packet capture device
@@ -27,6 +27,7 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
         @param assoc_params: an AssociationParameters object.
         @param client: WiFiClient object
         @param tries: an integer, number of connection attempts.
+        @param debug_info: a string of additional info to display on failure
 
         """
 
@@ -64,6 +65,7 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
             # error.TestError doesn't handle the formatting inline, doing it
             # here so it is clearer to read in the status.log file.
             msg = str('Failed on the following attempts:\n%s\n'
-                      'With the assoc_params:\n%s' % (pprint.pformat(results),
-                      assoc_params))
+                      'With the assoc_params:\n%s\n'
+                      'Debug info: %s' % (pprint.pformat(results),
+                      assoc_params, debug_info))
             raise error.TestFail(msg)

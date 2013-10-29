@@ -57,7 +57,9 @@ class network_WiFi_ChaosConfigFailure(test.test):
         if not missing_from_scan:
             logging.error('Traceback:\n %s', ap.traceback)
             raise error.TestError('The AP was not configured correctly. Please '
-                                  'see the ERROR log for more details.')
+                                  'see the ERROR log for more details.\n%s',
+                                  ap.get_router_name())
         else:
             raise error.TestError('The SSID %s was not found in the scan. '
-                                  'Check the screenshots to debug.', ap.ssid)
+                                  'Check the screenshots to debug.\n%s',
+                                  ap.ssid, ap.get_router_name())
