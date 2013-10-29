@@ -6,7 +6,7 @@ import logging, time, traceback
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
-from autotest_lib.server import utils, test
+from autotest_lib.server import test
 
 class hardware_StorageStress(test.test):
     """
@@ -123,12 +123,12 @@ class hardware_StorageStress(test.test):
         """
         logging.info('Server: suspend client')
         self._client_at.run_test('power_Resume')
-        passed = self._check_result()
+        passed = self._check_client_test_result(self._client)
         if not passed:
             raise error.TestFail('Test failed with error: Suspend Error')
 
 
-    def _check_result(self):
+    def _check_client_test_result(self, client):
         """
         Check result of the client test.
         Auto test will store results in the file named status.
@@ -136,21 +136,23 @@ class hardware_StorageStress(test.test):
 
         @ return True if last test passed, False otherwise.
         """
-        # Is there any better way to do this?
-        status = utils.system_output('tail -2 status | head -1').strip()
+        client_result_dir = '%s/results/default' % client.autodir
+        command = 'tail -2 %s/status | head -1' % client_result_dir
+        status = client.run(command).stdout.strip()
         logging.info(status)
         return status[:8] == 'END GOOD'
-
 
     def _write_data(self):
         """
         Write test data to host using hardware_StorageFio
         """
         logging.info('_write_data')
+        result_dir = 'hardware_StorageFio_write'
         self._client_at.run_test('hardware_StorageFio', wait=0,
+                                 results_dir=result_dir,
                                  requirements=[(self._FIO_REQUIREMENT_FILE,
                                                 self._FIO_WRITE_FLAGS)])
-        passed = self._check_result()
+        passed = self._check_client_test_result(self._client)
         if not passed:
             raise error.TestFail('Test failed with error: Data Write Error')
 
@@ -159,10 +161,13 @@ class hardware_StorageStress(test.test):
         Vertify test data using hardware_StorageFio
         """
         logging.info(str('_verify_data #%d' % self._loop_count))
+        result_dir = str('hardware_StorageFio_verify_%d'
+                                       % self._loop_count)
         self._client_at.run_test('hardware_StorageFio', wait=0,
+                                 results_dir=result_dir,
                                  requirements=[(self._FIO_REQUIREMENT_FILE,
                                                 self._FIO_VERIFY_FLAGS)])
-        passed = self._check_result()
+        passed = self._check_client_test_result(self._client)
         if not passed:
             raise error.TestFail('Test failed with error: Data Verify #%d Error'
                 % self._loop_count)
