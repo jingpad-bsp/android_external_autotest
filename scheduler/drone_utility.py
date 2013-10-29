@@ -338,6 +338,9 @@ class BaseDroneUtility(object):
 
 
     def _sync_get_file_from(self, hostname, source_path, destination_path):
+        logging.debug('_sync_get_file_from hostname: %s, source_path: %s,'
+                      'destination_path: %s', hostname, source_path,
+                      destination_path)
         self._ensure_directory_exists(os.path.dirname(destination_path))
         host = create_host(hostname)
         host.get_file(source_path, destination_path, delete_dest=True)
@@ -350,6 +353,9 @@ class BaseDroneUtility(object):
 
     def sync_send_file_to(self, hostname, source_path, destination_path,
                            can_fail):
+        logging.debug('sync_send_file_to. hostname: %s, source_path: %s, '
+                      'destination_path: %s, can_fail:%s', hostname,
+                      source_path, destination_path, can_fail)
         host = create_host(hostname)
         try:
             host.run('mkdir -p ' + os.path.dirname(destination_path))

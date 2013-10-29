@@ -5,7 +5,7 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.scheduler import drone_manager, drone_utility, drones
-from autotest_lib.scheduler import scheduler_config
+from autotest_lib.scheduler import scheduler_config, site_drone_manager
 
 class MockDrone(drones._AbstractDrone):
     def __init__(self, name, active_processes=0, max_processes=10,
@@ -293,6 +293,7 @@ class DroneManager(unittest.TestCase):
 
 
     def test_copy_to_results_repository(self):
+        site_drone_manager.ENABLE_ARCHIVING = True
         self.manager.copy_to_results_repository(self.mock_drone_process,
                                                 self._SOURCE_PATH)
         self.assert_(self.mock_drone.was_file_sent(

@@ -9,6 +9,8 @@ from autotest_lib.site_utils.graphite import stats
 
 HOSTS_JOB_SUBDIR = 'hosts/'
 PARSE_LOG = '.parse.log'
+ENABLE_ARCHIVING =  global_config.global_config.get_config_value(
+        scheduler_config.CONFIG_SECTION, 'enable_archiving', type=bool)
 
 
 class SiteDroneManager(object):
@@ -31,6 +33,8 @@ class SiteDroneManager(object):
         It will also only copy .parse.log files back to the scheduler if the
         copy_parse_log_back flag in global_config.ini has been set to True.
         """
+        if not ENABLE_ARCHIVING:
+            return
         copy_task_results_back = global_config.global_config.get_config_value(
                 scheduler_config.CONFIG_SECTION, 'copy_task_results_back',
                 type=bool)

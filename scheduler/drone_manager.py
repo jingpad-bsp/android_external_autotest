@@ -679,6 +679,10 @@ class BaseDroneManager(object):
 
     def _copy_results_helper(self, process, source_path, destination_path,
                              to_results_repository=False):
+        logging.debug('_copy_results_helper. process: %s, source_path: %s, '
+                      'destination_path: %s, to_results_repository: %s',
+                      process, source_path, destination_path,
+                      to_results_repository)
         full_source = self.absolute_path(source_path)
         full_destination = self.absolute_path(
                 destination_path, on_results_repository=to_results_repository)

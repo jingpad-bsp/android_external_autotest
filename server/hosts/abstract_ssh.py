@@ -257,7 +257,9 @@ class AbstractSSHHost(remote.RemoteHost):
         Raises:
                 AutoservRunError: the scp command failed
         """
-
+        logging.debug('get_file. source: %s, dest: %s, delete_dest: %s,'
+                      'preserve_perm: %s, preserve_symlinks:%s', source, dest,
+                      delete_dest, preserve_perm, preserve_symlinks)
         # Start a master SSH connection if necessary.
         self.start_master_ssh()
 
@@ -268,6 +270,7 @@ class AbstractSSHHost(remote.RemoteHost):
         # If rsync is disabled or fails, try scp.
         try_scp = True
         if self.use_rsync():
+            logging.debug('Using Rsync.')
             try:
                 remote_source = self._encode_remote_paths(source)
                 local_dest = utils.sh_escape(dest)
@@ -279,6 +282,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 logging.warn("trying scp, rsync failed: %s", e)
 
         if try_scp:
+            logging.debug('Trying scp.')
             # scp has no equivalent to --delete, just drop the entire dest dir
             if delete_dest and os.path.isdir(dest):
                 shutil.rmtree(dest)
@@ -294,6 +298,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 try:
                     utils.run(scp)
                 except error.CmdError, e:
+                    logging.debug('scp failed: %s', e)
                     raise error.AutoservRunError(e.args[0], e.args[1])
 
         if not preserve_perm:
@@ -333,7 +338,9 @@ class AbstractSSHHost(remote.RemoteHost):
         Raises:
                 AutoservRunError: the scp command failed
         """
-
+        logging.debug('send_file. source: %s, dest: %s, delete_dest: %s,'
+                      'preserve_symlinks:%s', source, dest,
+                      delete_dest, preserve_symlinks)
         # Start a master SSH connection if necessary.
         self.start_master_ssh()
 
@@ -344,6 +351,7 @@ class AbstractSSHHost(remote.RemoteHost):
         # If rsync is disabled or fails, try scp.
         try_scp = True
         if self.use_rsync():
+            logging.debug('Using Rsync.')
             try:
                 local_sources = [utils.sh_escape(path) for path in source]
                 rsync = self._make_rsync_cmd(local_sources, remote_dest,
@@ -354,6 +362,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 logging.warn("trying scp, rsync failed: %s", e)
 
         if try_scp:
+            logging.debug('Trying scp.')
             # scp has no equivalent to --delete, just drop the entire dest dir
             if delete_dest:
                 is_dir = self.run("ls -d %s/" % dest,
@@ -369,6 +378,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 try:
                     utils.run(scp)
                 except error.CmdError, e:
+                    logging.debug('scp failed: %s', e)
                     raise error.AutoservRunError(e.args[0], e.args[1])
 
 
