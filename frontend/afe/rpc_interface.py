@@ -586,7 +586,11 @@ def abort_host_queue_entries(**filter_data):
     Abort a set of host queue entries.
     """
     query = models.HostQueueEntry.query_objects(filter_data)
-    query = query.filter(complete=False)
+
+    # Dont allow aborts on:
+    #   1. Jobs that have already completed (whether or not they were aborted)
+    #   2. Jobs that we have already been aborted (but may not have completed)
+    query = query.filter(complete=False).filter(aborted=False)
     models.AclGroup.check_abort_permissions(query)
     host_queue_entries = list(query.select_related())
     rpc_utils.check_abort_synchronous_jobs(host_queue_entries)
