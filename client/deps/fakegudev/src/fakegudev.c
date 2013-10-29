@@ -11,34 +11,74 @@
 #include <gudev/gudev.h>
 
 #include <dlfcn.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /*
- * This purpose of this library is to override libgudev to return
+ * The purpose of this library is to override libgudev to return
  * arbitrary results for selected devices, generally for the purposes
  * of testing. Adding the library file to LD_PRELOAD is the general
  * way to accomplish this. The arbitrary results to return are
  * specified in the environment variable GUDEV_PRELOAD as follows:
  *
- * FAKEGUDEV_DEVICES=device_file=/dev/pts/1:subsystem=tty:name=pts/1:\
- * parent=/dev/pts:property_DEVICE_PROPERTY=123
+ * FAKEGUDEV_DEVICES=<name1>=value1:<property_name2>=<value2>::<name3>=<value3>
  *
- * Multiple devices may be specified; each device_file entry starts a
- * new device.  The "parent" property on a device specifies a device
- * path that will be looked up with
- * g_udev_client_query_by_device_file() to find a parent device. This
- * may be a real device that the real libgudev will return a device
- * for, or it may be another fake device handled by this library.
+ * Here, <name1> etc are the names of GUdevDevice properties, and <value1> etc
+ * are the associated values.
+ *  - '::' is used the separate devices
+ *  - ':' is used to separate properties of a device
+ *  - <name> can not contain the special character ':'
+ *  - <value> can contain ':', but it must be escaped with '\'
+ *  - property_<name> are the special GUdevDevice properties that can be obtain
+ *    with a call to g_udev_get_property
+ *
+ * e.g.
+ * FAKEGUDEV_DEVICES=device_file=/dev/pts/1:subsystem=tty:name=pts/1:\
+ * parent=/dev/pts:property_DEVICE_PROPERTY=123::device_file=/dev/pts/2:\
+ * subsystem=tty:sysfs_path=/sys/bus/usb/devices/1-2.0\:5
+ *
+ * The "parent" property on a device specifies a device path that will be looked
+ * up with g_udev_client_query_by_device_file() to find a parent device. This
+ * may be a real device that the real libgudev will return a device for, or it
+ * may be another fake device handled by this library.
  *
  * Unspecified properties/attributes will be returned as NULL.
- *
- * No mechanism currently exists to escape : and = characters in property names.
  *
  * Setting the environment variable FAKEGUDEV_BLOCK_REAL causes this
  * library to prevent real devices from being iterated over with
  * g_udev_query_by_subsystem().
  */
+
+#ifdef FAKE_G_UDEV_DEBUG
+static const char *k_tmp_logging_file_full_path = "/tmp/fakegudev.dbg";
+static FILE *debug_file;
+
+#define fake_g_udev_debug_init() \
+  debug_file = fopen (k_tmp_logging_file_full_path, "w")
+
+#define fake_g_udev_debug(...) \
+  do { \
+    if (debug_file) { \
+      fprintf (debug_file, __VA_ARGS__); \
+      fprintf (debug_file, "\n"); \
+    } \
+  } while (0)
+
+#define fake_g_udev_debug_finish() \
+  do { \
+    if (debug_file) { \
+      fclose (debug_file); \
+      debug_file = NULL; \
+    } \
+  } while (0)
+
+#else  /* FAKE_G_UDEV_DEBUG */
+#define fake_g_udev_debug_init()
+#define fake_g_udev_debug(...)
+#define fake_g_udev_debug_finish()
+#endif  /* FAKE_G_UDEV_DEBUG */
+
 
 typedef struct _FakeGUdevDeviceClass FakeGUdevDeviceClass;
 typedef struct _FakeGUdevDevice FakeGUdevDevice;
@@ -103,7 +143,6 @@ static gboolean block_real = FALSE;
 
 static const char *k_env_devices = "FAKEGUDEV_DEVICES";
 static const char *k_env_block_real = "FAKEGUDEV_BLOCK_REAL";
-static const char *k_delims = ":=";
 static const char *k_prop_device_file = "device_file";
 static const char *k_prop_devtype = "devtype";
 static const char *k_prop_driver = "driver";
@@ -130,6 +169,115 @@ static const char *k_func_get_subsystem = "g_udev_device_get_subsystem";
 static const char *k_func_get_sysfs_path = "g_udev_device_get_sysfs_path";
 static const char *k_func_get_sysfs_attr = "g_udev_device_get_sysfs_attr";
 
+static void
+abort_on_error (GError *error) {
+  if (!error)
+    return;
+
+  fake_g_udev_debug ("Aborting on error: |%s|\n", error->message);
+  fake_g_udev_debug_finish ();
+  g_assert (0);
+}
+
+static void
+parse_fake_devices (const char *orig_ev)
+{
+  gchar **devices, **device_iter;
+  gchar *buf;
+
+  GRegex *device_delimiter, *property_delimiter, *key_value_delimiter;
+  GRegex *escaped_colon;
+  GError *error = NULL;
+
+  fake_g_udev_debug ("devices_string: |%s|\n", orig_ev);
+
+  device_delimiter = g_regex_new ("(?:([^\\\\])::)|(?:^::)", 0, 0, &error);
+  abort_on_error (error);
+  property_delimiter = g_regex_new ("(?:([^\\\\]):)|(?:^:)", 0, 0, &error);
+  abort_on_error (error);
+  key_value_delimiter = g_regex_new ("=", 0, 0, &error);
+  abort_on_error (error);
+  escaped_colon = g_regex_new ("(?:([^\\\\])(\\\\:))|(?:^\\\\:)", 0, 0, &error);
+  abort_on_error (error);
+
+  buf = g_regex_replace (device_delimiter, orig_ev, -1, 0, "\\1;", 0, &error);
+  abort_on_error (error);
+  devices = g_strsplit (buf, ";", 0);
+  g_free (buf);
+
+  for (device_iter = devices; *device_iter; ++device_iter) {
+    FakeGUdevDevice *fake_device;
+    gchar **properties, **properties_iter;
+
+    fake_g_udev_debug ("Parsing device: |%s|\n", *device_iter);
+    if (strlen (*device_iter) == 0)
+      continue;
+
+    fake_device = FAKE_G_UDEV_DEVICE (g_object_new (FAKE_G_UDEV_TYPE_DEVICE,
+                                                    NULL));
+    g_hash_table_insert (devices_by_ptr, g_object_ref (fake_device), NULL);
+
+    buf = g_regex_replace (property_delimiter, *device_iter, -1, 0, "\\1;", 0,
+                           &error);
+    properties = g_strsplit (buf, ";", 0);
+    abort_on_error (error);
+    g_free (buf);
+
+    for (properties_iter = properties; *properties_iter; ++properties_iter) {
+      gchar **parts;
+      gchar *name, *value;
+
+      fake_g_udev_debug ("Parsing property: |%s|\n", *properties_iter);
+      if (strlen (*properties_iter) == 0)
+        continue;
+
+      parts = g_regex_split (key_value_delimiter, *properties_iter, 0);
+      if (g_strv_length (parts) != 2) {
+        fake_g_udev_debug ("Error parsing device.\n");
+        fake_g_udev_debug ("Failed to parse property: |%s|\n",
+                           *properties_iter);
+        fake_g_udev_debug ("From the device: |%s|\n", *device_iter);
+        g_strfreev (parts);
+        continue;
+      }
+
+      name = parts[0];
+      /* Any ':' in |value| has to be escaped with a '\' to allow for ':' and
+       * '::' to act as delimiters.
+       * Clean away the '\' before storing the property.
+       */
+      value = g_regex_replace (escaped_colon, parts[1], -1, 0, "\\1:", 0,
+                               &error);
+      abort_on_error (error);
+      fake_g_udev_debug ("Sanitized property: |%s|\n",
+                         value);
+
+      g_hash_table_insert (fake_device->priv->properties, g_strdup (name),
+                           g_strdup (value));
+      if (g_strcmp0 (name, k_prop_device_file) == 0) {
+        g_hash_table_insert (devices_by_path,
+                             g_strdup (value),
+                             g_object_ref (fake_device));
+      }
+      if (g_strcmp0 (name, k_prop_sysfs_path) == 0) {
+        g_hash_table_insert (devices_by_syspath,
+                             g_strdup (value),
+                             g_object_ref (fake_device));
+      }
+
+      g_free (value);
+      g_strfreev (parts);
+    }
+
+    g_strfreev (properties);
+  }
+
+  g_strfreev (devices);
+  g_regex_unref (device_delimiter);
+  g_regex_unref (property_delimiter);
+  g_regex_unref (key_value_delimiter);
+  g_regex_unref (escaped_colon);
+}
 
 /*
  * Don't initialize the global data in this library using the library
@@ -139,8 +287,6 @@ static void
 g_udev_preload_init (void)
 {
   const char *orig_ev;
-  char *ev, *saveptr, *name, *value;
-  FakeGUdevDevice *fake_device;
 
   /* global tables */
   devices_by_path = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -152,38 +298,7 @@ g_udev_preload_init (void)
   orig_ev = getenv (k_env_devices);
   if (orig_ev == NULL)
     orig_ev = "";
-  ev = g_strdup (orig_ev);
-
-  name = strtok_r (ev, k_delims, &saveptr);
-  value = strtok_r (NULL, k_delims, &saveptr);
-  fake_device = NULL;
-
-  while (name != NULL && value != NULL) {
-    if (strcmp (name, k_prop_device_file) == 0) {
-      fake_device = FAKE_G_UDEV_DEVICE (g_object_new (FAKE_G_UDEV_TYPE_DEVICE,
-                                                      NULL));
-      g_hash_table_insert (devices_by_path,
-                           g_strdup (value),
-                           g_object_ref (fake_device));
-      g_hash_table_insert (devices_by_ptr,
-                           g_object_ref (fake_device),
-                           NULL);
-    }
-    if (fake_device != NULL) {
-      g_hash_table_insert (fake_device->priv->properties,
-                           g_strdup (name),
-                           g_strdup (value));
-
-      if (strcmp (name, k_prop_sysfs_path) == 0)
-        g_hash_table_insert (devices_by_syspath,
-                             g_strdup (value),
-                             g_object_ref (fake_device));
-    }
-
-    name = strtok_r (NULL, k_delims, &saveptr);
-    value = strtok_r (NULL, k_delims, &saveptr);
-  }
-  g_free (ev);
+  parse_fake_devices (orig_ev);
 
   if (getenv (k_env_block_real))
     block_real = TRUE;
@@ -210,6 +325,13 @@ get_fake_g_udev_device (GUdevDevice *device)
   return fake_device;
 }
 
+void __attribute__ ((constructor))
+fake_g_udev_init (void)
+{
+  fake_g_udev_debug_init ();
+  fake_g_udev_debug ("Initialized FakeGUdev library.\n");
+}
+
 void __attribute__ ((destructor))
 fake_g_udev_fini (void)
 {
@@ -219,6 +341,8 @@ fake_g_udev_fini (void)
     g_hash_table_unref (devices_by_syspath);
   if (devices_by_ptr)
     g_hash_table_unref (devices_by_ptr);
+  fake_g_udev_debug ("Quit FakeGUdev library.\n");
+  fake_g_udev_debug_finish ();
 }
 
 GList *

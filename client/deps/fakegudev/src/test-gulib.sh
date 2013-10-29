@@ -520,8 +520,7 @@ if [ $? -ne 0 ]; then echo "FAILED"; failed=1; fi
 
 
 # Test sysfs attributes
-
-echo "TEST: All at once"
+echo "TEST: /sys/devices/fake fully fledged"
 FAKEGUDEV_DEVICES=device_file=/dev/fake:name=fakedevice:devtype=faketype:\
 driver=fakedriver:subsystem=fakesub:sysfs_path=/sys/devices/virtual/fake:\
 property_FOO=BAR:property_BAR=BAZ:property_BAZ=QUUX:parent=/dev/null:
@@ -554,6 +553,76 @@ Parent device:
 
 EOF
 LD_PRELOAD=./libfakegudev.so ./gudev-exercise /dev/fake > ${resultfile}
+diff -u ${testfile} ${resultfile}
+if [ $? -ne 0 ]; then echo "FAILED"; failed=1; fi
+
+
+echo "TEST: Test sysfs attributes with : in properties in different positions"
+FAKEGUDEV_DEVICES=device_file=/dev/fake:name=fakedevice:devtype=faketype:\
+driver=fakedriver:subsystem=\\:fakesub\\::\
+sysfs_path=/sys/devices/virtual/4\\:0.0/fake:property_FOO=BAR:property_BAR=BAZ:\
+property_BAZ=QUUX:parent=/dev/null:
+cat > ${testfile} <<EOF
+Path '/dev/fake'
+ Name:        fakedevice
+ Device file: /dev/fake
+ Devtype:     faketype
+ Driver:      fakedriver
+ Subsystem:   :fakesub:
+ Sysfs path:  /sys/devices/virtual/4:0.0/fake
+  Property BAZ: QUUX
+  Property BAR: BAZ
+  Property FOO: BAR
+Parent device:
+ Name:        null
+ Device file: /dev/null
+ Devtype:     (null)
+ Driver:      (null)
+ Subsystem:   mem
+ Sysfs path:  /sys/devices/virtual/mem/null
+  Property UDEV_LOG: 3
+  Property DEVPATH: /devices/virtual/mem/null
+  Property MAJOR: 1
+  Property MINOR: 3
+  Property DEVNAME: /dev/null
+  Property DEVMODE: 0666
+  Property SUBSYSTEM: mem
+  Property DEVLINKS: /dev/char/1:3
+
+EOF
+LD_PRELOAD=./libfakegudev.so ./gudev-exercise /dev/fake > ${resultfile}
+diff -u ${testfile} ${resultfile}
+if [ $? -ne 0 ]; then echo "FAILED"; failed=1; fi
+
+
+echo "TEST: /sys/devices/fake /sys/devices/fake2"
+FAKEGUDEV_DEVICES=device_file=/dev/fake:sysfs_path=/sys/devices/fake::\
+device_file=/dev/fake2:sysfs_path=/sys/devices/fake2::
+cat > ${testfile} <<EOF
+Sysfs path '/sys/devices/fake'
+ Name:        (null)
+ Device file: /dev/fake
+ Devtype:     (null)
+ Driver:      (null)
+ Subsystem:   (null)
+ Sysfs path:  /sys/devices/fake
+
+EOF
+LD_PRELOAD=./libfakegudev.so ./gudev-exercise /sys/devices/fake > ${resultfile}
+diff -u ${testfile} ${resultfile}
+if [ $? -ne 0 ]; then echo "FAILED"; failed=1; fi
+
+cat > ${testfile} <<EOF
+Sysfs path '/sys/devices/fake2'
+ Name:        (null)
+ Device file: /dev/fake2
+ Devtype:     (null)
+ Driver:      (null)
+ Subsystem:   (null)
+ Sysfs path:  /sys/devices/fake2
+
+EOF
+LD_PRELOAD=./libfakegudev.so ./gudev-exercise /sys/devices/fake2 > ${resultfile}
 diff -u ${testfile} ${resultfile}
 if [ $? -ne 0 ]; then echo "FAILED"; failed=1; fi
 

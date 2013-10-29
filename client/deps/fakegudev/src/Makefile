@@ -7,7 +7,7 @@ PKGS := gudev-1.0 glib-2.0
 PKG_CFLAGS := $(shell ${PKG_CONFIG} --cflags $(PKGS))
 PKG_LIBS := $(shell ${PKG_CONFIG} --libs $(PKGS))
 WARN := -Werror -Wall
-DEBUG := -g
+DEBUG := -g -DFAKE_G_UDEV_DEBUG
 OPT := -O2
 
 all: gudev-exercise libfakegudev.so
