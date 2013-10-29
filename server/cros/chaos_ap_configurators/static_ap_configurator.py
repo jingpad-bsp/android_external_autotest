@@ -20,20 +20,18 @@ class StaticAPConfigurator(APConfigurator):
         if ap_config:
             # This allows the ability to build a generic configurator
             # which can be used to get access to the members above.
-            self.admin_interface_url = ap_config.get_admin()
             self.class_name = ap_config.get_class()
             self.short_name = ap_config.get_model()
             self.mac_address = ap_config.get_wan_mac()
             self.host_name = ap_config.get_wan_host()
-            self.config_data = ap_config
-            self.frequency = ap_config.get_frequency()
-            self.bandwidth = ap_config.get_bandwidth()
             self.channel = ap_config.get_channel()
             self.band = ap_config.get_band()
             self.current_band = ap_config.get_band()
             self.security = ap_config.get_security()
-            self._ssid = ap_config.get_ssid()
             self.psk = ap_config.get_psk()
+            self._ssid = ap_config.get_ssid()
+
+            self.config_data = ap_config
 
 
     def power_down_router(self):
@@ -94,7 +92,7 @@ class StaticAPConfigurator(APConfigurator):
         """
         supported_modes = [{'band' : self.band,
                             'modes' : [ap_spec.DEFAULT_5GHZ_MODE
-                    if self.band in ap_spec.VALID_5GHZ_CHANNELS
+                    if self.channel in ap_spec.VALID_5GHZ_CHANNELS
                     else ap_spec.DEFAULT_2GHZ_MODE]}]
 
         return supported_modes
