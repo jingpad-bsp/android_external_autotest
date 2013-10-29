@@ -8,6 +8,7 @@
 
 #include <glib.h>
 #include <glib-object.h>
+#include <gudev/gudev.h>
 
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -39,32 +40,54 @@
  * g_udev_query_by_subsystem().
  */
 
-struct GUdevClient;
-typedef struct GUdevClient GUdevClient;
+typedef struct _FakeGUdevDeviceClass FakeGUdevDeviceClass;
+typedef struct _FakeGUdevDevice FakeGUdevDevice;
+typedef struct _FakeGUdevDevicePrivate FakeGUdevDevicePrivate;
 
-typedef struct _FakeGUdevDevice
+#define FAKE_G_UDEV_TYPE_DEVICE (fake_g_udev_device_get_type ())
+#define FAKE_G_UDEV_DEVICE(obj) \
+    (G_TYPE_CHECK_INSTANCE_CAST ((obj), \
+                                 FAKE_G_UDEV_TYPE_DEVICE, \
+                                 FakeGUdevDevice))
+#define FAKE_G_UDEV_IS_DEVICE(obj) \
+    (G_TYPE_CHECK_INSTANCE_TYPE ((obj), \
+                                 FAKE_G_UDEV_TYPE_DEVICE))
+#define FAKE_G_UDEV_DEVICE_CLASS(klass) \
+    (G_TYPE_CHECK_CLASS_CAST ((klass), \
+                              FAKE_G_UDEV_TYPE_DEVICE, \
+                              FakeGUdevDeviceClass))
+#define FAKE_G_UDEV_IS_DEVICE_CLASS(klass) \
+    (G_TYPE_CHECK_CLASS_TYPE ((klass), \
+                              FAKE_G_UDEV_TYPE_DEVICE))
+#define FAKE_G_UDEV_DEVICE_GET_CLASS(obj) \
+    (G_TYPE_INSTANCE_GET_CLASS ((obj), \
+                                FAKE_G_UDEV_TYPE_DEVICE, \
+                                FakeGUdevDeviceClass))
+
+struct _FakeGUdevDevice
 {
-  GObject             parent;
+  GUdevDevice parent;
+  FakeGUdevDevicePrivate *priv;
+};
 
-  /*< private >*/
+struct _FakeGUdevDeviceClass
+{
+  GUdevDeviceClass parent_class;
+};
+
+GType fake_g_udev_device_get_type (void) G_GNUC_CONST;
+
+/* end header */
+
+struct _FakeGUdevDevicePrivate
+{
   GHashTable *properties;
   GUdevClient *client;
   const gchar **propkeys;
-} FakeGUdevDevice;
+};
 
-typedef struct _FakeGUdevDeviceClass
-{
-  GObjectClass parent_class;
-} FakeGUdevDeviceClass;
+G_DEFINE_TYPE (FakeGUdevDevice, fake_g_udev_device, G_UDEV_TYPE_DEVICE)
 
-GType g_udev_device_get_type (void) G_GNUC_CONST;
-
-
-#define FAKE_G_UDEV_TYPE_DEVICE         (fake_g_udev_device_get_type ())
-#define FAKE_G_UDEV_DEVICE(o)           \
-   (G_TYPE_CHECK_INSTANCE_CAST ((o), FAKE_G_UDEV_TYPE_DEVICE, FakeGUdevDevice))
-
-G_DEFINE_TYPE (FakeGUdevDevice, fake_g_udev_device, G_TYPE_OBJECT)
 
 /* Map from device paths (/dev/pts/1) to FakeGUdevDevice objects */
 static GHashTable *devices_by_path;
@@ -115,7 +138,7 @@ g_udev_preload_init ()
 {
   const char *orig_ev;
   char *ev, *saveptr, *name, *value;
-  FakeGUdevDevice *device;
+  FakeGUdevDevice *fake_device;
 
   /* global tables */
   devices_by_path = g_hash_table_new (g_str_hash, g_str_equal);
@@ -129,21 +152,22 @@ g_udev_preload_init ()
 
   name = strtok_r (ev, k_delims, &saveptr);
   value = strtok_r (NULL, k_delims, &saveptr);
-  device = NULL;
+  fake_device = NULL;
 
   while (name != NULL && value != NULL) {
     if (strcmp (name, k_prop_device_file) == 0) {
-      device = FAKE_G_UDEV_DEVICE (g_object_new (FAKE_G_UDEV_TYPE_DEVICE,
-                                                 NULL));
-      g_hash_table_insert (devices_by_path, g_strdup (value), device);
-      g_hash_table_insert (devices_by_ptr, device, NULL);
+      fake_device = FAKE_G_UDEV_DEVICE (g_object_new (FAKE_G_UDEV_TYPE_DEVICE,
+                                                      NULL));
+      g_hash_table_insert (devices_by_path, g_strdup (value), fake_device);
+      g_hash_table_insert (devices_by_ptr, fake_device, NULL);
     }
-    if (device != NULL) {
-      g_hash_table_insert (device->properties, g_strdup (name),
+    if (fake_device != NULL) {
+      g_hash_table_insert (fake_device->priv->properties,
+                           g_strdup (name),
                            g_strdup (value));
 
       if (strcmp (name, k_prop_sysfs_path) == 0)
-        g_hash_table_insert (devices_by_syspath, g_strdup (value), device);
+        g_hash_table_insert (devices_by_syspath, g_strdup (value), fake_device);
     }
 
     name = strtok_r (NULL, k_delims, &saveptr);
@@ -153,6 +177,27 @@ g_udev_preload_init ()
 
   if (getenv (k_env_block_real))
     block_real = TRUE;
+}
+
+/* If |device| is a FakeGUdevDevice registered earlier with the libarary, cast
+ * |device| into a FakeGUdevDevice, otherwise return NULL
+ */
+static FakeGUdevDevice *
+get_fake_g_udev_device (GUdevDevice *device)
+{
+  FakeGUdevDevice *fake_device;
+
+  if (devices_by_ptr == NULL)
+    g_udev_preload_init ();
+
+  if (!FAKE_G_UDEV_IS_DEVICE (device))
+    return NULL;
+  fake_device = FAKE_G_UDEV_DEVICE (device);
+
+  g_return_val_if_fail (
+      g_hash_table_lookup_extended (devices_by_ptr, fake_device, NULL, NULL),
+      NULL);
+  return fake_device;
 }
 
 GList *
@@ -169,11 +214,12 @@ g_udev_client_query_by_subsystem (GUdevClient *client, const gchar *subsystem)
   list = NULL;
   g_hash_table_iter_init (&iter, devices_by_path);
   while (g_hash_table_iter_next (&iter, &key, &value)) {
-    FakeGUdevDevice *device = value;
-    gchar *dev_subsystem =
-        (gchar *)g_hash_table_lookup (device->properties, k_prop_subsystem);
+    FakeGUdevDevice *fake_device = value;
+    const gchar *dev_subsystem =
+        (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                            k_prop_subsystem);
     if (strcmp (subsystem, dev_subsystem) == 0)
-      list = g_list_append (list, device);
+      list = g_list_append (list, G_UDEV_DEVICE (fake_device));
   }
 
   if (!block_real) {
@@ -191,57 +237,59 @@ g_udev_client_query_by_subsystem (GUdevClient *client, const gchar *subsystem)
  * This is our hook. We look for a particular device path
  * and return a special pointer.
  */
-FakeGUdevDevice*
+GUdevDevice *
 g_udev_client_query_by_device_file (GUdevClient *client,
                                     const gchar *device_file)
 {
-  static FakeGUdevDevice* (*realfunc)();
-  FakeGUdevDevice *device;
+  static GUdevDevice* (*realfunc)();
+  FakeGUdevDevice *fake_device;
 
   if (devices_by_path == NULL)
     g_udev_preload_init ();
 
-  if (g_hash_table_lookup_extended (devices_by_path, device_file, NULL,
-                                    (gpointer *)&device)) {
+  if (g_hash_table_lookup_extended (devices_by_path,
+                                    device_file,
+                                    NULL,
+                                    (gpointer *)&fake_device)) {
     /* Stash the client pointer for later use in _get_parent() */
-    device->client = client;
-    return g_object_ref (device);
+    fake_device->priv->client = client;
+    return g_object_ref (G_UDEV_DEVICE (fake_device));
   }
 
   if (realfunc == NULL)
-    realfunc = (FakeGUdevDevice *(*)()) dlsym (RTLD_NEXT, k_func_q_device_file);
+    realfunc = (GUdevDevice *(*)()) dlsym (RTLD_NEXT, k_func_q_device_file);
   return realfunc (client, device_file);
 }
 
-FakeGUdevDevice*
+GUdevDevice *
 g_udev_client_query_by_sysfs_path (GUdevClient *client,
-                                    const gchar *sysfs_path)
+                                   const gchar *sysfs_path)
 {
-  static FakeGUdevDevice* (*realfunc)();
-  FakeGUdevDevice *device;
+  static GUdevDevice* (*realfunc)();
+  FakeGUdevDevice *fake_device;
 
   if (devices_by_path == NULL)
     g_udev_preload_init ();
 
   if (g_hash_table_lookup_extended (devices_by_syspath, sysfs_path, NULL,
-                                    (gpointer *)&device)) {
+                                    (gpointer *)&fake_device)) {
     /* Stash the client pointer for later use in _get_parent() */
-    device->client = client;
-    return g_object_ref (device);
+    fake_device->priv->client = client;
+    return g_object_ref (G_UDEV_DEVICE (fake_device));
   }
 
   if (realfunc == NULL)
-    realfunc = (FakeGUdevDevice *(*)()) dlsym (RTLD_NEXT, k_func_q_sysfs_path);
+    realfunc = (GUdevDevice *(*)()) dlsym (RTLD_NEXT, k_func_q_sysfs_path);
   return realfunc (client, sysfs_path);
 }
 
 
-FakeGUdevDevice *
+GUdevDevice *
 g_udev_client_query_by_subsystem_and_name (GUdevClient *client,
                                            const gchar *subsystem,
                                            const gchar *name)
 {
-  static FakeGUdevDevice* (*realfunc)();
+  static GUdevDevice* (*realfunc)();
   GHashTableIter iter;
   gpointer key, value;
 
@@ -250,22 +298,24 @@ g_udev_client_query_by_subsystem_and_name (GUdevClient *client,
 
   g_hash_table_iter_init (&iter, devices_by_path);
   while (g_hash_table_iter_next (&iter, &key, &value)) {
-    FakeGUdevDevice *device = value;
-    gchar *dev_subsystem =
-        (gchar *)g_hash_table_lookup (device->properties, k_prop_subsystem);
-    gchar *dev_name =
-        (gchar *)g_hash_table_lookup (device->properties, k_prop_name);
+    FakeGUdevDevice *fake_device = value;
+    const gchar *dev_subsystem =
+        (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                            k_prop_subsystem);
+    const gchar *dev_name =
+        (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                            k_prop_name);
     if (dev_subsystem && dev_name &&
         (strcmp (subsystem, dev_subsystem) == 0) &&
         (strcmp (name, dev_name) == 0)) {
-      device->client = client;
-      return g_object_ref (device);
+      fake_device->priv->client = client;
+      return g_object_ref (G_UDEV_DEVICE (fake_device));
     }
   }
 
   if (realfunc == NULL)
-    realfunc = (FakeGUdevDevice *(*)()) dlsym (RTLD_NEXT,
-                                               k_func_q_by_subsystem_and_name);
+    realfunc = (GUdevDevice *(*)()) dlsym (RTLD_NEXT,
+                                           k_func_q_by_subsystem_and_name);
   return realfunc (client, subsystem, name);
 }
 
@@ -281,16 +331,15 @@ g_udev_client_query_by_subsystem_and_name (GUdevClient *client,
  * method.
  */
 const gchar *
-g_udev_device_get_device_file (FakeGUdevDevice *device)
+g_udev_device_get_device_file (GUdevDevice *device)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL))
-    return (gchar *)g_hash_table_lookup (device->properties,
-                                         k_prop_device_file);
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device)
+    return (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                               k_prop_device_file);
 
   if (realfunc == NULL)
     realfunc = (const gchar *(*)()) dlsym (RTLD_NEXT, k_func_get_device_file);
@@ -298,15 +347,15 @@ g_udev_device_get_device_file (FakeGUdevDevice *device)
 }
 
 const gchar *
-g_udev_device_get_devtype (FakeGUdevDevice *device)
+g_udev_device_get_devtype (GUdevDevice *device)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL))
-    return (gchar *)g_hash_table_lookup (device->properties, k_prop_devtype);
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device)
+    return (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                               k_prop_devtype);
 
   if (realfunc == NULL)
     realfunc = (const gchar *(*)()) dlsym (RTLD_NEXT, k_func_get_devtype);
@@ -314,15 +363,15 @@ g_udev_device_get_devtype (FakeGUdevDevice *device)
 }
 
 const gchar *
-g_udev_device_get_driver (FakeGUdevDevice *device)
+g_udev_device_get_driver (GUdevDevice *device)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL))
-    return (gchar *)g_hash_table_lookup (device->properties, k_prop_driver);
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device)
+    return (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                               k_prop_driver);
 
   if (realfunc == NULL)
     realfunc = (const gchar *(*)()) dlsym (RTLD_NEXT, k_func_get_driver);
@@ -330,58 +379,56 @@ g_udev_device_get_driver (FakeGUdevDevice *device)
 }
 
 const gchar *
-g_udev_device_get_name (FakeGUdevDevice *device)
+g_udev_device_get_name (GUdevDevice *device)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL))
-    return (gchar *)g_hash_table_lookup (device->properties, k_prop_name);
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device)
+    return (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                               k_prop_name);
 
   if (realfunc == NULL)
     realfunc = (const gchar *(*)()) dlsym (RTLD_NEXT, k_func_get_name);
   return realfunc (device);
 }
 
-const FakeGUdevDevice *
-g_udev_device_get_parent (FakeGUdevDevice *device)
+GUdevDevice *
+g_udev_device_get_parent (GUdevDevice *device)
 {
-  static const FakeGUdevDevice* (*realfunc)();
+  static GUdevDevice* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL)) {
-    gchar *parent = (gchar *)g_hash_table_lookup (device->properties,
-                                                  k_prop_parent);
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device) {
+    const gchar *parent =
+        (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                            k_prop_parent);
     if (parent == NULL)
       return NULL;
-    return g_udev_client_query_by_device_file (device->client, parent);
+    return g_udev_client_query_by_device_file (fake_device->priv->client,
+                                               parent);
   }
 
   if (realfunc == NULL)
-    realfunc = (const FakeGUdevDevice *(*)()) dlsym (RTLD_NEXT,
-                                                     k_func_get_parent);
+    realfunc = (GUdevDevice *(*)()) dlsym (RTLD_NEXT, k_func_get_parent);
   return realfunc (device);
-
-  return NULL;
 }
 
 const gchar *
-g_udev_device_get_property (FakeGUdevDevice *device,
+g_udev_device_get_property (GUdevDevice *device,
                             const gchar *key)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL)) {
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device) {
     gchar *propkey = g_strconcat (k_property_prefix, key, NULL);
-    const gchar *result = (gchar *)g_hash_table_lookup (device->properties,
-                                                        propkey);
+    const gchar *result =
+        (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                            propkey);
     g_free (propkey);
     return result;
   }
@@ -394,67 +441,16 @@ g_udev_device_get_property (FakeGUdevDevice *device,
 /*
  * All of the g_udev_device_get_property_as_SOMETYPE () functions call
  * g_udev_device_get_property() and then operate on the result, so we
- * ideally shouldn't need to implement them ourselves, as the real
- * udev will start by calling into our version of
- * g_udev_device_get_property().
- *
- * However, that doesn't work. The _as_SOMETYPE () functions validate
- * the device pointer first (via G_TYPE_CHECK_INSTANCE_TYPE), which
- * segfaults on our non-GObject device pointers. We'd have to fake
- * that out more thoroughly in order to pass.
- */
-gboolean
-g_udev_device_get_property_as_boolean (FakeGUdevDevice *device,
-                                       const gchar *key)
-{
-  static gboolean (*realfunc)();
-
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL)) {
-    gchar *propkey = g_strconcat (k_property_prefix, key, NULL);
-    const gchar *result = (gchar *)g_hash_table_lookup (device->properties,
-                                                        propkey);
-    g_free (propkey);
-
-    if (result &&
-        (strcmp (result, "1") == 0 || g_ascii_strcasecmp (result, "true") == 0))
-      return TRUE;
-    else
-      return FALSE;
-  }
-
-  if (realfunc == NULL)
-    realfunc = (gboolean (*)()) dlsym (RTLD_NEXT, k_func_get_property);
-  return realfunc (device, key);
-}
-
-gint
-g_udev_device_get_property_as_int (FakeGUdevDevice *device,
-                                   const gchar *key)
-{
-  static gint (*realfunc)();
-
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL)) {
-    gchar *propkey = g_strconcat (k_property_prefix, key, NULL);
-    const gchar *result = (gchar *)g_hash_table_lookup (device->properties,
-                                                        propkey);
-    g_free (propkey);
-
-    return strtol (result, NULL, 0);
-  }
-
-  if (realfunc == NULL)
-    realfunc = (gint (*)()) dlsym (RTLD_NEXT, k_func_get_property);
-  return realfunc (device, key);
-}
-
+ * don't  need to implement them ourselves, as the real udev will start by
+ * calling into our version of g_udev_device_get_property().
+  */
 #if 0
-/* Not implemented yet */
+gboolean
+g_udev_device_get_property_as_boolean (GUdevDevice *device,
+                                       const gchar *key);
+gint
+g_udev_device_get_property_as_int (GUdevDevice *device,
+                                   const gchar *key);
 guint64 g_udev_device_get_property_as_uint64 (FakeGUdevDevice *device,
                                               const gchar  *key);
 gdouble g_udev_device_get_property_as_double (FakeGUdevDevice *device,
@@ -462,40 +458,38 @@ gdouble g_udev_device_get_property_as_double (FakeGUdevDevice *device,
 
 const gchar* const *g_udev_device_get_property_as_strv (FakeGUdevDevice *device,
                                                         const gchar  *key);
-
 #endif
 
 const gchar * const *
-g_udev_device_get_property_keys (FakeGUdevDevice *device)
+g_udev_device_get_property_keys (GUdevDevice *device)
 {
   static const gchar* const* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL)) {
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device) {
     const gchar **keys;
-    if (device->propkeys)
-      return device->propkeys;
+    if (fake_device->priv->propkeys)
+      return fake_device->priv->propkeys;
 
-    GList *keylist = g_hash_table_get_keys(device->properties);
+    GList *keylist = g_hash_table_get_keys (fake_device->priv->properties);
     GList *key, *prop, *proplist = NULL;
     guint propcount = 0;
-    for (key = keylist; key != NULL ; key = key->next) {
-      if (strncmp ((char *)key->data, k_property_prefix,
+    for (key = keylist; key != NULL; key = key->next) {
+      if (strncmp ((char *)key->data,
+                   k_property_prefix,
                    strlen (k_property_prefix)) == 0) {
-        proplist = g_list_prepend (proplist, key->data +
-                                   strlen (k_property_prefix));
+        proplist = g_list_prepend (proplist,
+                                   key->data + strlen (k_property_prefix));
         propcount++;
       }
     }
     keys = g_malloc ((propcount + 1) * sizeof(*keys));
     keys[propcount] = NULL;
-    for (prop = proplist; prop != NULL ; prop = prop->next)
-      keys[--propcount] = g_strdup (prop->data);
+    for (prop = proplist; prop != NULL; prop = prop->next)
+      keys[--propcount] = prop->data;
     g_list_free (proplist);
-
-    device->propkeys = keys;
+    fake_device->priv->propkeys = keys;
 
     return keys;
   }
@@ -508,33 +502,37 @@ g_udev_device_get_property_keys (FakeGUdevDevice *device)
 
 
 const gchar *
-g_udev_device_get_subsystem (FakeGUdevDevice *device)
+g_udev_device_get_subsystem (GUdevDevice *device)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL))
-    return (gchar *)g_hash_table_lookup (device->properties, k_prop_subsystem);
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device)
+    return (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                               k_prop_subsystem);
 
   if (realfunc == NULL)
     realfunc = (const gchar *(*)()) dlsym (RTLD_NEXT, k_func_get_subsystem);
   return realfunc (device);
 }
 
+/*
+ * The get_sysfs_attr_as_SOMETYPE() functions are also handled magically, as are
+ * the get_property_as_SOMETYPE() functions described above.
+ */
 const gchar *
-g_udev_device_get_sysfs_attr (FakeGUdevDevice *device, const gchar *name)
+g_udev_device_get_sysfs_attr (GUdevDevice *device, const gchar *name)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL)) {
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device) {
     gchar *attrkey = g_strconcat (k_sysfs_attr_prefix, name, NULL);
-    const gchar *result = (gchar *)g_hash_table_lookup (device->properties,
-                                                        attrkey);
+    const gchar *result =
+        (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                            attrkey);
     g_free (attrkey);
     return result;
   }
@@ -544,22 +542,17 @@ g_udev_device_get_sysfs_attr (FakeGUdevDevice *device, const gchar *name)
   return realfunc (device, name);
 }
 
-/*
- * The get_sysfs_attr_as_SOMETYPE() functions have the same problem as
- * the get_property_as_SOMETYPE() functions described above.
- */
 
 const gchar *
-g_udev_device_get_sysfs_path (FakeGUdevDevice *device)
+g_udev_device_get_sysfs_path (GUdevDevice *device)
 {
   static const gchar* (*realfunc)();
+  FakeGUdevDevice * fake_device;
 
-  if (devices_by_ptr == NULL)
-    g_udev_preload_init ();
-
-  if (g_hash_table_lookup_extended (devices_by_ptr, device, NULL, NULL)) {
-    return (gchar *)g_hash_table_lookup (device->properties, k_prop_sysfs_path);
-  }
+  fake_device = get_fake_g_udev_device (device);
+  if (fake_device)
+    return (const gchar *)g_hash_table_lookup (fake_device->priv->properties,
+                                               k_prop_sysfs_path);
 
   if (realfunc == NULL)
     realfunc = (const gchar *(*)()) dlsym (RTLD_NEXT, k_func_get_sysfs_path);
@@ -585,14 +578,19 @@ guint64 g_udev_device_get_usec_since_initialized (FakeGUdevDevice *device);
 gboolean g_udev_device_has_property (FakeGUdevDevice *device, const gchar *key);
 #endif
 
-
 static void
 fake_g_udev_device_init (FakeGUdevDevice *device)
 {
-  device->properties = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                              g_free, g_free);
-  device->propkeys = NULL;
-  device->client = NULL;
+  device->priv = G_TYPE_INSTANCE_GET_PRIVATE (device,
+                                              FAKE_G_UDEV_TYPE_DEVICE,
+                                              FakeGUdevDevicePrivate);
+
+  device->priv->properties = g_hash_table_new_full (g_str_hash,
+                                                    g_str_equal,
+                                                    g_free,
+                                                    g_free);
+  device->priv->propkeys = NULL;
+  device->priv->client = NULL;
 }
 
 static void
@@ -600,7 +598,7 @@ fake_g_udev_device_finalize (GObject *object)
 {
   FakeGUdevDevice *device = FAKE_G_UDEV_DEVICE (object);
 
-  g_hash_table_unref (device->properties);
+  g_hash_table_unref (device->priv->properties);
 }
 
 static void
@@ -609,4 +607,6 @@ fake_g_udev_device_class_init (FakeGUdevDeviceClass *klass)
   GObjectClass *gobject_class = (GObjectClass *) klass;
 
   gobject_class->finalize = fake_g_udev_device_finalize;
+
+  g_type_class_add_private (klass, sizeof (FakeGUdevDevicePrivate));
 }
