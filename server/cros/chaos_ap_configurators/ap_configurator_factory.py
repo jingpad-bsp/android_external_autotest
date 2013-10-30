@@ -155,7 +155,11 @@ class APConfiguratorFactory(object):
                     self.CONFIGURATOR_MAP[ap.get_class()]
             module = __import__(module_name, fromlist=configurator_class)
             configurator = module.__dict__[configurator_class]
-            if not webdriver_ready and configurator.is_dynamic():
+            # NOTE: Using configurator.webdriver_port() existance to determine
+            #       if this configurator needs access to webdriver.  The goal
+            #       is to avoid 'import'ing webdriver if the available
+            #       configurators do not require it (ie. StaticAPConfigurator).
+            if not webdriver_ready and hasattr(configurator, 'webdriver_port'):
                 from autotest_lib.server.cros.chaos_ap_configurators import \
                     download_chromium_prebuilt
                 download_chromium_prebuilt.check_webdriver_ready()

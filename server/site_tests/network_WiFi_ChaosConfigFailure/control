@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import traceback
+
+from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.server import utils
 
 AUTHOR = 'krisr@chromium.org'
@@ -14,21 +17,32 @@ TEST_TYPE = 'server'
 DOC = """
 This test is run when a chaos APConfigurator fails to successfully configure
 an AP.  It will grab screenshots and print stack traces of the failure.
+This control file is only run directly to simulate APConfigurator failures for
+test purposes.
 """
 
-from autotest_lib.server.cros import ap_configurator_factory
-from autotest_lib.server.cros import ap_spec
+from autotest_lib.server.cros.chaos_ap_configurators \
+        import ap_configurator_factory
+from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 
 
 def run_chaos_config_failure(machine):
     args_dict = utils.args_to_dict(args)
     host = hosts.create_host(machine)
-    ap_hostname = args_dict.get('ap_hostname', 'chromeos3-row1-rack1-host7')
+    debug_aps = ['chromeos3-row2-rack1-host2',]
+    tested_ap_spec = ap_spec.APSpec(hostnames=debug_aps)
     factory = ap_configurator_factory.APConfiguratorFactory()
-    ap = factory.get_aps_configurators_by_hostnames([ap_hostname])
-    ap.set_using_ap_spec(ap_spec.APSpec())
+    ap = factory.get_ap_configurators_by_spec(tested_ap_spec)[0]
+    ap.set_using_ap_spec(tested_ap_spec)
     ap.apply_settings()
-    job.run_test('network_WiFi_ChaosConfigFailure', ap)
+    ## Simulate test failure by forcing state and gathering artifacts
+    try:
+        raise RuntimeError("Simulated APConfigurator Error")
+    except Exception:
+        trace = ''.join(traceback.format_exc())
+        ap.store_config_failure(trace)
+    job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
+                  error_string=chaos_constants.AP_CONFIG_FAIL, tag=ap.ssid)
 
 
-parallel_simple(run_chaos_open, machines)
+parallel_simple(run_chaos_config_failure, machines)

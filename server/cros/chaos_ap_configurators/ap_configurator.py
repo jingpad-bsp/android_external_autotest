@@ -4,114 +4,29 @@
 
 import logging
 
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
-
-class APConfigurator():
-    """Base class to find and control access points."""
-
-
-    def __init__(self, ap_config=None):
-        """Construct an APConfigurator.
-
-        @param ap_config: information from the configuration file
-
-        """
-        if ap_config:
-            # Load the data for the config file
-            self.admin_interface_url = ap_config.get_admin()
-            self.class_name = ap_config.get_class()
-            self.short_name = ap_config.get_model()
-            self.mac_address = ap_config.get_wan_mac()
-            self.host_name = ap_config.get_wan_host()
-            self.config_data = ap_config
-
-        # Set a default band, this can be overriden by the subclasses
-        self.current_band = ap_spec.BAND_2GHZ
-        self._ssid = None
-
-        # Diagnostic members
-        self._command_list = []
-        self._screenshot_list = []
-        self._traceback = None
-
-        self.driver_connection_established = False
-        self.router_on = False
-        self.configuration_success = False
-
-
-    @staticmethod
-    def is_dynamic():
-        """
-        Test for dynamically configurable AP
-
-        @return bool
-
-        """
-        return False
+class APConfiguratorAbstract(object):
+    """Abstract Base class to find and control access points."""
 
 
     @property
     def ssid(self):
         """Returns the SSID."""
-        return self._ssid
-
-
-    def save_screenshot(self):
-        """
-        Stores and returns the screenshot as a base 64 encoded string.
-        Note: The derived class may override this method.
-
-        @returns the screenshot as a base 64 encoded string; if there was
-        an error saving the screenshot None is returned.
-
-        """
-        logging.warning('%s.%s: apparently not needed',
-                self.__class__.__name__,
-                self.save_screenshot.__name__)
-        return None
-
-
-    @property
-    def traceback(self):
-        """
-        Returns the traceback of a configuration error as a string.
-
-        Note that if get_configuration_success returns True this will
-        be none.
-
-        """
-        return self._traceback
-
-
-    @traceback.setter
-    def traceback(self, value):
-        """
-        Set the traceback.
-
-        If the APConfigurator crashes use this to store what the traceback
-        was as a string.  It can be used later to debug configurator errors.
-
-        @param value: a string representation of the exception traceback
-
-        """
-        self._traceback = value
+        raise NotImplementedError('Missing subclass implementation')
 
 
     def get_router_name(self):
         """Returns a string to describe the router."""
-        return ('Router name: %s, Controller class: %s, MAC '
-                'Address: %s' % (self.short_name, self.class_name,
-                                 self.mac_address))
+        raise NotImplementedError('Missing subclass implementation')
 
 
     def get_configuration_success(self):
         """Returns True if the configuration was a success; False otherwise"""
-        return self.configuration_success
+        return True
 
 
     def get_router_short_name(self):
         """Returns a short string to describe the router."""
-        return self.short_name
+        raise NotImplementedError('Missing subclass implementation')
 
 
     def get_supported_bands(self):
@@ -134,14 +49,6 @@ class APConfigurator():
         raise NotImplementedError('Missing subclass implementation')
 
 
-    def get_bss(self):
-        """Returns the bss of the AP."""
-        if self.current_band == ap_spec.BAND_2GHZ:
-            return self.config_data.get_bss()
-        else:
-            return self.config_data.get_bss5()
-
-
     def get_supported_modes(self):
         """
         Returns a list of dictionaries describing the supported modes.
@@ -150,7 +57,7 @@ class APConfigurator():
                  and modes objects returned must be one of those defined in the
                  __init___ of this class.
 
-        supported_modes = [{'band' : self.band_2GHz,
+        supported_modes = [{'band' : ap_spec.BAND_2GHZ,
                             'modes' : [mode_b, mode_b | mode_g]},
                            {'band' : ap_spec.BAND_5GHZ,
                             'modes' : [mode_a, mode_n, mode_a | mode_n]}]
@@ -183,12 +90,7 @@ class APConfigurator():
         @return True if combination is supported; False otherwise.
 
         """
-        bands = self.get_supported_bands()
-        for current_band in bands:
-            if (current_band['band'] == band and
-                channel in current_band['channels']):
-                return True
-        return False
+        raise NotImplementedError('Missing subclass implementation')
 
 
     def is_security_mode_supported(self, security_mode):
@@ -245,3 +147,30 @@ class APConfigurator():
 
         """
         raise NotImplementedError('Missing subclass implementation')
+
+
+    def debug_last_failure(self, outputdir):
+        """
+        Write debug information for last AP_CONFIG_FAIL
+
+        @param outputdir: a string directory path for debug files
+        """
+        pass
+
+
+    def debug_full_state(self, outputdir):
+        """
+        Write debug information for full AP state
+
+        @param outputdir: a string directory path for debug files
+        """
+        pass
+
+
+    def store_config_failure(self, trace):
+        """
+        Store configuration failure for latter logging
+
+        @param trace: a string traceback of config exception
+        """
+        pass

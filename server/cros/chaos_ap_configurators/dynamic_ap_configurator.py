@@ -17,6 +17,7 @@ import web_driver_core_helpers
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
+from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
                              'chrome_test', 'test_src', 'third_party',
@@ -30,7 +31,8 @@ except ImportError:
                     'Are you using a prebuilt autotest package?')
 
 
-class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
+class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
+                            ap_configurator.APConfiguratorAbstract):
     """Base class for objects to configure access points using webdriver."""
 
 
@@ -90,17 +92,6 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                'SSID: %s\n'
                'Short name: %s' % (self.get_router_name(), self.get_bss(),
                self._ssid, self.get_router_short_name()))
-
-
-    @staticmethod
-    def is_dynamic():
-        """
-        Test for dynamically configurable AP
-
-        @return bool
-
-        """
-        return True
 
 
     @property
@@ -184,6 +175,33 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     def clear_screenshot_list(self):
         """Clear the list of currently stored screenshots."""
         self._screenshot_list = []
+
+
+    def _save_all_pages(self):
+        """Iterate through AP pages, saving screenshots"""
+        self.establish_driver_connection()
+        if not self.driver_connection_established:
+            logging.error('Unable to establish webdriver connection to '
+                          'retrieve screenshots.')
+            return
+        for page in range(1, self.get_number_of_pages() + 1):
+            self.navigate_to_page(page)
+            self.save_screenshot()
+
+
+    def _write_screenshots(self, filename, outputdir):
+        """
+        Writes screenshots to filename in outputdir
+
+        @param filename: a string prefix for screenshot filenames
+        @param outputdir: a string directory name to save screenshots
+
+        """
+        for (i, image) in enumerate(self.get_all_screenshots()):
+            path = os.path.join(outputdir,
+                                str('%s_%d.png' % (filename, (i + 1))))
+            with open(path, 'wb') as f:
+                f.write(image.decode('base64'))
 
 
     @property
@@ -304,7 +322,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                  and modes objects returned must be one of those defined in the
                  __init___ of this class.
 
-        supported_modes = [{'band' : self.band_2GHz,
+        supported_modes = [{'band' : ap_spec.BAND_2GHZ,
                             'modes' : [mode_b, mode_b | mode_g]},
                            {'band' : ap_spec.BAND_5GHZ,
                             'modes' : [mode_a, mode_n, mode_a | mode_n]}]
@@ -714,3 +732,36 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                 ssid=self._ssid, security_config=security_config,
                 discovery_timeout=45, association_timeout=30,
                 configuration_timeout=30, is_hidden=not self.ap_spec.visible)
+
+
+    def debug_last_failure(self, outputdir):
+        """
+        Write debug information for last AP_CONFIG_FAIL
+
+        @param outputdir: a string directory path for debug files
+        """
+        logging.error('Traceback:\n %s', self.traceback)
+        self._write_screenshots('config_failure', outputdir)
+        self.clear_screenshot_list()
+
+
+    def debug_full_state(self, outputdir):
+        """
+        Write debug information for full AP state
+
+        @param outputdir: a string directory path for debug files
+        """
+        self._save_all_pages()
+        self._write_screenshots('final_configuration', outputdir)
+        self.clear_screenshot_list()
+        self.reset_command_list()
+
+
+    def store_config_failure(self, trace):
+        """
+        Store configuration failure for latter logging
+
+        @param trace: a string traceback of config exception
+        """
+        self.save_screenshot()
+        self._traceback = trace

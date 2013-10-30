@@ -7,43 +7,60 @@ import xmlrpclib
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
-from autotest_lib.server.cros.chaos_ap_configurators.ap_configurator \
-        import APConfigurator
+from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
 from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 
 CartridgeCmd = collections.namedtuple('CartridgeCmd', ['method', 'args'])
 
-class StaticAPConfigurator(APConfigurator):
+class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
     """Derived class to supply AP configuration information."""
 
 
-    def __init__(self, ap_config=None):
-        #super(StaticAPConfigurator, self).__init__(ap_config)
+    def __init__(self, ap_config):
+        """
+        Initialize instance
 
-        self.security = None
-        self.rpm_managed = False
+        @param ap_config: ChaosAP object to configure this instance
+
+        """
         self._command_list = list()
-        if ap_config:
-            # This allows the ability to build a generic configurator
-            # which can be used to get access to the members above.
-            self.class_name = ap_config.get_class()
-            self.short_name = ap_config.get_model()
-            self.mac_address = ap_config.get_wan_mac()
-            self.host_name = ap_config.get_wan_host()
-            self.channel = ap_config.get_channel()
-            self.band = ap_config.get_band()
-            self.current_band = ap_config.get_band()
-            self.security = ap_config.get_security()
-            self.psk = ap_config.get_psk()
-            self._ssid = ap_config.get_ssid()
-            self.rpm_managed = ap_config.get_rpm_managed()
 
-            self.config_data = ap_config
+        # This allows the ability to build a generic configurator
+        # which can be used to get access to the members above.
+        self.class_name = ap_config.get_class()
+        self.short_name = ap_config.get_model()
+        self.mac_address = ap_config.get_wan_mac()
+        self.host_name = ap_config.get_wan_host()
+        self.channel = ap_config.get_channel()
+        self.band = ap_config.get_band()
+        self.current_band = ap_config.get_band()
+        self.security = ap_config.get_security()
+        self.psk = ap_config.get_psk()
+        self._ssid = ap_config.get_ssid()
+        self.rpm_managed = ap_config.get_rpm_managed()
+
+        self.config_data = ap_config
 
         if self.rpm_managed:
             self.rpm_client = xmlrpclib.ServerProxy(
                     'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
                     verbose=False)
+
+
+    def __str__(self):
+        """Prettier display of the object"""
+        return('AP Name: %s\n'
+               'BSS: %s\n'
+               'SSID: %s\n'
+               'Short name: %s' % (self.get_router_name(),
+                   self.config_data.get_bss(), self._ssid,
+                   self.get_router_short_name()))
+
+
+    @property
+    def ssid(self):
+        """Returns the SSID."""
+        return self._ssid
 
 
     def power_down_router(self):
@@ -84,13 +101,24 @@ class StaticAPConfigurator(APConfigurator):
 
     def reset_command_list(self):
         """Resets all internal command state."""
-        logging.error('Dumping command list %s', self._command_list)
         self._command_list = list()
+
+
+    def get_router_name(self):
+        """Returns a string to describe the router."""
+        return ('Router name: %s, Controller class: %s, MAC '
+                'Address: %s' % (self.short_name, self.class_name,
+                                 self.mac_address))
 
 
     def get_configuration_success(self):
         """Returns True, there is no config step for Static APs"""
         return True
+
+
+    def get_router_short_name(self):
+        """Returns a short string to describe the router."""
+        return self.short_name
 
 
     def get_supported_bands(self):
@@ -122,9 +150,9 @@ class StaticAPConfigurator(APConfigurator):
                  and modes objects returned must be one of those defined in the
                  __init___ of this class.
 
-        supported_modes = [{'band' : self.band_2GHz,
+        supported_modes = [{'band' : ap_spec.BAND_2GHZ,
                             'modes' : [mode_b, mode_b | mode_g]},
-                           {'band' : self.band_5ghz,
+                           {'band' : ap_spec.BAND_5GHZ,
                             'modes' : [mode_a, mode_n, mode_a | mode_n]}]
 
         @return a list of dictionaries as described above
