@@ -245,21 +245,20 @@ class LogLink(object):
 
     _BUG_URL_PREFIX = CONFIG.get_config_value('BUG_REPORTING',
                                               'tracker_url')
-    _URL_HOST = CONFIG.get_config_value('SERVER',
-                                        'hostname', type=str)
     _URL_PATTERN = CONFIG.get_config_value('CROS',
                                            'log_url_pattern', type=str)
 
 
-    def __init__(self, anchor, job_string, bug_info=None):
+    def __init__(self, anchor, server, job_string, bug_info=None):
         """Initialize the LogLink by generating the log URL.
 
         @param anchor      The link text.
+        @param server      The hostname of the server this suite ran on.
         @param job_string  The job whose logs we'd like to link to.
         @param bug_info    Info about the bug, if one was filed.
         """
         self.anchor = anchor
-        self.url = self._URL_PATTERN % (self._URL_HOST, job_string)
+        self.url = self._URL_PATTERN % (server, job_string)
         if bug_info:
             self.bug_id, self.bug_count = bug_info
         else:
@@ -523,6 +522,23 @@ def _full_test_name(job_id, view, build, suite):
     return prefix + test_name
 
 
+_DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value(
+        'SERVER', 'hostname', type=str)
+
+
+def instance_for_pool(pool_name):
+    """
+    Return the hostname of the server that should be used to service a suite
+    for the specified pool.
+
+    @param pool_name: The pool (without 'pool:' to schedule the suite against.
+    @return: The correct host that should be used to service this suite run.
+    """
+    return CONFIG.get_config_value(
+            'POOL_INSTANCE_SHARDING', pool_name,
+            default=_DEFAULT_AUTOTEST_INSTANCE)
+
+
 def main():
     """
     Entry point for run_suite script.
@@ -583,8 +599,11 @@ def main():
         print str(e)
         return RETURN_CODES.WARNING
 
-    afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
+    instance_server = instance_for_pool(options.pool)
+    afe = frontend_wrappers.RetryingAFE(server=instance_server,
+                                        timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
+    logging.info('Autotest instance: %s', instance_server)
 
     wait = (options.no_wait == 'False')
     file_bugs = (options.file_bugs == 'True')
@@ -596,7 +615,8 @@ def main():
                          check_hosts=wait, pool=options.pool, num=options.num,
                          file_bugs=file_bugs, priority=priority,
                          suite_args=options.suite_args)
-    TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
+    TKO = frontend_wrappers.RetryingTKO(server=instance_server,
+                                        timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)
 
@@ -644,7 +664,7 @@ def main():
             bug_info = tools.get_test_failure_bug_info(
                     view['job_keyvals'], view['test_name'])
 
-            link = LogLink(test_view, job_name, bug_info)
+            link = LogLink(test_view, instance_server, job_name, bug_info)
             web_links.append(link)
 
             # Don't show links on the buildbot waterfall for tests with
