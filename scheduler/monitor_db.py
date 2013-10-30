@@ -713,11 +713,54 @@ class BaseDispatcher(object):
 
 
     def _get_pending_queue_entries(self):
-        # prioritize by job priority, then non-metahost over metahost, then FIFO
+        """
+        Fetch a list of new host queue entries.
+
+        The ordering of this list is important, as every new agent
+        we schedule can potentially contribute to the process count
+        on the drone, which has a static limit. The sort order
+        prioritizes jobs as follows:
+        1. High priority jobs: Based on the afe_job's priority
+        2. With hosts and metahosts: This will only happen if we don't
+            activate the hqe after assigning a host to it in
+            schedule_new_jobs.
+        3. With hosts but without metahosts: When tests are scheduled
+            through the frontend the owner of the job would have chosen
+            a host for it.
+        4. Without hosts but with metahosts: This is the common case of
+            a new test that needs a DUT. We assign a host and set it to
+            active so it shouldn't show up in case 2 on the next tick.
+        5. Without hosts and without metahosts: Hostless suite jobs, that
+            will result in new jobs that fall under category 4.
+
+        A note about the ordering of cases 3 and 4:
+        Prioritizing one case above the other leads to earlier acquisition
+        of the following resources: 1. process slots on the drone 2. machines.
+        - When a user schedules a job through the afe they choose a specific
+          host for it. Jobs with metahost can utilize any host that satisfies
+          the metahost criterion. This means that if we had scheduled 4 before
+          3 there is a good chance that a job which could've used another host,
+          will now use the host assigned to a metahost-less job. Given the
+          availability of machines in pool:suites, this almost guarantees
+          starvation for jobs scheduled through the frontend.
+        - Scheduling 4 before 3 also has its pros however, since a suite
+          has the concept of a time out, whereas users can wait. If we hit the
+          process count on the drone a suite can timeout waiting on the test,
+          but a user job generally has a much longer timeout, and relatively
+          harmless consequences.
+        The current ordering was chosed because it is more likely that we will
+        run out of machines in pool:suites than processes on the drone.
+
+        @returns A list of HQEs ordered according to sort_order.
+        """
+        sort_order = ('afe_jobs.priority DESC, '
+                      'ISNULL(host_id), '
+                      'ISNULL(meta_host), '
+                      'job_id')
         return list(scheduler_models.HostQueueEntry.fetch(
             joins='INNER JOIN afe_jobs ON (job_id=afe_jobs.id)',
             where='NOT complete AND NOT active AND status="Queued"',
-            order_by='afe_jobs.priority DESC, meta_host, job_id'))
+            order_by=sort_order))
 
 
     def _refresh_pending_queue_entries(self):

@@ -99,6 +99,9 @@ class BaseSchedulerTest(unittest.TestCase,
         self._database.debug = _DEBUG
 
         self.god.stub_with(monitor_db, '_db', self._database)
+        self.god.stub_with(monitor_db.BaseDispatcher,
+                           '_get_pending_queue_entries',
+                           self._get_pending_hqes)
         self.god.stub_with(scheduler_models, '_db', self._database)
         self.god.stub_with(drone_manager.instance(), '_results_dir',
                            '/test/path')
@@ -125,6 +128,17 @@ class BaseSchedulerTest(unittest.TestCase,
         if where:
             query += ' WHERE ' + where
         self._do_query(query)
+
+
+    def _get_pending_hqes(self):
+        query_string=('afe_jobs.priority DESC, '
+                      'ifnull(nullif(host_id, NULL), host_id) DESC, '
+                      'ifnull(nullif(meta_host, NULL), meta_host) DESC, '
+                      'job_id')
+        return list(scheduler_models.HostQueueEntry.fetch(
+            joins='INNER JOIN afe_jobs ON (job_id=afe_jobs.id)',
+            where='NOT complete AND NOT active AND status="Queued"',
+            order_by=query_string))
 
 
 class DispatcherSchedulingTest(BaseSchedulerTest):
@@ -440,7 +454,7 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
 #                [self.label4.id, self.label8.id], queue_entry))
 #        self.assertTrue(mock_logging_error._num_calls > 0)
 #        self.god.unstub(logging, 'error')
-# 
+#
 #        # Two labels both in the same atomic group, this should not raise an
 #        # error, it will merely cause the job to schedule on the intersection.
 #        self.assertEquals(1, host_scheduler._get_host_atomic_group_id(
