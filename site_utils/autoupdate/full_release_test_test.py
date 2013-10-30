@@ -91,7 +91,7 @@ class FullReleaseTestTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
         self.assertTrue(_DoesControlFileHaveSourceTarget(
-                os.path.join(self.tmpdir, board, 'control.nmo_%s' % src),
+                os.path.join(self.tmpdir, board, 'control.nmo_delta_%s' % src),
                 src, target))
         self.mox.VerifyAll()
 
@@ -123,7 +123,7 @@ class FullReleaseTestTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
         self.assertTrue(_DoesControlFileHaveSourceTarget(
-                os.path.join(self.tmpdir, board, 'control.npo_%s' % src),
+                os.path.join(self.tmpdir, board, 'control.npo_delta_%s' % src),
                 src, target))
         self.mox.VerifyAll()
 
@@ -157,7 +157,7 @@ class FullReleaseTestTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
         self.assertTrue(_DoesControlFileHaveSourceTarget(
-                os.path.join(self.tmpdir, board, 'control.npo_%s' % src),
+                os.path.join(self.tmpdir, board, 'control.npo_delta_%s' % src),
                 src, target))
         self.mox.VerifyAll()
 
@@ -251,7 +251,8 @@ class FullReleaseTestTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
         self.assertTrue(_DoesControlFileHaveSourceTarget(
-                os.path.join(self.tmpdir, board, 'control.specific_%s' % src),
+                os.path.join(self.tmpdir, board,
+                             'control.specific_full_%s' % src),
                 src, target))
         self.mox.VerifyAll()
 

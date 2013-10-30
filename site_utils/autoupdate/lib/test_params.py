@@ -125,7 +125,9 @@ class TestConfig(object):
 
     def unique_name_suffix(self):
         """Unique name suffix for the test config given the target version."""
-        return '%s_%s' % (self.name, self.source_release)
+        return '%s_%s_%s' % (self.name,
+                             'delta' if self.is_delta_update else 'full',
+                             self.source_release)
 
 
     def get_autotest_name(self):
