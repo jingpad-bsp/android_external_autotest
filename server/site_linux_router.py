@@ -7,6 +7,7 @@ import random
 import re
 import string
 
+from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
@@ -784,16 +785,29 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.iw_runner.set_tx_power(interface, power)
 
 
-    def deauth(self, params):
+    def deauth_client(self, client_mac):
         """Deauthenticates a client described in params.
 
-        @param params dict containing a key 'client'.
+        @param client_mac string containing the mac address of the client to be
+               deauthenticated.
 
         """
         self.router.run('%s -p%s deauthenticate %s' %
                         (self.cmd_hostapd_cli,
                          self.hostapd['conf']['ctrl_interface'],
-                         params['client']))
+                         client_mac))
+
+
+    @base_utils.deprecated
+    def deauth(self, params):
+        """Deauthenticates a client described in params.
+
+        Deprecated: Call 'deauth_client', instead.
+
+        @param params dict containing a key 'client'.
+
+        """
+        self.deauth_client(params['client'])
 
 
     def send_management_frame(self, frame_type, instance=0):
