@@ -15,7 +15,8 @@ data in the storage for 12 hours with machine suspended between each verify.
 """
 
 def run_hardware_storage_stress(machine):
-    job.run_test('hardware_StorageStress', client_ip=machine, command='suspend')
+    job.run_test('hardware_StorageStress', client_ip=machine, 
+        power_command='suspend')
 
 job.parallel_simple(run_hardware_storage_stress, machines)
 

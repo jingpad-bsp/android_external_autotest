@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
+import logging, time, traceback
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
@@ -22,16 +22,20 @@ class hardware_StorageStress(test.test):
     _FIO_VERIFY_FLAGS = ['--verifyonly']
 
     def run_once(self, client_ip, gap=_TEST_GAP, duration=_TEST_DURATION,
-                 command='reboot'):
+                 power_command='reboot', test_command='integrity'):
         """
-        Run the integrity stress test
-        Use hardwareStorageFio to write some test data and then do the
-        reboot/suspend and verify data loop test multiple time
+        Run the Storage stress test
+        Use hardwareStorageFio to run some test_command repeatedly for a long
+        time. Between each iteration of test command, run power command such as
+        reboot or suspend.
 
-        @param client_ip: string of client's ip address (required)
-        @param gap:       gap between each test (second) default = 1 min
-        @param duration:  duration to run test (second) default = 12 hours
-        @param command:   command to do between each data verification
+        @param client_ip:     string of client's ip address (required)
+        @param gap:           gap between each test (second) default = 1 min
+        @param duration:      duration to run test (second) default = 12 hours
+        @param power_command: command to do between each test Command
+                              possible command: reboot / suspend / nothing
+        @param test_command:  FIO command to run
+                              - integrity:  Check data integrity
         """
 
         # init test
@@ -44,31 +48,43 @@ class hardware_StorageStress(test.test):
 
         start_time = time.time()
 
-        # parse command
-        if command == 'reboot':
-            func = self._do_reboot
-        elif command == 'suspend':
-            func = self._do_suspend
+        # parse power command
+        if power_command == 'nothing':
+            power_func = self._do_nothing
+        elif power_command == 'reboot':
+            power_func = self._do_reboot
+        elif power_command == 'suspend':
+            power_func = self._do_suspend
         else:
-            raise error.TestFail('Test failed with error: Invalid function')
+            raise error.TestFail(
+                'Test failed with error: Invalid power command')
 
-        self._write_data()
+        # parse test command
+        if test_command == 'integrity':
+            setup_func = self._write_data
+            loop_func = self._verify_data
+        else:
+            raise error.TestFail('Test failed with error: Invalid test command')
+
+        setup_func()
 
         # init statistic variable
         min_time_per_loop = self._TEST_DURATION
         max_time_per_loop = 0
         all_loop_time = 0
         avr_time_per_loop = 0
-        self._verify_count = 0
+        self._loop_count = 0
 
         while time.time() - start_time < duration:
             # sleep
             time.sleep(gap)
 
+            self._loop_count += 1
+
             # do power command & verify data & calculate time
             loop_start_time = time.time()
-            func()
-            self._verify_data()
+            power_func()
+            loop_func()
             loop_time = time.time() - loop_start_time
 
             # update statistic
@@ -76,16 +92,19 @@ class hardware_StorageStress(test.test):
             min_time_per_loop = min(loop_time, min_time_per_loop)
             max_time_per_loop = max(loop_time, max_time_per_loop)
 
-        if self._verify_count > 0:
-            avr_time_per_loop = all_loop_time / self._verify_count
+        if self._loop_count > 0:
+            avr_time_per_loop = all_loop_time / self._loop_count
 
-        logging.info(str('check data count: %d' % self._verify_count))
+        logging.info(str('check data count: %d' % self._loop_count))
 
         # report result
-        self.write_perf_keyval({'loop_count':self._verify_count})
+        self.write_perf_keyval({'loop_count':self._loop_count})
         self.write_perf_keyval({'min_time_per_loop':min_time_per_loop})
         self.write_perf_keyval({'max_time_per_loop':max_time_per_loop})
         self.write_perf_keyval({'avr_time_per_loop':avr_time_per_loop})
+
+    def _do_nothing(self):
+        pass
 
     def _do_reboot(self):
         """
@@ -129,8 +148,8 @@ class hardware_StorageStress(test.test):
         """
         logging.info('_write_data')
         self._client_at.run_test('hardware_StorageFio', wait=0,
-             requirements = [(self._FIO_REQUIREMENT_FILE,
-                self._FIO_WRITE_FLAGS)])
+                                 requirements=[(self._FIO_REQUIREMENT_FILE,
+                                                self._FIO_WRITE_FLAGS)])
         passed = self._check_result()
         if not passed:
             raise error.TestFail('Test failed with error: Data Write Error')
@@ -139,13 +158,11 @@ class hardware_StorageStress(test.test):
         """
         Vertify test data using hardware_StorageFio
         """
-        self._verify_count += 1
+        logging.info(str('_verify_data #%d' % self._loop_count))
         self._client_at.run_test('hardware_StorageFio', wait=0,
-             requirements = [(self._FIO_REQUIREMENT_FILE,
-                self._FIO_VERIFY_FLAGS)])
-        logging.info(str('_verify_data #%d' % self._verify_count))
+                                 requirements=[(self._FIO_REQUIREMENT_FILE,
+                                                self._FIO_VERIFY_FLAGS)])
         passed = self._check_result()
         if not passed:
             raise error.TestFail('Test failed with error: Data Verify #%d Error'
-                % self._verify_count)
-
+                % self._loop_count)
