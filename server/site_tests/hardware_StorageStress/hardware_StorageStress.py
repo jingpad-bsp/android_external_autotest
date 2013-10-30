@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, time, traceback
+from functools import partial
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
@@ -22,7 +23,8 @@ class hardware_StorageStress(test.test):
     _FIO_VERIFY_FLAGS = ['--verifyonly']
 
     def run_once(self, client_ip, gap=_TEST_GAP, duration=_TEST_DURATION,
-                 power_command='reboot', test_command='integrity'):
+                 power_command='reboot', storage_test_command='integrity',
+                 storage_test_argument=''):
         """
         Run the Storage stress test
         Use hardwareStorageFio to run some test_command repeatedly for a long
@@ -34,8 +36,11 @@ class hardware_StorageStress(test.test):
         @param duration:      duration to run test (second) default = 12 hours
         @param power_command: command to do between each test Command
                               possible command: reboot / suspend / nothing
-        @param test_command:  FIO command to run
+        @param storage_test_command:  FIO command to run
                               - integrity:  Check data integrity
+                              - full_write: Check performance consistency
+                                            for full disk write. Use argument
+                                            to determine which disk to write
         """
 
         # init test
@@ -60,9 +65,13 @@ class hardware_StorageStress(test.test):
                 'Test failed with error: Invalid power command')
 
         # parse test command
-        if test_command == 'integrity':
+        if storage_test_command == 'integrity':
             setup_func = self._write_data
             loop_func = self._verify_data
+        elif storage_test_command == 'full_write':
+            setup_func = self._do_nothing
+            loop_func = partial(self._full_disk_write,
+                                dev=storage_test_argument)
         else:
             raise error.TestFail('Test failed with error: Invalid test command')
 
@@ -170,4 +179,57 @@ class hardware_StorageStress(test.test):
         passed = self._check_client_test_result(self._client)
         if not passed:
             raise error.TestFail('Test failed with error: Data Verify #%d Error'
+                % self._loop_count)
+
+    def _full_disk_write(self, dev):
+        """
+        Do the root device full area write and report performance
+        """
+        logging.info(str('_full_disk_write #%d' % self._loop_count))
+        logging.info(str('target device "%s"' % dev))
+
+        # check sanity of target device: begin with /dev/ and can find with ls
+        if dev[0:5] != '/dev/':
+            raise error.TestFail(
+                'Test failed with error: device should begin with /dev/')
+
+        # This command return 0 when device exist, return 2 otherwise
+        cmd = 'ls %s >/dev/null 2>&1' % dev
+        if self._client.run(cmd, ignore_status=True).exit_status:
+            raise error.TestFail(
+                'Test failed with error: device does not exist')
+
+        # log some hardware status in the first run
+        if self._loop_count == 1:
+            cmd = 'cat /sys/class/block/%s/device/type' % dev[5:]
+            type = self._client.run(cmd).stdout.strip()
+            if type == '0': #scsi disk
+                cmd = 'smartctl -x %s' % dev
+                logging.info(self._client.run(cmd, ignore_status=True).stdout)
+            elif type == 'MMC':
+                for field in ['cid', 'csd', 'name', 'serial']:
+                    cmd = 'cat /sys/block/%s/device/%s' % (dev[5:], field)
+                    result = self._client.run(cmd).stdout.strip()
+                    logging.info(str('%s: %s' % (field, result)))
+            else:
+                raise error.TestFail('Unknown device type')
+
+        # determine current boot device
+        cur_dev = self._client.run('rootdev -s -d').stdout.strip()
+        logging.info(str('current boot device "%s"' % cur_dev))
+
+        if dev == cur_dev:
+            raise error.TestFail(
+                'Test failed with error: can not test boot device')
+
+        result_dir = str('hardware_StorageFio_full_disk_write_%d'
+                                       % self._loop_count)
+        self._client_at.run_test('hardware_StorageFio', dev=dev, filesize=0,
+                                 results_dir=result_dir,
+                                 requirements=[('64k_stress', [])])
+
+        passed = self._check_client_test_result(self._client)
+        if not passed:
+            raise error.TestFail(
+                "Test failed with error: Full disk Write #%d Error"
                 % self._loop_count)
