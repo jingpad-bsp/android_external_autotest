@@ -25,6 +25,7 @@ class desktopui_CrashyRebootServer(test.test):
 
     def run_once(self, host=None):
         host.run('rm -f /var/lib/ui/reboot-timestamps')
+        boot_id = host.get_boot_id()
 
         # Run a client-side test that crashes the UI a bunch, and
         # expect a reboot.  We need to run this test in the background in
@@ -46,7 +47,8 @@ class desktopui_CrashyRebootServer(test.test):
         job_record_context = host.job.get_record_context()
 
         logging.info('Waiting for host to go down.')
-        if not host.wait_down(timeout=self.CRASHY_DEVICE_TIMEOUT_SECONDS):
+        if not host.wait_down(timeout=self.CRASHY_DEVICE_TIMEOUT_SECONDS,
+                              old_boot_id=boot_id):
             # Gather results to determine why device didn't reboot.
             collector.collect_client_job_results()
             collector.remove_redundant_client_logs()
