@@ -19,8 +19,6 @@ class login_RemoteOwnership(test.test):
 
     version = 1
 
-    _poldata = 'hooberbloob'
-
     def setup(self):
         os.chdir(self.srcdir)
         utils.make('OUT_DIR=.')
@@ -38,18 +36,20 @@ class login_RemoteOwnership(test.test):
         sm = session_manager.connect()
 
         # Initial policy setup.
+        poldata = policy.build_policy_data(self.srcdir)
         priv = ownership.known_privkey()
         pub = ownership.known_pubkey()
         policy.push_policy_and_verify(
-            policy.generate_policy(self.srcdir, priv, pub, self._poldata), sm)
+            policy.generate_policy(self.srcdir, priv, pub, poldata), sm)
 
         # Force re-key the device
         (priv, pub) = ownership.pairgen_as_data()
         policy.push_policy_and_verify(
-            policy.generate_policy(self.srcdir, priv, pub, self._poldata), sm)
+            policy.generate_policy(self.srcdir, priv, pub, poldata), sm)
 
         # Rotate key gracefully.
-        self.username = ''.join(random.sample(string.ascii_lowercase,6)) + "@foo.com"
+        self.username = (''.join(random.sample(string.ascii_lowercase,6)) +
+                         "@foo.com")
         password = ''.join(random.sample(string.ascii_lowercase,6))
         cryptohome.remove_vault(self.username)
         cryptohome.mount_vault(self.username, password, create=True)
@@ -63,7 +63,7 @@ class login_RemoteOwnership(test.test):
             policy.generate_policy(self.srcdir,
                                    key=new_priv,
                                    pubkey=new_pub,
-                                   policy=self._poldata,
+                                   policy=poldata,
                                    old_key=priv),
             sm)
 

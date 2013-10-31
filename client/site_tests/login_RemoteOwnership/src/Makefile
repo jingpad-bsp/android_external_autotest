@@ -8,8 +8,10 @@ endif
 
 OUT_DIR ?= .
 PROTO_PATH = $(SYSROOT)/usr/share/protofiles
-PROTO_DEFS = $(PROTO_PATH)/device_management_backend.proto
-PROTO_BINDINGS = $(OUT_DIR)/device_management_backend_pb2.py
+PROTO_DEFS = $(PROTO_PATH)/device_management_backend.proto \
+	$(PROTO_PATH)/chrome_device_policy.proto
+PROTO_BINDINGS = $(OUT_DIR)/device_management_backend_pb2.py \
+	$(OUT_DIR)/chrome_device_policy_pb2.py
 
 all: $(PROTO_BINDINGS)
 
